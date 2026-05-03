@@ -1,7 +1,7 @@
-import asyncio
 import argparse
-import json
+import asyncio
 import gc
+import json
 import sys
 import time
 from pathlib import Path
@@ -26,7 +26,64 @@ def timestamp_dir() -> Path:
 
 
 async def collect_layout_probe(page, exporter: HoyolabExporter) -> dict[str, Any]:
-    return await page.evaluate(
+    target_frame = page.main_frame
+    frame_checks = []
+
+    for frame_index, frame in enumerate(page.frames):
+        try:
+            check = await frame.evaluate(
+                """
+                () => {
+                    const rootProbe = window.__genshin_export_root_probe__ || null;
+                    const patchStatus = window.__genshin_html2canvas_patch_status__ || null;
+                    return {
+                        hasRootProbe: Boolean(rootProbe),
+                        calls: patchStatus && Array.isArray(patchStatus.calls) ? patchStatus.calls.length : 0,
+                        url: window.location.href,
+                    };
+                }
+                """
+            )
+            check["frameIndex"] = frame_index
+            frame_checks.append(check)
+            if check.get("hasRootProbe"):
+                target_frame = frame
+        except Exception as exc:
+            frame_checks.append(
+                {
+                    "frameIndex": frame_index,
+                    "url": frame.url,
+                    "error": str(exc),
+                }
+            )
+
+    await target_frame.evaluate(
+        """
+        (routeStatus) => {
+            const current = window.__genshin_html2canvas_patch_status__ || {};
+            window.__genshin_html2canvas_patch_status__ = {
+                ...routeStatus,
+                ...current,
+                attempted: Boolean(routeStatus.attempted || current.attempted),
+                matched: Boolean(routeStatus.matched || current.matched),
+                strategy: current.strategy || routeStatus.strategy || null,
+                calls: [
+                    ...(Array.isArray(routeStatus.calls) ? routeStatus.calls : []),
+                    ...(Array.isArray(current.calls) ? current.calls : []),
+                ],
+                errors: [
+                    ...(Array.isArray(routeStatus.errors) ? routeStatus.errors : []),
+                    ...(Array.isArray(current.errors) ? current.errors : []),
+                ],
+                routeMatches: routeStatus.routeMatches || current.routeMatches || [],
+                routeMisses: routeStatus.routeMisses || current.routeMisses || [],
+            };
+        }
+        """,
+        exporter.html2canvas_patch_status,
+    )
+
+    probe = await target_frame.evaluate(
         """
         ({scale, fixedContainerWidth}) => {
             const round = (value) => Math.round(value * 100) / 100;
@@ -44,6 +101,7 @@ async def collect_layout_probe(page, exporter: HoyolabExporter) -> dict[str, Any
                 };
             };
             const visible = (el) => {
+                if (!el || !el.getBoundingClientRect) return false;
                 const r = el.getBoundingClientRect();
                 const style = getComputedStyle(el);
                 return r.width > 0
@@ -52,10 +110,9 @@ async def collect_layout_probe(page, exporter: HoyolabExporter) -> dict[str, Any
                     && style.visibility !== "hidden"
                     && Number(style.opacity || 1) > 0;
             };
-            const rootProbe = window.__genshin_export_root_probe__ || null;
-            const rootRect = rootProbe && rootProbe.rootRect ? rootProbe.rootRect : null;
-            const relativeToRoot = (box) => {
-                if (!rootRect) return null;
+            const normalizeText = (text, limit) => String(text || "").replace(/\\s+/g, " ").trim().slice(0, limit);
+            const relativeBox = (box, rootRect) => {
+                if (!box || !rootRect) return null;
                 return {
                     left: round(box.left - rootRect.left),
                     top: round(box.top - rootRect.top),
@@ -65,9 +122,124 @@ async def collect_layout_probe(page, exporter: HoyolabExporter) -> dict[str, Any
                     height: box.height,
                 };
             };
-            const textLooksUseful = (text) => {
-                return /(Lv\\.|Ур\\.|Pair|C\\d|Rank|精炼|命之座|等级)/i.test(text);
+            const imageInfoOf = (img, rootRect, imageIndex = 0) => {
+                const imageBox = boxOf(img);
+                return {
+                    imageIndex,
+                    src: img.src || "",
+                    currentSrc: img.currentSrc || "",
+                    alt: img.alt || "",
+                    className: String(img.className || ""),
+                    rect_viewport: imageBox,
+                    rect_root_relative: relativeBox(imageBox, rootRect),
+                };
             };
+            const compactEl = (el) => el ? {
+                tag: el.tagName || null,
+                id: el.id || "",
+                className: String(el.className || "").slice(0, 240),
+            } : null;
+            const parentChainOf = (el) => {
+                const chain = [];
+                let current = el ? el.parentElement : null;
+                while (current && chain.length < 5) {
+                    chain.push(compactEl(current));
+                    current = current.parentElement;
+                }
+                return chain;
+            };
+            const rootProbe = window.__genshin_export_root_probe__ || null;
+            const cloneProbe = window.__genshin_export_clone_probe__ || null;
+            const patchStatus = window.__genshin_html2canvas_patch_status__ || {
+                attempted: false,
+                matched: false,
+                strategy: null,
+                calls: [],
+                errors: ["window.__genshin_html2canvas_patch_status__ was not found"],
+            };
+            const probeOfRoot = (root, source) => {
+                if (!root) return null;
+                const style = getComputedStyle(root);
+                const rootBox = boxOf(root);
+                const bgCount = Array.from(root.querySelectorAll("*")).filter((el) => {
+                    const bg = getComputedStyle(el).backgroundImage;
+                    return bg && bg !== "none";
+                }).length;
+                return {
+                    source,
+                    tag: root.tagName || null,
+                    id: root.id || "",
+                    className: String(root.className || ""),
+                    textPreview: normalizeText(root.innerText || root.textContent, 300),
+                    rect: rootBox,
+                    rootRect: rootBox,
+                    rect_viewport: rootBox,
+                    imageCount: root.querySelectorAll("img").length,
+                    backgroundImageCount: bgCount,
+                    backgroundImage: style.backgroundImage && style.backgroundImage !== "none" ? style.backgroundImage : "",
+                };
+            };
+            const fallbackCandidateScore = (root) => {
+                const rect = root.getBoundingClientRect();
+                const descendants = Array.from(root.querySelectorAll("*"));
+                const imgCount = root.querySelectorAll("img").length;
+                const bgCount = descendants.filter((el) => {
+                    const bg = getComputedStyle(el).backgroundImage;
+                    return bg && bg !== "none";
+                }).length;
+                return {
+                    root,
+                    rect: boxOf(root),
+                    imgCount,
+                    bgCount,
+                    totalLike: imgCount + bgCount,
+                    widthDistance: Math.abs(rect.width - fixedContainerWidth),
+                };
+            };
+            const findFallbackRoot = () => {
+                const candidates = Array.from(document.querySelectorAll("div,section,main"))
+                    .filter(visible)
+                    .map(fallbackCandidateScore)
+                    .filter((item) => item.rect.width >= 300
+                        && item.rect.width <= 900
+                        && item.rect.height >= 300
+                        && (item.imgCount >= 3 || item.bgCount >= 3))
+                    .sort((a, b) => {
+                        if (a.widthDistance !== b.widthDistance) return a.widthDistance - b.widthDistance;
+                        if (a.totalLike !== b.totalLike) return b.totalLike - a.totalLike;
+                        return b.rect.height - a.rect.height;
+                    });
+                return candidates[0] ? candidates[0].root : null;
+            };
+
+            let rootSource = "none";
+            let selectedRoot = null;
+            if (rootProbe && rootProbe.rootRect) {
+                rootSource = "html2canvas_patch";
+                selectedRoot = document.querySelector('[data-gtt-export-root="1"]');
+            }
+            if (!selectedRoot) {
+                const markedRoot = document.querySelector('[data-gtt-export-root="1"]');
+                if (markedRoot) {
+                    selectedRoot = markedRoot;
+                    rootSource = "marked_root";
+                }
+            }
+            if (!selectedRoot) {
+                const fallbackRoot = findFallbackRoot();
+                if (fallbackRoot) {
+                    fallbackRoot.setAttribute("data-gtt-export-root-fallback", "1");
+                    selectedRoot = fallbackRoot;
+                    rootSource = "fallback_candidate";
+                }
+            }
+
+            const selectedRootRect = selectedRoot ? boxOf(selectedRoot) : (rootProbe ? rootProbe.rootRect : null);
+            const fallbackRootProbe = rootSource === "fallback_candidate" || rootSource === "marked_root"
+                ? probeOfRoot(selectedRoot, rootSource)
+                : null;
+            const relativeToRoot = (box) => relativeBox(box, selectedRootRect);
+            const textLooksUseful = (text) => /(Lv\\.|Pair|C\\d|Rank|Ур\\.)/i.test(text);
 
             const selectors = [
                 ".all-role *",
@@ -92,22 +264,10 @@ async def collect_layout_probe(page, exporter: HoyolabExporter) -> dict[str, Any
                         continue;
                     }
 
-                    const text = (el.innerText || "").replace(/\\s+/g, " ").trim();
+                    const text = normalizeText(el.innerText || el.textContent, 500);
                     const images = Array.from(el.querySelectorAll("img")).filter(visible);
                     if (images.length < 1) continue;
                     if (images.length < 2 && !textLooksUseful(text)) continue;
-
-                    const imageInfo = images.map((img, imageIndex) => {
-                        const imageBox = boxOf(img);
-                        return {
-                            imageIndex,
-                            src: img.currentSrc || img.src || "",
-                            alt: img.alt || "",
-                            className: String(img.className || ""),
-                            box: imageBox,
-                            rootRelativeBox: relativeToRoot(imageBox),
-                        };
-                    });
 
                     candidates.push({
                         candidateIndex: candidates.length,
@@ -116,7 +276,7 @@ async def collect_layout_probe(page, exporter: HoyolabExporter) -> dict[str, Any
                         text,
                         box,
                         rootRelativeBox: relativeToRoot(box),
-                        images: imageInfo,
+                        images: images.map((img, imageIndex) => imageInfoOf(img, selectedRootRect, imageIndex)),
                     });
                 }
             }
@@ -141,6 +301,43 @@ async def collect_layout_probe(page, exporter: HoyolabExporter) -> dict[str, Any
                 }
             }
 
+            const imageLike = [];
+            if (selectedRoot) {
+                const inside = Array.from(selectedRoot.querySelectorAll("*"));
+                for (const el of inside) {
+                    if (!visible(el)) continue;
+                    const style = getComputedStyle(el);
+                    const backgroundImage = style.backgroundImage && style.backgroundImage !== "none" ? style.backgroundImage : "";
+                    const images = Array.from(el.querySelectorAll("img")).filter(visible);
+                    const isImageLike = el.tagName === "IMG" || Boolean(backgroundImage) || images.length > 0;
+                    if (!isImageLike) continue;
+                    const rect = boxOf(el);
+                    imageLike.push({
+                        index: imageLike.length,
+                        tag: el.tagName,
+                        id: el.id || "",
+                        className: String(el.className || ""),
+                        textPreview: normalizeText(el.innerText || el.textContent, 120),
+                        rect_viewport: rect,
+                        rect_root_relative: relativeBox(rect, selectedRootRect),
+                        backgroundImage,
+                        images: el.tagName === "IMG"
+                            ? [imageInfoOf(el, selectedRootRect, 0)]
+                            : images.map((img, imageIndex) => imageInfoOf(img, selectedRootRect, imageIndex)),
+                        parentChain: parentChainOf(el),
+                    });
+                    if (imageLike.length >= 300) break;
+                }
+            }
+
+            const rootDiscovery = selectedRoot ? {
+                totalElementsInsideRoot: selectedRoot.querySelectorAll("*").length,
+                imageLike,
+            } : {
+                totalElementsInsideRoot: 0,
+                imageLike: [],
+            };
+
             return {
                 sourceUrl: location.href,
                 capturedAt: Date.now(),
@@ -158,7 +355,12 @@ async def collect_layout_probe(page, exporter: HoyolabExporter) -> dict[str, Any
                         height: window.innerHeight,
                     },
                 },
+                html2canvasPatchStatus: patchStatus,
                 html2canvasRootProbe: rootProbe,
+                html2canvasCloneProbe: cloneProbe,
+                fallbackRootProbe,
+                rootSource: cloneProbe ? "html2canvas_clone" : rootSource,
+                rootDiscovery: cloneProbe && cloneProbe.rootDiscovery ? cloneProbe.rootDiscovery : rootDiscovery,
                 candidateCount: deduped.length,
                 candidates: deduped,
             };
@@ -169,6 +371,10 @@ async def collect_layout_probe(page, exporter: HoyolabExporter) -> dict[str, Any
             "fixedContainerWidth": exporter.fixed_container_width,
         },
     )
+
+    probe["frameChecks"] = frame_checks
+    probe["selectedFrameUrl"] = target_frame.url
+    return probe
 
 
 async def run_probe(debug_port: int | None = DEFAULT_DEBUG_PORT, profile_dir: Path = DEFAULT_PROFILE_DIR) -> Path:
@@ -203,8 +409,84 @@ async def run_probe(debug_port: int | None = DEFAULT_DEBUG_PORT, profile_dir: Pa
         exporter._validate_image(image_path)
 
         await page.wait_for_timeout(1000)
-        probe = await collect_layout_probe(page, exporter)
+        try:
+            probe = await collect_layout_probe(page, exporter)
+        except Exception as exc:
+            probe = {
+                "sourceUrl": page.url,
+                "capturedAt": int(time.time() * 1000),
+                "exporter": {
+                    "scale": exporter.scale,
+                    "fixedContainerWidth": exporter.fixed_container_width,
+                    "expectedImageWidth": exporter.scale * exporter.fixed_container_width,
+                },
+                "html2canvasPatchStatus": {
+                    "attempted": False,
+                    "matched": False,
+                    "strategy": None,
+                    "calls": [],
+                    "errors": [f"collect_layout_probe failed: {exc!r}"],
+                },
+                "html2canvasRootProbe": None,
+                "fallbackRootProbe": None,
+                "rootSource": "none",
+                "rootDiscovery": {
+                    "totalElementsInsideRoot": 0,
+                    "imageLike": [],
+                },
+                "candidateCount": 0,
+                "candidates": [],
+            }
         probe["downloadedImage"] = image_path.name
+
+        frame_probes = []
+        for frame_index, frame in enumerate(page.frames):
+            try:
+                frame_probe = await frame.evaluate(
+                    """
+                    () => {
+                        const rootProbe = window.__genshin_export_root_probe__ || null;
+                        const patchStatus = window.__genshin_html2canvas_patch_status__ || null;
+                        const markedRoot = document.querySelector('[data-gtt-export-root="1"]');
+                        const markedRect = markedRoot ? markedRoot.getBoundingClientRect() : null;
+
+                        return {
+                            url: window.location.href,
+                            hasRootProbe: Boolean(rootProbe),
+                            rootProbe,
+                            hasPatchStatus: Boolean(patchStatus),
+                            patchStatus,
+                            markedRoot: markedRoot ? {
+                                tag: markedRoot.tagName || null,
+                                id: markedRoot.id || "",
+                                className: typeof markedRoot.className === "string" ? markedRoot.className : "",
+                                rect: markedRect ? {
+                                    x: markedRect.x,
+                                    y: markedRect.y,
+                                    left: markedRect.left,
+                                    top: markedRect.top,
+                                    right: markedRect.right,
+                                    bottom: markedRect.bottom,
+                                    width: markedRect.width,
+                                    height: markedRect.height
+                                } : null
+                            } : null
+                        };
+                    }
+                    """
+                )
+                frame_probe["frameIndex"] = frame_index
+                frame_probes.append(frame_probe)
+            except Exception as exc:
+                frame_probes.append(
+                    {
+                        "frameIndex": frame_index,
+                        "url": frame.url,
+                        "error": str(exc),
+                    }
+                )
+
+        probe["frameProbes"] = frame_probes
 
         (output_dir / "layout_probe.json").write_text(
             json.dumps(probe, ensure_ascii=False, indent=2),
@@ -212,9 +494,25 @@ async def run_probe(debug_port: int | None = DEFAULT_DEBUG_PORT, profile_dir: Pa
         )
         await page.screenshot(path=str(output_dir / "page_screenshot.png"), full_page=True)
 
+        patch_status = probe.get("html2canvasPatchStatus") or {}
+        root_discovery = probe.get("rootDiscovery") or {}
+        image_like = root_discovery.get("imageLike") or []
         print(f"[Probe] Saved bundle: {output_dir}")
+        print(f"[Probe] html2canvas patch matched: {bool(patch_status.get('matched'))}")
+        print(f"[Probe] html2canvas root probe: {'yes' if probe.get('html2canvasRootProbe') else 'no'}")
+        print(f"[Probe] root source: {probe.get('rootSource')}")
+        print(f"[Probe] image-like elements: {len(image_like)}")
         print(f"[Probe] Candidates: {probe.get('candidateCount')}")
-        print(f"[Probe] Root probe present: {bool(probe.get('html2canvasRootProbe'))}")
+        print(f"[Probe] frames: {len(probe.get('frameProbes') or [])}")
+        for fp in probe.get("frameProbes") or []:
+            frame_patch_status = fp.get("patchStatus") or {}
+            frame_calls = len(frame_patch_status.get("calls") or [])
+            print(
+                f"[Probe] frame {fp.get('frameIndex')} "
+                f"rootProbe: {'yes' if fp.get('hasRootProbe') else 'no'} "
+                f"calls: {frame_calls} "
+                f"url: {fp.get('url')}"
+            )
         return output_dir
 
     finally:

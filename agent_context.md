@@ -68,7 +68,28 @@ Not yet verified:
 
 - Live HoYoLAB image download after the latest popup-dismiss retry changes.
 - Live inventory collection output files.
-- Live layout probe output.
+
+Latest layout probe verification:
+
+- `python tests/probe_layout.py` succeeded and wrote:
+  - `tests/probe_layout_output/20260503_235546/image.png`
+  - `tests/probe_layout_output/20260503_235546/layout_probe.json`
+  - `tests/probe_layout_output/20260503_235546/page_screenshot.png`
+- The output contains required top-level keys:
+  - `html2canvasPatchStatus`
+  - `html2canvasRootProbe`
+  - `fallbackRootProbe`
+  - `rootSource`
+  - `rootDiscovery`
+- Latest result:
+  - `html2canvasPatchStatus.matched == true`
+  - `html2canvasPatchStatus.strategy == "generator_case_html2canvas_t_r"`
+  - `html2canvasPatchStatus.calls` is empty
+  - `html2canvasRootProbe == null`
+  - `rootSource == "fallback_candidate"`
+  - `fallbackRootProbe != null`
+  - `rootDiscovery.imageLike` is capped at 300 entries
+- Interpretation: route-level string replacement matched, but the injected runtime probe did not execute on the inspected page. Continue with fallback root for diagnostics, but harden the html2canvas runtime hook before relying on root-relative crop coordinates.
 
 ## Important Legacy Files To Inspect / Port
 
@@ -126,6 +147,7 @@ The exporter currently patches HoYoLAB JS/html2canvas rather than relying on vie
 Current html2canvas probe hook:
 
 - `hoyolab_export/hoyolab_exporter.py` injects `window.__genshin_export_root_probe__` immediately before the patched `html2canvas(t, r)` call.
+- `hoyolab_export/hoyolab_exporter.py` also tracks route-level patch diagnostics in `HoyolabExporter.html2canvas_patch_status` and merges that into `window.__genshin_html2canvas_patch_status__` before `tests/probe_layout.py` collects layout data.
 - `hoyolab_export.close_export_context(...)` closes pages, stops Playwright, and terminates the browser process created by `_create_context`; this avoids leaving the persistent profile locked or paused after a failed/manual login attempt.
 - `hoyolab_export.auth` is the shared profile-status layer for UI, setup scripts, reset, and exporter preflight.
 - `hoyolab_export.run_login_setup` opens HoYoLAB in a normal Chrome/Edge process with the same app profile. The user authorizes and closes that browser window.

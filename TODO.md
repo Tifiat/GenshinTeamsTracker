@@ -64,6 +64,7 @@
 - [ ] Add layout/DOM metadata capture for character and weapon elements.
 - [x] Add `tests/probe_layout.py` for live HoYoLAB layout probing.
 - [x] Hook html2canvas root capture into exporter JS patch via `window.__genshin_export_root_probe__`.
+- [x] Add `html2canvasPatchStatus`, `fallbackRootProbe`, `rootSource`, and `rootDiscovery` diagnostics to layout probe output.
 - [x] Ensure exporter/probe terminates its browser process after cleanup.
 - [x] Remove fixed-port debug-login flow; first login now uses normal browser setup.
 - [x] Replace `asyncio.run()` in layout probe with explicit Windows-friendly loop cleanup.
@@ -76,7 +77,9 @@
 - [ ] Determine reliable DOM selectors or layout rules for character cards.
 - [ ] Determine reliable DOM selectors or layout rules for weapon mini-cards.
 - [ ] Save DOM element rectangles before html2canvas export.
-- [ ] Run live `tests/probe_layout.py` and inspect `layout_probe.json` / `page_screenshot.png`.
+- [x] Run live `tests/probe_layout.py` and inspect `layout_probe.json` / `page_screenshot.png`.
+- [ ] If `rootSource` is `fallback_candidate`, compare fallback root against exported PNG and harden html2canvas root patch.
+- [ ] Investigate why `html2canvasPatchStatus.matched == true` but runtime `calls` is empty and `html2canvasRootProbe` is null.
 - [x] If Google login is needed, use `python -m hoyolab_export.run_login_setup` before running automation.
 - [ ] Authorize through the UI HoYoLAB prompt or `python -m hoyolab_export.run_login_setup`, close browser, then rerun `tests/probe_layout.py`.
 - [ ] Confirm whether `html2canvasRootProbe.rootRect` maps to final PNG by `scale`.

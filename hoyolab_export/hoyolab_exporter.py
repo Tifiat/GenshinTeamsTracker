@@ -90,6 +90,15 @@ class HoyolabExporter:
         self.image_format = image_format.lower()
         self.remote_debugging_port = remote_debugging_port
         self.keep_browser_open = keep_browser_open
+        self.html2canvas_patch_status = {
+            "attempted": False,
+            "matched": False,
+            "strategy": None,
+            "calls": [],
+            "errors": [],
+            "routeMatches": [],
+            "routeMisses": [],
+        }
 
         self.profile_dir.mkdir(parents=True, exist_ok=True)
         self.download_dir.mkdir(parents=True, exist_ok=True)
@@ -162,6 +171,366 @@ class HoyolabExporter:
                             }
                             """)
 
+    def _html2canvas_patch_status_init_js(self) -> str:
+        return r"""
+    (function(){
+      const p = window.__genshin_html2canvas_patch_status__;
+      window.__genshin_html2canvas_patch_status__ = p || {
+        attempted: true,
+        matched: false,
+        strategy: null,
+        calls: [],
+        cloneCalls: [],
+        errors: []
+      };
+
+      const round = (value) => Math.round(Number(value || 0) * 100) / 100;
+
+      const boxOf = (el) => {
+        if (!el || !el.getBoundingClientRect) return null;
+        const r = el.getBoundingClientRect();
+        return {
+          x: round(r.x),
+          y: round(r.y),
+          left: round(r.left),
+          top: round(r.top),
+          right: round(r.right),
+          bottom: round(r.bottom),
+          width: round(r.width),
+          height: round(r.height)
+        };
+      };
+
+      const relativeBox = (box, rootRect) => {
+        if (!box || !rootRect) return null;
+        return {
+          left: round(box.left - rootRect.left),
+          top: round(box.top - rootRect.top),
+          right: round(box.right - rootRect.left),
+          bottom: round(box.bottom - rootRect.top),
+          width: box.width,
+          height: box.height
+        };
+      };
+
+      const normalizeText = (value, limit) => String(value || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, limit);
+
+      const styleOf = (view, el) => {
+        try {
+          return view.getComputedStyle(el);
+        } catch (_) {
+          return window.getComputedStyle(el);
+        }
+      };
+
+      const visible = (view, el) => {
+        if (!el || !el.getBoundingClientRect) return false;
+        const rect = el.getBoundingClientRect();
+        const style = styleOf(view, el);
+        return rect.width > 0
+          && rect.height > 0
+          && style.display !== "none"
+          && style.visibility !== "hidden"
+          && Number(style.opacity || 1) > 0;
+      };
+
+      const imageInfoOf = (view, img, rootRect, imageIndex) => {
+        const rect = boxOf(img);
+        return {
+          imageIndex,
+          src: img.src || "",
+          currentSrc: img.currentSrc || "",
+          alt: img.alt || "",
+          className: String(img.className || ""),
+          rect_viewport: rect,
+          rect_root_relative: relativeBox(rect, rootRect)
+        };
+      };
+
+      const parentChainOf = (el) => {
+        const chain = [];
+        let current = el ? el.parentElement : null;
+        while (current && chain.length < 5) {
+          chain.push({
+            tag: current.tagName || null,
+            id: current.id || "",
+            className: String(current.className || "").slice(0, 240)
+          });
+          current = current.parentElement;
+        }
+        return chain;
+      };
+
+      const collectRootDiscovery = (root, view) => {
+        const rootRect = boxOf(root);
+        const imageLike = [];
+
+        if (!root || !rootRect) {
+          return {
+            totalElementsInsideRoot: 0,
+            imageLike: []
+          };
+        }
+
+        const inside = Array.from(root.querySelectorAll("*"));
+
+        for (const el of inside) {
+          if (!visible(view, el)) continue;
+
+          const style = styleOf(view, el);
+          const backgroundImage = style.backgroundImage && style.backgroundImage !== "none"
+            ? style.backgroundImage
+            : "";
+
+          const images = Array.from(el.querySelectorAll("img")).filter((img) => visible(view, img));
+          const isImageLike = el.tagName === "IMG" || Boolean(backgroundImage) || images.length > 0;
+
+          if (!isImageLike) continue;
+
+          const rect = boxOf(el);
+
+          imageLike.push({
+            index: imageLike.length,
+            tag: el.tagName,
+            id: el.id || "",
+            className: String(el.className || ""),
+            textPreview: normalizeText(el.innerText || el.textContent, 120),
+            rect_viewport: rect,
+            rect_root_relative: relativeBox(rect, rootRect),
+            backgroundImage,
+            images: el.tagName === "IMG"
+              ? [imageInfoOf(view, el, rootRect, 0)]
+              : images.map((img, imageIndex) => imageInfoOf(view, img, rootRect, imageIndex)),
+            parentChain: parentChainOf(el)
+          });
+
+          if (imageLike.length >= 3500) break;
+        }
+
+        return {
+          totalElementsInsideRoot: inside.length,
+          imageLike
+        };
+      };
+
+      window.__gtt_capture_html2canvas_root__ = function(t, r, strategy) {
+        const s = window.__genshin_html2canvas_patch_status__ ||
+          (window.__genshin_html2canvas_patch_status__ = {
+            attempted: true,
+            matched: false,
+            strategy: null,
+            calls: [],
+            cloneCalls: [],
+            errors: []
+          });
+
+        try {
+          if (t && t.setAttribute) {
+            t.setAttribute("data-gtt-export-root", "1");
+          }
+
+          const rootRect = boxOf(t);
+
+          const probe = {
+            capturedAt: "before_html2canvas_runtime_wrapper",
+            strategy: strategy || null,
+            rootRect,
+            rootTag: t && t.tagName ? t.tagName : null,
+            rootId: t && typeof t.id === "string" ? t.id : null,
+            rootClassName: t && typeof t.className === "string" ? t.className : null,
+            rootTextPreview: t && t.innerText ? normalizeText(t.innerText, 300) : "",
+            html2canvasOptions: {
+              scale: r && r.scale !== undefined ? r.scale : null,
+              width: r && r.width !== undefined ? r.width : null,
+              height: r && r.height !== undefined ? r.height : null,
+              windowWidth: r && r.windowWidth !== undefined ? r.windowWidth : null,
+              windowHeight: r && r.windowHeight !== undefined ? r.windowHeight : null
+            },
+            devicePixelRatio: window.devicePixelRatio,
+            scrollX: window.scrollX,
+            scrollY: window.scrollY,
+            viewport: {
+              width: window.innerWidth,
+              height: window.innerHeight
+            }
+          };
+
+          window.__genshin_export_root_probe__ = probe;
+
+          s.calls.push({
+            ok: true,
+            capturedAt: probe.capturedAt,
+            strategy: probe.strategy,
+            rootTag: probe.rootTag,
+            rootId: probe.rootId,
+            rootClassName: probe.rootClassName,
+            rootRect: probe.rootRect,
+            html2canvasOptions: probe.html2canvasOptions
+          });
+
+          s.matched = true;
+          s.strategy = strategy || s.strategy || "runtime_wrapper";
+
+          if (r && !r.__gtt_clone_probe_wrapped) {
+            const previousOnclone = r.onclone;
+            r.__gtt_clone_probe_wrapped = true;
+
+            r.onclone = function(clonedDoc, clonedElement) {
+              const captureClone = () => {
+                try {
+                  const view = clonedDoc && clonedDoc.defaultView ? clonedDoc.defaultView : window;
+                  const cloneRoot =
+                    clonedElement
+                    || (clonedDoc && clonedDoc.querySelector
+                      ? clonedDoc.querySelector("[data-gtt-export-root='1']")
+                      : null);
+
+                  if (cloneRoot && cloneRoot.setAttribute) {
+                    cloneRoot.setAttribute("data-gtt-export-root-clone", "1");
+                  }
+
+                  const cloneRootRect = boxOf(cloneRoot);
+                  const cloneProbe = {
+                    capturedAt: "html2canvas_onclone",
+                    strategy: strategy || null,
+                    cloneRootRect,
+                    rootRect: cloneRootRect,
+                    rootTag: cloneRoot && cloneRoot.tagName ? cloneRoot.tagName : null,
+                    rootId: cloneRoot && typeof cloneRoot.id === "string" ? cloneRoot.id : null,
+                    rootClassName: cloneRoot && typeof cloneRoot.className === "string" ? cloneRoot.className : null,
+                    rootTextPreview: cloneRoot && cloneRoot.innerText ? normalizeText(cloneRoot.innerText, 300) : "",
+                    html2canvasOptions: {
+                      scale: r && r.scale !== undefined ? r.scale : null,
+                      width: r && r.width !== undefined ? r.width : null,
+                      height: r && r.height !== undefined ? r.height : null,
+                      windowWidth: r && r.windowWidth !== undefined ? r.windowWidth : null,
+                      windowHeight: r && r.windowHeight !== undefined ? r.windowHeight : null
+                    },
+                    viewport: {
+                      width: view.innerWidth,
+                      height: view.innerHeight
+                    },
+                    rootDiscovery: collectRootDiscovery(cloneRoot, view)
+                  };
+
+                  window.__genshin_export_clone_probe__ = cloneProbe;
+
+                  s.cloneCalls.push({
+                    ok: true,
+                    capturedAt: cloneProbe.capturedAt,
+                    strategy: cloneProbe.strategy,
+                    rootTag: cloneProbe.rootTag,
+                    rootId: cloneProbe.rootId,
+                    rootClassName: cloneProbe.rootClassName,
+                    cloneRootRect: cloneProbe.cloneRootRect,
+                    imageLikeCount: cloneProbe.rootDiscovery.imageLike.length,
+                    html2canvasOptions: cloneProbe.html2canvasOptions
+                  });
+                } catch (e) {
+                  const err = {
+                    ok: false,
+                    capturedAt: Date.now(),
+                    strategy: strategy || null,
+                    message: String(e && e.message || e),
+                    stack: e && e.stack ? String(e.stack).slice(0, 1000) : null
+                  };
+                  s.cloneCalls.push(err);
+                  s.errors.push(err);
+                }
+              };
+
+              let previousResult;
+              try {
+                if (typeof previousOnclone === "function") {
+                  previousResult = previousOnclone.apply(this, arguments);
+                }
+              } catch (e) {
+                const err = {
+                  ok: false,
+                  capturedAt: Date.now(),
+                  strategy: strategy || null,
+                  message: "previous onclone failed: " + String(e && e.message || e),
+                  stack: e && e.stack ? String(e.stack).slice(0, 1000) : null
+                };
+                s.cloneCalls.push(err);
+                s.errors.push(err);
+              }
+
+              if (previousResult && typeof previousResult.then === "function") {
+                return previousResult.then((value) => {
+                  captureClone();
+                  return value;
+                });
+              }
+
+              captureClone();
+              return previousResult;
+            };
+          }
+        } catch (e) {
+          s.calls.push({
+            ok: false,
+            strategy: strategy || null,
+            error: String(e)
+          });
+          s.errors.push(String(e));
+        }
+      };
+    })();
+    """
+
+    def _html2canvas_root_probe_js(self, strategy: str) -> str:
+        text_limit = 300
+        strategy_json = repr(strategy)
+        return (
+            "(()=>{"
+            "const s=window.__genshin_html2canvas_patch_status__"
+            "||(window.__genshin_html2canvas_patch_status__={attempted:true,matched:false,strategy:null,calls:[],errors:[]});"
+            "try{"
+            "s.matched=true;"
+            f"s.strategy={strategy_json};"
+            "const root=t;"
+            "if(root&&root.setAttribute)root.setAttribute('data-gtt-export-root','1');"
+            "const rect=root&&root.getBoundingClientRect?root.getBoundingClientRect():null;"
+            "const rootRect=rect?{x:rect.x,y:rect.y,left:rect.left,top:rect.top,right:rect.right,bottom:rect.bottom,width:rect.width,height:rect.height}:null;"
+            "const text=(root&&root.innerText?String(root.innerText):'').replace(/\\s+/g,' ').trim().slice(0,"
+            f"{text_limit}"
+            ");"
+            "const probe={"
+            "capturedAt:Date.now(),"
+            f"strategy:{strategy_json},"
+            "rootRect,"
+            "rootTag:root&&root.tagName?root.tagName:null,"
+            "rootId:root&&root.id?root.id:null,"
+            "rootClassName:root&&root.className?String(root.className):null,"
+            "rootTextPreview:text,"
+            "html2canvasOptions:{"
+            "scale:r&&Object.prototype.hasOwnProperty.call(r,'scale')?r.scale:null,"
+            "width:r&&Object.prototype.hasOwnProperty.call(r,'width')?r.width:null,"
+            "height:r&&Object.prototype.hasOwnProperty.call(r,'height')?r.height:null,"
+            "windowWidth:r&&Object.prototype.hasOwnProperty.call(r,'windowWidth')?r.windowWidth:null,"
+            "windowHeight:r&&Object.prototype.hasOwnProperty.call(r,'windowHeight')?r.windowHeight:null"
+            "},"
+            f"fixedContainerWidth:{self.fixed_container_width if self.fixed_container_width is not None else 'null'},"
+            "devicePixelRatio:window.devicePixelRatio,"
+            "scrollX:window.scrollX,"
+            "scrollY:window.scrollY,"
+            "viewport:{width:window.innerWidth,height:window.innerHeight}"
+            "};"
+            "window.__genshin_export_root_probe__=probe;"
+            "s.calls.push({ok:true,capturedAt:probe.capturedAt,strategy:probe.strategy,rootTag:probe.rootTag,rootId:probe.rootId,rootClassName:probe.rootClassName,rootRect:probe.rootRect,html2canvasOptions:probe.html2canvasOptions});"
+            "}catch(e){"
+            "const err={ok:false,capturedAt:Date.now(),strategy:"
+            f"{strategy_json}"
+            ",message:String(e&&e.message||e),stack:e&&e.stack?String(e.stack).slice(0,1000):null};"
+            "s.calls.push(err);s.errors.push(err);"
+            "}"
+            "})(),"
+        )
+
     async def _patch_js_route(self, route: Route, request: Request):
         url = request.url
 
@@ -175,45 +544,49 @@ class HoyolabExporter:
 
         original_body = body
 
+        body = self._html2canvas_patch_status_init_js() + body
+
         body = re.sub(r"scale\s*:\s*2", f"scale:{self.scale}", body)
         body = re.sub(
             r"r=\{useCORS:!0,backgroundColor:null,scale:(\d+)\}",
             f"r={{useCORS:!0,backgroundColor:null,scale:\\1,width:{self.fixed_container_width},windowWidth:{self.fixed_container_width}}}",
             body,
         )
-        body = body.replace(
-            ",n.next=5,f()(t,r);case 5:",
-            (
-                ",t&&t.style&&(t.style.setProperty('width','"
-                f"{self.fixed_container_width}px','important'),"
-                "t.style.setProperty('min-width','"
-                f"{self.fixed_container_width}px','important'),"
-                "t.style.setProperty('max-width','"
-                f"{self.fixed_container_width}px','important')),"
-                "t&&t.getBoundingClientRect&&(window.__genshin_export_root_probe__={"
-                "capturedAt:Date.now(),"
-                "scale:"
-                f"{self.scale},"
-                "fixedContainerWidth:"
-                f"{self.fixed_container_width},"
-                "devicePixelRatio:window.devicePixelRatio,"
-                "scrollX:window.scrollX,"
-                "scrollY:window.scrollY,"
-                "viewport:{width:window.innerWidth,height:window.innerHeight},"
-                "rootRect:(()=>{const e=t.getBoundingClientRect();return{x:e.x,y:e.y,left:e.left,top:e.top,right:e.right,bottom:e.bottom,width:e.width,height:e.height}})()"
-                "}),"
-                "n.next=5,f()(t,r);case 5:"
-            ),
-        )
+        html2canvas_strategy = "all_f_t_r_calls_runtime_wrapper"
+        html2canvas_target = "f()(t,r)"
+        html2canvas_match_count = body.count(html2canvas_target)
+        html2canvas_matched = html2canvas_match_count > 0
 
-        if self.image_format == "png":
-            body = body.replace('toDataURL("image/jpeg")', 'toDataURL("image/png")')
-            body = body.replace("toDataURL('image/jpeg')", "toDataURL('image/png')")
+        self.html2canvas_patch_status["attempted"] = True
 
-        if original_body != body:
-            print(f"[HoYoLAB Exporter] JS patched: {url}")
+        if html2canvas_matched:
+            self.html2canvas_patch_status["matched"] = True
+            self.html2canvas_patch_status["strategy"] = html2canvas_strategy
+            self.html2canvas_patch_status["routeMatches"].append(url)
+            self.html2canvas_patch_status["matchCount"] = html2canvas_match_count
+
+            body = body.replace(
+                html2canvas_target,
+                (
+                    "(window.__gtt_capture_html2canvas_root__&&"
+                    f"window.__gtt_capture_html2canvas_root__(t,r,{html2canvas_strategy!r}),"
+                    "f()(t,r))"
+                ),
+            )
         else:
-            print(f"[HoYoLAB Exporter] JS found, but no target strings were replaced: {url}")
+            self.html2canvas_patch_status["routeMisses"].append(url)
+            self.html2canvas_patch_status["errors"].append(
+                f"html2canvas runtime wrapper did not find {html2canvas_target!r} in route: {url}"
+            )
+            print(f"[HoYoLAB Exporter] html2canvas runtime wrapper did not match: {url}")
+
+        if html2canvas_matched:
+            print(
+                "[HoYoLAB Exporter] html2canvas runtime wrapper matched "
+                f"({html2canvas_strategy}, count={html2canvas_match_count}): {url}"
+            )
+        else:
+            print(f"[HoYoLAB Exporter] JS patched without html2canvas runtime wrapper match: {url}")
 
         headers = dict(response.headers)
         headers["content-type"] = "application/javascript"

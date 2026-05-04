@@ -124,23 +124,6 @@ def build_inventory(character_list: list[dict[str, Any]]) -> tuple[list[dict[str
         if weapon is not None:
             weapons.append(weapon)
 
-    characters.sort(
-        key=lambda c: (
-            str(c.get("element") or ""),
-            str(c.get("weapon_type_name") or ""),
-            -(c.get("rarity") or 0),
-            str(c.get("name") or ""),
-        )
-    )
-    weapons.sort(
-        key=lambda w: (
-            str(w.get("type_name") or ""),
-            -(w.get("rarity") or 0),
-            str(w.get("name") or ""),
-            str(w.get("equipped_by", {}).get("name") or ""),
-        )
-    )
-
     return characters, weapons
 
 

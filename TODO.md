@@ -69,15 +69,20 @@
 - [x] Remove fixed-port debug-login flow; first login now uses normal browser setup.
 - [x] Replace `asyncio.run()` in layout probe with explicit Windows-friendly loop cleanup.
 - [x] Keep normal outputs free of cookie/header/token dumps.
+- [x] Confirm latest probe can use `html2canvas_clone` root discovery.
 - [ ] Audit future bundle outputs so cookies/headers/raw sensitive network dumps never enter normal mode.
 - [ ] Add one command that performs image export + clean inventory collection into one timestamped bundle.
 
 ## Phase 4: Coordinate-Based Crop Pipeline
 
-- [ ] Determine reliable DOM selectors or layout rules for character cards.
-- [ ] Determine reliable DOM selectors or layout rules for weapon mini-cards.
+- [x] Determine initial reliable DOM selectors/layout rules for character cards from sandbox probe:
+  - `DIV` class contains `role-share`.
+- [x] Determine initial reliable DOM selectors/layout rules for weapon mini-cards from sandbox probe:
+  - `IMG` whose parent chain contains `role-weapon-info`.
 - [ ] Save DOM element rectangles before html2canvas export.
 - [x] Run live `tests/probe_layout.py` and inspect `layout_probe.json` / `page_screenshot.png`.
+- [x] Confirm working sandbox extraction of HoYoLAB role cards from probe layout.
+- [x] Confirm sandbox finds 76/76 character cards with portrait and weapon rects in latest inspected bundle.
 - [ ] If `rootSource` is `fallback_candidate`, compare fallback root against exported PNG and harden html2canvas root patch.
 - [ ] Investigate why `html2canvasPatchStatus.matched == true` but runtime `calls` is empty and `html2canvasRootProbe` is null.
 - [x] If Google login is needed, use `python -m hoyolab_export.run_login_setup` before running automation.
@@ -89,12 +94,21 @@
 - [ ] Crop character images from final PNG by coordinates.
 - [ ] Crop weapon images from final PNG by coordinates.
 - [ ] Produce `crop_manifest.json` linking crops to API character/weapon records.
+- [ ] Promote `tests/extract_role_cards_from_probe.py` logic into production import pipeline.
 - [ ] Keep old binary-mask parser only as optional fallback, not primary path.
 - [ ] Replace temporary layout schema with real HoYoLAB DOM selectors and API id linkage.
 
 ## Phase 5: UI Integration
 
 - [x] Add UI action for HoYoLAB export.
+- [ ] Convert `HoYoLAB export` button into full HoYoLAB import:
+  - run export/probe;
+  - collect clean inventory JSON;
+  - extract role cards from `rootDiscovery`;
+  - crop character and weapon images;
+  - save images into `assets/hd/characters` and `assets/hd/weapons`;
+  - write manifest linking images to API records and sort fields;
+  - refresh UI grids after success.
 - [ ] Add UI action for future HoYoLAB bundle import after the real bundle pipeline exists.
 - [ ] Re-add export bundle import UI after the real `crop_manifest.json` pipeline exists.
 - [ ] Display generated character crops with API metadata.

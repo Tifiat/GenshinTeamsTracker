@@ -69,13 +69,15 @@ Not yet verified:
 - Live HoYoLAB image download after the latest popup-dismiss retry changes.
 - Live inventory collection output files.
 
-Latest layout probe verification:
+Latest layout and role-card probe verification:
 
-- `python tests/probe_layout.py` succeeded and wrote:
-  - `tests/probe_layout_output/20260503_235546/image.png`
-  - `tests/probe_layout_output/20260503_235546/layout_probe.json`
-  - `tests/probe_layout_output/20260503_235546/page_screenshot.png`
-- The output contains required top-level keys:
+- `python tests/probe_layout.py` succeeded and latest inspected bundle is:
+  - `tests/probe_layout_output/20260504_012954/image.png`
+  - `tests/probe_layout_output/20260504_012954/layout_probe.json`
+  - `tests/probe_layout_output/20260504_012954/page_screenshot.png`
+  - `tests/probe_layout_output/20260504_012954/role_cards_preview.json`
+  - `tests/probe_layout_output/20260504_012954/role_cards_overlay.png`
+- `layout_probe.json` contains required top-level keys:
   - `html2canvasPatchStatus`
   - `html2canvasRootProbe`
   - `fallbackRootProbe`
@@ -83,13 +85,22 @@ Latest layout probe verification:
   - `rootDiscovery`
 - Latest result:
   - `html2canvasPatchStatus.matched == true`
-  - `html2canvasPatchStatus.strategy == "generator_case_html2canvas_t_r"`
-  - `html2canvasPatchStatus.calls` is empty
-  - `html2canvasRootProbe == null`
-  - `rootSource == "fallback_candidate"`
-  - `fallbackRootProbe != null`
-  - `rootDiscovery.imageLike` is capped at 300 entries
-- Interpretation: route-level string replacement matched, but the injected runtime probe did not execute on the inspected page. Continue with fallback root for diagnostics, but harden the html2canvas runtime hook before relying on root-relative crop coordinates.
+  - `rootSource == "html2canvas_clone"`
+  - `html2canvasCloneProbe != null`
+  - `rootDiscovery.imageLike` contains 535 image-like elements
+- `tests/extract_role_cards_from_probe.py` successfully reads the latest probe bundle and writes:
+  - `role_cards_preview.json`
+  - `role_cards_overlay.png`
+- Latest `role_cards_preview.json` result:
+  - `cardsCount == 76`
+  - 76/76 cards have `portraitRect`
+  - 76/76 cards have `weaponRect`
+- The sandbox role-card extractor identifies:
+  - character cards by `DIV` with class containing `role-share`;
+  - portraits by `IMG` with class containing `role-img`;
+  - weapon icons by `IMG` whose parent chain contains `role-weapon-info`;
+  - card order by root-relative `cardRect` top/left.
+- Interpretation: the project now has a working DOM/layout-based source for visible character and weapon crop rectangles. The next step is to promote this sandbox logic into the production HoYoLAB import pipeline and link crops to clean API records.
 
 ## Important Legacy Files To Inspect / Port
 
@@ -299,6 +310,26 @@ Current temporary coordinate cropper contract:
 ```
 
 `hoyolab_export.coordinate_cropper.crop_from_layout(...)` scales these DOM rectangles into final PNG coordinates and writes `crop_manifest.json`. This is only a scaffold; the next step is to replace the temporary layout schema with real HoYoLAB DOM selectors and API id linkage.
+
+Current handoff for the next implementation task:
+
+- Turn the UI `HoYoLAB export` button into a real HoYoLAB import flow.
+- The flow should:
+  - run the existing export/probe flow;
+  - use the role-card extraction logic proven in `tests/extract_role_cards_from_probe.py`;
+  - collect clean account inventory from the HoYoLAB character/list API;
+  - match visible role cards to API records by the same display order;
+  - crop character portraits and weapon icons from the exported PNG using `portraitRect` and `weaponRect`;
+  - save generated images to `assets/hd/characters` and `assets/hd/weapons`;
+  - save a manifest JSON that links each generated image to structured fields for future sorting;
+  - refresh the PySide grids after successful import.
+- Manifest records should include at minimum:
+  - character `id`, `name`, `rarity`, `element`, `level`, `constellation`, `weapon_type`, `weapon_type_name`;
+  - weapon `id`, `name`, `rarity`, `type`, `type_name`, `level`, `refinement`, `equipped_by`;
+  - local crop paths;
+  - source root-relative rectangles;
+  - simple sort fields derived from the API data.
+- Keep this path HoYoLAB API + DOM/layout + coordinate crops first. Do not add legacy OpenCV/mask matching as the primary import path.
 
 Layout probe script:
 

@@ -3,7 +3,7 @@ import re
 import subprocess
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Awaitable, Callable, Optional
 
 from PIL import Image
 from playwright.async_api import async_playwright, Route, Request, BrowserContext, Page
@@ -105,20 +105,6 @@ class HoyolabExporter:
 
         if self.image_format not in {"png", "jpeg", "jpg"}:
             raise ValueError("image_format must be png or jpeg")
-
-    async def _patch_api_language_route(self, route: Route, request: Request):
-        url = request.url
-
-        # JS files are handled by the export-page patch route.
-        if url.endswith(".js"):
-            await route.continue_()
-            return
-
-        headers = dict(request.headers)
-        headers["accept-language"] = "zh-CN,zh;q=0.9,en;q=0.8"
-        headers["x-rpc-language"] = "zh-cn"
-
-        await route.continue_(headers=headers)
 
     async def _is_login_open(self, page: Page) -> bool:
         if await page.locator("iframe#hyv-account-frame").count() > 0:
@@ -534,12 +520,29 @@ class HoyolabExporter:
     async def _patch_js_route(self, route: Route, request: Request):
         url = request.url
 
-        try:
-            response = await route.fetch()
-            body = await response.text()
-        except Exception as exc:
-            print(f"[HoYoLAB Exporter] Could not read JS for patching: {exc}")
-            await route.continue_()
+        last_exc = None
+
+        for _ in range(2):
+            try:
+                response = await route.fetch()
+                body = await response.text()
+                break
+            except Exception as exc:
+                last_exc = exc
+                await asyncio.sleep(0.4)
+        else:
+            safe_exc = str(last_exc).encode("ascii", errors="replace").decode("ascii")
+            print(f"[HoYoLAB Exporter] Could not read JS for patching: {type(last_exc).__name__}: {safe_exc}")
+
+            try:
+                await route.continue_()
+            except Exception as exc:
+                safe_continue_exc = str(exc).encode("ascii", errors="replace").decode("ascii")
+                print(
+                    "[HoYoLAB Exporter] Could not continue JS route: "
+                    f"{type(exc).__name__}: {safe_continue_exc}"
+                )
+
             return
 
         original_body = body
@@ -767,7 +770,11 @@ class HoyolabExporter:
         )
         print(f"[HoYoLAB Exporter] Visible blockers debug: {blockers}")
 
-    async def _run_export_flow(self, page: Page):
+    async def _run_export_flow(
+            self,
+            page: Page,
+            after_character_list_open: Optional[Callable[[], Awaitable[None]]] = None,
+    ):
         await page.wait_for_load_state("domcontentloaded")
         await self._dismiss_known_popups(page)
         await self._wait_until_ready_or_login(page)
@@ -777,6 +784,9 @@ class HoyolabExporter:
         try:
             await self._click_with_popup_retry(page, ".block-title-right")
             await page.wait_for_timeout(2500)
+
+            if after_character_list_open is not None:
+                await after_character_list_open()
 
             await self._click_with_popup_retry(page, ".me-share__btn")
             await page.wait_for_timeout(2500)
@@ -800,16 +810,6 @@ class HoyolabExporter:
     async def _prepare_export_page(self, page: Page):
         # Export tab only: patch html2canvas scale and width.
         await page.route("**/*role_combat_tarot*.js", self._patch_js_route)
-
-        # Export tab only: force API language headers.
-        await page.route("**/game_record/**", self._patch_api_language_route)
-        await page.route("**/event/game_record/**", self._patch_api_language_route)
-
-        # Headers for this export page only.
-        await page.set_extra_http_headers({
-            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-            "x-rpc-language": "zh-cn",
-        })
 
 
 

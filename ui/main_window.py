@@ -1,11 +1,10 @@
 ﻿import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QProcess, QTimer
 from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
@@ -18,19 +17,37 @@ from PySide6.QtWidgets import (
 )
 
 from hoyolab_export.auth import AuthStatus, get_auth_status, open_login_browser, reset_profile
+from hoyolab_export.paths import (
+    PROJECT_ROOT,
+    HOYOLAB_EXPORT_DIR,
+    HOYOLAB_PROFILE_DIR,
+    HOYOLAB_CHARACTER_ASSETS_DIR,
+    HOYOLAB_WEAPON_ASSETS_DIR,
+    clear_hoyolab_current_data,
+    ensure_hoyolab_dirs,
+)
 from ui.run_history_window import RunHistoryWindow
 from ui.widgets.drag import DraggableIcon
 from ui.widgets.team import TeamSlot
 from ui.widgets.timers import AbyssFloorRow
+from ui.widgets.loader import HoYoLABLoadingDialog
 
-
-ASSETS_CHAR = "assets/hd/characters"
-ASSETS_WEAP = "assets/hd/weapons"
+ASSETS_CHAR = str(HOYOLAB_CHARACTER_ASSETS_DIR)
+ASSETS_WEAP = str(HOYOLAB_WEAPON_ASSETS_DIR)
 STATE_FILE = "state.json"
 RUNS_FILE = "runs_history.json"
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-HOYOLAB_PROFILE_DIR = PROJECT_ROOT / "hoyolab_export" / "profile"
-HOYOLAB_EXPORT_DIR = PROJECT_ROOT / "hoyolab_export"
+HOYOLAB_MANIFEST_FILE = PROJECT_ROOT / "data" / "hoyolab" / "crop_manifest.json"
+HOYOLAB_IMPORT_STATUSES = {
+    "preparing": ("Подготавливаем импорт...", 0.05),
+    "opening_hoyolab": ("Открываем HoYoLAB...", 0.15),
+    "collecting_inventory": ("Собираем базу персонажей...", 0.30),
+    "exporting_image": ("Сохраняем скриншот...", 0.45),
+    "building_layout": ("Строим карту элементов...", 0.65),
+    "writing_inventory": ("Сохраняем базу персонажей...", 0.75),
+    "cropping_assets": ("Вырезаем персонажей и оружие...", 0.88),
+    "done": ("Готово.", 1.0),
+}
+HOYOLAB_IMPORT_COOLDOWN_MS = 5000
 HOYOLAB_AUTH_WARNING_STYLE = """
 QWidget#hoyolab_auth_box {
     border: 1px solid #b98722;
@@ -81,7 +98,7 @@ class App(QWidget):
         super().__init__()
         self.setWindowTitle("Genshin Teams Tracker")
         self.resize(1400, 800)
-
+        ensure_hoyolab_dirs()
         self.main = QHBoxLayout(self)
         self.floors = []
         self.teams = []
@@ -94,12 +111,11 @@ class App(QWidget):
         self._run_history_window = None
         self._hoyolab_login_process = None
         self._hoyolab_export_process = None
+        self._hoyolab_loader = None
+        self._hoyolab_import_output_buffer = ""
         self._hoyolab_auth_timer = QTimer(self)
         self._hoyolab_auth_timer.setInterval(1000)
         self._hoyolab_auth_timer.timeout.connect(self.poll_hoyolab_login_browser)
-        self._hoyolab_export_timer = QTimer(self)
-        self._hoyolab_export_timer.setInterval(1000)
-        self._hoyolab_export_timer.timeout.connect(self.poll_hoyolab_export)
 
         self.build_left_panel()
         self.build_right_panel()
@@ -115,6 +131,9 @@ class App(QWidget):
     def _finish_initial_ui(self):
         self.update_grids()
         self._ui_ready = True
+
+    def _finish_hoyolab_import_cooldown(self):
+        self.refresh_hoyolab_auth_status()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Control:
@@ -226,10 +245,12 @@ class App(QWidget):
 
         try:
             reset_profile(HOYOLAB_PROFILE_DIR, HOYOLAB_EXPORT_DIR)
+            clear_hoyolab_current_data()
         except Exception as exc:
-            QMessageBox.warning(self, "HoYoLAB", f"Could not reset profile: {exc}")
+            QMessageBox.warning(self, "HoYoLAB", f"Could not reset profile or clear HoYoLAB data: {exc}")
             return
 
+        self.safe_update_grids()
         self.refresh_hoyolab_auth_status()
         self.open_hoyolab_login()
 
@@ -247,44 +268,116 @@ class App(QWidget):
         if self._hoyolab_export_process is not None:
             return
 
-        try:
-            self._hoyolab_export_process = subprocess.Popen(
-                [sys.executable, "-m", "hoyolab_export.run_manual_export"],
-                cwd=str(PROJECT_ROOT),
-            )
-        except Exception as exc:
-            QMessageBox.warning(self, "HoYoLAB", f"Could not start export: {exc}")
-            self._hoyolab_export_process = None
-            self.refresh_hoyolab_auth_status()
-            return
+        self._show_hoyolab_loader()
+
+        process = QProcess(self)
+        process.setProgram(sys.executable)
+        process.setArguments(["-m", "hoyolab_export.run_import"])
+        process.setWorkingDirectory(str(PROJECT_ROOT))
+        process.setProcessChannelMode(QProcess.MergedChannels)
+
+        process.readyReadStandardOutput.connect(self.read_hoyolab_import_output)
+        process.finished.connect(self.on_hoyolab_import_finished)
+
+        self._hoyolab_export_process = process
+        self._hoyolab_import_output_buffer = ""
 
         self.btn_hoyolab_export.setEnabled(False)
-        self.btn_hoyolab_export.setToolTip("HoYoLAB export is running")
-        self._hoyolab_export_timer.start()
+        self.btn_hoyolab_export.setToolTip("HoYoLAB import is running")
 
-    def poll_hoyolab_export(self):
-        if self._hoyolab_export_process is None:
-            self._hoyolab_export_timer.stop()
+        process.start()
+
+        if not process.waitForStarted(3000):
+            self._hoyolab_export_process = None
+            process.deleteLater()
+            self._close_hoyolab_loader()
             self.refresh_hoyolab_auth_status()
+            QMessageBox.warning(self, "HoYoLAB", "Could not start HoYoLAB import.")
+
+    def _show_hoyolab_loader(self):
+        if self._hoyolab_loader is not None:
+            self._hoyolab_loader.raise_()
+            self._hoyolab_loader.activateWindow()
             return
 
-        if self._hoyolab_export_process.poll() is None:
+        self._hoyolab_loader = HoYoLABLoadingDialog(self)
+        self._hoyolab_loader.set_status("Подготавливаем импорт...", 0.03)
+        self._hoyolab_loader.show()
+        self._hoyolab_loader.raise_()
+        self._hoyolab_loader.activateWindow()
+
+    def _close_hoyolab_loader(self):
+        if self._hoyolab_loader is None:
             return
 
-        exit_code = self._hoyolab_export_process.returncode
+        loader = self._hoyolab_loader
+        self._hoyolab_loader = None
+        loader.close()
+        loader.deleteLater()
+
+    def _set_hoyolab_loader_status(self, status: str):
+        if self._hoyolab_loader is None:
+            return
+
+        text, progress = HOYOLAB_IMPORT_STATUSES.get(
+            status,
+            (f"HoYoLAB: {status}", None),
+        )
+        self._hoyolab_loader.set_status(text, progress)
+
+    def read_hoyolab_import_output(self):
+        process = self._hoyolab_export_process
+        if process is None:
+            return
+
+        chunk = bytes(process.readAllStandardOutput()).decode("utf-8", errors="replace")
+        if not chunk:
+            return
+
+        self._hoyolab_import_output_buffer += chunk
+
+        while "\n" in self._hoyolab_import_output_buffer:
+            line, self._hoyolab_import_output_buffer = self._hoyolab_import_output_buffer.split("\n", 1)
+            line = line.rstrip("\r")
+
+            if line:
+                print(line)
+
+            if line.startswith("[STATUS] "):
+                self._set_hoyolab_loader_status(line.replace("[STATUS] ", "", 1).strip())
+
+    def on_hoyolab_import_finished(self, exit_code: int, exit_status: QProcess.ExitStatus):
+        process = self._hoyolab_export_process
+
+        if process is not None:
+            self.read_hoyolab_import_output()
+
+            if self._hoyolab_import_output_buffer.strip():
+                print(self._hoyolab_import_output_buffer.strip())
+                self._hoyolab_import_output_buffer = ""
+
+            process.deleteLater()
+
         self._hoyolab_export_process = None
-        self._hoyolab_export_timer.stop()
-        self.refresh_hoyolab_auth_status()
 
-        if exit_code == 0:
-            QMessageBox.information(self, "HoYoLAB", "Export finished.")
-        else:
-            QMessageBox.warning(
-                self,
-                "HoYoLAB",
-                "Export failed. Check that you are logged in to HoYoLAB, then try again. "
-                "The console log may contain additional details.",
-            )
+        self.btn_hoyolab_export.setEnabled(False)
+        self.btn_hoyolab_export.setToolTip("HoYoLAB import is finishing cleanup")
+        QTimer.singleShot(HOYOLAB_IMPORT_COOLDOWN_MS, self._finish_hoyolab_import_cooldown)
+
+        if exit_code == 0 and exit_status == QProcess.NormalExit:
+            if self._hoyolab_loader is not None:
+                self._hoyolab_loader.finish()
+
+            self.safe_update_grids()
+            self._close_hoyolab_loader()
+            return
+
+        self._close_hoyolab_loader()
+        QMessageBox.warning(
+            self,
+            "HoYoLAB",
+            "Импорт из HoYoLAB не завершился. Проверьте авторизацию и консольный лог.",
+        )
 
     def build_left_panel(self):
         left = QVBoxLayout()
@@ -311,7 +404,7 @@ class App(QWidget):
         auth_layout.addLayout(auth_buttons)
         self.hoyolab_auth_box.setStyleSheet(HOYOLAB_AUTH_WARNING_STYLE)
 
-        self.btn_hoyolab_export = QPushButton("HoYoLAB export")
+        self.btn_hoyolab_export = QPushButton("Импорт из HoYoLAB")
         self.btn_hoyolab_export.clicked.connect(self.run_hoyolab_export)
 
         btn_clear = QPushButton("Clear characters and weapons")
@@ -386,7 +479,35 @@ class App(QWidget):
                 widget.setParent(None)
                 widget.deleteLater()
 
-    def _reload_icon_grid(self, directory, grid, container, area, icon_size, spacing):
+    def load_hoyolab_tooltips(self) -> tuple[dict[str, str], dict[str, str]]:
+        char_tooltips: dict[str, str] = {}
+        weapon_tooltips: dict[str, str] = {}
+
+        if not HOYOLAB_MANIFEST_FILE.exists():
+            return char_tooltips, weapon_tooltips
+
+        try:
+            with open(HOYOLAB_MANIFEST_FILE, "r", encoding="utf-8") as f:
+                manifest = json.load(f)
+        except Exception as exc:
+            print(f"Failed to load HoYoLAB manifest tooltips: {exc}")
+            return char_tooltips, weapon_tooltips
+
+        for item in manifest.get("characterAssets", []):
+            crop = item.get("crop")
+            tooltip = item.get("tooltip")
+            if crop and tooltip:
+                char_tooltips[os.path.basename(crop)] = tooltip
+
+        for item in manifest.get("weaponAssets", []):
+            crop = item.get("crop")
+            tooltip = item.get("tooltip")
+            if crop and tooltip:
+                weapon_tooltips[os.path.basename(crop)] = tooltip
+
+        return char_tooltips, weapon_tooltips
+
+    def _reload_icon_grid(self, directory, grid, container, area, icon_size, spacing, tooltips=None):
         self._clear_grid(grid)
         if not os.path.exists(directory):
             container.adjustSize()
@@ -407,6 +528,7 @@ class App(QWidget):
         grid.setContentsMargins(left_margin, 0, right_margin, 0)
         grid.setHorizontalSpacing(spacing)
         grid.setVerticalSpacing(spacing)
+        tooltips = tooltips or {}
 
         for c in range(cols):
             grid.setColumnMinimumWidth(c, icon_size)
@@ -415,6 +537,11 @@ class App(QWidget):
         for i, filename in enumerate(files):
             try:
                 icon = DraggableIcon(os.path.join(directory, filename), icon_size)
+
+                tooltip = tooltips.get(filename)
+                if tooltip:
+                    icon.setToolTip(tooltip)
+
                 grid.addWidget(icon, i // cols, i % cols)
             except Exception as exc:
                 print(f"Failed to load {filename}: {exc}")
@@ -424,10 +551,28 @@ class App(QWidget):
         area.viewport().update()
 
     def reload_characters(self):
-        self._reload_icon_grid(ASSETS_CHAR, self.char_grid, self.char_widget, self.char_area, 72, 3)
+        char_tooltips, _ = self.load_hoyolab_tooltips()
+        self._reload_icon_grid(
+            ASSETS_CHAR,
+            self.char_grid,
+            self.char_widget,
+            self.char_area,
+            72,
+            3,
+            char_tooltips,
+        )
 
     def reload_weapons(self):
-        self._reload_icon_grid(ASSETS_WEAP, self.weapon_grid, self.weapon_widget, self.weapon_area, 48, 6)
+        _, weapon_tooltips = self.load_hoyolab_tooltips()
+        self._reload_icon_grid(
+            ASSETS_WEAP,
+            self.weapon_grid,
+            self.weapon_widget,
+            self.weapon_area,
+            48,
+            6,
+            weapon_tooltips,
+        )
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -481,12 +626,14 @@ class App(QWidget):
             floor.t2.sec_spin.setValue(floor.t2.seconds_left % 60)
 
     def clear_assets(self):
-        for folder in ["assets/characters", "assets/weapons", "assets/hd/characters", "assets/hd/weapons", "debug"]:
-            shutil.rmtree(folder, ignore_errors=True)
-            os.makedirs(folder, exist_ok=True)
+        clear_hoyolab_current_data()
 
         self.safe_update_grids()
-        QMessageBox.information(self, "Готово", "Кропы, HD-иконки и debug очищены")
+        QMessageBox.information(
+            self,
+            "Готово",
+            "Текущие персонажи, оружие, HoYoLAB JSON и debug очищены.",
+        )
 
     def reset_run(self):
         for floor in self.floors:

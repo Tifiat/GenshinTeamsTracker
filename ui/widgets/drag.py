@@ -1,7 +1,63 @@
 import os
-from PySide6.QtWidgets import QLabel, QMessageBox, QApplication
+
+from PySide6.QtCore import Qt, QMimeData, QEvent, QTimer, QPoint
 from PySide6.QtGui import QPixmap, QDrag
-from PySide6.QtCore import Qt, QMimeData, QEvent, QTimer
+from PySide6.QtWidgets import QLabel, QMessageBox, QApplication
+
+
+class FloatingTooltip(QLabel):
+	def __init__(self):
+		super().__init__(None)
+
+		self.setWindowFlags(
+			Qt.ToolTip
+			| Qt.FramelessWindowHint
+			| Qt.WindowStaysOnTopHint
+			| Qt.WindowTransparentForInput
+			| Qt.WindowDoesNotAcceptFocus
+		)
+		self.setAttribute(Qt.WA_ShowWithoutActivating, True)
+
+		self.setWordWrap(True)
+		self.setMaximumWidth(280)
+		self.setStyleSheet(
+			"""
+			QLabel {
+				color: #f4ead8;
+				background-color: rgba(24, 22, 20, 245);
+				border: 1px solid rgba(226, 202, 148, 180);
+				border-radius: 8px;
+				padding: 7px 10px;
+				font-size: 12px;
+				font-weight: 600;
+			}
+			"""
+		)
+
+	def show_for(self, owner, text: str):
+		if not text:
+			self.hide()
+			return
+
+		self.setText(text)
+		self.adjustSize()
+
+		# Стабильная позиция: над иконкой по центру.
+		global_top_center = owner.mapToGlobal(QPoint(owner.width() // 2, 0))
+		x = global_top_center.x() - self.width() // 2
+		y = global_top_center.y() - self.height() - 8
+
+		screen = QApplication.screenAt(global_top_center)
+		if screen is None:
+			screen = QApplication.primaryScreen()
+
+		if screen is not None:
+			area = screen.availableGeometry()
+			x = max(area.left() + 8, min(x, area.right() - self.width() - 8))
+			y = max(area.top() + 8, min(y, area.bottom() - self.height() - 8))
+
+		self.move(x, y)
+		self.show()
 
 
 class DraggableIcon(QLabel):
@@ -11,10 +67,45 @@ class DraggableIcon(QLabel):
 		self.base_size = size
 		self._src_pixmap = QPixmap(image_path)
 
+		self._custom_tooltip = ""
+		self._tooltip_popup = FloatingTooltip()
+		self._tooltip_timer = QTimer(self)
+		self._tooltip_timer.setSingleShot(True)
+		self._tooltip_timer.timeout.connect(self._show_custom_tooltip)
+
 		self.setFixedSize(size, size)
 		self.setCursor(Qt.OpenHandCursor)
 		self._update_pixmap()
 		QTimer.singleShot(0, self._update_pixmap)
+
+	def setToolTip(self, text):
+		"""Перехватываем системный tooltip Qt и используем свой стабильный popup."""
+		self._custom_tooltip = text or ""
+		super().setToolTip("")
+
+	def _show_custom_tooltip(self):
+		if not self._custom_tooltip:
+			return
+		if not self.isVisible():
+			return
+		self._tooltip_popup.show_for(self, self._custom_tooltip)
+
+	def _hide_custom_tooltip(self):
+		self._tooltip_timer.stop()
+		self._tooltip_popup.hide()
+
+	def enterEvent(self, event):
+		if self._custom_tooltip:
+			self._tooltip_timer.start(180)
+		super().enterEvent(event)
+
+	def leaveEvent(self, event):
+		self._hide_custom_tooltip()
+		super().leaveEvent(event)
+
+	def hideEvent(self, event):
+		self._hide_custom_tooltip()
+		super().hideEvent(event)
 
 	def _update_pixmap(self):
 		"""Пересобрать pixmap с учетом текущего DPI экрана."""
@@ -45,8 +136,9 @@ class DraggableIcon(QLabel):
 		return super().event(event)
 
 	def mousePressEvent(self, event):
+		self._hide_custom_tooltip()
+
 		if event.button() == Qt.LeftButton:
-			# Существующая логика перетаскивания
 			drag = QDrag(self)
 			mime = QMimeData()
 			mime.setText(self.image_path)
@@ -56,16 +148,13 @@ class DraggableIcon(QLabel):
 			drag.exec(Qt.CopyAction)
 
 		elif event.button() == Qt.RightButton:
-			# НОВАЯ логика: удаление файла
 			self._handle_right_click(event)
 
 	def _handle_right_click(self, event):
 		"""Обработка правого клика - удаление файла"""
-		# Проверяем, что файл существует и в папке assets
 		if not self.image_path or not os.path.exists(self.image_path):
 			return
 
-		# Проверяем, что файл в папке assets (безопасность)
 		if not self._is_in_assets_folder(self.image_path):
 			QMessageBox.warning(
 				self,
@@ -74,11 +163,9 @@ class DraggableIcon(QLabel):
 			)
 			return
 
-		# Проверяем зажат ли Ctrl
 		ctrl_pressed = QApplication.keyboardModifiers() & Qt.ControlModifier
 
 		if not ctrl_pressed:
-			# Показываем диалог подтверждения
 			reply = QMessageBox.question(
 				self,
 				"Удаление файла",
@@ -89,13 +176,9 @@ class DraggableIcon(QLabel):
 			if reply != QMessageBox.Yes:
 				return
 
-		# Удаляем файл
 		try:
 			os.remove(self.image_path)
-			# Скрываем иконку сразу
 			self.hide()
-
-			# Всегда одно и то же уведомление
 			self._notify_parent_to_update_grids()
 
 		except Exception as e:
@@ -114,9 +197,10 @@ class DraggableIcon(QLabel):
 				os.path.abspath("assets/weapons"),
 				os.path.abspath("assets/hd/characters"),
 				os.path.abspath("assets/hd/weapons"),
+				os.path.abspath("assets/hoyolab/characters"),
+				os.path.abspath("assets/hoyolab/weapons"),
 			]
 
-			# Проверяем, что файл находится в одной из папок assets
 			for assets_dir in assets_dirs:
 				if abs_path.startswith(assets_dir + os.sep):
 					return True
@@ -125,15 +209,13 @@ class DraggableIcon(QLabel):
 			return False
 
 	def _notify_parent_to_update_grids(self):
-		"""Найти главное окно App и вызвать БЕЗОПАСНОЕ обновление"""
+		"""Найти главное окно App и вызвать безопасное обновление"""
 		widget = self.parent()
 		while widget:
-			if hasattr(widget, 'safe_update_grids'):
-				from PySide6.QtCore import QTimer
+			if hasattr(widget, "safe_update_grids"):
 				QTimer.singleShot(50, widget.safe_update_grids)
 				break
-			elif hasattr(widget, 'update_grids'):
-				from PySide6.QtCore import QTimer
+			elif hasattr(widget, "update_grids"):
 				QTimer.singleShot(50, widget.update_grids)
 				break
 			widget = widget.parent()

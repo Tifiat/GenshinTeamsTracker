@@ -27,11 +27,20 @@ WEAPON_TYPE_NAMES = {
     13: "polearm",
 }
 
+DEFAULT_LANGUAGE_HEADERS = {
+    "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
+    "x-rpc-language": "ru-ru",
+}
 
-async def create_context() -> BrowserContext:
+
+async def create_context(
+    *,
+    profile_dir: str | Path = PROFILE_DIR,
+    download_dir: str | Path = OUTPUT_DIR,
+) -> BrowserContext:
     exporter = HoyolabExporter(
-        profile_dir=PROFILE_DIR,
-        download_dir=OUTPUT_DIR,
+        profile_dir=profile_dir,
+        download_dir=download_dir,
         browser_window_width=1280,
         browser_window_height=900,
     )
@@ -79,6 +88,7 @@ async def open_character_list(page: Page) -> None:
 
 def normalize_character(item: dict[str, Any]) -> dict[str, Any]:
     weapon_type = item.get("weapon_type")
+
     return {
         "id": item.get("id"),
         "name": item.get("name"),
@@ -99,6 +109,7 @@ def normalize_weapon(item: dict[str, Any]) -> dict[str, Any] | None:
         return None
 
     weapon_type = weapon.get("type", item.get("weapon_type"))
+
     return {
         "id": weapon.get("id"),
         "name": weapon.get("name"),
@@ -115,7 +126,14 @@ def normalize_weapon(item: dict[str, Any]) -> dict[str, Any] | None:
     }
 
 
-def build_inventory(character_list: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def build_inventory(
+    character_list: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Build normalized inventory in the original HoYoLAB API order.
+
+    Do not sort here. The API order currently matches the visual card order.
+    UI sorting should happen later in the UI layer.
+    """
     characters = [normalize_character(item) for item in character_list]
 
     weapons = []
@@ -127,11 +145,34 @@ def build_inventory(character_list: list[dict[str, Any]]) -> tuple[list[dict[str
     return characters, weapons
 
 
-async def main() -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+def write_inventory(
+    characters: list[dict[str, Any]],
+    weapons: list[dict[str, Any]],
+    output_dir: str | Path,
+) -> tuple[Path, Path]:
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    context = await create_context()
-    page = context.pages[0] if context.pages else await context.new_page()
+    characters_path = output_dir / "account_characters.json"
+    weapons_path = output_dir / "account_weapons.json"
+
+    characters_path.write_text(
+        json.dumps(characters, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    weapons_path.write_text(
+        json.dumps(weapons, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    return characters_path, weapons_path
+
+
+async def wait_for_character_list_response(
+    page: Page,
+    *,
+    timeout_sec: int = 60,
+) -> asyncio.Future[list[dict[str, Any]]]:
     character_list_future: asyncio.Future[list[dict[str, Any]]] = asyncio.Future()
 
     async def on_response(response: Response) -> None:
@@ -143,7 +184,11 @@ async def main() -> None:
             items = payload.get("data", {}).get("list", [])
             if not isinstance(items, list):
                 raise RuntimeError("character/list response has no data.list array")
-
+            first_names = [
+                str(item.get("name") or item.get("id"))
+                for item in items[:8]
+                if isinstance(item, dict)
+            ]
             if not character_list_future.done():
                 character_list_future.set_result(items)
 
@@ -153,41 +198,66 @@ async def main() -> None:
                 character_list_future.set_exception(exc)
 
     page.on("response", lambda response: asyncio.create_task(on_response(response)))
+    return character_list_future
 
-    try:
-        # Ask HoYoLAB for Russian names where possible. IDs are also saved, so
-        # downstream matching does not have to depend on localized text.
-        await page.set_extra_http_headers(
-            {
-                "Accept-Language": "ru-RU,ru;q=0.9,en;q=0.8",
-                "x-rpc-language": "ru-ru",
-            }
-        )
 
+async def collect_character_list(
+    page: Page,
+    character_list_future: asyncio.Future[list[dict[str, Any]]],
+    *,
+    timeout_sec: int = 60,
+) -> list[dict[str, Any]]:
+    print("[HoYoLAB Inventory] Opening character list...")
+    await open_character_list(page)
+
+    return await asyncio.wait_for(character_list_future, timeout=timeout_sec)
+
+
+async def collect_inventory_from_page(
+    page: Page,
+    *,
+    output_dir: str | Path | None = None,
+    goto_hoyolab: bool = True,
+    language_headers: dict[str, str] | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    await page.set_extra_http_headers(language_headers or DEFAULT_LANGUAGE_HEADERS)
+
+    # Важно: listener должен быть установлен ДО page.goto(),
+    # иначе можно поймать другой character/list response с другим порядком.
+    character_list_future = await wait_for_character_list_response(page)
+
+    if goto_hoyolab:
         print("[HoYoLAB Inventory] Opening HoYoLAB...")
         await page.goto(HOYOLAB_URL, wait_until="domcontentloaded", timeout=60_000)
-        await wait_until_ready_or_login(page)
 
-        print("[HoYoLAB Inventory] Opening character list...")
-        await open_character_list(page)
+    await wait_until_ready_or_login(page)
 
-        character_list = await asyncio.wait_for(character_list_future, timeout=60)
-        characters, weapons = build_inventory(character_list)
+    character_list = await collect_character_list(page, character_list_future)
+    characters, weapons = build_inventory(character_list)
 
-        CHARACTERS_FILE.write_text(
-            json.dumps(characters, ensure_ascii=False, indent=2),
-            encoding="utf-8",
+    if output_dir is not None:
+        characters_path, weapons_path = write_inventory(characters, weapons, output_dir)
+        print(f"[HoYoLAB Inventory] Characters saved: {characters_path}")
+        print(f"[HoYoLAB Inventory] Weapons saved: {weapons_path}")
+
+    print(f"[HoYoLAB Inventory] Character count: {len(characters)}")
+    print(f"[HoYoLAB Inventory] Equipped weapon count: {len(weapons)}")
+
+    return characters, weapons
+
+
+async def main() -> None:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    context = await create_context(profile_dir=PROFILE_DIR, download_dir=OUTPUT_DIR)
+    page = context.pages[0] if context.pages else await context.new_page()
+
+    try:
+        await collect_inventory_from_page(
+            page,
+            output_dir=OUTPUT_DIR,
+            goto_hoyolab=True,
         )
-        WEAPONS_FILE.write_text(
-            json.dumps(weapons, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-
-        print(f"[HoYoLAB Inventory] Characters saved: {CHARACTERS_FILE}")
-        print(f"[HoYoLAB Inventory] Weapons saved: {WEAPONS_FILE}")
-        print(f"[HoYoLAB Inventory] Character count: {len(characters)}")
-        print(f"[HoYoLAB Inventory] Equipped weapon count: {len(weapons)}")
-
     finally:
         try:
             await page.close()

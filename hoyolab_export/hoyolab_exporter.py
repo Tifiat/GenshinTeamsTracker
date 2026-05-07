@@ -904,6 +904,30 @@ class HoyolabExporter:
         data = base64.b64decode(str(data_url)[len(prefix):])
         return InMemoryDownload(data)
 
+    async def _dom_root_screenshot_download(self, page: Page) -> InMemoryDownload:
+        selectors = [
+            "[data-gtt-export-root='1']",
+            ".role-share-container",
+            ".role-share-list",
+        ]
+
+        last_error: Exception | None = None
+        for frame in page.frames:
+            for selector in selectors:
+                locator = frame.locator(selector).first
+                try:
+                    if await locator.count() <= 0:
+                        continue
+                    await locator.scroll_into_view_if_needed(timeout=5_000)
+                    data = await locator.screenshot(timeout=15_000)
+                    if data:
+                        return InMemoryDownload(data)
+                except Exception as exc:
+                    last_error = exc
+
+        detail = f": {safe_exception_summary(last_error)}" if last_error else ""
+        raise RuntimeError(f"DOM root screenshot fallback failed{detail}")
+
     async def _run_export_flow(
             self,
             page: Page,
@@ -946,7 +970,19 @@ class HoyolabExporter:
                         "[HoYoLAB Exporter] html2canvas PNG fallback failed: "
                         f"{safe_exception_summary(fallback_exc)}"
                     )
-                    raise
+                    try:
+                        dom_fallback = await self._dom_root_screenshot_download(page)
+                        print(
+                            "[HoYoLAB Exporter] Using DOM root screenshot fallback "
+                            "after html2canvas PNG fallback failed."
+                        )
+                        return dom_fallback
+                    except Exception as dom_fallback_exc:
+                        print(
+                            "[HoYoLAB Exporter] DOM root screenshot fallback failed: "
+                            f"{safe_exception_summary(dom_fallback_exc)}"
+                        )
+                        raise fallback_exc
 
             return await download_info.value
 

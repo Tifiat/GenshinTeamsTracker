@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 import asyncio
 
+from PIL import Image
 from playwright.async_api import BrowserContext, Error as PlaywrightError, Page
 
 from .auth import AuthStatus, get_auth_status
@@ -48,6 +49,14 @@ def write_json(path: Path, data: Any) -> None:
         json.dumps(data, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+
+def image_width(path: Path) -> int | None:
+    try:
+        with Image.open(path) as image:
+            return int(image.width)
+    except Exception:
+        return None
 
 
 def read_json_or_none(path: Path) -> Any | None:
@@ -258,6 +267,12 @@ async def run_hoyolab_import() -> dict[str, Any]:
         print("[HoYoLAB Import] Collecting layout...")
         layout = await collect_layout(export_page, exporter)
         layout["downloadedImage"] = image_path.name
+        actual_image_width = image_width(image_path)
+        if actual_image_width and exporter.fixed_container_width:
+            actual_scale = actual_image_width / exporter.fixed_container_width
+            if actual_scale > 0:
+                layout.setdefault("exporter", {})["scale"] = actual_scale
+                layout["exporter"]["actualImageWidth"] = actual_image_width
 
         try:
             await export_page.screenshot(path=str(page_screenshot_path), full_page=True)

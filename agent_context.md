@@ -209,7 +209,7 @@ Current html2canvas probe hook:
 - Exporter now retries important clicks after attempting to dismiss known HoYoLAB popups/modals/update notices. If share export still fails, it prints `Visible blockers debug` with visible overlay candidates to help identify the blocker.
 - Share/download clicks use Playwright trusted clicks with the transparent input blocker temporarily disabled. This is important because JS `el.click()` can run html2canvas without producing a browser `download` event on current HoYoLAB/Chromium.
 - The old page-injected DOM input blocker (`__abyss_tracker_blocker__`) is no longer used in export flow because it can cover HoYoLAB's own share/download controls and cause `expect_download` timeouts. If `Visible blockers debug` shows a fixed `DIV` with `zIndex: 2147483647`, suspect a stale/internal blocker first, not the Qt loader window.
-- If Chromium/Playwright does not emit a `download` event after HoYoLAB runs html2canvas, the exporter falls back to the captured html2canvas PNG data URL and returns an in-memory download object.
+- If Chromium/Playwright does not emit a `download` event after HoYoLAB runs html2canvas, the exporter first falls back to the captured html2canvas PNG data URL. If that data URL is also missing, it falls back to a screenshot of the exported DOM root and returns an in-memory download object.
 - HoYoLAB JS route patching sanitizes Playwright errors before printing them. Do not print `Route.fetch` call logs because they can include request headers and cookies.
 - If `route.fetch()` fails with transient network errors such as `ECONNRESET`, exporter retries and then falls back to a plain public Python fetch of the JS bundle without browser cookies.
 - Patched JS routes are fulfilled with fixed safe JavaScript headers/status after patching. Do not reuse a `route.fetch()` response object in that path because the JS body may have come from the public no-cookie fallback instead.
@@ -370,6 +370,14 @@ Verified local artifact import:
   - `artifact_tags: 1`
   - `artifact_tag_links: 1`
 - Test tag `test_keep_after_import` survived re-import.
+
+Current artifact UI MVP:
+
+- `hoyolab_export/artifact_queries.py` is the read/write query layer for the artifact browser. It lists artifacts with substats, equipment, and tags from `data/artifacts.db`; it also adds/removes artifact tags through the existing `artifact_tags` and `artifact_tag_links` tables.
+- `ui/artifact_browser_window.py` adds the first PySide6 artifact browser window. It supports search, slot/rarity/equipment/tag filters, artifact cards, a detail panel, and adding/removing tags.
+- `ui/main_window.py` opens the browser through the new `Открыть артефакты` button on the right panel.
+- The artifact browser is intentionally an MVP: no build editor yet. It has a close button and uses cached local artifact icons when available; if icon files are missing locally, cards show a placeholder.
+- Artifact icon caching is bounded and cosmetic. Public icon download failures or slow CDN responses must not fail or hang the HoYoLAB import.
 
 Current artifact import pipeline:
 

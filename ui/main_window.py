@@ -1,4 +1,4 @@
-﻿import json
+import json
 import os
 import subprocess
 import sys
@@ -37,6 +37,7 @@ from hoyolab_export.offline_profile import (
     is_current_profile_exported,
 )
 from localization import get_language, language_options, set_language, tr
+from ui.artifact_browser_window import ArtifactBrowserWindow
 from ui.run_history_window import RunHistoryWindow
 from ui.widgets.drag import DraggableIcon
 from ui.widgets.team import TeamSlot
@@ -164,6 +165,7 @@ class App(QWidget):
         self._ui_ready = False
         self._initial_grid_built = False
         self._run_history_window = None
+        self._artifact_browser_window = None
         self._hoyolab_login_process = None
         self._hoyolab_export_process = None
         self._hoyolab_loader = None
@@ -217,6 +219,17 @@ class App(QWidget):
             self.pending_grid_updates = True
         else:
             self.update_grids()
+
+
+    def open_artifact_browser(self):
+        if self._artifact_browser_window is None:
+            self._artifact_browser_window = ArtifactBrowserWindow(self)
+        else:
+            self._artifact_browser_window.reload()
+
+        self._artifact_browser_window.show()
+        self._artifact_browser_window.raise_()
+        self._artifact_browser_window.activateWindow()
 
     def open_run_history(self):
         if self._run_history_window is None:
@@ -670,8 +683,10 @@ class App(QWidget):
         )
         self.weapon_area = QScrollArea()
         self.weapon_area.setWidgetResizable(True)
+        self.weapon_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.weapon_widget = QWidget()
         self.weapon_grid = QGridLayout(self.weapon_widget)
+        self.weapon_grid.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.weapon_area.setWidget(self.weapon_widget)
         left.addWidget(self.weapon_area, 1)
 
@@ -688,8 +703,10 @@ class App(QWidget):
         )
         self.char_area = QScrollArea()
         self.char_area.setWidgetResizable(True)
+        self.char_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.char_widget = QWidget()
         self.char_grid = QGridLayout(self.char_widget)
+        self.char_grid.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.char_area.setWidget(self.char_widget)
         left.addWidget(self.char_area, 3)
 
@@ -740,6 +757,10 @@ class App(QWidget):
         self.btn_history = QPushButton(tr("main.open_history"))
         self.btn_history.clicked.connect(self.open_run_history)
         right.addWidget(self.btn_history)
+
+        self.btn_artifacts = QPushButton(tr("main.open_artifacts"))
+        self.btn_artifacts.clicked.connect(self.open_artifact_browser)
+        right.addWidget(self.btn_artifacts)
 
         right.addStretch()
         self.build_language_switcher(right)
@@ -803,6 +824,7 @@ class App(QWidget):
         self.btn_reset_run.setText(tr("main.reset_run"))
         self.btn_save_run.setText(tr("main.save_run"))
         self.btn_history.setText(tr("main.open_history"))
+        self.btn_artifacts.setText(tr("main.open_artifacts"))
         self.language_label.setText(tr("language.selector"))
 
         for floor in self.floors:
@@ -818,6 +840,9 @@ class App(QWidget):
 
         if self._run_history_window is not None and hasattr(self._run_history_window, "retranslate_ui"):
             self._run_history_window.retranslate_ui()
+
+        if self._artifact_browser_window is not None and hasattr(self._artifact_browser_window, "retranslate_ui"):
+            self._artifact_browser_window.retranslate_ui()
 
         if self._hoyolab_loader is not None and hasattr(self._hoyolab_loader, "retranslate_ui"):
             self._hoyolab_loader.retranslate_ui()
@@ -967,10 +992,18 @@ class App(QWidget):
         name = str(weapon.get("name") or metadata.get("name") or asset.get("filename") or "").casefold()
         return (-rarity, -max_level, name, str(asset.get("filename") or ""))
 
+    def _reset_grid_columns(self, grid):
+        for column in range(grid.columnCount()):
+            grid.setColumnMinimumWidth(column, 0)
+            grid.setColumnStretch(column, 0)
+
     def _reload_icon_grid(self, assets, grid, container, area, icon_size, spacing):
         self._clear_grid(grid)
+        self._reset_grid_columns(grid)
         if not assets:
+            grid.setContentsMargins(0, 0, 0, 0)
             container.adjustSize()
+            area.horizontalScrollBar().setValue(0)
             return
 
         available_width = area.viewport().width() or area.width() or 300
@@ -1004,6 +1037,7 @@ class App(QWidget):
 
         container.adjustSize()
         container.updateGeometry()
+        area.horizontalScrollBar().setValue(0)
         area.viewport().update()
 
     def reload_characters(self):

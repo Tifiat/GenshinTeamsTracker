@@ -13,6 +13,7 @@ from .artifact_db import (
     upsert_artifact,
     upsert_icon,
 )
+from .artifact_icon_cache import cache_artifact_icons
 
 
 def icon_key(url: str | None) -> str:
@@ -147,6 +148,7 @@ def import_character_details_payload(
     payload: dict[str, Any],
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    cache_icons: bool = True,
 ) -> dict[str, Any]:
     hoyolab_payload = unwrap_hoyolab_payload(payload)
 
@@ -170,6 +172,7 @@ def import_character_details_payload(
         "artifacts_existing": 0,
         "icons_seen": 0,
         "equipment_rows": 0,
+        "icon_cache": {},
     }
 
     equipment_rows = []
@@ -243,6 +246,14 @@ def import_character_details_payload(
 
         conn.commit()
 
+    if cache_icons:
+        try:
+            summary["icon_cache"] = cache_artifact_icons(db_path=db_path)
+        except Exception as exc:
+            # Icons are cosmetic for the artifact browser. Keep the import result usable
+            # even when a public CDN request temporarily fails in an unexpected way.
+            summary["icon_cache"] = {"error": str(exc)}
+
     return summary
 
 
@@ -250,8 +261,9 @@ def import_character_details_file(
     input_path: str | Path,
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    cache_icons: bool = True,
 ) -> dict[str, Any]:
     input_path = Path(input_path)
     payload = json.loads(input_path.read_text(encoding="utf-8"))
 
-    return import_character_details_payload(payload, db_path=db_path)
+    return import_character_details_payload(payload, db_path=db_path, cache_icons=cache_icons)

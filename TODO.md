@@ -157,7 +157,9 @@
 - [x] Add local generated filter icons under `assets/filters`.
 - [x] Make asset filters compact one-line icon rows and remove filter tooltips.
 - [x] Sort character/weapon asset grids by rarity and level descending.
+- [x] Keep filtered asset grids left-aligned with fixed icon spacing and reset stale horizontal width after resize.
 - [x] Add custom stable tooltip widget for draggable icons.
+- [x] Add bounded artifact icon caching so HoYoLAB import cannot hang on cosmetic icon downloads.
 - [x] Remove the visible manual `Очистить персонажей и оружие` button.
 - [x] Route current HoYoLAB data/assets/debug cleanup through `Выйти из профиля`.
 - [x] Add dynamic main HoYoLAB button states:
@@ -207,7 +209,11 @@
 - [x] Keep artifact tags/builds persistent during repeated ordinary imports.
 - [x] Clear `data/artifacts.db` on explicit HoYoLAB profile switch to avoid mixing account-specific artifacts/tags/builds.
 - [ ] Decide whether `data/artifacts.db` is local generated state and should stay ignored.
-- [ ] Add UI surface for artifact browsing/filtering/tagging after import is integrated.
+- [x] Add first UI surface for artifact browsing/filtering/tagging after import is integrated.
+- [x] Add a close button to the first artifact browser window.
+- [ ] Manually smoke-test artifact browser window with a real `data/artifacts.db`.
+- [ ] Decide whether artifact icon local files should be downloaded/cached into `assets/hoyolab/artifacts`.
+- [ ] Add artifact build editor after browser/tagging MVP is smoke-tested.
 
 ## Offline Profile Export/Import
 
@@ -236,6 +242,7 @@
 - [x] Persist selected UI language in ignored local `settings.json`.
 - [x] Add localization keys for HoYoLAB profile menu, offline profile dialogs, sign-out warnings, and artifact import loader statuses.
 - [x] Keep Brazilian Portuguese localization in sync for the new HoYoLAB/offline-profile keys.
+- [x] Add Russian localization keys for artifact browser MVP.
 - [ ] Add localization keys for any new UI screens as they are built.
 - [ ] Keep Brazilian Portuguese localization in sync when adding new keys.
 

@@ -4,7 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QProcess, QTimer
+from PySide6.QtCore import Qt, QProcess, QSize, QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QFileDialog,
     QGridLayout,
@@ -47,6 +48,7 @@ ASSETS_WEAP = str(HOYOLAB_WEAPON_ASSETS_DIR)
 STATE_FILE = "state.json"
 RUNS_FILE = "runs_history.json"
 HOYOLAB_MANIFEST_FILE = PROJECT_ROOT / "data" / "hoyolab" / "crop_manifest.json"
+FILTER_ASSETS_DIR = PROJECT_ROOT / "assets" / "filters"
 HOYOLAB_IMPORT_STATUSES = {
     "preparing": ("loader.preparing", 0.05),
     "opening_hoyolab": ("loader.opening_hoyolab", 0.15),
@@ -103,6 +105,46 @@ QWidget#hoyolab_auth_box QPushButton:hover {
     background: #fbfff7;
 }
 """
+FILTER_BUTTON_STYLE = """
+QPushButton#asset_filter_button {
+    border: 2px solid transparent;
+    border-radius: 15px;
+    background-color: #202228;
+    padding: 1px;
+}
+QPushButton#asset_filter_button:hover {
+    background-color: #292c34;
+}
+QPushButton#asset_filter_button:checked {
+    border-color: #4e91ff;
+    background-color: #252936;
+}
+"""
+ELEMENT_FILTERS = [
+    ("Pyro", "element_pyro.png", "filter.element.pyro"),
+    ("Hydro", "element_hydro.png", "filter.element.hydro"),
+    ("Geo", "element_geo.png", "filter.element.geo"),
+    ("Electro", "element_electro.png", "filter.element.electro"),
+    ("Dendro", "element_dendro.png", "filter.element.dendro"),
+    ("Cryo", "element_cryo.png", "filter.element.cryo"),
+    ("Anemo", "element_anemo.png", "filter.element.anemo"),
+]
+WEAPON_TYPE_FILTERS = [
+    ("sword", "weapon_sword.png", "filter.weapon_type.sword"),
+    ("catalyst", "weapon_catalyst.png", "filter.weapon_type.catalyst"),
+    ("claymore", "weapon_claymore.png", "filter.weapon_type.claymore"),
+    ("bow", "weapon_bow.png", "filter.weapon_type.bow"),
+    ("polearm", "weapon_polearm.png", "filter.weapon_type.polearm"),
+]
+CHARACTER_RARITY_FILTERS = [
+    (5, "rarity_5.png", "filter.rarity.5"),
+    (4, "rarity_4.png", "filter.rarity.4"),
+]
+WEAPON_RARITY_FILTERS = [
+    (5, "rarity_5.png", "filter.rarity.5"),
+    (4, "rarity_4.png", "filter.rarity.4"),
+    (3, "rarity_3.png", "filter.rarity.3"),
+]
 
 
 class App(QWidget):
@@ -128,6 +170,11 @@ class App(QWidget):
         self._hoyolab_import_output_buffer = ""
         self._hoyolab_import_lines = []
         self._hoyolab_import_cooldown_active = False
+        self._character_element_filters: set[str] = set()
+        self._character_weapon_filters: set[str] = set()
+        self._character_rarity_filters: set[int] = set()
+        self._weapon_type_filters: set[str] = set()
+        self._weapon_rarity_filters: set[int] = set()
         self._updating_language_combo = False
         self._hoyolab_auth_timer = QTimer(self)
         self._hoyolab_auth_timer.setInterval(1000)
@@ -546,6 +593,42 @@ class App(QWidget):
         )
         return True
 
+    def _make_filter_button(self, value, icon_name: str, active_set: set):
+        button = QPushButton("")
+        button.setObjectName("asset_filter_button")
+        button.setCheckable(True)
+        button.setFixedSize(30, 30)
+        button.setIconSize(QSize(24, 24))
+        button.setStyleSheet(FILTER_BUTTON_STYLE)
+
+        icon_path = FILTER_ASSETS_DIR / icon_name
+        if icon_path.exists():
+            button.setIcon(QIcon(str(icon_path)))
+        else:
+            button.setText(str(value))
+
+        def toggle_filter(checked, *, filter_value=value, filters=active_set):
+            if checked:
+                filters.add(filter_value)
+            else:
+                filters.discard(filter_value)
+            self.safe_update_grids()
+
+        button.clicked.connect(toggle_filter)
+        return button
+
+    def _build_filter_row(self, filter_groups):
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(3)
+
+        for filters, active_set in filter_groups:
+            for value, icon_name, _tooltip_key in filters:
+                row.addWidget(self._make_filter_button(value, icon_name, active_set))
+
+        row.addStretch()
+        return row
+
     def build_left_panel(self):
         left = QVBoxLayout()
 
@@ -577,6 +660,14 @@ class App(QWidget):
 
         self.weapon_title_label = QLabel(tr("asset_panel.weapons"))
         left.addWidget(self.weapon_title_label)
+        left.addLayout(
+            self._build_filter_row(
+                (
+                    (WEAPON_TYPE_FILTERS, self._weapon_type_filters),
+                    (WEAPON_RARITY_FILTERS, self._weapon_rarity_filters),
+                )
+            )
+        )
         self.weapon_area = QScrollArea()
         self.weapon_area.setWidgetResizable(True)
         self.weapon_widget = QWidget()
@@ -586,6 +677,15 @@ class App(QWidget):
 
         self.char_title_label = QLabel(tr("asset_panel.characters"))
         left.addWidget(self.char_title_label)
+        left.addLayout(
+            self._build_filter_row(
+                (
+                    (ELEMENT_FILTERS, self._character_element_filters),
+                    (WEAPON_TYPE_FILTERS, self._character_weapon_filters),
+                    (CHARACTER_RARITY_FILTERS, self._character_rarity_filters),
+                )
+            )
+        )
         self.char_area = QScrollArea()
         self.char_area.setWidgetResizable(True)
         self.char_widget = QWidget()
@@ -732,42 +832,144 @@ class App(QWidget):
                 widget.setParent(None)
                 widget.deleteLater()
 
-    def load_hoyolab_tooltips(self) -> tuple[dict[str, str], dict[str, str]]:
-        char_tooltips: dict[str, str] = {}
-        weapon_tooltips: dict[str, str] = {}
-
+    def load_hoyolab_manifest(self) -> dict:
         if not HOYOLAB_MANIFEST_FILE.exists():
-            return char_tooltips, weapon_tooltips
+            return {}
 
         try:
             with open(HOYOLAB_MANIFEST_FILE, "r", encoding="utf-8") as f:
-                manifest = json.load(f)
+                return json.load(f)
         except Exception as exc:
-            print(f"Failed to load HoYoLAB manifest tooltips: {exc}")
-            return char_tooltips, weapon_tooltips
+            print(f"Failed to load HoYoLAB manifest: {exc}")
+            return {}
 
-        for item in manifest.get("characterAssets", []):
-            crop = item.get("crop")
-            tooltip = item.get("tooltip")
-            if crop and tooltip:
-                char_tooltips[os.path.basename(crop)] = tooltip
+    def _asset_path_from_manifest_crop(self, crop: str | None) -> Path | None:
+        if not crop:
+            return None
 
-        for item in manifest.get("weaponAssets", []):
-            crop = item.get("crop")
-            tooltip = item.get("tooltip")
-            if crop and tooltip:
-                weapon_tooltips[os.path.basename(crop)] = tooltip
+        path = Path(crop)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        return path
 
-        return char_tooltips, weapon_tooltips
+    def _folder_asset_items(self, directory: str | Path) -> list[dict]:
+        directory = Path(directory)
+        if not directory.exists():
+            return []
 
-    def _reload_icon_grid(self, directory, grid, container, area, icon_size, spacing, tooltips=None):
+        return [
+            {
+                "path": path,
+                "filename": path.name,
+                "tooltip": "",
+                "metadata": None,
+            }
+            for path in sorted(directory.iterdir())
+            if path.is_file() and path.suffix.lower() == ".png"
+        ]
+
+    def _manifest_asset_items(self, manifest: dict, manifest_key: str, directory: str | Path) -> list[dict]:
+        directory = Path(directory)
+        items = []
+        seen_files = set()
+
+        for asset in manifest.get(manifest_key, []):
+            crop_path = self._asset_path_from_manifest_crop(asset.get("crop"))
+            if crop_path is None or not crop_path.exists():
+                continue
+
+            items.append(
+                {
+                    "path": crop_path,
+                    "filename": crop_path.name,
+                    "tooltip": asset.get("tooltip") or "",
+                    "metadata": asset,
+                }
+            )
+            seen_files.add(crop_path.resolve())
+
+        for item in self._folder_asset_items(directory):
+            try:
+                resolved = Path(item["path"]).resolve()
+            except OSError:
+                resolved = None
+            if resolved is None or resolved not in seen_files:
+                items.append(item)
+
+        return items
+
+    def _character_matches_filters(self, asset: dict) -> bool:
+        metadata = asset.get("metadata")
+        if not metadata:
+            return True
+
+        character = metadata.get("character") or {}
+        element = character.get("element")
+        weapon_type = str(character.get("weapon_type_name") or "").lower()
+        try:
+            rarity = int(character.get("rarity") or 0)
+        except (TypeError, ValueError):
+            rarity = 0
+
+        if self._character_element_filters and element not in self._character_element_filters:
+            return False
+        if self._character_weapon_filters and weapon_type not in self._character_weapon_filters:
+            return False
+        if self._character_rarity_filters and rarity not in self._character_rarity_filters:
+            return False
+
+        return True
+
+    def _weapon_matches_filters(self, asset: dict) -> bool:
+        metadata = asset.get("metadata")
+        if not metadata:
+            return True
+
+        weapon = metadata.get("weapon") or {}
+        weapon_type = str(weapon.get("type_name") or "").lower()
+        try:
+            rarity = int(weapon.get("rarity") or 0)
+        except (TypeError, ValueError):
+            rarity = 0
+
+        if self._weapon_type_filters and weapon_type not in self._weapon_type_filters:
+            return False
+        if self._weapon_rarity_filters and rarity not in self._weapon_rarity_filters:
+            return False
+
+        return True
+
+    @staticmethod
+    def _metadata_int(value, default: int = 0) -> int:
+        try:
+            return int(value or default)
+        except (TypeError, ValueError):
+            return default
+
+    def _character_sort_key(self, asset: dict):
+        metadata = asset.get("metadata") or {}
+        character = metadata.get("character") or {}
+        rarity = self._metadata_int(character.get("rarity"))
+        level = self._metadata_int(character.get("level"))
+        name = str(character.get("name") or asset.get("filename") or "").casefold()
+        return (-rarity, -level, name, str(asset.get("filename") or ""))
+
+    def _weapon_sort_key(self, asset: dict):
+        metadata = asset.get("metadata") or {}
+        weapon = metadata.get("weapon") or {}
+        variants = metadata.get("variants") or []
+        rarity = self._metadata_int(weapon.get("rarity"))
+        max_level = self._metadata_int(weapon.get("level"))
+
+        for variant in variants:
+            max_level = max(max_level, self._metadata_int(variant.get("level")))
+
+        name = str(weapon.get("name") or metadata.get("name") or asset.get("filename") or "").casefold()
+        return (-rarity, -max_level, name, str(asset.get("filename") or ""))
+
+    def _reload_icon_grid(self, assets, grid, container, area, icon_size, spacing):
         self._clear_grid(grid)
-        if not os.path.exists(directory):
-            container.adjustSize()
-            return
-
-        files = [f for f in sorted(os.listdir(directory)) if f.lower().endswith(".png")]
-        if not files:
+        if not assets:
             container.adjustSize()
             return
 
@@ -781,17 +983,18 @@ class App(QWidget):
         grid.setContentsMargins(left_margin, 0, right_margin, 0)
         grid.setHorizontalSpacing(spacing)
         grid.setVerticalSpacing(spacing)
-        tooltips = tooltips or {}
 
         for c in range(cols):
             grid.setColumnMinimumWidth(c, icon_size)
             grid.setColumnStretch(c, 0)
 
-        for i, filename in enumerate(files):
+        for i, asset in enumerate(assets):
+            path = asset["path"]
+            filename = asset["filename"]
             try:
-                icon = DraggableIcon(os.path.join(directory, filename), icon_size)
+                icon = DraggableIcon(str(path), icon_size)
 
-                tooltip = tooltips.get(filename)
+                tooltip = asset.get("tooltip")
                 if tooltip:
                     icon.setToolTip(tooltip)
 
@@ -804,27 +1007,31 @@ class App(QWidget):
         area.viewport().update()
 
     def reload_characters(self):
-        char_tooltips, _ = self.load_hoyolab_tooltips()
+        manifest = self.load_hoyolab_manifest()
+        assets = self._manifest_asset_items(manifest, "characterAssets", ASSETS_CHAR)
+        assets = [asset for asset in assets if self._character_matches_filters(asset)]
+        assets.sort(key=self._character_sort_key)
         self._reload_icon_grid(
-            ASSETS_CHAR,
+            assets,
             self.char_grid,
             self.char_widget,
             self.char_area,
             72,
             3,
-            char_tooltips,
         )
 
     def reload_weapons(self):
-        _, weapon_tooltips = self.load_hoyolab_tooltips()
+        manifest = self.load_hoyolab_manifest()
+        assets = self._manifest_asset_items(manifest, "weaponAssets", ASSETS_WEAP)
+        assets = [asset for asset in assets if self._weapon_matches_filters(asset)]
+        assets.sort(key=self._weapon_sort_key)
         self._reload_icon_grid(
-            ASSETS_WEAP,
+            assets,
             self.weapon_grid,
             self.weapon_widget,
             self.weapon_area,
             48,
             6,
-            weapon_tooltips,
         )
 
     def resizeEvent(self, event):

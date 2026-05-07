@@ -147,6 +147,16 @@
 - [x] Preserve current local HoYoLAB data/assets when import fails before the replacement stage.
 - [x] Display generated character crops with manifest tooltips.
 - [x] Display generated weapon crops with manifest tooltips.
+- [x] Add icon-only manifest-backed filters for characters:
+  - element;
+  - weapon type;
+  - rarity 5/4.
+- [x] Add icon-only manifest-backed filters for weapons:
+  - weapon type;
+  - rarity 5/4/3.
+- [x] Add local generated filter icons under `assets/filters`.
+- [x] Make asset filters compact one-line icon rows and remove filter tooltips.
+- [x] Sort character/weapon asset grids by rarity and level descending.
 - [x] Add custom stable tooltip widget for draggable icons.
 - [x] Remove the visible manual `Очистить персонажей и оружие` button.
 - [x] Route current HoYoLAB data/assets/debug cleanup through `Выйти из профиля`.
@@ -160,6 +170,7 @@
 - [x] Show detailed HoYoLAB import subprocess errors in the failure popup.
 - [x] Fix visible mojibake UI strings in loader/drag/main UI by routing static text through localization keys.
 - [ ] Re-check team builder behavior with new `assets/hoyolab/*` paths and manifest-backed tooltips.
+- [ ] Manually smoke-test character/weapon filter UI in the PySide app.
 - [ ] Manually smoke-test two consecutive HoYoLAB updates after changing equipped weapons and confirm old weapon icons remain visible.
 - [ ] Decide whether a separate future bundle import UI is still needed after current-state import MVP.
 - [ ] Preserve draggable team composition behavior.

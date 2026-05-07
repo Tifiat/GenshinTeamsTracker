@@ -596,7 +596,11 @@ Current UI import details:
 - UI grids now read from:
   - `assets/hoyolab/characters`
   - `assets/hoyolab/weapons`
-- `main_window.py` reads `data/hoyolab/crop_manifest.json` and assigns tooltips from manifest `characterAssets` and `weaponAssets`.
+- `main_window.py` reads `data/hoyolab/crop_manifest.json` and uses manifest `characterAssets` / `weaponAssets` for tooltips and filters.
+- The left panel has icon-only filter buttons backed by generated local PNGs in `assets/filters`:
+  - character filters: element, weapon type, rarity 5/4;
+  - weapon filters: weapon type, rarity 5/4/3.
+- Filter behavior is multi-select: OR inside one group, AND between groups. If a manifest is missing, the grids fall back to showing PNG files from the asset folder.
 - The visible manual `Очистить персонажей и оружие` button was removed.
 - `Профиль...` opens a menu with `Сохранить профиль`, `Загрузить профиль`, and `Выйти из профиля`.
 - `change_hoyolab_account()` is now the sign-out flow behind `Выйти из профиля`: optional offline save warning, run-history keep/delete question, browser profile reset, current HoYoLAB data/assets/debug cleanup, artifact DB cleanup, and UI reset.
@@ -628,7 +632,7 @@ $env:GTT_LANGUAGE = "en"
 python main.py
 ```
 
-- Current scope is static UI text: buttons, labels, loader statuses, warning/info dialogs, and small static tooltips.
+- Current scope is static UI text: buttons, labels, loader statuses, warning/info dialogs, filter tooltips, and small static tooltips.
 - Character and weapon names/tooltips come from HoYoLAB/API data and should keep using the language returned by HoYoLAB.
 - HoYoLAB/API language and UI language are separate concerns. Do not force API language just because the UI language changes.
 - Future localization work:

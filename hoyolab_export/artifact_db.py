@@ -124,6 +124,36 @@ def init_db(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_artifact_equipment_character_id
             ON artifact_equipment(character_id);
+            
+                CREATE TABLE IF NOT EXISTS artifact_builds (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            name TEXT NOT NULL,
+
+            character_id INTEGER,
+            character_name TEXT,
+
+            notes TEXT,
+
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS artifact_build_slots (
+            build_id INTEGER NOT NULL,
+            pos INTEGER NOT NULL,
+            artifact_id INTEGER NOT NULL,
+
+            PRIMARY KEY (build_id, pos),
+            FOREIGN KEY (build_id) REFERENCES artifact_builds(id) ON DELETE CASCADE,
+            FOREIGN KEY (artifact_id) REFERENCES artifacts(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_artifact_builds_character_id
+            ON artifact_builds(character_id);
+
+        CREATE INDEX IF NOT EXISTS idx_artifact_build_slots_artifact_id
+            ON artifact_build_slots(artifact_id);    
         """
     )
     conn.commit()
@@ -387,6 +417,222 @@ def untag_artifact(conn: sqlite3.Connection, artifact_id: int, tag_id: int) -> N
         (artifact_id, tag_id),
     )
 
+def create_artifact_build(
+    conn: sqlite3.Connection,
+    *,
+    name: str,
+    character_id: int | None = None,
+    character_name: str | None = None,
+    notes: str | None = None,
+) -> int:
+    now = utc_now()
+
+    cursor = conn.execute(
+        """
+        INSERT INTO artifact_builds (
+            name,
+            character_id,
+            character_name,
+            notes,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            name,
+            character_id,
+            character_name,
+            notes,
+            now,
+            now,
+        ),
+    )
+
+    return int(cursor.lastrowid)
+
+
+def update_artifact_build(
+    conn: sqlite3.Connection,
+    build_id: int,
+    *,
+    name: str | None = None,
+    character_id: int | None = None,
+    character_name: str | None = None,
+    notes: str | None = None,
+) -> None:
+    now = utc_now()
+
+    conn.execute(
+        """
+        UPDATE artifact_builds SET
+            name = COALESCE(?, name),
+            character_id = ?,
+            character_name = ?,
+            notes = ?,
+            updated_at = ?
+        WHERE id = ?
+        """,
+        (
+            name,
+            character_id,
+            character_name,
+            notes,
+            now,
+            build_id,
+        ),
+    )
+
+
+def replace_artifact_build_slots(
+    conn: sqlite3.Connection,
+    build_id: int,
+    slots: dict[int, int],
+) -> None:
+    """
+    slots:
+        {
+            1: flower_artifact_id,
+            2: feather_artifact_id,
+            3: sands_artifact_id,
+            4: goblet_artifact_id,
+            5: circlet_artifact_id,
+        }
+    """
+    conn.execute(
+        "DELETE FROM artifact_build_slots WHERE build_id = ?",
+        (build_id,),
+    )
+
+    for pos, artifact_id in sorted(slots.items()):
+        if pos not in {1, 2, 3, 4, 5}:
+            raise ValueError(f"Invalid artifact slot position: {pos}")
+
+        conn.execute(
+            """
+            INSERT INTO artifact_build_slots (
+                build_id,
+                pos,
+                artifact_id
+            )
+            VALUES (?, ?, ?)
+            """,
+            (
+                build_id,
+                pos,
+                artifact_id,
+            ),
+        )
+
+    conn.execute(
+        """
+        UPDATE artifact_builds
+        SET updated_at = ?
+        WHERE id = ?
+        """,
+        (utc_now(), build_id),
+    )
+
+
+def get_artifact_build_slots(
+    conn: sqlite3.Connection,
+    build_id: int,
+) -> list[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT
+            build_slots.pos,
+            artifacts.id AS artifact_id,
+            artifacts.name,
+            artifacts.set_name,
+            artifacts.pos_name,
+            artifacts.rarity,
+            artifacts.level,
+            artifacts.main_property_name,
+            artifacts.main_property_value
+        FROM artifact_build_slots AS build_slots
+        JOIN artifacts
+            ON artifacts.id = build_slots.artifact_id
+        WHERE build_slots.build_id = ?
+        ORDER BY build_slots.pos
+        """,
+        (build_id,),
+    ).fetchall()
+
+
+def get_build_artifact_ids(
+    conn: sqlite3.Connection,
+    build_id: int,
+) -> list[int]:
+    rows = conn.execute(
+        """
+        SELECT artifact_id
+        FROM artifact_build_slots
+        WHERE build_id = ?
+        ORDER BY pos
+        """,
+        (build_id,),
+    ).fetchall()
+
+    return [int(row["artifact_id"]) for row in rows]
+
+
+def find_duplicate_artifacts_in_builds(
+    conn: sqlite3.Connection,
+    build_ids: list[int],
+) -> list[dict[str, Any]]:
+    """
+    Проверяет конфликт: один artifact_id используется в нескольких сборках.
+
+    Потом это пригодится для правила:
+    в одном забеге 8 персонажей не могут носить один и тот же артефакт.
+    """
+    if not build_ids:
+        return []
+
+    placeholders = ",".join("?" for _ in build_ids)
+
+    rows = conn.execute(
+        f"""
+        SELECT
+            slots.artifact_id,
+            artifacts.name AS artifact_name,
+            artifacts.pos_name,
+            GROUP_CONCAT(builds.id) AS build_ids,
+            GROUP_CONCAT(builds.name) AS build_names,
+            COUNT(*) AS usage_count
+        FROM artifact_build_slots AS slots
+        JOIN artifact_builds AS builds
+            ON builds.id = slots.build_id
+        JOIN artifacts
+            ON artifacts.id = slots.artifact_id
+        WHERE slots.build_id IN ({placeholders})
+        GROUP BY slots.artifact_id
+        HAVING COUNT(*) > 1
+        ORDER BY usage_count DESC, artifact_name
+        """,
+        build_ids,
+    ).fetchall()
+
+    return [
+        {
+            "artifact_id": int(row["artifact_id"]),
+            "artifact_name": row["artifact_name"],
+            "pos_name": row["pos_name"],
+            "build_ids": [
+                int(value)
+                for value in str(row["build_ids"]).split(",")
+                if value
+            ],
+            "build_names": [
+                value
+                for value in str(row["build_names"]).split(",")
+                if value
+            ],
+            "usage_count": int(row["usage_count"]),
+        }
+        for row in rows
+    ]
 
 def count_rows(conn: sqlite3.Connection) -> dict[str, int]:
     tables = [
@@ -396,6 +642,8 @@ def count_rows(conn: sqlite3.Connection) -> dict[str, int]:
         "artifact_equipment",
         "artifact_tags",
         "artifact_tag_links",
+        "artifact_builds",
+        "artifact_build_slots",
     ]
 
     result = {}

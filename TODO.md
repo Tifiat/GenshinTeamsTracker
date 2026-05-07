@@ -34,11 +34,15 @@
 - [x] Make auth UI buttons visible and explicit (`Авторизоваться`, `Сменить аккаунт`).
 - [x] Wire `HoYoLAB export` button to exporter subprocess and disable it while auth is missing.
 - [x] Add popup/update-notice dismissal retries around HoYoLAB export clicks.
-- [ ] Verify exporter still downloads image correctly.
-- [ ] Verify inventory collector creates:
+- [x] Verify exporter/import pipeline downloads image correctly.
+- [x] Verify inventory collector/import pipeline creates:
   - `account_characters.json`
   - `account_weapons.json`
 - [x] Verify transferred exporter/inventory modules import successfully.
+- [x] Add `hoyolab_export/paths.py` for production HoYoLAB folders and cleanup.
+- [x] Add `hoyolab_export/layout_capture.py` for production html2canvas clone layout capture.
+- [x] Add `hoyolab_export/crop_manifest.py` for production role-card extraction, crops, manifest, validation, and overlay.
+- [x] Add `hoyolab_export/import_pipeline.py` and `hoyolab_export/run_import.py` for full import.
 
 ## Phase 2: Port UI Foundation
 
@@ -57,11 +61,11 @@
 
 ## Phase 3: New HoYoLAB Export Bundle
 
-- [ ] Define export bundle folder structure.
-- [ ] Save exported HoYoLAB image as part of bundle.
-- [ ] Save clean character inventory JSON.
-- [ ] Save clean weapon inventory JSON.
-- [ ] Add layout/DOM metadata capture for character and weapon elements.
+- [x] Define current import folder structure.
+- [x] Save exported HoYoLAB image as part of current import/debug output.
+- [x] Save clean character inventory JSON.
+- [x] Save clean weapon inventory JSON.
+- [x] Add layout/DOM metadata capture for character and weapon elements.
 - [x] Add `tests/probe_layout.py` for live HoYoLAB layout probing.
 - [x] Hook html2canvas root capture into exporter JS patch via `window.__genshin_export_root_probe__`.
 - [x] Add `html2canvasPatchStatus`, `fallbackRootProbe`, `rootSource`, and `rootDiscovery` diagnostics to layout probe output.
@@ -70,8 +74,17 @@
 - [x] Replace `asyncio.run()` in layout probe with explicit Windows-friendly loop cleanup.
 - [x] Keep normal outputs free of cookie/header/token dumps.
 - [x] Confirm latest probe can use `html2canvas_clone` root discovery.
+- [x] Define current HoYoLAB MVP folder structure:
+  - `data/hoyolab`
+  - `assets/hoyolab`
+  - `debug/hoyolab`
+- [x] Save exported HoYoLAB image to `debug/hoyolab/image.png`.
+- [x] Save clean character inventory JSON to `data/hoyolab/account_characters.json`.
+- [x] Save clean weapon inventory JSON to `data/hoyolab/account_weapons.json`.
+- [x] Save production layout metadata to `data/hoyolab/layout.json`.
+- [x] Add one command that performs image export + clean inventory collection + layout + crops into current HoYoLAB folders.
 - [ ] Audit future bundle outputs so cookies/headers/raw sensitive network dumps never enter normal mode.
-- [ ] Add one command that performs image export + clean inventory collection into one timestamped bundle.
+- [ ] Decide later whether timestamped import archives are needed; current MVP intentionally keeps only current account state.
 
 ## Phase 4: Coordinate-Based Crop Pipeline
 
@@ -79,44 +92,108 @@
   - `DIV` class contains `role-share`.
 - [x] Determine initial reliable DOM selectors/layout rules for weapon mini-cards from sandbox probe:
   - `IMG` whose parent chain contains `role-weapon-info`.
-- [ ] Save DOM element rectangles before html2canvas export.
+- [x] Save DOM element rectangles from html2canvas clone/rootDiscovery for production import.
 - [x] Run live `tests/probe_layout.py` and inspect `layout_probe.json` / `page_screenshot.png`.
 - [x] Confirm working sandbox extraction of HoYoLAB role cards from probe layout.
 - [x] Confirm sandbox finds 76/76 character cards with portrait and weapon rects in latest inspected bundle.
-- [ ] If `rootSource` is `fallback_candidate`, compare fallback root against exported PNG and harden html2canvas root patch.
-- [ ] Investigate why `html2canvasPatchStatus.matched == true` but runtime `calls` is empty and `html2canvasRootProbe` is null.
+- [x] Confirm production extraction excludes `role-share-container` and produces 75 real cards.
+- [x] Confirm production `layout.json` uses `rootSource == "html2canvas_clone"`.
 - [x] If Google login is needed, use `python -m hoyolab_export.run_login_setup` before running automation.
-- [ ] Authorize through the UI HoYoLAB prompt or `python -m hoyolab_export.run_login_setup`, close browser, then rerun `tests/probe_layout.py`.
-- [ ] Confirm whether `html2canvasRootProbe.rootRect` maps to final PNG by `scale`.
-- [ ] Convert DOM coordinates to final PNG coordinates using export scale/container width.
+- [x] Convert DOM/root-relative coordinates to final PNG coordinates using export scale.
 - [x] Add first coordinate-cropper scaffold that crops from `layout.json` rectangles.
 - [x] Smoke-test coordinate cropper on a synthetic image/layout pair.
-- [ ] Crop character images from final PNG by coordinates.
-- [ ] Crop weapon images from final PNG by coordinates.
-- [ ] Produce `crop_manifest.json` linking crops to API character/weapon records.
-- [ ] Promote `tests/extract_role_cards_from_probe.py` logic into production import pipeline.
+- [x] Crop character images from final PNG by coordinates.
+- [x] Crop weapon images from final PNG by coordinates.
+- [x] Produce `crop_manifest.json` linking crops to API character/weapon records.
+- [x] Promote sandbox role-card extraction logic into production import pipeline.
+- [x] Switch manifest matching from index-based to icon-based:
+  - `portraitSrc` -> `character.icon` / `character.side_icon`;
+  - `weaponSrc` -> `weapon.icon`;
+  - validate `weapon.equipped_by.id == character.id`.
+- [x] Ignore dummy character assets for IDs `10000118` and `10000117` while keeping them in manifest/cards.
+- [x] Ignore 1-star and 2-star weapons for weapon assets.
+- [x] Deduplicate weapon assets by icon and aggregate variants by refinement + level.
 - [ ] Keep old binary-mask parser only as optional fallback, not primary path.
-- [ ] Replace temporary layout schema with real HoYoLAB DOM selectors and API id linkage.
+- [x] Replace temporary layout schema with real HoYoLAB DOM selectors and API id linkage.
 
 ## Phase 5: UI Integration
 
 - [x] Add UI action for HoYoLAB export.
-- [ ] Convert `HoYoLAB export` button into full HoYoLAB import:
+- [x] Convert `HoYoLAB export` button into full HoYoLAB import:
   - run export/probe;
   - collect clean inventory JSON;
   - extract role cards from `rootDiscovery`;
   - crop character and weapon images;
-  - save images into `assets/hd/characters` and `assets/hd/weapons`;
+  - save images into `assets/hoyolab/characters` and `assets/hoyolab/weapons`;
   - write manifest linking images to API records and sort fields;
   - refresh UI grids after success.
-- [ ] Add UI action for future HoYoLAB bundle import after the real bundle pipeline exists.
-- [ ] Re-add export bundle import UI after the real `crop_manifest.json` pipeline exists.
-- [ ] Display generated character crops with API metadata.
-- [ ] Display generated weapon crops with API metadata.
-- [ ] Ensure team builder works from new crop manifest.
+- [x] Switch UI grids from `assets/hd/*` to `assets/hoyolab/*`.
+- [x] Add loader dialog for HoYoLAB import with `[STATUS]` progress updates.
+- [x] Add import button cooldown after success/error.
+- [x] Display generated character crops with manifest tooltips.
+- [x] Display generated weapon crops with manifest tooltips.
+- [x] Add custom stable tooltip widget for draggable icons.
+- [x] Clear current HoYoLAB data/assets/debug from clear button and account switch.
+- [x] Fix visible mojibake UI strings in loader/drag/main UI by routing static text through localization keys.
+- [ ] Re-check team builder behavior with new `assets/hoyolab/*` paths and manifest-backed tooltips.
+- [ ] Decide whether a separate future bundle import UI is still needed after current-state import MVP.
 - [ ] Preserve draggable team composition behavior.
 
-## Phase 6: History Model
+## Phase 6: Artifact Import Pipeline
+
+- [x] Discover full HoYoLAB character/artifact detail endpoint:
+  - `POST https://sg-public-api.hoyolab.com/event/game_record/genshin/api/character/detail`.
+- [x] Verify `character/detail` accepts batch requests for all real characters in one POST.
+- [x] Confirm `index?avatar_list_type=1` relic data lacks full stat fields.
+- [x] Confirm full artifact stats are available in `character/detail`:
+  - main property;
+  - substat list;
+  - roll counts;
+  - property map.
+- [x] Detect HoYoLAB language from page/session and pass it to manual fetch headers:
+  - `x-rpc-language`;
+  - `accept-language`.
+- [x] Add SQLite artifact DB module `hoyolab_export/artifact_db.py`.
+- [x] Add artifact importer module `hoyolab_export/artifact_importer.py`.
+- [x] Add artifact import tool `tools/import_artifacts_from_detail_json.py`.
+- [x] Add artifact tag persistence test tool `tools/test_artifact_tag_persistence.py`.
+- [x] Verify first artifact import:
+  - 73 characters;
+  - 254 relics;
+  - 254 inserted artifacts;
+  - 104 artifact icons;
+  - 1004 artifact substats.
+- [x] Verify re-import does not duplicate artifacts.
+- [x] Verify user tag `test_keep_after_import` survives re-import.
+- [ ] Integrate batch `character/detail` fetch into main `python -m hoyolab_export.run_import` flow.
+- [ ] Import artifacts into `data/artifacts.db` as part of main HoYoLAB import.
+- [ ] Keep artifact tags persistent during repeated imports.
+- [ ] Decide whether HoYoLAB account switch should preserve or clear `data/artifacts.db`.
+- [ ] Decide whether `data/artifacts.db` is local generated state and should stay ignored.
+- [ ] Add UI surface for artifact browsing/filtering/tagging after import is integrated.
+
+## Localization
+
+- [x] Add JSON-backed localization layer:
+  - `localization/i18n.py`
+  - `localization/locales/ru.json`
+  - `localization/locales/en.json`
+  - `localization/locales/pt-br.json`
+- [x] Use `tr("key")` for static PySide UI text in main window, loader, timers, run history, and drag/delete dialogs.
+- [x] Keep dynamic character/weapon tooltips sourced from HoYoLAB manifest/API data.
+- [x] Keep UI language separate from HoYoLAB/API language.
+- [x] Add bottom-right UI language selector with country flags.
+- [x] Persist selected UI language in ignored local `settings.json`.
+- [ ] Add localization keys for any new UI screens as they are built.
+- [ ] Keep Brazilian Portuguese localization in sync when adding new keys.
+
+## Git / Release Hygiene
+
+- [ ] Retry normal `git push` for local commit `1ae2de6` after previous GitHub `Internal Server Error`; do not force-push.
+- [ ] Decide whether `data/hoyolab`, `data/artifacts.db`, `assets/hoyolab`, and `assets/loader` should be committed or ignored as local/generated state.
+- [ ] Review untracked `IMPORT_TODO.md`, `ToDO_importMVP.txt`, and `tests/probe_layout_baseline.log`; keep, ignore, or remove deliberately.
+
+## Phase 7: History Model
 
 - [ ] Design new history schema.
 - [ ] Support history categories:

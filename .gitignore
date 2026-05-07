@@ -7,6 +7,7 @@ __pycache__/
 
 state.json
 runs_history.json
+settings.json
 
 hoyolab_export/profile*/
 hoyolab_export/downloads/

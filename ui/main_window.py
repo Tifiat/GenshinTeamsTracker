@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt, QProcess, QTimer
 from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
+    QComboBox,
     QLabel,
     QMessageBox,
     QPushButton,
@@ -26,6 +27,7 @@ from hoyolab_export.paths import (
     clear_hoyolab_current_data,
     ensure_hoyolab_dirs,
 )
+from localization import get_language, language_options, set_language, tr
 from ui.run_history_window import RunHistoryWindow
 from ui.widgets.drag import DraggableIcon
 from ui.widgets.team import TeamSlot
@@ -38,14 +40,14 @@ STATE_FILE = "state.json"
 RUNS_FILE = "runs_history.json"
 HOYOLAB_MANIFEST_FILE = PROJECT_ROOT / "data" / "hoyolab" / "crop_manifest.json"
 HOYOLAB_IMPORT_STATUSES = {
-    "preparing": ("Подготавливаем импорт...", 0.05),
-    "opening_hoyolab": ("Открываем HoYoLAB...", 0.15),
-    "collecting_inventory": ("Собираем базу персонажей...", 0.30),
-    "exporting_image": ("Сохраняем скриншот...", 0.45),
-    "building_layout": ("Строим карту элементов...", 0.65),
-    "writing_inventory": ("Сохраняем базу персонажей...", 0.75),
-    "cropping_assets": ("Вырезаем персонажей и оружие...", 0.88),
-    "done": ("Готово.", 1.0),
+    "preparing": ("loader.preparing", 0.05),
+    "opening_hoyolab": ("loader.opening_hoyolab", 0.15),
+    "collecting_inventory": ("loader.collecting_inventory", 0.30),
+    "exporting_image": ("loader.exporting_image", 0.45),
+    "building_layout": ("loader.building_layout", 0.65),
+    "writing_inventory": ("loader.writing_inventory", 0.75),
+    "cropping_assets": ("loader.cropping_assets", 0.88),
+    "done": ("loader.done", 1.0),
 }
 HOYOLAB_IMPORT_COOLDOWN_MS = 5000
 HOYOLAB_AUTH_WARNING_STYLE = """
@@ -96,12 +98,13 @@ QWidget#hoyolab_auth_box QPushButton:hover {
 class App(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Genshin Teams Tracker")
+        self.setWindowTitle(tr("app.title"))
         self.resize(1400, 800)
         ensure_hoyolab_dirs()
         self.main = QHBoxLayout(self)
         self.floors = []
         self.teams = []
+        self.team_title_labels = []
 
         self.ctrl_pressed = False
         self.pending_grid_updates = False
@@ -113,6 +116,7 @@ class App(QWidget):
         self._hoyolab_export_process = None
         self._hoyolab_loader = None
         self._hoyolab_import_output_buffer = ""
+        self._updating_language_combo = False
         self._hoyolab_auth_timer = QTimer(self)
         self._hoyolab_auth_timer.setInterval(1000)
         self._hoyolab_auth_timer.timeout.connect(self.poll_hoyolab_login_browser)
@@ -174,33 +178,31 @@ class App(QWidget):
             self.hoyolab_auth_label.setVisible(False)
             self.btn_hoyolab_login.setVisible(False)
             self.btn_hoyolab_switch.setVisible(True)
-            self.btn_hoyolab_switch.setText("Сменить аккаунт")
+            self.btn_hoyolab_switch.setText(tr("hoyolab.switch_account"))
             self.btn_hoyolab_export.setEnabled(self._hoyolab_export_process is None)
-            self.btn_hoyolab_export.setToolTip("")
+            if self._hoyolab_export_process is None:
+                self.btn_hoyolab_export.setToolTip("")
+            else:
+                self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_running_tooltip"))
             self.hoyolab_auth_box.setStyleSheet(HOYOLAB_AUTH_READY_STYLE)
             return
 
         self.hoyolab_auth_label.setVisible(True)
         self.btn_hoyolab_login.setVisible(True)
-        self.btn_hoyolab_login.setText("Авторизоваться")
+        self.btn_hoyolab_login.setText(tr("hoyolab.login_button"))
         self.hoyolab_auth_box.setVisible(True)
         self.btn_hoyolab_switch.setVisible(False)
         self.hoyolab_auth_box.setStyleSheet(HOYOLAB_AUTH_WARNING_STYLE)
         self.btn_hoyolab_export.setEnabled(False)
-        self.btn_hoyolab_export.setToolTip("Authorize HoYoLAB first")
+        self.btn_hoyolab_export.setToolTip(tr("hoyolab.auth_required_tooltip"))
 
         if status == AuthStatus.PROFILE_LOCKED:
-            self.hoyolab_auth_label.setText(
-                "Профиль HoYoLAB сейчас занят. Если окно авторизации открыто, закройте его. "
-                "После закрытия приложение проверит вход еще раз."
-            )
+            self.hoyolab_auth_label.setText(tr("hoyolab.profile_busy"))
             self.btn_hoyolab_login.setEnabled(self._hoyolab_login_process is None)
             QTimer.singleShot(2000, self.refresh_hoyolab_auth_status)
             return
 
-        self.hoyolab_auth_label.setText(
-            "Вход в HoYoLAB не обнаружен. Авторизуйтесь и закройте окно браузера."
-        )
+        self.hoyolab_auth_label.setText(tr("hoyolab.not_logged_in"))
         self.btn_hoyolab_login.setEnabled(self._hoyolab_login_process is None)
 
     def open_hoyolab_login(self):
@@ -210,14 +212,11 @@ class App(QWidget):
         try:
             self._hoyolab_login_process = open_login_browser(HOYOLAB_PROFILE_DIR)
         except Exception as exc:
-            QMessageBox.warning(self, "HoYoLAB", f"Could not open browser: {exc}")
+            QMessageBox.warning(self, tr("common.hoyolab"), tr("hoyolab.open_browser_failed", error=exc))
             return
 
-        self.hoyolab_auth_label.setText(
-            "Окно HoYoLAB открыто. Войдите в аккаунт, убедитесь что вход выполнен, "
-            "затем закройте браузер."
-        )
-        self.btn_hoyolab_login.setText("Ожидаю закрытия браузера")
+        self.hoyolab_auth_label.setText(tr("hoyolab.login_browser_open"))
+        self.btn_hoyolab_login.setText(tr("hoyolab.login_waiting_button"))
         self.btn_hoyolab_login.setEnabled(False)
         self._hoyolab_auth_timer.start()
 
@@ -238,8 +237,8 @@ class App(QWidget):
         if self._hoyolab_login_process is not None:
             QMessageBox.information(
                 self,
-                "HoYoLAB",
-                "Close the current HoYoLAB browser window before changing account.",
+                tr("common.hoyolab"),
+                tr("hoyolab.close_browser_before_switch"),
             )
             return
 
@@ -247,7 +246,7 @@ class App(QWidget):
             reset_profile(HOYOLAB_PROFILE_DIR, HOYOLAB_EXPORT_DIR)
             clear_hoyolab_current_data()
         except Exception as exc:
-            QMessageBox.warning(self, "HoYoLAB", f"Could not reset profile or clear HoYoLAB data: {exc}")
+            QMessageBox.warning(self, tr("common.hoyolab"), tr("hoyolab.reset_failed", error=exc))
             return
 
         self.safe_update_grids()
@@ -258,9 +257,8 @@ class App(QWidget):
         if get_auth_status(HOYOLAB_PROFILE_DIR) != AuthStatus.LOGGED_IN:
             QMessageBox.information(
                 self,
-                "HoYoLAB",
-                "HoYoLAB authorization was not found. Please authorize first and check "
-                "that the HoYoLAB page shows your account before closing the browser.",
+                tr("common.hoyolab"),
+                tr("hoyolab.auth_not_found"),
             )
             self.refresh_hoyolab_auth_status()
             return
@@ -283,7 +281,7 @@ class App(QWidget):
         self._hoyolab_import_output_buffer = ""
 
         self.btn_hoyolab_export.setEnabled(False)
-        self.btn_hoyolab_export.setToolTip("HoYoLAB import is running")
+        self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_running_tooltip"))
 
         process.start()
 
@@ -292,7 +290,7 @@ class App(QWidget):
             process.deleteLater()
             self._close_hoyolab_loader()
             self.refresh_hoyolab_auth_status()
-            QMessageBox.warning(self, "HoYoLAB", "Could not start HoYoLAB import.")
+            QMessageBox.warning(self, tr("common.hoyolab"), tr("hoyolab.start_import_failed"))
 
     def _show_hoyolab_loader(self):
         if self._hoyolab_loader is not None:
@@ -301,7 +299,7 @@ class App(QWidget):
             return
 
         self._hoyolab_loader = HoYoLABLoadingDialog(self)
-        self._hoyolab_loader.set_status("Подготавливаем импорт...", 0.03)
+        self._hoyolab_loader.set_status(tr("loader.preparing"), 0.03)
         self._hoyolab_loader.show()
         self._hoyolab_loader.raise_()
         self._hoyolab_loader.activateWindow()
@@ -319,11 +317,11 @@ class App(QWidget):
         if self._hoyolab_loader is None:
             return
 
-        text, progress = HOYOLAB_IMPORT_STATUSES.get(
+        text_key, progress = HOYOLAB_IMPORT_STATUSES.get(
             status,
-            (f"HoYoLAB: {status}", None),
+            ("loader.unknown_status", None),
         )
-        self._hoyolab_loader.set_status(text, progress)
+        self._hoyolab_loader.set_status(tr(text_key, status=status), progress)
 
     def read_hoyolab_import_output(self):
         process = self._hoyolab_export_process
@@ -361,7 +359,7 @@ class App(QWidget):
         self._hoyolab_export_process = None
 
         self.btn_hoyolab_export.setEnabled(False)
-        self.btn_hoyolab_export.setToolTip("HoYoLAB import is finishing cleanup")
+        self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_cleanup_tooltip"))
         QTimer.singleShot(HOYOLAB_IMPORT_COOLDOWN_MS, self._finish_hoyolab_import_cooldown)
 
         if exit_code == 0 and exit_status == QProcess.NormalExit:
@@ -375,8 +373,8 @@ class App(QWidget):
         self._close_hoyolab_loader()
         QMessageBox.warning(
             self,
-            "HoYoLAB",
-            "Импорт из HoYoLAB не завершился. Проверьте авторизацию и консольный лог.",
+            tr("common.hoyolab"),
+            tr("hoyolab.import_failed"),
         )
 
     def build_left_panel(self):
@@ -392,10 +390,10 @@ class App(QWidget):
         auth_buttons = QHBoxLayout()
         auth_buttons.setContentsMargins(0, 0, 0, 0)
         auth_buttons.setSpacing(8)
-        self.btn_hoyolab_login = QPushButton("Авторизоваться")
+        self.btn_hoyolab_login = QPushButton(tr("hoyolab.login_button"))
         self.btn_hoyolab_login.setMinimumHeight(30)
         self.btn_hoyolab_login.clicked.connect(self.open_hoyolab_login)
-        self.btn_hoyolab_switch = QPushButton("Сменить аккаунт")
+        self.btn_hoyolab_switch = QPushButton(tr("hoyolab.switch_account"))
         self.btn_hoyolab_switch.setMinimumHeight(30)
         self.btn_hoyolab_switch.clicked.connect(self.change_hoyolab_account)
         auth_buttons.addWidget(self.btn_hoyolab_login)
@@ -404,14 +402,15 @@ class App(QWidget):
         auth_layout.addLayout(auth_buttons)
         self.hoyolab_auth_box.setStyleSheet(HOYOLAB_AUTH_WARNING_STYLE)
 
-        self.btn_hoyolab_export = QPushButton("Импорт из HoYoLAB")
+        self.btn_hoyolab_export = QPushButton(tr("hoyolab.import_button"))
         self.btn_hoyolab_export.clicked.connect(self.run_hoyolab_export)
 
-        btn_clear = QPushButton("Clear characters and weapons")
-        btn_clear.clicked.connect(self.clear_assets)
+        self.btn_clear_assets = QPushButton(tr("asset_panel.clear"))
+        self.btn_clear_assets.clicked.connect(self.clear_assets)
 
         left.addWidget(self.hoyolab_auth_box)
-        left.addWidget(QLabel("Weapons"))
+        self.weapon_title_label = QLabel(tr("asset_panel.weapons"))
+        left.addWidget(self.weapon_title_label)
         self.weapon_area = QScrollArea()
         self.weapon_area.setWidgetResizable(True)
         self.weapon_widget = QWidget()
@@ -419,7 +418,8 @@ class App(QWidget):
         self.weapon_area.setWidget(self.weapon_widget)
         left.addWidget(self.weapon_area, 1)
 
-        left.addWidget(QLabel("Characters"))
+        self.char_title_label = QLabel(tr("asset_panel.characters"))
+        left.addWidget(self.char_title_label)
         self.char_area = QScrollArea()
         self.char_area.setWidgetResizable(True)
         self.char_widget = QWidget()
@@ -428,7 +428,7 @@ class App(QWidget):
         left.addWidget(self.char_area, 3)
 
         left.addWidget(self.btn_hoyolab_export)
-        left.addWidget(btn_clear)
+        left.addWidget(self.btn_clear_assets)
         self.main.addLayout(left, 2)
 
     def build_right_panel(self):
@@ -436,7 +436,9 @@ class App(QWidget):
 
         for i in range(2):
             team = []
-            right.addWidget(QLabel(f"Команда {i + 1}"))
+            team_label = QLabel(tr("main.team_label", number=i + 1))
+            self.team_title_labels.append(team_label)
+            right.addWidget(team_label)
             row = QHBoxLayout()
             for _ in range(4):
                 slot = TeamSlot()
@@ -446,30 +448,111 @@ class App(QWidget):
             right.addLayout(row)
 
         right.addSpacing(20)
-        right.addWidget(QLabel("Таймеры бездны"))
+        self.abyss_timers_label = QLabel(tr("main.abyss_timers"))
+        right.addWidget(self.abyss_timers_label)
 
         for i in range(1, 4):
             floor = AbyssFloorRow(i, self.calculate_abyss)
             self.floors.append(floor)
             right.addWidget(floor)
 
-        self.total_label = QLabel("Итого: 0 сек")
+        self.total_label = QLabel(tr("main.total_zero"))
         right.addWidget(self.total_label)
 
-        btn_reset = QPushButton("Сбросить забег")
-        btn_reset.clicked.connect(self.reset_run)
-        right.addWidget(btn_reset)
+        self.btn_reset_run = QPushButton(tr("main.reset_run"))
+        self.btn_reset_run.clicked.connect(self.reset_run)
+        right.addWidget(self.btn_reset_run)
 
-        btn_save = QPushButton("Сохранить забег")
-        btn_save.clicked.connect(self.save_run)
-        right.addWidget(btn_save)
+        self.btn_save_run = QPushButton(tr("main.save_run"))
+        self.btn_save_run.clicked.connect(self.save_run)
+        right.addWidget(self.btn_save_run)
 
-        btn_history = QPushButton("Открыть историю забегов")
-        btn_history.clicked.connect(self.open_run_history)
-        right.addWidget(btn_history)
+        self.btn_history = QPushButton(tr("main.open_history"))
+        self.btn_history.clicked.connect(self.open_run_history)
+        right.addWidget(self.btn_history)
 
         right.addStretch()
+        self.build_language_switcher(right)
         self.main.addLayout(right, 1)
+
+    def build_language_switcher(self, parent_layout):
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(6)
+
+        self.language_label = QLabel(tr("language.selector"))
+        self.language_combo = QComboBox()
+        self.language_combo.setMinimumWidth(150)
+
+        for code, label in language_options():
+            self.language_combo.addItem(label, code)
+
+        self._sync_language_combo()
+        self.language_combo.currentIndexChanged.connect(self.on_language_changed)
+
+        row.addStretch()
+        row.addWidget(self.language_label)
+        row.addWidget(self.language_combo)
+        parent_layout.addLayout(row)
+
+    def _sync_language_combo(self):
+        if not hasattr(self, "language_combo"):
+            return
+
+        self._updating_language_combo = True
+        current = get_language()
+        index = self.language_combo.findData(current)
+        if index >= 0:
+            self.language_combo.setCurrentIndex(index)
+        self._updating_language_combo = False
+
+    def on_language_changed(self, index: int):
+        if self._updating_language_combo or index < 0:
+            return
+
+        language = self.language_combo.itemData(index)
+        if not language:
+            return
+
+        set_language(str(language), persist=True)
+        self.retranslate_ui()
+
+    def retranslate_ui(self):
+        self.setWindowTitle(tr("app.title"))
+        self.btn_hoyolab_login.setText(tr("hoyolab.login_button"))
+        self.btn_hoyolab_switch.setText(tr("hoyolab.switch_account"))
+        self.btn_hoyolab_export.setText(tr("hoyolab.import_button"))
+        self.btn_clear_assets.setText(tr("asset_panel.clear"))
+        self.weapon_title_label.setText(tr("asset_panel.weapons"))
+        self.char_title_label.setText(tr("asset_panel.characters"))
+
+        for index, label in enumerate(self.team_title_labels, start=1):
+            label.setText(tr("main.team_label", number=index))
+
+        self.abyss_timers_label.setText(tr("main.abyss_timers"))
+        self.btn_reset_run.setText(tr("main.reset_run"))
+        self.btn_save_run.setText(tr("main.save_run"))
+        self.btn_history.setText(tr("main.open_history"))
+        self.language_label.setText(tr("language.selector"))
+
+        for floor in self.floors:
+            floor.retranslate_ui()
+
+        try:
+            total = sum(int(floor.total.text()) for floor in self.floors)
+        except ValueError:
+            total = 0
+        self.total_label.setText(
+            tr("main.total_seconds", seconds=total) if total else tr("main.total_zero")
+        )
+
+        if self._run_history_window is not None and hasattr(self._run_history_window, "retranslate_ui"):
+            self._run_history_window.retranslate_ui()
+
+        if self._hoyolab_loader is not None and hasattr(self._hoyolab_loader, "retranslate_ui"):
+            self._hoyolab_loader.retranslate_ui()
+
+        self.refresh_hoyolab_auth_status()
 
     def _clear_grid(self, grid):
         while grid.count():
@@ -592,7 +675,7 @@ class App(QWidget):
 
     def calculate_abyss(self):
         total = sum(f.calculate() for f in self.floors)
-        self.total_label.setText(f"Итого: {total} сек")
+        self.total_label.setText(tr("main.total_seconds", seconds=total))
         self.save_state()
 
     def save_state(self):
@@ -631,8 +714,8 @@ class App(QWidget):
         self.safe_update_grids()
         QMessageBox.information(
             self,
-            "Готово",
-            "Текущие персонажи, оружие, HoYoLAB JSON и debug очищены.",
+            tr("common.done"),
+            tr("main.clear_finished"),
         )
 
     def reset_run(self):
@@ -653,7 +736,7 @@ class App(QWidget):
                 slot.weapon.clear()
                 slot.artifact.clear()
 
-        self.total_label.setText("Итого: 0 сек")
+        self.total_label.setText(tr("main.total_zero"))
         self.save_state()
 
     def save_run(self):
@@ -691,4 +774,3 @@ class App(QWidget):
 
         if self._run_history_window is not None:
             self._run_history_window.reload()
-

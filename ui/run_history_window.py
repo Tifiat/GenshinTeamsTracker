@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QScrollArea, QSizePolicy, QVBoxLayout, QWidget
 from .widgets.flow_layout import FlowLayout
 from .widgets.run_card import RunCard
 from .widgets.run_history_container import RunHistoryContainer
+from localization import tr
 
 
 RUNS_FILE = "runs_history.json"
@@ -28,7 +29,7 @@ class ZoomScrollArea(QScrollArea):
 class RunHistoryWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("История забегов")
+        self.setWindowTitle(tr("history.window_title"))
         self._first_show = True
         self._min_width = None
         self.scale_factor = 1.0  # 1.0 - 2.5
@@ -57,6 +58,9 @@ class RunHistoryWindow(QWidget):
             item = self.flow.itemAt(i)
             if item and item.widget():
                 item.widget().set_scale(1.0)
+
+    def retranslate_ui(self):
+        self.setWindowTitle(tr("history.window_title"))
 
     def wheelEvent(self, event):
         if event.modifiers() & Qt.ControlModifier:

@@ -49,6 +49,20 @@ Implemented scaffold:
   - `collect_account_inventory.py`
   - `debug_extract_data.py`
   - `coordinate_cropper.py`
+  - `paths.py`
+  - `layout_capture.py`
+  - `crop_manifest.py`
+  - `artifact_db.py`
+  - `artifact_importer.py`
+  - `import_pipeline.py`
+  - `run_import.py`
+- Current production HoYoLAB folders:
+  - `data/hoyolab`
+  - `assets/hoyolab`
+  - `debug/hoyolab`
+- Legacy/currently unused asset folders:
+  - `assets/hd/characters`
+  - `assets/hd/weapons`
 - `requirements.txt` intentionally contains only current runtime dependencies:
   - `PySide6`
   - `playwright`
@@ -62,12 +76,24 @@ Verification done in the new project:
 - Import check for `ui.main_window`, `hoyolab_export.hoyolab_exporter`, and `hoyolab_export.coordinate_cropper`
 - Search confirmed no startup imports of legacy `parser`, `weapon_matcher`, `icon_enricher`, `cv2`, `HoyolabParser`, `match_weapons`, or ORB in new Python files.
 - `tests/probe_layout.py` imports and compiles.
-- Search confirmed no mojibake markers in `ui` / `hoyolab_export` excluding `hoyolab_export/profile/**`.
+- Earlier search confirmed no mojibake markers in touched `ui` / `hoyolab_export` files, but current inspection found mojibake Russian text/comments in `ui/widgets/loader.py`, `ui/widgets/drag.py`, and some legacy UI strings.
 
-Not yet verified:
+Latest production import verification from local generated files:
 
-- Live HoYoLAB image download after the latest popup-dismiss retry changes.
-- Live inventory collection output files.
+- `data/hoyolab/crop_manifest.json` exists.
+- `data/hoyolab/account_characters.json` exists.
+- `data/hoyolab/account_weapons.json` exists.
+- `data/hoyolab/layout.json` exists.
+- Current manifest summary:
+  - `cardsCount == 75`
+  - `matchedCharacters == 75`
+  - `matchedWeapons == 75`
+  - `okMatches == 75`
+  - `warningMatches == 0`
+  - `characterAssets == 73`
+  - `weaponAssets == 49`
+- `layout.json` uses `rootSource == "html2canvas_clone"` and has 535 image-like elements.
+- Local commit `1ae2de6` ("собран пайплайн импорта из хоелаб") was created. Push previously failed with GitHub remote `Internal Server Error`; retry a normal push, do not force-push.
 
 Latest layout and role-card probe verification:
 
@@ -100,7 +126,8 @@ Latest layout and role-card probe verification:
   - portraits by `IMG` with class containing `role-img`;
   - weapon icons by `IMG` whose parent chain contains `role-weapon-info`;
   - card order by root-relative `cardRect` top/left.
-- Interpretation: the project now has a working DOM/layout-based source for visible character and weapon crop rectangles. The next step is to promote this sandbox logic into the production HoYoLAB import pipeline and link crops to clean API records.
+- Interpretation: the sandbox proved the DOM/layout-based crop source. Production now uses the same idea in `hoyolab_export/crop_manifest.py`.
+- Production note: the old 76-card sandbox result included `role-share-container`. Production excludes container-like cards and currently produces 75 real cards.
 
 ## Important Legacy Files To Inspect / Port
 
@@ -162,15 +189,15 @@ Current html2canvas probe hook:
 - `hoyolab_export.close_export_context(...)` closes pages, stops Playwright, and terminates the browser process created by `_create_context`; this avoids leaving the persistent profile locked or paused after a failed/manual login attempt.
 - `hoyolab_export.auth` is the shared profile-status layer for UI, setup scripts, reset, and exporter preflight.
 - `hoyolab_export.run_login_setup` opens HoYoLAB in a normal Chrome/Edge process with the same app profile. The user authorizes and closes that browser window.
-- `run_manual_export.py` is the manual test flow. If profile auth is not detected, it opens a normal Chrome/Edge login browser, waits for the user to close it, rechecks auth status, then exports only if auth is detected.
-- Product/UI export flow should not ask the user to log in inside the automation browser. The UI should require auth first, then start `python -m hoyolab_export.run_manual_export` as a subprocess.
+- `run_manual_export.py` remains a manual test/export flow. If profile auth is not detected, it opens a normal Chrome/Edge login browser, waits for the user to close it, rechecks auth status, then exports only if auth is detected.
+- Product/UI import flow should not ask the user to log in inside the automation browser. The UI should require auth first, then start `python -m hoyolab_export.run_import` through `QProcess`.
 - The PySide UI checks HoYoLAB profile status on startup. It shows an authorization prompt only when needed and includes a "Сменить аккаунт" action that resets the app profile and opens the normal authorization browser.
 - Auth detection is intentionally stricter than "Cookies file exists": `hoyolab_export.auth.get_auth_status(...)` opens the cookie DB read-only and checks only safe cookie names/hosts, never values. A non-empty browser cookie file after visiting HoYoLAB is not enough to count as logged in.
 - Current UI auth behavior:
-  - `not_logged_in`: visible auth block with `Авторизоваться`; `HoYoLAB export` disabled.
+  - `not_logged_in`: visible auth block with localized login button; HoYoLAB import disabled.
   - login browser open/profile busy: visible instruction to close the browser; export disabled.
-  - `logged_in`: visible `Сменить аккаунт`; `HoYoLAB export` enabled unless an export subprocess is running.
-- `HoYoLAB export` is no longer a placeholder popup. It starts the manual exporter subprocess when auth is detected and shows a simple finish/failure message.
+  - `logged_in`: visible localized account-switch button; HoYoLAB import enabled unless an import subprocess is running.
+- `Импорт из HoYoLAB` is no longer a placeholder popup. It starts the full import pipeline when auth is detected and uses a loader dialog for progress/failure handling.
 - The auth block has explicit button styling because default PySide/Windows styling previously made the auth button look like an empty beige area.
 - If exporter, inventory collector, or debug extractor sees the HoYoLAB login iframe, it raises an instruction to authorize through the normal browser flow instead of asking the user to log in inside the automation browser.
 - Exporter now retries important clicks after attempting to dismiss known HoYoLAB popups/modals/update notices. If share export still fails, it prints `Visible blockers debug` with visible overlay candidates to help identify the blocker.
@@ -228,108 +255,175 @@ Weapon type mapping discovered:
 }
 ```
 
-Existing debug collector can create:
+Current inventory collector facts:
 
-- `account_characters.json`
-- `account_weapons.json`
+- `collect_account_inventory.py` is reusable and still has a CLI.
+- `build_inventory(...)` no longer sorts API results. It preserves the HoYoLAB API order.
+- The production manifest matching does not rely on API/card index matching anymore because `/character/list` order can vary.
+- `wait_for_character_list_response(...)`, `build_inventory(...)`, and `write_inventory(...)` are reusable entry points.
+- Clean inventory files are written to `data/hoyolab` by the production import pipeline:
+  - `account_characters.json`
+  - `account_weapons.json`
+- The older debug CLI can still write to `hoyolab_export/debug_data`.
 
-These are clean normalized files and should be preferred over raw network dumps.
+## Artifact Data Facts
+
+HoYoLAB full character/artifact detail endpoint discovered:
+
+```text
+POST https://sg-public-api.hoyolab.com/event/game_record/genshin/api/character/detail
+```
+
+Request body shape:
+
+```json
+{
+  "server": "...",
+  "role_id": "...",
+  "character_ids": [10000034]
+}
+```
+
+Endpoint behavior:
+
+- Batch requests work. Verified requesting all 73 real characters in one POST.
+- `role_id` and `server` can be detected from the HoYoLAB game roles endpoint used by the sandbox tools.
+- Manual/browser fetch must pass language from the current page/session:
+  - `x-rpc-language`
+  - `accept-language`
+- Without those language headers, `character/detail` may return Chinese data even when the visible page is not Chinese.
+- `index?avatar_list_type=1` includes relics, but not full artifact stats:
+  - `main_property: null`
+  - `sub_property_list: []`
+- Full artifact stats are in `character/detail`:
+  - `main_property.property_type`
+  - `main_property.value`
+  - `sub_property_list[].property_type`
+  - `sub_property_list[].value`
+  - `sub_property_list[].times`
+  - `property_map`
+
+Artifact persistence layer:
+
+- `hoyolab_export/artifact_db.py` defines SQLite DB `data/artifacts.db`.
+- Tables:
+  - `artifact_icons`
+  - `artifacts`
+  - `artifact_substats`
+  - `artifact_equipment`
+  - `artifact_tags`
+  - `artifact_tag_links`
+- `hoyolab_export/artifact_importer.py` normalizes `character/detail` relics, calculates stable fingerprints, and upserts:
+  - artifact icons;
+  - artifacts;
+  - substats;
+  - current equipment.
+- Artifact fingerprint intentionally excludes character id, so moving an artifact to another character keeps it as the same artifact.
+- Current equipment is replaced on import; artifact records and user tags are preserved.
+
+Artifact tools:
+
+- `tools/capture_hoyolab_artifacts.py`: sandbox endpoint capture / active fetch helper.
+- `tools/probe_hoyolab_character_detail_batch.py`: fetches role info, detects language from page/session, and POSTs a batch `character/detail` request.
+- `tools/import_artifacts_from_detail_json.py`: imports `character_detail_batch_result.json` into SQLite.
+- `tools/test_artifact_tag_persistence.py`: verifies user tags survive re-import.
+
+Verified local artifact import:
+
+- First import from `character_detail_batch_result.json`:
+  - `characters: 73`
+  - `relics_seen: 254`
+  - `artifacts_inserted: 254`
+  - `artifact_icons: 104`
+  - `artifact_substats: 1004`
+- Re-importing the same file:
+  - `artifacts_inserted: 0`
+  - `artifacts_existing: 254`
+- Current `data/artifacts.db` row counts:
+  - `artifact_icons: 104`
+  - `artifacts: 254`
+  - `artifact_substats: 1004`
+  - `artifact_equipment: 254`
+  - `artifact_tags: 1`
+  - `artifact_tag_links: 1`
+- Test tag `test_keep_after_import` survived re-import.
+
+Next artifact step:
+
+- Integrate batch `character/detail` fetch and artifact SQLite import into the main `python -m hoyolab_export.run_import` pipeline after character inventory is known.
+- Keep artifact DB/tags persistent across current HoYoLAB data cleanup unless explicitly designing an account-reset behavior for artifacts.
 
 ## Desired New Pipeline
 
-Target pipeline:
+Current production HoYoLAB import pipeline:
 
 ```text
 HoYoLAB browser session
+  -> verify existing app auth status
+  -> clear current data/hoyolab + assets/hoyolab + debug/hoyolab
+  -> open HoYoLAB once in automation browser
+  -> install /character/list response listener before page load
+  -> open character list during export flow
   -> export image.png
-  -> collect character/list API
-  -> collect DOM/layout metadata
-  -> save export bundle
-  -> crop character/weapon regions by coordinates
-  -> link crops to exact API ids
-  -> show/store in PySide6 UI
+  -> collect html2canvas clone layout/rootDiscovery
+  -> write clean inventory JSON
+  -> crop character/weapon regions by DOM/root-relative coordinates
+  -> link crops to exact API ids by icon URL
+  -> write manifest/debug overlay
+  -> refresh PySide6 grids
 ```
 
-Export bundle should eventually contain:
+Current outputs:
 
 ```text
-image.png
-account_characters.json
-account_weapons.json
-layout.json
-crop_manifest.json
+data/hoyolab/account_characters.json
+data/hoyolab/account_weapons.json
+data/hoyolab/layout.json
+data/hoyolab/crop_manifest.json
+assets/hoyolab/characters/*.png
+assets/hoyolab/weapons/*.png
+debug/hoyolab/image.png
+debug/hoyolab/crop_manifest_overlay.png
+debug/hoyolab/page_screenshot.png
+debug/hoyolab/import_log.json
 ```
 
-`layout.json` should describe visible DOM elements and coordinate scale needed to crop from the final image.
+`layout.json` describes visible DOM elements and coordinate scale needed to crop from the final image. Production layout capture lives in `hoyolab_export/layout_capture.py` and no longer depends on `tests/probe_layout.py`.
 
-`crop_manifest.json` should link each generated crop to structured data:
+`crop_manifest.json` links generated crops and visible cards to structured data. Top-level fields include:
 
 ```json
 {
-  "character": {
-    "id": 10000089,
-    "name": "...",
-    "rarity": 5,
-    "element": "Hydro",
-    "level": 90,
-    "constellation": 2
-  },
-  "weapon": {
-    "id": 11426,
-    "name": "...",
-    "rarity": 4,
-    "type": 1,
-    "type_name": "sword",
-    "level": 90,
-    "refinement": 5
-  },
-  "crops": {
-    "character": "crops/characters/char_001.png",
-    "weapon": "crops/weapons/weapon_001.png"
-  }
+  "version": 1,
+  "source": {"image": "debug/hoyolab/image.png", "layout": "data/hoyolab/layout.json", "scale": 4.0},
+  "cardsCount": 75,
+  "matchedCharacters": 75,
+  "matchedWeapons": 75,
+  "okMatches": 75,
+  "warningMatches": 0,
+  "characterAssets": [],
+  "weaponAssets": [],
+  "cards": []
 }
 ```
 
-Current temporary coordinate cropper contract:
+Matching/cropping facts:
 
-```json
-{
-  "items": [
-    {
-      "id": "api-or-dom-id",
-      "kind": "character",
-      "rect": {
-        "left": 0,
-        "top": 0,
-        "right": 100,
-        "bottom": 100
-      }
-    }
-  ]
-}
-```
-
-`hoyolab_export.coordinate_cropper.crop_from_layout(...)` scales these DOM rectangles into final PNG coordinates and writes `crop_manifest.json`. This is only a scaffold; the next step is to replace the temporary layout schema with real HoYoLAB DOM selectors and API id linkage.
-
-Current handoff for the next implementation task:
-
-- Turn the UI `HoYoLAB export` button into a real HoYoLAB import flow.
-- The flow should:
-  - run the existing export/probe flow;
-  - use the role-card extraction logic proven in `tests/extract_role_cards_from_probe.py`;
-  - collect clean account inventory from the HoYoLAB character/list API;
-  - match visible role cards to API records by the same display order;
-  - crop character portraits and weapon icons from the exported PNG using `portraitRect` and `weaponRect`;
-  - save generated images to `assets/hd/characters` and `assets/hd/weapons`;
-  - save a manifest JSON that links each generated image to structured fields for future sorting;
-  - refresh the PySide grids after successful import.
-- Manifest records should include at minimum:
-  - character `id`, `name`, `rarity`, `element`, `level`, `constellation`, `weapon_type`, `weapon_type_name`;
-  - weapon `id`, `name`, `rarity`, `type`, `type_name`, `level`, `refinement`, `equipped_by`;
-  - local crop paths;
-  - source root-relative rectangles;
-  - simple sort fields derived from the API data.
-- Keep this path HoYoLAB API + DOM/layout + coordinate crops first. Do not add legacy OpenCV/mask matching as the primary import path.
+- Production role-card extraction is in `hoyolab_export/crop_manifest.py`.
+- Character cards are `DIV` nodes with `role-share`, excluding `role-share-container`, and requiring `role-rarity-`.
+- Portraits are `IMG` nodes with `role-img`.
+- Weapon icons are `IMG` nodes whose parent chain includes `role-weapon-info`.
+- Crop rectangles come from DOM/root-relative rects and export scale. Current crop inset is one setting: `CROP_INSET = 1`.
+- Card/API matching is icon-based:
+  - `portraitSrc` -> `character.icon` / `character.side_icon`
+  - `weaponSrc` -> `weapon.icon`
+  - weapon validation also checks `equipped_by.id == character.id`
+- Dummy characters `10000118` and `10000117` remain in manifest/cards but are not saved to character assets.
+- Weapon rarity 1 and 2 are ignored for weapon assets.
+- Duplicate weapon icons are not duplicated in `assets/hoyolab/weapons`; `weaponAssets` aggregates variants.
+- Duplicate weapon variants are aggregated by `refinement + level` into tooltip lines such as `R5 lvl 90 x2`.
+- Character tooltip format is `Name lvl X`. Weapon tooltip format is weapon name followed by variant lines.
+- `tests/build_crop_manifest_from_probe.py` is a sandbox/proof wrapper. Production should rely on `hoyolab_export.crop_manifest`, not test scripts.
 
 Layout probe script:
 
@@ -357,6 +451,14 @@ python -m hoyolab_export.run_manual_export
 ```
 
 This command may open the normal auth browser first if the app profile is not logged in. After the browser is closed, it rechecks auth status and only then starts automation/export.
+
+Production import command:
+
+```bash
+python -m hoyolab_export.run_import
+```
+
+`run_import.py` wraps stdout/stderr with UTF-8 replacement and emits `[STATUS] ...` lines used by the UI loader.
 
 Windows cleanup note:
 
@@ -397,10 +499,61 @@ Do not redesign everything in the first pass. First preserve working window beha
 Current UI state:
 
 - Main window, draggable icons, team slots, timers, save/reset run, and history window are ported.
-- User-facing strings touched during the port were changed away from mojibake.
-- `HoYoLAB export` now runs the manual exporter subprocess when auth status is `logged_in`; it is disabled when auth is missing or profile is busy.
-- The auth block currently uses Russian button text: `Авторизоваться`, `Ожидаю закрытия браузера`, `Сменить аккаунт`.
-- The old `Import export bundle` UI placeholder was removed. Re-add bundle import only after the real `crop_manifest.json` pipeline exists.
+- Static UI strings now go through the JSON localization layer where touched by the localization pass.
+- Legacy note: this section originally described the old `HoYoLAB export` button; current behavior is documented below in "Current UI import details".
+- The auth block uses localization keys for login, waiting, and account-switch labels.
+- The old `Import export bundle` UI placeholder was removed. A separate bundle-import UI is no longer required for the current-state MVP unless future archived bundles are introduced.
+
+Current UI import details:
+
+- The old `HoYoLAB export` button is now localized through `hoyolab.import_button`.
+- The button runs `python -m hoyolab_export.run_import` through `QProcess`, not the old manual export subprocess.
+- Source of truth for the exact current button label is `ui/main_window.py`.
+- During import, UI shows `HoYoLABLoadingDialog` from `ui/widgets/loader.py`.
+- The loader reads `[STATUS] ...` lines and maps them to smooth progress targets.
+- The loader uses `assets/loader/grey_ldr.png` and `assets/loader/color_ldr.png`.
+- After successful import, UI calls `safe_update_grids()` without a success popup.
+- After completion/error, the import button has a short cooldown before it can be used again.
+- UI grids now read from:
+  - `assets/hoyolab/characters`
+  - `assets/hoyolab/weapons`
+- `main_window.py` reads `data/hoyolab/crop_manifest.json` and assigns tooltips from manifest `characterAssets` and `weaponAssets`.
+- `clear_assets()` now clears current HoYoLAB `data/assets/debug` through `clear_hoyolab_current_data()`.
+- `change_hoyolab_account()` resets the app browser profile and clears current HoYoLAB `data/assets/debug`, but does not touch run history.
+- `DraggableIcon.setToolTip()` now stores custom tooltip text, disables the native Qt tooltip, and shows a custom `FloatingTooltip`.
+- `drag.py` allows right-click deletion from both legacy asset folders and current `assets/hoyolab/characters` / `assets/hoyolab/weapons`.
+- Visible loader/drag/main-window strings touched by the localization pass no longer keep hard-coded mojibake text.
+
+## Localization
+
+- UI localization uses a small JSON-backed layer, not Qt `.ts/.qm` yet.
+- Localization module:
+  - `localization/i18n.py`
+  - `localization/locales/ru.json`
+  - `localization/locales/en.json`
+  - `localization/locales/pt-br.json`
+- UI code should call `tr("key")` instead of embedding display strings directly.
+- Default UI language is `ru`.
+- Supported UI languages:
+  - `ru` / Russian
+  - `en` / English
+  - `pt-br` / Brazilian Portuguese
+- The main window has a bottom-right language selector with country flags.
+- Selected UI language is saved to local `settings.json`; this file is ignored by git.
+- `GTT_LANGUAGE` or `GTT_LANG` can override the UI language for a process, for example:
+
+```powershell
+$env:GTT_LANGUAGE = "en"
+python main.py
+```
+
+- Current scope is static UI text: buttons, labels, loader statuses, warning/info dialogs, and small static tooltips.
+- Character and weapon names/tooltips come from HoYoLAB/API data and should keep using the language returned by HoYoLAB.
+- HoYoLAB/API language and UI language are separate concerns. Do not force API language just because the UI language changes.
+- Future localization work:
+  - keep adding keys to `ru.json` / `en.json` as new UI text appears;
+  - keep `pt-br.json` in sync with `ru.json` / `en.json`;
+  - consider Qt Translation System only if the app grows enough to justify `.ts/.qm` tooling.
 
 ## Future Data Needs
 

@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtWidgets import QDialog, QLabel, QVBoxLayout, QWidget
 
+from localization import tr
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LOADER_ASSETS_DIR = PROJECT_ROOT / "assets" / "loader"
@@ -31,7 +33,7 @@ class ElementProgressBar(QWidget):
         painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
 
         if self.grey.isNull() or self.color.isNull():
-            painter.drawText(self.rect(), Qt.AlignCenter, "Loading...")
+            painter.drawText(self.rect(), Qt.AlignCenter, tr("loader.fallback"))
             return
 
         source_size = self.grey.size()
@@ -63,7 +65,7 @@ class HoYoLABLoadingDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.setWindowTitle("HoYoLAB")
+        self.setWindowTitle(tr("common.hoyolab"))
         self.setWindowFlags(
             Qt.Dialog
             | Qt.FramelessWindowHint
@@ -76,7 +78,7 @@ class HoYoLABLoadingDialog(QDialog):
 
         self.bar = ElementProgressBar(self)
 
-        self.status_label = QLabel("Подготовка импорта...")
+        self.status_label = QLabel(tr("loader.preparing"))
         self.status_label.setAlignment(Qt.AlignCenter)
         self.status_label.setStyleSheet(
             """
@@ -88,11 +90,7 @@ class HoYoLABLoadingDialog(QDialog):
             """
         )
 
-        self.notice_label = QLabel(
-            "Пожалуйста, не переключайтесь на другие окна и не открывайте приложения поверх браузера до завершения.\n"
-            "Во время импорта приложение автоматически открывает HoYoLAB, сохраняет изображение и собирает данные.\n"
-            "Переключение окон или клики во время процесса могут прервать экспорт."
-        )
+        self.notice_label = QLabel(tr("loader.notice"))
         self.notice_label.setAlignment(Qt.AlignCenter)
         self.notice_label.setWordWrap(True)
         self.notice_label.setStyleSheet(
@@ -142,6 +140,10 @@ class HoYoLABLoadingDialog(QDialog):
                 self._target_progress,
                 max(0.0, min(1.0, progress)),
             )
+
+    def retranslate_ui(self) -> None:
+        self.setWindowTitle(tr("common.hoyolab"))
+        self.notice_label.setText(tr("loader.notice"))
 
     def _tick(self) -> None:
         # Пока импорт не завершён, прогресс сам медленно ползёт вперёд,

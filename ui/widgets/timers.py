@@ -1,6 +1,8 @@
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSpinBox
 from PySide6.QtCore import Qt
 
+from localization import tr
+
 
 class WheelSpinBox(QSpinBox):
     def __init__(self, *args, **kwargs):
@@ -138,10 +140,12 @@ class AbyssFloorRow(QWidget):
 
     def __init__(self, hall_number, on_change):
         super().__init__()
+        self.hall_number = hall_number
         layout = QHBoxLayout(self)
         layout.setSpacing(6)
 
-        layout.addWidget(QLabel(f"Зал {hall_number}"))
+        self.hall_label = QLabel(tr("timer.hall", number=hall_number))
+        layout.addWidget(self.hall_label)
 
         self.t1 = AbyssTimerCell(on_change)
         self.t2 = AbyssTimerCell(on_change)
@@ -150,12 +154,21 @@ class AbyssFloorRow(QWidget):
         self.total.setFixedWidth(50)
         self.total.setAlignment(Qt.AlignCenter)
 
-        layout.addWidget(QLabel("Команда 1"))
+        self.team1_label = QLabel(tr("timer.team1"))
+        layout.addWidget(self.team1_label)
         layout.addWidget(self.t1)
-        layout.addWidget(QLabel("Команда 2"))
+        self.team2_label = QLabel(tr("timer.team2"))
+        layout.addWidget(self.team2_label)
         layout.addWidget(self.t2)
-        layout.addWidget(QLabel("Сумма"))
+        self.sum_label = QLabel(tr("timer.sum"))
+        layout.addWidget(self.sum_label)
         layout.addWidget(self.total)
+
+    def retranslate_ui(self):
+        self.hall_label.setText(tr("timer.hall", number=self.hall_number))
+        self.team1_label.setText(tr("timer.team1"))
+        self.team2_label.setText(tr("timer.team2"))
+        self.sum_label.setText(tr("timer.sum"))
 
     def calculate(self):
         time1 = self.START_TIME - self.t1.seconds_left

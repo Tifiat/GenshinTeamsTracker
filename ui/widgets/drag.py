@@ -4,6 +4,8 @@ from PySide6.QtCore import Qt, QMimeData, QEvent, QTimer, QPoint
 from PySide6.QtGui import QPixmap, QDrag
 from PySide6.QtWidgets import QLabel, QMessageBox, QApplication
 
+from localization import tr
+
 
 class FloatingTooltip(QLabel):
 	def __init__(self):
@@ -158,8 +160,8 @@ class DraggableIcon(QLabel):
 		if not self._is_in_assets_folder(self.image_path):
 			QMessageBox.warning(
 				self,
-				"Ошибка",
-				"Можно удалять только файлы из папки assets!"
+				tr("common.error"),
+				tr("drag.delete_outside_assets")
 			)
 			return
 
@@ -168,8 +170,8 @@ class DraggableIcon(QLabel):
 		if not ctrl_pressed:
 			reply = QMessageBox.question(
 				self,
-				"Удаление файла",
-				f"Удалить файл?\n{os.path.basename(self.image_path)}",
+				tr("drag.delete_file_title"),
+				tr("drag.delete_file_confirm", filename=os.path.basename(self.image_path)),
 				QMessageBox.Yes | QMessageBox.No,
 				QMessageBox.No
 			)
@@ -184,8 +186,8 @@ class DraggableIcon(QLabel):
 		except Exception as e:
 			QMessageBox.warning(
 				self,
-				"Ошибка",
-				f"Не удалось удалить файл:\n{str(e)}"
+				tr("common.error"),
+				tr("drag.delete_failed", error=e)
 			)
 
 	def _is_in_assets_folder(self, filepath):

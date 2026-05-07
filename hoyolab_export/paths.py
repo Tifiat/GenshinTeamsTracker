@@ -11,6 +11,7 @@ HOYOLAB_DATA_DIR = PROJECT_ROOT / "data" / "hoyolab"
 HOYOLAB_ASSETS_DIR = PROJECT_ROOT / "assets" / "hoyolab"
 HOYOLAB_CHARACTER_ASSETS_DIR = HOYOLAB_ASSETS_DIR / "characters"
 HOYOLAB_WEAPON_ASSETS_DIR = HOYOLAB_ASSETS_DIR / "weapons"
+HOYOLAB_ARTIFACT_ASSETS_DIR = HOYOLAB_ASSETS_DIR / "artifacts"
 HOYOLAB_DEBUG_DIR = PROJECT_ROOT / "debug" / "hoyolab"
 
 
@@ -20,6 +21,7 @@ def ensure_hoyolab_dirs() -> None:
         HOYOLAB_DATA_DIR,
         HOYOLAB_CHARACTER_ASSETS_DIR,
         HOYOLAB_WEAPON_ASSETS_DIR,
+        HOYOLAB_ARTIFACT_ASSETS_DIR,
         HOYOLAB_DEBUG_DIR,
     ):
         folder.mkdir(parents=True, exist_ok=True)

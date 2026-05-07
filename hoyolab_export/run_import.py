@@ -1,8 +1,17 @@
 import asyncio
 import gc
+import re
 import sys
 
 from .import_pipeline import HoYoLABImportError, run_hoyolab_import
+
+
+def safe_exception_summary(exc: BaseException) -> str:
+    text = str(exc).split("Call log:", 1)[0].strip()
+    text = re.sub(r"\s+", " ", text)
+    if len(text) > 600:
+        text = text[:600] + "..."
+    return text or type(exc).__name__
 
 
 def run_async(coro):
@@ -38,10 +47,10 @@ def main() -> int:
     try:
         result = run_async(run_hoyolab_import())
     except HoYoLABImportError as exc:
-        print(f"[HoYoLAB Import] {exc}", file=sys.stderr)
+        print(f"[HoYoLAB Import] {safe_exception_summary(exc)}", file=sys.stderr)
         return 2
     except Exception as exc:
-        print(f"[HoYoLAB Import] Failed: {exc}", file=sys.stderr)
+        print(f"[HoYoLAB Import] Failed: {safe_exception_summary(exc)}", file=sys.stderr)
         return 1
 
     manifest = result.get("manifest") or {}
@@ -52,7 +61,13 @@ def main() -> int:
     print("matched weapons:", manifest.get("matchedWeapons"))
     print("ok matches:", manifest.get("okMatches"))
     print("warning matches:", manifest.get("warningMatches"))
+    artifact_summary = result.get("artifactSummary") or {}
+    if artifact_summary:
+        print("artifacts seen:", artifact_summary.get("relics_seen"))
+        print("artifacts inserted:", artifact_summary.get("artifacts_inserted"))
+        print("artifacts existing:", artifact_summary.get("artifacts_existing"))
     print("manifest:", result.get("manifestPath"))
+    print("character details:", result.get("characterDetailsPath"))
     print("overlay:", result.get("overlayPath"))
 
     return 0

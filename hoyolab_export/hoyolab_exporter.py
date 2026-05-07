@@ -1,7 +1,9 @@
 ﻿import asyncio
+import base64
 import re
 import subprocess
 import time
+import urllib.request
 from pathlib import Path
 from typing import Awaitable, Callable, Optional
 
@@ -15,47 +17,95 @@ except ImportError:
 
 
 HOYOLAB_URL = "https://act.hoyolab.com/app/community-game-records-sea/index.html"
-def wait_for_devtools_port(profile_dir: Path, process: subprocess.Popen, timeout_sec: int = 15) -> int:
+
+
+class InMemoryDownload:
+    def __init__(self, data: bytes, suggested_filename: str = "hoyolab_export.png"):
+        self._data = data
+        self.suggested_filename = suggested_filename
+
+    async def save_as(self, path: str | Path) -> None:
+        Path(path).write_bytes(self._data)
+
+
+def safe_exception_summary(exc: BaseException | None) -> str:
+    if exc is None:
+        return "unknown error"
+
+    text = str(exc).split("Call log:", 1)[0].strip()
+    text = re.sub(r"\s+", " ", text)
+    if len(text) > 500:
+        text = text[:500] + "..."
+    return text or type(exc).__name__
+
+
+def wait_for_devtools_port(
+    profile_dir: Path,
+    process: subprocess.Popen,
+    timeout_sec: int = 15,
+    min_mtime: float | None = None,
+) -> int:
     devtools_file = profile_dir / "DevToolsActivePort"
     deadline = time.time() + timeout_sec
 
     while time.time() < deadline:
         if process.poll() is not None:
-            raise RuntimeError("Browser closed before the CDP port became available.")
+            raise RuntimeError(
+                "Browser closed before the CDP port became available. "
+                "Close any HoYoLAB authorization/automation browser windows and try again."
+            )
 
         if devtools_file.exists():
+            if min_mtime is not None:
+                try:
+                    if devtools_file.stat().st_mtime < min_mtime:
+                        time.sleep(0.2)
+                        continue
+                except OSError:
+                    time.sleep(0.2)
+                    continue
+
             lines = devtools_file.read_text(encoding="utf-8", errors="ignore").splitlines()
             if lines:
                 return int(lines[0])
 
         time.sleep(0.2)
 
-    raise RuntimeError("Timed out waiting for the browser CDP port.")
+    raise RuntimeError(
+        "Timed out waiting for the browser CDP port. "
+        "Close any HoYoLAB authorization/automation browser windows and try again."
+    )
 
 async def close_export_context(context: BrowserContext) -> None:
+    process = getattr(context, "_browser_process", None)
+    keep_browser_open = bool(getattr(context, "_keep_browser_open", False))
+
     try:
         attached_debug_port = getattr(context, "_attached_debug_port", None)
-        if attached_debug_port is None:
-            pages = list(context.pages)
-            for page in pages:
-                try:
-                    if not page.is_closed():
-                        await page.close()
-                except Exception:
-                    pass
-    finally:
-        playwright = getattr(context, "_playwright_instance", None)
-        if playwright:
-            await playwright.stop()
-
-        process = getattr(context, "_browser_process", None)
-        keep_browser_open = bool(getattr(context, "_keep_browser_open", False))
-        if process and process.poll() is None and not keep_browser_open:
+        if attached_debug_port is None and process and process.poll() is None and not keep_browser_open:
             process.terminate()
             try:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 process.kill()
+        elif attached_debug_port is None:
+            pages = list(context.pages)
+            for page in pages:
+                try:
+                    if not page.is_closed():
+                        await asyncio.wait_for(page.close(), timeout=2)
+                except Exception:
+                    pass
+    finally:
+        playwright = getattr(context, "_playwright_instance", None)
+        if playwright:
+            try:
+                await asyncio.wait_for(playwright.stop(), timeout=5)
+            except Exception:
+                pass
+
+        if process and process.poll() is None and not keep_browser_open:
+            process.kill()
 
         process_profile = getattr(context, "_browser_profile_dir", None)
         if process_profile:
@@ -130,23 +180,7 @@ class HoyolabExporter:
         return get_auth_status(self.profile_dir) == AuthStatus.LOGGED_IN
 
     async def _block_user_input(self, page: Page):
-        await page.evaluate("""
-                            () => {
-                                if (document.getElementById('__abyss_tracker_blocker__')) return;
-
-                                const blocker = document.createElement('div');
-                                blocker.id = '__abyss_tracker_blocker__';
-                                blocker.style.position = 'fixed';
-                                blocker.style.inset = '0';
-                                blocker.style.zIndex = '2147483647';
-                                blocker.style.background = 'rgba(0,0,0,0)';
-                                blocker.style.cursor = 'wait';
-                                blocker.style.pointerEvents = 'auto';
-
-                                document.body.appendChild(blocker);
-                                document.body.style.overflow = 'hidden';
-                            }
-                            """)
+        await self._unblock_user_input(page)
 
     async def _unblock_user_input(self, page: Page):
         await page.evaluate("""
@@ -156,6 +190,18 @@ class HoyolabExporter:
                                 document.body.style.overflow = '';
                             }
                             """)
+
+    async def _set_input_blocker_enabled(self, page: Page, enabled: bool):
+        await page.evaluate(
+            """
+            (enabled) => {
+                const blocker = document.getElementById('__abyss_tracker_blocker__');
+                if (!blocker) return;
+                blocker.style.pointerEvents = enabled ? 'auto' : 'none';
+            }
+            """,
+            enabled,
+        )
 
     def _html2canvas_patch_status_init_js(self) -> str:
         return r"""
@@ -517,35 +563,71 @@ class HoyolabExporter:
             "})(),"
         )
 
+    def _fetch_public_js_text(self, url: str) -> str:
+        request = urllib.request.Request(
+            url,
+            headers={
+                "accept": "application/javascript,text/javascript,*/*;q=0.8",
+                "user-agent": "Mozilla/5.0 GenshinTeamsTracker",
+            },
+        )
+
+        with urllib.request.urlopen(request, timeout=60) as response:
+            raw = response.read()
+            encoding = response.headers.get_content_charset() or "utf-8"
+            return raw.decode(encoding, errors="replace")
+
+    async def _fetch_route_js_body(self, route: Route, url: str) -> str:
+        last_exc: BaseException | None = None
+
+        for attempt in range(4):
+            try:
+                response = await route.fetch(max_retries=2, timeout=60_000)
+                return await response.text()
+            except Exception as exc:
+                last_exc = exc
+                print(
+                    "[HoYoLAB Exporter] JS route.fetch retry "
+                    f"{attempt + 1}/4 failed safely: "
+                    f"{type(exc).__name__}: {safe_exception_summary(exc)}"
+                )
+                await asyncio.sleep(0.5 + attempt * 0.5)
+
+        try:
+            body = await asyncio.to_thread(self._fetch_public_js_text, url)
+            print(
+                "[HoYoLAB Exporter] JS loaded through public fallback fetch "
+                f"without browser cookies: {url}"
+            )
+            return body
+        except Exception as exc:
+            raise RuntimeError(
+                "Could not load HoYoLAB JS route through browser route or public fallback: "
+                f"{type(last_exc).__name__ if last_exc else 'unknown'}: "
+                f"{safe_exception_summary(last_exc)}; "
+                f"fallback={type(exc).__name__}: {safe_exception_summary(exc)}"
+            ) from exc
+
     async def _patch_js_route(self, route: Route, request: Request):
         url = request.url
 
-        last_exc = None
-
-        for _ in range(2):
-            try:
-                response = await route.fetch()
-                body = await response.text()
-                break
-            except Exception as exc:
-                last_exc = exc
-                await asyncio.sleep(0.4)
-        else:
-            safe_exc = str(last_exc).encode("ascii", errors="replace").decode("ascii")
-            print(f"[HoYoLAB Exporter] Could not read JS for patching: {type(last_exc).__name__}: {safe_exc}")
+        try:
+            body = await self._fetch_route_js_body(route, url)
+        except Exception as exc:
+            print(
+                "[HoYoLAB Exporter] Could not read JS for patching safely: "
+                f"{type(exc).__name__}: {safe_exception_summary(exc)}"
+            )
 
             try:
                 await route.continue_()
-            except Exception as exc:
-                safe_continue_exc = str(exc).encode("ascii", errors="replace").decode("ascii")
+            except Exception as continue_exc:
                 print(
-                    "[HoYoLAB Exporter] Could not continue JS route: "
-                    f"{type(exc).__name__}: {safe_continue_exc}"
+                    "[HoYoLAB Exporter] Could not continue JS route safely: "
+                    f"{type(continue_exc).__name__}: {safe_exception_summary(continue_exc)}"
                 )
 
             return
-
-        original_body = body
 
         body = self._html2canvas_patch_status_init_js() + body
 
@@ -573,7 +655,11 @@ class HoyolabExporter:
                 (
                     "(window.__gtt_capture_html2canvas_root__&&"
                     f"window.__gtt_capture_html2canvas_root__(t,r,{html2canvas_strategy!r}),"
-                    "f()(t,r))"
+                    "f()(t,r).then(function(c){try{"
+                    "window.__gtt_last_export_canvas_data_url__="
+                    "c&&c.toDataURL?c.toDataURL('image/png'):null;"
+                    "}catch(e){window.__gtt_last_export_canvas_error__=String(e&&e.message||e);}"
+                    "return c;}))"
                 ),
             )
         else:
@@ -591,12 +677,12 @@ class HoyolabExporter:
         else:
             print(f"[HoYoLAB Exporter] JS patched without html2canvas runtime wrapper match: {url}")
 
-        headers = dict(response.headers)
-        headers["content-type"] = "application/javascript"
-
         await route.fulfill(
-            status=response.status,
-            headers=headers,
+            status=200,
+            headers={
+                "content-type": "application/javascript; charset=utf-8",
+                "cache-control": "no-store",
+            },
             body=body,
         )
 
@@ -622,6 +708,16 @@ class HoyolabExporter:
         locator = page.locator(selector).first
         await locator.wait_for(state="visible", timeout=timeout)
         await locator.evaluate("(el) => el.click()")
+
+    async def _trusted_click(self, page: Page, selector: str, timeout: int = 30_000):
+        locator = page.locator(selector).first
+        await locator.wait_for(state="visible", timeout=timeout)
+        await self._set_input_blocker_enabled(page, False)
+
+        try:
+            await locator.click(timeout=timeout)
+        finally:
+            await self._set_input_blocker_enabled(page, True)
 
     async def _dismiss_known_popups(self, page: Page, *, press_escape: bool = True) -> bool:
         dismissed = False
@@ -714,17 +810,30 @@ class HoyolabExporter:
 
         return dismissed
 
-    async def _click_with_popup_retry(self, page: Page, selector: str, *, timeout: int = 30_000):
+    async def _click_with_popup_retry(
+        self,
+        page: Page,
+        selector: str,
+        *,
+        timeout: int = 30_000,
+        trusted: bool = True,
+    ):
         last_error: Exception | None = None
 
         for attempt in range(3):
             await self._dismiss_known_popups(page, press_escape=False)
             try:
-                await self._js_click(page, selector, timeout=timeout)
+                if trusted:
+                    await self._trusted_click(page, selector, timeout=timeout)
+                else:
+                    await self._js_click(page, selector, timeout=timeout)
                 return
             except Exception as exc:
                 last_error = exc
-                print(f"[HoYoLAB Exporter] Click retry {attempt + 1} failed for {selector}: {exc}")
+                print(
+                    f"[HoYoLAB Exporter] Click retry {attempt + 1} failed for "
+                    f"{selector}: {safe_exception_summary(exc)}"
+                )
                 await self._dismiss_known_popups(page, press_escape=True)
                 await page.wait_for_timeout(800)
 
@@ -770,6 +879,31 @@ class HoyolabExporter:
         )
         print(f"[HoYoLAB Exporter] Visible blockers debug: {blockers}")
 
+    async def _captured_canvas_download(self, page: Page) -> InMemoryDownload:
+        data_url = None
+
+        for _ in range(20):
+            data_url = await page.evaluate(
+                "() => window.__gtt_last_export_canvas_data_url__ || null"
+            )
+            if data_url:
+                break
+            await page.wait_for_timeout(500)
+
+        if not data_url:
+            error = await page.evaluate(
+                "() => window.__gtt_last_export_canvas_error__ || null"
+            )
+            detail = f": {error}" if error else ""
+            raise RuntimeError(f"html2canvas fallback image was not captured{detail}")
+
+        prefix = "data:image/png;base64,"
+        if not str(data_url).startswith(prefix):
+            raise RuntimeError("html2canvas fallback image has an unexpected data URL format")
+
+        data = base64.b64decode(str(data_url)[len(prefix):])
+        return InMemoryDownload(data)
+
     async def _run_export_flow(
             self,
             page: Page,
@@ -778,8 +912,7 @@ class HoyolabExporter:
         await page.wait_for_load_state("domcontentloaded")
         await self._dismiss_known_popups(page)
         await self._wait_until_ready_or_login(page)
-
-        await self._block_user_input(page)
+        await self._unblock_user_input(page)
 
         try:
             await self._click_with_popup_retry(page, ".block-title-right")
@@ -791,15 +924,28 @@ class HoyolabExporter:
             await self._click_with_popup_retry(page, ".me-share__btn")
             await page.wait_for_timeout(2500)
 
-            async with page.expect_download(timeout=90_000) as download_info:
-                try:
+            try:
+                async with page.expect_download(timeout=45_000) as download_info:
                     await self._click_with_popup_retry(
                         page,
                         '.me-share-popover__item:has(img[src*="35b0742f6ed3b58d65f1491ca1bf94e2"])',
                         timeout=30_000,
+                        trusted=True,
                     )
-                except Exception:
-                    await self._debug_visible_blockers(page)
+            except Exception:
+                await self._debug_visible_blockers(page)
+                try:
+                    fallback = await self._captured_canvas_download(page)
+                    print(
+                        "[HoYoLAB Exporter] Browser download event was not emitted; "
+                        "using captured html2canvas PNG fallback."
+                    )
+                    return fallback
+                except Exception as fallback_exc:
+                    print(
+                        "[HoYoLAB Exporter] html2canvas PNG fallback failed: "
+                        f"{safe_exception_summary(fallback_exc)}"
+                    )
                     raise
 
             return await download_info.value
@@ -841,6 +987,7 @@ class HoyolabExporter:
             except Exception:
                 pass
 
+        launch_started_at = time.time()
         process = subprocess.Popen([
             browser_exe,
             f"--remote-debugging-port={fixed_port or 0}",
@@ -852,11 +999,23 @@ class HoyolabExporter:
             "about:blank",
         ])
 
-        debug_port = fixed_port or wait_for_devtools_port(self.profile_dir, process)
+        debug_port = fixed_port or wait_for_devtools_port(
+            self.profile_dir,
+            process,
+            min_mtime=launch_started_at - 0.5,
+        )
 
         browser = await playwright.chromium.connect_over_cdp(
             f"http://127.0.0.1:{debug_port}"
         )
+
+        await asyncio.sleep(0.3)
+        if process.poll() is not None:
+            await playwright.stop()
+            raise RuntimeError(
+                "Automation browser closed immediately after CDP connection. "
+                "Close any HoYoLAB authorization/automation browser windows and try again."
+            )
 
         context = browser.contexts[0]
 
@@ -876,7 +1035,12 @@ class HoyolabExporter:
         context: BrowserContext | None = await self._create_context()
 
         try:
-            export_page = context.pages[0] if context.pages else await context.new_page()
+            export_page = next(
+                (page for page in context.pages if not page.is_closed()),
+                None,
+            )
+            if export_page is None:
+                export_page = await context.new_page()
 
             await self._prepare_export_page(export_page)
             await export_page.goto(HOYOLAB_URL, wait_until="domcontentloaded", timeout=60_000)
@@ -902,11 +1066,11 @@ class HoyolabExporter:
             return save_path
 
         except LoginRequiredError as exc:
-            print(f"[HoYoLAB Exporter] {exc}")
+            print(f"[HoYoLAB Exporter] {safe_exception_summary(exc)}")
             raise
 
         except Exception as exc:
-            print(f"[HoYoLAB Exporter] Export error: {exc}")
+            print(f"[HoYoLAB Exporter] Export error: {safe_exception_summary(exc)}")
             raise
 
 
@@ -932,4 +1096,3 @@ class HoyolabExporter:
 
         except Exception as exc:
             print(f"[HoYoLAB Exporter] Could not validate image: {exc}")
-

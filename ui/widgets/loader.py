@@ -71,7 +71,10 @@ class HoYoLABLoadingDialog(QDialog):
             | Qt.FramelessWindowHint
             | Qt.WindowStaysOnTopHint
         )
-        self.setWindowModality(Qt.ApplicationModal)
+        if hasattr(Qt, "WindowTransparentForInput"):
+            self.setWindowFlags(self.windowFlags() | Qt.WindowTransparentForInput)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        self.setWindowModality(Qt.NonModal)
 
         self._progress_value = 0.0
         self._target_progress = 0.0

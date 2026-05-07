@@ -83,6 +83,16 @@
 - [x] Save clean weapon inventory JSON to `data/hoyolab/account_weapons.json`.
 - [x] Save production layout metadata to `data/hoyolab/layout.json`.
 - [x] Add one command that performs image export + clean inventory collection + layout + crops into current HoYoLAB folders.
+- [x] Harden automation browser startup against stale `DevToolsActivePort` markers and closed CDP targets.
+- [x] Reuse the initial `about:blank` automation tab instead of opening HoYoLAB in a second tab.
+- [x] Emit `[STATUS] done` only after automation browser cleanup completes.
+- [x] Add aggressive automation browser cleanup timeouts so the loader does not wait for manual browser closing.
+- [x] Make the HoYoLAB loader non-modal and transparent for mouse/input so it cannot cover the browser download action.
+- [x] Stop using the page-level DOM input blocker during HoYoLAB export because it can cover share/download controls.
+- [x] Add html2canvas captured-PNG fallback when Chromium/Playwright does not emit a download event.
+- [x] Sanitize Playwright/Route error output so request headers/cookies are never printed.
+- [x] Add public no-cookie JS fetch fallback when HoYoLAB JS route patching hits transient `ECONNRESET`.
+- [x] Fix patched JS route fulfillment after no-cookie fallback so it no longer references a missing `route.fetch()` response.
 - [ ] Audit future bundle outputs so cookies/headers/raw sensitive network dumps never enter normal mode.
 - [ ] Decide later whether timestamped import archives are needed; current MVP intentionally keeps only current account state.
 
@@ -110,6 +120,9 @@
   - `portraitSrc` -> `character.icon` / `character.side_icon`;
   - `weaponSrc` -> `weapon.icon`;
   - validate `weapon.equipped_by.id == character.id`.
+- [x] Make ordinary HoYoLAB update additive for character/weapon collections instead of deleting previously discovered local assets.
+- [x] Merge `account_characters.json`, `account_weapons.json`, and manifest character/weapon assets across ordinary updates.
+- [x] Preserve previously discovered unequipped weapons in `crop_manifest.weaponAssets` and merge weapon variant counts by max count.
 - [x] Ignore dummy character assets for IDs `10000118` and `10000117` while keeping them in manifest/cards.
 - [x] Ignore 1-star and 2-star weapons for weapon assets.
 - [x] Deduplicate weapon assets by icon and aggregate variants by refinement + level.
@@ -130,12 +143,24 @@
 - [x] Switch UI grids from `assets/hd/*` to `assets/hoyolab/*`.
 - [x] Add loader dialog for HoYoLAB import with `[STATUS]` progress updates.
 - [x] Add import button cooldown after success/error.
+- [x] Preserve import cooldown after successful imports even when dynamic HoYoLAB button state refreshes.
+- [x] Preserve current local HoYoLAB data/assets when import fails before the replacement stage.
 - [x] Display generated character crops with manifest tooltips.
 - [x] Display generated weapon crops with manifest tooltips.
 - [x] Add custom stable tooltip widget for draggable icons.
-- [x] Clear current HoYoLAB data/assets/debug from clear button and account switch.
+- [x] Remove the visible manual `Очистить персонажей и оружие` button.
+- [x] Route current HoYoLAB data/assets/debug cleanup through `Выйти из профиля`.
+- [x] Add dynamic main HoYoLAB button states:
+  - `Авторизоваться / выбрать профиль`;
+  - `Импортировать из HoYoLAB`;
+  - `Обновить данные HoYoLAB`.
+- [x] Remove the persistent top HoYoLAB auth-status panel from the left column.
+- [x] Show HoYoLAB login instructions only after pressing `Авторизоваться / выбрать профиль`.
+- [x] Add `Профиль...` menu with save profile, load profile, and sign-out actions.
+- [x] Show detailed HoYoLAB import subprocess errors in the failure popup.
 - [x] Fix visible mojibake UI strings in loader/drag/main UI by routing static text through localization keys.
 - [ ] Re-check team builder behavior with new `assets/hoyolab/*` paths and manifest-backed tooltips.
+- [ ] Manually smoke-test two consecutive HoYoLAB updates after changing equipped weapons and confirm old weapon icons remain visible.
 - [ ] Decide whether a separate future bundle import UI is still needed after current-state import MVP.
 - [ ] Preserve draggable team composition behavior.
 
@@ -165,12 +190,26 @@
   - 1004 artifact substats.
 - [x] Verify re-import does not duplicate artifacts.
 - [x] Verify user tag `test_keep_after_import` survives re-import.
-- [ ] Integrate batch `character/detail` fetch into main `python -m hoyolab_export.run_import` flow.
-- [ ] Import artifacts into `data/artifacts.db` as part of main HoYoLAB import.
-- [ ] Keep artifact tags persistent during repeated imports.
-- [ ] Decide whether HoYoLAB account switch should preserve or clear `data/artifacts.db`.
+- [x] Integrate batch `character/detail` fetch into main `python -m hoyolab_export.run_import` flow.
+- [x] Save current character detail snapshot to `data/hoyolab/account_character_details.json`.
+- [x] Import artifacts into `data/artifacts.db` as part of main HoYoLAB import.
+- [x] Keep artifact tags/builds persistent during repeated ordinary imports.
+- [x] Clear `data/artifacts.db` on explicit HoYoLAB profile switch to avoid mixing account-specific artifacts/tags/builds.
 - [ ] Decide whether `data/artifacts.db` is local generated state and should stay ignored.
 - [ ] Add UI surface for artifact browsing/filtering/tagging after import is integrated.
+
+## Offline Profile Export/Import
+
+- [x] Add ZIP-based offline profile export/import helpers that include allowlisted current JSON/assets/artifact DB only.
+- [x] Exclude HoYoLAB browser profile, cookies/session, debug, and downloads from offline profile export.
+- [x] Add SQLite backup snapshot handling for `data/artifacts.db` during offline export.
+- [x] Add UI `Сохранить профиль` flow under `Профиль...`.
+- [x] Add UI `Загрузить профиль` flow under `Профиль...` that restores local data without HoYoLAB auth and refreshes grids.
+- [x] Add profile export signature marker for warning before destructive profile switch.
+- [x] Add `Выйти из профиля` flow with optional save warning and `Сохранить историю забегов?` choice.
+- [x] Treat closing the run-history question dialog as cancel, not as `Нет`.
+- [ ] Manually smoke-test offline profile export/import from the PySide UI.
+- [ ] Manually smoke-test `Выйти из профиля` with both keep/delete history choices.
 
 ## Localization
 
@@ -184,6 +223,8 @@
 - [x] Keep UI language separate from HoYoLAB/API language.
 - [x] Add bottom-right UI language selector with country flags.
 - [x] Persist selected UI language in ignored local `settings.json`.
+- [x] Add localization keys for HoYoLAB profile menu, offline profile dialogs, sign-out warnings, and artifact import loader statuses.
+- [x] Keep Brazilian Portuguese localization in sync for the new HoYoLAB/offline-profile keys.
 - [ ] Add localization keys for any new UI screens as they are built.
 - [ ] Keep Brazilian Portuguese localization in sync when adding new keys.
 

@@ -476,6 +476,179 @@ def path_for_manifest(path: Path | None, *, relative_to: Path | None = None) -> 
     return path.as_posix()
 
 
+def safe_filename_stem(value: str, fallback: str) -> str:
+    text = "".join(
+        char.lower() if char.isalnum() else "_"
+        for char in str(value or "")
+    ).strip("_")
+    while "__" in text:
+        text = text.replace("__", "_")
+    return text or fallback
+
+
+def character_asset_key(character: dict[str, Any] | None) -> str:
+    if not isinstance(character, dict):
+        return ""
+
+    character_id = character.get("id")
+    element = character.get("element") or ""
+    if character_id is not None:
+        return f"id:{character_id}:element:{element}"
+
+    keys = character_icon_keys(character)
+    if keys:
+        return f"icon:{sorted(keys)[0]}"
+
+    return ""
+
+
+def weapon_asset_key(weapon_icon: str | None, weapon: dict[str, Any] | None = None) -> str:
+    key = icon_key(weapon_icon)
+    if key:
+        return key
+
+    if isinstance(weapon, dict):
+        keys = weapon_icon_keys(weapon)
+        if keys:
+            return sorted(keys)[0]
+
+    return ""
+
+
+def load_previous_assets_by_key(
+    previous_manifest: dict[str, Any] | None,
+    asset_name: str,
+    key_func,
+) -> dict[str, dict[str, Any]]:
+    if not isinstance(previous_manifest, dict):
+        return {}
+
+    assets: dict[str, dict[str, Any]] = {}
+    for asset in previous_manifest.get(asset_name) or []:
+        if not isinstance(asset, dict):
+            continue
+
+        key = str(asset.get("assetKey") or key_func(asset) or "")
+        if key and key not in assets:
+            assets[key] = asset
+
+    return assets
+
+
+def resolve_existing_crop_path(
+    crop: str | None,
+    *,
+    relative_base: Path | None,
+    output_dir: Path,
+) -> Path | None:
+    if not crop:
+        return None
+
+    raw_path = Path(crop)
+    path = raw_path if raw_path.is_absolute() else (relative_base / raw_path if relative_base else raw_path)
+
+    try:
+        path.resolve().relative_to(output_dir.resolve())
+    except (OSError, ValueError):
+        return None
+
+    return path
+
+
+def existing_crop_exists(
+    asset: dict[str, Any],
+    *,
+    relative_base: Path | None,
+    output_dir: Path,
+) -> bool:
+    path = resolve_existing_crop_path(
+        asset.get("crop"),
+        relative_base=relative_base,
+        output_dir=output_dir,
+    )
+    return bool(path and path.exists())
+
+
+def collect_used_crop_paths(
+    assets_by_key: dict[str, dict[str, Any]],
+    *,
+    relative_base: Path | None,
+    output_dir: Path,
+) -> set[Path]:
+    paths: set[Path] = set()
+    for asset in assets_by_key.values():
+        path = resolve_existing_crop_path(
+            asset.get("crop"),
+            relative_base=relative_base,
+            output_dir=output_dir,
+        )
+        if path is not None:
+            paths.add(path.resolve())
+    return paths
+
+
+def unique_asset_path(
+    output_dir: Path,
+    *,
+    prefix: str,
+    stem: str,
+    used_paths: set[Path],
+) -> Path:
+    base = safe_filename_stem(stem, "asset")
+
+    for suffix in ["", *[f"_{index}" for index in range(1, 10_000)]]:
+        path = output_dir / f"{prefix}_{base}{suffix}.png"
+        resolved = path.resolve()
+        if resolved not in used_paths and not path.exists():
+            used_paths.add(resolved)
+            return path
+
+    raise RuntimeError(f"Could not allocate asset path for {prefix}_{base}.png")
+
+
+def character_key_from_asset(asset: dict[str, Any]) -> str:
+    return character_asset_key(asset.get("character"))
+
+
+def weapon_key_from_asset(asset: dict[str, Any]) -> str:
+    return weapon_asset_key(asset.get("iconKey"), asset.get("weapon"))
+
+
+def variant_key(variant: dict[str, Any]) -> tuple[Any, Any]:
+    return variant.get("refinement"), variant.get("level")
+
+
+def merged_weapon_variants(
+    previous_variants: list[dict[str, Any]] | None,
+    current_variants: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    indexes: dict[tuple[Any, Any], int] = {}
+
+    for variant in [*(previous_variants or []), *(current_variants or [])]:
+        if not isinstance(variant, dict):
+            continue
+
+        key = variant_key(variant)
+        count = max(1, int(variant.get("count") or 1))
+
+        if key in indexes:
+            existing = merged[indexes[key]]
+            existing["count"] = max(int(existing.get("count") or 1), count)
+            continue
+
+        indexes[key] = len(merged)
+        merged.append(
+            {
+                "refinement": variant.get("refinement"),
+                "level": variant.get("level"),
+                "count": count,
+            }
+        )
+
+    return merged
+
+
 def load_overlay_font(size: int = 18) -> ImageFont.ImageFont:
     candidates = [
         Path("C:/Windows/Fonts/arial.ttf"),
@@ -535,6 +708,8 @@ def build_crop_manifest(
     overlay_path: str | Path | None = None,
     relative_to: str | Path | None = None,
     source_layout_path: str | Path | None = None,
+    previous_manifest: dict[str, Any] | None = None,
+    merge_existing_assets: bool = False,
 ) -> dict[str, Any]:
     image_path = Path(image_path)
     character_output_dir = Path(character_output_dir)
@@ -546,10 +721,32 @@ def build_crop_manifest(
     character_output_dir.mkdir(parents=True, exist_ok=True)
     weapon_output_dir.mkdir(parents=True, exist_ok=True)
 
-    for path in character_output_dir.glob("char_*.png"):
-        path.unlink()
-    for path in weapon_output_dir.glob("weapon_*.png"):
-        path.unlink()
+    if not merge_existing_assets:
+        for path in character_output_dir.glob("char_*.png"):
+            path.unlink()
+        for path in weapon_output_dir.glob("weapon_*.png"):
+            path.unlink()
+
+    previous_character_assets = load_previous_assets_by_key(
+        previous_manifest,
+        "characterAssets",
+        character_key_from_asset,
+    )
+    previous_weapon_assets = load_previous_assets_by_key(
+        previous_manifest,
+        "weaponAssets",
+        weapon_key_from_asset,
+    )
+    used_character_paths = collect_used_crop_paths(
+        previous_character_assets,
+        relative_base=relative_base,
+        output_dir=character_output_dir,
+    )
+    used_weapon_paths = collect_used_crop_paths(
+        previous_weapon_assets,
+        relative_base=relative_base,
+        output_dir=weapon_output_dir,
+    )
 
     scale = get_scale(layout)
     role_cards = extract_role_cards(layout)
@@ -564,6 +761,8 @@ def build_crop_manifest(
     manifest_cards = []
     character_assets = []
     weapon_assets_by_icon: dict[str, dict[str, Any]] = {}
+    current_character_keys: set[str] = set()
+    current_weapon_keys: set[str] = set()
 
     for index, card in enumerate(role_cards):
         portrait_rect = card.get("portraitRect")
@@ -592,12 +791,33 @@ def build_crop_manifest(
             character_box = clamp_box(character_crop_box(portrait_rect, scale), image)
 
             if not character_ignored:
-                character_path = character_output_dir / f"char_{index:03}.png"
+                character_key = character_asset_key(normalized_character)
+                if not character_key:
+                    character_key = f"unmatched:{index}"
+                current_character_keys.add(character_key)
+                existing_asset = previous_character_assets.get(character_key)
+                character_path = resolve_existing_crop_path(
+                    (existing_asset or {}).get("crop"),
+                    relative_base=relative_base,
+                    output_dir=character_output_dir,
+                )
+                if character_path is None:
+                    character_path = unique_asset_path(
+                        character_output_dir,
+                        prefix="char",
+                        stem=character_key or f"{index:03}",
+                        used_paths=used_character_paths,
+                    )
+                else:
+                    used_character_paths.add(character_path.resolve())
+
+                character_path.parent.mkdir(parents=True, exist_ok=True)
                 image.crop(character_box).save(character_path)
                 character_crop = path_for_manifest(character_path, relative_to=relative_base)
 
                 character_assets.append(
                     {
+                        "assetKey": character_key,
                         "index": index,
                         "crop": character_crop,
                         "character": normalized_character,
@@ -611,14 +831,33 @@ def build_crop_manifest(
             weapon_box = clamp_box(weapon_crop_box(weapon_rect, scale), image)
 
             if not weapon_ignored and weapon_icon:
+                weapon_key = weapon_asset_key(weapon_icon, normalized_weapon) or f"unmatched:{index}"
+                current_weapon_keys.add(weapon_key)
                 weapon_asset = weapon_assets_by_icon.get(weapon_icon)
 
                 if weapon_asset is None:
-                    weapon_path = weapon_output_dir / f"weapon_{index:03}.png"
+                    existing_asset = previous_weapon_assets.get(weapon_key)
+                    weapon_path = resolve_existing_crop_path(
+                        (existing_asset or {}).get("crop"),
+                        relative_base=relative_base,
+                        output_dir=weapon_output_dir,
+                    )
+                    if weapon_path is None:
+                        weapon_path = unique_asset_path(
+                            weapon_output_dir,
+                            prefix="weapon",
+                            stem=weapon_key or f"{index:03}",
+                            used_paths=used_weapon_paths,
+                        )
+                    else:
+                        used_weapon_paths.add(weapon_path.resolve())
+
+                    weapon_path.parent.mkdir(parents=True, exist_ok=True)
                     image.crop(weapon_box).save(weapon_path)
 
                     weapon_crop = path_for_manifest(weapon_path, relative_to=relative_base)
                     weapon_asset = {
+                        "assetKey": weapon_key,
                         "assetIndex": len(weapon_assets_by_icon),
                         "firstCardIndex": index,
                         "iconKey": weapon_icon,
@@ -695,6 +934,49 @@ def build_crop_manifest(
     ok_matches = sum(1 for item in manifest_cards if (item.get("match") or {}).get("status") == "ok")
     warning_matches = sum(1 for item in manifest_cards if (item.get("match") or {}).get("status") == "warning")
 
+    preserved_character_assets = []
+    if merge_existing_assets:
+        for key, asset in previous_character_assets.items():
+            if key in current_character_keys:
+                continue
+            if not existing_crop_exists(asset, relative_base=relative_base, output_dir=character_output_dir):
+                continue
+
+            preserved = dict(asset)
+            preserved.setdefault("assetKey", key)
+            preserved_character_assets.append(preserved)
+
+    character_assets.extend(preserved_character_assets)
+
+    current_weapon_assets = list(weapon_assets_by_icon.values())
+    preserved_weapon_assets = []
+    if merge_existing_assets:
+        for asset in current_weapon_assets:
+            previous = previous_weapon_assets.get(str(asset.get("assetKey") or asset.get("iconKey") or ""))
+            if not previous:
+                continue
+
+            asset["variants"] = merged_weapon_variants(
+                previous.get("variants"),
+                asset.get("variants"),
+            )
+            update_weapon_asset_tooltip(asset)
+
+        for key, asset in previous_weapon_assets.items():
+            if key in current_weapon_keys:
+                continue
+            if not existing_crop_exists(asset, relative_base=relative_base, output_dir=weapon_output_dir):
+                continue
+
+            preserved = dict(asset)
+            preserved.setdefault("assetKey", key)
+            preserved_weapon_assets.append(preserved)
+
+    current_weapon_assets.extend(preserved_weapon_assets)
+
+    for asset_index, asset in enumerate(current_weapon_assets):
+        asset["assetIndex"] = asset_index
+
     manifest = {
         "version": 1,
         "source": {
@@ -713,11 +995,15 @@ def build_crop_manifest(
         "matchedWeapons": matched_weapons,
         "okMatches": ok_matches,
         "warningMatches": warning_matches,
+        "assetMerge": {
+            "enabled": bool(merge_existing_assets),
+            "previousCharacterAssets": len(previous_character_assets),
+            "previousWeaponAssets": len(previous_weapon_assets),
+            "preservedCharacterAssets": len(preserved_character_assets),
+            "preservedWeaponAssets": len(preserved_weapon_assets),
+        },
         "characterAssets": character_assets,
-        "weaponAssets": sorted(
-            weapon_assets_by_icon.values(),
-            key=lambda item: item["assetIndex"],
-        ),
+        "weaponAssets": sorted(current_weapon_assets, key=lambda item: item["assetIndex"]),
         "cards": manifest_cards,
     }
 

@@ -52,14 +52,19 @@ Implemented scaffold:
   - `paths.py`
   - `layout_capture.py`
   - `crop_manifest.py`
+  - `character_detail.py`
   - `artifact_db.py`
   - `artifact_importer.py`
+  - `offline_profile.py`
   - `import_pipeline.py`
   - `run_import.py`
 - Current production HoYoLAB folders:
   - `data/hoyolab`
   - `assets/hoyolab`
+  - `assets/hoyolab/artifacts`
   - `debug/hoyolab`
+- Artifact SQLite DB:
+  - `data/artifacts.db`
 - Legacy/currently unused asset folders:
   - `assets/hd/characters`
   - `assets/hd/weapons`
@@ -186,21 +191,37 @@ Current html2canvas probe hook:
 
 - `hoyolab_export/hoyolab_exporter.py` injects `window.__genshin_export_root_probe__` immediately before the patched `html2canvas(t, r)` call.
 - `hoyolab_export/hoyolab_exporter.py` also tracks route-level patch diagnostics in `HoyolabExporter.html2canvas_patch_status` and merges that into `window.__genshin_html2canvas_patch_status__` before `tests/probe_layout.py` collects layout data.
-- `hoyolab_export.close_export_context(...)` closes pages, stops Playwright, and terminates the browser process created by `_create_context`; this avoids leaving the persistent profile locked or paused after a failed/manual login attempt.
+- `hoyolab_export.close_export_context(...)` terminates the browser process created by `_create_context`, then stops Playwright with short cleanup timeouts; this avoids leaving the persistent profile locked or paused after a failed/manual login attempt.
 - `hoyolab_export.auth` is the shared profile-status layer for UI, setup scripts, reset, and exporter preflight.
 - `hoyolab_export.run_login_setup` opens HoYoLAB in a normal Chrome/Edge process with the same app profile. The user authorizes and closes that browser window.
 - `run_manual_export.py` remains a manual test/export flow. If profile auth is not detected, it opens a normal Chrome/Edge login browser, waits for the user to close it, rechecks auth status, then exports only if auth is detected.
-- Product/UI import flow should not ask the user to log in inside the automation browser. The UI should require auth first, then start `python -m hoyolab_export.run_import` through `QProcess`.
-- The PySide UI checks HoYoLAB profile status on startup. It shows an authorization prompt only when needed and includes a "Сменить аккаунт" action that resets the app profile and opens the normal authorization browser.
+- Product/UI import flow should not ask the user to log in inside the automation browser. The main HoYoLAB UI button opens the normal authorization browser when auth is missing, or starts `python -m hoyolab_export.run_import` through `QProcess` when auth is present.
+- The PySide UI checks HoYoLAB profile status on startup. The separate visible login/switch buttons and the old auth-status block were removed; the left panel now keeps at most two visible HoYoLAB actions under the character list: the dynamic main HoYoLAB button and `Профиль...`.
 - Auth detection is intentionally stricter than "Cookies file exists": `hoyolab_export.auth.get_auth_status(...)` opens the cookie DB read-only and checks only safe cookie names/hosts, never values. A non-empty browser cookie file after visiting HoYoLAB is not enough to count as logged in.
 - Current UI auth behavior:
-  - `not_logged_in`: visible auth block with localized login button; HoYoLAB import disabled.
-  - login browser open/profile busy: visible instruction to close the browser; export disabled.
-  - `logged_in`: visible localized account-switch button; HoYoLAB import enabled unless an import subprocess is running.
-- `Импорт из HoYoLAB` is no longer a placeholder popup. It starts the full import pipeline when auth is detected and uses a loader dialog for progress/failure handling.
+  - `not_logged_in`: main HoYoLAB button text is `Авторизоваться / выбрать профиль`; clicking it shows instructions and can open the normal authorization browser.
+  - login browser open/profile busy: visible instruction to close the browser; main HoYoLAB action is disabled.
+  - `logged_in` without local data: main HoYoLAB button text is `Импортировать из HoYoLAB`.
+  - `logged_in` with local data: main HoYoLAB button text is `Обновить данные HoYoLAB`.
+- The main HoYoLAB button is no longer a placeholder popup. It starts the full import/update pipeline when auth is detected and uses a loader dialog for progress/failure handling.
 - The auth block has explicit button styling because default PySide/Windows styling previously made the auth button look like an empty beige area.
 - If exporter, inventory collector, or debug extractor sees the HoYoLAB login iframe, it raises an instruction to authorize through the normal browser flow instead of asking the user to log in inside the automation browser.
 - Exporter now retries important clicks after attempting to dismiss known HoYoLAB popups/modals/update notices. If share export still fails, it prints `Visible blockers debug` with visible overlay candidates to help identify the blocker.
+- Share/download clicks use Playwright trusted clicks with the transparent input blocker temporarily disabled. This is important because JS `el.click()` can run html2canvas without producing a browser `download` event on current HoYoLAB/Chromium.
+- The old page-injected DOM input blocker (`__abyss_tracker_blocker__`) is no longer used in export flow because it can cover HoYoLAB's own share/download controls and cause `expect_download` timeouts. If `Visible blockers debug` shows a fixed `DIV` with `zIndex: 2147483647`, suspect a stale/internal blocker first, not the Qt loader window.
+- If Chromium/Playwright does not emit a `download` event after HoYoLAB runs html2canvas, the exporter falls back to the captured html2canvas PNG data URL and returns an in-memory download object.
+- HoYoLAB JS route patching sanitizes Playwright errors before printing them. Do not print `Route.fetch` call logs because they can include request headers and cookies.
+- If `route.fetch()` fails with transient network errors such as `ECONNRESET`, exporter retries and then falls back to a plain public Python fetch of the JS bundle without browser cookies.
+- Patched JS routes are fulfilled with fixed safe JavaScript headers/status after patching. Do not reuse a `route.fetch()` response object in that path because the JS body may have come from the public no-cookie fallback instead.
+- Automation browser startup ignores stale `DevToolsActivePort` markers by requiring the marker mtime to be newer than the current Chrome launch. This avoids connecting to a closed/old CDP target and failing on `Page.goto: Target page, context or browser has been closed`.
+- Import reuses the startup `about:blank` tab instead of opening a second tab for HoYoLAB.
+- `[STATUS] done` is emitted only after browser cleanup, so the UI loader should not sit on `Готово` while the subprocess is still waiting for Chrome to close.
+- `close_export_context(...)` terminates the owned automation browser before stopping Playwright and wraps page/playwright cleanup in short timeouts, so the UI is not blocked until the user manually closes the browser.
+- HoYoLAB loader window is non-modal and uses `Qt.WindowTransparentForInput` plus `WA_TransparentForMouseEvents`, so if it physically overlaps the browser it should not intercept user/mouse input.
+- The import UI now shows the captured subprocess error tail instead of only the generic authorization warning.
+- Ordinary import/update no longer clears current HoYoLAB data/assets at `[STATUS] preparing`; early browser failures should leave the previously loaded offline/local profile intact.
+- Ordinary import/update is additive for character and weapon collection data. It updates/merges `account_characters.json`, `account_weapons.json`, `crop_manifest.characterAssets`, `crop_manifest.weaponAssets`, and existing character/weapon PNGs instead of deleting the previous local collection. Destructive cleanup belongs to `Выйти из профиля` or offline profile restore.
+- Character collection keys are based on character id + element, so a Traveler element change can be preserved as a separate local character asset. Weapon collection keys are based on weapon id/refinement/level/icon for inventory JSON and icon key for manifest assets; moving the same weapon to another character updates the latest equipped info instead of creating a new local weapon.
 - The stored root probe includes:
   - `rootRect`
   - `scale`
@@ -313,13 +334,15 @@ Artifact persistence layer:
   - `artifact_equipment`
   - `artifact_tags`
   - `artifact_tag_links`
+  - `artifact_builds`
+  - `artifact_build_slots`
 - `hoyolab_export/artifact_importer.py` normalizes `character/detail` relics, calculates stable fingerprints, and upserts:
   - artifact icons;
   - artifacts;
   - substats;
   - current equipment.
 - Artifact fingerprint intentionally excludes character id, so moving an artifact to another character keeps it as the same artifact.
-- Current equipment is replaced on import; artifact records and user tags are preserved.
+- Current equipment is replaced on import; artifact records, user tags, and user artifact builds are preserved during ordinary HoYoLAB updates.
 
 Artifact tools:
 
@@ -348,10 +371,14 @@ Verified local artifact import:
   - `artifact_tag_links: 1`
 - Test tag `test_keep_after_import` survived re-import.
 
-Next artifact step:
+Current artifact import pipeline:
 
-- Integrate batch `character/detail` fetch and artifact SQLite import into the main `python -m hoyolab_export.run_import` pipeline after character inventory is known.
-- Keep artifact DB/tags persistent across current HoYoLAB data cleanup unless explicitly designing an account-reset behavior for artifacts.
+- `hoyolab_export/character_detail.py` is the reusable production helper for `character/detail`.
+- `python -m hoyolab_export.run_import` now fetches one batch `character/detail` request after `/character/list` inventory is known.
+- The compact current detail snapshot is written to `data/hoyolab/account_character_details.json`.
+- The same import run imports/updates artifacts into `data/artifacts.db`.
+- Ordinary HoYoLAB import/update clears debug at startup, then replaces current HoYoLAB JSON/assets only after browser export, inventory, and detail fetch have succeeded. It does not delete `data/artifacts.db`, so user artifact tags/builds survive repeated updates.
+- Account/profile switching is the explicit boundary that clears `data/artifacts.db`, because artifacts and user artifact tags/builds must not be mixed between accounts.
 
 ## Desired New Pipeline
 
@@ -360,15 +387,20 @@ Current production HoYoLAB import pipeline:
 ```text
 HoYoLAB browser session
   -> verify existing app auth status
-  -> clear current data/hoyolab + assets/hoyolab + debug/hoyolab
+  -> clear debug/hoyolab only
   -> open HoYoLAB once in automation browser
   -> install /character/list response listener before page load
   -> open character list during export flow
   -> export image.png
   -> collect html2canvas clone layout/rootDiscovery
-  -> write clean inventory JSON
+  -> build clean inventory in memory
+  -> fetch character/detail for all real characters
+  -> import/update artifacts in SQLite
+  -> merge current character/weapon inventory into the local collection
+  -> write/update clean inventory JSON and current character details snapshot
   -> crop character/weapon regions by DOM/root-relative coordinates
-  -> link crops to exact API ids by icon URL
+  -> link current crops to exact API ids by icon URL
+  -> merge current character/weapon crops into existing local assets/manifest
   -> write manifest/debug overlay
   -> refresh PySide6 grids
 ```
@@ -378,15 +410,56 @@ Current outputs:
 ```text
 data/hoyolab/account_characters.json
 data/hoyolab/account_weapons.json
+data/hoyolab/account_character_details.json
 data/hoyolab/layout.json
 data/hoyolab/crop_manifest.json
 assets/hoyolab/characters/*.png
 assets/hoyolab/weapons/*.png
+data/artifacts.db
 debug/hoyolab/image.png
 debug/hoyolab/crop_manifest_overlay.png
 debug/hoyolab/page_screenshot.png
 debug/hoyolab/import_log.json
 ```
+
+## Offline Profile Export/Import
+
+Offline profiles are local backup/restore bundles for already collected account data. They do not contain HoYoLAB browser auth/session data and do not require HoYoLAB authorization to import back into the app.
+
+Production helper:
+
+- `hoyolab_export/offline_profile.py`
+
+Offline profile export is ZIP-based and includes only the allowlisted current local data:
+
+- `data/hoyolab/account_characters.json`
+- `data/hoyolab/account_weapons.json`
+- `data/hoyolab/crop_manifest.json`
+- `data/hoyolab/account_character_details.json` if present
+- `assets/hoyolab/characters/`
+- `assets/hoyolab/weapons/`
+- `assets/hoyolab/artifacts/` if present
+- `data/artifacts.db`
+
+Offline profile export explicitly excludes:
+
+- `hoyolab_export/profile/`
+- HoYoLAB cookies/session/browser data
+- `debug/`
+- `downloads/`
+
+`offline_profile.py` uses an SQLite backup snapshot when exporting `data/artifacts.db`, rather than copying browser profile or sensitive state. It writes `data/hoyolab/offline_export_state.json` as a local marker/signature so the sign-out flow can tell whether the current local profile has probably been saved. If the marker is missing or the signature does not match, UI warns before clearing data.
+
+Offline profile import restores the allowlisted JSON/assets/db, refreshes UI grids, and marks the imported state as exported. It does not require HoYoLAB auth.
+
+Sign-out behavior:
+
+- Warn if the current local profile has not been exported or cannot be verified.
+- Offer `Сохранить профиль` or `Не сохранять`.
+- Ask whether to keep `runs_history.json`.
+- Clear HoYoLAB browser profile, current HoYoLAB JSON/assets/debug, artifact assets, and `data/artifacts.db`.
+- Preserve run history only if the user chose to keep it.
+- Reset the current run UI after clearing, because team slots may point to account-specific assets.
 
 `layout.json` describes visible DOM elements and coordinate scale needed to crop from the final image. Production layout capture lives in `hoyolab_export/layout_capture.py` and no longer depends on `tests/probe_layout.py`.
 
@@ -422,6 +495,8 @@ Matching/cropping facts:
 - Weapon rarity 1 and 2 are ignored for weapon assets.
 - Duplicate weapon icons are not duplicated in `assets/hoyolab/weapons`; `weaponAssets` aggregates variants.
 - Duplicate weapon variants are aggregated by `refinement + level` into tooltip lines such as `R5 lvl 90 x2`.
+- Across ordinary HoYoLAB updates, `weaponAssets` keeps previously discovered weapons that are no longer equipped. Variant counts are merged with `max(previous_count, current_count)`, not summed every run, so repeated updates do not inflate counts.
+- Across ordinary HoYoLAB updates, current character/weapon crops reuse existing manifest crop paths when their collection key already exists. New discoveries receive new stable filenames; old PNGs are not deleted.
 - Character tooltip format is `Name lvl X`. Weapon tooltip format is weapon name followed by variant lines.
 - `tests/build_crop_manifest_from_probe.py` is a sandbox/proof wrapper. Production should rely on `hoyolab_export.crop_manifest`, not test scripts.
 
@@ -506,20 +581,26 @@ Current UI state:
 
 Current UI import details:
 
-- The old `HoYoLAB export` button is now localized through `hoyolab.import_button`.
-- The button runs `python -m hoyolab_export.run_import` through `QProcess`, not the old manual export subprocess.
-- Source of truth for the exact current button label is `ui/main_window.py`.
+- The old `HoYoLAB export` button is now the dynamic main HoYoLAB button.
+- Button text/action state:
+  - no auth: `Авторизоваться / выбрать профиль`, shows instructions and can open the normal auth browser;
+  - auth + no local data: `Импортировать из HoYoLAB`, starts import;
+  - auth + local data: `Обновить данные HoYoLAB`, starts the same import/update pipeline.
+- The main button runs `python -m hoyolab_export.run_import` through `QProcess`, not the old manual export subprocess.
 - During import, UI shows `HoYoLABLoadingDialog` from `ui/widgets/loader.py`.
 - The loader reads `[STATUS] ...` lines and maps them to smooth progress targets.
 - The loader uses `assets/loader/grey_ldr.png` and `assets/loader/color_ldr.png`.
 - After successful import, UI calls `safe_update_grids()` without a success popup.
 - After completion/error, the import button has a short cooldown before it can be used again.
+- The cooldown is tracked with `_hoyolab_import_cooldown_active`, so `refresh_hoyolab_auth_status()` cannot accidentally re-enable the dynamic HoYoLAB button immediately after a successful import while Chrome/profile cleanup is still settling.
 - UI grids now read from:
   - `assets/hoyolab/characters`
   - `assets/hoyolab/weapons`
 - `main_window.py` reads `data/hoyolab/crop_manifest.json` and assigns tooltips from manifest `characterAssets` and `weaponAssets`.
-- `clear_assets()` now clears current HoYoLAB `data/assets/debug` through `clear_hoyolab_current_data()`.
-- `change_hoyolab_account()` resets the app browser profile and clears current HoYoLAB `data/assets/debug`, but does not touch run history.
+- The visible manual `Очистить персонажей и оружие` button was removed.
+- `Профиль...` opens a menu with `Сохранить профиль`, `Загрузить профиль`, and `Выйти из профиля`.
+- `change_hoyolab_account()` is now the sign-out flow behind `Выйти из профиля`: optional offline save warning, run-history keep/delete question, browser profile reset, current HoYoLAB data/assets/debug cleanup, artifact DB cleanup, and UI reset.
+- Closing the run-history question dialog cancels sign-out instead of choosing `Нет`.
 - `DraggableIcon.setToolTip()` now stores custom tooltip text, disables the native Qt tooltip, and shows a custom `FloatingTooltip`.
 - `drag.py` allows right-click deletion from both legacy asset folders and current `assets/hoyolab/characters` / `assets/hoyolab/weapons`.
 - Visible loader/drag/main-window strings touched by the localization pass no longer keep hard-coded mojibake text.

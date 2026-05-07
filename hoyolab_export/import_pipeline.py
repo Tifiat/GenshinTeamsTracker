@@ -4,15 +4,18 @@ from pathlib import Path
 from typing import Any
 import asyncio
 
-from playwright.async_api import BrowserContext, Page
+from playwright.async_api import BrowserContext, Error as PlaywrightError, Page
 
 from .auth import AuthStatus, get_auth_status
+from .artifact_db import ARTIFACT_DB_PATH
+from .artifact_importer import import_character_details_payload
+from .character_detail import fetch_character_details_batch, real_character_ids
 from .collect_account_inventory import (
     build_inventory,
     wait_for_character_list_response,
     write_inventory,
 )
-from .crop_manifest import build_crop_manifest
+from .crop_manifest import build_crop_manifest, character_asset_key, icon_key
 from .hoyolab_exporter import HOYOLAB_URL, HoyolabExporter, close_export_context
 from .layout_capture import collect_layout
 from .paths import (
@@ -23,13 +26,20 @@ from .paths import (
     HOYOLAB_PROFILE_DIR,
     HOYOLAB_WEAPON_ASSETS_DIR,
     PROJECT_ROOT,
-    clear_hoyolab_current_data,
+    clear_folder_contents,
     ensure_hoyolab_dirs,
 )
 
 
 class HoYoLABImportError(RuntimeError):
     pass
+
+
+async def get_export_page(context: BrowserContext) -> Page:
+    for page in context.pages:
+        if not page.is_closed():
+            return page
+    return await context.new_page()
 
 
 def write_json(path: Path, data: Any) -> None:
@@ -39,6 +49,73 @@ def write_json(path: Path, data: Any) -> None:
         encoding="utf-8",
     )
 
+
+def read_json_or_none(path: Path) -> Any | None:
+    if not path.exists():
+        return None
+
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def character_inventory_key(character: dict[str, Any]) -> str:
+    return character_asset_key(character)
+
+
+def weapon_inventory_key(weapon: dict[str, Any]) -> str:
+    parts = [
+        weapon.get("id"),
+        weapon.get("refinement"),
+        weapon.get("level"),
+        icon_key(weapon.get("icon")),
+    ]
+
+    if any(part is not None and part != "" for part in parts):
+        return "|".join(str(part or "") for part in parts)
+
+    return ""
+
+
+def merge_inventory_records(
+    previous: Any,
+    current: list[dict[str, Any]],
+    key_func,
+) -> list[dict[str, Any]]:
+    if not isinstance(previous, list):
+        previous = []
+
+    merged: list[dict[str, Any]] = []
+    indexes: dict[str, int] = {}
+
+    for item in previous:
+        if not isinstance(item, dict):
+            continue
+
+        key = key_func(item)
+        if not key or key in indexes:
+            continue
+
+        indexes[key] = len(merged)
+        merged.append(item)
+
+    for item in current:
+        key = key_func(item)
+        if not key:
+            merged.append(item)
+            continue
+
+        if key in indexes:
+            merged[indexes[key]] = item
+            continue
+
+        indexes[key] = len(merged)
+        merged.append(item)
+
+    return merged
+
+
 def print_status(status: str) -> None:
     print(f"[STATUS] {status}", flush=True)
 
@@ -47,9 +124,12 @@ def build_import_log(
     image_path: Path,
     layout_path: Path,
     manifest_path: Path,
+    character_details_path: Path,
     manifest: dict[str, Any],
     characters: list[dict[str, Any]],
     weapons: list[dict[str, Any]],
+    character_details: dict[str, Any] | None,
+    artifact_summary: dict[str, Any] | None,
     started_at: float,
 ) -> dict[str, Any]:
     return {
@@ -58,8 +138,20 @@ def build_import_log(
         "image": image_path.as_posix(),
         "layout": layout_path.as_posix(),
         "manifest": manifest_path.as_posix(),
+        "characterDetails": character_details_path.as_posix(),
         "characters": len(characters),
         "weapons": len(weapons),
+        "characterDetailsRequested": (
+            character_details.get("charactersRequested")
+            if isinstance(character_details, dict)
+            else None
+        ),
+        "characterDetailsReturned": (
+            character_details.get("charactersReturned")
+            if isinstance(character_details, dict)
+            else None
+        ),
+        "artifactImport": artifact_summary,
         "cards": manifest.get("cardsCount"),
         "matchedCharacters": manifest.get("matchedCharacters"),
         "matchedWeapons": manifest.get("matchedWeapons"),
@@ -74,10 +166,12 @@ async def run_hoyolab_import() -> dict[str, Any]:
     Outputs:
     - data/hoyolab/account_characters.json
     - data/hoyolab/account_weapons.json
+    - data/hoyolab/account_character_details.json
     - data/hoyolab/layout.json
     - data/hoyolab/crop_manifest.json
     - assets/hoyolab/characters/*.png
     - assets/hoyolab/weapons/*.png
+    - data/artifacts.db
     - debug/hoyolab/image.png
     - debug/hoyolab/crop_manifest_overlay.png
     - debug/hoyolab/page_screenshot.png
@@ -91,8 +185,8 @@ async def run_hoyolab_import() -> dict[str, Any]:
         )
 
     print_status("preparing")
-    clear_hoyolab_current_data()
     ensure_hoyolab_dirs()
+    clear_folder_contents(HOYOLAB_DEBUG_DIR)
 
     exporter = HoyolabExporter(
         profile_dir=HOYOLAB_PROFILE_DIR,
@@ -109,13 +203,19 @@ async def run_hoyolab_import() -> dict[str, Any]:
     image_path = HOYOLAB_DEBUG_DIR / "image.png"
     layout_path = HOYOLAB_DATA_DIR / "layout.json"
     manifest_path = HOYOLAB_DATA_DIR / "crop_manifest.json"
+    characters_path = HOYOLAB_DATA_DIR / "account_characters.json"
+    weapons_path = HOYOLAB_DATA_DIR / "account_weapons.json"
+    character_details_path = HOYOLAB_DATA_DIR / "account_character_details.json"
     overlay_path = HOYOLAB_DEBUG_DIR / "crop_manifest_overlay.png"
     page_screenshot_path = HOYOLAB_DEBUG_DIR / "page_screenshot.png"
     import_log_path = HOYOLAB_DEBUG_DIR / "import_log.json"
+    result: dict[str, Any] | None = None
+    manifest: dict[str, Any] | None = None
+    artifact_summary: dict[str, Any] | None = None
 
     try:
         context = await exporter._create_context()
-        export_page = context.pages[0] if context.pages else await context.new_page()
+        export_page = await get_export_page(context)
         print_status("opening_hoyolab")
         print("[HoYoLAB Import] Opening export page...")
         await exporter._prepare_export_page(export_page)
@@ -131,7 +231,16 @@ async def run_hoyolab_import() -> dict[str, Any]:
             character_list = await asyncio.wait_for(character_list_future, timeout=60)
             print(f"[HoYoLAB Import] Account inventory captured: {len(character_list)} characters")
 
-        await export_page.goto(HOYOLAB_URL, wait_until="domcontentloaded", timeout=60_000)
+        try:
+            await export_page.goto(HOYOLAB_URL, wait_until="domcontentloaded", timeout=60_000)
+        except PlaywrightError as exc:
+            message = str(exc)
+            if "Target page, context or browser has been closed" in message:
+                raise HoYoLABImportError(
+                    "HoYoLAB automation browser closed before the page loaded. "
+                    "Close any HoYoLAB authorization/automation browser windows and try again."
+                ) from exc
+            raise
 
         print_status("exporting_image")
         print("[HoYoLAB Import] Exporting image...")
@@ -149,7 +258,6 @@ async def run_hoyolab_import() -> dict[str, Any]:
         print("[HoYoLAB Import] Collecting layout...")
         layout = await collect_layout(export_page, exporter)
         layout["downloadedImage"] = image_path.name
-        write_json(layout_path, layout)
 
         try:
             await export_page.screenshot(path=str(page_screenshot_path), full_page=True)
@@ -157,12 +265,46 @@ async def run_hoyolab_import() -> dict[str, Any]:
             print(f"[HoYoLAB Import] Could not save page screenshot: {exc}")
 
         print_status("writing_inventory")
-        print("[HoYoLAB Import] Writing account inventory...")
+        print("[HoYoLAB Import] Building account inventory...")
         if character_list is None:
             raise HoYoLABImportError("HoYoLAB character/list was not captured during export flow.")
 
         characters, weapons = build_inventory(character_list)
-        write_inventory(characters, weapons, HOYOLAB_DATA_DIR)
+
+        real_ids = real_character_ids(characters)
+        print_status("fetching_character_details")
+        print(
+            "[HoYoLAB Import] Fetching character/detail batch:",
+            f"{len(real_ids)} characters",
+        )
+        character_details = await fetch_character_details_batch(export_page, real_ids)
+
+        print_status("importing_artifacts")
+        print("[HoYoLAB Import] Importing artifacts into SQLite...")
+        artifact_summary = import_character_details_payload(
+            character_details,
+            db_path=ARTIFACT_DB_PATH,
+        )
+
+        print_status("writing_inventory")
+        print("[HoYoLAB Import] Updating local HoYoLAB data/assets...")
+        previous_manifest = read_json_or_none(manifest_path)
+        previous_characters = read_json_or_none(characters_path)
+        previous_weapons = read_json_or_none(weapons_path)
+        merged_characters = merge_inventory_records(
+            previous_characters,
+            characters,
+            character_inventory_key,
+        )
+        merged_weapons = merge_inventory_records(
+            previous_weapons,
+            weapons,
+            weapon_inventory_key,
+        )
+        ensure_hoyolab_dirs()
+        write_json(layout_path, layout)
+        write_inventory(merged_characters, merged_weapons, HOYOLAB_DATA_DIR)
+        write_json(character_details_path, character_details)
 
         print_status("cropping_assets")
         print("[HoYoLAB Import] Building crops and manifest...")
@@ -177,40 +319,56 @@ async def run_hoyolab_import() -> dict[str, Any]:
             overlay_path=overlay_path,
             relative_to=PROJECT_ROOT,
             source_layout_path=layout_path,
+            previous_manifest=previous_manifest,
+            merge_existing_assets=True,
         )
 
         log = build_import_log(
             image_path=image_path,
             layout_path=layout_path,
             manifest_path=manifest_path,
+            character_details_path=character_details_path,
             manifest=manifest,
             characters=characters,
             weapons=weapons,
+            character_details=character_details,
+            artifact_summary=artifact_summary,
             started_at=started_at,
         )
         write_json(import_log_path, log)
 
-        print_status("done")
-        print("[HoYoLAB Import] Done.")
-        print(f"[HoYoLAB Import] Image: {image_path}")
-        print(f"[HoYoLAB Import] Assets: {HOYOLAB_ASSETS_DIR}")
-        print(f"[HoYoLAB Import] Manifest: {manifest_path}")
-        print(f"[HoYoLAB Import] Cards: {manifest.get('cardsCount')}")
-        print(
-            "[HoYoLAB Import] Matches:",
-            f"ok={manifest.get('okMatches')}",
-            f"warnings={manifest.get('warningMatches')}",
-        )
-
-        return {
+        result = {
             "imagePath": image_path,
             "layoutPath": layout_path,
             "manifestPath": manifest_path,
+            "characterDetailsPath": character_details_path,
             "overlayPath": overlay_path,
             "importLogPath": import_log_path,
             "manifest": manifest,
+            "artifactSummary": artifact_summary,
         }
+        return result
 
     finally:
         if context is not None:
             await close_export_context(context)
+
+        if result is not None and manifest is not None and artifact_summary is not None:
+            print_status("done")
+            print("[HoYoLAB Import] Done.")
+            print(f"[HoYoLAB Import] Image: {image_path}")
+            print(f"[HoYoLAB Import] Assets: {HOYOLAB_ASSETS_DIR}")
+            print(f"[HoYoLAB Import] Manifest: {manifest_path}")
+            print(f"[HoYoLAB Import] Character details: {character_details_path}")
+            print(f"[HoYoLAB Import] Cards: {manifest.get('cardsCount')}")
+            print(
+                "[HoYoLAB Import] Artifacts:",
+                f"seen={artifact_summary.get('relics_seen')}",
+                f"inserted={artifact_summary.get('artifacts_inserted')}",
+                f"existing={artifact_summary.get('artifacts_existing')}",
+            )
+            print(
+                "[HoYoLAB Import] Matches:",
+                f"ok={manifest.get('okMatches')}",
+                f"warnings={manifest.get('warningMatches')}",
+            )

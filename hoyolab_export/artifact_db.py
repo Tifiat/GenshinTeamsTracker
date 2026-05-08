@@ -36,6 +36,32 @@ def init_db(conn: sqlite3.Connection) -> None:
             updated_at TEXT NOT NULL
         );
 
+        CREATE TABLE IF NOT EXISTS artifact_sets (
+            set_uid TEXT PRIMARY KEY,
+
+            hoyowiki_entry_id TEXT NOT NULL UNIQUE,
+            hoyolab_set_id INTEGER UNIQUE,
+            artiscan_set_key TEXT UNIQUE,
+
+            display_name TEXT,
+            fallback_name TEXT NOT NULL,
+
+            source TEXT NOT NULL DEFAULT 'hoyowiki',
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS artifact_set_piece_icons (
+            set_uid TEXT NOT NULL,
+            pos INTEGER NOT NULL,
+
+            icon_url TEXT NOT NULL,
+            local_path TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+
+            PRIMARY KEY (set_uid, pos),
+            FOREIGN KEY (set_uid) REFERENCES artifact_sets(set_uid) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS artifacts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fingerprint TEXT NOT NULL UNIQUE,
@@ -44,6 +70,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             name TEXT NOT NULL,
 
             set_id INTEGER,
+            set_uid TEXT,
             set_name TEXT,
 
             pos INTEGER NOT NULL,
@@ -106,10 +133,14 @@ def init_db(conn: sqlite3.Connection) -> None:
             FOREIGN KEY (artifact_id) REFERENCES artifacts(id) ON DELETE CASCADE,
             FOREIGN KEY (tag_id) REFERENCES artifact_tags(id) ON DELETE CASCADE
         );
+        
 
         CREATE INDEX IF NOT EXISTS idx_artifacts_set_id
             ON artifacts(set_id);
 
+        CREATE INDEX IF NOT EXISTS idx_artifact_set_piece_icons_pos
+            ON artifact_set_piece_icons(pos);
+        
         CREATE INDEX IF NOT EXISTS idx_artifacts_pos
             ON artifacts(pos);
 
@@ -156,6 +187,22 @@ def init_db(conn: sqlite3.Connection) -> None:
             ON artifact_build_slots(artifact_id);    
         """
     )
+    artifact_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(artifacts)").fetchall()
+    }
+
+    if "set_uid" not in artifact_columns:
+        conn.execute("ALTER TABLE artifacts ADD COLUMN set_uid TEXT")
+
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_artifacts_set_uid
+            ON artifacts (set_uid)
+        """
+    )
+    conn.commit()
+
     conn.commit()
 
 
@@ -202,6 +249,7 @@ def upsert_artifact(
     name: str,
     set_id: int | None,
     set_name: str | None,
+    set_uid: str | None,
     pos: int,
     pos_name: str | None,
     rarity: int | None,
@@ -226,6 +274,7 @@ def upsert_artifact(
                 relic_id = ?,
                 name = ?,
                 set_id = ?,
+                set_uid = ?,
                 set_name = ?,
                 pos = ?,
                 pos_name = ?,
@@ -242,6 +291,7 @@ def upsert_artifact(
                 relic_id,
                 name,
                 set_id,
+                set_uid,
                 set_name,
                 pos,
                 pos_name,
@@ -264,6 +314,7 @@ def upsert_artifact(
             relic_id,
             name,
             set_id,
+            set_uid,
             set_name,
             pos,
             pos_name,
@@ -276,13 +327,14 @@ def upsert_artifact(
             first_seen_at,
             last_seen_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             fingerprint,
             relic_id,
             name,
             set_id,
+            set_uid,
             set_name,
             pos,
             pos_name,
@@ -644,6 +696,8 @@ def count_rows(conn: sqlite3.Connection) -> dict[str, int]:
         "artifact_tag_links",
         "artifact_builds",
         "artifact_build_slots",
+        "artifact_sets",
+        "artifact_set_piece_icons",
     ]
 
     result = {}

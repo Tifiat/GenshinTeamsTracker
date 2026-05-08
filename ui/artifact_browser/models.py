@@ -14,6 +14,12 @@ ARTIFACT_POSITIONS = {
 }
 
 
+@dataclass(frozen=True, slots=True)
+class ArtifactTagRef:
+    id: int
+    name: str
+
+
 @dataclass(slots=True)
 class ArtifactSubstat:
     slot_index: int
@@ -40,7 +46,7 @@ class ArtifactItem:
     icon_url: str = ""
     icon_path: Path | None = None
     character_name: str = ""
-    tags: list[str] = field(default_factory=list)
+    tags: list[ArtifactTagRef] = field(default_factory=list)
     substats: list[ArtifactSubstat] = field(default_factory=list)
 
     @property

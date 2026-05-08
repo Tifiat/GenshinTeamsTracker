@@ -6,7 +6,13 @@ from typing import Any
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
 from hoyolab_export.paths import PROJECT_ROOT
 
-from .models import ARTIFACT_POSITIONS, ArtifactItem, ArtifactSubstat, int_or_none
+from .models import (
+    ARTIFACT_POSITIONS,
+    ArtifactItem,
+    ArtifactSubstat,
+    ArtifactTagRef,
+    int_or_none,
+)
 
 
 ARTIFACT_ICON_DIR = PROJECT_ROOT / "assets" / "hoyolab" / "artifacts"
@@ -14,13 +20,6 @@ ARTIFACT_ICON_DIR = PROJECT_ROOT / "assets" / "hoyolab" / "artifacts"
 
 def artifact_db_exists(db_path: str | Path = ARTIFACT_DB_PATH) -> bool:
     return Path(db_path).exists()
-
-
-def _split_group(value: str | None) -> list[str]:
-    if not value:
-        return []
-
-    return sorted({item for item in value.split("||") if item})
 
 
 def _resolve_icon_path(icon_key: str | None, local_path: str | None) -> Path | None:
@@ -51,25 +50,9 @@ def list_all_artifacts(
         return _fetch_artifacts(conn)
 
 
-def list_artifacts_by_position(
-    pos: int,
-    *,
-    db_path: str | Path = ARTIFACT_DB_PATH,
-) -> list[ArtifactItem]:
-    if not artifact_db_exists(db_path):
-        return []
-
-    with connect_db(db_path) as conn:
-        return _fetch_artifacts(conn, "WHERE artifacts.pos = ?", (pos,))
-
-
-def _fetch_artifacts(
-    conn,
-    where_sql: str = "",
-    params: tuple[Any, ...] = (),
-) -> list[ArtifactItem]:
+def _fetch_artifacts(conn) -> list[ArtifactItem]:
     rows = conn.execute(
-        f"""
+        """
         SELECT
             artifacts.id,
             artifacts.name,
@@ -85,31 +68,24 @@ def _fetch_artifacts(
             icons.icon_key,
             icons.icon_url,
             icons.local_path AS icon_local_path,
-            equipment.character_name,
-            GROUP_CONCAT(tags.name, '||') AS tag_names
+            equipment.character_name
         FROM artifacts
         LEFT JOIN artifact_icons AS icons
             ON icons.id = artifacts.icon_id
         LEFT JOIN artifact_equipment AS equipment
             ON equipment.artifact_id = artifacts.id
-        LEFT JOIN artifact_tag_links AS tag_links
-            ON tag_links.artifact_id = artifacts.id
-        LEFT JOIN artifact_tags AS tags
-            ON tags.id = tag_links.tag_id
-        {where_sql}
-        GROUP BY artifacts.id
         ORDER BY
             artifacts.pos,
             COALESCE(artifacts.rarity, 0) DESC,
             COALESCE(artifacts.level, 0) DESC,
             artifacts.set_name COLLATE NOCASE,
             artifacts.name COLLATE NOCASE
-        """,
-        params,
+        """
     ).fetchall()
 
     artifact_ids = [int(row["id"]) for row in rows]
     substats_by_artifact = _load_substats(conn, artifact_ids)
+    tags_by_artifact = _load_tags(conn, artifact_ids)
 
     result: list[ArtifactItem] = []
 
@@ -135,7 +111,7 @@ def _fetch_artifacts(
                 icon_url=row["icon_url"] or "",
                 icon_path=_resolve_icon_path(icon_key, row["icon_local_path"]),
                 character_name=row["character_name"] or "",
-                tags=_split_group(row["tag_names"]),
+                tags=tags_by_artifact.get(artifact_id, []),
                 substats=substats_by_artifact.get(artifact_id, []),
             )
         )
@@ -179,6 +155,43 @@ def _load_substats(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactSubs
                 property_name=row["property_name"],
                 value=row["value"],
                 times=row["times"],
+            )
+        )
+
+    return result
+
+
+def _load_tags(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactTagRef]]:
+    if not artifact_ids:
+        return {}
+
+    placeholders = ",".join("?" for _ in artifact_ids)
+
+    rows = conn.execute(
+        f"""
+        SELECT
+            links.artifact_id,
+            tags.id AS tag_id,
+            tags.name AS tag_name
+        FROM artifact_tag_links AS links
+        JOIN artifact_tags AS tags
+            ON tags.id = links.tag_id
+        WHERE links.artifact_id IN ({placeholders})
+        ORDER BY tags.sort_order, tags.name COLLATE NOCASE
+        """,
+        artifact_ids,
+    ).fetchall()
+
+    result: dict[int, list[ArtifactTagRef]] = {
+        artifact_id: []
+        for artifact_id in artifact_ids
+    }
+
+    for row in rows:
+        result[int(row["artifact_id"])].append(
+            ArtifactTagRef(
+                id=int(row["tag_id"]),
+                name=row["tag_name"],
             )
         )
 

@@ -63,7 +63,7 @@ def property_name(
     if not isinstance(item, dict):
         return str(property_type)
 
-    return item.get("filter_name") or item.get("name") or str(property_type)
+    return item.get("name") or item.get("filter_name") or str(property_type)
 
 
 def normalize_property(
@@ -90,19 +90,36 @@ def artifact_fingerprint(
 ) -> str:
     relic_set = relic.get("set") if isinstance(relic.get("set"), dict) else {}
 
+    def fingerprint_property(prop: dict[str, Any] | None) -> dict[str, Any] | None:
+        if not isinstance(prop, dict):
+            return None
+
+        return {
+            "property_type": prop.get("property_type"),
+            "value": prop.get("value") or "",
+            "times": prop.get("times"),
+        }
+
+    fingerprint_substats = [
+        fingerprint_property(item)
+        for item in substats
+        if isinstance(item, dict)
+    ]
+
     # character_id intentionally not included:
     # if artifact moves to another character, it should still be the same artifact.
+    #
+    # Display/localized names intentionally not included:
+    # changing HoYoLAB language or property_map name/filter_name must not create duplicates.
     payload = {
         "relic_id": relic.get("id"),
-        "name": relic.get("name"),
         "set_id": relic_set.get("id"),
-        "set_name": relic_set.get("name"),
         "pos": relic.get("pos"),
         "rarity": relic.get("rarity"),
         "level": relic.get("level"),
-        "main_property": main_property,
+        "main_property": fingerprint_property(main_property),
         "substats": sorted(
-            substats,
+            fingerprint_substats,
             key=lambda item: (
                 item.get("property_type") or 0,
                 str(item.get("value") or ""),

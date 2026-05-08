@@ -209,11 +209,10 @@
 - [x] Keep artifact tags/builds persistent during repeated ordinary imports.
 - [x] Clear `data/artifacts.db` on explicit HoYoLAB profile switch to avoid mixing account-specific artifacts/tags/builds.
 - [ ] Decide whether `data/artifacts.db` is local generated state and should stay ignored.
-- [x] Add first UI surface for artifact browsing/filtering/tagging after import is integrated.
-- [x] Add a close button to the first artifact browser window.
-- [ ] Manually smoke-test artifact browser window with a real `data/artifacts.db`.
+- [x] Remove old artifact browser MVP files before rebuilding the UI as `ui/artifact_browser/`.
+- [ ] Build a new isolated artifact browser module under `ui/artifact_browser/`.
 - [ ] Decide whether artifact icon local files should be downloaded/cached into `assets/hoyolab/artifacts`.
-- [ ] Add artifact build editor after browser/tagging MVP is smoke-tested.
+- [ ] Add artifact build editor after the new artifact browser is smoke-tested.
 
 ## Offline Profile Export/Import
 
@@ -242,7 +241,6 @@
 - [x] Persist selected UI language in ignored local `settings.json`.
 - [x] Add localization keys for HoYoLAB profile menu, offline profile dialogs, sign-out warnings, and artifact import loader statuses.
 - [x] Keep Brazilian Portuguese localization in sync for the new HoYoLAB/offline-profile keys.
-- [x] Add Russian localization keys for artifact browser MVP.
 - [ ] Add localization keys for any new UI screens as they are built.
 - [ ] Keep Brazilian Portuguese localization in sync when adding new keys.
 

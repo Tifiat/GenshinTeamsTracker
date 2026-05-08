@@ -371,12 +371,10 @@ Verified local artifact import:
   - `artifact_tag_links: 1`
 - Test tag `test_keep_after_import` survived re-import.
 
-Current artifact UI MVP:
+Current artifact UI state:
 
-- `hoyolab_export/artifact_queries.py` is the read/write query layer for the artifact browser. It lists artifacts with substats, equipment, and tags from `data/artifacts.db`; it also adds/removes artifact tags through the existing `artifact_tags` and `artifact_tag_links` tables.
-- `ui/artifact_browser_window.py` adds the first PySide6 artifact browser window. It supports search, slot/rarity/equipment/tag filters, artifact cards, a detail panel, and adding/removing tags.
-- `ui/main_window.py` opens the browser through the new `Открыть артефакты` button on the right panel.
-- The artifact browser is intentionally an MVP: no build editor yet. It has a close button and uses cached local artifact icons when available; if icon files are missing locally, cards show a placeholder.
+- The first artifact browser MVP was removed.
+- Future artifact UI should be rebuilt as an isolated module under `ui/artifact_browser/`.
 - Artifact icon caching is bounded and cosmetic. Public icon download failures or slow CDN responses must not fail or hang the HoYoLAB import.
 
 Current artifact import pipeline:

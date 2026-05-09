@@ -34,6 +34,7 @@ class ArtifactItem:
     id: int
     name: str
     set_id: int | None
+    set_uid: str
     set_name: str
     pos: int
     pos_name: str
@@ -45,6 +46,7 @@ class ArtifactItem:
     icon_key: str = ""
     icon_url: str = ""
     icon_path: Path | None = None
+    set_icon_path: Path | None = None
     character_name: str = ""
     tags: list[ArtifactTagRef] = field(default_factory=list)
     substats: list[ArtifactSubstat] = field(default_factory=list)

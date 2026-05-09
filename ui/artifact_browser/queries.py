@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
+from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db, init_db
 from hoyolab_export.paths import PROJECT_ROOT
 
 from .models import (
@@ -15,28 +15,17 @@ from .models import (
 )
 
 
-ARTIFACT_ICON_DIR = PROJECT_ROOT / "assets" / "hoyolab" / "artifacts"
-
-
 def artifact_db_exists(db_path: str | Path = ARTIFACT_DB_PATH) -> bool:
     return Path(db_path).exists()
 
 
-def _resolve_icon_path(icon_key: str | None, local_path: str | None) -> Path | None:
-    candidates: list[Path] = []
+def _resolve_icon_path(local_path: str | None) -> Path | None:
+    if not local_path:
+        return None
 
-    if local_path:
-        path = Path(local_path)
-        candidates.append(path if path.is_absolute() else PROJECT_ROOT / path)
-
-    if icon_key:
-        candidates.append(ARTIFACT_ICON_DIR / icon_key)
-
-    for path in candidates:
-        if path.exists() and path.is_file():
-            return path
-
-    return None
+    path = Path(local_path)
+    path = path if path.is_absolute() else PROJECT_ROOT / path
+    return path if path.exists() and path.is_file() else None
 
 
 def list_all_artifacts(
@@ -47,6 +36,7 @@ def list_all_artifacts(
         return []
 
     with connect_db(db_path) as conn:
+        init_db(conn)
         return _fetch_artifacts(conn)
 
 
@@ -57,6 +47,7 @@ def _fetch_artifacts(conn) -> list[ArtifactItem]:
             artifacts.id,
             artifacts.name,
             artifacts.set_id,
+            artifacts.set_uid,
             artifacts.set_name,
             artifacts.pos,
             artifacts.pos_name,
@@ -65,13 +56,17 @@ def _fetch_artifacts(conn) -> list[ArtifactItem]:
             artifacts.main_property_type,
             artifacts.main_property_name,
             artifacts.main_property_value,
-            icons.icon_key,
-            icons.icon_url,
-            icons.local_path AS icon_local_path,
+                        set_icons.icon_url AS set_icon_url,
+            set_icons.local_path AS set_icon_local_path,
+            set_flower_icons.local_path AS set_flower_icon_local_path,
             equipment.character_name
         FROM artifacts
-        LEFT JOIN artifact_icons AS icons
-            ON icons.id = artifacts.icon_id
+        LEFT JOIN artifact_set_piece_icons AS set_icons
+            ON set_icons.set_uid = artifacts.set_uid
+            AND set_icons.pos = artifacts.pos
+        LEFT JOIN artifact_set_piece_icons AS set_flower_icons
+            ON set_flower_icons.set_uid = artifacts.set_uid
+            AND set_flower_icons.pos = 1
         LEFT JOIN artifact_equipment AS equipment
             ON equipment.artifact_id = artifacts.id
         ORDER BY
@@ -92,13 +87,15 @@ def _fetch_artifacts(conn) -> list[ArtifactItem]:
     for row in rows:
         artifact_id = int(row["id"])
         pos = int(row["pos"])
-        icon_key = row["icon_key"] or ""
+        set_uid = row["set_uid"] or ""
+        icon_key = f"{set_uid}_{pos}.png" if set_uid else ""
 
         result.append(
             ArtifactItem(
                 id=artifact_id,
                 name=row["name"],
                 set_id=int_or_none(row["set_id"]),
+                set_uid=set_uid,
                 set_name=row["set_name"],
                 pos=pos,
                 pos_name=row["pos_name"] or ARTIFACT_POSITIONS[pos],
@@ -108,8 +105,9 @@ def _fetch_artifacts(conn) -> list[ArtifactItem]:
                 main_property_name=row["main_property_name"],
                 main_property_value=row["main_property_value"],
                 icon_key=icon_key,
-                icon_url=row["icon_url"] or "",
-                icon_path=_resolve_icon_path(icon_key, row["icon_local_path"]),
+                icon_url=row["set_icon_url"] or "",
+                icon_path=_resolve_icon_path(row["set_icon_local_path"]),
+                set_icon_path=_resolve_icon_path(row["set_flower_icon_local_path"]),
                 character_name=row["character_name"] or "",
                 tags=tags_by_artifact.get(artifact_id, []),
                 substats=substats_by_artifact.get(artifact_id, []),

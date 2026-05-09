@@ -55,13 +55,15 @@ Implemented scaffold:
   - `character_detail.py`
   - `artifact_db.py`
   - `artifact_importer.py`
+  - `artifact_set_catalog.py`
   - `offline_profile.py`
   - `import_pipeline.py`
   - `run_import.py`
 - Current production HoYoLAB folders:
   - `data/hoyolab`
   - `assets/hoyolab`
-  - `assets/hoyolab/artifacts`
+  - `assets/artifact_sets`
+  - `assets/hoyolab/artifacts` only as a legacy per-artifact icon fallback during migration
   - `debug/hoyolab`
 - Artifact SQLite DB:
   - `data/artifacts.db`
@@ -328,7 +330,9 @@ Artifact persistence layer:
 
 - `hoyolab_export/artifact_db.py` defines SQLite DB `data/artifacts.db`.
 - Tables:
-  - `artifact_icons`
+  - `artifact_sets`
+  - `artifact_set_piece_icons`
+  - `artifact_set_names`
   - `artifacts`
   - `artifact_substats`
   - `artifact_equipment`
@@ -336,53 +340,72 @@ Artifact persistence layer:
   - `artifact_tag_links`
   - `artifact_builds`
   - `artifact_build_slots`
-- `hoyolab_export/artifact_importer.py` normalizes `character/detail` relics, calculates stable fingerprints, and upserts:
-  - artifact icons;
-  - artifacts;
-  - substats;
-  - current equipment.
+- New DBs no longer create `artifact_icons` or `artifacts.icon_id`, and code no longer reads/writes/counts them. The current local SQLite file may still physically contain the old table/column until a separate DB rebuild/drop migration.
+- `artifact_sets` is the canonical set identity table. Its canonical rows come from HoYoWiki `en-us`; `hoyolab_set_id` is account/API mapping and must not be seeded from HoYoWiki `entry_page_id`.
+- `artifact_set_piece_icons` stores local set-piece icons by `(set_uid, pos)` under `assets/artifact_sets`.
+- `artifact_set_names` stores localized HoYoWiki names by `(set_uid, lang)` with `normalized_name` for exact name matching.
+- `hoyolab_export/artifact_importer.py` normalizes localized `character/detail` relics, calculates stable fingerprints, resolves `set_uid` through `artifact_sets.hoyolab_set_id`, and upserts artifacts, substats, and current equipment. It has no per-artifact icon cache path.
 - Artifact fingerprint intentionally excludes character id, so moving an artifact to another character keeps it as the same artifact.
 - Current equipment is replaced on import; artifact records, user tags, and user artifact builds are preserved during ordinary HoYoLAB updates.
+- Do not use image matching, cv2, perceptual hashes, third-party artifact databases, hardcoded `ru-ru`, or the assumption that HoYoLAB `set_id` equals HoYoWiki `entry_page_id`.
 
 Artifact tools:
 
 - `tools/capture_hoyolab_artifacts.py`: sandbox endpoint capture / active fetch helper.
-- `tools/probe_hoyolab_character_detail_batch.py`: fetches role info, detects language from page/session, and POSTs a batch `character/detail` request.
 - `tools/import_artifacts_from_detail_json.py`: imports `character_detail_batch_result.json` into SQLite.
 - `tools/test_artifact_tag_persistence.py`: verifies user tags survive re-import.
+- `tools/update_artifact_set_catalog.py`: updates canonical HoYoWiki `en-us` set catalog and seed data.
+- Old `tools/probe_*.py` artifact-set probes and debug outputs were removed after the `set_uid + pos` catalog path became production. Do not resurrect `probe_hoyolab_set_icon_match.py` or `debug/hoyolab_set_icon_match*`.
 
-Verified local artifact import:
+Verified local artifact import after set catalog refactor:
 
-- First import from `character_detail_batch_result.json`:
-  - `characters: 73`
-  - `relics_seen: 254`
-  - `artifacts_inserted: 254`
-  - `artifact_icons: 104`
-  - `artifact_substats: 1004`
-- Re-importing the same file:
-  - `artifacts_inserted: 0`
-  - `artifacts_existing: 254`
-- Current `data/artifacts.db` row counts:
-  - `artifact_icons: 104`
-  - `artifacts: 254`
-  - `artifact_substats: 1004`
-  - `artifact_equipment: 254`
-  - `artifact_tags: 1`
-  - `artifact_tag_links: 1`
-- Test tag `test_keep_after_import` survived re-import.
+- Full `.\.venv\Scripts\python.exe -m hoyolab_export.run_import` succeeded on 2026-05-09.
+- Import summary:
+  - `relics_seen: 256`
+  - `artifacts_inserted: 1`
+  - `artifacts_existing: 255`
+  - `cards: 75`
+  - `okMatches: 75`
+  - `warningMatches: 0`
+- Current `data/artifacts.db` row counts after that import:
+  - `artifact_sets: 59`
+  - `artifact_set_piece_icons: 279`
+  - `artifact_set_names: 118`
+  - `artifacts: 256`
+  - `artifact_substats: 1012`
+  - `artifact_equipment: 256`
+  - `artifact_tags: 0`
+  - `artifact_tag_links: 0`
+  - `artifact_builds: 0`
+  - `artifact_build_slots: 0`
+- `artifacts_missing_set_uid: 0`.
+- `artifact_set_names` currently has `en-us: 59` and `ru-ru: 59`.
+- Current account uses 25 mapped artifact sets in `artifact_sets.hoyolab_set_id`.
 
 Current artifact UI state:
 
-- The first artifact browser MVP was removed.
-- Future artifact UI should be rebuilt as an isolated module under `ui/artifact_browser/`.
-- Artifact icon caching is bounded and cosmetic. Public icon download failures or slow CDN responses must not fail or hang the HoYoLAB import.
+- The first QWidget-card artifact browser MVP was removed.
+- New isolated module exists under `ui/artifact_browser/` and currently uses `ArtifactBrowserWindow`, `ArtifactBrowserStore`, `ArtifactListModel`, and `ArtifactCardDelegate`.
+- `ui/artifact_browser/window.py` uses `QListView + model + delegate`; `card_widget.py` is an old/alternate tail and can be cleaned up later.
+- `ui/artifact_browser/queries.py` reads icons only from `artifact_set_piece_icons.local_path` by `artifacts.set_uid + artifacts.pos`; there is no `artifact_icons` fallback.
+- Browser UI is not yet considered final: finish/cleanup and main-window integration are still pending.
 
 Current artifact import pipeline:
 
 - `hoyolab_export/character_detail.py` is the reusable production helper for `character/detail`.
-- `python -m hoyolab_export.run_import` now fetches one batch `character/detail` request after `/character/list` inventory is known.
+- `python -m hoyolab_export.run_import` fetches one localized batch `character/detail` request after `/character/list` inventory is known.
 - The compact current detail snapshot is written to `data/hoyolab/account_character_details.json`.
-- The same import run imports/updates artifacts into `data/artifacts.db`.
+- HoYoLAB content language is detected from the actual `character/detail` request and saved to `data/hoyolab/account_language.json`.
+- `ensure_artifact_set_names(content_lang)` fetches localized HoYoWiki names for the user's HoYoLAB content language. If the language fetch fails, import continues with `en-us` fallback.
+- `ensure_hoyolab_set_mapping(character_details, export_page, real_ids, db_path)` prepares missing `hoyolab_set_id -> set_uid` mappings before artifact import:
+  - collect `relic.set.id` from the localized payload;
+  - if unknown set ids exist, make a separate service `character/detail` request with `x-rpc-language=en-us`;
+  - use only EN `relic.set.id` and `relic.set.name`;
+  - match EN names against `artifact_set_names(lang='en-us').normalized_name`;
+  - update `artifact_sets.hoyolab_set_id`;
+  - never pass the EN payload into `import_character_details_payload`.
+- If mapping is still missing after EN-pass, the importer raises a clear preparation error instead of falling back to images or external databases.
+- The same import run then imports/updates artifacts into `data/artifacts.db` using localized names/stats and prepared `set_uid`.
 - Ordinary HoYoLAB import/update clears debug at startup, then replaces current HoYoLAB JSON/assets only after browser export, inventory, and detail fetch have succeeded. It does not delete `data/artifacts.db`, so user artifact tags/builds survive repeated updates.
 - Account/profile switching is the explicit boundary that clears `data/artifacts.db`, because artifacts and user artifact tags/builds must not be mixed between accounts.
 
@@ -400,8 +423,12 @@ HoYoLAB browser session
   -> export image.png
   -> collect html2canvas clone layout/rootDiscovery
   -> build clean inventory in memory
-  -> fetch character/detail for all real characters
-  -> import/update artifacts in SQLite
+  -> fetch localized character/detail for all real characters
+  -> save HoYoLAB content language to data/hoyolab/account_language.json
+  -> ensure HoYoWiki localized artifact set names for content language
+  -> if needed, fetch service EN character/detail only for relic set id/name mapping
+  -> map HoYoLAB relic set ids to canonical HoYoWiki set_uid
+  -> import/update artifacts in SQLite using set_uid identity
   -> merge current character/weapon inventory into the local collection
   -> write/update clean inventory JSON and current character details snapshot
   -> crop character/weapon regions by DOM/root-relative coordinates
@@ -417,6 +444,7 @@ Current outputs:
 data/hoyolab/account_characters.json
 data/hoyolab/account_weapons.json
 data/hoyolab/account_character_details.json
+data/hoyolab/account_language.json
 data/hoyolab/layout.json
 data/hoyolab/crop_manifest.json
 assets/hoyolab/characters/*.png

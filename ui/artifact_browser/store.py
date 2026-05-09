@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from .models import ARTIFACT_POSITIONS, ArtifactItem
 from .queries import artifact_db_exists, list_all_artifacts
@@ -8,9 +9,10 @@ from .queries import artifact_db_exists, list_all_artifacts
 
 @dataclass(frozen=True, slots=True)
 class ArtifactSetOption:
-    set_id: int | None
+    set_uid: str
     set_name: str
     count: int
+    icon_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,12 +41,13 @@ class ArtifactBrowserStore:
             for pos in ARTIFACT_POSITIONS
         }
 
-        self.ids_by_game_set: dict[int | None, set[int]] = {}
+        self.ids_by_game_set: dict[str, set[int]] = {}
         self.ids_by_custom_set: dict[int, set[int]] = {}
 
         for artifact in artifacts:
             self.ids_by_pos.setdefault(artifact.pos, []).append(artifact.id)
-            self.ids_by_game_set.setdefault(artifact.set_id, set()).add(artifact.id)
+            if artifact.set_uid:
+                self.ids_by_game_set.setdefault(artifact.set_uid, set()).add(artifact.id)
 
             for tag in artifact.tags:
                 self.ids_by_custom_set.setdefault(tag.id, set()).add(artifact.id)
@@ -68,11 +71,11 @@ class ArtifactBrowserStore:
     def ids_for_position(self, pos: int) -> list[int]:
         return list(self.ids_by_pos.get(pos, []))
 
-    def ids_for_game_sets(self, set_ids: set[int | None]) -> set[int]:
+    def ids_for_game_sets(self, set_uids: set[str]) -> set[int]:
         result: set[int] = set()
 
-        for set_id in set_ids:
-            result.update(self.ids_by_game_set.get(set_id, set()))
+        for set_uid in set_uids:
+            result.update(self.ids_by_game_set.get(set_uid, set()))
 
         return result
 
@@ -86,21 +89,29 @@ class ArtifactBrowserStore:
 
     @staticmethod
     def _build_game_set_options(artifacts: list[ArtifactItem]) -> list[ArtifactSetOption]:
-        counts: dict[int | None, int] = {}
-        names: dict[int | None, str] = {}
+        counts: dict[str, int] = {}
+        names: dict[str, str] = {}
+        icon_paths: dict[str, Path | None] = {}
 
         for artifact in artifacts:
-            counts[artifact.set_id] = counts.get(artifact.set_id, 0) + 1
-            names.setdefault(artifact.set_id, artifact.set_name)
+            if not artifact.set_uid:
+                continue
+
+            counts[artifact.set_uid] = counts.get(artifact.set_uid, 0) + 1
+            names.setdefault(artifact.set_uid, artifact.set_name)
+
+            if artifact.set_uid not in icon_paths or icon_paths[artifact.set_uid] is None:
+                icon_paths[artifact.set_uid] = artifact.set_icon_path
 
         return sorted(
             [
                 ArtifactSetOption(
-                    set_id=set_id,
-                    set_name=names[set_id],
+                    set_uid=set_uid,
+                    set_name=names[set_uid],
                     count=count,
+                    icon_path=icon_paths.get(set_uid),
                 )
-                for set_id, count in counts.items()
+                for set_uid, count in counts.items()
             ],
             key=lambda item: item.set_name.casefold(),
         )

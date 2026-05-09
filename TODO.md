@@ -193,6 +193,7 @@
   - `accept-language`.
 - [x] Add SQLite artifact DB module `hoyolab_export/artifact_db.py`.
 - [x] Add artifact importer module `hoyolab_export/artifact_importer.py`.
+- [x] Add artifact set catalog module `hoyolab_export/artifact_set_catalog.py`.
 - [x] Add artifact import tool `tools/import_artifacts_from_detail_json.py`.
 - [x] Add artifact tag persistence test tool `tools/test_artifact_tag_persistence.py`.
 - [x] Verify first artifact import:
@@ -208,10 +209,41 @@
 - [x] Import artifacts into `data/artifacts.db` as part of main HoYoLAB import.
 - [x] Keep artifact tags/builds persistent during repeated ordinary imports.
 - [x] Clear `data/artifacts.db` on explicit HoYoLAB profile switch to avoid mixing account-specific artifacts/tags/builds.
+- [x] Add `artifact_set_names` table for localized HoYoWiki artifact set names.
+- [x] Add stable artifact set name normalization for exact EN-name matching.
+- [x] Seed canonical HoYoWiki `en-us` artifact set catalog into `artifact_sets`, `artifact_set_piece_icons`, and `artifact_set_names`.
+- [x] Stop seeding `artifact_sets.hoyolab_set_id` from HoYoWiki `entry_page_id`.
+- [x] Detect HoYoLAB content language from the actual `character/detail` request and save `data/hoyolab/account_language.json`.
+- [x] Fetch localized HoYoWiki artifact set names for HoYoLAB content language without hardcoding `ru-ru`.
+- [x] Add service EN-pass mapping for HoYoLAB `relic.set.id -> set_uid`.
+- [x] Ensure EN `character/detail` payload is used only for set id/name mapping and never imported as user data.
+- [x] Import artifacts using `set_uid` resolved through `artifact_sets.hoyolab_set_id`.
+- [x] Switch artifact browser queries to prefer set-piece icons from `artifact_set_piece_icons` by `set_uid + pos`.
+- [x] Remove old per-artifact icon cache code path:
+  - deleted `artifact_icon_cache.py`;
+  - removed `upsert_icon()`;
+  - removed `cache_icons` no-op API;
+  - removed `icon_id` from `upsert_artifact()` and importer calls;
+  - removed `artifact_icons` from `count_rows()`;
+  - removed browser query join/fallback to `artifact_icons`.
+- [x] Verify full HoYoLAB import after artifact set catalog refactor:
+  - 256 relics seen;
+  - 0 artifacts missing `set_uid`;
+  - 25 account set mappings;
+  - `artifact_set_names`: `en-us=59`, `ru-ru=59`.
+- [x] Remove obsolete artifact-set probe files and debug outputs:
+  - `tools/probe_*.py` artifact probes;
+  - `debug/hoyolab_set_icon_match*`;
+  - `debug/hoyolab_relic_sets.*`;
+  - `debug/artifact_sets_probe/`;
+  - `debug/hoyowiki_detail_probe/`.
 - [ ] Decide whether `data/artifacts.db` is local generated state and should stay ignored.
 - [x] Remove old artifact browser MVP files before rebuilding the UI as `ui/artifact_browser/`.
-- [ ] Build a new isolated artifact browser module under `ui/artifact_browser/`.
-- [ ] Decide whether artifact icon local files should be downloaded/cached into `assets/hoyolab/artifacts`.
+- [ ] Finish the isolated artifact browser module under `ui/artifact_browser/` and wire it into the main UI when ready.
+- [ ] Remove unused `ui/artifact_browser/card_widget.py` after the delegate/model browser is finalized.
+- [ ] Optional DB cleanup migration: rebuild/drop legacy physical `artifact_icons` table and `artifacts.icon_id` column from existing local SQLite files.
+- [ ] Decide whether old generated `assets/hoyolab/artifacts` can be deleted from local/generated data.
+- [ ] Decide whether `data/hoyolab/account_language.json` should be included in offline profile export/import.
 - [ ] Add artifact build editor after the new artifact browser is smoke-tested.
 
 ## Offline Profile Export/Import

@@ -56,10 +56,11 @@ async def browser_fetch_json(
     *,
     method: str = "GET",
     body: dict[str, Any] | None = None,
+    language: str | None = None,
 ) -> dict[str, Any]:
     return await page.evaluate(
         """
-        async ({ url, method, body }) => {
+        async ({ url, method, body, language }) => {
             function readCookie(name) {
                 const prefix = name + "=";
                 const parts = document.cookie.split(";");
@@ -98,7 +99,9 @@ async def browser_fetch_json(
                 return `${browserLang},${primary};q=0.9,en;q=0.8`;
             }
 
+            const requestedLanguage = normalizeLanguage(language);
             const detectedLanguage =
+                requestedLanguage ||
                 normalizeLanguage(readCookie("mi18nLang")) ||
                 normalizeLanguage(localStorage.getItem("mi18nLang")) ||
                 normalizeLanguage(document.documentElement.lang) ||
@@ -134,6 +137,7 @@ async def browser_fetch_json(
                 statusText: response.statusText,
                 url: response.url,
                 detectedLanguage,
+                requestedLanguage,
                 json,
                 textPreview: json === null ? text.slice(0, 1000) : null
             };
@@ -143,6 +147,7 @@ async def browser_fetch_json(
             "url": url,
             "method": method,
             "body": body,
+            "language": language,
         },
     )
 
@@ -150,18 +155,21 @@ async def browser_fetch_json(
 async def fetch_character_details_batch(
     page,
     character_ids: list[int] | list[dict[str, Any]],
+    *,
+    language: str | None = None,
 ) -> dict[str, Any]:
     ids = real_character_ids(character_ids)
     if not ids:
         raise RuntimeError("No real character ids found for HoYoLAB character/detail request.")
 
-    roles_result = await browser_fetch_json(page, ROLES_URL)
+    roles_result = await browser_fetch_json(page, ROLES_URL, language=language)
     role_id, server = pick_genshin_role(roles_result.get("json") or {})
 
     result = await browser_fetch_json(
         page,
         DETAIL_URL,
         method="POST",
+        language=language,
         body={
             "server": server,
             "role_id": role_id,

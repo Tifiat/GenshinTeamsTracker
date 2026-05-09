@@ -27,15 +27,6 @@ def connect_db(db_path: str | Path = ARTIFACT_DB_PATH) -> sqlite3.Connection:
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(
         """
-        CREATE TABLE IF NOT EXISTS artifact_icons (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            icon_key TEXT NOT NULL UNIQUE,
-            icon_url TEXT NOT NULL,
-            local_path TEXT,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-
         CREATE TABLE IF NOT EXISTS artifact_sets (
             set_uid TEXT PRIMARY KEY,
 
@@ -62,6 +53,17 @@ def init_db(conn: sqlite3.Connection) -> None:
             FOREIGN KEY (set_uid) REFERENCES artifact_sets(set_uid) ON DELETE CASCADE
         );
 
+        CREATE TABLE IF NOT EXISTS artifact_set_names (
+            set_uid TEXT NOT NULL,
+            lang TEXT NOT NULL,
+            name TEXT NOT NULL,
+            normalized_name TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+
+            PRIMARY KEY (set_uid, lang),
+            FOREIGN KEY (set_uid) REFERENCES artifact_sets(set_uid) ON DELETE CASCADE
+        );
+
         CREATE TABLE IF NOT EXISTS artifacts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fingerprint TEXT NOT NULL UNIQUE,
@@ -83,12 +85,8 @@ def init_db(conn: sqlite3.Connection) -> None:
             main_property_name TEXT,
             main_property_value TEXT,
 
-            icon_id INTEGER,
-
             first_seen_at TEXT NOT NULL,
-            last_seen_at TEXT NOT NULL,
-
-            FOREIGN KEY (icon_id) REFERENCES artifact_icons(id)
+            last_seen_at TEXT NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS artifact_substats (
@@ -140,6 +138,9 @@ def init_db(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_artifact_set_piece_icons_pos
             ON artifact_set_piece_icons(pos);
+
+        CREATE INDEX IF NOT EXISTS idx_artifact_set_names_lang_normalized
+            ON artifact_set_names(lang, normalized_name);
         
         CREATE INDEX IF NOT EXISTS idx_artifacts_pos
             ON artifacts(pos);
@@ -206,41 +207,6 @@ def init_db(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def upsert_icon(
-    conn: sqlite3.Connection,
-    *,
-    icon_key: str,
-    icon_url: str,
-    local_path: str | None = None,
-) -> int:
-    now = utc_now()
-
-    conn.execute(
-        """
-        INSERT INTO artifact_icons (
-            icon_key,
-            icon_url,
-            local_path,
-            created_at,
-            updated_at
-        )
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(icon_key) DO UPDATE SET
-            icon_url = excluded.icon_url,
-            local_path = COALESCE(excluded.local_path, artifact_icons.local_path),
-            updated_at = excluded.updated_at
-        """,
-        (icon_key, icon_url, local_path, now, now),
-    )
-
-    row = conn.execute(
-        "SELECT id FROM artifact_icons WHERE icon_key = ?",
-        (icon_key,),
-    ).fetchone()
-
-    return int(row["id"])
-
-
 def upsert_artifact(
     conn: sqlite3.Connection,
     *,
@@ -257,7 +223,6 @@ def upsert_artifact(
     main_property_type: int | None,
     main_property_name: str | None,
     main_property_value: str | None,
-    icon_id: int | None,
 ) -> tuple[int, bool]:
     now = utc_now()
 
@@ -283,7 +248,6 @@ def upsert_artifact(
                 main_property_type = ?,
                 main_property_name = ?,
                 main_property_value = ?,
-                icon_id = ?,
                 last_seen_at = ?
             WHERE id = ?
             """,
@@ -300,7 +264,6 @@ def upsert_artifact(
                 main_property_type,
                 main_property_name,
                 main_property_value,
-                icon_id,
                 now,
                 artifact_id,
             ),
@@ -323,11 +286,10 @@ def upsert_artifact(
             main_property_type,
             main_property_name,
             main_property_value,
-            icon_id,
             first_seen_at,
             last_seen_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             fingerprint,
@@ -343,7 +305,6 @@ def upsert_artifact(
             main_property_type,
             main_property_name,
             main_property_value,
-            icon_id,
             now,
             now,
         ),
@@ -688,7 +649,6 @@ def find_duplicate_artifacts_in_builds(
 
 def count_rows(conn: sqlite3.Connection) -> dict[str, int]:
     tables = [
-        "artifact_icons",
         "artifacts",
         "artifact_substats",
         "artifact_equipment",
@@ -698,6 +658,7 @@ def count_rows(conn: sqlite3.Connection) -> dict[str, int]:
         "artifact_build_slots",
         "artifact_sets",
         "artifact_set_piece_icons",
+        "artifact_set_names",
     ]
 
     result = {}

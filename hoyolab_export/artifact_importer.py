@@ -2,7 +2,6 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 
 from .artifact_db import (
     ARTIFACT_DB_PATH,
@@ -11,21 +10,11 @@ from .artifact_db import (
     replace_current_equipment,
     replace_substats,
     upsert_artifact,
-    upsert_icon,
 )
-from .artifact_icon_cache import cache_artifact_icons
-
-
-def icon_key(url: str | None) -> str:
-    if not url:
-        return ""
-
-    parsed = urlparse(url)
-    filename = Path(parsed.path).name
-
-    return filename.lower()
-
-
+from .artifact_set_catalog import (
+    ensure_artifact_set_catalog,
+    resolve_hoyolab_set_uid,
+)
 def stable_hash(data: Any) -> str:
     encoded = json.dumps(
         data,
@@ -148,8 +137,6 @@ def normalize_relic(
         "fingerprint": artifact_fingerprint(relic, main_property, substats),
         "relic_id": relic.get("id"),
         "name": relic.get("name") or "",
-        "icon": relic.get("icon") or "",
-        "icon_key": icon_key(relic.get("icon")),
         "set_id": relic_set.get("id"),
         "set_name": relic_set.get("name"),
         "pos": relic.get("pos"),
@@ -165,7 +152,6 @@ def import_character_details_payload(
     payload: dict[str, Any],
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
-    cache_icons: bool = True,
 ) -> dict[str, Any]:
     hoyolab_payload = unwrap_hoyolab_payload(payload)
 
@@ -187,11 +173,13 @@ def import_character_details_payload(
         "relics_seen": 0,
         "artifacts_inserted": 0,
         "artifacts_existing": 0,
-        "icons_seen": 0,
         "equipment_rows": 0,
-        "icon_cache": {},
+        "set_catalog": {},
     }
-
+    summary["set_catalog"] = ensure_artifact_set_catalog(
+        db_path=db_path,
+        allow_network=False,
+    )
     equipment_rows = []
 
     with connect_db(db_path) as conn:
@@ -213,15 +201,11 @@ def import_character_details_payload(
                 normalized = normalize_relic(relic, property_map)
                 summary["relics_seen"] += 1
 
-                icon_id = None
-                if normalized["icon_key"]:
-                    icon_id = upsert_icon(
-                        conn,
-                        icon_key=normalized["icon_key"],
-                        icon_url=normalized["icon"],
-                        local_path=None,
-                    )
-                    summary["icons_seen"] += 1
+                set_uid = resolve_hoyolab_set_uid(
+                    conn,
+                    hoyolab_set_id=normalized["set_id"],
+                    display_name=normalized["set_name"],
+                )
 
                 main_property = normalized["main_property"] or {}
 
@@ -231,6 +215,7 @@ def import_character_details_payload(
                     relic_id=normalized["relic_id"],
                     name=normalized["name"],
                     set_id=normalized["set_id"],
+                    set_uid=set_uid,
                     set_name=normalized["set_name"],
                     pos=normalized["pos"],
                     pos_name=normalized["pos_name"],
@@ -239,7 +224,6 @@ def import_character_details_payload(
                     main_property_type=main_property.get("property_type"),
                     main_property_name=main_property.get("property_name"),
                     main_property_value=main_property.get("value"),
-                    icon_id=icon_id,
                 )
 
                 if inserted:
@@ -263,14 +247,6 @@ def import_character_details_payload(
 
         conn.commit()
 
-    if cache_icons:
-        try:
-            summary["icon_cache"] = cache_artifact_icons(db_path=db_path)
-        except Exception as exc:
-            # Icons are cosmetic for the artifact browser. Keep the import result usable
-            # even when a public CDN request temporarily fails in an unexpected way.
-            summary["icon_cache"] = {"error": str(exc)}
-
     return summary
 
 
@@ -278,9 +254,8 @@ def import_character_details_file(
     input_path: str | Path,
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
-    cache_icons: bool = True,
 ) -> dict[str, Any]:
     input_path = Path(input_path)
     payload = json.loads(input_path.read_text(encoding="utf-8"))
 
-    return import_character_details_payload(payload, db_path=db_path, cache_icons=cache_icons)
+    return import_character_details_payload(payload, db_path=db_path)

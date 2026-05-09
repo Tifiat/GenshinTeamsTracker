@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QPoint, Qt, QSize
 from PySide6.QtWidgets import (
+    QApplication,
     QButtonGroup,
     QFrame,
     QHBoxLayout,
@@ -89,7 +90,7 @@ class ArtifactBrowserWindow(QWidget):
         self.delegate = ArtifactCardDelegate(self)
 
         self.sets_filter_enabled = True
-        self.selected_game_set_ids: set[int | None] = set()
+        self.selected_game_set_ids: set[str] = set()
         self.selected_custom_set_ids: set[int] = set()
         self._sets_popup: SetsFilterPopup | None = None
 
@@ -199,14 +200,51 @@ class ArtifactBrowserWindow(QWidget):
             )
 
         button_pos = self.sets_button.mapToGlobal(QPoint(0, self.sets_button.height() + 4))
-        self._sets_popup.move(button_pos)
+        self._move_sets_popup_inside_screen(button_pos)
         self._sets_popup.show()
         self._sets_popup.raise_()
         self._sets_popup.activateWindow()
 
+    def _move_sets_popup_inside_screen(self, preferred_pos: QPoint) -> None:
+        if self._sets_popup is None:
+            return
+
+        popup = self._sets_popup
+        popup_size = popup.sizeHint().expandedTo(popup.minimumSize())
+        popup.resize(popup_size)
+
+        screen = self.sets_button.screen() or self.screen() or QApplication.primaryScreen()
+        if screen is None:
+            popup.move(preferred_pos)
+            return
+
+        available = screen.availableGeometry()
+
+        x = preferred_pos.x()
+        y = preferred_pos.y()
+
+        max_x = available.x() + available.width() - popup_size.width()
+        max_y = available.y() + available.height() - popup_size.height()
+
+        if x > max_x:
+            x = max_x
+        if x < available.x():
+            x = available.x()
+
+        if y > max_y:
+            above_pos = self.sets_button.mapToGlobal(
+                QPoint(0, -popup_size.height() - 4)
+            )
+            y = above_pos.y() if above_pos.y() >= available.y() else max_y
+
+        if y < available.y():
+            y = available.y()
+
+        popup.move(QPoint(x, y))
+
     def on_sets_selection_changed(
         self,
-        selected_game_set_ids: set[int | None],
+        selected_game_set_ids: set[str],
         selected_custom_set_ids: set[int],
     ) -> None:
         self.selected_game_set_ids = set(selected_game_set_ids)

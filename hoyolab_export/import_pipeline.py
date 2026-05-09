@@ -10,6 +10,11 @@ from playwright.async_api import BrowserContext, Error as PlaywrightError, Page
 from .auth import AuthStatus, get_auth_status
 from .artifact_db import ARTIFACT_DB_PATH
 from .artifact_importer import import_character_details_payload
+from .artifact_set_catalog import (
+    ensure_artifact_set_names,
+    ensure_hoyolab_set_mapping,
+    normalize_language,
+)
 from .character_detail import fetch_character_details_batch, real_character_ids
 from .collect_account_inventory import (
     build_inventory,
@@ -215,6 +220,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
     characters_path = HOYOLAB_DATA_DIR / "account_characters.json"
     weapons_path = HOYOLAB_DATA_DIR / "account_weapons.json"
     character_details_path = HOYOLAB_DATA_DIR / "account_character_details.json"
+    account_language_path = HOYOLAB_DATA_DIR / "account_language.json"
     overlay_path = HOYOLAB_DEBUG_DIR / "crop_manifest_overlay.png"
     page_screenshot_path = HOYOLAB_DEBUG_DIR / "page_screenshot.png"
     import_log_path = HOYOLAB_DEBUG_DIR / "import_log.json"
@@ -295,11 +301,37 @@ async def run_hoyolab_import() -> dict[str, Any]:
         character_details = await fetch_character_details_batch(export_page, real_ids)
 
         print_status("importing_artifacts")
+        content_language = normalize_language(character_details.get("detectedLanguage"))
+        print(f"[HoYoLAB Import] HoYoLAB content language: {content_language}")
+        set_names_summary = ensure_artifact_set_names(
+            content_language,
+            db_path=ARTIFACT_DB_PATH,
+        )
+        write_json(
+            account_language_path,
+            {
+                "contentLanguage": content_language,
+                "source": "character/detail.x-rpc-language",
+                "capturedAt": int(time.time() * 1000),
+                "artifactSetNames": set_names_summary,
+            },
+        )
+
+        print("[HoYoLAB Import] Preparing artifact set id mapping...")
+        set_mapping_summary = await ensure_hoyolab_set_mapping(
+            character_details,
+            export_page,
+            real_ids,
+            db_path=ARTIFACT_DB_PATH,
+        )
+
         print("[HoYoLAB Import] Importing artifacts into SQLite...")
         artifact_summary = import_character_details_payload(
             character_details,
             db_path=ARTIFACT_DB_PATH,
         )
+        artifact_summary["set_names"] = set_names_summary
+        artifact_summary["set_mapping"] = set_mapping_summary
 
         print_status("writing_inventory")
         print("[HoYoLAB Import] Updating local HoYoLAB data/assets...")
@@ -357,6 +389,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
             "layoutPath": layout_path,
             "manifestPath": manifest_path,
             "characterDetailsPath": character_details_path,
+            "accountLanguagePath": account_language_path,
             "overlayPath": overlay_path,
             "importLogPath": import_log_path,
             "manifest": manifest,

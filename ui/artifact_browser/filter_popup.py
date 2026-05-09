@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QCheckBox,
     QFrame,
@@ -58,7 +59,13 @@ QTabBar::tab:selected {
 }
 QCheckBox {
     color: #eeeeee;
-    spacing: 8px;
+    spacing: 10px;
+    padding: 5px 4px;
+    min-height: 42px;
+}
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
 }
 """
 
@@ -69,19 +76,20 @@ class SetsFilterPopup(QWidget):
         *,
         game_sets: list[ArtifactSetOption],
         custom_sets: list[CustomSetOption],
-        selected_game_set_ids: set[int | None],
+        selected_game_set_ids: set[str],
         selected_custom_set_ids: set[int],
-        on_selection_changed: Callable[[set[int | None], set[int]], None],
+        on_selection_changed: Callable[[set[str], set[int]], None],
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.setWindowFlag(Qt.WindowType.Popup, True)
         self.setObjectName("sets_filter_popup")
         self.setStyleSheet(POPUP_STYLE)
-        self.setMinimumSize(360, 420)
+        self.setMinimumSize(500, 560)
+        self.resize(500, 560)
 
         self._on_selection_changed = on_selection_changed
-        self._game_checkboxes: dict[int | None, QCheckBox] = {}
+        self._game_checkboxes: dict[str, QCheckBox] = {}
         self._custom_checkboxes: dict[int, QCheckBox] = {}
         self._updating = False
 
@@ -124,16 +132,17 @@ class SetsFilterPopup(QWidget):
     def _build_game_sets_tab(
         self,
         options: list[ArtifactSetOption],
-        selected_ids: set[int | None],
+            selected_ids: set[str],
     ) -> QWidget:
         return self._build_scroll_tab(
             empty_text="Игровые наборы не найдены.",
             rows=[
                 (
-                    option.set_id,
+                    option.set_uid,
                     option.set_name,
                     option.count,
-                    option.set_id in selected_ids,
+                    option.set_uid in selected_ids,
+                    option.icon_path,
                 )
                 for option in options
             ],
@@ -153,6 +162,7 @@ class SetsFilterPopup(QWidget):
                     option.name,
                     option.count,
                     option.tag_id in selected_ids,
+                    None,
                 )
                 for option in options
             ],
@@ -163,7 +173,7 @@ class SetsFilterPopup(QWidget):
         self,
         *,
         empty_text: str,
-        rows: list[tuple[object, str, int, bool]],
+        rows: list[tuple[object, str, int, bool, object]],
         target: dict,
     ) -> QWidget:
         outer = QWidget()
@@ -188,8 +198,14 @@ class SetsFilterPopup(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(5)
 
-        for key, name, count, checked in rows:
+        for key, name, count, checked, icon_path in rows:
             checkbox = QCheckBox(f"{name}  ({count})")
+            checkbox.setMinimumHeight(44)
+
+            if icon_path:
+                checkbox.setIcon(QIcon(str(icon_path)))
+                checkbox.setIconSize(QSize(36, 36))
+
             checkbox.setChecked(checked)
             checkbox.toggled.connect(self._emit_selection_changed)
             target[key] = checkbox
@@ -210,10 +226,10 @@ class SetsFilterPopup(QWidget):
             self.selected_custom_set_ids(),
         )
 
-    def selected_game_set_ids(self) -> set[int | None]:
+    def selected_game_set_ids(self) -> set[str]:
         return {
-            set_id
-            for set_id, checkbox in self._game_checkboxes.items()
+            set_uid
+            for set_uid, checkbox in self._game_checkboxes.items()
             if checkbox.isChecked()
         }
 

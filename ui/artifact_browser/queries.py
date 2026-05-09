@@ -3,7 +3,19 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db, init_db
+from hoyolab_export.artifact_db import (
+    ARTIFACT_DB_PATH,
+    calculate_raw_build_summary as db_calculate_raw_build_summary,
+    connect_db,
+    create_build_preset as db_create_build_preset,
+    delete_build_preset as db_delete_build_preset,
+    get_build_preset as db_get_build_preset,
+    init_db,
+    list_build_presets as db_list_build_presets,
+    replace_artifact_build_slots,
+    replace_artifact_build_targets,
+    update_build_preset as db_update_build_preset,
+)
 from hoyolab_export.paths import PROJECT_ROOT
 
 from .models import (
@@ -194,3 +206,228 @@ def _load_tags(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactTagRef]]
         )
 
     return result
+
+def list_custom_sets(
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> list[dict[str, Any]]:
+    if not artifact_db_exists(db_path):
+        return []
+
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        rows = conn.execute(
+            """
+            SELECT
+                tags.id,
+                tags.name,
+                tags.color,
+                tags.sort_order,
+                COUNT(links.artifact_id) AS count
+            FROM artifact_tags AS tags
+            LEFT JOIN artifact_tag_links AS links
+                ON links.tag_id = tags.id
+            GROUP BY tags.id
+            ORDER BY tags.sort_order, tags.name COLLATE NOCASE
+            """
+        ).fetchall()
+
+    return [
+        {
+            "tag_id": int(row["id"]),
+            "name": row["name"],
+            "count": int(row["count"] or 0),
+        }
+        for row in rows
+    ]
+
+
+def create_custom_set(
+    name: str,
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> int:
+    name = str(name or "").strip()
+    if not name:
+        raise ValueError("Custom artifact set name is empty")
+
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        row = conn.execute(
+            "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM artifact_tags"
+        ).fetchone()
+        sort_order = int(row["next_order"] or 1)
+
+        now = __import__("hoyolab_export.artifact_db", fromlist=["utc_now"]).utc_now()
+        conn.execute(
+            """
+            INSERT INTO artifact_tags (
+                name,
+                color,
+                sort_order,
+                created_at
+            )
+            VALUES (?, NULL, ?, ?)
+            ON CONFLICT(name) DO NOTHING
+            """,
+            (name, sort_order, now),
+        )
+
+        tag_row = conn.execute(
+            "SELECT id FROM artifact_tags WHERE name = ?",
+            (name,),
+        ).fetchone()
+
+        conn.commit()
+
+    return int(tag_row["id"])
+
+
+def delete_custom_set(
+    tag_id: int,
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> None:
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        conn.execute("DELETE FROM artifact_tags WHERE id = ?", (int(tag_id),))
+        conn.commit()
+
+
+def get_custom_set_artifact_ids(
+    tag_id: int,
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> set[int]:
+    if not artifact_db_exists(db_path):
+        return set()
+
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        rows = conn.execute(
+            """
+            SELECT artifact_id
+            FROM artifact_tag_links
+            WHERE tag_id = ?
+            """,
+            (int(tag_id),),
+        ).fetchall()
+
+    return {int(row["artifact_id"]) for row in rows}
+
+
+def replace_custom_set_artifacts(
+    tag_id: int,
+    artifact_ids: set[int],
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> None:
+    tag_id = int(tag_id)
+    artifact_ids = {int(artifact_id) for artifact_id in artifact_ids}
+
+    with connect_db(db_path) as conn:
+        init_db(conn)
+
+        conn.execute(
+            "DELETE FROM artifact_tag_links WHERE tag_id = ?",
+            (tag_id,),
+        )
+
+        for artifact_id in sorted(artifact_ids):
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO artifact_tag_links (
+                    artifact_id,
+                    tag_id
+                )
+                VALUES (?, ?)
+                """,
+                (artifact_id, tag_id),
+            )
+
+        conn.commit()
+
+
+def list_build_presets(
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> list[dict[str, Any]]:
+    if not artifact_db_exists(db_path):
+        return []
+
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        return db_list_build_presets(conn)
+
+
+def get_build_preset(
+    build_id: int,
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> dict[str, Any] | None:
+    if not artifact_db_exists(db_path):
+        return None
+
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        return db_get_build_preset(conn, build_id)
+
+
+def save_build_preset(
+    *,
+    build_id: int | None,
+    name: str,
+    slots: dict[int, int],
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> int:
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        if build_id is None:
+            build_id = db_create_build_preset(
+                conn,
+                name=name,
+                slots=slots,
+                targets=[{"target_type": "universal"}],
+            )
+        else:
+            db_update_build_preset(conn, build_id, name=name)
+            replace_artifact_build_slots(conn, build_id, slots)
+            replace_artifact_build_targets(
+                conn,
+                build_id,
+                [{"target_type": "universal"}],
+            )
+        conn.commit()
+        return int(build_id)
+
+
+def delete_build_preset(
+    build_id: int,
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> None:
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        db_delete_build_preset(conn, build_id)
+        conn.commit()
+
+
+def calculate_build_summary(
+    *,
+    build_id: int | None = None,
+    slots: dict[int, int] | None = None,
+    artifact_ids: list[int] | None = None,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> dict[str, Any] | None:
+    if not artifact_db_exists(db_path):
+        return None
+
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        return db_calculate_raw_build_summary(
+            conn,
+            build_id=build_id,
+            slots=slots,
+            artifact_ids=artifact_ids,
+        )
+

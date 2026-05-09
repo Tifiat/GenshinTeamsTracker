@@ -16,12 +16,12 @@ GRID_SIZE = QSize(260, 150)
 ICON_SIZE = QSize(56, 56)
 
 CV_COLORS = [
-    (0.0, 14.9, "#9b9b9b"),      # серый
-    (15.0, 24.9, "#3f8cff"),     # синий
-    (25.0, 34.9, "#b27cff"),     # фиолетовый
-    (35.0, 44.9, "#ff9c47"),     # оранжевый
-    (45.0, 49.9, "#ffe066"),     # желтый
-    (50.0, 9999.0, "#62d0ff"),   # лазурный
+    (0.0, 14.9, "#9b9b9b"),      # gray
+    (15.0, 24.9, "#3f8cff"),     # blue
+    (25.0, 34.9, "#b27cff"),     # purple
+    (35.0, 44.9, "#ff9c47"),     # orange
+    (45.0, 49.9, "#ffe066"),     # yellow
+    (50.0, 9999.0, "#62d0ff"),   # cyan
 ]
 
 _PIXMAP_CACHE: dict[tuple[str, int, int], QPixmap] = {}
@@ -66,6 +66,13 @@ def roll_text(times: int | None) -> str:
 
 
 class ArtifactCardDelegate(QStyledItemDelegate):
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.custom_edit_artifact_ids: set[int] = set()
+
+    def set_custom_edit_artifact_ids(self, artifact_ids: set[int]) -> None:
+        self.custom_edit_artifact_ids = set(artifact_ids)
+
     def sizeHint(
         self,
         option: QStyleOptionViewItem,
@@ -90,10 +97,16 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
         selected = bool(option.state & QStyle.StateFlag.State_Selected)
 
-        background = QColor("#252a33") if hovered else QColor("#20232a")
-        border = QColor("#7da7ff") if selected else QColor("#6f86b8" if hovered else "#3a3f4b")
+        custom_edit_selected = artifact.id in self.custom_edit_artifact_ids
 
-        painter.setPen(QPen(border, 2 if selected else 1))
+        if custom_edit_selected:
+            background = QColor("#2d2b1f") if not hovered else QColor("#383526")
+            border = QColor("#d6b15d")
+        else:
+            background = QColor("#252a33") if hovered else QColor("#20232a")
+            border = QColor("#7da7ff") if selected else QColor("#6f86b8" if hovered else "#3a3f4b")
+
+        painter.setPen(QPen(border, 2 if selected or custom_edit_selected else 1))
         painter.setBrush(background)
         painter.drawRoundedRect(QRectF(card_rect), 10, 10)
 

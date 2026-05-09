@@ -6,11 +6,11 @@ from typing import Any
 
 
 ARTIFACT_POSITIONS = {
-    1: "Цветок",
-    2: "Перо",
-    3: "Часы",
-    4: "Кубок",
-    5: "Корона",
+    1: "Flower",
+    2: "Plume",
+    3: "Sands",
+    4: "Goblet",
+    5: "Circlet",
 }
 
 
@@ -68,6 +68,10 @@ class ArtifactItem:
                 total += parse_hoyolab_stat_value(substat.value)
 
         return round(total, 1)
+
+    @property
+    def proc_count(self) -> int:
+        return sum(int(substat.times or 0) for substat in self.substats)
 
 
 def parse_hoyolab_stat_value(value: Any) -> float:

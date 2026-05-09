@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .models import ARTIFACT_POSITIONS, ArtifactItem
-from .queries import artifact_db_exists, list_all_artifacts
+from .models import ARTIFACT_POSITIONS, ArtifactItem, parse_hoyolab_stat_value
+from .queries import artifact_db_exists, list_all_artifacts, list_custom_sets
+from .stat_types import CRIT_VALUE, PROC_COUNT
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,10 +25,11 @@ class CustomSetOption:
 
 class ArtifactBrowserStore:
     def __init__(
-        self,
-        *,
-        database_exists: bool,
-        artifacts: list[ArtifactItem],
+            self,
+            *,
+            database_exists: bool,
+            artifacts: list[ArtifactItem],
+            custom_sets: list[dict] | None = None,
     ):
         self.database_exists = database_exists
 
@@ -53,17 +55,25 @@ class ArtifactBrowserStore:
                 self.ids_by_custom_set.setdefault(tag.id, set()).add(artifact.id)
 
         self.game_set_options = self._build_game_set_options(artifacts)
-        self.custom_set_options = self._build_custom_set_options(artifacts)
+        self.custom_set_options = self._build_custom_set_options(
+            artifacts,
+            custom_sets or [],
+        )
 
     @classmethod
     def load_from_db(cls) -> "ArtifactBrowserStore":
         exists = artifact_db_exists()
         artifacts = list_all_artifacts() if exists else []
-        return cls(database_exists=exists, artifacts=artifacts)
+        custom_sets = list_custom_sets() if exists else []
+        return cls(
+            database_exists=exists,
+            artifacts=artifacts,
+            custom_sets=custom_sets,
+        )
 
     @classmethod
     def empty(cls) -> "ArtifactBrowserStore":
-        return cls(database_exists=False, artifacts=[])
+        return cls(database_exists=False, artifacts=[], custom_sets=[])
 
     def artifact(self, artifact_id: int) -> ArtifactItem:
         return self.artifacts_by_id[artifact_id]
@@ -86,6 +96,100 @@ class ArtifactBrowserStore:
             result.update(self.ids_by_custom_set.get(tag_id, set()))
 
         return result
+
+    def sort_artifact_ids(
+        self,
+        artifact_ids: list[int],
+        selected_stat_types: list[int],
+    ) -> list[int]:
+        selected_stat_types = list(selected_stat_types[:4])
+
+        if not selected_stat_types:
+            return sorted(
+                artifact_ids,
+                key=lambda artifact_id: self._default_artifact_sort_key(
+                    self.artifact(artifact_id),
+                ),
+            )
+
+        return sorted(
+            artifact_ids,
+            key=lambda artifact_id: self._artifact_sort_key(
+                self.artifact(artifact_id),
+                selected_stat_types,
+            ),
+        )
+
+    @staticmethod
+    def _artifact_stat_value(artifact: ArtifactItem, property_type: int) -> float:
+        if property_type == CRIT_VALUE:
+            return artifact.cv
+
+        if property_type == PROC_COUNT:
+            return float(artifact.proc_count)
+
+        if artifact.main_property_type == property_type:
+            return parse_hoyolab_stat_value(artifact.main_property_value)
+
+        total = 0.0
+
+        for substat in artifact.substats:
+            if substat.property_type == property_type:
+                total += parse_hoyolab_stat_value(substat.value)
+
+        return total
+
+    @staticmethod
+    def _default_artifact_sort_key(artifact: ArtifactItem) -> tuple:
+        return (
+            -artifact.rarity,
+            -artifact.level,
+            -artifact.cv,
+            artifact.set_name.casefold(),
+            artifact.name.casefold(),
+            artifact.id,
+        )
+
+    @staticmethod
+    def _main_stat_priority(
+        artifact: ArtifactItem,
+        selected_stat_types: list[int],
+    ) -> int:
+        for index, property_type in enumerate(selected_stat_types):
+            if property_type in {CRIT_VALUE, PROC_COUNT}:
+                continue
+
+            if artifact.main_property_type == property_type:
+                return index
+
+        return 999
+
+    @classmethod
+    def _artifact_sort_key(
+        cls,
+        artifact: ArtifactItem,
+        selected_stat_types: list[int],
+    ) -> tuple:
+        main_stat_priority = cls._main_stat_priority(
+            artifact,
+            selected_stat_types,
+        )
+
+        stat_values = [
+            -cls._artifact_stat_value(artifact, property_type)
+            for property_type in selected_stat_types
+        ]
+
+        return (
+            -artifact.rarity,
+            main_stat_priority,
+            *stat_values,
+            -artifact.level,
+            -artifact.cv,
+            artifact.set_name.casefold(),
+            artifact.name.casefold(),
+            artifact.id,
+        )
 
     @staticmethod
     def _build_game_set_options(artifacts: list[ArtifactItem]) -> list[ArtifactSetOption]:
@@ -117,7 +221,20 @@ class ArtifactBrowserStore:
         )
 
     @staticmethod
-    def _build_custom_set_options(artifacts: list[ArtifactItem]) -> list[CustomSetOption]:
+    def _build_custom_set_options(
+            artifacts: list[ArtifactItem],
+            custom_sets: list[dict],
+    ) -> list[CustomSetOption]:
+        if custom_sets:
+            return [
+                CustomSetOption(
+                    tag_id=int(item["tag_id"]),
+                    name=str(item["name"]),
+                    count=int(item["count"] or 0),
+                )
+                for item in custom_sets
+            ]
+
         counts: dict[int, int] = {}
         names: dict[int, str] = {}
 

@@ -9,11 +9,15 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from hoyolab_export.artifact_db import (
     ARTIFACT_DB_PATH,
+    calculate_raw_build_summary,
     connect_db,
     create_artifact_build,
     find_duplicate_artifacts_in_builds,
+    get_artifact_build_targets,
     get_artifact_build_slots,
+    get_build_preset,
     replace_artifact_build_slots,
+    replace_artifact_build_targets,
 )
 
 
@@ -104,6 +108,18 @@ def main() -> int:
             notes="Temporary test build.",
         )
         replace_artifact_build_slots(conn, build_1, slots)
+        replace_artifact_build_targets(
+            conn,
+            build_1,
+            [
+                {"target_type": "universal"},
+                {
+                    "target_type": "character",
+                    "character_id": character_id,
+                    "character_name": character_name,
+                },
+            ],
+        )
 
         build_2 = create_artifact_build(
             conn,
@@ -117,6 +133,9 @@ def main() -> int:
         conn.commit()
 
         loaded_slots = get_artifact_build_slots(conn, build_1)
+        loaded_targets = get_artifact_build_targets(conn, build_1)
+        loaded_preset = get_build_preset(conn, build_1)
+        raw_summary = calculate_raw_build_summary(conn, build_id=build_1)
         duplicates = find_duplicate_artifacts_in_builds(conn, [build_1, build_2])
 
         print()
@@ -134,11 +153,28 @@ def main() -> int:
             )
 
         print()
+        print("[build-test] Loaded build_1 targets:")
+        print(json.dumps(loaded_targets, ensure_ascii=False, indent=2))
+
+        print()
+        print("[build-test] Loaded build_1 raw summary:")
+        print(json.dumps(raw_summary, ensure_ascii=False, indent=2))
+
+        print()
         print("[build-test] Duplicate artifacts:")
         print(json.dumps(duplicates, ensure_ascii=False, indent=2))
 
         if len(loaded_slots) != 5:
             raise RuntimeError(f"Expected 5 slots, got {len(loaded_slots)}")
+
+        if loaded_preset is None:
+            raise RuntimeError("Expected build preset to load.")
+
+        if len(loaded_targets) != 2:
+            raise RuntimeError(f"Expected 2 targets, got {len(loaded_targets)}")
+
+        if raw_summary["missing_positions"]:
+            raise RuntimeError(f"Expected full build, missing {raw_summary['missing_positions']}")
 
         if len(duplicates) != 5:
             raise RuntimeError(f"Expected 5 duplicate artifacts, got {len(duplicates)}")

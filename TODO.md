@@ -1,300 +1,140 @@
 # TODO: GenshinTeamsTracker
 
-## Workflow
+This file is for future agents. Keep it short, current, English, and mostly ASCII. Do not preserve completed implementation history unless it changes how future work should be done.
 
-- [x] Keep this TODO updated after every task.
-- [x] Mark completed work with `[x]`.
-- [x] Add sub-tasks when new facts are discovered.
-- [x] Update `agent_context.md` when architecture or important project facts change.
+## Workflow Rules
 
-## Phase 0: Project Bootstrap
-
-- [x] Create clean project folder `GenshinTeamsTracker`.
-- [x] Add `agent_context.md` and `TODO.md`.
-- [x] Add basic Python project structure.
-- [x] Add `requirements.txt` based on required runtime only.
-- [x] Add `.gitignore` for:
-  - virtualenvs;
-  - browser profiles;
-  - downloaded images;
-  - debug dumps;
-  - caches;
-  - generated crops.
-
-## Phase 1: Port Known Working Pieces
-
-- [x] Port HoYoLAB exporter from legacy sandbox.
-- [x] Port manual export runner.
-- [x] Port clean account inventory collector.
-- [x] Keep debug extractor as debug-only/private tooling.
-- [x] Add shared HoYoLAB profile auth status helper.
-- [x] Add UI auth onboarding for first login and account switching.
-- [x] Keep `HoyolabExporter` export-only; UI/manual runner handle the normal-browser login flow before automation.
-- [x] Tighten HoYoLAB auth detection so a non-empty browser cookie DB alone is not treated as logged in.
-- [x] Make auth UI buttons visible and explicit (`Авторизоваться`, `Сменить аккаунт`).
-- [x] Wire `HoYoLAB export` button to exporter subprocess and disable it while auth is missing.
-- [x] Add popup/update-notice dismissal retries around HoYoLAB export clicks.
-- [x] Verify exporter/import pipeline downloads image correctly.
-- [x] Verify inventory collector/import pipeline creates:
-  - `account_characters.json`
-  - `account_weapons.json`
-- [x] Verify transferred exporter/inventory modules import successfully.
-- [x] Add `hoyolab_export/paths.py` for production HoYoLAB folders and cleanup.
-- [x] Add `hoyolab_export/layout_capture.py` for production html2canvas clone layout capture.
-- [x] Add `hoyolab_export/crop_manifest.py` for production role-card extraction, crops, manifest, validation, and overlay.
-- [x] Add `hoyolab_export/import_pipeline.py` and `hoyolab_export/run_import.py` for full import.
-
-## Phase 2: Port UI Foundation
-
-- [x] Port PySide6 app entrypoint.
-- [x] Port main window behavior from legacy.
-- [x] Port run/history window behavior from legacy.
-- [x] Port necessary widgets:
-  - draggable icons;
-  - team slots;
-  - timers;
-  - run cards;
-  - flow layout/history container.
-- [x] Remove or isolate legacy parser/matcher calls from startup path.
-- [x] Replace mojibake user-facing strings where touched.
-- [x] Verify PySide6/UI module imports after dependency install.
-
-## Phase 3: New HoYoLAB Export Bundle
-
-- [x] Define current import folder structure.
-- [x] Save exported HoYoLAB image as part of current import/debug output.
-- [x] Save clean character inventory JSON.
-- [x] Save clean weapon inventory JSON.
-- [x] Add layout/DOM metadata capture for character and weapon elements.
-- [x] Add `tests/probe_layout.py` for live HoYoLAB layout probing.
-- [x] Hook html2canvas root capture into exporter JS patch via `window.__genshin_export_root_probe__`.
-- [x] Add `html2canvasPatchStatus`, `fallbackRootProbe`, `rootSource`, and `rootDiscovery` diagnostics to layout probe output.
-- [x] Ensure exporter/probe terminates its browser process after cleanup.
-- [x] Remove fixed-port debug-login flow; first login now uses normal browser setup.
-- [x] Replace `asyncio.run()` in layout probe with explicit Windows-friendly loop cleanup.
-- [x] Keep normal outputs free of cookie/header/token dumps.
-- [x] Confirm latest probe can use `html2canvas_clone` root discovery.
-- [x] Define current HoYoLAB MVP folder structure:
-  - `data/hoyolab`
+- Read `agent_context.md` first.
+- Keep tool usage narrow and cheap.
+- Do not run tests, app startup, imports, DB scans, or broad validation unless the user asks or the change needs it.
+- Avoid scanning generated/private state:
+  - `hoyolab_export/profile`
+  - `data/`
   - `assets/hoyolab`
-  - `debug/hoyolab`
-- [x] Save exported HoYoLAB image to `debug/hoyolab/image.png`.
-- [x] Save clean character inventory JSON to `data/hoyolab/account_characters.json`.
-- [x] Save clean weapon inventory JSON to `data/hoyolab/account_weapons.json`.
-- [x] Save production layout metadata to `data/hoyolab/layout.json`.
-- [x] Add one command that performs image export + clean inventory collection + layout + crops into current HoYoLAB folders.
-- [x] Harden automation browser startup against stale `DevToolsActivePort` markers and closed CDP targets.
-- [x] Reuse the initial `about:blank` automation tab instead of opening HoYoLAB in a second tab.
-- [x] Emit `[STATUS] done` only after automation browser cleanup completes.
-- [x] Add aggressive automation browser cleanup timeouts so the loader does not wait for manual browser closing.
-- [x] Make the HoYoLAB loader non-modal and transparent for mouse/input so it cannot cover the browser download action.
-- [x] Stop using the page-level DOM input blocker during HoYoLAB export because it can cover share/download controls.
-- [x] Add html2canvas captured-PNG fallback when Chromium/Playwright does not emit a download event.
-- [x] Sanitize Playwright/Route error output so request headers/cookies are never printed.
-- [x] Add public no-cookie JS fetch fallback when HoYoLAB JS route patching hits transient `ECONNRESET`.
-- [x] Fix patched JS route fulfillment after no-cookie fallback so it no longer references a missing `route.fetch()` response.
-- [ ] Audit future bundle outputs so cookies/headers/raw sensitive network dumps never enter normal mode.
-- [ ] Decide later whether timestamped import archives are needed; current MVP intentionally keeps only current account state.
+  - `assets/artifact_sets`
+  - large JSON/image folders
+- Update this file only with active tasks and useful follow-ups.
 
-## Phase 4: Coordinate-Based Crop Pipeline
+## Artifact Browser: Current Priority
 
-- [x] Determine initial reliable DOM selectors/layout rules for character cards from sandbox probe:
-  - `DIV` class contains `role-share`.
-- [x] Determine initial reliable DOM selectors/layout rules for weapon mini-cards from sandbox probe:
-  - `IMG` whose parent chain contains `role-weapon-info`.
-- [x] Save DOM element rectangles from html2canvas clone/rootDiscovery for production import.
-- [x] Run live `tests/probe_layout.py` and inspect `layout_probe.json` / `page_screenshot.png`.
-- [x] Confirm working sandbox extraction of HoYoLAB role cards from probe layout.
-- [x] Confirm sandbox finds 76/76 character cards with portrait and weapon rects in latest inspected bundle.
-- [x] Confirm production extraction excludes `role-share-container` and produces 75 real cards.
-- [x] Confirm production `layout.json` uses `rootSource == "html2canvas_clone"`.
-- [x] If Google login is needed, use `python -m hoyolab_export.run_login_setup` before running automation.
-- [x] Convert DOM/root-relative coordinates to final PNG coordinates using export scale.
-- [x] Add first coordinate-cropper scaffold that crops from `layout.json` rectangles.
-- [x] Smoke-test coordinate cropper on a synthetic image/layout pair.
-- [x] Crop character images from final PNG by coordinates.
-- [x] Crop weapon images from final PNG by coordinates.
-- [x] Produce `crop_manifest.json` linking crops to API character/weapon records.
-- [x] Promote sandbox role-card extraction logic into production import pipeline.
-- [x] Switch manifest matching from index-based to icon-based:
-  - `portraitSrc` -> `character.icon` / `character.side_icon`;
-  - `weaponSrc` -> `weapon.icon`;
-  - validate `weapon.equipped_by.id == character.id`.
-- [x] Make ordinary HoYoLAB update additive for character/weapon collections instead of deleting previously discovered local assets.
-- [x] Merge `account_characters.json`, `account_weapons.json`, and manifest character/weapon assets across ordinary updates.
-- [x] Preserve previously discovered unequipped weapons in `crop_manifest.weaponAssets` and merge weapon variant counts by max count.
-- [x] Ignore dummy character assets for IDs `10000118` and `10000117` while keeping them in manifest/cards.
-- [x] Ignore 1-star and 2-star weapons for weapon assets.
-- [x] Deduplicate weapon assets by icon and aggregate variants by refinement + level.
-- [ ] Keep old binary-mask parser only as optional fallback, not primary path.
-- [x] Replace temporary layout schema with real HoYoLAB DOM selectors and API id linkage.
+- [ ] Stabilize draft custom-set editing.
+- [ ] Fix custom set delete in the custom tab:
+  - delete icon should switch the row to inline confirm;
+  - check should delete;
+  - x should cancel;
+  - popup should not close just because delete was clicked.
+- [ ] Add Enter-to-create for custom set name input.
+- [ ] Add invalid empty-name state with localized "Enter name" placeholder.
+- [ ] After custom set creation, close sets popup and visibly enter edit mode.
+- [ ] Add blue edit-mode tint behind the artifact list.
+- [ ] Remove delete button from bottom edit bar; keep save/cancel only.
+- [ ] When editing a custom set, remove only that tag from selected custom filters.
+- [ ] Disable normal QListView blue selection; use custom delegate highlight only.
+- [ ] Add dirty-edit confirmation when the user closes/reloads/switches edit target with unsaved custom-set changes.
+- [ ] Decide whether custom set rename is needed in this prototype; implement only if needed.
+- [ ] Manually smoke-test custom set create/edit/delete with empty and non-empty sets.
+- [ ] Manually smoke-test sorting + filtering while custom-set edit mode is active.
+- [ ] Review whether edit-mode card click behavior conflicts with normal selection/open-details behavior.
+- [ ] Keep custom-set data logic in `queries.py`/`store.py`; do not bury DB writes inside delegate/UI paint code.
+- [ ] Remove or replace obsolete sandbox/probe helpers once the Artifact Browser path is stable.
+- [ ] Wire the isolated Artifact Browser into the main UI when the prototype is stable.
 
-## Phase 5: UI Integration
+## Artifact Browser: Sorting / Data
 
-- [x] Add UI action for HoYoLAB export.
-- [x] Convert `HoYoLAB export` button into full HoYoLAB import:
-  - run export/probe;
-  - collect clean inventory JSON;
-  - extract role cards from `rootDiscovery`;
-  - crop character and weapon images;
-  - save images into `assets/hoyolab/characters` and `assets/hoyolab/weapons`;
-  - write manifest linking images to API records and sort fields;
-  - refresh UI grids after success.
-- [x] Switch UI grids from `assets/hd/*` to `assets/hoyolab/*`.
-- [x] Add loader dialog for HoYoLAB import with `[STATUS]` progress updates.
-- [x] Add import button cooldown after success/error.
-- [x] Preserve import cooldown after successful imports even when dynamic HoYoLAB button state refreshes.
-- [x] Preserve current local HoYoLAB data/assets when import fails before the replacement stage.
-- [x] Display generated character crops with manifest tooltips.
-- [x] Display generated weapon crops with manifest tooltips.
-- [x] Add icon-only manifest-backed filters for characters:
-  - element;
-  - weapon type;
-  - rarity 5/4.
-- [x] Add icon-only manifest-backed filters for weapons:
-  - weapon type;
-  - rarity 5/4/3.
-- [x] Add local generated filter icons under `assets/filters`.
-- [x] Make asset filters compact one-line icon rows and remove filter tooltips.
-- [x] Sort character/weapon asset grids by rarity and level descending.
-- [x] Keep filtered asset grids left-aligned with fixed icon spacing and reset stale horizontal width after resize.
-- [x] Add custom stable tooltip widget for draggable icons.
-- [x] Add bounded artifact icon caching so HoYoLAB import cannot hang on cosmetic icon downloads.
-- [x] Remove the visible manual `Очистить персонажей и оружие` button.
-- [x] Route current HoYoLAB data/assets/debug cleanup through `Выйти из профиля`.
-- [x] Add dynamic main HoYoLAB button states:
-  - `Авторизоваться / выбрать профиль`;
-  - `Импортировать из HoYoLAB`;
-  - `Обновить данные HoYoLAB`.
-- [x] Remove the persistent top HoYoLAB auth-status panel from the left column.
-- [x] Show HoYoLAB login instructions only after pressing `Авторизоваться / выбрать профиль`.
-- [x] Add `Профиль...` menu with save profile, load profile, and sign-out actions.
-- [x] Show detailed HoYoLAB import subprocess errors in the failure popup.
-- [x] Fix visible mojibake UI strings in loader/drag/main UI by routing static text through localization keys.
-- [ ] Re-check team builder behavior with new `assets/hoyolab/*` paths and manifest-backed tooltips.
-- [ ] Manually smoke-test character/weapon filter UI in the PySide app.
-- [ ] Manually smoke-test two consecutive HoYoLAB updates after changing equipped weapons and confirm old weapon icons remain visible.
-- [ ] Decide whether a separate future bundle import UI is still needed after current-state import MVP.
-- [ ] Preserve draggable team composition behavior.
+- [ ] Keep default sort stable: rarity desc, level desc, crit value desc, set name, artifact name, id.
+- [ ] Keep Crit Value as the first sort option and Proc Count as the last sort option.
+- [ ] Treat missing proc `times` as `0`; Artiscan/GOOD samples do not include proc counts.
+- [ ] When implementing Artiscan import, use structured GOOD fields only; no image matching.
+- [ ] Confirm Artiscan import path maps GOOD `setKey`, `slotKey`, and stat keys into existing `set_uid`, `pos`, and property types.
+- [ ] If Artiscan import is added before HoYoLAB import, make sure missing HoYoLAB-only fields do not break browser sorting/filtering.
 
-## Phase 6: Artifact Import Pipeline
+## Artifact Browser: Builds / Presets
 
-- [x] Discover full HoYoLAB character/artifact detail endpoint:
-  - `POST https://sg-public-api.hoyolab.com/event/game_record/genshin/api/character/detail`.
-- [x] Verify `character/detail` accepts batch requests for all real characters in one POST.
-- [x] Confirm `index?avatar_list_type=1` relic data lacks full stat fields.
-- [x] Confirm full artifact stats are available in `character/detail`:
-  - main property;
-  - substat list;
-  - roll counts;
-  - property map.
-- [x] Detect HoYoLAB language from page/session and pass it to manual fetch headers:
-  - `x-rpc-language`;
-  - `accept-language`.
-- [x] Add SQLite artifact DB module `hoyolab_export/artifact_db.py`.
-- [x] Add artifact importer module `hoyolab_export/artifact_importer.py`.
-- [x] Add artifact set catalog module `hoyolab_export/artifact_set_catalog.py`.
-- [x] Add artifact import tool `tools/import_artifacts_from_detail_json.py`.
-- [x] Add artifact tag persistence test tool `tools/test_artifact_tag_persistence.py`.
-- [x] Verify first artifact import:
-  - 73 characters;
-  - 254 relics;
-  - 254 inserted artifacts;
-  - 104 artifact icons;
-  - 1004 artifact substats.
-- [x] Verify re-import does not duplicate artifacts.
-- [x] Verify user tag `test_keep_after_import` survives re-import.
-- [x] Integrate batch `character/detail` fetch into main `python -m hoyolab_export.run_import` flow.
-- [x] Save current character detail snapshot to `data/hoyolab/account_character_details.json`.
-- [x] Import artifacts into `data/artifacts.db` as part of main HoYoLAB import.
-- [x] Keep artifact tags/builds persistent during repeated ordinary imports.
-- [x] Clear `data/artifacts.db` on explicit HoYoLAB profile switch to avoid mixing account-specific artifacts/tags/builds.
-- [x] Add `artifact_set_names` table for localized HoYoWiki artifact set names.
-- [x] Add stable artifact set name normalization for exact EN-name matching.
-- [x] Seed canonical HoYoWiki `en-us` artifact set catalog into `artifact_sets`, `artifact_set_piece_icons`, and `artifact_set_names`.
-- [x] Stop seeding `artifact_sets.hoyolab_set_id` from HoYoWiki `entry_page_id`.
-- [x] Detect HoYoLAB content language from the actual `character/detail` request and save `data/hoyolab/account_language.json`.
-- [x] Fetch localized HoYoWiki artifact set names for HoYoLAB content language without hardcoding `ru-ru`.
-- [x] Add service EN-pass mapping for HoYoLAB `relic.set.id -> set_uid`.
-- [x] Ensure EN `character/detail` payload is used only for set id/name mapping and never imported as user data.
-- [x] Import artifacts using `set_uid` resolved through `artifact_sets.hoyolab_set_id`.
-- [x] Switch artifact browser queries to prefer set-piece icons from `artifact_set_piece_icons` by `set_uid + pos`.
-- [x] Remove old per-artifact icon cache code path:
-  - deleted `artifact_icon_cache.py`;
-  - removed `upsert_icon()`;
-  - removed `cache_icons` no-op API;
-  - removed `icon_id` from `upsert_artifact()` and importer calls;
-  - removed `artifact_icons` from `count_rows()`;
-  - removed browser query join/fallback to `artifact_icons`.
-- [x] Verify full HoYoLAB import after artifact set catalog refactor:
-  - 256 relics seen;
-  - 0 artifacts missing `set_uid`;
-  - 25 account set mappings;
-  - `artifact_set_names`: `en-us=59`, `ru-ru=59`.
-- [x] Remove obsolete artifact-set probe files and debug outputs:
-  - `tools/probe_*.py` artifact probes;
-  - `debug/hoyolab_set_icon_match*`;
-  - `debug/hoyolab_relic_sets.*`;
-  - `debug/artifact_sets_probe/`;
-  - `debug/hoyowiki_detail_probe/`.
+- [ ] Design build preset model and UI after custom sets are stable.
+- [ ] Add build preset selection/editing.
+- [ ] Add artifact build editor after the browser is smoke-tested.
+- [ ] Add future drag/drop of builds into the team window.
+- [ ] Keep build data separate from visual skin and delegate rendering.
+
+## Artifact Browser: Final UI Polish
+
+- [ ] Do not polish the current QCheckBox/QWidget rows as final design.
+- [ ] After functionality is stable, redesign the browser toward a Genshin-like interface.
+- [ ] Prefer model/view/delegates/theme/assets for final visuals.
+- [ ] Replace set-list checkbox rows with large clickable rows:
+  - icon left;
+  - name;
+  - count right;
+  - selected frame/background.
+- [ ] Keep `store`, `queries`, and models independent from the final skin.
+
+## Future UI Architecture / Performance
+
+- [ ] After Artifact Browser functionality is stable, run a separate UI/performance refactor.
+- [ ] Use model/view for large or frequently updated lists:
+  - characters;
+  - weapons;
+  - artifacts;
+  - game sets;
+  - custom sets/tags;
+  - build presets;
+  - future build drag/drop slots.
+- [ ] Avoid one QWidget per item in large lists.
+- [ ] Route final textures/frames/backgrounds through a separate theme/assets layer.
+
+## Artifact Import / DB Cleanup
+
+- [ ] Do not do final cleanup of old DB physical schema until the new browser path is stable.
+- [ ] Later migration: recreate/drop old `artifacts.icon_id` and `artifact_icons` physical leftovers if they still exist in local DBs.
 - [ ] Decide whether `data/artifacts.db` is local generated state and should stay ignored.
-- [x] Remove old artifact browser MVP files before rebuilding the UI as `ui/artifact_browser/`.
-- [ ] Finish the isolated artifact browser module under `ui/artifact_browser/` and wire it into the main UI when ready.
-- [ ] Remove unused `ui/artifact_browser/card_widget.py` after the delegate/model browser is finalized.
-- [ ] Optional DB cleanup migration: rebuild/drop legacy physical `artifact_icons` table and `artifacts.icon_id` column from existing local SQLite files.
-- [ ] Decide whether old generated `assets/hoyolab/artifacts` can be deleted from local/generated data.
-- [ ] Decide whether `data/hoyolab/account_language.json` should be included in offline profile export/import.
-- [ ] Add artifact build editor after the new artifact browser is smoke-tested.
+- [ ] Keep `artifact_set_piece_icons` as the browser icon source by `(set_uid, pos)`.
+- [ ] Do not reintroduce per-artifact icon cache or `artifact_icons` fallback.
 
 ## Offline Profile Export/Import
 
-- [x] Add ZIP-based offline profile export/import helpers that include allowlisted current JSON/assets/artifact DB only.
-- [x] Exclude HoYoLAB browser profile, cookies/session, debug, and downloads from offline profile export.
-- [x] Add SQLite backup snapshot handling for `data/artifacts.db` during offline export.
-- [x] Add UI `Сохранить профиль` flow under `Профиль...`.
-- [x] Add UI `Загрузить профиль` flow under `Профиль...` that restores local data without HoYoLAB auth and refreshes grids.
-- [x] Add profile export signature marker for warning before destructive profile switch.
-- [x] Add `Выйти из профиля` flow with optional save warning and `Сохранить историю забегов?` choice.
-- [x] Treat closing the run-history question dialog as cancel, not as `Нет`.
+- [ ] When improving offline profile export/import, include `data/hoyolab/account_language.json` with:
+  - `account_character_details.json`
+  - `account_characters.json`
+  - `account_weapons.json`
+  - `crop_manifest.json`
 - [ ] Manually smoke-test offline profile export/import from the PySide UI.
-- [ ] Manually smoke-test `Выйти из профиля` with both keep/delete history choices.
+- [ ] Manually smoke-test sign-out with both keep/delete history choices.
+
+## Main UI Follow-Ups
+
+- [ ] Re-check team builder behavior with `assets/hoyolab/*` paths and manifest-backed tooltips.
+- [ ] Manually smoke-test character/weapon filter UI.
+- [ ] Manually smoke-test two consecutive HoYoLAB updates after changing equipped weapons; old weapon icons should remain visible.
+- [ ] Decide whether a separate future bundle import UI is still needed.
+- [ ] Preserve draggable team composition behavior while integrating Artifact Browser/builds.
 
 ## Localization
 
-- [x] Add JSON-backed localization layer:
-  - `localization/i18n.py`
-  - `localization/locales/ru.json`
-  - `localization/locales/en.json`
-  - `localization/locales/pt-br.json`
-- [x] Use `tr("key")` for static PySide UI text in main window, loader, timers, run history, and drag/delete dialogs.
-- [x] Keep dynamic character/weapon tooltips sourced from HoYoLAB manifest/API data.
-- [x] Keep UI language separate from HoYoLAB/API language.
-- [x] Add bottom-right UI language selector with country flags.
-- [x] Persist selected UI language in ignored local `settings.json`.
-- [x] Add localization keys for HoYoLAB profile menu, offline profile dialogs, sign-out warnings, and artifact import loader statuses.
-- [x] Keep Brazilian Portuguese localization in sync for the new HoYoLAB/offline-profile keys.
 - [ ] Add localization keys for any new UI screens as they are built.
-- [ ] Keep Brazilian Portuguese localization in sync when adding new keys.
+- [ ] Keep `ru`, `en`, and `pt-br` locale files in sync.
+- [ ] Keep dynamic HoYoLAB/API display names in the HoYoLAB content language; do not tie them to app UI language.
 
 ## Git / Release Hygiene
 
-- [ ] Retry normal `git push` for local commit `1ae2de6` after previous GitHub `Internal Server Error`; do not force-push.
-- [ ] Decide whether `data/hoyolab`, `data/artifacts.db`, `assets/hoyolab`, and `assets/loader` should be committed or ignored as local/generated state.
-- [ ] Review untracked `IMPORT_TODO.md`, `ToDO_importMVP.txt`, and `tests/probe_layout_baseline.log`; keep, ignore, or remove deliberately.
+- [ ] Commit seeded artifact catalog resources:
+  - `data/static/artifact_set_catalog.json`
+  - `assets/artifact_sets`
+- [ ] Keep local account/generated state ignored:
+  - `data/hoyolab`
+  - `data/artifacts.db`
+  - `assets/hoyolab`
+  - browser profile/session/debug/download outputs
+- [ ] Review untracked root/sample files and keep/ignore/remove deliberately:
+  - `test_artiscan_few.json`
+  - `artifacts_artiscan.json`
+- [ ] Retry normal `git push` for local commit `1ae2de6` after previous GitHub Internal Server Error; do not force-push.
 
-## Phase 7: History Model
+## Future History Features
 
-- [ ] Design new history schema.
+- [ ] Design a new history schema.
 - [ ] Support history categories:
   - Abyss;
-  - Stygian Onslaught / Мрачный натиск.
+  - Stygian Onslaught.
 - [ ] Support version/cycle switching inside each category.
 - [ ] Store teams and timers per saved run.
-- [ ] Plan future fast export of visual history by selected mode/version.
-
-## Deferred / Future
-
-- [ ] Find reliable source for current Abyss cycle/version.
-- [ ] Find reliable source for current Stygian Onslaught cycle/version.
-- [ ] Add fast visual export of history for a selected Abyss/Onslaught cycle.
-- [ ] Add migration/import from legacy `runs_history.json` if needed.
+- [ ] Add fast visual export of history for a selected mode/version/cycle.

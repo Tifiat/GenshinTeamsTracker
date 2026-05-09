@@ -19,6 +19,10 @@ debug/
 cache/
 tests/probe_layout_output/
 
+data/hoyolab/
+data/artifacts.db*
+assets/hoyolab/
+
 assets/characters/
 assets/weapons/
 assets/hd/characters/

@@ -836,7 +836,7 @@ def list_build_presets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
         LEFT JOIN artifact_build_targets AS targets
             ON targets.build_id = builds.id
         GROUP BY builds.id
-        ORDER BY builds.updated_at DESC, builds.name COLLATE NOCASE
+        ORDER BY builds.created_at DESC, builds.id DESC, builds.name COLLATE NOCASE
         """
     ).fetchall()
 

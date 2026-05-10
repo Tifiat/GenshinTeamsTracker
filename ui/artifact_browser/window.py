@@ -1,19 +1,23 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, Qt, QSize
+from PySide6.QtCore import QPoint, QRect, Qt, QSize
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListView,
     QMessageBox,
     QPushButton,
+    QScrollArea,
+    QSplitter,
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPen, QPixmap
 
 from hoyolab_export.paths import PROJECT_ROOT
 from .list_model import ArtifactRoles
@@ -26,6 +30,7 @@ from .queries import (
     list_build_presets,
     replace_custom_set_artifacts,
     save_build_preset,
+    delete_build_preset,
 )
 from .card_delegate import ArtifactCardDelegate, GRID_SIZE
 from .filter_popup import SetsFilterPopup
@@ -33,6 +38,28 @@ from .list_model import ArtifactListModel
 from .models import ARTIFACT_POSITIONS
 from .store import ArtifactBrowserStore
 from .sort_popup import SortStatsPopup
+from .stat_types import (
+    ANEMO_DAMAGE,
+    ATK_FLAT,
+    ATK_PERCENT,
+    CRIT_DAMAGE,
+    CRIT_RATE,
+    CRYO_DAMAGE,
+    DEF_PERCENT,
+    DEF_FLAT,
+    DENDRO_DAMAGE,
+    ELECTRO_DAMAGE,
+    ELEMENTAL_MASTERY,
+    ENERGY_RECHARGE,
+    GEO_DAMAGE,
+    HEALING_BONUS,
+    HP_FLAT,
+    HP_PERCENT,
+    HYDRO_DAMAGE,
+    PHYSICAL_DAMAGE,
+    PYRO_DAMAGE,
+    stat_badge,
+)
 from localization import tr
 
 WINDOW_STYLE = """
@@ -85,13 +112,21 @@ QListView {
     outline: none;
     background: #17191f;
 }
-QListView[customEditMode="true"] {
+QListView[artifactEditMode="true"] {
     background: #203861;
     border: 1px solid #4f8ee8;
     border-radius: 8px;
 }
 QListView::item {
     background: transparent;
+}
+QLineEdit {
+    min-height: 28px;
+    padding: 4px 8px;
+    border: 1px solid #3d4350;
+    border-radius: 6px;
+    background: #17191f;
+    color: #eeeeee;
 }
 QPushButton#custom_save_button {
     border-color: #4e9b61;
@@ -105,6 +140,30 @@ QPushButton#custom_cancel_button {
     background: #4a2529;
 }
 QPushButton#custom_cancel_button:hover {
+    background: #5c2d32;
+}
+QPushButton#row_save_button {
+    min-width: 24px;
+    max-width: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    padding: 2px;
+    border-color: #4e9b61;
+    background: #24452d;
+}
+QPushButton#row_save_button:hover {
+    background: #2d5938;
+}
+QPushButton#row_cancel_button {
+    min-width: 24px;
+    max-width: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    padding: 2px;
+    border-color: #b85b5b;
+    background: #4a2529;
+}
+QPushButton#row_cancel_button:hover {
     background: #5c2d32;
 }
 QFrame#build_panel {
@@ -124,6 +183,45 @@ QLabel#slot_label {
     border-radius: 6px;
     padding: 5px 7px;
 }
+QFrame#build_slot_row,
+QFrame#summary_block {
+    border: 1px solid #343b49;
+    border-radius: 7px;
+    background: #222630;
+}
+QFrame#build_slot_mini {
+    border: 1px solid #343b49;
+    border-radius: 6px;
+    background: #222630;
+}
+QLabel#mini_stat_badge {
+    color: #d9e2ff;
+    background: #2d3340;
+    border: 1px solid #475066;
+    border-radius: 5px;
+    padding: 1px 3px;
+    font-size: 11px;
+    font-weight: 600;
+}
+QLabel#small_muted {
+    color: #aab0bd;
+    font-size: 12px;
+}
+QLabel#stat_pill {
+    color: #d9e2ff;
+    background: #2d3340;
+    border: 1px solid #475066;
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-weight: 600;
+}
+QPushButton#icon_button {
+    min-width: 24px;
+    max-width: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    padding: 2px;
+}
 """
 
 
@@ -134,6 +232,28 @@ ARTIFACT_POSITION_LABEL_KEYS = {
     4: "artifact.position.goblet",
     5: "artifact.position.circlet",
 }
+
+PERCENT_STAT_TYPES = {
+    HP_PERCENT,
+    ATK_PERCENT,
+    DEF_PERCENT,
+    CRIT_RATE,
+    CRIT_DAMAGE,
+    ENERGY_RECHARGE,
+    HEALING_BONUS,
+    PHYSICAL_DAMAGE,
+    PYRO_DAMAGE,
+    ELECTRO_DAMAGE,
+    HYDRO_DAMAGE,
+    DENDRO_DAMAGE,
+    ANEMO_DAMAGE,
+    GEO_DAMAGE,
+    CRYO_DAMAGE,
+}
+
+EDIT_MODE_NONE = "none"
+EDIT_MODE_CUSTOM_SET = "custom_set"
+EDIT_MODE_BUILD_PRESET = "build_preset"
 
 
 class ArtifactBrowserWindow(QWidget):
@@ -156,29 +276,38 @@ class ArtifactBrowserWindow(QWidget):
         self._sort_popup: SortStatsPopup | None = None
         self._sets_popup: SetsFilterPopup | None = None
         self.position_buttons: dict[int, QPushButton] = {}
+        self.edit_selection_mode = EDIT_MODE_NONE
         self.editing_custom_set_id: int | None = None
         self.editing_custom_set_name: str = ""
         self.editing_custom_artifact_ids: set[int] = set()
         self.editing_custom_dirty = False
         self.build_presets: list[dict] = []
         self.selected_build_id: int | None = None
+        self.selected_build_slots: dict[int, int] = {}
         self.editing_build_id: int | None = None
         self.editing_build_name: str = ""
         self.editing_build_slots: dict[int, int] = {}
         self.editing_build_dirty = False
-        self.build_slot_labels: dict[int, QLabel] = {}
+        self.pending_delete_build_id: int | None = None
+        self.build_preset_row_buttons: dict[int, QPushButton] = {}
+        self.build_row_name_input: QLineEdit | None = None
+        self.build_slot_rows: dict[int, QFrame] = {}
+        self.build_slot_icon_labels: dict[int, QLabel] = {}
+        self.build_slot_stat_labels: dict[int, QLabel] = {}
+        self.build_bonus_layout: QHBoxLayout | None = None
+        self.build_summary_stats_layout: QGridLayout | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 10)
         root.setSpacing(8)
 
         self._build_top_bar(root)
-        content = QHBoxLayout()
-        content.setContentsMargins(0, 0, 0, 0)
-        content.setSpacing(8)
-        self._build_list_view(content)
-        self._build_build_panel(content)
-        root.addLayout(content, 1)
+        self.content_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.content_splitter.setChildrenCollapsible(False)
+        self._build_list_view(self.content_splitter)
+        self._build_build_panel(self.content_splitter)
+        self.content_splitter.setSizes([820, 430])
+        root.addWidget(self.content_splitter, 1)
         self._build_bottom_bar(root)
 
         self.load_build_presets()
@@ -245,17 +374,20 @@ class ArtifactBrowserWindow(QWidget):
         self.list_view.setGridSize(QSize(GRID_SIZE.width(), GRID_SIZE.height()))
         self.list_view.setSpacing(0)
         self.list_view.setMouseTracking(True)
-        self.list_view.setProperty("customEditMode", False)
+        self.list_view.setProperty("artifactEditMode", False)
         self.list_view.setSelectionMode(QListView.SelectionMode.NoSelection)
         self.list_view.clicked.connect(self.on_artifact_clicked)
 
 
-        root.addWidget(self.list_view, 1)
+        if isinstance(root, QSplitter):
+            root.addWidget(self.list_view)
+        else:
+            root.addWidget(self.list_view, 1)
 
-    def _build_build_panel(self, root: QHBoxLayout) -> None:
+    def _build_build_panel(self, root) -> None:
         panel = QFrame()
         panel.setObjectName("build_panel")
-        panel.setFixedWidth(320)
+        panel.setMinimumWidth(420)
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(10, 10, 10, 10)
@@ -265,46 +397,92 @@ class ArtifactBrowserWindow(QWidget):
         self.build_title_label.setObjectName("panel_title")
         layout.addWidget(self.build_title_label)
 
-        self.new_build_button = QPushButton(tr("artifact.build.new"))
-        self.new_build_button.clicked.connect(self.start_new_build_preset)
-        layout.addWidget(self.new_build_button)
+        create_row = QHBoxLayout()
+        create_row.setContentsMargins(0, 0, 0, 0)
+        create_row.setSpacing(6)
+        self.build_name_input = QLineEdit()
+        self.build_name_input.setPlaceholderText(tr("artifact.build.name_placeholder"))
+        self.build_name_input.textChanged.connect(self.on_build_name_changed)
+        create_row.addWidget(self.build_name_input, 1)
+
+        self.new_build_button = QPushButton()
+        self.new_build_button.setObjectName("icon_button")
+        self.new_build_button.setIcon(self._ui_icon("plus"))
+        self.new_build_button.setToolTip(tr("artifact.build.new"))
+        self.new_build_button.clicked.connect(self.on_build_create_button_clicked)
+        create_row.addWidget(self.new_build_button)
+
+        self.cancel_new_build_button = QPushButton()
+        self.cancel_new_build_button.setObjectName("row_cancel_button")
+        self.cancel_new_build_button.setIcon(self._ui_icon("x"))
+        self.cancel_new_build_button.setToolTip(tr("artifact.build.cancel"))
+        self.cancel_new_build_button.clicked.connect(self.cancel_build_preset_edit)
+        create_row.addWidget(self.cancel_new_build_button)
+        layout.addLayout(create_row)
 
         self.build_preset_list_layout = QVBoxLayout()
         self.build_preset_list_layout.setContentsMargins(0, 0, 0, 0)
         self.build_preset_list_layout.setSpacing(5)
         layout.addLayout(self.build_preset_list_layout)
 
-        self.build_edit_status_label = QLabel("")
-        self.build_edit_status_label.setObjectName("status_label")
-        self.build_edit_status_label.setWordWrap(True)
-        layout.addWidget(self.build_edit_status_label)
-
+        preview_row = QHBoxLayout()
+        preview_row.setContentsMargins(0, 0, 0, 0)
+        preview_row.setSpacing(5)
         for pos in ARTIFACT_POSITIONS:
-            label = QLabel("")
-            label.setObjectName("slot_label")
-            label.setWordWrap(True)
-            self.build_slot_labels[pos] = label
-            layout.addWidget(label)
+            preview_row.addWidget(self._make_build_slot_row(pos), 1)
+        self.build_bonus_layout = QHBoxLayout()
+        self.build_bonus_layout.setContentsMargins(3, 0, 0, 0)
+        self.build_bonus_layout.setSpacing(5)
+        preview_row.addLayout(self.build_bonus_layout)
+        layout.addLayout(preview_row)
 
-        actions = QHBoxLayout()
-        actions.setContentsMargins(0, 0, 0, 0)
-        self.save_build_button = QPushButton(tr("artifact.build.save"))
-        self.save_build_button.setObjectName("custom_save_button")
-        self.save_build_button.clicked.connect(self.save_build_preset_edit)
-        actions.addWidget(self.save_build_button)
+        summary_scroll = QScrollArea()
+        summary_scroll.setWidgetResizable(True)
+        summary_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        summary_content = QWidget()
+        summary_layout = QVBoxLayout(summary_content)
+        summary_layout.setContentsMargins(0, 0, 0, 0)
+        summary_layout.setSpacing(8)
 
-        self.cancel_build_button = QPushButton(tr("artifact.build.cancel"))
-        self.cancel_build_button.setObjectName("custom_cancel_button")
-        self.cancel_build_button.clicked.connect(self.cancel_build_preset_edit)
-        actions.addWidget(self.cancel_build_button)
-        layout.addLayout(actions)
+        stats_block = QFrame()
+        stats_block.setObjectName("summary_block")
+        stats_layout = QVBoxLayout(stats_block)
+        stats_layout.setContentsMargins(8, 8, 8, 8)
+        self.build_summary_stats_layout = QGridLayout()
+        self.build_summary_stats_layout.setContentsMargins(0, 0, 0, 0)
+        self.build_summary_stats_layout.setHorizontalSpacing(6)
+        self.build_summary_stats_layout.setVerticalSpacing(5)
+        stats_layout.addLayout(self.build_summary_stats_layout)
+        summary_layout.addWidget(stats_block)
+        summary_layout.addStretch()
 
-        self.build_summary_label = QLabel("")
-        self.build_summary_label.setObjectName("status_label")
-        self.build_summary_label.setWordWrap(True)
-        layout.addWidget(self.build_summary_label, 1)
+        summary_scroll.setWidget(summary_content)
+        layout.addWidget(summary_scroll, 1)
 
         root.addWidget(panel)
+
+    def _make_build_slot_row(self, pos: int) -> QFrame:
+        row = QFrame()
+        row.setObjectName("build_slot_mini")
+        layout = QVBoxLayout(row)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(3)
+
+        icon_label = QLabel()
+        icon_label.setFixedSize(42, 42)
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(icon_label)
+
+        stat_label = QLabel("")
+        stat_label.setObjectName("mini_stat_badge")
+        stat_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        stat_label.setFixedHeight(18)
+        layout.addWidget(stat_label)
+
+        self.build_slot_rows[pos] = row
+        self.build_slot_icon_labels[pos] = icon_label
+        self.build_slot_stat_labels[pos] = stat_label
+        return row
 
     def _build_bottom_bar(self, root: QVBoxLayout) -> None:
         bottom = QHBoxLayout()
@@ -317,19 +495,17 @@ class ArtifactBrowserWindow(QWidget):
         self.edit_mode_label.setObjectName("status_label")
         bottom.addWidget(self.edit_mode_label)
 
-        self.save_custom_set_button = QPushButton()
-        self.save_custom_set_button.setObjectName("custom_save_button")
-        self.save_custom_set_button.setIcon(self._ui_icon("save"))
-        self.save_custom_set_button.setToolTip(tr("artifact.custom.save"))
-        self.save_custom_set_button.clicked.connect(self.save_custom_set_edit)
-        bottom.addWidget(self.save_custom_set_button)
+        self.save_edit_button = QPushButton()
+        self.save_edit_button.setObjectName("custom_save_button")
+        self.save_edit_button.setIcon(self._ui_icon("save"))
+        self.save_edit_button.clicked.connect(self.save_active_edit)
+        bottom.addWidget(self.save_edit_button)
 
-        self.cancel_custom_set_button = QPushButton()
-        self.cancel_custom_set_button.setObjectName("custom_cancel_button")
-        self.cancel_custom_set_button.setIcon(self._ui_icon("x"))
-        self.cancel_custom_set_button.setToolTip(tr("artifact.custom.cancel"))
-        self.cancel_custom_set_button.clicked.connect(self.cancel_custom_set_edit)
-        bottom.addWidget(self.cancel_custom_set_button)
+        self.cancel_edit_button = QPushButton()
+        self.cancel_edit_button.setObjectName("custom_cancel_button")
+        self.cancel_edit_button.setIcon(self._ui_icon("x"))
+        self.cancel_edit_button.clicked.connect(self.cancel_active_edit)
+        bottom.addWidget(self.cancel_edit_button)
 
         bottom.addWidget(self.empty_label)
 
@@ -356,12 +532,12 @@ class ArtifactBrowserWindow(QWidget):
             button.setText(self._position_label(pos))
 
         self.close_button.setText(tr("common.close"))
-        self.save_custom_set_button.setToolTip(tr("artifact.custom.save"))
-        self.cancel_custom_set_button.setToolTip(tr("artifact.custom.cancel"))
+        self.save_edit_button.setToolTip(self.active_save_tooltip())
+        self.cancel_edit_button.setToolTip(self.active_cancel_tooltip())
         self.build_title_label.setText(tr("artifact.build.presets_title"))
-        self.new_build_button.setText(tr("artifact.build.new"))
-        self.save_build_button.setText(tr("artifact.build.save"))
-        self.cancel_build_button.setText(tr("artifact.build.cancel"))
+        self.new_build_button.setToolTip(tr("artifact.build.new"))
+        self.cancel_new_build_button.setToolTip(tr("artifact.build.cancel"))
+        self.build_name_input.setPlaceholderText(tr("artifact.build.name_placeholder"))
         self.update_sets_filter_switch_text()
         self.update_sets_button_text()
         self.update_sort_button_text()
@@ -509,6 +685,12 @@ class ArtifactBrowserWindow(QWidget):
             visible_ids,
             self.selected_sort_stat_types,
         )
+        priority_ids = self.current_highlight_artifact_ids()
+        if priority_ids:
+            visible_ids = sorted(
+                visible_ids,
+                key=lambda artifact_id: 0 if artifact_id in priority_ids else 1,
+            )
         self.model.set_artifact_ids(visible_ids)
         self.update_status(len(visible_ids), len(base_ids))
 
@@ -535,11 +717,14 @@ class ArtifactBrowserWindow(QWidget):
         if confirm_custom_edit and not keep_custom_edit:
             if not self.confirm_discard_custom_edit():
                 return
+            if not self.confirm_discard_build_edit():
+                return
 
         self.store = ArtifactBrowserStore.load_from_db()
         self.model.set_store(self.store)
         if not keep_custom_edit:
             self.finish_custom_set_edit()
+            self.finish_build_preset_edit()
         if reset_popup:
             if self._sets_popup is not None:
                 self._sets_popup.close()
@@ -562,11 +747,11 @@ class ArtifactBrowserWindow(QWidget):
         if artifact is None:
             return
 
-        if self.editing_custom_set_id is not None:
+        if self.edit_selection_mode == EDIT_MODE_CUSTOM_SET:
             self.toggle_custom_set_artifact(artifact.id)
             return
 
-        if self.editing_build_id is not None or self.editing_build_name:
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
             self.assign_build_artifact(artifact.id)
 
     def toggle_custom_set_artifact(self, artifact_id: int) -> None:
@@ -576,9 +761,7 @@ class ArtifactBrowserWindow(QWidget):
             self.editing_custom_artifact_ids.add(artifact_id)
 
         self.editing_custom_dirty = True
-        self.delegate.set_custom_edit_artifact_ids(self.editing_custom_artifact_ids)
-        self.update_custom_edit_bar()
-        self.list_view.viewport().update()
+        self.update_edit_selection_mode()
 
     def create_and_edit_custom_set(self, name: str) -> None:
         name = name.strip()
@@ -587,6 +770,8 @@ class ArtifactBrowserWindow(QWidget):
             return
 
         if not self.confirm_discard_custom_edit():
+            return
+        if not self.confirm_discard_build_edit():
             return
 
         tag_id = create_custom_set(name)
@@ -603,6 +788,12 @@ class ArtifactBrowserWindow(QWidget):
         self._sets_popup = None
 
     def start_custom_set_edit(self, tag_id: int) -> None:
+        if self.editing_build_dirty:
+            self.empty_label.setText(tr("artifact.build.finish_edit_first"))
+            return
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            self.finish_build_preset_edit()
+
         if tag_id != self.editing_custom_set_id:
             if not self.confirm_discard_custom_edit():
                 return
@@ -626,9 +817,8 @@ class ArtifactBrowserWindow(QWidget):
             self.update_sets_button_text()
             self.apply_current_filters()
 
-        self.delegate.set_custom_edit_artifact_ids(self.editing_custom_artifact_ids)
-        self.update_custom_edit_bar()
-        self.list_view.viewport().update()
+        self.edit_selection_mode = EDIT_MODE_CUSTOM_SET
+        self.update_edit_selection_mode()
 
         if self._sets_popup is not None:
             self._sets_popup.close()
@@ -650,6 +840,8 @@ class ArtifactBrowserWindow(QWidget):
 
     def refresh_build_preset_list(self) -> None:
         self._clear_layout(self.build_preset_list_layout)
+        self.build_preset_row_buttons.clear()
+        self.build_row_name_input = None
 
         if not self.build_presets:
             empty_label = QLabel(tr("artifact.build.empty_presets"))
@@ -659,30 +851,139 @@ class ArtifactBrowserWindow(QWidget):
             return
 
         for preset in self.build_presets:
-            button = QPushButton(
+            self.build_preset_list_layout.addWidget(self._make_build_preset_row(preset))
+
+    def on_build_create_button_clicked(self) -> None:
+        if (
+            self.edit_selection_mode == EDIT_MODE_BUILD_PRESET
+            and self.editing_build_id is None
+        ):
+            self.save_build_preset_edit()
+            return
+        self.start_new_build_preset()
+
+    def _make_build_preset_row(self, preset: dict) -> QFrame:
+        build_id = int(preset["id"])
+        pending = self.pending_delete_build_id == build_id
+        editing_this_row = (
+            self.edit_selection_mode == EDIT_MODE_BUILD_PRESET
+            and self.editing_build_id == build_id
+        )
+
+        row = QFrame()
+        row.setObjectName("build_slot_row")
+        layout = QHBoxLayout(row)
+        layout.setContentsMargins(6, 4, 6, 4)
+        layout.setSpacing(5)
+
+        if editing_this_row:
+            name_input = QLineEdit()
+            name_input.setText(self.editing_build_name)
+            name_input.setPlaceholderText(tr("artifact.build.name_placeholder"))
+            name_input.textChanged.connect(self.on_inline_build_name_changed)
+            layout.addWidget(name_input, 1)
+            self.build_row_name_input = name_input
+            name_input.setFocus()
+            name_input.selectAll()
+        else:
+            select_button = QPushButton(
                 tr(
                     "artifact.build.preset_row",
                     name=preset["name"],
                     count=preset["slot_count"],
                 )
             )
-            button.setCheckable(True)
-            button.setChecked(preset["id"] == self.selected_build_id)
-            button.clicked.connect(
-                lambda _checked=False, build_id=preset["id"]: self.start_build_preset_edit(build_id)
+            select_button.setCheckable(True)
+            select_button.setChecked(build_id == self.selected_build_id)
+            select_button.clicked.connect(
+                lambda _checked=False, value=build_id: self.select_build_preset(value)
             )
-            self.build_preset_list_layout.addWidget(button)
+            layout.addWidget(select_button, 1)
+            self.build_preset_row_buttons[build_id] = select_button
+
+        if pending:
+            confirm_label = QLabel(tr("artifact.build.delete_confirm_short"))
+            confirm_label.setObjectName("small_muted")
+            layout.addWidget(confirm_label)
+
+            confirm_button = QPushButton()
+            confirm_button.setObjectName("icon_button")
+            confirm_button.setIcon(self._ui_icon("check"))
+            confirm_button.setToolTip(tr("artifact.build.delete"))
+            confirm_button.clicked.connect(
+                lambda _checked=False, value=build_id: self.confirm_delete_build_preset(value)
+            )
+            layout.addWidget(confirm_button)
+
+            cancel_button = QPushButton()
+            cancel_button.setObjectName("icon_button")
+            cancel_button.setIcon(self._ui_icon("x"))
+            cancel_button.setToolTip(tr("common.cancel"))
+            cancel_button.clicked.connect(self.cancel_delete_build_preset)
+            layout.addWidget(cancel_button)
+            return row
+
+        if editing_this_row:
+            save_button = QPushButton()
+            save_button.setObjectName("row_save_button")
+            save_button.setIcon(self._ui_icon("check"))
+            save_button.setToolTip(tr("artifact.build.save"))
+            save_button.clicked.connect(self.save_build_preset_edit)
+            layout.addWidget(save_button)
+
+            cancel_button = QPushButton()
+            cancel_button.setObjectName("row_cancel_button")
+            cancel_button.setIcon(self._ui_icon("x"))
+            cancel_button.setToolTip(tr("artifact.build.cancel"))
+            cancel_button.clicked.connect(self.cancel_build_preset_edit)
+            layout.addWidget(cancel_button)
+            return row
+
+        edit_button = QPushButton()
+        edit_button.setObjectName("icon_button")
+        edit_button.setIcon(self._ui_icon("edit"))
+        edit_button.setToolTip(tr("artifact.build.edit"))
+        edit_button.clicked.connect(
+            lambda _checked=False, value=build_id: self.start_build_preset_edit(value)
+        )
+        layout.addWidget(edit_button)
+
+        delete_button = QPushButton()
+        delete_button.setObjectName("icon_button")
+        delete_button.setIcon(self._ui_icon("delete"))
+        delete_button.setToolTip(tr("artifact.build.delete"))
+        delete_button.clicked.connect(
+            lambda _checked=False, value=build_id: self.request_delete_build_preset(value)
+        )
+        layout.addWidget(delete_button)
+        return row
 
     def start_new_build_preset(self) -> None:
+        if not self.confirm_discard_custom_edit():
+            return
+        if self.editing_build_dirty:
+            self.empty_label.setText(tr("artifact.build.finish_edit_first"))
+            return
+        self.finish_custom_set_edit()
         self.selected_build_id = None
+        self.selected_build_slots = {}
         self.editing_build_id = None
-        self.editing_build_name = tr("artifact.build.new_default_name")
+        self.editing_build_name = self.build_name_input.text().strip()
         self.editing_build_slots = {}
         self.editing_build_dirty = False
+        self.pending_delete_build_id = None
+        self.edit_selection_mode = EDIT_MODE_BUILD_PRESET
         self.update_build_panel()
+        self.update_edit_selection_mode()
         self.refresh_build_preset_list()
 
     def start_build_preset_edit(self, build_id: int) -> None:
+        if not self.confirm_discard_custom_edit():
+            return
+        if self.editing_build_dirty and build_id != self.editing_build_id:
+            self.empty_label.setText(tr("artifact.build.finish_edit_first"))
+            return
+        self.finish_custom_set_edit()
         preset = get_build_preset(build_id)
         if preset is None:
             return
@@ -694,8 +995,41 @@ class ArtifactBrowserWindow(QWidget):
             int(slot["pos"]): int(slot["artifact_id"])
             for slot in preset.get("slots", [])
         }
+        self.selected_build_slots = dict(self.editing_build_slots)
         self.editing_build_dirty = False
+        self.pending_delete_build_id = None
+        self.edit_selection_mode = EDIT_MODE_BUILD_PRESET
+        self.build_name_input.blockSignals(True)
+        self.build_name_input.setText("")
+        self.build_name_input.blockSignals(False)
         self.update_build_panel()
+        self.update_build_create_controls()
+        self.update_edit_selection_mode()
+        self.refresh_build_preset_list()
+
+    def select_build_preset(self, build_id: int) -> None:
+        if self.edit_selection_mode != EDIT_MODE_NONE:
+            self.empty_label.setText(tr("artifact.build.finish_edit_first"))
+            self.refresh_build_preset_list()
+            return
+
+        preset = get_build_preset(build_id)
+        if preset is None:
+            return
+
+        self.selected_build_id = int(build_id)
+        self.selected_build_slots = {
+            int(slot["pos"]): int(slot["artifact_id"])
+            for slot in preset.get("slots", [])
+        }
+        self.pending_delete_build_id = None
+        self.build_name_input.blockSignals(True)
+        self.build_name_input.setText("")
+        self.build_name_input.blockSignals(False)
+        self.update_build_panel()
+        self.update_build_create_controls()
+        self.update_edit_selection_mode()
+        self.apply_current_filters()
         self.refresh_build_preset_list()
 
     def assign_build_artifact(self, artifact_id: int) -> None:
@@ -704,24 +1038,41 @@ class ArtifactBrowserWindow(QWidget):
         except KeyError:
             return
 
-        self.editing_build_slots[int(artifact.pos)] = int(artifact.id)
+        pos = int(artifact.pos)
+        if self.editing_build_slots.get(pos) == int(artifact.id):
+            self.editing_build_slots.pop(pos, None)
+        else:
+            self.editing_build_slots[pos] = int(artifact.id)
         self.editing_build_dirty = True
         self.update_build_panel()
+        self.update_edit_selection_mode()
 
     def save_build_preset_edit(self) -> None:
-        if not self.editing_build_name:
-            return
+        name = self.editing_build_name.strip()
+        self.editing_build_name = name
+        self.build_name_input.blockSignals(True)
+        self.build_name_input.setText("")
+        self.build_name_input.blockSignals(False)
 
         build_id = save_build_preset(
             build_id=self.editing_build_id,
-            name=self.editing_build_name,
+            name=name,
             slots=self.editing_build_slots,
         )
         self.selected_build_id = build_id
-        self.editing_build_id = build_id
+        self.selected_build_slots = dict(self.editing_build_slots)
+        self.editing_build_id = None
+        self.editing_build_name = ""
+        self.editing_build_slots = {}
         self.editing_build_dirty = False
+        self.edit_selection_mode = EDIT_MODE_NONE
+        self.build_name_input.blockSignals(True)
+        self.build_name_input.setText("")
+        self.build_name_input.blockSignals(False)
         self.load_build_presets()
         self.update_build_panel()
+        self.update_edit_selection_mode()
+        self.apply_current_filters()
 
     def cancel_build_preset_edit(self) -> None:
         self.finish_build_preset_edit()
@@ -731,89 +1082,381 @@ class ArtifactBrowserWindow(QWidget):
         self.editing_build_name = ""
         self.editing_build_slots = {}
         self.editing_build_dirty = False
+        self.edit_selection_mode = EDIT_MODE_NONE
+        self.pending_delete_build_id = None
+        self.build_name_input.blockSignals(True)
+        self.build_name_input.setText("")
+        self.build_name_input.blockSignals(False)
         self.update_build_panel()
+        self.update_build_create_controls()
+        self.update_edit_selection_mode()
         self.refresh_build_preset_list()
 
     def update_build_panel(self) -> None:
-        editing = bool(self.editing_build_name)
+        editing = self.edit_selection_mode == EDIT_MODE_BUILD_PRESET
+        has_selection = editing or bool(self.selected_build_id)
+        slots = self.editing_build_slots if editing else self.selected_build_slots
 
-        self.build_edit_status_label.setText(
-            tr("artifact.build.editing_status", name=self.editing_build_name)
-            if editing
-            else tr("artifact.build.no_selection")
+        for pos in ARTIFACT_POSITIONS:
+            artifact_id = slots.get(pos) if has_selection else None
+            self.update_build_slot_row(pos, artifact_id)
+
+        self.update_build_summary()
+        self.update_build_create_controls()
+
+    def update_build_create_controls(self) -> None:
+        new_draft = (
+            self.edit_selection_mode == EDIT_MODE_BUILD_PRESET
+            and self.editing_build_id is None
         )
-        self.save_build_button.setVisible(editing)
-        self.cancel_build_button.setVisible(editing)
+        self.new_build_button.setObjectName(
+            "row_save_button" if new_draft else "icon_button"
+        )
+        self.new_build_button.setIcon(self._ui_icon("check" if new_draft else "plus"))
+        self.new_build_button.setToolTip(
+            tr("artifact.build.save") if new_draft else tr("artifact.build.new")
+        )
+        self.cancel_new_build_button.setVisible(new_draft)
+        for button in (self.new_build_button, self.cancel_new_build_button):
+            button.style().unpolish(button)
+            button.style().polish(button)
 
-        for pos, label in self.build_slot_labels.items():
-            artifact_id = self.editing_build_slots.get(pos) if editing else None
-            label.setText(self._build_slot_text(pos, artifact_id))
+    def on_build_name_changed(self, text: str) -> None:
+        if (
+            self.edit_selection_mode != EDIT_MODE_BUILD_PRESET
+            or self.editing_build_id is not None
+        ):
+            return
+        self.editing_build_name = text
+        self.editing_build_dirty = True
 
-        self.build_summary_label.setText(self._build_summary_text())
+    def on_inline_build_name_changed(self, text: str) -> None:
+        if (
+            self.edit_selection_mode != EDIT_MODE_BUILD_PRESET
+            or self.editing_build_id is None
+        ):
+            return
+        self.editing_build_name = text
+        self.editing_build_dirty = True
 
-    def _build_slot_text(self, pos: int, artifact_id: int | None) -> str:
+    def clear_build_slot(self, pos: int) -> None:
+        if pos not in self.editing_build_slots:
+            return
+
+        self.editing_build_slots.pop(pos, None)
+        self.editing_build_dirty = True
+        self.update_build_panel()
+
+    def update_build_slot_row(self, pos: int, artifact_id: int | None) -> None:
         slot_name = self._position_label(pos)
         if artifact_id is None:
-            return f"{slot_name}: {tr('artifact.build.slot_empty')}"
+            self.build_slot_icon_labels[pos].clear()
+            self.build_slot_icon_labels[pos].setText("-")
+            self.build_slot_icon_labels[pos].setToolTip(slot_name)
+            self.build_slot_stat_labels[pos].setText(tr("artifact.build.empty_slot"))
+            return
 
         try:
             artifact = self.store.artifact(artifact_id)
         except KeyError:
-            return f"{slot_name}: {tr('artifact.build.slot_missing')}"
+            self.build_slot_icon_labels[pos].clear()
+            self.build_slot_icon_labels[pos].setText("?")
+            self.build_slot_icon_labels[pos].setToolTip(slot_name)
+            self.build_slot_stat_labels[pos].setText(tr("artifact.build.slot_missing"))
+            return
 
-        return (
-            f"{slot_name}: {artifact.name}\n"
-            f"{artifact.main_property_name} {artifact.main_property_value}"
+        self.build_slot_icon_labels[pos].setText("")
+        self.build_slot_icon_labels[pos].clear()
+        if artifact.icon_path:
+            pixmap = QPixmap(str(artifact.icon_path))
+            if not pixmap.isNull():
+                self.build_slot_icon_labels[pos].setPixmap(
+                    pixmap.scaled(
+                        36,
+                        36,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                )
+
+        self.build_slot_icon_labels[pos].setToolTip(
+            f"{slot_name}: {artifact.name or artifact.set_name}"
         )
+        self.build_slot_stat_labels[pos].setText(self._compact_main_stat_text(artifact))
 
-    def _build_summary_text(self) -> str:
-        if not self.editing_build_name:
-            return tr("artifact.build.summary_empty")
+    def current_build_artifact_ids(self) -> set[int]:
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            return set(self.editing_build_slots.values())
+        return set(self.selected_build_slots.values())
+
+    def current_highlight_artifact_ids(self) -> set[int]:
+        if self.edit_selection_mode == EDIT_MODE_CUSTOM_SET:
+            return set(self.editing_custom_artifact_ids)
+        return self.current_build_artifact_ids()
+
+    def _compact_main_stat_text(self, artifact) -> str:
+        return self._stat_badge_text(artifact.main_property_type)
+
+    def update_build_summary(self) -> None:
+        self._clear_layout(self.build_bonus_layout)
+        self._clear_layout(self.build_summary_stats_layout)
+
+        editing = self.edit_selection_mode == EDIT_MODE_BUILD_PRESET
+        slots = self.editing_build_slots if editing else self.selected_build_slots
+
+        if not slots:
+            self.fill_build_stat_summary({})
+            return
 
         try:
-            if self.editing_build_id is not None and not self.editing_build_dirty:
+            if editing and self.editing_build_id is not None and not self.editing_build_dirty:
                 summary = calculate_build_summary(build_id=self.editing_build_id)
+            elif not editing and self.selected_build_id is not None:
+                summary = calculate_build_summary(build_id=self.selected_build_id)
             else:
-                summary = calculate_build_summary(slots=self.editing_build_slots)
+                summary = calculate_build_summary(slots=slots)
         except Exception as exc:
-            return tr("artifact.build.summary_error", error=str(exc))
+            label = QLabel(tr("artifact.build.summary_error", error=str(exc)))
+            label.setObjectName("small_muted")
+            self.build_summary_stats_layout.addWidget(label, 0, 0)
+            return
 
         if not summary:
-            return tr("artifact.build.summary_empty")
+            self.fill_build_stat_summary({})
+            return
 
-        lines = [tr("artifact.build.summary_title")]
-        if summary["missing_positions"]:
-            missing = ", ".join(
-                self._position_label(pos)
-                for pos in summary["missing_positions"]
+        self.fill_build_bonus_summary(summary.get("set_counts") or [])
+        self.fill_build_stat_summary(summary)
+
+    def fill_build_bonus_summary(self, set_counts: list[dict]) -> None:
+        active_sets = []
+        for item in set_counts:
+            count = int(item.get("count") or 0)
+            if count >= 4:
+                active = dict(item)
+                active["count"] = 4
+                active_sets.append(active)
+            elif count >= 2:
+                active = dict(item)
+                active["count"] = 2
+                active_sets.append(active)
+
+        if not active_sets:
+            return
+
+        for item in active_sets:
+            self.build_bonus_layout.addWidget(self._make_set_bonus_cell(item))
+
+    def _make_set_bonus_cell(self, item: dict) -> QFrame:
+        cell = QFrame()
+        cell.setObjectName("build_slot_mini")
+        cell.setFixedSize(48, 64)
+        layout = QVBoxLayout(cell)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(0)
+
+        icon = QLabel()
+        icon.setFixedSize(40, 40)
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_path = self._set_icon_path_for_summary(item.get("set_uid") or "")
+        count = str(item["count"])
+        if icon_path:
+            pixmap = QPixmap(str(icon_path))
+            if not pixmap.isNull():
+                canvas = QPixmap(40, 40)
+                canvas.fill(Qt.GlobalColor.transparent)
+                painter = QPainter(canvas)
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+                scaled = pixmap.scaled(
+                    40,
+                    40,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                painter.drawPixmap(
+                    (40 - scaled.width()) // 2,
+                    (40 - scaled.height()) // 2,
+                    scaled,
+                )
+                badge_rect = QRect(24, 24, 15, 15)
+                painter.setPen(QPen(QColor("#8f7440"), 1))
+                painter.setBrush(QColor("#4a3b22"))
+                painter.drawRoundedRect(badge_rect, 5, 5)
+                font = QFont(icon.font())
+                font.setPointSize(8)
+                font.setBold(True)
+                painter.setFont(font)
+                painter.setPen(QColor("#f0d58a"))
+                painter.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, count)
+                painter.end()
+                icon.setPixmap(canvas)
+        if icon.pixmap() is None:
+            icon.setText(f"{str(item.get('set_name') or item.get('set_uid') or '?')[:2]}{count}")
+        layout.addWidget(icon)
+        return cell
+
+    def _set_icon_path_for_summary(self, set_uid: str):
+        for artifact_id in self.current_build_artifact_ids():
+            try:
+                artifact = self.store.artifact(artifact_id)
+            except KeyError:
+                continue
+            if artifact.set_uid == set_uid and artifact.set_icon_path:
+                return artifact.set_icon_path
+        return None
+
+    def fill_build_stat_summary(self, summary: dict) -> None:
+        stats_by_type = {
+            int(item["property_type"]): item
+            for item in summary.get("total_stats") or []
+        }
+        rows: list[tuple[str, str]] = []
+
+        if summary.get("crit_value"):
+            rows.append(("CV", self._format_stat_value(None, summary["crit_value"])))
+        if summary.get("proc_count"):
+            rows.append((tr("artifact.stat.proc_count"), self._format_stat_value(None, summary["proc_count"])))
+
+        for property_type in (CRIT_RATE, CRIT_DAMAGE):
+            item = stats_by_type.pop(property_type, None)
+            if item:
+                rows.append((self._stat_badge_text(property_type), self._format_stat_value(property_type, item["raw_value"])))
+
+        for property_type in (
+            PHYSICAL_DAMAGE,
+            PYRO_DAMAGE,
+            ELECTRO_DAMAGE,
+            HYDRO_DAMAGE,
+            DENDRO_DAMAGE,
+            ANEMO_DAMAGE,
+            GEO_DAMAGE,
+            CRYO_DAMAGE,
+            HEALING_BONUS,
+        ):
+            item = stats_by_type.pop(property_type, None)
+            if item:
+                rows.append((self._stat_badge_text(property_type), self._format_stat_value(property_type, item["raw_value"])))
+
+        for property_type in (ENERGY_RECHARGE, ELEMENTAL_MASTERY):
+            item = stats_by_type.pop(property_type, None)
+            if item:
+                rows.append((self._stat_badge_text(property_type), self._format_stat_value(property_type, item["raw_value"])))
+
+        for label, percent_type, flat_type in (
+            ("ATK", ATK_PERCENT, ATK_FLAT),
+            ("HP", HP_PERCENT, HP_FLAT),
+            ("DEF", DEF_PERCENT, DEF_FLAT),
+        ):
+            percent_item = stats_by_type.pop(percent_type, None)
+            flat_item = stats_by_type.pop(flat_type, None)
+            if percent_item and flat_item:
+                value = (
+                    f"{self._format_stat_value(percent_type, percent_item['raw_value'])}"
+                    f" + {self._format_stat_value(flat_type, flat_item['raw_value'])}"
+                )
+                rows.append((label, value))
+            elif percent_item:
+                rows.append((self._stat_badge_text(percent_type), self._format_stat_value(percent_type, percent_item["raw_value"])))
+            elif flat_item:
+                rows.append((self._stat_badge_text(flat_type), self._format_stat_value(flat_type, flat_item["raw_value"])))
+
+        for property_type, item in sorted(stats_by_type.items()):
+            rows.append((self._stat_badge_text(property_type), self._format_stat_value(property_type, item["raw_value"])))
+
+        if not rows:
+            label = QLabel("-")
+            label.setObjectName("small_muted")
+            self.build_summary_stats_layout.addWidget(label, 0, 0)
+            return
+
+        for index, (badge, value) in enumerate(rows[:12]):
+            label = QLabel(f"{badge} {value}")
+            label.setObjectName("stat_pill")
+            self.build_summary_stats_layout.addWidget(label, index // 2, index % 2)
+
+    def _stat_badge_text(self, property_type: int) -> str:
+        try:
+            return stat_badge(int(property_type))
+        except KeyError:
+            return str(property_type)
+
+    def _format_stat_value(self, property_type: int | None, value: float | int) -> str:
+        suffix = "%" if property_type in PERCENT_STAT_TYPES else ""
+        return f"{float(value):g}{suffix}"
+
+    def request_delete_build_preset(self, build_id: int) -> None:
+        if self.edit_selection_mode != EDIT_MODE_NONE:
+            self.empty_label.setText(tr("artifact.build.finish_edit_first"))
+            return
+        self.pending_delete_build_id = int(build_id)
+        self.refresh_build_preset_list()
+
+    def cancel_delete_build_preset(self) -> None:
+        self.pending_delete_build_id = None
+        self.refresh_build_preset_list()
+
+    def confirm_delete_build_preset(self, build_id: int) -> None:
+        if self.pending_delete_build_id != int(build_id):
+            return
+        delete_build_preset(int(build_id))
+        if self.selected_build_id == int(build_id):
+            self.selected_build_id = None
+            self.selected_build_slots = {}
+        self.finish_build_preset_edit()
+        self.load_build_presets()
+        self.update_edit_selection_mode()
+        self.apply_current_filters()
+
+    def active_save_tooltip(self) -> str:
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            return tr("artifact.build.save")
+        return tr("artifact.custom.save")
+
+    def active_cancel_tooltip(self) -> str:
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            return tr("artifact.build.cancel")
+        return tr("artifact.custom.cancel")
+
+    def save_active_edit(self) -> None:
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            self.save_build_preset_edit()
+        elif self.edit_selection_mode == EDIT_MODE_CUSTOM_SET:
+            self.save_custom_set_edit()
+
+    def cancel_active_edit(self) -> None:
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            self.cancel_build_preset_edit()
+        elif self.edit_selection_mode == EDIT_MODE_CUSTOM_SET:
+            self.cancel_custom_set_edit()
+
+    def update_edit_selection_mode(self) -> None:
+        editing = self.edit_selection_mode != EDIT_MODE_NONE
+        ids = self.current_highlight_artifact_ids()
+        self.delegate.set_edit_selection_artifact_ids(ids)
+        self.edit_mode_label.setVisible(editing)
+        self.save_edit_button.setVisible(editing)
+        self.cancel_edit_button.setVisible(editing)
+        self.save_edit_button.setToolTip(self.active_save_tooltip())
+        self.cancel_edit_button.setToolTip(self.active_cancel_tooltip())
+        self.list_view.setProperty("artifactEditMode", editing)
+        self.list_view.style().unpolish(self.list_view)
+        self.list_view.style().polish(self.list_view)
+        self.list_view.viewport().update()
+
+        if self.edit_selection_mode == EDIT_MODE_CUSTOM_SET:
+            self.edit_mode_label.setText(
+                tr(
+                    "artifact.custom.editing_status",
+                    name=self.editing_custom_set_name,
+                    count=len(self.editing_custom_artifact_ids),
+                )
             )
-            lines.append(tr("artifact.build.summary_missing", positions=missing))
-
-        set_counts = summary.get("set_counts") or []
-        if set_counts:
-            sets_text = ", ".join(
-                f"{item['set_name'] or item['set_uid']} x{item['count']}"
-                for item in set_counts
+        elif self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            self.edit_mode_label.setText(
+                tr("artifact.build.editing_status", name=self.editing_build_name)
             )
-            lines.append(tr("artifact.build.summary_sets", sets=sets_text))
-
-        lines.append(
-            tr(
-                "artifact.build.summary_cv",
-                cv=summary.get("crit_value", 0),
-                procs=summary.get("proc_count", 0),
-            )
-        )
-
-        stats = summary.get("total_stats") or []
-        if stats:
-            stat_lines = [
-                f"{item['property_name']}: {item['raw_value']}"
-                for item in stats[:8]
-            ]
-            lines.append(tr("artifact.build.summary_stats", stats=", ".join(stat_lines)))
-
-        return "\n".join(lines)
+        else:
+            self.edit_mode_label.setText("")
 
     def save_custom_set_edit(self) -> None:
         self._save_custom_set_edit(reload_after=True)
@@ -901,8 +1544,48 @@ class ArtifactBrowserWindow(QWidget):
             return False
         return False
 
+    def confirm_discard_build_edit(self) -> bool:
+        if not self.editing_build_dirty:
+            return True
+
+        box = QMessageBox(self)
+        box.setWindowTitle(tr("artifact.build.unsaved_title"))
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setText(
+            tr(
+                "artifact.build.unsaved_message",
+                name=self.editing_build_name or tr("artifact.build.default_name"),
+            )
+        )
+
+        save_button = box.addButton(
+            tr("artifact.custom.unsaved_save"),
+            QMessageBox.ButtonRole.AcceptRole,
+        )
+        discard_button = box.addButton(
+            tr("artifact.custom.unsaved_discard"),
+            QMessageBox.ButtonRole.DestructiveRole,
+        )
+        cancel_button = box.addButton(
+            tr("artifact.custom.unsaved_cancel"),
+            QMessageBox.ButtonRole.RejectRole,
+        )
+        box.setDefaultButton(save_button)
+        box.exec()
+
+        clicked_button = box.clickedButton()
+        if clicked_button == save_button:
+            self.save_build_preset_edit()
+            return True
+        if clicked_button == discard_button:
+            self.finish_build_preset_edit()
+            return True
+        if clicked_button == cancel_button:
+            return False
+        return False
+
     def closeEvent(self, event) -> None:
-        if self.confirm_discard_custom_edit():
+        if self.confirm_discard_custom_edit() and self.confirm_discard_build_edit():
             event.accept()
         else:
             event.ignore()
@@ -912,29 +1595,10 @@ class ArtifactBrowserWindow(QWidget):
         self.editing_custom_set_name = ""
         self.editing_custom_artifact_ids.clear()
         self.editing_custom_dirty = False
+        if self.edit_selection_mode == EDIT_MODE_CUSTOM_SET:
+            self.edit_selection_mode = EDIT_MODE_NONE
 
-        self.delegate.set_custom_edit_artifact_ids(set())
-        self.update_custom_edit_bar()
-        self.list_view.viewport().update()
+        self.update_edit_selection_mode()
 
     def update_custom_edit_bar(self) -> None:
-        editing = self.editing_custom_set_id is not None
-
-        self.edit_mode_label.setVisible(editing)
-        self.save_custom_set_button.setVisible(editing)
-        self.cancel_custom_set_button.setVisible(editing)
-        self.list_view.setProperty("customEditMode", editing)
-        self.list_view.style().unpolish(self.list_view)
-        self.list_view.style().polish(self.list_view)
-
-        if not editing:
-            self.edit_mode_label.setText("")
-            return
-
-        self.edit_mode_label.setText(
-            tr(
-                "artifact.custom.editing_status",
-                name=self.editing_custom_set_name,
-                count=len(self.editing_custom_artifact_ids),
-            )
-        )
+        self.update_edit_selection_mode()

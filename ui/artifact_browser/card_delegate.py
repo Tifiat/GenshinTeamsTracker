@@ -11,8 +11,8 @@ from .models import ArtifactItem
 from .stat_types import is_crit_type, stat_badge
 
 
-CARD_SIZE = QSize(248, 138)
-GRID_SIZE = QSize(260, 150)
+CARD_SIZE = QSize(180, 136)
+GRID_SIZE = QSize(192, 148)
 ICON_SIZE = QSize(56, 56)
 
 CV_COLORS = [
@@ -62,16 +62,16 @@ def cv_color(artifact: ArtifactItem) -> QColor:
 
 def roll_text(times: int | None) -> str:
     value = int(times or 0)
-    return f"×{value}" if value > 0 else ""
+    return str(value) if value > 0 else ""
 
 
 class ArtifactCardDelegate(QStyledItemDelegate):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.custom_edit_artifact_ids: set[int] = set()
+        self.edit_selection_artifact_ids: set[int] = set()
 
-    def set_custom_edit_artifact_ids(self, artifact_ids: set[int]) -> None:
-        self.custom_edit_artifact_ids = set(artifact_ids)
+    def set_edit_selection_artifact_ids(self, artifact_ids: set[int]) -> None:
+        self.edit_selection_artifact_ids = set(artifact_ids)
 
     def sizeHint(
         self,
@@ -97,16 +97,17 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
         selected = bool(option.state & QStyle.StateFlag.State_Selected)
 
-        custom_edit_selected = artifact.id in self.custom_edit_artifact_ids
+        edit_selected = artifact.id in self.edit_selection_artifact_ids
 
-        if custom_edit_selected:
+        if edit_selected:
             background = QColor("#2d2b1f") if not hovered else QColor("#383526")
             border = QColor("#d6b15d")
         else:
             background = QColor("#252a33") if hovered else QColor("#20232a")
             border = QColor("#7da7ff") if selected else QColor("#6f86b8" if hovered else "#3a3f4b")
 
-        painter.setPen(QPen(border, 2 if selected or custom_edit_selected else 1))
+        highlighted = selected or edit_selected
+        painter.setPen(QPen(border, 2 if highlighted else 1))
         painter.setBrush(background)
         painter.drawRoundedRect(QRectF(card_rect), 10, 10)
 
@@ -222,13 +223,13 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         card_rect: QRect,
         artifact: ArtifactItem,
     ) -> None:
-        x = card_rect.x() + 72
+        x = card_rect.x() + 70
         y = card_rect.y() + 33
-        width = card_rect.width() - 80
-        row_height = 23
+        width = card_rect.width() - 78
+        row_height = 21
 
         for index, substat in enumerate(artifact.substats[:4]):
-            row_rect = QRect(x, y + index * row_height, width, 19)
+            row_rect = QRect(x, y + index * row_height, width, 18)
             self._draw_substat_row(painter, option, row_rect, substat)
 
     def _draw_substat_row(
@@ -238,7 +239,10 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         row_rect: QRect,
         substat,
     ) -> None:
-        badge_rect = QRect(row_rect.x(), row_rect.y(), 48, 18)
+        badge_width = 40
+        value_width = 66
+        roll_width = 18 if roll_text(substat.times) else 0
+        badge_rect = QRect(row_rect.x(), row_rect.y(), badge_width, 18)
 
         painter.setPen(QPen(QColor("#475066"), 1))
         painter.setBrush(QColor("#2d3340"))
@@ -256,12 +260,11 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         )
 
         roll = roll_text(substat.times)
-        roll_width = 24 if roll else 0
 
         value_rect = QRect(
-            badge_rect.right() + 6,
+            badge_rect.right() + 4,
             row_rect.y(),
-            max(10, row_rect.width() - badge_rect.width() - roll_width - 12),
+            value_width,
             18,
         )
 
@@ -285,13 +288,21 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         if roll:
             roll_rect = QRect(
                 row_rect.right() - roll_width,
-                row_rect.y(),
+                row_rect.y() + 1,
                 roll_width,
-                18,
+                16,
             )
-            painter.setPen(QColor("#9aa4b5"))
+            painter.setPen(QPen(QColor("#8f7440"), 1))
+            painter.setBrush(QColor("#4a3b22"))
+            painter.drawRoundedRect(QRectF(roll_rect), 5, 5)
+
+            roll_font = QFont(option.font)
+            roll_font.setPointSize(8)
+            roll_font.setBold(True)
+            painter.setFont(roll_font)
+            painter.setPen(QColor("#f0d58a"))
             painter.drawText(
                 roll_rect,
-                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter,
+                Qt.AlignmentFlag.AlignCenter,
                 roll,
             )

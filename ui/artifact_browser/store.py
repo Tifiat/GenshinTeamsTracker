@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .models import ARTIFACT_POSITIONS, ArtifactItem, parse_hoyolab_stat_value
 from .queries import artifact_db_exists, list_all_artifacts, list_custom_sets
-from .stat_types import CRIT_VALUE, PROC_COUNT
+from .stat_types import CRIT_DAMAGE, CRIT_RATE, CRIT_VALUE, PROC_COUNT
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,9 +121,22 @@ class ArtifactBrowserStore:
         )
 
     @staticmethod
+    def effective_crit_value_for_sort(artifact: ArtifactItem) -> float:
+        value = float(artifact.cv)
+        if artifact.pos != 5:
+            return value
+
+        main_value = parse_hoyolab_stat_value(artifact.main_property_value)
+        if artifact.main_property_type == CRIT_RATE:
+            return value + main_value * 2
+        if artifact.main_property_type == CRIT_DAMAGE:
+            return value + main_value
+        return value
+
+    @staticmethod
     def _artifact_stat_value(artifact: ArtifactItem, property_type: int) -> float:
         if property_type == CRIT_VALUE:
-            return artifact.cv
+            return ArtifactBrowserStore.effective_crit_value_for_sort(artifact)
 
         if property_type == PROC_COUNT:
             return float(artifact.proc_count)
@@ -144,7 +157,7 @@ class ArtifactBrowserStore:
         return (
             -artifact.rarity,
             -artifact.level,
-            -artifact.cv,
+            -ArtifactBrowserStore.effective_crit_value_for_sort(artifact),
             artifact.set_name.casefold(),
             artifact.name.casefold(),
             artifact.id,
@@ -185,7 +198,7 @@ class ArtifactBrowserStore:
             main_stat_priority,
             *stat_values,
             -artifact.level,
-            -artifact.cv,
+            -cls.effective_crit_value_for_sort(artifact),
             artifact.set_name.casefold(),
             artifact.name.casefold(),
             artifact.id,

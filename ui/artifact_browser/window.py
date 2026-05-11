@@ -397,7 +397,7 @@ class ArtifactBrowserWindow(QWidget):
     def _build_build_panel(self, root) -> None:
         panel = QFrame()
         panel.setObjectName("build_panel")
-        panel.setFixedWidth(356)
+        panel.setFixedWidth(362)
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(7, 10, 7, 10)
@@ -459,6 +459,7 @@ class ArtifactBrowserWindow(QWidget):
         preview_row = QHBoxLayout()
         preview_row.setContentsMargins(0, 0, 0, 0)
         preview_row.setSpacing(3)
+        preview_row.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         for pos in ARTIFACT_POSITIONS:
             preview_row.addWidget(self._make_build_slot_row(pos))
         self.build_bonus_container = QFrame()

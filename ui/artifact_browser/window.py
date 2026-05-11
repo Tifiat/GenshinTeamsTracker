@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QSplitter,
     QVBoxLayout,
     QWidget,
 )
@@ -194,6 +193,10 @@ QFrame#build_slot_mini {
     border-radius: 6px;
     background: #222630;
 }
+QFrame#build_preview_block {
+    border-top: 1px solid #343b49;
+    background: #1f222a;
+}
 QLabel#mini_stat_badge {
     color: #d9e2ff;
     background: #2d3340;
@@ -232,6 +235,16 @@ ARTIFACT_POSITION_LABEL_KEYS = {
     4: "artifact.position.goblet",
     5: "artifact.position.circlet",
 }
+
+ARTIFACT_PLACEHOLDER_ICON_NAMES = {
+    1: "flower.png",
+    2: "plume.png",
+    3: "sands.png",
+    4: "goblet.png",
+    5: "circlet.png",
+}
+
+BUILD_PREVIEW_STAT_CELLS = 10
 
 PERCENT_STAT_TYPES = {
     HP_PERCENT,
@@ -302,12 +315,12 @@ class ArtifactBrowserWindow(QWidget):
         root.setSpacing(8)
 
         self._build_top_bar(root)
-        self.content_splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.content_splitter.setChildrenCollapsible(False)
-        self._build_list_view(self.content_splitter)
-        self._build_build_panel(self.content_splitter)
-        self.content_splitter.setSizes([820, 430])
-        root.addWidget(self.content_splitter, 1)
+        content = QHBoxLayout()
+        content.setContentsMargins(0, 0, 0, 0)
+        content.setSpacing(8)
+        self._build_list_view(content)
+        self._build_build_panel(content)
+        root.addLayout(content, 1)
         self._build_bottom_bar(root)
 
         self.load_build_presets()
@@ -379,18 +392,15 @@ class ArtifactBrowserWindow(QWidget):
         self.list_view.clicked.connect(self.on_artifact_clicked)
 
 
-        if isinstance(root, QSplitter):
-            root.addWidget(self.list_view)
-        else:
-            root.addWidget(self.list_view, 1)
+        root.addWidget(self.list_view, 1)
 
     def _build_build_panel(self, root) -> None:
         panel = QFrame()
         panel.setObjectName("build_panel")
-        panel.setMinimumWidth(420)
+        panel.setFixedWidth(356)
 
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(7, 10, 7, 10)
         layout.setSpacing(8)
 
         self.build_title_label = QLabel(tr("artifact.build.presets_title"))
@@ -420,32 +430,49 @@ class ArtifactBrowserWindow(QWidget):
         create_row.addWidget(self.cancel_new_build_button)
         layout.addLayout(create_row)
 
-        self.build_preset_list_layout = QVBoxLayout()
+        list_scroll = QScrollArea()
+        list_scroll.setWidgetResizable(True)
+        list_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        list_content = QWidget()
+        self.build_preset_list_layout = QVBoxLayout(list_content)
         self.build_preset_list_layout.setContentsMargins(0, 0, 0, 0)
         self.build_preset_list_layout.setSpacing(5)
-        layout.addLayout(self.build_preset_list_layout)
+        self.build_preset_list_layout.addStretch()
+        list_scroll.setWidget(list_content)
+        layout.addWidget(list_scroll, 1)
+
+        preview_block = QFrame()
+        preview_block.setObjectName("build_preview_block")
+        preview_block.setFixedHeight(250)
+        preview_layout = QVBoxLayout(preview_block)
+        preview_layout.setContentsMargins(0, 8, 0, 0)
+        preview_layout.setSpacing(6)
+
+        self.build_target_placeholder = QWidget()
+        self.build_target_placeholder.setFixedHeight(24)
+        self.build_target_placeholder_row = QHBoxLayout()
+        self.build_target_placeholder_row.setContentsMargins(0, 0, 0, 0)
+        self.build_target_placeholder_row.setSpacing(4)
+        self.build_target_placeholder.setLayout(self.build_target_placeholder_row)
+        preview_layout.addWidget(self.build_target_placeholder)
 
         preview_row = QHBoxLayout()
         preview_row.setContentsMargins(0, 0, 0, 0)
-        preview_row.setSpacing(5)
+        preview_row.setSpacing(3)
         for pos in ARTIFACT_POSITIONS:
-            preview_row.addWidget(self._make_build_slot_row(pos), 1)
-        self.build_bonus_layout = QHBoxLayout()
-        self.build_bonus_layout.setContentsMargins(3, 0, 0, 0)
-        self.build_bonus_layout.setSpacing(5)
-        preview_row.addLayout(self.build_bonus_layout)
-        layout.addLayout(preview_row)
-
-        summary_scroll = QScrollArea()
-        summary_scroll.setWidgetResizable(True)
-        summary_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        summary_content = QWidget()
-        summary_layout = QVBoxLayout(summary_content)
-        summary_layout.setContentsMargins(0, 0, 0, 0)
-        summary_layout.setSpacing(8)
+            preview_row.addWidget(self._make_build_slot_row(pos))
+        self.build_bonus_container = QFrame()
+        self.build_bonus_container.setFixedSize(87, 67)
+        self.build_bonus_layout = QHBoxLayout(self.build_bonus_container)
+        self.build_bonus_layout.setContentsMargins(0, 0, 0, 0)
+        self.build_bonus_layout.setSpacing(3)
+        self.build_bonus_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        preview_row.addWidget(self.build_bonus_container)
+        preview_layout.addLayout(preview_row)
 
         stats_block = QFrame()
         stats_block.setObjectName("summary_block")
+        stats_block.setFixedHeight(136)
         stats_layout = QVBoxLayout(stats_block)
         stats_layout.setContentsMargins(8, 8, 8, 8)
         self.build_summary_stats_layout = QGridLayout()
@@ -453,29 +480,28 @@ class ArtifactBrowserWindow(QWidget):
         self.build_summary_stats_layout.setHorizontalSpacing(6)
         self.build_summary_stats_layout.setVerticalSpacing(5)
         stats_layout.addLayout(self.build_summary_stats_layout)
-        summary_layout.addWidget(stats_block)
-        summary_layout.addStretch()
-
-        summary_scroll.setWidget(summary_content)
-        layout.addWidget(summary_scroll, 1)
+        preview_layout.addWidget(stats_block)
+        layout.addWidget(preview_block)
 
         root.addWidget(panel)
 
     def _make_build_slot_row(self, pos: int) -> QFrame:
         row = QFrame()
         row.setObjectName("build_slot_mini")
+        row.setFixedSize(48, 67)
         layout = QVBoxLayout(row)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(3)
+        layout.setContentsMargins(3, 3, 3, 3)
+        layout.setSpacing(1)
 
         icon_label = QLabel()
-        icon_label.setFixedSize(42, 42)
+        icon_label.setFixedSize(40, 40)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(icon_label)
 
         stat_label = QLabel("")
         stat_label.setObjectName("mini_stat_badge")
         stat_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        stat_label.setFixedWidth(40)
         stat_label.setFixedHeight(18)
         layout.addWidget(stat_label)
 
@@ -852,6 +878,7 @@ class ArtifactBrowserWindow(QWidget):
 
         for preset in self.build_presets:
             self.build_preset_list_layout.addWidget(self._make_build_preset_row(preset))
+        self.build_preset_list_layout.addStretch()
 
     def on_build_create_button_clicked(self) -> None:
         if (
@@ -1150,10 +1177,9 @@ class ArtifactBrowserWindow(QWidget):
     def update_build_slot_row(self, pos: int, artifact_id: int | None) -> None:
         slot_name = self._position_label(pos)
         if artifact_id is None:
-            self.build_slot_icon_labels[pos].clear()
-            self.build_slot_icon_labels[pos].setText("-")
+            self._set_slot_placeholder_icon(pos)
             self.build_slot_icon_labels[pos].setToolTip(slot_name)
-            self.build_slot_stat_labels[pos].setText(tr("artifact.build.empty_slot"))
+            self.build_slot_stat_labels[pos].setText("-")
             return
 
         try:
@@ -1172,8 +1198,8 @@ class ArtifactBrowserWindow(QWidget):
             if not pixmap.isNull():
                 self.build_slot_icon_labels[pos].setPixmap(
                     pixmap.scaled(
-                        36,
-                        36,
+                        40,
+                        40,
                         Qt.AspectRatioMode.KeepAspectRatio,
                         Qt.TransformationMode.SmoothTransformation,
                     )
@@ -1183,6 +1209,29 @@ class ArtifactBrowserWindow(QWidget):
             f"{slot_name}: {artifact.name or artifact.set_name}"
         )
         self.build_slot_stat_labels[pos].setText(self._compact_main_stat_text(artifact))
+
+    def _set_slot_placeholder_icon(self, pos: int) -> None:
+        icon_label = self.build_slot_icon_labels[pos]
+        icon_label.clear()
+        icon_path = (
+            PROJECT_ROOT
+            / "assets"
+            / "ui"
+            / "art_placeholder"
+            / ARTIFACT_PLACEHOLDER_ICON_NAMES[pos]
+        )
+        pixmap = QPixmap(str(icon_path))
+        if pixmap.isNull():
+            icon_label.setText("-")
+            return
+        icon_label.setPixmap(
+            pixmap.scaled(
+                40,
+                40,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
 
     def current_build_artifact_ids(self) -> set[int]:
         if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
@@ -1244,41 +1293,41 @@ class ArtifactBrowserWindow(QWidget):
         if not active_sets:
             return
 
-        for item in active_sets:
+        for item in active_sets[:2]:
             self.build_bonus_layout.addWidget(self._make_set_bonus_cell(item))
 
     def _make_set_bonus_cell(self, item: dict) -> QFrame:
         cell = QFrame()
         cell.setObjectName("build_slot_mini")
-        cell.setFixedSize(48, 64)
+        cell.setFixedSize(42, 67)
         layout = QVBoxLayout(cell)
-        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setContentsMargins(3, 3, 3, 3)
         layout.setSpacing(0)
 
         icon = QLabel()
-        icon.setFixedSize(40, 40)
+        icon.setFixedSize(34, 34)
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         icon_path = self._set_icon_path_for_summary(item.get("set_uid") or "")
         count = str(item["count"])
         if icon_path:
             pixmap = QPixmap(str(icon_path))
             if not pixmap.isNull():
-                canvas = QPixmap(40, 40)
+                canvas = QPixmap(34, 34)
                 canvas.fill(Qt.GlobalColor.transparent)
                 painter = QPainter(canvas)
                 painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
                 scaled = pixmap.scaled(
-                    40,
-                    40,
+                    34,
+                    34,
                     Qt.AspectRatioMode.KeepAspectRatio,
                     Qt.TransformationMode.SmoothTransformation,
                 )
                 painter.drawPixmap(
-                    (40 - scaled.width()) // 2,
-                    (40 - scaled.height()) // 2,
+                    (34 - scaled.width()) // 2,
+                    (34 - scaled.height()) // 2,
                     scaled,
                 )
-                badge_rect = QRect(24, 24, 15, 15)
+                badge_rect = QRect(20, 20, 13, 13)
                 painter.setPen(QPen(QColor("#8f7440"), 1))
                 painter.setBrush(QColor("#4a3b22"))
                 painter.drawRoundedRect(badge_rect, 5, 5)
@@ -1363,15 +1412,16 @@ class ArtifactBrowserWindow(QWidget):
         for property_type, item in sorted(stats_by_type.items()):
             rows.append((self._stat_badge_text(property_type), self._format_stat_value(property_type, item["raw_value"])))
 
-        if not rows:
-            label = QLabel("-")
-            label.setObjectName("small_muted")
-            self.build_summary_stats_layout.addWidget(label, 0, 0)
-            return
-
-        for index, (badge, value) in enumerate(rows[:12]):
-            label = QLabel(f"{badge} {value}")
-            label.setObjectName("stat_pill")
+        for index in range(BUILD_PREVIEW_STAT_CELLS):
+            if index < len(rows):
+                badge, value = rows[index]
+                text = f"{badge} {value}"
+            else:
+                text = ""
+            label = QLabel(text)
+            label.setFixedHeight(20)
+            if text:
+                label.setObjectName("stat_pill")
             self.build_summary_stats_layout.addWidget(label, index // 2, index % 2)
 
     def _stat_badge_text(self, property_type: int) -> str:

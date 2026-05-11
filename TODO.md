@@ -50,9 +50,13 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 
 ## Artifact Browser: Builds / Presets
 
-- [ ] Design build preset model and UI after custom sets are stable.
-- [ ] Add build preset selection/editing.
-- [ ] Add artifact build editor after the browser is smoke-tested.
+- [ ] Future build target selector should be a separate middle column:
+  - layout target: Artifact grid | Build target selector | Preset panel;
+  - selector has fixed vertical filters on the left and a scrollable Universal/character target list on the right;
+  - filters must not scroll with the target list;
+  - presets can target Universal and multiple characters;
+  - preset preview will later show assigned target icons in its reserved compact row.
+- [ ] Later add color highlighting for build summary Crit Value and Proc Count; thresholds are not decided yet.
 - [ ] Add future drag/drop of builds into the team window.
 - [ ] Keep build data separate from visual skin and delegate rendering.
 

@@ -143,6 +143,9 @@ Current functional prototype:
 - Game set icons come from set-piece icon catalog.
 - Static UI strings touched so far are localized in `ru`, `en`, and `pt-br`.
 - Current UI is prototype quality; do not polish QCheckBox/QWidget rows as final design.
+- Build preset panel is intentionally compact: create row and preset list are at the top, the build preview block is fixed at the bottom, and only the preset list scrolls.
+- Future build target selection should be a separate middle column between artifact grid and preset panel, not stuffed into the preset panel. Planned layout: Artifact grid | Build target selector | Preset panel.
+- Future target selector should have fixed vertical filters on the left and a scrollable Universal/character target list on the right; preview will later show assigned target icons in its reserved compact row.
 
 Sorting:
 

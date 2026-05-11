@@ -187,5 +187,9 @@
   "artifact.build.summary_error": "Не удалось посчитать сводку: {error}",
   "artifact.build.unsaved_title": "Несохраненные изменения пресета",
   "artifact.build.unsaved_message": "Есть несохраненные изменения в пресете {name}.",
-  "artifact.build.finish_edit_first": "Сначала сохраните или отмените редактирование пресета."
+  "artifact.build.finish_edit_first": "Сначала сохраните или отмените редактирование пресета.",
+  "artifact.build.targets_title": "Цели",
+  "artifact.build.target_universal": "Общие",
+  "artifact.build.target_universal_short": "Общ.",
+  "artifact.build.no_target_hint": "Выберите цель, чтобы создать пресет. Несколько выбранных целей показывают только пресеты, общие для всех выбранных целей. Чтобы создать общий пресет, выберите «Общие»."
 }

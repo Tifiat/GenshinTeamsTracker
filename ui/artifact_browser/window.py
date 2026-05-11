@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from PySide6.QtCore import QPoint, QRect, Qt, QSize
 from PySide6.QtWidgets import (
     QApplication,
@@ -18,7 +20,18 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPen, QPixmap
 
-from hoyolab_export.paths import PROJECT_ROOT
+from hoyolab_export.paths import HOYOLAB_CHARACTER_ASSETS_DIR, PROJECT_ROOT
+from ui.character_assets import (
+    CHARACTER_RARITY_FILTERS,
+    ELEMENT_FILTERS,
+    FILTER_ASSETS_DIR,
+    WEAPON_TYPE_FILTERS,
+    character_id,
+    character_matches_filters,
+    character_name,
+    character_sort_key,
+    manifest_asset_items,
+)
 from .list_model import ArtifactRoles
 from .queries import (
     calculate_build_summary,
@@ -170,10 +183,44 @@ QFrame#build_panel {
     border-radius: 10px;
     background: #1f222a;
 }
+QFrame#build_target_panel {
+    border: 1px solid #2b3039;
+    border-radius: 10px;
+    background: #1f222a;
+}
 QLabel#panel_title {
     color: #ffffff;
     font-weight: 700;
     font-size: 14px;
+}
+QPushButton#target_filter_button {
+    min-width: 30px;
+    max-width: 30px;
+    min-height: 30px;
+    max-height: 30px;
+    padding: 2px;
+    border: 2px solid transparent;
+    border-radius: 15px;
+    background: #202228;
+}
+QPushButton#target_filter_button:hover {
+    background: #292c34;
+}
+QPushButton#target_filter_button:checked {
+    border-color: #7da7ff;
+    background: #303848;
+}
+QPushButton#target_item {
+    min-height: 34px;
+    padding: 3px 6px;
+    text-align: left;
+}
+QPushButton#target_item:checked {
+    border-color: #d6b35f;
+    background: #3a3224;
+}
+QLabel#target_hint {
+    color: rgba(210, 216, 226, 150);
 }
 QLabel#slot_label {
     color: #dce5f7;
@@ -245,6 +292,8 @@ ARTIFACT_PLACEHOLDER_ICON_NAMES = {
 }
 
 BUILD_PREVIEW_STAT_CELLS = 10
+HOYOLAB_MANIFEST_FILE = PROJECT_ROOT / "data" / "hoyolab" / "crop_manifest.json"
+BUILD_TARGET_UNIVERSAL_KEY = "universal"
 
 PERCENT_STAT_TYPES = {
     HP_PERCENT,
@@ -297,10 +346,19 @@ class ArtifactBrowserWindow(QWidget):
         self.build_presets: list[dict] = []
         self.selected_build_id: int | None = None
         self.selected_build_slots: dict[int, int] = {}
+        self.selected_build_targets: list[dict] = []
+        self.selected_build_target_keys: set[str] = set()
+        self.build_target_items_by_key: dict[str, dict] = {}
+        self.build_target_buttons_by_key: dict[str, QPushButton] = {}
+        self.build_target_element_filters: set[str] = set()
+        self.build_target_weapon_filters: set[str] = set()
+        self.build_target_rarity_filters: set[int] = set()
         self.editing_build_id: int | None = None
         self.editing_build_name: str = ""
         self.editing_build_slots: dict[int, int] = {}
+        self.editing_build_targets: list[dict] = []
         self.editing_build_dirty = False
+        self._build_target_keys_before_edit: set[str] | None = None
         self.pending_delete_build_id: int | None = None
         self.build_preset_row_buttons: dict[int, QPushButton] = {}
         self.build_row_name_input: QLineEdit | None = None
@@ -309,6 +367,7 @@ class ArtifactBrowserWindow(QWidget):
         self.build_slot_stat_labels: dict[int, QLabel] = {}
         self.build_bonus_layout: QHBoxLayout | None = None
         self.build_summary_stats_layout: QGridLayout | None = None
+        self.load_build_target_items()
 
         root = QVBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 10)
@@ -319,6 +378,7 @@ class ArtifactBrowserWindow(QWidget):
         content.setContentsMargins(0, 0, 0, 0)
         content.setSpacing(8)
         self._build_list_view(content)
+        self._build_build_target_selector(content)
         self._build_build_panel(content)
         root.addLayout(content, 1)
         self._build_bottom_bar(root)
@@ -394,6 +454,79 @@ class ArtifactBrowserWindow(QWidget):
 
         root.addWidget(self.list_view, 1)
 
+    def _build_build_target_selector(self, root) -> None:
+        panel = QFrame()
+        panel.setObjectName("build_target_panel")
+        panel.setFixedWidth(260)
+
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(7, 10, 7, 10)
+        layout.setSpacing(8)
+
+        self.build_target_title_label = QLabel(tr("artifact.build.targets_title"))
+        self.build_target_title_label.setObjectName("panel_title")
+        layout.addWidget(self.build_target_title_label)
+
+        body = QHBoxLayout()
+        body.setContentsMargins(0, 0, 0, 0)
+        body.setSpacing(6)
+
+        filter_column = QVBoxLayout()
+        filter_column.setContentsMargins(0, 0, 0, 0)
+        filter_column.setSpacing(4)
+        for filters, selected in (
+            (ELEMENT_FILTERS, self.build_target_element_filters),
+            (CHARACTER_RARITY_FILTERS, self.build_target_rarity_filters),
+            (WEAPON_TYPE_FILTERS, self.build_target_weapon_filters),
+        ):
+            for value, icon_name, tooltip_key in filters:
+                filter_column.addWidget(
+                    self._make_build_target_filter_button(
+                        value,
+                        icon_name,
+                        tooltip_key,
+                        selected,
+                    )
+                )
+        filter_column.addStretch()
+        body.addLayout(filter_column)
+
+        target_scroll = QScrollArea()
+        target_scroll.setWidgetResizable(True)
+        target_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        target_content = QWidget()
+        self.build_target_list_layout = QVBoxLayout(target_content)
+        self.build_target_list_layout.setContentsMargins(0, 0, 0, 0)
+        self.build_target_list_layout.setSpacing(4)
+        target_scroll.setWidget(target_content)
+        body.addWidget(target_scroll, 1)
+
+        layout.addLayout(body, 1)
+        root.addWidget(panel)
+        self.refresh_build_target_list()
+
+    def _make_build_target_filter_button(
+        self,
+        value,
+        icon_name: str,
+        tooltip_key: str,
+        selected_values: set,
+    ) -> QPushButton:
+        button = QPushButton()
+        button.setObjectName("target_filter_button")
+        button.setCheckable(True)
+        button.setIcon(QIcon(str(FILTER_ASSETS_DIR / icon_name)))
+        button.setIconSize(QSize(22, 22))
+        button.setToolTip(tr(tooltip_key))
+        button.clicked.connect(
+            lambda checked=False, v=value, values=selected_values: self.on_build_target_filter_clicked(
+                values,
+                v,
+                checked,
+            )
+        )
+        return button
+
     def _build_build_panel(self, root) -> None:
         panel = QFrame()
         panel.setObjectName("build_panel")
@@ -407,7 +540,8 @@ class ArtifactBrowserWindow(QWidget):
         self.build_title_label.setObjectName("panel_title")
         layout.addWidget(self.build_title_label)
 
-        create_row = QHBoxLayout()
+        self.build_create_row_widget = QWidget()
+        create_row = QHBoxLayout(self.build_create_row_widget)
         create_row.setContentsMargins(0, 0, 0, 0)
         create_row.setSpacing(6)
         self.build_name_input = QLineEdit()
@@ -428,18 +562,26 @@ class ArtifactBrowserWindow(QWidget):
         self.cancel_new_build_button.setToolTip(tr("artifact.build.cancel"))
         self.cancel_new_build_button.clicked.connect(self.cancel_build_preset_edit)
         create_row.addWidget(self.cancel_new_build_button)
-        layout.addLayout(create_row)
+        layout.addWidget(self.build_create_row_widget)
 
-        list_scroll = QScrollArea()
-        list_scroll.setWidgetResizable(True)
-        list_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.build_target_hint_label = QLabel(tr("artifact.build.no_target_hint"))
+        self.build_target_hint_label.setObjectName("target_hint")
+        self.build_target_hint_label.setWordWrap(True)
+        self.build_target_hint_label.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
+        layout.addWidget(self.build_target_hint_label, 1)
+
+        self.build_preset_list_scroll = QScrollArea()
+        self.build_preset_list_scroll.setWidgetResizable(True)
+        self.build_preset_list_scroll.setFrameShape(QFrame.Shape.NoFrame)
         list_content = QWidget()
         self.build_preset_list_layout = QVBoxLayout(list_content)
         self.build_preset_list_layout.setContentsMargins(0, 0, 0, 0)
         self.build_preset_list_layout.setSpacing(5)
         self.build_preset_list_layout.addStretch()
-        list_scroll.setWidget(list_content)
-        layout.addWidget(list_scroll, 1)
+        self.build_preset_list_scroll.setWidget(list_content)
+        layout.addWidget(self.build_preset_list_scroll, 1)
 
         preview_block = QFrame()
         preview_block.setObjectName("build_preview_block")
@@ -562,12 +704,19 @@ class ArtifactBrowserWindow(QWidget):
         self.save_edit_button.setToolTip(self.active_save_tooltip())
         self.cancel_edit_button.setToolTip(self.active_cancel_tooltip())
         self.build_title_label.setText(tr("artifact.build.presets_title"))
+        self.build_target_title_label.setText(tr("artifact.build.targets_title"))
+        self.build_target_hint_label.setText(tr("artifact.build.no_target_hint"))
+        if BUILD_TARGET_UNIVERSAL_KEY in self.build_target_items_by_key:
+            self.build_target_items_by_key[BUILD_TARGET_UNIVERSAL_KEY][
+                "character_name"
+            ] = tr("artifact.build.target_universal")
         self.new_build_button.setToolTip(tr("artifact.build.new"))
         self.cancel_new_build_button.setToolTip(tr("artifact.build.cancel"))
         self.build_name_input.setPlaceholderText(tr("artifact.build.name_placeholder"))
         self.update_sets_filter_switch_text()
         self.update_sets_button_text()
         self.update_sort_button_text()
+        self.refresh_build_target_list()
         self.refresh_build_preset_list()
         self.update_build_panel()
         self.apply_current_filters()
@@ -749,6 +898,7 @@ class ArtifactBrowserWindow(QWidget):
 
         self.store = ArtifactBrowserStore.load_from_db()
         self.model.set_store(self.store)
+        self.load_build_target_items()
         if not keep_custom_edit:
             self.finish_custom_set_edit()
             self.finish_build_preset_edit()
@@ -766,6 +916,7 @@ class ArtifactBrowserWindow(QWidget):
             self.selected_sort_stat_types.clear()
             self.update_sort_button_text()
         self.load_build_presets()
+        self.refresh_build_target_list()
         self.update_custom_edit_bar()
         self.update_build_panel()
 
@@ -861,6 +1012,192 @@ class ArtifactBrowserWindow(QWidget):
             if child_layout is not None:
                 self._clear_layout(child_layout)
 
+    def load_build_target_items(self) -> None:
+        self.build_target_items_by_key = {
+            BUILD_TARGET_UNIVERSAL_KEY: {
+                "key": BUILD_TARGET_UNIVERSAL_KEY,
+                "target_type": "universal",
+                "character_id": None,
+                "character_name": tr("artifact.build.target_universal"),
+                "asset": None,
+                "path": None,
+            }
+        }
+        manifest = self.load_hoyolab_manifest()
+        assets = manifest_asset_items(
+            manifest,
+            "characterAssets",
+            HOYOLAB_CHARACTER_ASSETS_DIR,
+        )
+        for asset in assets:
+            char_id = character_id(asset)
+            if char_id is None:
+                continue
+            key = self._character_target_key(char_id)
+            self.build_target_items_by_key[key] = {
+                "key": key,
+                "target_type": "character",
+                "character_id": char_id,
+                "character_name": character_name(asset),
+                "asset": asset,
+                "path": asset.get("path"),
+            }
+
+    def load_hoyolab_manifest(self) -> dict:
+        if not HOYOLAB_MANIFEST_FILE.exists():
+            return {}
+        try:
+            with open(HOYOLAB_MANIFEST_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as exc:
+            print(f"Failed to load HoYoLAB manifest: {exc}")
+            return {}
+
+    def refresh_build_target_list(self) -> None:
+        if not hasattr(self, "build_target_list_layout"):
+            return
+
+        self._clear_layout(self.build_target_list_layout)
+        self.build_target_buttons_by_key.clear()
+
+        universal = self.build_target_items_by_key.get(BUILD_TARGET_UNIVERSAL_KEY)
+        if universal:
+            self.build_target_list_layout.addWidget(self._make_build_target_button(universal))
+
+        character_items = [
+            item
+            for key, item in self.build_target_items_by_key.items()
+            if key != BUILD_TARGET_UNIVERSAL_KEY
+            and character_matches_filters(
+                item.get("asset") or {},
+                self.build_target_element_filters,
+                self.build_target_weapon_filters,
+                self.build_target_rarity_filters,
+            )
+        ]
+        character_items.sort(key=lambda item: character_sort_key(item.get("asset") or {}))
+        for item in character_items:
+            self.build_target_list_layout.addWidget(self._make_build_target_button(item))
+        self.build_target_list_layout.addStretch()
+
+    def _make_build_target_button(self, item: dict) -> QPushButton:
+        key = item["key"]
+        button = QPushButton(item.get("character_name") or "")
+        button.setObjectName("target_item")
+        button.setCheckable(True)
+        button.setChecked(key in self.selected_build_target_keys)
+        path = item.get("path")
+        if path:
+            button.setIcon(QIcon(str(path)))
+            button.setIconSize(QSize(28, 28))
+        button.clicked.connect(
+            lambda checked=False, value=key: self.toggle_build_target(value)
+        )
+        self.build_target_buttons_by_key[key] = button
+        return button
+
+    def on_build_target_filter_clicked(self, selected_values: set, value, checked: bool) -> None:
+        if checked:
+            selected_values.add(value)
+        else:
+            selected_values.discard(value)
+        self.refresh_build_target_list()
+
+    def toggle_build_target(self, key: str) -> None:
+        next_keys = set(self.selected_build_target_keys)
+        if key in next_keys:
+            next_keys.remove(key)
+        else:
+            next_keys.add(key)
+
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET and not next_keys:
+            self.empty_label.setText(tr("artifact.build.no_target_hint"))
+            self.refresh_build_target_list()
+            return
+
+        self.selected_build_target_keys = next_keys
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            self.editing_build_targets = self.targets_from_selected_build_keys()
+            self.editing_build_dirty = True
+        else:
+            self.selected_build_id = None
+            self.selected_build_slots = {}
+            self.selected_build_targets = []
+
+        self.pending_delete_build_id = None
+        self.refresh_build_target_list()
+        self.refresh_build_preset_list()
+        self.update_build_panel()
+        self.update_edit_selection_mode()
+        if self.edit_selection_mode == EDIT_MODE_NONE:
+            self.apply_current_filters()
+
+    def _character_target_key(self, character_id_value: int) -> str:
+        return f"character:{int(character_id_value)}"
+
+    def target_key_from_target(self, target: dict) -> str | None:
+        target_type = target.get("target_type")
+        if target_type == "universal":
+            return BUILD_TARGET_UNIVERSAL_KEY
+        if target_type == "character" and target.get("character_id") is not None:
+            return self._character_target_key(int(target["character_id"]))
+        return None
+
+    def target_keys_from_targets(self, targets: list[dict]) -> set[str]:
+        keys = set()
+        for target in targets:
+            key = self.target_key_from_target(target)
+            if key:
+                keys.add(key)
+        return keys
+
+    def targets_from_selected_build_keys(self) -> list[dict]:
+        targets = []
+        for key in sorted(self.selected_build_target_keys):
+            item = self.build_target_items_by_key.get(key)
+            if item is None:
+                continue
+            if key == BUILD_TARGET_UNIVERSAL_KEY:
+                targets.append({"target_type": "universal"})
+            else:
+                targets.append(
+                    {
+                        "target_type": "character",
+                        "character_id": item["character_id"],
+                        "character_name": item.get("character_name") or "",
+                    }
+                )
+        return targets
+
+    def ensure_build_target_items(self, targets: list[dict]) -> None:
+        for target in targets:
+            key = self.target_key_from_target(target)
+            if not key or key in self.build_target_items_by_key:
+                continue
+            if target.get("target_type") != "character":
+                continue
+            self.build_target_items_by_key[key] = {
+                "key": key,
+                "target_type": "character",
+                "character_id": target.get("character_id"),
+                "character_name": target.get("character_name") or "",
+                "asset": None,
+                "path": None,
+            }
+
+    def current_preview_build_targets(self) -> list[dict]:
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            return list(self.editing_build_targets)
+        if self.selected_build_id is not None:
+            return list(self.selected_build_targets)
+        return []
+
+    def preset_matches_selected_targets(self, preset: dict) -> bool:
+        if not self.selected_build_target_keys:
+            return False
+        preset_keys = self.target_keys_from_targets(preset.get("targets") or [])
+        return self.selected_build_target_keys.issubset(preset_keys)
+
     def load_build_presets(self) -> None:
         self.build_presets = list_build_presets()
         self.refresh_build_preset_list()
@@ -870,14 +1207,44 @@ class ArtifactBrowserWindow(QWidget):
         self.build_preset_row_buttons.clear()
         self.build_row_name_input = None
 
-        if not self.build_presets:
+        has_targets = bool(self.selected_build_target_keys)
+        self.build_create_row_widget.setVisible(has_targets)
+        self.build_preset_list_scroll.setVisible(has_targets)
+        self.build_target_hint_label.setVisible(not has_targets)
+        if not has_targets:
+            if self.edit_selection_mode == EDIT_MODE_NONE:
+                self.selected_build_id = None
+                self.selected_build_slots = {}
+                self.selected_build_targets = []
+            return
+
+        filtered_presets = [
+            preset
+            for preset in self.build_presets
+            if self.preset_matches_selected_targets(preset)
+            or (
+                self.edit_selection_mode == EDIT_MODE_BUILD_PRESET
+                and self.editing_build_id is not None
+                and int(preset["id"]) == self.editing_build_id
+            )
+        ]
+        if (
+            self.selected_build_id is not None
+            and self.edit_selection_mode == EDIT_MODE_NONE
+            and all(int(preset["id"]) != self.selected_build_id for preset in filtered_presets)
+        ):
+            self.selected_build_id = None
+            self.selected_build_slots = {}
+            self.selected_build_targets = []
+
+        if not filtered_presets:
             empty_label = QLabel(tr("artifact.build.empty_presets"))
             empty_label.setObjectName("status_label")
             empty_label.setWordWrap(True)
             self.build_preset_list_layout.addWidget(empty_label)
             return
 
-        for preset in self.build_presets:
+        for preset in filtered_presets:
             self.build_preset_list_layout.addWidget(self._make_build_preset_row(preset))
         self.build_preset_list_layout.addStretch()
 
@@ -987,6 +1354,9 @@ class ArtifactBrowserWindow(QWidget):
         return row
 
     def start_new_build_preset(self) -> None:
+        if not self.selected_build_target_keys:
+            self.empty_label.setText(tr("artifact.build.no_target_hint"))
+            return
         if not self.confirm_discard_custom_edit():
             return
         if self.editing_build_dirty:
@@ -995,9 +1365,12 @@ class ArtifactBrowserWindow(QWidget):
         self.finish_custom_set_edit()
         self.selected_build_id = None
         self.selected_build_slots = {}
+        self.selected_build_targets = []
+        self._build_target_keys_before_edit = set(self.selected_build_target_keys)
         self.editing_build_id = None
         self.editing_build_name = self.build_name_input.text().strip()
         self.editing_build_slots = {}
+        self.editing_build_targets = self.targets_from_selected_build_keys()
         self.editing_build_dirty = False
         self.pending_delete_build_id = None
         self.edit_selection_mode = EDIT_MODE_BUILD_PRESET
@@ -1016,6 +1389,8 @@ class ArtifactBrowserWindow(QWidget):
         if preset is None:
             return
 
+        self.ensure_build_target_items(preset.get("targets") or [])
+        self._build_target_keys_before_edit = set(self.selected_build_target_keys)
         self.selected_build_id = int(build_id)
         self.editing_build_id = int(build_id)
         self.editing_build_name = preset["name"]
@@ -1024,6 +1399,9 @@ class ArtifactBrowserWindow(QWidget):
             for slot in preset.get("slots", [])
         }
         self.selected_build_slots = dict(self.editing_build_slots)
+        self.editing_build_targets = list(preset.get("targets") or [])
+        self.selected_build_targets = list(self.editing_build_targets)
+        self.selected_build_target_keys = self.target_keys_from_targets(self.editing_build_targets)
         self.editing_build_dirty = False
         self.pending_delete_build_id = None
         self.edit_selection_mode = EDIT_MODE_BUILD_PRESET
@@ -1033,6 +1411,7 @@ class ArtifactBrowserWindow(QWidget):
         self.update_build_panel()
         self.update_build_create_controls()
         self.update_edit_selection_mode()
+        self.refresh_build_target_list()
         self.refresh_build_preset_list()
 
     def select_build_preset(self, build_id: int) -> None:
@@ -1045,11 +1424,13 @@ class ArtifactBrowserWindow(QWidget):
         if preset is None:
             return
 
+        self.ensure_build_target_items(preset.get("targets") or [])
         self.selected_build_id = int(build_id)
         self.selected_build_slots = {
             int(slot["pos"]): int(slot["artifact_id"])
             for slot in preset.get("slots", [])
         }
+        self.selected_build_targets = list(preset.get("targets") or [])
         self.pending_delete_build_id = None
         self.build_name_input.blockSignals(True)
         self.build_name_input.setText("")
@@ -1076,8 +1457,12 @@ class ArtifactBrowserWindow(QWidget):
         self.update_edit_selection_mode()
 
     def save_build_preset_edit(self) -> None:
+        if not self.selected_build_target_keys:
+            self.empty_label.setText(tr("artifact.build.no_target_hint"))
+            return
         name = self.editing_build_name.strip()
         self.editing_build_name = name
+        targets = self.targets_from_selected_build_keys()
         self.build_name_input.blockSignals(True)
         self.build_name_input.setText("")
         self.build_name_input.blockSignals(False)
@@ -1086,13 +1471,17 @@ class ArtifactBrowserWindow(QWidget):
             build_id=self.editing_build_id,
             name=name,
             slots=self.editing_build_slots,
+            targets=targets,
         )
         self.selected_build_id = build_id
         self.selected_build_slots = dict(self.editing_build_slots)
+        self.selected_build_targets = list(targets)
         self.editing_build_id = None
         self.editing_build_name = ""
         self.editing_build_slots = {}
+        self.editing_build_targets = []
         self.editing_build_dirty = False
+        self._build_target_keys_before_edit = None
         self.edit_selection_mode = EDIT_MODE_NONE
         self.build_name_input.blockSignals(True)
         self.build_name_input.setText("")
@@ -1109,7 +1498,11 @@ class ArtifactBrowserWindow(QWidget):
         self.editing_build_id = None
         self.editing_build_name = ""
         self.editing_build_slots = {}
+        self.editing_build_targets = []
         self.editing_build_dirty = False
+        if self._build_target_keys_before_edit is not None:
+            self.selected_build_target_keys = set(self._build_target_keys_before_edit)
+            self._build_target_keys_before_edit = None
         self.edit_selection_mode = EDIT_MODE_NONE
         self.pending_delete_build_id = None
         self.build_name_input.blockSignals(True)
@@ -1118,6 +1511,7 @@ class ArtifactBrowserWindow(QWidget):
         self.update_build_panel()
         self.update_build_create_controls()
         self.update_edit_selection_mode()
+        self.refresh_build_target_list()
         self.refresh_build_preset_list()
 
     def update_build_panel(self) -> None:
@@ -1129,8 +1523,46 @@ class ArtifactBrowserWindow(QWidget):
             artifact_id = slots.get(pos) if has_selection else None
             self.update_build_slot_row(pos, artifact_id)
 
+        self.update_build_target_preview()
         self.update_build_summary()
         self.update_build_create_controls()
+
+    def update_build_target_preview(self) -> None:
+        self._clear_layout(self.build_target_placeholder_row)
+        for target in self.current_preview_build_targets()[:8]:
+            self.build_target_placeholder_row.addWidget(self._make_target_preview_cell(target))
+        self.build_target_placeholder_row.addStretch()
+
+    def _make_target_preview_cell(self, target: dict) -> QWidget:
+        key = self.target_key_from_target(target)
+        item = self.build_target_items_by_key.get(key or "")
+        if target.get("target_type") == "universal":
+            label = QLabel(tr("artifact.build.target_universal_short"))
+            label.setObjectName("mini_stat_badge")
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            label.setFixedSize(32, 22)
+            label.setToolTip(tr("artifact.build.target_universal"))
+            return label
+
+        label = QLabel()
+        label.setFixedSize(22, 22)
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        if item and item.get("path"):
+            pixmap = QPixmap(str(item["path"]))
+            if not pixmap.isNull():
+                label.setPixmap(
+                    pixmap.scaled(
+                        22,
+                        22,
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                )
+        if label.pixmap() is None:
+            name = str(target.get("character_name") or "?")
+            label.setText(name[:2])
+        label.setToolTip(str(target.get("character_name") or ""))
+        return label
 
     def update_build_create_controls(self) -> None:
         new_draft = (

@@ -187,5 +187,9 @@
   "artifact.build.summary_error": "Não foi possível calcular a síntese: {error}",
   "artifact.build.unsaved_title": "Alterações não salvas na predefinição",
   "artifact.build.unsaved_message": "Há alterações não salvas na predefinição {name}.",
-  "artifact.build.finish_edit_first": "Salve ou cancele a edição da predefinição primeiro."
+  "artifact.build.finish_edit_first": "Salve ou cancele a edição da predefinição primeiro.",
+  "artifact.build.targets_title": "Alvos",
+  "artifact.build.target_universal": "Universal",
+  "artifact.build.target_universal_short": "Todos",
+  "artifact.build.no_target_hint": "Selecione um alvo para criar uma predefinição. Selecionar vários alvos mostra apenas predefinições compartilhadas por todos os alvos selecionados. Para criar uma predefinição universal, selecione Universal."
 }

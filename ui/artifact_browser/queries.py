@@ -378,6 +378,7 @@ def save_build_preset(
     build_id: int | None,
     name: str,
     slots: dict[int, int],
+    targets: list[dict[str, Any]] | None = None,
     db_path: str | Path = ARTIFACT_DB_PATH,
 ) -> int:
     with connect_db(db_path) as conn:
@@ -387,16 +388,13 @@ def save_build_preset(
                 conn,
                 name=name,
                 slots=slots,
-                targets=[{"target_type": "universal"}],
+                targets=targets,
             )
         else:
             db_update_build_preset(conn, build_id, name=name)
             replace_artifact_build_slots(conn, build_id, slots)
-            replace_artifact_build_targets(
-                conn,
-                build_id,
-                [{"target_type": "universal"}],
-            )
+            if targets is not None:
+                replace_artifact_build_targets(conn, build_id, targets)
         conn.commit()
         return int(build_id)
 

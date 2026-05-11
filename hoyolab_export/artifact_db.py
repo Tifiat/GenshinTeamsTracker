@@ -840,6 +840,11 @@ def list_build_presets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
         """
     ).fetchall()
 
+    targets_by_build_id = {
+        int(row["id"]): get_artifact_build_targets(conn, int(row["id"]))
+        for row in rows
+    }
+
     return [
         {
             "id": int(row["id"]),
@@ -855,6 +860,7 @@ def list_build_presets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
             "updated_at": row["updated_at"],
             "slot_count": int(row["slot_count"] or 0),
             "target_count": int(row["target_count"] or 0),
+            "targets": targets_by_build_id.get(int(row["id"]), []),
         }
         for row in rows
     ]

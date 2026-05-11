@@ -37,6 +37,19 @@ from hoyolab_export.offline_profile import (
     is_current_profile_exported,
 )
 from localization import get_language, language_options, set_language, tr
+from ui.character_assets import (
+    CHARACTER_RARITY_FILTERS,
+    ELEMENT_FILTERS,
+    FILTER_ASSETS_DIR,
+    WEAPON_RARITY_FILTERS,
+    WEAPON_TYPE_FILTERS,
+    asset_path_from_manifest_crop,
+    character_matches_filters,
+    character_sort_key,
+    folder_asset_items,
+    manifest_asset_items,
+    metadata_int,
+)
 from ui.run_history_window import RunHistoryWindow
 from ui.widgets.drag import DraggableIcon
 from ui.widgets.team import TeamSlot
@@ -48,7 +61,6 @@ ASSETS_WEAP = str(HOYOLAB_WEAPON_ASSETS_DIR)
 STATE_FILE = "state.json"
 RUNS_FILE = "runs_history.json"
 HOYOLAB_MANIFEST_FILE = PROJECT_ROOT / "data" / "hoyolab" / "crop_manifest.json"
-FILTER_ASSETS_DIR = PROJECT_ROOT / "assets" / "filters"
 HOYOLAB_IMPORT_STATUSES = {
     "preparing": ("loader.preparing", 0.05),
     "opening_hoyolab": ("loader.opening_hoyolab", 0.15),
@@ -120,33 +132,6 @@ QPushButton#asset_filter_button:checked {
     background-color: #252936;
 }
 """
-ELEMENT_FILTERS = [
-    ("Pyro", "element_pyro.png", "filter.element.pyro"),
-    ("Hydro", "element_hydro.png", "filter.element.hydro"),
-    ("Geo", "element_geo.png", "filter.element.geo"),
-    ("Electro", "element_electro.png", "filter.element.electro"),
-    ("Dendro", "element_dendro.png", "filter.element.dendro"),
-    ("Cryo", "element_cryo.png", "filter.element.cryo"),
-    ("Anemo", "element_anemo.png", "filter.element.anemo"),
-]
-WEAPON_TYPE_FILTERS = [
-    ("sword", "weapon_sword.png", "filter.weapon_type.sword"),
-    ("catalyst", "weapon_catalyst.png", "filter.weapon_type.catalyst"),
-    ("claymore", "weapon_claymore.png", "filter.weapon_type.claymore"),
-    ("bow", "weapon_bow.png", "filter.weapon_type.bow"),
-    ("polearm", "weapon_polearm.png", "filter.weapon_type.polearm"),
-]
-CHARACTER_RARITY_FILTERS = [
-    (5, "rarity_5.png", "filter.rarity.5"),
-    (4, "rarity_4.png", "filter.rarity.4"),
-]
-WEAPON_RARITY_FILTERS = [
-    (5, "rarity_5.png", "filter.rarity.5"),
-    (4, "rarity_4.png", "filter.rarity.4"),
-    (3, "rarity_3.png", "filter.rarity.3"),
-]
-
-
 class App(QWidget):
     def __init__(self):
         super().__init__()
@@ -848,81 +833,21 @@ class App(QWidget):
             return {}
 
     def _asset_path_from_manifest_crop(self, crop: str | None) -> Path | None:
-        if not crop:
-            return None
-
-        path = Path(crop)
-        if not path.is_absolute():
-            path = PROJECT_ROOT / path
-        return path
+        return asset_path_from_manifest_crop(crop)
 
     def _folder_asset_items(self, directory: str | Path) -> list[dict]:
-        directory = Path(directory)
-        if not directory.exists():
-            return []
-
-        return [
-            {
-                "path": path,
-                "filename": path.name,
-                "tooltip": "",
-                "metadata": None,
-            }
-            for path in sorted(directory.iterdir())
-            if path.is_file() and path.suffix.lower() == ".png"
-        ]
+        return folder_asset_items(directory)
 
     def _manifest_asset_items(self, manifest: dict, manifest_key: str, directory: str | Path) -> list[dict]:
-        directory = Path(directory)
-        items = []
-        seen_files = set()
-
-        for asset in manifest.get(manifest_key, []):
-            crop_path = self._asset_path_from_manifest_crop(asset.get("crop"))
-            if crop_path is None or not crop_path.exists():
-                continue
-
-            items.append(
-                {
-                    "path": crop_path,
-                    "filename": crop_path.name,
-                    "tooltip": asset.get("tooltip") or "",
-                    "metadata": asset,
-                }
-            )
-            seen_files.add(crop_path.resolve())
-
-        for item in self._folder_asset_items(directory):
-            try:
-                resolved = Path(item["path"]).resolve()
-            except OSError:
-                resolved = None
-            if resolved is None or resolved not in seen_files:
-                items.append(item)
-
-        return items
+        return manifest_asset_items(manifest, manifest_key, directory)
 
     def _character_matches_filters(self, asset: dict) -> bool:
-        metadata = asset.get("metadata")
-        if not metadata:
-            return True
-
-        character = metadata.get("character") or {}
-        element = character.get("element")
-        weapon_type = str(character.get("weapon_type_name") or "").lower()
-        try:
-            rarity = int(character.get("rarity") or 0)
-        except (TypeError, ValueError):
-            rarity = 0
-
-        if self._character_element_filters and element not in self._character_element_filters:
-            return False
-        if self._character_weapon_filters and weapon_type not in self._character_weapon_filters:
-            return False
-        if self._character_rarity_filters and rarity not in self._character_rarity_filters:
-            return False
-
-        return True
+        return character_matches_filters(
+            asset,
+            self._character_element_filters,
+            self._character_weapon_filters,
+            self._character_rarity_filters,
+        )
 
     def _weapon_matches_filters(self, asset: dict) -> bool:
         metadata = asset.get("metadata")
@@ -945,18 +870,10 @@ class App(QWidget):
 
     @staticmethod
     def _metadata_int(value, default: int = 0) -> int:
-        try:
-            return int(value or default)
-        except (TypeError, ValueError):
-            return default
+        return metadata_int(value, default)
 
     def _character_sort_key(self, asset: dict):
-        metadata = asset.get("metadata") or {}
-        character = metadata.get("character") or {}
-        rarity = self._metadata_int(character.get("rarity"))
-        level = self._metadata_int(character.get("level"))
-        name = str(character.get("name") or asset.get("filename") or "").casefold()
-        return (-rarity, -level, name, str(asset.get("filename") or ""))
+        return character_sort_key(asset)
 
     def _weapon_sort_key(self, asset: dict):
         metadata = asset.get("metadata") or {}

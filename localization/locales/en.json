@@ -189,7 +189,8 @@
   "artifact.build.unsaved_message": "Unsaved changes in preset {name}.",
   "artifact.build.finish_edit_first": "Save or cancel preset editing first.",
   "artifact.build.targets_title": "Targets",
+  "artifact.build.targets_reset": "Reset",
   "artifact.build.target_universal": "Universal",
   "artifact.build.target_universal_short": "All",
-  "artifact.build.no_target_hint": "Select a target to create a preset. Selecting multiple targets shows only presets shared by all selected targets. To create a universal preset, select Universal."
+  "artifact.build.no_target_hint": "Select a target to create a preset.\nSelecting multiple targets shows only presets shared by all selected targets.\nTo create a universal preset, select Universal."
 }

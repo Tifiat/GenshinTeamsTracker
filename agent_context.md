@@ -14,8 +14,8 @@ This file is written for future coding agents. Keep it compact, English, and mos
   - `assets/artifact_sets`
   - image folders and large JSON dumps
 - Do not run tests, imports, app startup, DB scans, image parsing, or broad validation unless the user asks or the current code change genuinely needs it.
+- Use `.venv\Scripts\python.exe` for local checks when the system interpreter lacks project dependencies.
 - If the user says "look only", "do not run", "just understand", or asks for handoff/context updates, inspect only lightweight text metadata and update notes.
-- If a task can be answered by reading a small file or by the user visually checking something faster, stop after minimal inspection and report what to look at.
 - Never revert user changes. The worktree is often dirty.
 - Use `apply_patch` for file edits.
 
@@ -28,23 +28,22 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - dragging characters/weapons into team slots;
 - timing and saving runs;
 - importing artifact data into SQLite;
-- building a new Artifact Browser with sets, custom tags/sets, sorting, presets, and future drag/drop build integration.
+- building an Artifact Browser with sets, custom tags/sets, sorting, build presets, target ownership, and future drag/drop build integration.
 
-## Current Architecture
-
-Main areas:
+## Main Areas
 
 - `main.py`: PySide6 app entrypoint.
-- `ui/main_window.py`: main app window, team builder, HoYoLAB import button, filters.
+- `ui/main_window.py`: main app window, team builder, HoYoLAB import button, character/weapon filters.
+- `ui/character_assets.py`: shared HoYoLAB asset item helpers, character filter constants, character filter/sort logic.
 - `ui/widgets/`: shared PySide widgets such as loader, draggable icons, history.
-- `hoyolab_export/`: HoYoLAB auth/export/import pipeline.
+- `hoyolab_export/`: HoYoLAB auth/export/import pipeline and artifact DB helpers.
 - `localization/`: JSON-backed app localization.
-- `ui/artifact_browser/`: new isolated Artifact Browser module.
+- `ui/artifact_browser/`: isolated Artifact Browser module.
 - `data/`: local generated profile/account state. Treat as private/generated.
 - `assets/hoyolab/`: generated local account icons. Treat as private/generated.
 - `assets/artifact_sets/`: generated or seeded artifact set piece icons.
 
-Important generated files:
+Important generated/seed files:
 
 - `data/hoyolab/account_characters.json`
 - `data/hoyolab/account_weapons.json`
@@ -101,6 +100,7 @@ Key tables:
 - `artifact_tag_links`
 - `artifact_builds`
 - `artifact_build_slots`
+- `artifact_build_targets`
 
 Current artifact identity model:
 
@@ -108,102 +108,98 @@ Current artifact identity model:
 - canonical set catalog comes from HoYoWiki `en-us`;
 - localized set names live in `artifact_set_names`;
 - HoYoLAB account/API mapping lives in `artifact_sets.hoyolab_set_id`;
-- browser icons come from `artifact_set_piece_icons.local_path` by `(set_uid, pos)`.
+- browser icons come from `artifact_set_piece_icons.local_path` by `(set_uid, pos)`;
+- custom sets are `artifact_tags` + `artifact_tag_links`;
+- build presets use `artifact_builds`, `artifact_build_slots`, and `artifact_build_targets`.
 
-Old per-artifact icon cache path has been removed from current code:
+Build preset target model:
 
-- `artifact_icon_cache.py` deleted;
-- `upsert_icon()` removed;
-- `cache_icons` no-op API removed;
-- `upsert_artifact()` no longer takes `icon_id`;
-- browser query no longer joins/falls back to `artifact_icons`;
-- old DBs may still physically contain old columns/tables until a later DB cleanup.
+- one preset can target Universal and/or multiple characters;
+- targets are ownership/category filters, not equipment/apply state;
+- selecting multiple targets in the UI means intersection: show presets whose target set contains all selected targets;
+- Universal is only included when Universal itself is selected.
 
-## Artifact Browser State
+Old per-artifact icon cache path has been removed from current code. Do not reintroduce:
 
-The old QWidget-card Artifact Browser MVP was removed. The new module is under `ui/artifact_browser/`.
+- `artifact_icons`
+- `icon_id`
+- `artifact_icon_cache`
+- `upsert_icon`
+- `cache_icons`
 
-Current files:
+Old DBs may still physically contain old columns/tables until a later DB cleanup.
 
-- `window.py`: `ArtifactBrowserWindow`, top/bottom bars, filters, sorting, custom-set edit draft.
+## Artifact Browser
+
+Current module: `ui/artifact_browser/`.
+
+Important files:
+
+- `window.py`: `ArtifactBrowserWindow`, layout, edit modes, custom sets, build presets, build target selector.
 - `store.py`: in-memory store, grouping, sorting, custom set options.
-- `queries.py`: SQLite read/write helpers for artifacts and custom sets.
+- `queries.py`: SQLite read/write wrappers for artifacts, custom sets, build presets.
 - `models.py`: `ArtifactItem`, substats, tags, computed `cv` and `proc_count`.
 - `list_model.py`: Qt model for artifact ids.
-- `card_delegate.py`: current card renderer and edit-selection highlight.
+- `card_delegate.py`: card renderer and shared edit-selection highlight.
 - `filter_popup.py`: game/custom set popup.
 - `sort_popup.py`: stat sorting popup.
 - `stat_types.py`: property ids, badges, localizable sort options.
 
-Current functional prototype:
+Current functional state:
 
 - Uses `QListView + ArtifactListModel + ArtifactCardDelegate`.
+- Normal QListView blue selection is disabled; cards use delegate state/highlight.
 - Filters by artifact position.
 - Filters by game sets and custom sets.
 - Game set icons come from set-piece icon catalog.
+- Shared edit-selection mode is used for custom-set and build-preset editing.
+- Bottom edit bar has save/cancel only.
 - Static UI strings touched so far are localized in `ru`, `en`, and `pt-br`.
-- Current UI is prototype quality; do not polish QCheckBox/QWidget rows as final design.
-- Build preset panel is intentionally compact: create row and preset list are at the top, the build preview block is fixed at the bottom, and only the preset list scrolls.
-- Future build target selection should be a separate middle column between artifact grid and preset panel, not stuffed into the preset panel. Planned layout: Artifact grid | Build target selector | Preset panel.
-- Future target selector should have fixed vertical filters on the left and a scrollable Universal/character target list on the right; preview will later show assigned target icons in its reserved compact row.
+- Current UI is prototype quality; do not polish QWidget rows as final design.
+
+Custom sets:
+
+- `queries.py` supports list/create/delete/get/replace for custom sets.
+- `store.py` loads custom set options from DB, including empty custom sets.
+- `filter_popup.py` custom tab has create/edit/delete with inline delete confirmation.
+- Empty custom set names are rejected with localized invalid input state.
+- After creating a custom set, the browser enters edit mode for it.
+- Dirty custom-set edits ask before close/reload/switching.
+
+Build presets:
+
+- Build data layer supports create/update/delete/list/get, slot replacement, target replacement, and raw summary calculation.
+- Preset panel is compact and fixed-width.
+- Preset list scrolls independently; preview block stays fixed at the bottom.
+- Build preview shows target icons row, 5 artifact mini-slots, up to 2 active set bonuses, and a compact stat summary.
+- Build edit mode uses the same tint/highlight/bottom save-cancel infrastructure as custom sets.
+- Clicking an artifact while editing assigns/replaces the slot for that artifact position.
+- Saved preset selection highlights selected artifacts and may move them to the front of the current artifact list.
+- Build target selector is a middle column: fixed vertical filters on the left, scrollable Universal/character target list on the right.
+- Main UI and Artifact Browser share character asset/filter/sort helpers via `ui/character_assets.py`.
 
 Sorting:
 
-- Default sort: rarity desc, level desc, crit value desc, set name, artifact name, id.
-- User sort popup supports:
-  - Crit Value first;
-  - regular stat options;
-  - Proc Count last.
+- Default sort: rarity desc, level desc, effective crit value desc, set name, artifact name, id.
+- Explicit Crit Value sort also uses effective crit value for circlets, including CR/CD main stat contribution.
+- User sort popup supports Crit Value first, regular stat options, and Proc Count last.
 - Proc Count is virtual: sum of `ArtifactSubstat.times`.
-- Artiscan/GOOD test data currently has `rarity` and `level`, but no `times`; proc count is therefore `0` until roll data exists.
+- Artiscan/GOOD sample data may have no `times`; proc count is then `0`.
 - If selected sort includes normal stat types, main-stat priority is applied before selected stat values.
 
-Draft custom-set editing:
+Known near-term Artifact Browser work:
 
-- `queries.py` supports:
-  - `list_custom_sets`
-  - `create_custom_set`
-  - `delete_custom_set`
-  - `get_custom_set_artifact_ids`
-  - `replace_custom_set_artifacts`
-- `store.py` loads custom set options from DB, including empty custom sets.
-- `filter_popup.py` custom tab has draft create/edit/delete controls.
-- Custom set creation works.
-- Custom set deletion from the custom tab is not stable yet and needs UX cleanup:
-  - delete should switch the row to inline confirm in-place;
-  - check should delete the tag;
-  - x should cancel pending delete;
-  - popup should not close just because delete was clicked.
-- `window.py` tracks an edit draft:
-  - `editing_custom_set_id`
-  - `editing_custom_set_name`
-  - `editing_custom_artifact_ids`
-  - `editing_custom_dirty`
-- While editing, clicking cards toggles membership.
-- Bottom edit bar currently has save/cancel/delete in the rough draft.
-- Intended UX: bottom edit bar should keep save/cancel only.
-- Custom set deletion belongs to the custom sets popup row, not to edit mode.
-- `card_delegate.py` highlights draft-selected artifacts.
-- This is a rough functional draft and needs manual review and UX cleanup.
-
-Known Artifact Browser cleanup/future work:
-
-- Stabilize custom-set editing.
-- Add dirty-edit confirmation when closing/reloading/switching edit targets.
-- Decide whether custom set rename belongs in the prototype.
-- Smoke-test create/edit/delete for empty and non-empty sets.
-- Smoke-test sorting/filtering while edit mode is active.
-- Wire browser into main UI when stable.
-- Later add build presets and drag/drop builds into team UI.
+- Visually review and tune the Build Target Selector MVP.
+- Verify target filtering/persistence for Universal, one character, and multiple characters.
+- Re-check fixed preview geometry: 5 artifact mini-slots + 2 bonus slots with no clipping and balanced padding.
+- Smoke-test custom sets after target selector changes.
+- Wire the browser into main UI when stable.
 
 ## Artiscan Notes
 
-Root sample files:
+Sample files live under `samples/artiscan/`.
 
-- `test_artiscan_few.json`
-- `artifacts_artiscan.json`
-
-Observed `test_artiscan_few.json` shape:
+Observed GOOD shape:
 
 - format: GOOD
 - source: Artiscan
@@ -227,9 +223,8 @@ Main window current behavior:
 - Import button has cooldown so Chrome/profile cleanup can settle.
 - Character/weapon grids read from `assets/hoyolab/characters` and `assets/hoyolab/weapons`.
 - Grids use `data/hoyolab/crop_manifest.json` for tooltips, filters, and sort fields.
-- Character/weapon asset grids sort by rarity and level desc.
+- Character grid sort is rarity desc, level desc, name, filename.
 - Filters are compact icon rows, multi-select OR inside a group and AND between groups.
-- Filter tooltips were removed.
 - Filtered grids remain left-aligned with fixed icon spacing.
 - `Profile...` menu has save profile, load profile, sign out.
 - Sign-out is the destructive account boundary and can also clear artifact DB.

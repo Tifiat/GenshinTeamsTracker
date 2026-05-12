@@ -7,6 +7,7 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 - Read `agent_context.md` first.
 - Keep tool usage narrow and cheap.
 - Do not run tests, app startup, imports, DB scans, or broad validation unless the user asks or the change needs it.
+- Use `.venv\Scripts\python.exe` for local checks when the system interpreter lacks project dependencies.
 - Avoid scanning generated/private state:
   - `hoyolab_export/profile`
   - `data/`
@@ -17,52 +18,60 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 
 ## Artifact Browser: Current Priority
 
-- [ ] Stabilize draft custom-set editing.
-- [ ] Fix custom set delete in the custom tab:
-  - delete icon should switch the row to inline confirm;
-  - check should delete;
-  - x should cancel;
-  - popup should not close just because delete was clicked.
-- [ ] Add Enter-to-create for custom set name input.
-- [ ] Add invalid empty-name state with localized "Enter name" placeholder.
-- [ ] After custom set creation, close sets popup and visibly enter edit mode.
-- [ ] Add blue edit-mode tint behind the artifact list.
-- [ ] Remove delete button from bottom edit bar; keep save/cancel only.
-- [ ] When editing a custom set, remove only that tag from selected custom filters.
-- [ ] Disable normal QListView blue selection; use custom delegate highlight only.
-- [ ] Add dirty-edit confirmation when the user closes/reloads/switches edit target with unsaved custom-set changes.
-- [ ] Decide whether custom set rename is needed in this prototype; implement only if needed.
-- [ ] Manually smoke-test custom set create/edit/delete with empty and non-empty sets.
-- [ ] Manually smoke-test sorting + filtering while custom-set edit mode is active.
-- [ ] Review whether edit-mode card click behavior conflicts with normal selection/open-details behavior.
-- [ ] Keep custom-set data logic in `queries.py`/`store.py`; do not bury DB writes inside delegate/UI paint code.
-- [ ] Remove or replace obsolete sandbox/probe helpers once the Artifact Browser path is stable.
+- [ ] Manually review the new Build Target Selector MVP:
+  - layout is `Artifact grid | Build Target Selector | Preset panel`;
+  - filter strip stays fixed;
+  - Universal is always visible;
+  - character list scrolls;
+  - selected targets filter presets by intersection.
+- [ ] Verify target persistence:
+  - creating a preset with Universal and/or characters creates one preset with all selected targets;
+  - editing a saved preset reflects its targets in the selector;
+  - saving preserves/updates selected targets;
+  - cancel restores target filter state without silently losing draft changes.
+- [ ] Polish target selector width, item spacing, and preview target icon row after visual review.
+- [ ] Re-check fixed preset preview geometry:
+  - 5 artifact mini-slots + 2 set-bonus slots fit without clipping;
+  - left/right padding is visually balanced;
+  - stat summary remains 2 columns x 5 rows.
+- [ ] Smoke-test build preset lifecycle:
+  - no selected target hides create/list and keeps preview placeholders visible;
+  - selecting one target shows only presets containing that target;
+  - selecting multiple targets shows only presets containing all selected targets;
+  - save/cancel/delete still work for saved and new drafts.
+- [ ] Smoke-test custom sets after the build target selector changes:
+  - create/edit/delete;
+  - dirty-confirm;
+  - edit highlight and bottom save/cancel bar;
+  - filters/sorting while edit mode is active.
 - [ ] Wire the isolated Artifact Browser into the main UI when the prototype is stable.
+- [ ] Later unify reset controls in target selector, sort popup, and sets popup:
+  - move reset controls near the popup/panel header where possible instead of bottom bars;
+  - prefer one shared helper/function for clearing selected items in list-like selectors instead of duplicating three separate reset implementations.
+
+## Artifact Browser: Builds / Presets
+
+- [ ] Keep build presets as shared ownership categories, not "one build = one character".
+- [ ] Universal is a target at the same level as character targets.
+- [ ] Selected target filters use intersection semantics. Do not auto-include Universal unless Universal is selected.
+- [ ] Keep preset panel compact and fixed-width. Future character/target expansion belongs in the middle target selector column.
+- [ ] Add color highlighting for build summary Crit Value and Proc Count later; thresholds are not decided yet.
+- [ ] Add future character target UX refinements only after the MVP is visually stable.
+- [ ] Add future drag/drop of builds into the team window.
+- [ ] Keep build data separate from visual skin and delegate rendering.
 
 ## Artifact Browser: Sorting / Data
 
-- [ ] Keep default sort stable: rarity desc, level desc, crit value desc, set name, artifact name, id.
+- [ ] Keep default sort stable: rarity desc, level desc, effective crit value desc, set name, artifact name, id.
+- [ ] Circlet CV sorting should include CR/CD main stat contribution for sorting.
 - [ ] Keep Crit Value as the first sort option and Proc Count as the last sort option.
 - [ ] Treat missing proc `times` as `0`; Artiscan/GOOD samples do not include proc counts.
 - [ ] When implementing Artiscan import, use structured GOOD fields only; no image matching.
 - [ ] Confirm Artiscan import path maps GOOD `setKey`, `slotKey`, and stat keys into existing `set_uid`, `pos`, and property types.
-- [ ] If Artiscan import is added before HoYoLAB import, make sure missing HoYoLAB-only fields do not break browser sorting/filtering.
-
-## Artifact Browser: Builds / Presets
-
-- [ ] Future build target selector should be a separate middle column:
-  - layout target: Artifact grid | Build target selector | Preset panel;
-  - selector has fixed vertical filters on the left and a scrollable Universal/character target list on the right;
-  - filters must not scroll with the target list;
-  - presets can target Universal and multiple characters;
-  - preset preview will later show assigned target icons in its reserved compact row.
-- [ ] Later add color highlighting for build summary Crit Value and Proc Count; thresholds are not decided yet.
-- [ ] Add future drag/drop of builds into the team window.
-- [ ] Keep build data separate from visual skin and delegate rendering.
 
 ## Artifact Browser: Final UI Polish
 
-- [ ] Do not polish the current QCheckBox/QWidget rows as final design.
+- [ ] Do not polish current QWidget rows as final design.
 - [ ] After functionality is stable, redesign the browser toward a Genshin-like interface.
 - [ ] Prefer model/view/delegates/theme/assets for final visuals.
 - [ ] Replace set-list checkbox rows with large clickable rows:
@@ -90,7 +99,6 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 
 - [ ] Do not do final cleanup of old DB physical schema until the new browser path is stable.
 - [ ] Later migration: recreate/drop old `artifacts.icon_id` and `artifact_icons` physical leftovers if they still exist in local DBs.
-- [ ] Decide whether `data/artifacts.db` is local generated state and should stay ignored.
 - [ ] Keep `artifact_set_piece_icons` as the browser icon source by `(set_uid, pos)`.
 - [ ] Do not reintroduce per-artifact icon cache or `artifact_icons` fallback.
 
@@ -106,10 +114,9 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 
 ## Main UI Follow-Ups
 
+- [ ] Main UI character asset loading/filter/sort helpers are shared through `ui/character_assets.py`; keep main window and Artifact Browser selector behavior aligned.
 - [ ] Re-check team builder behavior with `assets/hoyolab/*` paths and manifest-backed tooltips.
 - [ ] Manually smoke-test character/weapon filter UI.
-- [ ] Manually smoke-test two consecutive HoYoLAB updates after changing equipped weapons; old weapon icons should remain visible.
-- [ ] Decide whether a separate future bundle import UI is still needed.
 - [ ] Preserve draggable team composition behavior while integrating Artifact Browser/builds.
 
 ## Localization
@@ -128,9 +135,7 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
   - `data/artifacts.db`
   - `assets/hoyolab`
   - browser profile/session/debug/download outputs
-- [ ] Review untracked root/sample files and keep/ignore/remove deliberately:
-  - `test_artiscan_few.json`
-  - `artifacts_artiscan.json`
+- [ ] Keep Artiscan sample files under `samples/artiscan/` unless a future import task needs another layout.
 - [ ] Retry normal `git push` for local commit `1ae2de6` after previous GitHub Internal Server Error; do not force-push.
 
 ## Future History Features

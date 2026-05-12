@@ -189,7 +189,8 @@
   "artifact.build.unsaved_message": "Há alterações não salvas na predefinição {name}.",
   "artifact.build.finish_edit_first": "Salve ou cancele a edição da predefinição primeiro.",
   "artifact.build.targets_title": "Alvos",
+  "artifact.build.targets_reset": "Redefinir",
   "artifact.build.target_universal": "Universal",
   "artifact.build.target_universal_short": "Todos",
-  "artifact.build.no_target_hint": "Selecione um alvo para criar uma predefinição. Selecionar vários alvos mostra apenas predefinições compartilhadas por todos os alvos selecionados. Para criar uma predefinição universal, selecione Universal."
+  "artifact.build.no_target_hint": "Selecione um alvo para criar uma predefinição.\nSelecionar vários alvos mostra apenas predefinições compartilhadas por todos os alvos selecionados.\nPara criar uma predefinição universal, selecione Universal."
 }

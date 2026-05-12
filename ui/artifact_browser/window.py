@@ -74,6 +74,33 @@ from .stat_types import (
 )
 from localization import tr
 
+TARGET_PANEL_WIDTH = 330
+TARGET_PANEL_MARGINS = (7, 10, 7, 10)
+TARGET_PANEL_SPACING = 8
+
+TARGET_HEADER_SPACING = 6
+TARGET_HEADER_BALANCE_WIDTH = 72
+TARGET_RESET_BUTTON_WIDTH = 72
+TARGET_RESET_BUTTON_MIN_HEIGHT = 24
+TARGET_RESET_BUTTON_PADDING_VERTICAL = 2
+TARGET_RESET_BUTTON_PADDING_HORIZONTAL = 8
+TARGET_RESET_BUTTON_RADIUS = 6
+
+TARGET_BODY_SPACING = 6
+
+TARGET_FILTER_BUTTON_SIZE = 30
+TARGET_FILTER_ICON_SIZE = 22
+TARGET_FILTER_PADDING = 2
+TARGET_FILTER_BORDER_WIDTH = 2
+TARGET_FILTER_RADIUS = 15
+TARGET_FILTER_SPACING = 4
+
+TARGET_ITEM_MIN_HEIGHT = 34
+TARGET_ITEM_PADDING_VERTICAL = 3
+TARGET_ITEM_PADDING_HORIZONTAL = 6
+TARGET_ITEM_ICON_SIZE = 28
+TARGET_ITEM_SPACING = 4
+
 WINDOW_STYLE = """
 QWidget {
     background: #17191f;
@@ -193,34 +220,53 @@ QLabel#panel_title {
     font-weight: 700;
     font-size: 14px;
 }
-QPushButton#target_filter_button {
-    min-width: 30px;
-    max-width: 30px;
-    min-height: 30px;
-    max-height: 30px;
-    padding: 2px;
-    border: 2px solid transparent;
-    border-radius: 15px;
+""" + f"""
+QPushButton#target_filter_button {{
+    min-width: {TARGET_FILTER_BUTTON_SIZE}px;
+    max-width: {TARGET_FILTER_BUTTON_SIZE}px;
+    min-height: {TARGET_FILTER_BUTTON_SIZE}px;
+    max-height: {TARGET_FILTER_BUTTON_SIZE}px;
+    padding: {TARGET_FILTER_PADDING}px;
+    border: {TARGET_FILTER_BORDER_WIDTH}px solid transparent;
+    border-radius: {TARGET_FILTER_RADIUS}px;
     background: #202228;
-}
-QPushButton#target_filter_button:hover {
+}}
+QPushButton#target_filter_button:hover {{
     background: #292c34;
-}
-QPushButton#target_filter_button:checked {
+}}
+QPushButton#target_filter_button:checked {{
     border-color: #7da7ff;
     background: #303848;
-}
-QPushButton#target_item {
-    min-height: 34px;
-    padding: 3px 6px;
+}}
+QPushButton#target_item {{
+    min-height: {TARGET_ITEM_MIN_HEIGHT}px;
+    padding: {TARGET_ITEM_PADDING_VERTICAL}px {TARGET_ITEM_PADDING_HORIZONTAL}px;
     text-align: left;
-}
-QPushButton#target_item:checked {
+}}
+QPushButton#target_item:checked {{
     border-color: #d6b35f;
     background: #3a3224;
-}
+}}
+QPushButton#target_reset_button {{
+    min-height: {TARGET_RESET_BUTTON_MIN_HEIGHT}px;
+    padding: {TARGET_RESET_BUTTON_PADDING_VERTICAL}px {TARGET_RESET_BUTTON_PADDING_HORIZONTAL}px;
+    border-radius: {TARGET_RESET_BUTTON_RADIUS}px;
+    color: #d6dce8;
+    background: #242833;
+}}
+QPushButton#target_reset_button:hover {{
+    background: #2d3340;
+}}
+QPushButton#target_reset_button:disabled {{
+    color: #687080;
+    background: #20232b;
+    border-color: #303541;
+}}
+""" + """
 QLabel#target_hint {
-    color: rgba(210, 216, 226, 150);
+    color: rgba(220, 226, 238, 190);
+    font-size: 14px;
+    line-height: 1.35;
 }
 QLabel#slot_label {
     color: #dce5f7;
@@ -457,23 +503,36 @@ class ArtifactBrowserWindow(QWidget):
     def _build_build_target_selector(self, root) -> None:
         panel = QFrame()
         panel.setObjectName("build_target_panel")
-        panel.setFixedWidth(260)
+        panel.setFixedWidth(TARGET_PANEL_WIDTH)
 
         layout = QVBoxLayout(panel)
-        layout.setContentsMargins(7, 10, 7, 10)
-        layout.setSpacing(8)
+        layout.setContentsMargins(*TARGET_PANEL_MARGINS)
+        layout.setSpacing(TARGET_PANEL_SPACING)
+
+        header_row = QHBoxLayout()
+        header_row.setContentsMargins(0, 0, 0, 0)
+        header_row.setSpacing(TARGET_HEADER_SPACING)
 
         self.build_target_title_label = QLabel(tr("artifact.build.targets_title"))
         self.build_target_title_label.setObjectName("panel_title")
-        layout.addWidget(self.build_target_title_label)
+        self.build_target_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header_row.addSpacing(TARGET_HEADER_BALANCE_WIDTH)
+        header_row.addWidget(self.build_target_title_label, 1)
+
+        self.build_target_reset_button = QPushButton(tr("artifact.build.targets_reset"))
+        self.build_target_reset_button.setObjectName("target_reset_button")
+        self.build_target_reset_button.setFixedWidth(TARGET_RESET_BUTTON_WIDTH)
+        self.build_target_reset_button.clicked.connect(self.reset_build_targets)
+        header_row.addWidget(self.build_target_reset_button)
+        layout.addLayout(header_row)
 
         body = QHBoxLayout()
         body.setContentsMargins(0, 0, 0, 0)
-        body.setSpacing(6)
+        body.setSpacing(TARGET_BODY_SPACING)
 
         filter_column = QVBoxLayout()
         filter_column.setContentsMargins(0, 0, 0, 0)
-        filter_column.setSpacing(4)
+        filter_column.setSpacing(TARGET_FILTER_SPACING)
         for filters, selected in (
             (ELEMENT_FILTERS, self.build_target_element_filters),
             (CHARACTER_RARITY_FILTERS, self.build_target_rarity_filters),
@@ -497,7 +556,7 @@ class ArtifactBrowserWindow(QWidget):
         target_content = QWidget()
         self.build_target_list_layout = QVBoxLayout(target_content)
         self.build_target_list_layout.setContentsMargins(0, 0, 0, 0)
-        self.build_target_list_layout.setSpacing(4)
+        self.build_target_list_layout.setSpacing(TARGET_ITEM_SPACING)
         target_scroll.setWidget(target_content)
         body.addWidget(target_scroll, 1)
 
@@ -516,7 +575,7 @@ class ArtifactBrowserWindow(QWidget):
         button.setObjectName("target_filter_button")
         button.setCheckable(True)
         button.setIcon(QIcon(str(FILTER_ASSETS_DIR / icon_name)))
-        button.setIconSize(QSize(22, 22))
+        button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
         button.setToolTip(tr(tooltip_key))
         button.clicked.connect(
             lambda checked=False, v=value, values=selected_values: self.on_build_target_filter_clicked(
@@ -568,7 +627,7 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_hint_label.setObjectName("target_hint")
         self.build_target_hint_label.setWordWrap(True)
         self.build_target_hint_label.setAlignment(
-            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+            Qt.AlignmentFlag.AlignCenter
         )
         layout.addWidget(self.build_target_hint_label, 1)
 
@@ -705,6 +764,7 @@ class ArtifactBrowserWindow(QWidget):
         self.cancel_edit_button.setToolTip(self.active_cancel_tooltip())
         self.build_title_label.setText(tr("artifact.build.presets_title"))
         self.build_target_title_label.setText(tr("artifact.build.targets_title"))
+        self.build_target_reset_button.setText(tr("artifact.build.targets_reset"))
         self.build_target_hint_label.setText(tr("artifact.build.no_target_hint"))
         if BUILD_TARGET_UNIVERSAL_KEY in self.build_target_items_by_key:
             self.build_target_items_by_key[BUILD_TARGET_UNIVERSAL_KEY][
@@ -1059,6 +1119,7 @@ class ArtifactBrowserWindow(QWidget):
 
         self._clear_layout(self.build_target_list_layout)
         self.build_target_buttons_by_key.clear()
+        self.build_target_reset_button.setEnabled(bool(self.selected_build_target_keys))
 
         universal = self.build_target_items_by_key.get(BUILD_TARGET_UNIVERSAL_KEY)
         if universal:
@@ -1089,7 +1150,7 @@ class ArtifactBrowserWindow(QWidget):
         path = item.get("path")
         if path:
             button.setIcon(QIcon(str(path)))
-            button.setIconSize(QSize(28, 28))
+            button.setIconSize(QSize(TARGET_ITEM_ICON_SIZE, TARGET_ITEM_ICON_SIZE))
         button.clicked.connect(
             lambda checked=False, value=key: self.toggle_build_target(value)
         )
@@ -1102,6 +1163,28 @@ class ArtifactBrowserWindow(QWidget):
         else:
             selected_values.discard(value)
         self.refresh_build_target_list()
+
+    def reset_build_targets(self) -> None:
+        if not self.selected_build_target_keys:
+            return
+
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            if not self.confirm_discard_build_edit():
+                self.refresh_build_target_list()
+                return
+            if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+                self.finish_build_preset_edit()
+
+        self.selected_build_target_keys.clear()
+        self.selected_build_id = None
+        self.selected_build_slots = {}
+        self.selected_build_targets = []
+        self.pending_delete_build_id = None
+        self.refresh_build_target_list()
+        self.refresh_build_preset_list()
+        self.update_build_panel()
+        self.update_edit_selection_mode()
+        self.apply_current_filters()
 
     def toggle_build_target(self, key: str) -> None:
         next_keys = set(self.selected_build_target_keys)

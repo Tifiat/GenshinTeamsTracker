@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt, QSize
 from PySide6.QtWidgets import (
@@ -45,8 +46,12 @@ from ui.character_assets import (
 from ui.utils.icon_utils import auto_contrast_svg_icon, auto_contrast_svg_pixmap
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.pixmap_utils import (
+    count_badge_style_cache_key,
     draw_count_badge,
+    load_persistent_pixmap,
     make_diagonal_split_pixmap,
+    pixmap_cache_key_digest,
+    save_persistent_pixmap,
     scale_trimmed_pixmap_to_size,
 )
 from .list_model import ArtifactRoles
@@ -135,6 +140,13 @@ BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND = "#40577a"
 BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BORDER = "#475066"
 BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_RADIUS = 8
 BUILD_TARGET_PREVIEW_UNIVERSAL_SVG_OFFSET_Y = 4
+BUILD_TARGET_PREVIEW_CACHE_VERSION = "target_preview_strip_v1"
+BUILD_TARGET_PREVIEW_ICON_CACHE_DIR = (
+    PROJECT_ROOT / "data" / "cache" / "ui" / "target_preview_icons"
+)
+BUILD_TARGET_PREVIEW_STRIP_CACHE_DIR = (
+    PROJECT_ROOT / "data" / "cache" / "ui" / "target_preview_strips"
+)
 UI_ICON_BUTTON_BACKGROUND = "#222630"
 UI_ICON_DEFAULT_SIZE = 24
 
@@ -400,6 +412,9 @@ BUILD_PREVIEW_STAT_CELLS = 10
 BUILD_ROW_BONUS_STACK_WIDTH = 42
 BUILD_ROW_BONUS_STACK_HEIGHT = 34
 BUILD_ROW_BONUS_DIAGONAL_FEATHER = 3
+BUILD_ROW_BONUS_DIAGONAL_DIRECTION = "bottom_left_to_top_right"
+BUILD_ROW_BONUS_CACHE_VERSION = "preset_bonus_icon_v1"
+BUILD_ROW_BONUS_CACHE_DIR = PROJECT_ROOT / "data" / "cache" / "ui" / "preset_bonus_icons"
 BUILD_ROW_BONUS_ICON_PADDING = 1
 BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD = 16
 BUILD_ROW_STAT_BADGE_WIDTH = 42
@@ -519,14 +534,13 @@ class BuildTargetPreviewStrip(QWidget):
         self.scroll_area.setFixedHeight(BUILD_TARGET_PREVIEW_ROW_HEIGHT)
         layout.addWidget(self.scroll_area, 1)
 
-        self.content = QWidget()
-        self.content.setFixedHeight(BUILD_TARGET_PREVIEW_ROW_HEIGHT)
-        self.content_layout = QHBoxLayout(self.content)
-        self.content_layout.setContentsMargins(0, 0, 0, 0)
-        self.content_layout.setSpacing(BUILD_TARGET_PREVIEW_SPACING)
-        self.content_layout.setAlignment(
+        self.content = QLabel()
+        self.content.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
+        self.content.setFixedHeight(BUILD_TARGET_PREVIEW_ROW_HEIGHT)
+        self._has_content = False
+        self._strip_width = 0
         self.scroll_area.setWidget(self.content)
 
         for widget in (self.scroll_area.viewport(), self.content):
@@ -541,59 +555,36 @@ class BuildTargetPreviewStrip(QWidget):
         self.refresh_content_width()
 
     def clear_targets(self) -> None:
-        while self.content_layout.count():
-            item = self.content_layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-        self.refresh_content_width()
+        self.set_strip_pixmap(QPixmap())
 
-    def add_target_widget(self, widget: QWidget) -> None:
-        widget.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.content_layout.addWidget(widget)
-        widget.show()
+    def set_strip_pixmap(self, pixmap: QPixmap | None) -> None:
+        self.content.clear()
+        self._has_content = pixmap is not None and not pixmap.isNull()
+        self._strip_width = pixmap.width() if self._has_content else 0
+        if self._has_content:
+            self.content.setPixmap(pixmap)
+        self.refresh_content_width()
 
     def finish_update(self) -> None:
         self.refresh_content_width()
         self.update_hints()
 
     def refresh_content_width(self) -> None:
-        width = 0
-        widget_count = 0
-
-        for index in range(self.content_layout.count()):
-            item = self.content_layout.itemAt(index)
-            widget = item.widget()
-            if widget is None:
-                continue
-            widget_width = widget.width() or widget.sizeHint().width()
-            width += widget_width
-            widget_count += 1
-
-        if widget_count > 1:
-            width += BUILD_TARGET_PREVIEW_SPACING * (widget_count - 1)
-
         viewport_width = max(0, self.scroll_area.viewport().width())
 
-        if widget_count == 0:
+        if not self._has_content:
             width = viewport_width
             self.scroll_area.horizontalScrollBar().setValue(0)
         else:
-            width = max(width, viewport_width)
+            width = max(self._strip_width, viewport_width)
 
         self.content.setFixedSize(width, BUILD_TARGET_PREVIEW_ROW_HEIGHT)
-        self.content_layout.activate()
         self.content.updateGeometry()
         self.scroll_area.viewport().update()
         self.update_hints()
 
     def update_hints(self) -> None:
-        has_widgets = any(
-            self.content_layout.itemAt(i).widget() is not None
-            for i in range(self.content_layout.count())
-        )
-
-        if not has_widgets:
+        if not self._has_content:
             self.left_hint.hide()
             self.right_hint.hide()
             return
@@ -715,7 +706,9 @@ class ArtifactBrowserWindow(QWidget):
         self.build_bonus_layout: QHBoxLayout | None = None
         self.build_summary_stats_layout: QGridLayout | None = None
         self._build_row_source_icon_cache: dict[tuple, QPixmap] = {}
-        self._build_row_bonus_pixmap_cache: dict[tuple, QPixmap] = {}
+        self._build_row_bonus_pixmap_cache: dict[str, QPixmap] = {}
+        self._target_preview_icon_cache: dict[str, QPixmap] = {}
+        self._target_preview_strip_cache: dict[str, QPixmap] = {}
         self.load_build_target_items()
 
         root = QVBoxLayout(self)
@@ -1344,6 +1337,7 @@ class ArtifactBrowserWindow(QWidget):
         self.store = ArtifactBrowserStore.load_from_db()
         self.model.set_store(self.store)
         self._clear_build_row_pixmap_cache()
+        self._clear_target_preview_pixmap_cache()
         self.load_build_target_items()
         if not keep_custom_edit:
             self.finish_custom_set_edit()
@@ -1984,12 +1978,104 @@ class ArtifactBrowserWindow(QWidget):
         )
         return str(icon_path) if icon_path else None
 
+    def _normalized_build_row_icon_path(self, icon_path: str) -> Path:
+        path = Path(icon_path)
+        return path if path.is_absolute() else PROJECT_ROOT / path
+
+    def _build_row_icon_file_identity(self, icon_path: str) -> dict | None:
+        path = self._normalized_build_row_icon_path(icon_path)
+        try:
+            stat = path.stat()
+        except OSError:
+            return None
+        return {
+            "path": str(path.resolve()),
+            "mtime_ns": stat.st_mtime_ns,
+            "size": stat.st_size,
+        }
+
+    def _cached_final_build_row_bonus_pixmap(self, cache_key: dict) -> QPixmap | None:
+        memory_key = pixmap_cache_key_digest(cache_key)
+        cached = self._build_row_bonus_pixmap_cache.get(memory_key)
+        if cached is not None:
+            return cached
+
+        cached = load_persistent_pixmap(BUILD_ROW_BONUS_CACHE_DIR, cache_key)
+        if cached is not None:
+            self._build_row_bonus_pixmap_cache[memory_key] = cached
+            return cached
+        return None
+
+    def _store_final_build_row_bonus_pixmap(
+        self,
+        cache_key: dict,
+        pixmap: QPixmap,
+    ) -> QPixmap:
+        memory_key = pixmap_cache_key_digest(cache_key)
+        self._build_row_bonus_pixmap_cache[memory_key] = pixmap
+        save_persistent_pixmap(BUILD_ROW_BONUS_CACHE_DIR, cache_key, pixmap)
+        return pixmap
+
+    def _build_row_single_bonus_cache_key(
+        self,
+        icon_path: str,
+        count: int,
+        badge_text: str,
+    ) -> dict | None:
+        source = self._build_row_icon_file_identity(icon_path)
+        if source is None:
+            return None
+        return {
+            "version": BUILD_ROW_BONUS_CACHE_VERSION,
+            "kind": "compact_preset_row_bonus",
+            "mode": f"single_{count}p",
+            "sources": [source],
+            "width": BUILD_ROW_BONUS_STACK_WIDTH,
+            "height": BUILD_ROW_BONUS_STACK_HEIGHT,
+            "padding": BUILD_ROW_BONUS_ICON_PADDING,
+            "alpha_threshold": BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
+            "badge_text": badge_text,
+            "badge_style": count_badge_style_cache_key(),
+        }
+
+    def _build_row_split_bonus_cache_key(
+        self,
+        bottom_left_path: str,
+        top_right_path: str,
+    ) -> dict | None:
+        bottom_left_source = self._build_row_icon_file_identity(bottom_left_path)
+        top_right_source = self._build_row_icon_file_identity(top_right_path)
+        if bottom_left_source is None or top_right_source is None:
+            return None
+        return {
+            "version": BUILD_ROW_BONUS_CACHE_VERSION,
+            "kind": "compact_preset_row_bonus",
+            "mode": "split_2p_2p",
+            "sources": [bottom_left_source, top_right_source],
+            "width": BUILD_ROW_BONUS_STACK_WIDTH,
+            "height": BUILD_ROW_BONUS_STACK_HEIGHT,
+            "padding": BUILD_ROW_BONUS_ICON_PADDING,
+            "alpha_threshold": BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
+            "diagonal": {
+                "direction": BUILD_ROW_BONUS_DIAGONAL_DIRECTION,
+                "feather": BUILD_ROW_BONUS_DIAGONAL_FEATHER,
+            },
+            "badge_text": "2",
+            "badge_style": count_badge_style_cache_key(),
+        }
+
     def _cached_build_row_source_icon_pixmap(
         self,
         icon_path: str,
     ) -> QPixmap | None:
+        path = self._normalized_build_row_icon_path(icon_path)
+        source = self._build_row_icon_file_identity(icon_path)
+        if source is None:
+            return None
         cache_key = (
-            icon_path,
+            source["path"],
+            source["mtime_ns"],
+            source["size"],
             BUILD_ROW_BONUS_STACK_WIDTH,
             BUILD_ROW_BONUS_STACK_HEIGHT,
             BUILD_ROW_BONUS_ICON_PADDING,
@@ -1999,7 +2085,7 @@ class ArtifactBrowserWindow(QWidget):
         if cached is not None:
             return cached
 
-        pixmap = QPixmap(icon_path)
+        pixmap = QPixmap(str(path))
         if pixmap.isNull():
             return None
 
@@ -2023,19 +2109,10 @@ class ArtifactBrowserWindow(QWidget):
         if bottom_left_path is None or top_right_path is None:
             return None
 
-        cache_key = (
-            "split",
-            bottom_left_path,
-            top_right_path,
-            "2+2",
-            BUILD_ROW_BONUS_STACK_WIDTH,
-            BUILD_ROW_BONUS_STACK_HEIGHT,
-            BUILD_ROW_BONUS_ICON_PADDING,
-            BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
-            BUILD_ROW_BONUS_DIAGONAL_FEATHER,
-            "2",
-        )
-        cached = self._build_row_bonus_pixmap_cache.get(cache_key)
+        cache_key = self._build_row_split_bonus_cache_key(bottom_left_path, top_right_path)
+        if cache_key is None:
+            return None
+        cached = self._cached_final_build_row_bonus_pixmap(cache_key)
         if cached is not None:
             return cached
 
@@ -2052,8 +2129,7 @@ class ArtifactBrowserWindow(QWidget):
             feather=BUILD_ROW_BONUS_DIAGONAL_FEATHER,
         )
         pixmap = draw_count_badge(composite, "2")
-        self._build_row_bonus_pixmap_cache[cache_key] = pixmap
-        return pixmap
+        return self._store_final_build_row_bonus_pixmap(cache_key, pixmap)
 
     def _make_build_row_single_set_bonus_pixmap(
         self,
@@ -2066,17 +2142,14 @@ class ArtifactBrowserWindow(QWidget):
 
         count = int(item.get("count") or 0)
         badge_text = str(count) if count in (2, 4) else ""
-        cache_key = (
-            "single",
+        cache_key = self._build_row_single_bonus_cache_key(
             icon_path,
             count,
-            BUILD_ROW_BONUS_STACK_WIDTH,
-            BUILD_ROW_BONUS_STACK_HEIGHT,
-            BUILD_ROW_BONUS_ICON_PADDING,
-            BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
             badge_text,
         )
-        cached = self._build_row_bonus_pixmap_cache.get(cache_key)
+        if cache_key is None:
+            return None
+        cached = self._cached_final_build_row_bonus_pixmap(cache_key)
         if cached is not None:
             return cached
 
@@ -2085,8 +2158,7 @@ class ArtifactBrowserWindow(QWidget):
             return None
 
         final_pixmap = draw_count_badge(pixmap, badge_text) if badge_text else pixmap
-        self._build_row_bonus_pixmap_cache[cache_key] = final_pixmap
-        return final_pixmap
+        return self._store_final_build_row_bonus_pixmap(cache_key, final_pixmap)
 
     def _make_build_row_bonus_stack(
         self,
@@ -2310,45 +2382,256 @@ class ArtifactBrowserWindow(QWidget):
         self.update_build_create_controls()
 
     def update_build_target_preview(self) -> None:
-        self.build_target_placeholder.clear_targets()
-        for target in self.current_preview_build_targets():
-            self.build_target_placeholder.add_target_widget(
-                self._make_target_preview_cell(target)
-            )
-        self.build_target_placeholder.finish_update()
-
-    def _make_target_preview_cell(self, target: dict) -> QWidget:
-        key = self.target_key_from_target(target)
-        item = self.build_target_items_by_key.get(key or "")
-        label = QLabel()
-        label.setFixedSize(
-            BUILD_TARGET_PREVIEW_ICON_SIZE,
-            BUILD_TARGET_PREVIEW_ICON_SIZE,
+        strip_pixmap = self._cached_target_preview_strip(
+            self.current_preview_build_targets()
         )
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.build_target_placeholder.set_strip_pixmap(strip_pixmap)
 
+    def _clear_target_preview_pixmap_cache(self) -> None:
+        self._target_preview_icon_cache.clear()
+        self._target_preview_strip_cache.clear()
+
+    def _target_preview_file_identity(self, path_value) -> dict:
+        path = Path(path_value)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        resolved_path = path.resolve()
+        try:
+            stat = resolved_path.stat()
+        except OSError:
+            return {
+                "path": str(resolved_path),
+                "missing": True,
+            }
+        return {
+            "path": str(resolved_path),
+            "mtime_ns": stat.st_mtime_ns,
+            "size": stat.st_size,
+        }
+
+    def _target_preview_cache_memory_key(self, cache_key: dict) -> str:
+        return pixmap_cache_key_digest(cache_key)
+
+    def _target_preview_item_for_target(self, target: dict) -> tuple[str, dict | None]:
+        key = self.target_key_from_target(target)
+        return key or "", self.build_target_items_by_key.get(key or "")
+
+    def _target_preview_icon_cache_key(self, target: dict) -> dict:
+        key, item = self._target_preview_item_for_target(target)
         if target.get("target_type") == "universal":
-            label.setPixmap(self._make_universal_target_preview_pixmap())
-            label.setToolTip(tr("artifact.build.target_universal"))
-            label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-            return label
+            return {
+                "version": BUILD_TARGET_PREVIEW_CACHE_VERSION,
+                "kind": "target_preview_icon",
+                "target_type": "universal",
+                "target_key": BUILD_TARGET_UNIVERSAL_KEY,
+                "icon_size": BUILD_TARGET_PREVIEW_ICON_SIZE,
+                "background": self._target_preview_file_identity(
+                    BUILD_TARGET_PREVIEW_UNIVERSAL_BG_PATH
+                ),
+                "card": {
+                    "background": BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND,
+                    "border": BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BORDER,
+                    "radius": BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_RADIUS,
+                },
+                "svg": {
+                    "name": "users",
+                    "size": BUILD_TARGET_PREVIEW_UNIVERSAL_SVG_SIZE,
+                    "offset_y": BUILD_TARGET_PREVIEW_UNIVERSAL_SVG_OFFSET_Y,
+                    "auto_contrast_background": BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND,
+                },
+            }
 
-        if item and item.get("path"):
-            pixmap = QPixmap(str(item["path"]))
+        character_id_value = (
+            item.get("character_id") if item else target.get("character_id")
+        )
+        character_name_value = str(
+            (item or {}).get("character_name")
+            or target.get("character_name")
+            or "?"
+        )
+        path_value = (item or {}).get("path")
+        if path_value:
+            return {
+                "version": BUILD_TARGET_PREVIEW_CACHE_VERSION,
+                "kind": "target_preview_icon",
+                "target_type": "character",
+                "target_key": key,
+                "character_id": character_id_value,
+                "source": self._target_preview_file_identity(path_value),
+                "icon_size": BUILD_TARGET_PREVIEW_ICON_SIZE,
+                "scaling": "keep_aspect_ratio_centered",
+                "fallback_text": character_name_value[:2],
+            }
+
+        return {
+            "version": BUILD_TARGET_PREVIEW_CACHE_VERSION,
+            "kind": "target_preview_icon",
+            "target_type": "character_fallback",
+            "target_key": key,
+            "character_id": character_id_value,
+            "icon_size": BUILD_TARGET_PREVIEW_ICON_SIZE,
+            "fallback_text": character_name_value[:2],
+        }
+
+    def _make_character_target_preview_pixmap(
+        self,
+        source_path: str | None,
+        fallback_text: str,
+    ) -> QPixmap:
+        size = BUILD_TARGET_PREVIEW_ICON_SIZE
+        canvas = QPixmap(size, size)
+        canvas.fill(Qt.GlobalColor.transparent)
+
+        if source_path:
+            pixmap = QPixmap(source_path)
             if not pixmap.isNull():
-                label.setPixmap(
-                    pixmap.scaled(
-                        BUILD_TARGET_PREVIEW_ICON_SIZE,
-                        BUILD_TARGET_PREVIEW_ICON_SIZE,
-                        Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation,
-                    )
+                scaled = pixmap.scaled(
+                    size,
+                    size,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
                 )
-        if label.pixmap() is None:
-            name = str(target.get("character_name") or "?")
-            label.setText(name[:2])
-        label.setToolTip(str(target.get("character_name") or ""))
-        return label
+                painter = QPainter(canvas)
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+                painter.drawPixmap(
+                    (size - scaled.width()) // 2,
+                    (size - scaled.height()) // 2,
+                    scaled,
+                )
+                painter.end()
+                return canvas
+
+        painter = QPainter(canvas)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        font = QFont(painter.font())
+        font.setBold(True)
+        font.setPointSize(10)
+        painter.setFont(font)
+        painter.setPen(QColor("#d8d4c8"))
+        painter.drawText(
+            QRect(0, 0, size, size),
+            Qt.AlignmentFlag.AlignCenter,
+            fallback_text or "?",
+        )
+        painter.end()
+        return canvas
+
+    def _generate_target_preview_icon(self, target: dict, cache_key: dict) -> QPixmap:
+        if cache_key.get("target_type") == "universal":
+            return self._make_universal_target_preview_pixmap()
+
+        source = cache_key.get("source") or {}
+        source_path = None if source.get("missing") else source.get("path")
+        return self._make_character_target_preview_pixmap(
+            source_path,
+            str(cache_key.get("fallback_text") or "?"),
+        )
+
+    def _cached_target_preview_icon(
+        self,
+        target: dict,
+        cache_key: dict,
+    ) -> QPixmap | None:
+        memory_key = self._target_preview_cache_memory_key(cache_key)
+        cached = self._target_preview_icon_cache.get(memory_key)
+        if cached is not None:
+            return cached
+
+        cached = load_persistent_pixmap(BUILD_TARGET_PREVIEW_ICON_CACHE_DIR, cache_key)
+        if cached is not None:
+            self._target_preview_icon_cache[memory_key] = cached
+            return cached
+
+        pixmap = self._generate_target_preview_icon(target, cache_key)
+        if pixmap.isNull():
+            return None
+
+        self._target_preview_icon_cache[memory_key] = pixmap
+        save_persistent_pixmap(BUILD_TARGET_PREVIEW_ICON_CACHE_DIR, cache_key, pixmap)
+        return pixmap
+
+    def _target_preview_strip_cache_key(
+        self,
+        targets: list[dict],
+    ) -> tuple[dict, list[tuple[dict, dict, str]]]:
+        entries = []
+        icon_items = []
+        for index, target in enumerate(targets):
+            target_key, _item = self._target_preview_item_for_target(target)
+            icon_key = self._target_preview_icon_cache_key(target)
+            entries.append(
+                {
+                    "index": index,
+                    "target_key": target_key,
+                    "icon_key": icon_key,
+                }
+            )
+            icon_items.append((target, icon_key, target_key))
+
+        return {
+            "version": BUILD_TARGET_PREVIEW_CACHE_VERSION,
+            "kind": "target_preview_strip",
+            "entries": entries,
+            "row_height": BUILD_TARGET_PREVIEW_ROW_HEIGHT,
+            "icon_size": BUILD_TARGET_PREVIEW_ICON_SIZE,
+            "spacing": BUILD_TARGET_PREVIEW_SPACING,
+            "background": "transparent",
+        }, icon_items
+
+    def _compose_target_preview_strip(
+        self,
+        icon_items: list[tuple[dict, dict, str]],
+    ) -> QPixmap:
+        count = len(icon_items)
+        if count == 0:
+            return QPixmap()
+
+        width = (
+            count * BUILD_TARGET_PREVIEW_ICON_SIZE
+            + max(0, count - 1) * BUILD_TARGET_PREVIEW_SPACING
+        )
+        canvas = QPixmap(width, BUILD_TARGET_PREVIEW_ROW_HEIGHT)
+        canvas.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(canvas)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        x = 0
+        for target, icon_key, _target_key in icon_items:
+            icon = self._cached_target_preview_icon(target, icon_key)
+            if icon is not None and not icon.isNull():
+                painter.drawPixmap(
+                    x,
+                    (BUILD_TARGET_PREVIEW_ROW_HEIGHT - icon.height()) // 2,
+                    icon,
+                )
+            x += BUILD_TARGET_PREVIEW_ICON_SIZE + BUILD_TARGET_PREVIEW_SPACING
+        painter.end()
+        return canvas
+
+    def _cached_target_preview_strip(self, targets: list[dict]) -> QPixmap:
+        if not targets:
+            return QPixmap()
+
+        cache_key, icon_items = self._target_preview_strip_cache_key(targets)
+        memory_key = self._target_preview_cache_memory_key(cache_key)
+        cached = self._target_preview_strip_cache.get(memory_key)
+        if cached is not None:
+            return cached
+
+        cached = load_persistent_pixmap(BUILD_TARGET_PREVIEW_STRIP_CACHE_DIR, cache_key)
+        if cached is not None:
+            self._target_preview_strip_cache[memory_key] = cached
+            return cached
+
+        pixmap = self._compose_target_preview_strip(icon_items)
+        if not pixmap.isNull():
+            self._target_preview_strip_cache[memory_key] = pixmap
+            save_persistent_pixmap(
+                BUILD_TARGET_PREVIEW_STRIP_CACHE_DIR,
+                cache_key,
+                pixmap,
+            )
+        return pixmap
 
     def update_build_create_controls(self) -> None:
         new_draft = (

@@ -1,7 +1,18 @@
 from __future__ import annotations
 
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
 from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPen, QPixmap
+
+COUNT_BADGE_BORDER_COLOR = "#8f7440"
+COUNT_BADGE_BACKGROUND_COLOR = "#4a3b22"
+COUNT_BADGE_TEXT_COLOR = "#f0d58a"
+COUNT_BADGE_BORDER_WIDTH = 1
+COUNT_BADGE_MARGIN = 1
 
 
 def trim_transparent_pixmap(
@@ -175,11 +186,21 @@ def make_diagonal_split_pixmap(
     return canvas
 
 
+def count_badge_style_cache_key() -> dict[str, str | int]:
+    return {
+        "border": COUNT_BADGE_BORDER_COLOR,
+        "border_width": COUNT_BADGE_BORDER_WIDTH,
+        "background": COUNT_BADGE_BACKGROUND_COLOR,
+        "text": COUNT_BADGE_TEXT_COLOR,
+        "margin": COUNT_BADGE_MARGIN,
+    }
+
+
 def draw_count_badge(
     pixmap: QPixmap,
     text: str,
     *,
-    margin: int = 1,
+    margin: int = COUNT_BADGE_MARGIN,
 ) -> QPixmap:
     if pixmap.isNull() or not text:
         return pixmap
@@ -196,8 +217,8 @@ def draw_count_badge(
 
     painter = QPainter(canvas)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    painter.setPen(QPen(QColor("#8f7440"), 1))
-    painter.setBrush(QColor("#4a3b22"))
+    painter.setPen(QPen(QColor(COUNT_BADGE_BORDER_COLOR), COUNT_BADGE_BORDER_WIDTH))
+    painter.setBrush(QColor(COUNT_BADGE_BACKGROUND_COLOR))
     badge_radius = max(3, badge_size // 3)
     painter.drawRoundedRect(badge_rect, badge_radius, badge_radius)
 
@@ -205,7 +226,47 @@ def draw_count_badge(
     font.setPointSize(max(5, round(shortest_side * 0.24)))
     font.setBold(True)
     painter.setFont(font)
-    painter.setPen(QColor("#f0d58a"))
+    painter.setPen(QColor(COUNT_BADGE_TEXT_COLOR))
     painter.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, text)
     painter.end()
     return canvas
+
+
+def pixmap_cache_key_digest(cache_key: Any) -> str:
+    payload = json.dumps(
+        cache_key,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def persistent_pixmap_cache_path(cache_dir: Path, cache_key: Any) -> Path:
+    return cache_dir / f"{pixmap_cache_key_digest(cache_key)}.png"
+
+
+def load_persistent_pixmap(cache_dir: Path, cache_key: Any) -> QPixmap | None:
+    try:
+        cache_path = persistent_pixmap_cache_path(cache_dir, cache_key)
+        if not cache_path.is_file():
+            return None
+        pixmap = QPixmap(str(cache_path))
+    except OSError:
+        return None
+    return pixmap if not pixmap.isNull() else None
+
+
+def save_persistent_pixmap(
+    cache_dir: Path,
+    cache_key: Any,
+    pixmap: QPixmap,
+) -> bool:
+    if pixmap.isNull():
+        return False
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = persistent_pixmap_cache_path(cache_dir, cache_key)
+        return bool(pixmap.save(str(cache_path), "PNG"))
+    except OSError:
+        return False

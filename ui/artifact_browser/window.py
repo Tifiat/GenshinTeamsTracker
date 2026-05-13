@@ -409,6 +409,27 @@ ARTIFACT_PLACEHOLDER_ICON_NAMES = {
 }
 
 BUILD_PREVIEW_STAT_CELLS = 10
+BUILD_PREVIEW_BLOCK_HEIGHT = 285
+BUILD_PREVIEW_LAYOUT_TOP_MARGIN = 8
+BUILD_PREVIEW_LAYOUT_SPACING = 6
+BUILD_PREVIEW_ROW_SPACING = 3
+BUILD_PREVIEW_SLOT_CARD_WIDTH = 52
+BUILD_PREVIEW_SLOT_CARD_HEIGHT = 82
+BUILD_PREVIEW_SLOT_CONTENT_MARGIN = 2
+BUILD_PREVIEW_SLOT_CONTENT_SPACING = 1
+BUILD_PREVIEW_SLOT_ICON_SIZE = 48
+BUILD_PREVIEW_SLOT_STAT_WIDTH = 48
+BUILD_PREVIEW_SLOT_STAT_HEIGHT = 22
+BUILD_PREVIEW_BONUS_CONTAINER_WIDTH = 90
+BUILD_PREVIEW_BONUS_CONTAINER_HEIGHT = 82
+BUILD_PREVIEW_BONUS_CELL_WIDTH = 43
+BUILD_PREVIEW_BONUS_CELL_HEIGHT = 82
+BUILD_PREVIEW_BONUS_ICON_SIZE = 39
+BUILD_PREVIEW_SUMMARY_HEIGHT = 136
+BUILD_PREVIEW_SUMMARY_MARGIN = 8
+BUILD_PREVIEW_SUMMARY_HORIZONTAL_SPACING = 6
+BUILD_PREVIEW_SUMMARY_VERTICAL_SPACING = 5
+BUILD_PREVIEW_STAT_LABEL_HEIGHT = 20
 BUILD_ROW_BONUS_STACK_WIDTH = 42
 BUILD_ROW_BONUS_STACK_HEIGHT = 34
 BUILD_ROW_BONUS_DIAGONAL_FEATHER = 3
@@ -944,38 +965,50 @@ class ArtifactBrowserWindow(QWidget):
 
         preview_block = QFrame()
         preview_block.setObjectName("build_preview_block")
-        preview_block.setFixedHeight(285)
+        preview_block.setFixedHeight(BUILD_PREVIEW_BLOCK_HEIGHT)
         preview_layout = QVBoxLayout(preview_block)
-        preview_layout.setContentsMargins(0, 8, 0, 0)
-        preview_layout.setSpacing(6)
+        preview_layout.setContentsMargins(0, BUILD_PREVIEW_LAYOUT_TOP_MARGIN, 0, 0)
+        preview_layout.setSpacing(BUILD_PREVIEW_LAYOUT_SPACING)
 
         self.build_target_placeholder = BuildTargetPreviewStrip()
         preview_layout.addWidget(self.build_target_placeholder)
 
         preview_row = QHBoxLayout()
         preview_row.setContentsMargins(0, 0, 0, 0)
-        preview_row.setSpacing(3)
+        preview_row.setSpacing(BUILD_PREVIEW_ROW_SPACING)
         preview_row.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         for pos in ARTIFACT_POSITIONS:
             preview_row.addWidget(self._make_build_slot_row(pos))
         self.build_bonus_container = QFrame()
-        self.build_bonus_container.setFixedSize(87, 67)
+        self.build_bonus_container.setFixedSize(
+            BUILD_PREVIEW_BONUS_CONTAINER_WIDTH,
+            BUILD_PREVIEW_BONUS_CONTAINER_HEIGHT,
+        )
         self.build_bonus_layout = QHBoxLayout(self.build_bonus_container)
         self.build_bonus_layout.setContentsMargins(0, 0, 0, 0)
-        self.build_bonus_layout.setSpacing(3)
+        self.build_bonus_layout.setSpacing(BUILD_PREVIEW_ROW_SPACING)
         self.build_bonus_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         preview_row.addWidget(self.build_bonus_container)
         preview_layout.addLayout(preview_row)
 
         stats_block = QFrame()
         stats_block.setObjectName("summary_block")
-        stats_block.setFixedHeight(136)
+        stats_block.setFixedHeight(BUILD_PREVIEW_SUMMARY_HEIGHT)
         stats_layout = QVBoxLayout(stats_block)
-        stats_layout.setContentsMargins(8, 8, 8, 8)
+        stats_layout.setContentsMargins(
+            BUILD_PREVIEW_SUMMARY_MARGIN,
+            BUILD_PREVIEW_SUMMARY_MARGIN,
+            BUILD_PREVIEW_SUMMARY_MARGIN,
+            BUILD_PREVIEW_SUMMARY_MARGIN,
+        )
         self.build_summary_stats_layout = QGridLayout()
         self.build_summary_stats_layout.setContentsMargins(0, 0, 0, 0)
-        self.build_summary_stats_layout.setHorizontalSpacing(6)
-        self.build_summary_stats_layout.setVerticalSpacing(5)
+        self.build_summary_stats_layout.setHorizontalSpacing(
+            BUILD_PREVIEW_SUMMARY_HORIZONTAL_SPACING
+        )
+        self.build_summary_stats_layout.setVerticalSpacing(
+            BUILD_PREVIEW_SUMMARY_VERTICAL_SPACING
+        )
         stats_layout.addLayout(self.build_summary_stats_layout)
         preview_layout.addWidget(stats_block)
         layout.addWidget(preview_block)
@@ -985,21 +1018,29 @@ class ArtifactBrowserWindow(QWidget):
     def _make_build_slot_row(self, pos: int) -> QFrame:
         row = QFrame()
         row.setObjectName("build_slot_mini")
-        row.setFixedSize(48, 67)
+        row.setFixedSize(BUILD_PREVIEW_SLOT_CARD_WIDTH, BUILD_PREVIEW_SLOT_CARD_HEIGHT)
         layout = QVBoxLayout(row)
-        layout.setContentsMargins(3, 3, 3, 3)
-        layout.setSpacing(1)
+        layout.setContentsMargins(
+            BUILD_PREVIEW_SLOT_CONTENT_MARGIN,
+            BUILD_PREVIEW_SLOT_CONTENT_MARGIN,
+            BUILD_PREVIEW_SLOT_CONTENT_MARGIN,
+            BUILD_PREVIEW_SLOT_CONTENT_MARGIN,
+        )
+        layout.setSpacing(BUILD_PREVIEW_SLOT_CONTENT_SPACING)
 
         icon_label = QLabel()
-        icon_label.setFixedSize(40, 40)
+        icon_label.setFixedSize(
+            BUILD_PREVIEW_SLOT_ICON_SIZE,
+            BUILD_PREVIEW_SLOT_ICON_SIZE,
+        )
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(icon_label)
 
         stat_label = QLabel("")
         stat_label.setObjectName("mini_stat_badge")
         stat_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        stat_label.setFixedWidth(40)
-        stat_label.setFixedHeight(18)
+        stat_label.setFixedWidth(BUILD_PREVIEW_SLOT_STAT_WIDTH)
+        stat_label.setFixedHeight(BUILD_PREVIEW_SLOT_STAT_HEIGHT)
         layout.addWidget(stat_label)
 
         self.build_slot_rows[pos] = row
@@ -2700,8 +2741,8 @@ class ArtifactBrowserWindow(QWidget):
             if not pixmap.isNull():
                 self.build_slot_icon_labels[pos].setPixmap(
                     pixmap.scaled(
-                        40,
-                        40,
+                        BUILD_PREVIEW_SLOT_ICON_SIZE,
+                        BUILD_PREVIEW_SLOT_ICON_SIZE,
                         Qt.AspectRatioMode.KeepAspectRatio,
                         Qt.TransformationMode.SmoothTransformation,
                     )
@@ -2728,8 +2769,8 @@ class ArtifactBrowserWindow(QWidget):
             return
         icon_label.setPixmap(
             pixmap.scaled(
-                40,
-                40,
+                BUILD_PREVIEW_SLOT_ICON_SIZE,
+                BUILD_PREVIEW_SLOT_ICON_SIZE,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )
@@ -2806,17 +2847,28 @@ class ArtifactBrowserWindow(QWidget):
     def _make_set_bonus_cell(self, item: dict) -> QFrame:
         cell = QFrame()
         cell.setObjectName("build_slot_mini")
-        cell.setFixedSize(42, 67)
+        cell.setFixedSize(
+            BUILD_PREVIEW_BONUS_CELL_WIDTH,
+            BUILD_PREVIEW_BONUS_CELL_HEIGHT,
+        )
         layout = QVBoxLayout(cell)
-        layout.setContentsMargins(3, 3, 3, 3)
+        layout.setContentsMargins(
+            BUILD_PREVIEW_SLOT_CONTENT_MARGIN,
+            BUILD_PREVIEW_SLOT_CONTENT_MARGIN,
+            BUILD_PREVIEW_SLOT_CONTENT_MARGIN,
+            BUILD_PREVIEW_SLOT_CONTENT_MARGIN,
+        )
         layout.setSpacing(0)
 
         icon = QLabel()
-        icon.setFixedSize(34, 34)
+        icon.setFixedSize(
+            BUILD_PREVIEW_BONUS_ICON_SIZE,
+            BUILD_PREVIEW_BONUS_ICON_SIZE,
+        )
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         pixmap = self._make_set_bonus_pixmap(
             item,
-            34,
+            BUILD_PREVIEW_BONUS_ICON_SIZE,
             self.current_build_artifact_ids(),
         )
         if pixmap is not None:
@@ -2962,7 +3014,7 @@ class ArtifactBrowserWindow(QWidget):
             else:
                 text = ""
             label = QLabel(text)
-            label.setFixedHeight(20)
+            label.setFixedHeight(BUILD_PREVIEW_STAT_LABEL_HEIGHT)
             if text:
                 label.setObjectName("stat_pill")
             self.build_summary_stats_layout.addWidget(label, index // 2, index % 2)

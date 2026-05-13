@@ -714,6 +714,8 @@ class ArtifactBrowserWindow(QWidget):
         self.build_slot_stat_labels: dict[int, QLabel] = {}
         self.build_bonus_layout: QHBoxLayout | None = None
         self.build_summary_stats_layout: QGridLayout | None = None
+        self._build_row_source_icon_cache: dict[tuple, QPixmap] = {}
+        self._build_row_bonus_pixmap_cache: dict[tuple, QPixmap] = {}
         self.load_build_target_items()
 
         root = QVBoxLayout(self)
@@ -1341,6 +1343,7 @@ class ArtifactBrowserWindow(QWidget):
 
         self.store = ArtifactBrowserStore.load_from_db()
         self.model.set_store(self.store)
+        self._clear_build_row_pixmap_cache()
         self.load_build_target_items()
         if not keep_custom_edit:
             self.finish_custom_set_edit()
@@ -1671,6 +1674,12 @@ class ArtifactBrowserWindow(QWidget):
         self.build_presets = list_build_presets()
         self.refresh_build_preset_list()
 
+    def _sync_build_preset_row_selection(self) -> None:
+        for build_id, button in self.build_preset_row_buttons.items():
+            was_blocked = button.blockSignals(True)
+            button.setChecked(int(build_id) == self.selected_build_id)
+            button.blockSignals(was_blocked)
+
     def refresh_build_preset_list(self) -> None:
         self._clear_layout(self.build_preset_list_layout)
         self.build_preset_row_buttons.clear()
@@ -1960,19 +1969,78 @@ class ArtifactBrowserWindow(QWidget):
             return "N/D"
         return label[:BUILD_ROW_STAT_BADGE_MAX_CHARS]
 
+    def _clear_build_row_pixmap_cache(self) -> None:
+        self._build_row_source_icon_cache.clear()
+        self._build_row_bonus_pixmap_cache.clear()
+
+    def _build_row_set_icon_path(
+        self,
+        item: dict,
+        artifact_ids,
+    ) -> str | None:
+        icon_path = self._set_icon_path_for_summary(
+            item.get("set_uid") or "",
+            artifact_ids,
+        )
+        return str(icon_path) if icon_path else None
+
+    def _cached_build_row_source_icon_pixmap(
+        self,
+        icon_path: str,
+    ) -> QPixmap | None:
+        cache_key = (
+            icon_path,
+            BUILD_ROW_BONUS_STACK_WIDTH,
+            BUILD_ROW_BONUS_STACK_HEIGHT,
+            BUILD_ROW_BONUS_ICON_PADDING,
+            BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
+        )
+        cached = self._build_row_source_icon_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        pixmap = QPixmap(icon_path)
+        if pixmap.isNull():
+            return None
+
+        scaled = scale_trimmed_pixmap_to_size(
+            pixmap,
+            BUILD_ROW_BONUS_STACK_WIDTH,
+            BUILD_ROW_BONUS_STACK_HEIGHT,
+            padding=BUILD_ROW_BONUS_ICON_PADDING,
+            alpha_threshold=BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
+        )
+        self._build_row_source_icon_cache[cache_key] = scaled
+        return scaled
+
     def _make_diagonal_split_set_bonus_pixmap(
         self,
         active_sets: list[dict],
         artifact_ids: list[int],
     ) -> QPixmap | None:
-        bottom_left_icon = self._make_build_row_set_icon_pixmap(
-            active_sets[0],
-            artifact_ids,
+        bottom_left_path = self._build_row_set_icon_path(active_sets[0], artifact_ids)
+        top_right_path = self._build_row_set_icon_path(active_sets[1], artifact_ids)
+        if bottom_left_path is None or top_right_path is None:
+            return None
+
+        cache_key = (
+            "split",
+            bottom_left_path,
+            top_right_path,
+            "2+2",
+            BUILD_ROW_BONUS_STACK_WIDTH,
+            BUILD_ROW_BONUS_STACK_HEIGHT,
+            BUILD_ROW_BONUS_ICON_PADDING,
+            BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
+            BUILD_ROW_BONUS_DIAGONAL_FEATHER,
+            "2",
         )
-        top_right_icon = self._make_build_row_set_icon_pixmap(
-            active_sets[1],
-            artifact_ids,
-        )
+        cached = self._build_row_bonus_pixmap_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        bottom_left_icon = self._cached_build_row_source_icon_pixmap(bottom_left_path)
+        top_right_icon = self._cached_build_row_source_icon_pixmap(top_right_path)
         if bottom_left_icon is None or top_right_icon is None:
             return None
 
@@ -1983,46 +2051,42 @@ class ArtifactBrowserWindow(QWidget):
             height=BUILD_ROW_BONUS_STACK_HEIGHT,
             feather=BUILD_ROW_BONUS_DIAGONAL_FEATHER,
         )
-        return draw_count_badge(composite, "2")
-
-    def _make_build_row_set_icon_pixmap(
-        self,
-        item: dict,
-        artifact_ids,
-    ) -> QPixmap | None:
-        icon_path = self._set_icon_path_for_summary(
-            item.get("set_uid") or "",
-            artifact_ids,
-        )
-        if not icon_path:
-            return None
-
-        pixmap = QPixmap(str(icon_path))
-        if pixmap.isNull():
-            return None
-
-        return scale_trimmed_pixmap_to_size(
-            pixmap,
-            BUILD_ROW_BONUS_STACK_WIDTH,
-            BUILD_ROW_BONUS_STACK_HEIGHT,
-            padding=BUILD_ROW_BONUS_ICON_PADDING,
-            alpha_threshold=BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
-        )
+        pixmap = draw_count_badge(composite, "2")
+        self._build_row_bonus_pixmap_cache[cache_key] = pixmap
+        return pixmap
 
     def _make_build_row_single_set_bonus_pixmap(
         self,
         item: dict,
         artifact_ids,
     ) -> QPixmap | None:
-        pixmap = self._make_build_row_set_icon_pixmap(
-            item,
-            artifact_ids,
-        )
-        if pixmap is None or pixmap.isNull():
+        icon_path = self._build_row_set_icon_path(item, artifact_ids)
+        if icon_path is None:
             return None
 
         count = int(item.get("count") or 0)
-        return draw_count_badge(pixmap, str(count)) if count in (2, 4) else pixmap
+        badge_text = str(count) if count in (2, 4) else ""
+        cache_key = (
+            "single",
+            icon_path,
+            count,
+            BUILD_ROW_BONUS_STACK_WIDTH,
+            BUILD_ROW_BONUS_STACK_HEIGHT,
+            BUILD_ROW_BONUS_ICON_PADDING,
+            BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
+            badge_text,
+        )
+        cached = self._build_row_bonus_pixmap_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        pixmap = self._cached_build_row_source_icon_pixmap(icon_path)
+        if pixmap is None or pixmap.isNull():
+            return None
+
+        final_pixmap = draw_count_badge(pixmap, badge_text) if badge_text else pixmap
+        self._build_row_bonus_pixmap_cache[cache_key] = final_pixmap
+        return final_pixmap
 
     def _make_build_row_bonus_stack(
         self,
@@ -2137,15 +2201,19 @@ class ArtifactBrowserWindow(QWidget):
             for slot in preset.get("slots", [])
         }
         self.selected_build_targets = list(preset.get("targets") or [])
+        had_pending_delete = self.pending_delete_build_id is not None
         self.pending_delete_build_id = None
         self.build_name_input.blockSignals(True)
         self.build_name_input.setText("")
         self.build_name_input.blockSignals(False)
+        if had_pending_delete:
+            self.refresh_build_preset_list()
+        else:
+            self._sync_build_preset_row_selection()
         self.update_build_panel()
         self.update_build_create_controls()
         self.update_edit_selection_mode()
         self.apply_current_filters()
-        self.refresh_build_preset_list()
 
     def assign_build_artifact(self, artifact_id: int) -> None:
         try:

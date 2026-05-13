@@ -14,7 +14,24 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
   - `assets/hoyolab`
   - `assets/artifact_sets`
   - large JSON/image folders
+- Expensive repeatable UI work should use both in-memory cache and persistent cache under `data/cache/...`; do not leave image processing/parsing in hot UI paths.
 - Update this file only with active tasks and useful follow-ups.
+
+## Current Artifact Browser Implementation Notes
+
+- Compact build preset row metadata is implemented:
+  - no active bonus shows `NO / BONUS`;
+  - single active 2p shows one set icon with badge `2`;
+  - 4p shows one set icon with badge `4`;
+  - 2+2 shows one diagonal composite icon with one badge `2`;
+  - sands/goblet main stats show as a compact badge.
+- Compact preset-row bonus rendering is separate from build preview block set bonus rendering.
+- Compact preset-row bonus icons use in-memory cache plus persistent PNG cache at `data/cache/ui/preset_bonus_icons/`.
+- Build target preview strip is a baked pixmap strip, not many child widgets; target preview icons are not clickable and no tooltip is planned there.
+- Target preview caches:
+  - `data/cache/ui/target_preview_icons/`;
+  - `data/cache/ui/target_preview_strips/`.
+- Build preview block geometry is explicit and should keep this structure: target strip, 5 artifact mini-cards, set bonus preview container, summary stats block.
 
 ## Artifact Browser: Current Priority
 
@@ -29,15 +46,13 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
   - editing a saved preset reflects its targets in the selector;
   - saving preserves/updates edited preset targets, then restores previous browsing target selection;
   - cancel restores previous browsing target selection without silently losing draft changes.
-- [ ] Polish target selector width, item spacing, and preview target icon row after visual review.
-- [ ] Manually verify build target preview strip:
-  - all assigned targets render with no hard cap;
-  - drag-scroll works without visible scrollbars;
+- [ ] Polish target selector width and item spacing after visual review.
+- [ ] Manually verify build preview and target preview after the latest geometry/cache work:
+  - target preview strip is a baked pixmap strip;
+  - drag-scroll and wheel-scroll work without visible scrollbars;
   - gradient chevrons appear only on scrollable edges;
-  - Universal uses `users.svg` through the auto-contrast helper.
-- [ ] Re-check fixed preset preview geometry:
-  - 5 artifact mini-slots + 2 set-bonus slots fit without clipping;
-  - left/right padding is visually balanced;
+  - Universal uses `users.svg` through the auto-contrast helper;
+  - 5 artifact mini-cards + set-bonus container fit without clipping;
   - stat summary remains 2 columns x 5 rows.
 - [ ] Later round/crop normal character preview portraits with transparent alpha corners, a lightweight mask, or another cheap approach. Do not do this before the current deadline.
 - [ ] Smoke-test build preset lifecycle:
@@ -59,13 +74,49 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 
 - [ ] Keep build presets as shared ownership categories, not "one build = one character".
 - [ ] Universal is a target at the same level as character targets.
+- [ ] A preset can belong to multiple targets.
 - [ ] Selected target filters use intersection semantics. Do not auto-include Universal unless Universal is selected.
+- [ ] When editing a preset, the selector temporarily switches to that preset's targets and must restore the previous browsing selection on Save/Cancel.
 - [ ] Keep preset panel compact and fixed-width. Future character/target expansion belongs in the middle target selector column.
+- [ ] Keep build preset row names flexible:
+  - MarqueeButton should occupy leftover row space until fixed metadata/actions;
+  - long names should marquee/clip, not expand row width;
+  - do not reintroduce horizontal scrolling in the preset list.
 - [ ] Add color highlighting for build summary Crit Value and Proc Count later; choose thresholds/colors first.
 - [ ] Add future character target UX refinements only after the MVP is visually stable.
 - [ ] Add future drag/drop of builds into the team window.
 - [ ] Keep build data separate from visual skin and delegate rendering.
 - [ ] Keep SVG UI icons on `ui/utils/icon_utils.py` auto-contrast helpers; do not reintroduce direct raw SVG loading or hardcoded final icon colors.
+
+## Artifact Browser: Set Bonuses / Tooltips
+
+- [ ] Add custom tooltip support for set bonus icons wherever set bonus icons are shown, except the target preview strip.
+- [ ] Tooltip behavior:
+  - icon with `2`: show 2-piece bonus description;
+  - icon with `4`: show 4-piece bonus description;
+  - 2+2: show both 2-piece descriptions.
+- [ ] Refactor existing custom tooltip logic into `ui/utils/tooltips.py`.
+- [ ] Blocker: artifact set bonus descriptions are not yet available in the local data pipeline/storage.
+- [ ] Extend HoYoWiki artifact set catalog/import pipeline to collect 2p/4p bonus descriptions.
+- [ ] Store set bonus descriptions with language/content locale.
+- [ ] Content language should follow HoYoLAB/API content language, not necessarily UI language.
+- [ ] Add DB/catalog support for set bonus descriptions if missing.
+
+## Artifact Browser: Popup Selection UI
+
+- [ ] Make Sort popup and Sets popup selection behavior visually consistent with artifacts/targets/presets.
+- [ ] Remove visible checkbox/checkmark UI from those popup rows.
+- [ ] Sort popup should display selected order number on the right, not before text.
+- [ ] Sets popup should use the same selected-row style where applicable.
+- [ ] Sort game/custom sets by number of owned pieces descending.
+
+## Artifact Browser: Target Selector Follow-Ups
+
+- [ ] Add region filters later.
+- [ ] Likely data source: HoYoWiki character gallery/detail tags.
+- [ ] Do not implement until UI behavior is confirmed:
+  - option A: button + dropdown with region icons;
+  - option B: add region filters into the existing filter column with scroll if needed.
 
 ## Artifact Browser: Sorting / Data
 
@@ -73,19 +124,27 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 - [ ] Circlet CV sorting should include CR/CD main stat contribution for sorting.
 - [ ] Keep Crit Value as the first sort option and Proc Count as the last sort option.
 - [ ] Treat missing proc `times` as `0`; Artiscan/GOOD samples do not include proc counts.
-- [ ] When implementing Artiscan import, use structured GOOD fields only; no image matching.
-- [ ] Confirm Artiscan import path maps GOOD `setKey`, `slotKey`, and stat keys into existing `set_uid`, `pos`, and property types.
+
+## Artifact Import / JSON
+
+- [ ] Implement artifact import from JSON, initially for Artiscan-compatible data.
+- [ ] Use structured GOOD fields only; no image matching.
+- [ ] Map GOOD `setKey`, `slotKey`, and stat keys into existing `set_uid`, `pos`, and property types.
+- [ ] Imported JSON artifacts do not have proc counts.
+- [ ] Prevent duplicates: the same artifact must not be inserted twice.
+- [ ] Allow multiple JSON imports.
+- [ ] Add a safe "clear imported from JSON" action.
+- [ ] Clearing JSON-imported artifacts must not delete pre-existing duplicate artifacts that were kept instead of imported copies.
+- [ ] After clearing imported artifacts, clear corresponding preset slots.
+- [ ] Then ask in Russian: "После удаления соответствующие слоты в пресетах будут очищены. Удалить эти пресеты?" with confirm/cancel.
+- [ ] First-day patch TODO after JSON import: automatic proc counting for imported artifacts.
+- [ ] Check other export/import services and compatibility.
 
 ## Artifact Browser: Final UI Polish
 
 - [ ] Treat current QWidget rows as prototype UI, not the final visual layer.
 - [ ] After functionality is stable, redesign the browser toward a Genshin-like interface.
 - [ ] Prefer model/view/delegates/theme/assets for final visuals.
-- [ ] Replace set-list checkbox rows with large clickable rows:
-  - icon left;
-  - name;
-  - count right;
-  - selected frame/background.
 - [ ] Keep `store`, `queries`, and models independent from the final skin.
 
 ## Future UI Architecture / Performance

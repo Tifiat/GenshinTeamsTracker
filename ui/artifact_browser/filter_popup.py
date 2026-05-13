@@ -18,9 +18,12 @@ from PySide6.QtWidgets import (
 )
 
 from localization import tr
+from ui.utils.icon_utils import auto_contrast_svg_icon
 
 from .store import ArtifactSetOption, CustomSetOption
-from hoyolab_export.paths import PROJECT_ROOT
+
+UI_ICON_BUTTON_BACKGROUND = "#222630"
+UI_ICON_DEFAULT_SIZE = 24
 
 POPUP_STYLE = """
 QWidget#sets_filter_popup {
@@ -149,7 +152,11 @@ class SetsFilterPopup(QWidget):
 
     @staticmethod
     def _ui_icon(name: str) -> QIcon:
-        return QIcon(str(PROJECT_ROOT / "assets" / "ui" / "icons" / f"{name}.svg"))
+        return auto_contrast_svg_icon(
+            name,
+            UI_ICON_DEFAULT_SIZE,
+            UI_ICON_BUTTON_BACKGROUND,
+        )
 
     def _icon_button(self, icon_name: str, tooltip: str) -> QPushButton:
         button = QPushButton()

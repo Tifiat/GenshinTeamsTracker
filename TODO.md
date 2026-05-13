@@ -4,7 +4,7 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 
 ## Workflow Rules
 
-- Read `agent_context.md` first.
+- Read `CODEX.md` first.
 - Keep tool usage narrow and cheap.
 - Do not run tests, app startup, imports, DB scans, or broad validation unless the user asks or the change needs it.
 - Use `.venv\Scripts\python.exe` for local checks when the system interpreter lacks project dependencies.
@@ -27,14 +27,19 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 - [ ] Verify target persistence:
   - creating a preset with Universal and/or characters creates one preset with all selected targets;
   - editing a saved preset reflects its targets in the selector;
-  - saving preserves/updates selected targets;
-  - cancel restores target filter state without silently losing draft changes.
+  - saving preserves/updates edited preset targets, then restores previous browsing target selection;
+  - cancel restores previous browsing target selection without silently losing draft changes.
 - [ ] Polish target selector width, item spacing, and preview target icon row after visual review.
+- [ ] Manually verify build target preview strip:
+  - all assigned targets render with no hard cap;
+  - drag-scroll works without visible scrollbars;
+  - gradient chevrons appear only on scrollable edges;
+  - Universal uses `users.svg` through the auto-contrast helper.
 - [ ] Re-check fixed preset preview geometry:
   - 5 artifact mini-slots + 2 set-bonus slots fit without clipping;
   - left/right padding is visually balanced;
   - stat summary remains 2 columns x 5 rows.
-- [ ] Later round/crop normal character preview icons with transparent alpha corners or another lightweight approach.
+- [ ] Later round/crop normal character preview portraits with transparent alpha corners, a lightweight mask, or another cheap approach. Do not do this before the current deadline.
 - [ ] Smoke-test build preset lifecycle:
   - no selected target hides create/list and keeps preview placeholders visible;
   - selecting one target shows only presets containing that target;
@@ -47,7 +52,7 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
   - filters/sorting while edit mode is active.
 - [ ] Wire the isolated Artifact Browser into the main UI when the prototype is stable.
 - [ ] Later unify reset controls in target selector, sort popup, and sets popup:
-  - move reset controls near the popup/panel header where possible instead of bottom bars;
+  - move reset controls near the popup/panel header where possible instead of separate bottom areas;
   - prefer one shared helper/function for clearing selected items in list-like selectors instead of duplicating three separate reset implementations.
 
 ## Artifact Browser: Builds / Presets
@@ -56,10 +61,11 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 - [ ] Universal is a target at the same level as character targets.
 - [ ] Selected target filters use intersection semantics. Do not auto-include Universal unless Universal is selected.
 - [ ] Keep preset panel compact and fixed-width. Future character/target expansion belongs in the middle target selector column.
-- [ ] Add color highlighting for build summary Crit Value and Proc Count later; thresholds are not decided yet.
+- [ ] Add color highlighting for build summary Crit Value and Proc Count later; choose thresholds/colors first.
 - [ ] Add future character target UX refinements only after the MVP is visually stable.
 - [ ] Add future drag/drop of builds into the team window.
 - [ ] Keep build data separate from visual skin and delegate rendering.
+- [ ] Keep SVG UI icons on `ui/utils/icon_utils.py` auto-contrast helpers; do not reintroduce direct raw SVG loading or hardcoded final icon colors.
 
 ## Artifact Browser: Sorting / Data
 
@@ -72,7 +78,7 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 
 ## Artifact Browser: Final UI Polish
 
-- [ ] Do not polish current QWidget rows as final design.
+- [ ] Treat current QWidget rows as prototype UI, not the final visual layer.
 - [ ] After functionality is stable, redesign the browser toward a Genshin-like interface.
 - [ ] Prefer model/view/delegates/theme/assets for final visuals.
 - [ ] Replace set-list checkbox rows with large clickable rows:

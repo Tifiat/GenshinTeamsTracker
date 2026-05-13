@@ -32,6 +32,7 @@ from ui.character_assets import (
     character_sort_key,
     manifest_asset_items,
 )
+from ui.utils.icon_utils import auto_contrast_svg_icon, auto_contrast_svg_pixmap
 from .list_model import ArtifactRoles
 from .queries import (
     calculate_build_summary,
@@ -106,7 +107,14 @@ BUILD_TARGET_PREVIEW_ROW_HEIGHT = 40
 BUILD_TARGET_PREVIEW_SPACING = 0
 BUILD_TARGET_PREVIEW_ICON_SIZE = 40
 BUILD_TARGET_PREVIEW_HINT_WIDTH = 32
-BUILD_TARGET_PREVIEW_HINT_ICON_SIZE = 14
+BUILD_TARGET_PREVIEW_HINT_ICON_SIZE = 20
+BUILD_TARGET_PREVIEW_EDGE_BACKGROUND = QColor(0, 0, 0)
+BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_X = 10
+BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_Y = 0
+BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND = "#2d3340"
+BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BORDER = "#475066"
+UI_ICON_BUTTON_BACKGROUND = "#222630"
+UI_ICON_DEFAULT_SIZE = 24
 
 WINDOW_STYLE = """
 QWidget {
@@ -377,19 +385,20 @@ class BuildTargetPreviewEdgeHint(QWidget):
         self.side = side
         self.setFixedWidth(BUILD_TARGET_PREVIEW_HINT_WIDTH)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.icon = QIcon(
-            str(PROJECT_ROOT / "assets" / "ui" / "icons" / f"{icon_name}.svg")
-        ).pixmap(
+        self.icon = auto_contrast_svg_pixmap(
+            icon_name,
             BUILD_TARGET_PREVIEW_HINT_ICON_SIZE,
-            BUILD_TARGET_PREVIEW_HINT_ICON_SIZE,
+            BUILD_TARGET_PREVIEW_EDGE_BACKGROUND,
         )
         self.hide()
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
         gradient = QLinearGradient(0, 0, self.width(), 0)
-        edge_color = QColor(0, 0, 0, 255)
-        clear_color = QColor(0, 0, 0, 0)
+        edge_color = QColor(BUILD_TARGET_PREVIEW_EDGE_BACKGROUND)
+        edge_color.setAlpha(255)
+        clear_color = QColor(BUILD_TARGET_PREVIEW_EDGE_BACKGROUND)
+        clear_color.setAlpha(0)
         if self.side == "left":
             gradient.setColorAt(0.0, edge_color)
             gradient.setColorAt(1.0, clear_color)
@@ -398,8 +407,16 @@ class BuildTargetPreviewEdgeHint(QWidget):
             gradient.setColorAt(1.0, edge_color)
         painter.fillRect(self.rect(), gradient)
 
-        x = (self.width() - self.icon.width()) // 2
-        y = (self.height() - self.icon.height()) // 2
+        ratio = self.icon.devicePixelRatio() or 1.0
+        icon_width = self.icon.width() / ratio
+        icon_height = self.icon.height() / ratio
+        offset_x = (
+            -BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_X
+            if self.side == "left"
+            else BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_X
+        )
+        x = int((self.width() - icon_width) / 2) + offset_x
+        y = int((self.height() - icon_height) / 2) + BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_Y
         painter.drawPixmap(x, y, self.icon)
 
 
@@ -932,7 +949,11 @@ class ArtifactBrowserWindow(QWidget):
         return tr(label_key) if label_key else str(pos)
 
     def _ui_icon(self, name: str) -> QIcon:
-        return QIcon(str(PROJECT_ROOT / "assets" / "ui" / "icons" / f"{name}.svg"))
+        return auto_contrast_svg_icon(
+            name,
+            UI_ICON_DEFAULT_SIZE,
+            UI_ICON_BUTTON_BACKGROUND,
+        )
 
     def retranslate_ui(self) -> None:
         self.setWindowTitle(tr("artifact.browser.title"))
@@ -1824,19 +1845,18 @@ class ArtifactBrowserWindow(QWidget):
                 BUILD_TARGET_PREVIEW_ICON_SIZE,
             )
             card.setStyleSheet(
-                "background: #2d3340;"
-                "border: 1px solid #475066;"
+                f"background: {BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND};"
+                f"border: 1px solid {BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BORDER};"
                 "border-radius: 8px;"
             )
             card_layout = QHBoxLayout(card)
             card_layout.setContentsMargins(0, 0, 0, 0)
             card_layout.setSpacing(0)
             label.setPixmap(
-                QIcon(
-                    str(PROJECT_ROOT / "assets" / "ui" / "icons" / "users.svg")
-                ).pixmap(
+                auto_contrast_svg_pixmap(
+                    "users",
                     BUILD_TARGET_PREVIEW_ICON_SIZE,
-                    BUILD_TARGET_PREVIEW_ICON_SIZE,
+                    BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND,
                 )
             )
             label.setToolTip(tr("artifact.build.target_universal"))

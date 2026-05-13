@@ -1685,7 +1685,7 @@ class ArtifactBrowserWindow(QWidget):
             layout.addWidget(confirm_label)
 
             confirm_button = QPushButton()
-            confirm_button.setObjectName("icon_button")
+            confirm_button.setObjectName("row_save_button")
             confirm_button.setIcon(self._ui_icon("check"))
             confirm_button.setToolTip(tr("artifact.build.delete"))
             confirm_button.clicked.connect(
@@ -1694,7 +1694,7 @@ class ArtifactBrowserWindow(QWidget):
             layout.addWidget(confirm_button)
 
             cancel_button = QPushButton()
-            cancel_button.setObjectName("icon_button")
+            cancel_button.setObjectName("row_cancel_button")
             cancel_button.setIcon(self._ui_icon("x"))
             cancel_button.setToolTip(tr("common.cancel"))
             cancel_button.clicked.connect(self.cancel_delete_build_preset)
@@ -2472,6 +2472,17 @@ class ArtifactBrowserWindow(QWidget):
                 self.cancel_active_edit()
                 event.accept()
                 return
+
+        if self.pending_delete_build_id is not None:
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self.confirm_delete_build_preset(self.pending_delete_build_id)
+                event.accept()
+                return
+            if event.key() == Qt.Key.Key_Escape:
+                self.cancel_delete_build_preset()
+                event.accept()
+                return
+
         super().keyPressEvent(event)
 
     def closeEvent(self, event) -> None:

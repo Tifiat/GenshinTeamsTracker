@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -42,17 +41,113 @@ QPushButton {
 QPushButton:hover {
     background: #2b303b;
 }
-QCheckBox {
-    color: #eeeeee;
-    spacing: 10px;
-    padding: 5px 4px;
-    min-height: 34px;
+QFrame#sort_option_row {
+    border: 1px solid #343b49;
+    border-radius: 7px;
+    background: #222630;
 }
-QCheckBox::indicator {
-    width: 18px;
-    height: 18px;
+QFrame#sort_option_row:hover {
+    background: #2b303b;
+}
+QFrame#sort_option_row[selected="true"] {
+    border-color: #d6b35f;
+    background: #3a3224;
+}
+QFrame#sort_option_row QLabel {
+    background: transparent;
+}
+QFrame#sort_option_row QLabel#sort_order {
+    color: #f1d78a;
+    font-weight: 700;
 }
 """
+
+
+class _SortOptionRow(QFrame):
+    toggled = Signal(bool)
+
+    def __init__(
+        self,
+        *,
+        label: str,
+        checked: bool,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(parent)
+        self.setObjectName("sort_option_row")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        self._checked = False
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 5, 8, 5)
+        layout.setSpacing(8)
+
+        self._label = QLabel(label)
+        self._label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._label.setMinimumHeight(28)
+        layout.addWidget(self._label, 1)
+
+        self._order_label = QLabel("")
+        self._order_label.setObjectName("sort_order")
+        self._order_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._order_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self._order_label.setFixedWidth(28)
+        layout.addWidget(self._order_label)
+
+        self.setChecked(checked)
+
+    def set_label(self, text: str) -> None:
+        self._label.setText(text)
+
+    def set_order_text(self, text: str) -> None:
+        self._order_label.setText(text)
+
+    def isChecked(self) -> bool:
+        return self._checked
+
+    def setChecked(self, checked: bool) -> None:
+        checked = bool(checked)
+        if self._checked == checked:
+            return
+
+        self._checked = checked
+        self.setProperty("selected", checked)
+        self.style().unpolish(self)
+        self.style().polish(self)
+
+    def toggle(self) -> None:
+        self.setChecked(not self._checked)
+        self.toggled.emit(self._checked)
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            event.accept()
+            return
+
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and self.rect().contains(event.position().toPoint())
+        ):
+            self.toggle()
+            event.accept()
+            return
+
+        super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space):
+            self.toggle()
+            event.accept()
+            return
+
+        super().keyPressEvent(event)
 
 
 class SortStatsPopup(QWidget):
@@ -72,7 +167,7 @@ class SortStatsPopup(QWidget):
 
         self._on_selection_changed = on_selection_changed
         self._selected_stat_types = list(selected_stat_types[:4])
-        self._checkboxes: dict[int, QCheckBox] = {}
+        self._rows: dict[int, _SortOptionRow] = {}
         self._updating = False
 
         root = QVBoxLayout(self)
@@ -106,16 +201,17 @@ class SortStatsPopup(QWidget):
         layout.setSpacing(4)
 
         for option in sortable_stat_options():
-            checkbox = QCheckBox()
-            checkbox.setMinimumHeight(36)
-            checkbox.setChecked(option.property_type in self._selected_stat_types)
-            checkbox.toggled.connect(
+            row = _SortOptionRow(
+                label=tr(option.label_key),
+                checked=option.property_type in self._selected_stat_types,
+            )
+            row.toggled.connect(
                 lambda checked=False, property_type=option.property_type: (
                     self._on_stat_toggled(property_type, checked)
                 )
             )
-            self._checkboxes[option.property_type] = checkbox
-            layout.addWidget(checkbox)
+            self._rows[option.property_type] = row
+            layout.addWidget(row)
 
         layout.addStretch()
         scroll.setWidget(content)
@@ -143,7 +239,7 @@ class SortStatsPopup(QWidget):
                 if len(selected) >= 4:
                     self._updating = True
                     try:
-                        self._checkboxes[property_type].setChecked(False)
+                        self._rows[property_type].setChecked(False)
                     finally:
                         self._updating = False
                     self.limit_label.setText(tr("artifact.sort.limit"))
@@ -171,15 +267,17 @@ class SortStatsPopup(QWidget):
         try:
             for option in sortable_stat_options():
                 property_type = option.property_type
-                checkbox = self._checkboxes[property_type]
-                checkbox.setChecked(property_type in self._selected_stat_types)
+                row = self._rows[property_type]
+                row.setChecked(property_type in self._selected_stat_types)
 
                 label = tr(option.label_key)
                 if property_type in self._selected_stat_types:
                     priority = self._selected_stat_types.index(property_type) + 1
-                    label = f"{priority}. {label}"
+                    row.set_order_text(str(priority))
+                else:
+                    row.set_order_text("")
 
-                checkbox.setText(label)
+                row.set_label(label)
         finally:
             self._updating = False
 

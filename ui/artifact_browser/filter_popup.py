@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QLineEdit,
-    QCheckBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -48,6 +47,28 @@ QPushButton {
 QPushButton:hover {
     background: #2b303b;
 }
+QPushButton#row_save_button,
+QPushButton#row_cancel_button {
+    min-width: 30px;
+    max-width: 30px;
+    min-height: 24px;
+    max-height: 24px;
+    padding: 2px;
+}
+QPushButton#row_save_button {
+    border-color: #4e9b61;
+    background: #24452d;
+}
+QPushButton#row_save_button:hover {
+    background: #2d5938;
+}
+QPushButton#row_cancel_button {
+    border-color: #b85b5b;
+    background: #4a2529;
+}
+QPushButton#row_cancel_button:hover {
+    background: #5c2d32;
+}
 QTabWidget::pane {
     border: 1px solid #303642;
     border-radius: 6px;
@@ -63,15 +84,27 @@ QTabBar::tab:selected {
     background: #303848;
     color: #ffffff;
 }
-QCheckBox {
-    color: #eeeeee;
-    spacing: 10px;
-    padding: 5px 4px;
-    min-height: 42px;
+QFrame#set_filter_row {
+    border: 1px solid #343b49;
+    border-radius: 7px;
+    background: #222630;
 }
-QCheckBox::indicator {
-    width: 18px;
-    height: 18px;
+QFrame#set_filter_row:hover {
+    background: #2b303b;
+}
+QFrame#set_filter_row[selected="true"] {
+    border-color: #d6b35f;
+    background: #3a3224;
+}
+QFrame#set_filter_row QLabel {
+    background: transparent;
+}
+QFrame#set_filter_row QLabel#set_count {
+    color: #aab0bd;
+    font-weight: 600;
+}
+QFrame#set_filter_row[selected="true"] QLabel#set_count {
+    color: #f1d78a;
 }
 QLineEdit[invalid="true"] {
     border: 1px solid #d66a6a;
@@ -79,6 +112,106 @@ QLineEdit[invalid="true"] {
     color: #ffffff;
 }
 """
+
+
+class _SetSelectionRow(QFrame):
+    toggled = Signal(bool)
+
+    def __init__(
+        self,
+        *,
+        name: str,
+        count: int,
+        checked: bool,
+        icon_path: object | None = None,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(parent)
+        self.setObjectName("set_filter_row")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+        self._checked = False
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 5, 8, 5)
+        layout.setSpacing(8)
+
+        if icon_path:
+            icon_label = QLabel()
+            icon_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            icon_label.setFixedSize(36, 36)
+            icon_label.setPixmap(
+                QIcon(str(icon_path)).pixmap(QSize(36, 36))
+            )
+            layout.addWidget(icon_label)
+
+        name_label = QLabel(name)
+        name_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        name_label.setMinimumHeight(28)
+        layout.addWidget(name_label, 1)
+
+        count_label = QLabel(f"({count})")
+        count_label.setObjectName("set_count")
+        count_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        count_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        count_label.setFixedWidth(52)
+        layout.addWidget(count_label)
+
+        self._trailing_layout = QHBoxLayout()
+        self._trailing_layout.setContentsMargins(0, 0, 0, 0)
+        self._trailing_layout.setSpacing(5)
+        layout.addLayout(self._trailing_layout)
+
+        self.setChecked(checked)
+
+    def add_trailing_widget(self, widget: QWidget) -> None:
+        self._trailing_layout.addWidget(widget)
+
+    def isChecked(self) -> bool:
+        return self._checked
+
+    def setChecked(self, checked: bool) -> None:
+        checked = bool(checked)
+        if self._checked == checked:
+            return
+
+        self._checked = checked
+        self.setProperty("selected", checked)
+        self.style().unpolish(self)
+        self.style().polish(self)
+
+    def toggle(self) -> None:
+        self.setChecked(not self._checked)
+        self.toggled.emit(self._checked)
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            event.accept()
+            return
+
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and self.rect().contains(event.position().toPoint())
+        ):
+            self.toggle()
+            event.accept()
+            return
+
+        super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space):
+            self.toggle()
+            event.accept()
+            return
+
+        super().keyPressEvent(event)
 
 
 class SetsFilterPopup(QWidget):
@@ -110,9 +243,10 @@ class SetsFilterPopup(QWidget):
         self._custom_sets = list(custom_sets)
         self._custom_selected_ids = set(selected_custom_set_ids)
         self._custom_list_layout: QVBoxLayout | None = None
-        self._game_checkboxes: dict[str, QCheckBox] = {}
-        self._custom_checkboxes: dict[int, QCheckBox] = {}
+        self._game_rows: dict[str, _SetSelectionRow] = {}
+        self._custom_rows: dict[int, _SetSelectionRow] = {}
         self._updating = False
+        self._pending_delete_shortcuts: list[QShortcut] = []
 
         root = QVBoxLayout(self)
         root.setContentsMargins(10, 10, 10, 10)
@@ -149,6 +283,7 @@ class SetsFilterPopup(QWidget):
         bottom.addWidget(clear_button)
 
         root.addLayout(bottom)
+        self._init_pending_delete_shortcuts()
 
     @staticmethod
     def _ui_icon(name: str) -> QIcon:
@@ -165,6 +300,38 @@ class SetsFilterPopup(QWidget):
         button.setFixedWidth(30)
         return button
 
+    def _apply_icon_button_role(self, button: QPushButton, object_name: str) -> None:
+        button.setObjectName(object_name)
+        button.setFixedSize(30, 24)
+        button.style().unpolish(button)
+        button.style().polish(button)
+
+    def _init_pending_delete_shortcuts(self) -> None:
+        for key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            shortcut = QShortcut(QKeySequence(key), self)
+            shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+            shortcut.activated.connect(self._confirm_pending_delete_shortcut)
+            shortcut.setEnabled(False)
+            self._pending_delete_shortcuts.append(shortcut)
+
+        cancel_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
+        cancel_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        cancel_shortcut.activated.connect(self._cancel_pending_delete_shortcut)
+        cancel_shortcut.setEnabled(False)
+        self._pending_delete_shortcuts.append(cancel_shortcut)
+
+    def _set_pending_delete_shortcuts_enabled(self, enabled: bool) -> None:
+        for shortcut in self._pending_delete_shortcuts:
+            shortcut.setEnabled(enabled)
+
+    def _confirm_pending_delete_shortcut(self) -> None:
+        if self._pending_delete_tag_id is not None:
+            self._confirm_delete(self._pending_delete_tag_id)
+
+    def _cancel_pending_delete_shortcut(self) -> None:
+        if self._pending_delete_tag_id is not None:
+            self._clear_pending_delete()
+
     def _build_game_sets_tab(
         self,
         options: list[ArtifactSetOption],
@@ -180,9 +347,12 @@ class SetsFilterPopup(QWidget):
                     option.set_uid in selected_ids,
                     option.icon_path,
                 )
-                for option in options
+                for option in sorted(
+                    options,
+                    key=lambda item: (-item.count, item.set_name.casefold()),
+                )
             ],
-            target=self._game_checkboxes,
+            target=self._game_rows,
         )
 
     def _build_custom_sets_tab(
@@ -225,9 +395,9 @@ class SetsFilterPopup(QWidget):
         if self._custom_list_layout is None:
             return
 
-        if self._custom_checkboxes:
+        if self._custom_rows:
             self._custom_selected_ids = self.selected_custom_set_ids()
-        self._custom_checkboxes.clear()
+        self._custom_rows.clear()
         self._clear_layout(self._custom_list_layout)
 
         if not self._custom_sets:
@@ -247,17 +417,17 @@ class SetsFilterPopup(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(5)
 
-        for option in self._custom_sets:
-            row = QHBoxLayout()
-
-            checkbox = QCheckBox(f"{option.name}  ({option.count})")
-            checkbox.setMinimumHeight(40)
-            checkbox.blockSignals(True)
-            checkbox.setChecked(option.tag_id in self._custom_selected_ids)
-            checkbox.blockSignals(False)
-            checkbox.toggled.connect(self._emit_selection_changed)
-            self._custom_checkboxes[option.tag_id] = checkbox
-            row.addWidget(checkbox, 1)
+        for option in sorted(
+            self._custom_sets,
+            key=lambda item: (-item.count, item.name.casefold()),
+        ):
+            row = _SetSelectionRow(
+                name=option.name,
+                count=option.count,
+                checked=option.tag_id in self._custom_selected_ids,
+            )
+            row.toggled.connect(self._emit_selection_changed)
+            self._custom_rows[option.tag_id] = row
 
             edit_button = self._icon_button(
                 "edit",
@@ -266,28 +436,30 @@ class SetsFilterPopup(QWidget):
             edit_button.clicked.connect(
                 lambda _checked=False, tag_id=option.tag_id: self._on_custom_set_edit(tag_id)
             )
-            row.addWidget(edit_button)
+            row.add_trailing_widget(edit_button)
 
             if self._pending_delete_tag_id == option.tag_id:
                 confirm_label = QLabel(tr("artifact.custom.delete_confirm_short"))
                 confirm_label.setObjectName("muted")
-                row.addWidget(confirm_label)
+                row.add_trailing_widget(confirm_label)
 
                 confirm_button = self._icon_button(
                     "check",
                     tr("artifact.custom.delete"),
                 )
+                self._apply_icon_button_role(confirm_button, "row_save_button")
                 confirm_button.clicked.connect(
                     lambda _checked=False, tag_id=option.tag_id: self._confirm_delete(tag_id)
                 )
-                row.addWidget(confirm_button)
+                row.add_trailing_widget(confirm_button)
 
                 cancel_button = self._icon_button(
                     "x",
                     tr("artifact.custom.cancel"),
                 )
+                self._apply_icon_button_role(cancel_button, "row_cancel_button")
                 cancel_button.clicked.connect(self._clear_pending_delete)
-                row.addWidget(cancel_button)
+                row.add_trailing_widget(cancel_button)
             else:
                 delete_button = self._icon_button(
                     "delete",
@@ -296,9 +468,9 @@ class SetsFilterPopup(QWidget):
                 delete_button.clicked.connect(
                     lambda _checked=False, tag_id=option.tag_id: self._request_delete(tag_id)
                 )
-                row.addWidget(delete_button)
+                row.add_trailing_widget(delete_button)
 
-            layout.addLayout(row)
+            layout.addWidget(row)
 
         layout.addStretch()
         scroll.setWidget(content)
@@ -344,17 +516,15 @@ class SetsFilterPopup(QWidget):
         layout.setSpacing(5)
 
         for key, name, count, checked, icon_path in rows:
-            checkbox = QCheckBox(f"{name}  ({count})")
-            checkbox.setMinimumHeight(44)
-
-            if icon_path:
-                checkbox.setIcon(QIcon(str(icon_path)))
-                checkbox.setIconSize(QSize(36, 36))
-
-            checkbox.setChecked(checked)
-            checkbox.toggled.connect(self._emit_selection_changed)
-            target[key] = checkbox
-            layout.addWidget(checkbox)
+            row = _SetSelectionRow(
+                name=name,
+                count=count,
+                checked=checked,
+                icon_path=icon_path,
+            )
+            row.toggled.connect(self._emit_selection_changed)
+            target[key] = row
+            layout.addWidget(row)
 
         layout.addStretch()
         scroll.setWidget(content)
@@ -374,24 +544,24 @@ class SetsFilterPopup(QWidget):
     def selected_game_set_ids(self) -> set[str]:
         return {
             set_uid
-            for set_uid, checkbox in self._game_checkboxes.items()
-            if checkbox.isChecked()
+            for set_uid, row in self._game_rows.items()
+            if row.isChecked()
         }
 
     def selected_custom_set_ids(self) -> set[int]:
         return {
             tag_id
-            for tag_id, checkbox in self._custom_checkboxes.items()
-            if checkbox.isChecked()
+            for tag_id, row in self._custom_rows.items()
+            if row.isChecked()
         }
 
     def clear_selection(self) -> None:
         self._updating = True
         try:
-            for checkbox in self._game_checkboxes.values():
-                checkbox.setChecked(False)
-            for checkbox in self._custom_checkboxes.values():
-                checkbox.setChecked(False)
+            for row in self._game_rows.values():
+                row.setChecked(False)
+            for row in self._custom_rows.values():
+                row.setChecked(False)
         finally:
             self._updating = False
 
@@ -423,6 +593,7 @@ class SetsFilterPopup(QWidget):
 
     def _request_delete(self, tag_id: int) -> None:
         self._pending_delete_tag_id = tag_id
+        self._set_pending_delete_shortcuts_enabled(True)
         self._refresh_custom_rows()
 
     def _confirm_delete(self, tag_id: int) -> None:
@@ -430,8 +601,23 @@ class SetsFilterPopup(QWidget):
         self._custom_selected_ids.discard(tag_id)
         self._custom_sets = self._on_custom_set_delete(tag_id)
         self._pending_delete_tag_id = None
+        self._set_pending_delete_shortcuts_enabled(False)
         self._refresh_custom_rows()
 
     def _clear_pending_delete(self) -> None:
         self._pending_delete_tag_id = None
+        self._set_pending_delete_shortcuts_enabled(False)
         self._refresh_custom_rows()
+
+    def keyPressEvent(self, event) -> None:
+        if self._pending_delete_tag_id is not None:
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self._confirm_delete(self._pending_delete_tag_id)
+                event.accept()
+                return
+            if event.key() == Qt.Key.Key_Escape:
+                self._clear_pending_delete()
+                event.accept()
+                return
+
+        super().keyPressEvent(event)

@@ -22,6 +22,7 @@ from PySide6.QtGui import (
     QColor,
     QFont,
     QIcon,
+    QImage,
     QImageReader,
     QLinearGradient,
     QPainter,
@@ -43,6 +44,11 @@ from ui.character_assets import (
     manifest_asset_items,
 )
 from ui.utils.icon_utils import auto_contrast_svg_icon, auto_contrast_svg_pixmap
+from ui.utils.marquee_label import MarqueeButton
+from ui.utils.pixmap_utils import (
+    make_diagonal_split_pixmap,
+    scale_trimmed_pixmap,
+)
 from .list_model import ArtifactRoles
 from .queries import (
     calculate_build_summary,
@@ -330,14 +336,23 @@ QLabel#mini_stat_badge {
     font-size: 11px;
     font-weight: 600;
 }
-QLabel#build_row_stat_badge {
+QFrame#build_row_stat_badge {
     color: #d9e2ff;
     background: #2d3340;
     border: 1px solid #475066;
     border-radius: 5px;
-    padding: 1px 4px;
+    padding: 0px;
+}
+QLabel#build_row_stat_badge_line {
+    color: #d9e2ff;
+    background: transparent;
+    border: none;
+    padding: 0px;
     font-size: 11px;
     font-weight: 700;
+}
+QLabel#build_row_stat_badge_line[topLine="true"] {
+    border-bottom: 1px solid #475066;
 }
 QWidget#build_row_bonus_stack,
 QWidget#build_row_bonus_stack QLabel {
@@ -382,10 +397,15 @@ ARTIFACT_PLACEHOLDER_ICON_NAMES = {
 }
 
 BUILD_PREVIEW_STAT_CELLS = 10
-BUILD_ROW_BONUS_STACK_WIDTH = 34
+BUILD_ROW_BONUS_STACK_WIDTH = 42
 BUILD_ROW_BONUS_STACK_HEIGHT = 34
 BUILD_ROW_BONUS_STACK_MARGIN = 1
-BUILD_ROW_STAT_BADGE_WIDTH = 88
+BUILD_ROW_BONUS_DIAGONAL_ICON_SIZE = 32
+BUILD_ROW_BONUS_DIAGONAL_FEATHER = 3
+BUILD_ROW_STAT_BADGE_WIDTH = 42
+BUILD_ROW_STAT_BADGE_HEIGHT = 34
+BUILD_ROW_STAT_BADGE_MAX_CHARS = 5
+BUILD_ROW_NAME_WIDTH = 206
 HOYOLAB_MANIFEST_FILE = PROJECT_ROOT / "data" / "hoyolab" / "crop_manifest.json"
 BUILD_TARGET_UNIVERSAL_KEY = "universal"
 
@@ -421,12 +441,12 @@ BUILD_ROW_MAIN_STAT_BADGES = {
     ELEMENTAL_MASTERY: "EM",
     PHYSICAL_DAMAGE: "PHYS",
     PYRO_DAMAGE: "PYRO",
-    ELECTRO_DAMAGE: "ELECTRO",
+    ELECTRO_DAMAGE: "ELECT",
     HYDRO_DAMAGE: "HYDRO",
-    DENDRO_DAMAGE: "DENDRO",
+    DENDRO_DAMAGE: "DENDR",
     ANEMO_DAMAGE: "ANEMO",
     GEO_DAMAGE: "GEO",
-    CRYO_DAMAGE: "CRYO",
+    CRYO_DAMAGE: "KRYO",
 }
 
 EDIT_MODE_NONE = "none"
@@ -603,6 +623,25 @@ class BuildTargetPreviewStrip(QWidget):
         self.refresh_content_width()
         self.update_hints()
 
+    def _handle_wheel_scroll(self, event) -> bool:
+        hbar = self.scroll_area.horizontalScrollBar()
+        if hbar.maximum() <= hbar.minimum():
+            return False
+
+        pixel_delta = event.pixelDelta()
+        if not pixel_delta.isNull():
+            delta = -pixel_delta.y() if pixel_delta.y() else pixel_delta.x()
+        else:
+            angle_delta = event.angleDelta()
+            raw_delta = -angle_delta.y() if angle_delta.y() else angle_delta.x()
+            delta = int(raw_delta / 120 * BUILD_TARGET_PREVIEW_ICON_SIZE)
+
+        if not delta:
+            return False
+
+        hbar.setValue(hbar.value() + delta)
+        return True
+
     def eventFilter(self, watched, event) -> bool:
         if event.type() == QEvent.Type.MouseButtonPress:
             if event.button() == Qt.MouseButton.LeftButton:
@@ -619,6 +658,10 @@ class BuildTargetPreviewStrip(QWidget):
         elif event.type() == QEvent.Type.MouseButtonRelease and self._dragging:
             self._dragging = False
             return True
+        elif event.type() == QEvent.Type.Wheel:
+            if self._handle_wheel_scroll(event):
+                event.accept()
+                return True
         return super().eventFilter(watched, event)
 
 
@@ -847,7 +890,7 @@ class ArtifactBrowserWindow(QWidget):
     def _build_build_panel(self, root) -> None:
         panel = QFrame()
         panel.setObjectName("build_panel")
-        panel.setFixedWidth(362)
+        panel.setFixedWidth(384)
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(7, 10, 7, 10)
@@ -864,6 +907,7 @@ class ArtifactBrowserWindow(QWidget):
         self.build_name_input = QLineEdit()
         self.build_name_input.setPlaceholderText(tr("artifact.build.name_placeholder"))
         self.build_name_input.textChanged.connect(self.on_build_name_changed)
+        self.build_name_input.installEventFilter(self)
         create_row.addWidget(self.build_name_input, 1)
 
         self.new_build_button = QPushButton()
@@ -1703,7 +1747,7 @@ class ArtifactBrowserWindow(QWidget):
             name_input.setFocus()
             name_input.selectAll()
         else:
-            select_button = QPushButton(
+            select_button = MarqueeButton(
                 tr(
                     "artifact.build.preset_row",
                     name=preset["name"],
@@ -1712,6 +1756,7 @@ class ArtifactBrowserWindow(QWidget):
             )
             select_button.setCheckable(True)
             select_button.setChecked(build_id == self.selected_build_id)
+            select_button.setFixedWidth(BUILD_ROW_NAME_WIDTH)
             select_button.clicked.connect(
                 lambda _checked=False, value=build_id: self.select_build_preset(value)
             )
@@ -1786,7 +1831,7 @@ class ArtifactBrowserWindow(QWidget):
         slots: list[dict] = []
         active_sets: list[dict] = []
         artifact_ids: list[int] = []
-        main_stats_text = "-/-"
+        main_stats = ("N/D", "N/D")
 
         try:
             slots = list(preset.get("slots") or [])
@@ -1797,25 +1842,23 @@ class ArtifactBrowserWindow(QWidget):
                 for slot in slots
                 if slot.get("artifact_id") is not None
             ]
-            main_stats_text = self._build_row_main_stats_text(slots)
+            main_stats = self._build_row_main_stats(slots)
         except Exception:
             active_sets = []
             artifact_ids = []
-            main_stats_text = "-/-"
+            main_stats = ("N/D", "N/D")
 
         try:
             bonus_stack = self._make_build_row_bonus_stack(active_sets, artifact_ids)
         except Exception:
             bonus_stack = None
-        if bonus_stack is not None:
-            layout.addWidget(bonus_stack)
 
-        stat_badge = QLabel(main_stats_text)
-        stat_badge.setObjectName("build_row_stat_badge")
-        stat_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        stat_badge.setFixedWidth(BUILD_ROW_STAT_BADGE_WIDTH)
-        stat_badge.setFixedHeight(20)
-        layout.addWidget(stat_badge)
+        if bonus_stack is None:
+            bonus_stack = self._make_build_row_no_bonus_badge()
+
+        layout.addWidget(bonus_stack)
+
+        layout.addWidget(self._make_build_row_main_stat_badge(*main_stats))
 
     @staticmethod
     def _set_counts_from_build_slots(slots: list[dict]) -> list[dict]:
@@ -1846,7 +1889,7 @@ class ArtifactBrowserWindow(QWidget):
             ),
         )
 
-    def _build_row_main_stats_text(self, slots: list[dict]) -> str:
+    def _build_row_main_stats(self, slots: list[dict]) -> tuple[str, str]:
         stats_by_pos = {
             int(slot.get("pos")): self._build_row_main_stat_badge(
                 slot.get("main_property_type")
@@ -1854,19 +1897,176 @@ class ArtifactBrowserWindow(QWidget):
             for slot in slots
             if slot.get("pos") in (3, 4)
         }
-        return f"{stats_by_pos.get(3, '-')}/{stats_by_pos.get(4, '-')}"
+        return stats_by_pos.get(3, "N/D"), stats_by_pos.get(4, "N/D")
+
+    def _make_build_row_main_stat_badge(self, sands: str, goblet: str) -> QFrame:
+        badge = QFrame()
+        badge.setObjectName("build_row_stat_badge")
+        badge.setFixedSize(BUILD_ROW_STAT_BADGE_WIDTH, BUILD_ROW_STAT_BADGE_HEIGHT)
+
+        layout = QVBoxLayout(badge)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        for index, text in enumerate((sands, goblet)):
+            line = QLabel(text)
+            line.setObjectName("build_row_stat_badge_line")
+            if index == 0:
+                line.setProperty("topLine", True)
+            line.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            line.setFixedHeight(BUILD_ROW_STAT_BADGE_HEIGHT // 2)
+            layout.addWidget(line)
+
+        return badge
+
+    def _make_build_row_no_bonus_badge(self) -> QFrame:
+        badge = QFrame()
+        badge.setObjectName("build_row_stat_badge")
+        badge.setFixedSize(BUILD_ROW_BONUS_STACK_WIDTH, BUILD_ROW_BONUS_STACK_HEIGHT)
+
+        layout = QVBoxLayout(badge)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        for index, text in enumerate(("NO", "BONUS")):
+            line = QLabel(text)
+            line.setObjectName("build_row_stat_badge_line")
+            if index == 0:
+                line.setProperty("topLine", True)
+            line.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            line.setFixedHeight(BUILD_ROW_BONUS_STACK_HEIGHT // 2)
+            layout.addWidget(line)
+
+        return badge
 
     def _build_row_main_stat_badge(self, property_type) -> str:
         if property_type is None or property_type == "":
-            return "-"
+            return "N/D"
 
         try:
-            return BUILD_ROW_MAIN_STAT_BADGES[int(property_type)]
+            label = BUILD_ROW_MAIN_STAT_BADGES[int(property_type)]
         except (KeyError, TypeError, ValueError):
             try:
-                return self._stat_badge_text(int(property_type)).replace("%", "").upper()
+                label = self._stat_badge_text(int(property_type)).replace("%", "").upper()
             except (TypeError, ValueError):
-                return "-"
+                return "N/D"
+
+        label = str(label).strip().upper()
+        if not label:
+            return "N/D"
+        return label[:BUILD_ROW_STAT_BADGE_MAX_CHARS]
+
+    def _trim_transparent_pixmap(self, pixmap: QPixmap) -> QPixmap:
+        image = pixmap.toImage()
+        if image.isNull():
+            return pixmap
+
+        left = image.width()
+        right = -1
+        top = image.height()
+        bottom = -1
+
+        for y in range(image.height()):
+            for x in range(image.width()):
+                if image.pixelColor(x, y).alpha() <= 0:
+                    continue
+                left = min(left, x)
+                right = max(right, x)
+                top = min(top, y)
+                bottom = max(bottom, y)
+
+        if right < left or bottom < top:
+            return pixmap
+
+        return pixmap.copy(QRect(left, top, right - left + 1, bottom - top + 1))
+
+    def _apply_diagonal_alpha(
+        self,
+        pixmap: QPixmap,
+        *,
+        keep_top_left: bool,
+        feather: int,
+    ) -> QPixmap:
+        image = pixmap.toImage().convertToFormat(QImage.Format.Format_ARGB32)
+        if image.isNull():
+            return pixmap
+
+        width = image.width()
+        height = image.height()
+        denominator_x = max(1, width - 1)
+        denominator_y = max(1, height - 1)
+        feather_band = max(0.001, feather / max(1, min(width, height)))
+
+        for y in range(height):
+            for x in range(width):
+                color = image.pixelColor(x, y)
+                if color.alpha() <= 0:
+                    continue
+
+                signed = (x / denominator_x) + (y / denominator_y) - 1.0
+                if keep_top_left:
+                    if signed <= -feather_band:
+                        alpha_factor = 1.0
+                    elif signed >= feather_band:
+                        alpha_factor = 0.0
+                    else:
+                        alpha_factor = (feather_band - signed) / (2 * feather_band)
+                else:
+                    if signed >= feather_band:
+                        alpha_factor = 1.0
+                    elif signed <= -feather_band:
+                        alpha_factor = 0.0
+                    else:
+                        alpha_factor = (signed + feather_band) / (2 * feather_band)
+
+                color.setAlpha(int(color.alpha() * alpha_factor))
+                image.setPixelColor(x, y, color)
+
+        return QPixmap.fromImage(image)
+
+    def _make_diagonal_split_set_bonus_pixmap(
+        self,
+        active_sets: list[dict],
+        artifact_ids: list[int],
+    ) -> QPixmap | None:
+        bottom_right_icon = self._make_set_icon_pixmap(
+            active_sets[0],
+            BUILD_ROW_BONUS_DIAGONAL_ICON_SIZE,
+            artifact_ids,
+        )
+        top_left_icon = self._make_set_icon_pixmap(
+            active_sets[1],
+            BUILD_ROW_BONUS_DIAGONAL_ICON_SIZE,
+            artifact_ids,
+        )
+        if bottom_right_icon is None or top_left_icon is None:
+            return None
+
+        return make_diagonal_split_pixmap(
+            bottom_right_icon,
+            top_left_icon,
+            size=BUILD_ROW_BONUS_DIAGONAL_ICON_SIZE,
+            feather=BUILD_ROW_BONUS_DIAGONAL_FEATHER,
+        )
+
+    def _make_set_icon_pixmap(
+        self,
+        item: dict,
+        icon_size: int,
+        artifact_ids,
+    ) -> QPixmap | None:
+        icon_path = self._set_icon_path_for_summary(
+            item.get("set_uid") or "",
+            artifact_ids,
+        )
+        if not icon_path:
+            return None
+
+        pixmap = QPixmap(str(icon_path))
+        if pixmap.isNull():
+            return None
+
+        return scale_trimmed_pixmap(pixmap, icon_size)
 
     def _make_build_row_bonus_stack(
         self,
@@ -1874,15 +2074,24 @@ class ArtifactBrowserWindow(QWidget):
         artifact_ids: list[int],
     ) -> QWidget | None:
         active_sets = active_sets[:2]
-        if not active_sets:
-            return None
+        if len(active_sets) == 2:
+            pixmap = self._make_diagonal_split_set_bonus_pixmap(active_sets, artifact_ids)
+            if pixmap is None or pixmap.isNull():
+                return None
+
+            label = QLabel()
+            label.setObjectName("build_row_bonus_stack")
+            label.setFixedSize(BUILD_ROW_BONUS_STACK_WIDTH, BUILD_ROW_BONUS_STACK_HEIGHT)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            label.setPixmap(pixmap)
+            return label
 
         available_height = (
             BUILD_ROW_BONUS_STACK_HEIGHT - BUILD_ROW_BONUS_STACK_MARGIN * 2
         )
         icon_size = (
             available_height
-            if len(active_sets) == 1
+            if len(active_sets) <= 1
             else available_height // 2
         )
         icon_pixmaps = [
@@ -2685,6 +2894,23 @@ class ArtifactBrowserWindow(QWidget):
         if clicked_button == cancel_button:
             return False
         return False
+
+    def eventFilter(self, watched, event) -> bool:
+        if (
+            watched is self.build_name_input
+            and event.type() == QEvent.Type.KeyPress
+            and self.edit_selection_mode == EDIT_MODE_NONE
+        ):
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self.on_build_create_button_clicked()
+                event.accept()
+                return True
+            if event.key() == Qt.Key.Key_Escape:
+                self.build_name_input.clear()
+                event.accept()
+                return True
+
+        return super().eventFilter(watched, event)
 
     def keyPressEvent(self, event) -> None:
         if self.edit_selection_mode != EDIT_MODE_NONE:

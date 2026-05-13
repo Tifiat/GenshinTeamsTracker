@@ -817,6 +817,22 @@ def get_artifact_build_slots(
     ).fetchall()
 
 
+def _artifact_build_slot_dict(slot: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "pos": int(slot["pos"]),
+        "artifact_id": int(slot["artifact_id"]),
+        "name": slot["name"],
+        "set_uid": slot["set_uid"] or "",
+        "set_name": slot["set_name"] or "",
+        "pos_name": slot["pos_name"] or "",
+        "rarity": int(slot["rarity"] or 0),
+        "level": int(slot["level"] or 0),
+        "main_property_type": slot["main_property_type"],
+        "main_property_name": slot["main_property_name"],
+        "main_property_value": slot["main_property_value"],
+    }
+
+
 def list_build_presets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = conn.execute(
         """
@@ -840,6 +856,41 @@ def list_build_presets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
         """
     ).fetchall()
 
+    build_ids = [int(row["id"]) for row in rows]
+    slots_by_build_id: dict[int, list[dict[str, Any]]] = {
+        build_id: []
+        for build_id in build_ids
+    }
+    if build_ids:
+        placeholders = ",".join("?" for _ in build_ids)
+        slot_rows = conn.execute(
+            f"""
+            SELECT
+                build_slots.build_id,
+                build_slots.pos,
+                artifacts.id AS artifact_id,
+                artifacts.name,
+                artifacts.set_uid,
+                artifacts.set_name,
+                artifacts.pos_name,
+                artifacts.rarity,
+                artifacts.level,
+                artifacts.main_property_type,
+                artifacts.main_property_name,
+                artifacts.main_property_value
+            FROM artifact_build_slots AS build_slots
+            JOIN artifacts
+                ON artifacts.id = build_slots.artifact_id
+            WHERE build_slots.build_id IN ({placeholders})
+            ORDER BY build_slots.build_id, build_slots.pos
+            """,
+            build_ids,
+        ).fetchall()
+        for slot in slot_rows:
+            slots_by_build_id[int(slot["build_id"])].append(
+                _artifact_build_slot_dict(slot)
+            )
+
     targets_by_build_id = {
         int(row["id"]): get_artifact_build_targets(conn, int(row["id"]))
         for row in rows
@@ -860,6 +911,7 @@ def list_build_presets(conn: sqlite3.Connection) -> list[dict[str, Any]]:
             "updated_at": row["updated_at"],
             "slot_count": int(row["slot_count"] or 0),
             "target_count": int(row["target_count"] or 0),
+            "slots": slots_by_build_id.get(int(row["id"]), []),
             "targets": targets_by_build_id.get(int(row["id"]), []),
         }
         for row in rows
@@ -902,19 +954,7 @@ def get_build_preset(
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
         "slots": [
-            {
-                "pos": int(slot["pos"]),
-                "artifact_id": int(slot["artifact_id"]),
-                "name": slot["name"],
-                "set_uid": slot["set_uid"] or "",
-                "set_name": slot["set_name"] or "",
-                "pos_name": slot["pos_name"] or "",
-                "rarity": int(slot["rarity"] or 0),
-                "level": int(slot["level"] or 0),
-                "main_property_type": slot["main_property_type"],
-                "main_property_name": slot["main_property_name"],
-                "main_property_value": slot["main_property_value"],
-            }
+            _artifact_build_slot_dict(slot)
             for slot in slots
         ],
         "targets": get_artifact_build_targets(conn, build_id),

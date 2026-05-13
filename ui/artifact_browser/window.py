@@ -330,6 +330,19 @@ QLabel#mini_stat_badge {
     font-size: 11px;
     font-weight: 600;
 }
+QLabel#build_row_stat_badge {
+    color: #d9e2ff;
+    background: #2d3340;
+    border: 1px solid #475066;
+    border-radius: 5px;
+    padding: 1px 4px;
+    font-size: 11px;
+    font-weight: 700;
+}
+QWidget#build_row_bonus_stack,
+QWidget#build_row_bonus_stack QLabel {
+    background: transparent;
+}
 QLabel#small_muted {
     color: #aab0bd;
     font-size: 12px;
@@ -369,6 +382,10 @@ ARTIFACT_PLACEHOLDER_ICON_NAMES = {
 }
 
 BUILD_PREVIEW_STAT_CELLS = 10
+BUILD_ROW_BONUS_STACK_WIDTH = 34
+BUILD_ROW_BONUS_STACK_HEIGHT = 34
+BUILD_ROW_BONUS_STACK_MARGIN = 1
+BUILD_ROW_STAT_BADGE_WIDTH = 88
 HOYOLAB_MANIFEST_FILE = PROJECT_ROOT / "data" / "hoyolab" / "crop_manifest.json"
 BUILD_TARGET_UNIVERSAL_KEY = "universal"
 
@@ -388,6 +405,28 @@ PERCENT_STAT_TYPES = {
     ANEMO_DAMAGE,
     GEO_DAMAGE,
     CRYO_DAMAGE,
+}
+
+BUILD_ROW_MAIN_STAT_BADGES = {
+    HP_FLAT: "HP",
+    HP_PERCENT: "HP",
+    ATK_FLAT: "ATK",
+    ATK_PERCENT: "ATK",
+    DEF_FLAT: "DEF",
+    DEF_PERCENT: "DEF",
+    CRIT_RATE: "CR",
+    CRIT_DAMAGE: "CD",
+    ENERGY_RECHARGE: "ER",
+    HEALING_BONUS: "HEAL",
+    ELEMENTAL_MASTERY: "EM",
+    PHYSICAL_DAMAGE: "PHYS",
+    PYRO_DAMAGE: "PYRO",
+    ELECTRO_DAMAGE: "ELECTRO",
+    HYDRO_DAMAGE: "HYDRO",
+    DENDRO_DAMAGE: "DENDRO",
+    ANEMO_DAMAGE: "ANEMO",
+    GEO_DAMAGE: "GEO",
+    CRYO_DAMAGE: "CRYO",
 }
 
 EDIT_MODE_NONE = "none"
@@ -1679,6 +1718,9 @@ class ArtifactBrowserWindow(QWidget):
             layout.addWidget(select_button, 1)
             self.build_preset_row_buttons[build_id] = select_button
 
+        if not editing_this_row:
+            self._add_build_preset_row_metadata(layout, preset)
+
         if pending:
             confirm_label = QLabel(tr("artifact.build.delete_confirm_short"))
             confirm_label.setObjectName("small_muted")
@@ -1735,6 +1777,147 @@ class ArtifactBrowserWindow(QWidget):
         )
         layout.addWidget(delete_button)
         return row
+
+    def _add_build_preset_row_metadata(
+        self,
+        layout: QHBoxLayout,
+        preset: dict,
+    ) -> None:
+        slots: list[dict] = []
+        active_sets: list[dict] = []
+        artifact_ids: list[int] = []
+        main_stats_text = "-/-"
+
+        try:
+            slots = list(preset.get("slots") or [])
+            set_counts = self._set_counts_from_build_slots(slots)
+            active_sets = self._active_set_bonus_items(set_counts)
+            artifact_ids = [
+                int(slot["artifact_id"])
+                for slot in slots
+                if slot.get("artifact_id") is not None
+            ]
+            main_stats_text = self._build_row_main_stats_text(slots)
+        except Exception:
+            active_sets = []
+            artifact_ids = []
+            main_stats_text = "-/-"
+
+        try:
+            bonus_stack = self._make_build_row_bonus_stack(active_sets, artifact_ids)
+        except Exception:
+            bonus_stack = None
+        if bonus_stack is not None:
+            layout.addWidget(bonus_stack)
+
+        stat_badge = QLabel(main_stats_text)
+        stat_badge.setObjectName("build_row_stat_badge")
+        stat_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        stat_badge.setFixedWidth(BUILD_ROW_STAT_BADGE_WIDTH)
+        stat_badge.setFixedHeight(20)
+        layout.addWidget(stat_badge)
+
+    @staticmethod
+    def _set_counts_from_build_slots(slots: list[dict]) -> list[dict]:
+        counts_by_key: dict[str, dict] = {}
+        for slot in slots:
+            set_uid = str(slot.get("set_uid") or "")
+            set_name = str(slot.get("set_name") or "")
+            key = set_uid or set_name
+            if not key:
+                continue
+
+            item = counts_by_key.setdefault(
+                key,
+                {
+                    "set_uid": set_uid,
+                    "set_name": set_name,
+                    "count": 0,
+                },
+            )
+            item["count"] += 1
+
+        return sorted(
+            counts_by_key.values(),
+            key=lambda item: (
+                -int(item["count"]),
+                str(item["set_name"]).casefold(),
+                str(item["set_uid"]).casefold(),
+            ),
+        )
+
+    def _build_row_main_stats_text(self, slots: list[dict]) -> str:
+        stats_by_pos = {
+            int(slot.get("pos")): self._build_row_main_stat_badge(
+                slot.get("main_property_type")
+            )
+            for slot in slots
+            if slot.get("pos") in (3, 4)
+        }
+        return f"{stats_by_pos.get(3, '-')}/{stats_by_pos.get(4, '-')}"
+
+    def _build_row_main_stat_badge(self, property_type) -> str:
+        if property_type is None or property_type == "":
+            return "-"
+
+        try:
+            return BUILD_ROW_MAIN_STAT_BADGES[int(property_type)]
+        except (KeyError, TypeError, ValueError):
+            try:
+                return self._stat_badge_text(int(property_type)).replace("%", "").upper()
+            except (TypeError, ValueError):
+                return "-"
+
+    def _make_build_row_bonus_stack(
+        self,
+        active_sets: list[dict],
+        artifact_ids: list[int],
+    ) -> QWidget | None:
+        active_sets = active_sets[:2]
+        if not active_sets:
+            return None
+
+        available_height = (
+            BUILD_ROW_BONUS_STACK_HEIGHT - BUILD_ROW_BONUS_STACK_MARGIN * 2
+        )
+        icon_size = (
+            available_height
+            if len(active_sets) == 1
+            else available_height // 2
+        )
+        icon_pixmaps = [
+            self._make_set_bonus_pixmap(item, icon_size, artifact_ids)
+            for item in active_sets
+        ]
+        icon_pixmaps = [
+            pixmap
+            for pixmap in icon_pixmaps
+            if pixmap is not None and not pixmap.isNull()
+        ]
+        if not icon_pixmaps:
+            return None
+
+        stack = QWidget()
+        stack.setObjectName("build_row_bonus_stack")
+        stack.setFixedSize(BUILD_ROW_BONUS_STACK_WIDTH, BUILD_ROW_BONUS_STACK_HEIGHT)
+        layout = QVBoxLayout(stack)
+        layout.setContentsMargins(
+            0,
+            BUILD_ROW_BONUS_STACK_MARGIN,
+            0,
+            BUILD_ROW_BONUS_STACK_MARGIN,
+        )
+        layout.setSpacing(0)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        for pixmap in icon_pixmaps:
+            label = QLabel()
+            label.setFixedSize(icon_size, icon_size)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            label.setPixmap(pixmap)
+            layout.addWidget(label)
+
+        return stack
 
     def start_new_build_preset(self) -> None:
         if not self.selected_build_target_keys:
@@ -2106,6 +2289,16 @@ class ArtifactBrowserWindow(QWidget):
         self.fill_build_stat_summary(summary)
 
     def fill_build_bonus_summary(self, set_counts: list[dict]) -> None:
+        active_sets = self._active_set_bonus_items(set_counts)
+
+        if not active_sets:
+            return
+
+        for item in active_sets[:2]:
+            self.build_bonus_layout.addWidget(self._make_set_bonus_cell(item))
+
+    @staticmethod
+    def _active_set_bonus_items(set_counts: list[dict]) -> list[dict]:
         active_sets = []
         for item in set_counts:
             count = int(item.get("count") or 0)
@@ -2117,12 +2310,7 @@ class ArtifactBrowserWindow(QWidget):
                 active = dict(item)
                 active["count"] = 2
                 active_sets.append(active)
-
-        if not active_sets:
-            return
-
-        for item in active_sets[:2]:
-            self.build_bonus_layout.addWidget(self._make_set_bonus_cell(item))
+        return active_sets
 
     def _make_set_bonus_cell(self, item: dict) -> QFrame:
         cell = QFrame()
@@ -2135,51 +2323,87 @@ class ArtifactBrowserWindow(QWidget):
         icon = QLabel()
         icon.setFixedSize(34, 34)
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon_path = self._set_icon_path_for_summary(item.get("set_uid") or "")
-        count = str(item["count"])
-        if icon_path:
-            pixmap = QPixmap(str(icon_path))
-            if not pixmap.isNull():
-                canvas = QPixmap(34, 34)
-                canvas.fill(Qt.GlobalColor.transparent)
-                painter = QPainter(canvas)
-                painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-                scaled = pixmap.scaled(
-                    34,
-                    34,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                painter.drawPixmap(
-                    (34 - scaled.width()) // 2,
-                    (34 - scaled.height()) // 2,
-                    scaled,
-                )
-                badge_rect = QRect(20, 20, 13, 13)
-                painter.setPen(QPen(QColor("#8f7440"), 1))
-                painter.setBrush(QColor("#4a3b22"))
-                painter.drawRoundedRect(badge_rect, 5, 5)
-                font = QFont(icon.font())
-                font.setPointSize(8)
-                font.setBold(True)
-                painter.setFont(font)
-                painter.setPen(QColor("#f0d58a"))
-                painter.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, count)
-                painter.end()
-                icon.setPixmap(canvas)
+        pixmap = self._make_set_bonus_pixmap(
+            item,
+            34,
+            self.current_build_artifact_ids(),
+        )
+        if pixmap is not None:
+            icon.setPixmap(pixmap)
         if icon.pixmap() is None:
+            count = str(item["count"])
             icon.setText(f"{str(item.get('set_name') or item.get('set_uid') or '?')[:2]}{count}")
         layout.addWidget(icon)
         return cell
 
-    def _set_icon_path_for_summary(self, set_uid: str):
-        for artifact_id in self.current_build_artifact_ids():
+    def _make_set_bonus_pixmap(
+        self,
+        item: dict,
+        icon_size: int,
+        artifact_ids,
+    ) -> QPixmap | None:
+        icon_path = self._set_icon_path_for_summary(
+            item.get("set_uid") or "",
+            artifact_ids,
+        )
+        if not icon_path:
+            return None
+
+        pixmap = QPixmap(str(icon_path))
+        if pixmap.isNull():
+            return None
+
+        canvas = QPixmap(icon_size, icon_size)
+        canvas.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(canvas)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        scaled = pixmap.scaled(
+            icon_size,
+            icon_size,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        painter.drawPixmap(
+            (icon_size - scaled.width()) // 2,
+            (icon_size - scaled.height()) // 2,
+            scaled,
+        )
+        badge_size = min(13, max(8, round(icon_size * 0.38)))
+        badge_rect = QRect(
+            icon_size - badge_size - 1,
+            icon_size - badge_size - 1,
+            badge_size,
+            badge_size,
+        )
+        painter.setPen(QPen(QColor("#8f7440"), 1))
+        painter.setBrush(QColor("#4a3b22"))
+        badge_radius = max(3, badge_size // 3)
+        painter.drawRoundedRect(badge_rect, badge_radius, badge_radius)
+        font = QFont(painter.font())
+        font.setPointSize(max(5, round(icon_size * 0.24)))
+        font.setBold(True)
+        painter.setFont(font)
+        painter.setPen(QColor("#f0d58a"))
+        painter.drawText(
+            badge_rect,
+            Qt.AlignmentFlag.AlignCenter,
+            str(item["count"]),
+        )
+        painter.end()
+        return canvas
+
+    def _set_icon_path_for_summary(self, set_uid: str, artifact_ids=None):
+        if artifact_ids is None:
+            artifact_ids = self.current_build_artifact_ids()
+
+        for artifact_id in artifact_ids:
             try:
                 artifact = self.store.artifact(artifact_id)
             except KeyError:
                 continue
             if artifact.set_uid == set_uid and artifact.set_icon_path:
                 return artifact.set_icon_path
+
         return None
 
     def fill_build_stat_summary(self, summary: dict) -> None:

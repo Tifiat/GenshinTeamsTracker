@@ -34,6 +34,7 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
   - 5 artifact mini-slots + 2 set-bonus slots fit without clipping;
   - left/right padding is visually balanced;
   - stat summary remains 2 columns x 5 rows.
+- [ ] Later round/crop normal character preview icons with transparent alpha corners or another lightweight approach.
 - [ ] Smoke-test build preset lifecycle:
   - no selected target hides create/list and keeps preview placeholders visible;
   - selecting one target shows only presets containing that target;

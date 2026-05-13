@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from PySide6.QtCore import QPoint, QRect, Qt, QSize
+from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QSize
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPen, QPixmap
+from PySide6.QtGui import QColor, QFont, QIcon, QLinearGradient, QPainter, QPen, QPixmap
 
 from hoyolab_export.paths import HOYOLAB_CHARACTER_ASSETS_DIR, PROJECT_ROOT
 from ui.character_assets import (
@@ -89,17 +89,24 @@ TARGET_RESET_BUTTON_RADIUS = 6
 TARGET_BODY_SPACING = 6
 
 TARGET_FILTER_BUTTON_SIZE = 30
-TARGET_FILTER_ICON_SIZE = 22
+TARGET_FILTER_ICON_SIZE = 26
 TARGET_FILTER_PADDING = 2
-TARGET_FILTER_BORDER_WIDTH = 2
+TARGET_FILTER_BORDER_WIDTH = 0
 TARGET_FILTER_RADIUS = 15
 TARGET_FILTER_SPACING = 4
 
 TARGET_ITEM_MIN_HEIGHT = 34
 TARGET_ITEM_PADDING_VERTICAL = 3
 TARGET_ITEM_PADDING_HORIZONTAL = 6
-TARGET_ITEM_ICON_SIZE = 28
+TARGET_ITEM_ICON_SIZE = 38
+
 TARGET_ITEM_SPACING = 4
+
+BUILD_TARGET_PREVIEW_ROW_HEIGHT = 40
+BUILD_TARGET_PREVIEW_SPACING = 0
+BUILD_TARGET_PREVIEW_ICON_SIZE = 40
+BUILD_TARGET_PREVIEW_HINT_WIDTH = 32
+BUILD_TARGET_PREVIEW_HINT_ICON_SIZE = 14
 
 WINDOW_STYLE = """
 QWidget {
@@ -362,6 +369,185 @@ PERCENT_STAT_TYPES = {
 EDIT_MODE_NONE = "none"
 EDIT_MODE_CUSTOM_SET = "custom_set"
 EDIT_MODE_BUILD_PRESET = "build_preset"
+
+
+class BuildTargetPreviewEdgeHint(QWidget):
+    def __init__(self, icon_name: str, side: str, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.side = side
+        self.setFixedWidth(BUILD_TARGET_PREVIEW_HINT_WIDTH)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.icon = QIcon(
+            str(PROJECT_ROOT / "assets" / "ui" / "icons" / f"{icon_name}.svg")
+        ).pixmap(
+            BUILD_TARGET_PREVIEW_HINT_ICON_SIZE,
+            BUILD_TARGET_PREVIEW_HINT_ICON_SIZE,
+        )
+        self.hide()
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        gradient = QLinearGradient(0, 0, self.width(), 0)
+        edge_color = QColor(0, 0, 0, 255)
+        clear_color = QColor(0, 0, 0, 0)
+        if self.side == "left":
+            gradient.setColorAt(0.0, edge_color)
+            gradient.setColorAt(1.0, clear_color)
+        else:
+            gradient.setColorAt(0.0, clear_color)
+            gradient.setColorAt(1.0, edge_color)
+        painter.fillRect(self.rect(), gradient)
+
+        x = (self.width() - self.icon.width()) // 2
+        y = (self.height() - self.icon.height()) // 2
+        painter.drawPixmap(x, y, self.icon)
+
+
+class BuildTargetPreviewStrip(QWidget):
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setFixedHeight(BUILD_TARGET_PREVIEW_ROW_HEIGHT)
+        self._dragging = False
+        self._drag_start_x = 0
+        self._drag_start_value = 0
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setWidgetResizable(False)
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.scroll_area.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.scroll_area.setFixedHeight(BUILD_TARGET_PREVIEW_ROW_HEIGHT)
+        layout.addWidget(self.scroll_area, 1)
+
+        self.content = QWidget()
+        self.content.setFixedHeight(BUILD_TARGET_PREVIEW_ROW_HEIGHT)
+        self.content_layout = QHBoxLayout(self.content)
+        self.content_layout.setContentsMargins(0, 0, 0, 0)
+        self.content_layout.setSpacing(BUILD_TARGET_PREVIEW_SPACING)
+        self.content_layout.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        self.scroll_area.setWidget(self.content)
+
+        for widget in (self.scroll_area.viewport(), self.content):
+            widget.installEventFilter(self)
+
+        hbar = self.scroll_area.horizontalScrollBar()
+        hbar.valueChanged.connect(self.update_hints)
+        hbar.rangeChanged.connect(lambda _min, _max: self.update_hints())
+
+        self.left_hint = BuildTargetPreviewEdgeHint("chevron-left", "left", self)
+        self.right_hint = BuildTargetPreviewEdgeHint("chevron-right", "right", self)
+        self.refresh_content_width()
+
+    def clear_targets(self) -> None:
+        while self.content_layout.count():
+            item = self.content_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self.refresh_content_width()
+
+    def add_target_widget(self, widget: QWidget) -> None:
+        widget.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.content_layout.addWidget(widget)
+        widget.show()
+
+    def finish_update(self) -> None:
+        self.refresh_content_width()
+        self.update_hints()
+
+    def refresh_content_width(self) -> None:
+        width = 0
+        widget_count = 0
+
+        for index in range(self.content_layout.count()):
+            item = self.content_layout.itemAt(index)
+            widget = item.widget()
+            if widget is None:
+                continue
+            widget_width = widget.width() or widget.sizeHint().width()
+            width += widget_width
+            widget_count += 1
+
+        if widget_count > 1:
+            width += BUILD_TARGET_PREVIEW_SPACING * (widget_count - 1)
+
+        viewport_width = max(0, self.scroll_area.viewport().width())
+
+        if widget_count == 0:
+            width = viewport_width
+            self.scroll_area.horizontalScrollBar().setValue(0)
+        else:
+            width = max(width, viewport_width)
+
+        self.content.setFixedSize(width, BUILD_TARGET_PREVIEW_ROW_HEIGHT)
+        self.content_layout.activate()
+        self.content.updateGeometry()
+        self.scroll_area.viewport().update()
+        self.update_hints()
+
+    def update_hints(self) -> None:
+        has_widgets = any(
+            self.content_layout.itemAt(i).widget() is not None
+            for i in range(self.content_layout.count())
+        )
+
+        if not has_widgets:
+            self.left_hint.hide()
+            self.right_hint.hide()
+            return
+
+        hbar = self.scroll_area.horizontalScrollBar()
+        can_scroll_left = hbar.value() > hbar.minimum()
+        can_scroll_right = hbar.value() < hbar.maximum()
+        self.left_hint.setVisible(can_scroll_left)
+        self.right_hint.setVisible(can_scroll_right)
+        self.left_hint.raise_()
+        self.right_hint.raise_()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self.left_hint.setGeometry(
+            0,
+            0,
+            BUILD_TARGET_PREVIEW_HINT_WIDTH,
+            self.height(),
+        )
+        self.right_hint.setGeometry(
+            self.width() - BUILD_TARGET_PREVIEW_HINT_WIDTH,
+            0,
+            BUILD_TARGET_PREVIEW_HINT_WIDTH,
+            self.height(),
+        )
+        self.refresh_content_width()
+        self.update_hints()
+
+    def eventFilter(self, watched, event) -> bool:
+        if event.type() == QEvent.Type.MouseButtonPress:
+            if event.button() == Qt.MouseButton.LeftButton:
+                self._dragging = True
+                self._drag_start_x = int(event.globalPosition().x())
+                self._drag_start_value = self.scroll_area.horizontalScrollBar().value()
+                return True
+        elif event.type() == QEvent.Type.MouseMove and self._dragging:
+            delta = self._drag_start_x - int(event.globalPosition().x())
+            self.scroll_area.horizontalScrollBar().setValue(
+                self._drag_start_value + delta
+            )
+            return True
+        elif event.type() == QEvent.Type.MouseButtonRelease and self._dragging:
+            self._dragging = False
+            return True
+        return super().eventFilter(watched, event)
 
 
 class ArtifactBrowserWindow(QWidget):
@@ -644,17 +830,12 @@ class ArtifactBrowserWindow(QWidget):
 
         preview_block = QFrame()
         preview_block.setObjectName("build_preview_block")
-        preview_block.setFixedHeight(250)
+        preview_block.setFixedHeight(285)
         preview_layout = QVBoxLayout(preview_block)
         preview_layout.setContentsMargins(0, 8, 0, 0)
         preview_layout.setSpacing(6)
 
-        self.build_target_placeholder = QWidget()
-        self.build_target_placeholder.setFixedHeight(24)
-        self.build_target_placeholder_row = QHBoxLayout()
-        self.build_target_placeholder_row.setContentsMargins(0, 0, 0, 0)
-        self.build_target_placeholder_row.setSpacing(4)
-        self.build_target_placeholder.setLayout(self.build_target_placeholder_row)
+        self.build_target_placeholder = BuildTargetPreviewStrip()
         preview_layout.addWidget(self.build_target_placeholder)
 
         preview_row = QHBoxLayout()
@@ -1546,6 +1727,11 @@ class ArtifactBrowserWindow(QWidget):
         name = self.editing_build_name.strip()
         self.editing_build_name = name
         targets = self.targets_from_selected_build_keys()
+        restore_target_keys = (
+            set(self._build_target_keys_before_edit)
+            if self._build_target_keys_before_edit is not None
+            else None
+        )
         self.build_name_input.blockSignals(True)
         self.build_name_input.setText("")
         self.build_name_input.blockSignals(False)
@@ -1564,12 +1750,15 @@ class ArtifactBrowserWindow(QWidget):
         self.editing_build_slots = {}
         self.editing_build_targets = []
         self.editing_build_dirty = False
+        if restore_target_keys is not None:
+            self.selected_build_target_keys = restore_target_keys
         self._build_target_keys_before_edit = None
         self.edit_selection_mode = EDIT_MODE_NONE
         self.build_name_input.blockSignals(True)
         self.build_name_input.setText("")
         self.build_name_input.blockSignals(False)
         self.load_build_presets()
+        self.refresh_build_target_list()
         self.update_build_panel()
         self.update_edit_selection_mode()
         self.apply_current_filters()
@@ -1591,11 +1780,11 @@ class ArtifactBrowserWindow(QWidget):
         self.build_name_input.blockSignals(True)
         self.build_name_input.setText("")
         self.build_name_input.blockSignals(False)
-        self.update_build_panel()
         self.update_build_create_controls()
-        self.update_edit_selection_mode()
         self.refresh_build_target_list()
         self.refresh_build_preset_list()
+        self.update_build_panel()
+        self.update_edit_selection_mode()
 
     def update_build_panel(self) -> None:
         editing = self.edit_selection_mode == EDIT_MODE_BUILD_PRESET
@@ -1611,32 +1800,58 @@ class ArtifactBrowserWindow(QWidget):
         self.update_build_create_controls()
 
     def update_build_target_preview(self) -> None:
-        self._clear_layout(self.build_target_placeholder_row)
-        for target in self.current_preview_build_targets()[:8]:
-            self.build_target_placeholder_row.addWidget(self._make_target_preview_cell(target))
-        self.build_target_placeholder_row.addStretch()
+        self.build_target_placeholder.clear_targets()
+        for target in self.current_preview_build_targets():
+            self.build_target_placeholder.add_target_widget(
+                self._make_target_preview_cell(target)
+            )
+        self.build_target_placeholder.finish_update()
 
     def _make_target_preview_cell(self, target: dict) -> QWidget:
         key = self.target_key_from_target(target)
         item = self.build_target_items_by_key.get(key or "")
-        if target.get("target_type") == "universal":
-            label = QLabel(tr("artifact.build.target_universal_short"))
-            label.setObjectName("mini_stat_badge")
-            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            label.setFixedSize(32, 22)
-            label.setToolTip(tr("artifact.build.target_universal"))
-            return label
-
         label = QLabel()
-        label.setFixedSize(22, 22)
+        label.setFixedSize(
+            BUILD_TARGET_PREVIEW_ICON_SIZE,
+            BUILD_TARGET_PREVIEW_ICON_SIZE,
+        )
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        if target.get("target_type") == "universal":
+            card = QFrame()
+            card.setFixedSize(
+                BUILD_TARGET_PREVIEW_ICON_SIZE,
+                BUILD_TARGET_PREVIEW_ICON_SIZE,
+            )
+            card.setStyleSheet(
+                "background: #2d3340;"
+                "border: 1px solid #475066;"
+                "border-radius: 8px;"
+            )
+            card_layout = QHBoxLayout(card)
+            card_layout.setContentsMargins(0, 0, 0, 0)
+            card_layout.setSpacing(0)
+            label.setPixmap(
+                QIcon(
+                    str(PROJECT_ROOT / "assets" / "ui" / "icons" / "users.svg")
+                ).pixmap(
+                    BUILD_TARGET_PREVIEW_ICON_SIZE,
+                    BUILD_TARGET_PREVIEW_ICON_SIZE,
+                )
+            )
+            label.setToolTip(tr("artifact.build.target_universal"))
+            label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+            card.setToolTip(tr("artifact.build.target_universal"))
+            card_layout.addWidget(label)
+            return card
+
         if item and item.get("path"):
             pixmap = QPixmap(str(item["path"]))
             if not pixmap.isNull():
                 label.setPixmap(
                     pixmap.scaled(
-                        22,
-                        22,
+                        BUILD_TARGET_PREVIEW_ICON_SIZE,
+                        BUILD_TARGET_PREVIEW_ICON_SIZE,
                         Qt.AspectRatioMode.KeepAspectRatio,
                         Qt.TransformationMode.SmoothTransformation,
                     )
@@ -2149,6 +2364,18 @@ class ArtifactBrowserWindow(QWidget):
         if clicked_button == cancel_button:
             return False
         return False
+
+    def keyPressEvent(self, event) -> None:
+        if self.edit_selection_mode != EDIT_MODE_NONE:
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self.save_active_edit()
+                event.accept()
+                return
+            if event.key() == Qt.Key.Key_Escape:
+                self.cancel_active_edit()
+                event.accept()
+                return
+        super().keyPressEvent(event)
 
     def closeEvent(self, event) -> None:
         if self.confirm_discard_custom_edit() and self.confirm_discard_build_edit():

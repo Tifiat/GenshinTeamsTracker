@@ -441,7 +441,6 @@ BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD = 16
 BUILD_ROW_STAT_BADGE_WIDTH = 42
 BUILD_ROW_STAT_BADGE_HEIGHT = 34
 BUILD_ROW_STAT_BADGE_MAX_CHARS = 5
-BUILD_ROW_NAME_WIDTH = 168
 HOYOLAB_MANIFEST_FILE = PROJECT_ROOT / "data" / "hoyolab" / "crop_manifest.json"
 BUILD_TARGET_UNIVERSAL_KEY = "universal"
 
@@ -1803,12 +1802,10 @@ class ArtifactBrowserWindow(QWidget):
             )
             select_button.setCheckable(True)
             select_button.setChecked(build_id == self.selected_build_id)
-            select_button.setFixedWidth(BUILD_ROW_NAME_WIDTH)
             select_button.clicked.connect(
                 lambda _checked=False, value=build_id: self.select_build_preset(value)
             )
-            layout.addWidget(select_button)
-            layout.addStretch(1)
+            layout.addWidget(select_button, 1)
             self.build_preset_row_buttons[build_id] = select_button
 
         if not editing_this_row and not pending:

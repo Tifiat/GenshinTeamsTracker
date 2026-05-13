@@ -1,7 +1,13 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtWidgets import QPushButton, QStyle, QStyleOptionButton, QStylePainter
+from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtWidgets import (
+    QPushButton,
+    QSizePolicy,
+    QStyle,
+    QStyleOptionButton,
+    QStylePainter,
+)
 
 
 class MarqueeButton(QPushButton):
@@ -19,6 +25,10 @@ class MarqueeButton(QPushButton):
         self._timer.timeout.connect(self._tick)
 
         self.setMouseTracking(True)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
         self.setText(text)
 
     def setText(self, text: str) -> None:
@@ -51,6 +61,12 @@ class MarqueeButton(QPushButton):
     def checkStateSet(self) -> None:
         super().checkStateSet()
         self._sync_timer()
+
+    def sizeHint(self) -> QSize:
+        return QSize(0, super().sizeHint().height())
+
+    def minimumSizeHint(self) -> QSize:
+        return QSize(0, super().minimumSizeHint().height())
 
     def paintEvent(self, event) -> None:
         painter = QStylePainter(self)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QSize
+from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt, QSize
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -18,7 +18,17 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtGui import QColor, QFont, QIcon, QLinearGradient, QPainter, QPen, QPixmap
+from PySide6.QtGui import (
+    QColor,
+    QFont,
+    QIcon,
+    QImageReader,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPixmap,
+)
 
 from hoyolab_export.paths import HOYOLAB_CHARACTER_ASSETS_DIR, PROJECT_ROOT
 from ui.character_assets import (
@@ -106,14 +116,19 @@ TARGET_ITEM_SPACING = 4
 BUILD_TARGET_PREVIEW_ROW_HEIGHT = 40
 BUILD_TARGET_PREVIEW_SPACING = 0
 BUILD_TARGET_PREVIEW_ICON_SIZE = 40
-BUILD_TARGET_PREVIEW_UNIVERSAL_SVG_SIZE = 32
+BUILD_TARGET_PREVIEW_UNIVERSAL_SVG_SIZE = 36
 BUILD_TARGET_PREVIEW_HINT_WIDTH = 32
 BUILD_TARGET_PREVIEW_HINT_ICON_SIZE = 20
 BUILD_TARGET_PREVIEW_EDGE_BACKGROUND = QColor(0, 0, 0)
 BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_X = 10
 BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_Y = 0
-BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND = "#2d3340"
+BUILD_TARGET_PREVIEW_UNIVERSAL_BG_PATH = (
+    PROJECT_ROOT / "assets" / "ui" / "bg" / "bg_4-5.png"
+)
+BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND = "#40577a"
 BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BORDER = "#475066"
+BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_RADIUS = 8
+BUILD_TARGET_PREVIEW_UNIVERSAL_SVG_OFFSET_Y = 4
 UI_ICON_BUTTON_BACKGROUND = "#222630"
 UI_ICON_DEFAULT_SIZE = 24
 
@@ -956,6 +971,85 @@ class ArtifactBrowserWindow(QWidget):
             UI_ICON_BUTTON_BACKGROUND,
         )
 
+    def _load_scaled_center_crop_pixmap(self, path, size: int) -> QPixmap:
+        reader = QImageReader(str(path))
+        reader.setAutoTransform(True)
+
+        source_size = reader.size()
+        if (
+            source_size.isValid()
+            and source_size.width() > 0
+            and source_size.height() > 0
+        ):
+            scale = max(size / source_size.width(), size / source_size.height())
+            reader.setScaledSize(
+                QSize(
+                    max(size, int(source_size.width() * scale + 0.5)),
+                    max(size, int(source_size.height() * scale + 0.5)),
+                )
+            )
+            image = reader.read()
+            if not image.isNull():
+                return QPixmap.fromImage(image)
+
+        pixmap = QPixmap(str(path))
+        if pixmap.isNull():
+            return QPixmap()
+        return pixmap.scaled(
+            size,
+            size,
+            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+
+    def _make_universal_target_preview_pixmap(self) -> QPixmap:
+        size = BUILD_TARGET_PREVIEW_ICON_SIZE
+        canvas = QPixmap(size, size)
+        canvas.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(canvas)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        path = QPainterPath()
+        path.addRoundedRect(
+            QRectF(0, 0, size, size),
+            BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_RADIUS,
+            BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_RADIUS,
+        )
+        painter.setClipPath(path)
+
+        background = self._load_scaled_center_crop_pixmap(
+            BUILD_TARGET_PREVIEW_UNIVERSAL_BG_PATH,
+            size,
+        )
+        if background.isNull():
+            painter.fillRect(
+                QRect(0, 0, size, size),
+                QColor(BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND),
+            )
+        else:
+            painter.drawPixmap(
+                (size - background.width()) // 2,
+                (size - background.height()) // 2,
+                background,
+            )
+
+        icon = auto_contrast_svg_pixmap(
+            "users",
+            BUILD_TARGET_PREVIEW_UNIVERSAL_SVG_SIZE,
+            BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND,
+        )
+        ratio = icon.devicePixelRatio() or 1.0
+        icon_width = icon.width() / ratio
+        icon_height = icon.height() / ratio
+        painter.drawPixmap(
+            int((size - icon_width) / 2),
+            int((size - icon_height) / 2) + BUILD_TARGET_PREVIEW_UNIVERSAL_SVG_OFFSET_Y,
+            icon,
+        )
+        painter.end()
+        return canvas
+
     def retranslate_ui(self) -> None:
         self.setWindowTitle(tr("artifact.browser.title"))
 
@@ -1351,7 +1445,10 @@ class ArtifactBrowserWindow(QWidget):
         button.setCheckable(True)
         button.setChecked(key in self.selected_build_target_keys)
         path = item.get("path")
-        if path:
+        if key == BUILD_TARGET_UNIVERSAL_KEY:
+            button.setIcon(QIcon(self._make_universal_target_preview_pixmap()))
+            button.setIconSize(QSize(TARGET_ITEM_ICON_SIZE, TARGET_ITEM_ICON_SIZE))
+        elif path:
             button.setIcon(QIcon(str(path)))
             button.setIconSize(QSize(TARGET_ITEM_ICON_SIZE, TARGET_ITEM_ICON_SIZE))
         button.clicked.connect(
@@ -1840,31 +1937,10 @@ class ArtifactBrowserWindow(QWidget):
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         if target.get("target_type") == "universal":
-            card = QFrame()
-            card.setFixedSize(
-                BUILD_TARGET_PREVIEW_ICON_SIZE,
-                BUILD_TARGET_PREVIEW_ICON_SIZE,
-            )
-            card.setStyleSheet(
-                f"background: {BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND};"
-                f"border: 1px solid {BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BORDER};"
-                "border-radius: 8px;"
-            )
-            card_layout = QHBoxLayout(card)
-            card_layout.setContentsMargins(0, 0, 0, 0)
-            card_layout.setSpacing(0)
-            label.setPixmap(
-                auto_contrast_svg_pixmap(
-                    "users",
-                    BUILD_TARGET_PREVIEW_UNIVERSAL_SVG_SIZE,
-                    BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND,
-                )
-            )
+            label.setPixmap(self._make_universal_target_preview_pixmap())
             label.setToolTip(tr("artifact.build.target_universal"))
             label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-            card.setToolTip(tr("artifact.build.target_universal"))
-            card_layout.addWidget(label)
-            return card
+            return label
 
         if item and item.get("path"):
             pixmap = QPixmap(str(item["path"]))

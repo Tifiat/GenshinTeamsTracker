@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import (
     QColor,
+    QCursor,
     QFont,
     QIcon,
     QImageReader,
@@ -34,6 +35,13 @@ from PySide6.QtGui import (
 )
 
 from hoyolab_export.paths import HOYOLAB_CHARACTER_ASSETS_DIR, PROJECT_ROOT
+from hoyolab_export.character_region_catalog import (
+    REGION_ICON_FILES,
+    REGION_LABEL_KEYS,
+    REGION_ORDER,
+    load_character_region_catalog,
+    normalize_character_name,
+)
 from ui.character_assets import (
     CHARACTER_RARITY_FILTERS,
     ELEMENT_FILTERS,
@@ -73,6 +81,7 @@ from .card_delegate import ArtifactCardDelegate, GRID_SIZE
 from .filter_popup import SetsFilterPopup
 from .list_model import ArtifactListModel
 from .models import ARTIFACT_POSITIONS
+from .region_popup import RegionFilterPopup
 from .store import ArtifactBrowserStore
 from .sort_popup import SortStatsPopup
 from .stat_types import (
@@ -714,6 +723,12 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_element_filters: set[str] = set()
         self.build_target_weapon_filters: set[str] = set()
         self.build_target_rarity_filters: set[int] = set()
+        self.build_target_region_filters: set[str] = set()
+        self._region_popup: RegionFilterPopup | None = None
+        self._suppress_next_region_popup_open = False
+        self._character_region_by_name: dict[str, dict] = {}
+        self._region_names_by_key: dict[str, str] = {}
+        self.build_target_region_button: QPushButton | None = None
         self.editing_build_id: int | None = None
         self.editing_build_name: str = ""
         self.editing_build_slots: dict[int, int] = {}
@@ -866,6 +881,8 @@ class ArtifactBrowserWindow(QWidget):
                         selected,
                     )
                 )
+        self.build_target_region_button = self._make_build_target_region_filter_button()
+        filter_column.addWidget(self.build_target_region_button)
         filter_column.addStretch()
         body.addLayout(filter_column)
 
@@ -903,6 +920,18 @@ class ArtifactBrowserWindow(QWidget):
                 checked,
             )
         )
+        return button
+
+    def _make_build_target_region_filter_button(self) -> QPushButton:
+        button = QPushButton()
+        button.setObjectName("target_filter_button")
+        button.setCheckable(True)
+        button.setChecked(bool(self.build_target_region_filters))
+        button.setIcon(QIcon(str(FILTER_ASSETS_DIR / "Statue.png")))
+        button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
+        button.setToolTip(tr("filter.region.title"))
+        button.pressed.connect(self.on_build_target_region_button_pressed)
+        button.clicked.connect(self.show_region_filter_popup)
         return button
 
     def _build_build_panel(self, root) -> None:
@@ -1194,6 +1223,8 @@ class ArtifactBrowserWindow(QWidget):
         self.new_build_button.setToolTip(tr("artifact.build.new"))
         self.cancel_new_build_button.setToolTip(tr("artifact.build.cancel"))
         self.build_name_input.setPlaceholderText(tr("artifact.build.name_placeholder"))
+        if self.build_target_region_button is not None:
+            self.build_target_region_button.setToolTip(tr("filter.region.title"))
         self.update_sets_filter_switch_text()
         self.update_sets_button_text()
         self.update_sort_button_text()
@@ -1245,11 +1276,58 @@ class ArtifactBrowserWindow(QWidget):
         self._sort_popup.raise_()
         self._sort_popup.activateWindow()
 
-    def _move_popup_inside_screen(self, popup: QWidget, preferred_pos: QPoint) -> None:
+    def on_build_target_region_button_pressed(self) -> None:
+        if self._region_popup is not None and self._region_popup.isVisible():
+            self._suppress_next_region_popup_open = True
+            self._region_popup.close()
+
+    def show_region_filter_popup(self) -> None:
+        if self.build_target_region_button is None:
+            return
+
+        if self._suppress_next_region_popup_open:
+            self._suppress_next_region_popup_open = False
+            self._sync_build_target_region_filter_button()
+            return
+
+        self._sync_build_target_region_filter_button()
+
+        if self._region_popup is None:
+            self._region_popup = RegionFilterPopup(
+                options=self._build_region_filter_options(),
+                selected_region_keys=self.build_target_region_filters,
+                on_selection_changed=self.on_region_filter_selection_changed,
+                parent=self,
+            )
+            self._region_popup.installEventFilter(self)
+
+        popup_size = self._region_popup.sizeHint().expandedTo(
+            self._region_popup.minimumSize()
+        )
+        button_pos = self.build_target_region_button.mapToGlobal(
+            QPoint(-popup_size.width() - 4, 0)
+        )
+        self._move_popup_inside_screen(
+            self._region_popup,
+            button_pos,
+            anchor=self.build_target_region_button,
+        )
+        self._region_popup.show()
+        self._region_popup.raise_()
+        self._region_popup.activateWindow()
+
+    def _move_popup_inside_screen(
+        self,
+        popup: QWidget,
+        preferred_pos: QPoint,
+        *,
+        anchor: QWidget | None = None,
+    ) -> None:
+        anchor = anchor or self.sets_button
         popup_size = popup.sizeHint().expandedTo(popup.minimumSize())
         popup.resize(popup_size)
 
-        screen = self.sets_button.screen() or self.screen() or QApplication.primaryScreen()
+        screen = anchor.screen() or self.screen() or QApplication.primaryScreen()
         if screen is None:
             popup.move(preferred_pos)
             return
@@ -1268,7 +1346,7 @@ class ArtifactBrowserWindow(QWidget):
             x = available.x()
 
         if y > max_y:
-            above_pos = self.sets_button.mapToGlobal(
+            above_pos = anchor.mapToGlobal(
                 QPoint(0, -popup_size.height() - 4)
             )
             y = above_pos.y() if above_pos.y() >= available.y() else max_y
@@ -1277,6 +1355,16 @@ class ArtifactBrowserWindow(QWidget):
             y = available.y()
 
         popup.move(QPoint(x, y))
+
+    def on_region_filter_selection_changed(self, selected_region_keys: set[str]) -> None:
+        self.build_target_region_filters = set(selected_region_keys)
+        self._sync_build_target_region_filter_button()
+        self.refresh_build_target_list()
+
+    def _sync_build_target_region_filter_button(self) -> None:
+        if self.build_target_region_button is None:
+            return
+        self.build_target_region_button.setChecked(bool(self.build_target_region_filters))
 
     def on_sets_selection_changed(
         self,
@@ -1389,6 +1477,9 @@ class ArtifactBrowserWindow(QWidget):
             if self._sets_popup is not None:
                 self._sets_popup.close()
             self._sets_popup = None
+            if self._region_popup is not None:
+                self._region_popup.close()
+            self._region_popup = None
         if reset_filters:
             self.selected_game_set_ids.clear()
             self.selected_custom_set_ids.clear()
@@ -1495,7 +1586,48 @@ class ArtifactBrowserWindow(QWidget):
             if child_layout is not None:
                 self._clear_layout(child_layout)
 
+    def _load_character_region_data(self) -> None:
+        self._character_region_by_name = {}
+        self._region_names_by_key = {}
+
+        try:
+            entries = load_character_region_catalog(self.store.content_language)
+        except Exception as exc:
+            print(f"Failed to load HoYoWiki character region catalog: {exc}")
+            entries = []
+
+        for entry in entries:
+            normalized_name = str(entry.get("normalized_name") or "").strip()
+            region_key = str(entry.get("region_key") or "").strip()
+            region_name = str(entry.get("region_name") or "").strip()
+            if not normalized_name or not region_key:
+                continue
+
+            self._character_region_by_name.setdefault(normalized_name, entry)
+            if region_name:
+                self._region_names_by_key.setdefault(region_key, region_name)
+
+    @staticmethod
+    def _with_character_region(asset: dict, entry: dict | None) -> dict:
+        if not entry:
+            return asset
+
+        region_key = str(entry.get("region_key") or "").strip()
+        if not region_key:
+            return asset
+
+        asset_copy = dict(asset)
+        metadata = dict(asset_copy.get("metadata") or {})
+        character = dict(metadata.get("character") or {})
+        character["region_key"] = region_key
+        character["region_name"] = str(entry.get("region_name") or "").strip()
+        metadata["character"] = character
+        metadata["region_key"] = region_key
+        asset_copy["metadata"] = metadata
+        return asset_copy
+
     def load_build_target_items(self) -> None:
+        self._load_character_region_data()
         self.build_target_items_by_key = {
             BUILD_TARGET_UNIVERSAL_KEY: {
                 "key": BUILD_TARGET_UNIVERSAL_KEY,
@@ -1516,6 +1648,10 @@ class ArtifactBrowserWindow(QWidget):
             char_id = character_id(asset)
             if char_id is None:
                 continue
+            region_entry = self._character_region_by_name.get(
+                normalize_character_name(character_name(asset))
+            )
+            asset = self._with_character_region(asset, region_entry)
             key = self._character_target_key(char_id)
             self.build_target_items_by_key[key] = {
                 "key": key,
@@ -1524,6 +1660,8 @@ class ArtifactBrowserWindow(QWidget):
                 "character_name": character_name(asset),
                 "asset": asset,
                 "path": asset.get("path"),
+                "region_key": (region_entry or {}).get("region_key") or "",
+                "region_name": (region_entry or {}).get("region_name") or "",
             }
 
     def load_hoyolab_manifest(self) -> dict:
@@ -1535,6 +1673,58 @@ class ArtifactBrowserWindow(QWidget):
         except Exception as exc:
             print(f"Failed to load HoYoLAB manifest: {exc}")
             return {}
+
+    def _region_icon_path(self, region_key: str) -> Path | None:
+        icon_name = REGION_ICON_FILES.get(region_key)
+        if icon_name:
+            path = FILTER_ASSETS_DIR / icon_name
+            if path.exists():
+                return path
+
+        fallback = FILTER_ASSETS_DIR / "Map.png"
+        return fallback if fallback.exists() else None
+
+    def _region_display_name(self, region_key: str) -> str:
+        label_key = REGION_LABEL_KEYS.get(region_key)
+        if label_key:
+            return tr(label_key)
+
+        return (
+            self._region_names_by_key.get(region_key)
+            or region_key.replace("_", " ").replace("-", " ").title()
+        )
+
+    def _build_region_filter_options(self) -> list[dict]:
+        counts: dict[str, int] = {}
+        for key, item in self.build_target_items_by_key.items():
+            if key == BUILD_TARGET_UNIVERSAL_KEY:
+                continue
+            region_key = str(item.get("region_key") or "")
+            if not region_key:
+                continue
+            counts[region_key] = counts.get(region_key, 0) + 1
+
+        keys = [
+            key
+            for key in REGION_ORDER
+            if key in counts or key in self.build_target_region_filters
+        ]
+        extra_keys = sorted(
+            key
+            for key in set(counts) | set(self.build_target_region_filters)
+            if key not in REGION_ORDER
+        )
+        keys.extend(extra_keys)
+
+        return [
+            {
+                "key": key,
+                "name": self._region_display_name(key),
+                "count": counts.get(key, 0),
+                "icon_path": self._region_icon_path(key),
+            }
+            for key in keys
+        ]
 
     def refresh_build_target_list(self) -> None:
         if not hasattr(self, "build_target_list_layout"):
@@ -1557,6 +1747,7 @@ class ArtifactBrowserWindow(QWidget):
                 self.build_target_element_filters,
                 self.build_target_weapon_filters,
                 self.build_target_rarity_filters,
+                self.build_target_region_filters,
             )
         ]
         character_items.sort(key=lambda item: character_sort_key(item.get("asset") or {}))
@@ -3305,6 +3496,14 @@ class ArtifactBrowserWindow(QWidget):
         return False
 
     def eventFilter(self, watched, event) -> bool:
+        if watched is self._region_popup and event.type() == QEvent.Type.Hide:
+            if self.build_target_region_button is not None:
+                button_pos = self.build_target_region_button.mapFromGlobal(
+                    QCursor.pos()
+                )
+                if self.build_target_region_button.rect().contains(button_pos):
+                    self._suppress_next_region_popup_open = True
+
         if (
             watched is self.build_name_input
             and event.type() == QEvent.Type.KeyPress

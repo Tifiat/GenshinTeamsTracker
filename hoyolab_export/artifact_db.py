@@ -1,8 +1,10 @@
+import json
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .artifact_fingerprint import artifact_content_fingerprint
 from .paths import PROJECT_ROOT
 
 
@@ -87,6 +89,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS artifacts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             fingerprint TEXT NOT NULL UNIQUE,
+            content_fingerprint TEXT,
 
             relic_id INTEGER,
             name TEXT NOT NULL,
@@ -106,7 +109,21 @@ def init_db(conn: sqlite3.Connection) -> None:
             main_property_value TEXT,
 
             first_seen_at TEXT NOT NULL,
-            last_seen_at TEXT NOT NULL
+            last_seen_at TEXT NOT NULL,
+
+            import_source TEXT,
+            import_format TEXT,
+            import_batch_id INTEGER,
+            json_imported INTEGER NOT NULL DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS artifact_import_batches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL,
+            format TEXT,
+            source_file TEXT,
+            imported_at TEXT NOT NULL,
+            summary_json TEXT
         );
 
         CREATE TABLE IF NOT EXISTS artifact_substats (
@@ -237,14 +254,48 @@ def init_db(conn: sqlite3.Connection) -> None:
         row["name"]
         for row in conn.execute("PRAGMA table_info(artifacts)").fetchall()
     }
+    artifact_set_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(artifact_sets)").fetchall()
+    }
 
     if "set_uid" not in artifact_columns:
         conn.execute("ALTER TABLE artifacts ADD COLUMN set_uid TEXT")
+    if "content_fingerprint" not in artifact_columns:
+        conn.execute("ALTER TABLE artifacts ADD COLUMN content_fingerprint TEXT")
+    if "import_source" not in artifact_columns:
+        conn.execute("ALTER TABLE artifacts ADD COLUMN import_source TEXT")
+    if "import_format" not in artifact_columns:
+        conn.execute("ALTER TABLE artifacts ADD COLUMN import_format TEXT")
+    if "import_batch_id" not in artifact_columns:
+        conn.execute("ALTER TABLE artifacts ADD COLUMN import_batch_id INTEGER")
+    if "json_imported" not in artifact_columns:
+        conn.execute(
+            "ALTER TABLE artifacts ADD COLUMN json_imported INTEGER NOT NULL DEFAULT 0"
+        )
+
+    if "artiscan_set_key" not in artifact_set_columns:
+        conn.execute("ALTER TABLE artifact_sets ADD COLUMN artiscan_set_key TEXT")
+
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_artifact_sets_artiscan_set_key
+            ON artifact_sets(artiscan_set_key)
+            WHERE artiscan_set_key IS NOT NULL AND artiscan_set_key != ''
+        """
+    )
 
     conn.execute(
         """
         CREATE INDEX IF NOT EXISTS idx_artifacts_set_uid
             ON artifacts (set_uid)
+        """
+    )
+
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_artifacts_content_fingerprint
+            ON artifacts (content_fingerprint)
         """
     )
 
@@ -266,13 +317,142 @@ def init_db(conn: sqlite3.Connection) -> None:
         """
     )
 
+    backfill_artifact_content_fingerprints(conn)
+
     conn.commit()
+
+
+def backfill_artifact_content_fingerprints(conn: sqlite3.Connection) -> int:
+    rows = conn.execute(
+        """
+        SELECT
+            id,
+            set_uid,
+            pos,
+            rarity,
+            level,
+            main_property_type,
+            main_property_value
+        FROM artifacts
+        WHERE content_fingerprint IS NULL
+            OR content_fingerprint = ''
+        """
+    ).fetchall()
+
+    updated = 0
+    for row in rows:
+        set_uid = str(row["set_uid"] or "").strip()
+        if not set_uid:
+            continue
+
+        substats = conn.execute(
+            """
+            SELECT property_type, value
+            FROM artifact_substats
+            WHERE artifact_id = ?
+            ORDER BY slot_index
+            """,
+            (int(row["id"]),),
+        ).fetchall()
+
+        content_fingerprint = artifact_content_fingerprint(
+            set_uid=set_uid,
+            pos=row["pos"],
+            rarity=row["rarity"],
+            level=row["level"],
+            main_property_type=row["main_property_type"],
+            main_property_value=row["main_property_value"],
+            substats=[
+                {
+                    "property_type": substat["property_type"],
+                    "value": substat["value"],
+                }
+                for substat in substats
+            ],
+        )
+
+        conn.execute(
+            """
+            UPDATE artifacts
+            SET content_fingerprint = ?
+            WHERE id = ?
+            """,
+            (content_fingerprint, int(row["id"])),
+        )
+        updated += 1
+
+    return updated
+
+
+def find_artifact_id_by_content_fingerprint(
+    conn: sqlite3.Connection,
+    content_fingerprint: str,
+) -> int | None:
+    row = conn.execute(
+        """
+        SELECT id
+        FROM artifacts
+        WHERE content_fingerprint = ?
+        LIMIT 1
+        """,
+        (str(content_fingerprint or "").strip(),),
+    ).fetchone()
+    return int(row["id"]) if row else None
+
+
+def create_artifact_import_batch(
+    conn: sqlite3.Connection,
+    *,
+    source: str,
+    format: str | None,
+    source_file: str | None,
+    summary: dict[str, Any] | None = None,
+) -> int:
+    cursor = conn.execute(
+        """
+        INSERT INTO artifact_import_batches (
+            source,
+            format,
+            source_file,
+            imported_at,
+            summary_json
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            str(source or "").strip() or "unknown",
+            str(format or "").strip() or None,
+            str(source_file or "").strip() or None,
+            utc_now(),
+            json.dumps(summary or {}, ensure_ascii=False, sort_keys=True),
+        ),
+    )
+    return int(cursor.lastrowid)
+
+
+def update_artifact_import_batch_summary(
+    conn: sqlite3.Connection,
+    batch_id: int,
+    summary: dict[str, Any],
+) -> None:
+    conn.execute(
+        """
+        UPDATE artifact_import_batches
+        SET summary_json = ?
+        WHERE id = ?
+        """,
+        (
+            json.dumps(summary, ensure_ascii=False, sort_keys=True),
+            int(batch_id),
+        ),
+    )
 
 
 def upsert_artifact(
     conn: sqlite3.Connection,
     *,
     fingerprint: str,
+    content_fingerprint: str | None = None,
     relic_id: int | None,
     name: str,
     set_id: int | None,
@@ -285,13 +465,30 @@ def upsert_artifact(
     main_property_type: int | None,
     main_property_name: str | None,
     main_property_value: str | None,
+    import_source: str | None = None,
+    import_format: str | None = None,
+    import_batch_id: int | None = None,
+    json_imported: bool | None = None,
 ) -> tuple[int, bool]:
     now = utc_now()
 
-    existing = conn.execute(
-        "SELECT id FROM artifacts WHERE fingerprint = ?",
-        (fingerprint,),
-    ).fetchone()
+    existing = None
+    if content_fingerprint:
+        existing = conn.execute(
+            """
+            SELECT id
+            FROM artifacts
+            WHERE content_fingerprint = ?
+            LIMIT 1
+            """,
+            (content_fingerprint,),
+        ).fetchone()
+
+    if existing is None:
+        existing = conn.execute(
+            "SELECT id FROM artifacts WHERE fingerprint = ?",
+            (fingerprint,),
+        ).fetchone()
 
     if existing:
         artifact_id = int(existing["id"])
@@ -310,6 +507,11 @@ def upsert_artifact(
                 main_property_type = ?,
                 main_property_name = ?,
                 main_property_value = ?,
+                content_fingerprint = COALESCE(?, content_fingerprint),
+                import_source = COALESCE(?, import_source),
+                import_format = COALESCE(?, import_format),
+                import_batch_id = COALESCE(?, import_batch_id),
+                json_imported = COALESCE(?, json_imported),
                 last_seen_at = ?
             WHERE id = ?
             """,
@@ -326,6 +528,11 @@ def upsert_artifact(
                 main_property_type,
                 main_property_name,
                 main_property_value,
+                content_fingerprint,
+                import_source,
+                import_format,
+                import_batch_id,
+                None if json_imported is None else int(bool(json_imported)),
                 now,
                 artifact_id,
             ),
@@ -336,6 +543,7 @@ def upsert_artifact(
         """
         INSERT INTO artifacts (
             fingerprint,
+            content_fingerprint,
             relic_id,
             name,
             set_id,
@@ -349,12 +557,17 @@ def upsert_artifact(
             main_property_name,
             main_property_value,
             first_seen_at,
-            last_seen_at
+            last_seen_at,
+            import_source,
+            import_format,
+            import_batch_id,
+            json_imported
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             fingerprint,
+            content_fingerprint,
             relic_id,
             name,
             set_id,
@@ -369,6 +582,10 @@ def upsert_artifact(
             main_property_value,
             now,
             now,
+            import_source,
+            import_format,
+            import_batch_id,
+            int(bool(json_imported)),
         ),
     )
 

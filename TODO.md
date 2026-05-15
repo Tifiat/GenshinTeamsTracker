@@ -112,11 +112,9 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 
 ## Artifact Browser: Target Selector Follow-Ups
 
-- [ ] Add region filters later.
-- [ ] Likely data source: HoYoWiki character gallery/detail tags.
-- [ ] Do not implement until UI behavior is confirmed:
-  - option A: button + dropdown with region icons;
-  - option B: add region filters into the existing filter column with scroll if needed.
+- [x] Add region filters through a popup with region icons.
+- [x] Use HoYoWiki character gallery region tags as the current data source.
+- [ ] Future: replace localized-name region joins with a stable character id mapping if HoYoWiki exposes one.
 
 ## Artifact Browser: Sorting / Data
 

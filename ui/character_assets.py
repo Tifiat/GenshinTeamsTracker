@@ -128,7 +128,9 @@ def character_matches_filters(
     element_filters: set[str],
     weapon_filters: set[str],
     rarity_filters: set[int],
+    region_filters: set[str] | None = None,
 ) -> bool:
+    region_filters = region_filters or set()
     metadata = asset.get("metadata")
     if not metadata:
         return True
@@ -137,12 +139,15 @@ def character_matches_filters(
     element = character.get("element")
     weapon_type = str(character.get("weapon_type_name") or "").lower()
     rarity = metadata_int(character.get("rarity"))
+    region_key = str(character.get("region_key") or metadata.get("region_key") or "")
 
     if element_filters and element not in element_filters:
         return False
     if weapon_filters and weapon_type not in weapon_filters:
         return False
     if rarity_filters and rarity not in rarity_filters:
+        return False
+    if region_filters and region_key not in region_filters:
         return False
 
     return True

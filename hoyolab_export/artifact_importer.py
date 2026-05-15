@@ -1,8 +1,8 @@
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
+from .artifact_fingerprint import artifact_content_fingerprint, stable_hash
 from .artifact_db import (
     ARTIFACT_DB_PATH,
     connect_db,
@@ -15,15 +15,6 @@ from .artifact_set_catalog import (
     ensure_artifact_set_catalog,
     resolve_hoyolab_set_uid,
 )
-def stable_hash(data: Any) -> str:
-    encoded = json.dumps(
-        data,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
-
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def unwrap_hoyolab_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -208,10 +199,20 @@ def import_character_details_payload(
                 )
 
                 main_property = normalized["main_property"] or {}
+                content_fingerprint = artifact_content_fingerprint(
+                    set_uid=set_uid,
+                    pos=normalized["pos"],
+                    rarity=normalized["rarity"],
+                    level=normalized["level"],
+                    main_property_type=main_property.get("property_type"),
+                    main_property_value=main_property.get("value"),
+                    substats=normalized["substats"],
+                )
 
                 artifact_id, inserted = upsert_artifact(
                     conn,
                     fingerprint=normalized["fingerprint"],
+                    content_fingerprint=content_fingerprint,
                     relic_id=normalized["relic_id"],
                     name=normalized["name"],
                     set_id=normalized["set_id"],
@@ -224,6 +225,9 @@ def import_character_details_payload(
                     main_property_type=main_property.get("property_type"),
                     main_property_name=main_property.get("property_name"),
                     main_property_value=main_property.get("value"),
+                    import_source="hoyolab",
+                    import_format="character_detail",
+                    json_imported=False,
                 )
 
                 if inserted:

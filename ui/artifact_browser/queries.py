@@ -7,9 +7,12 @@ from typing import Any
 from hoyolab_export.artifact_db import (
     ARTIFACT_DB_PATH,
     calculate_raw_build_summary as db_calculate_raw_build_summary,
+    clear_json_imported_artifacts as db_clear_json_imported_artifacts,
     connect_db,
+    count_json_imported_artifacts as db_count_json_imported_artifacts,
     create_build_preset as db_create_build_preset,
     delete_build_preset as db_delete_build_preset,
+    delete_build_presets as db_delete_build_presets,
     get_build_preset as db_get_build_preset,
     init_db,
     list_artifact_set_bonus_descriptions as db_list_artifact_set_bonus_descriptions,
@@ -19,6 +22,7 @@ from hoyolab_export.artifact_db import (
     replace_artifact_build_targets,
     update_build_preset as db_update_build_preset,
 )
+from hoyolab_export.artiscan_importer import import_artiscan_file
 from hoyolab_export.paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
 
 from .models import (
@@ -87,12 +91,61 @@ def list_all_artifacts(
     if not artifact_db_exists(db_path):
         return []
 
+    preferred_lang = current_hoyolab_content_language()
     with connect_db(db_path) as conn:
         init_db(conn)
-        return _fetch_artifacts(conn)
+        return _fetch_artifacts(conn, preferred_lang=preferred_lang)
 
 
-def _fetch_artifacts(conn) -> list[ArtifactItem]:
+def import_artiscan_json_files(
+    paths: list[str | Path],
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> list[dict[str, Any]]:
+    return [
+        import_artiscan_file(path, db_path=db_path)
+        for path in paths
+    ]
+
+
+def count_json_imported_artifacts(
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> int:
+    if not artifact_db_exists(db_path):
+        return 0
+
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        return db_count_json_imported_artifacts(conn, source="artiscan")
+
+
+def clear_json_imported_artifacts(
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> dict[str, Any]:
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        summary = db_clear_json_imported_artifacts(conn, source="artiscan")
+        conn.commit()
+        return summary
+
+
+def delete_build_presets(
+    build_ids: list[int],
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> int:
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        deleted = db_delete_build_presets(conn, build_ids)
+        conn.commit()
+        return deleted
+
+
+def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[ArtifactItem]:
+    preferred_lang = normalize_artifact_set_lang(preferred_lang)
+    fallback_lang = "en-us"
     rows = conn.execute(
         """
         SELECT
@@ -100,7 +153,14 @@ def _fetch_artifacts(conn) -> list[ArtifactItem]:
             artifacts.name,
             artifacts.set_id,
             artifacts.set_uid,
-            artifacts.set_name,
+            COALESCE(
+                preferred_set_names.name,
+                fallback_set_names.name,
+                artifacts.set_name,
+                artifact_sets.fallback_name,
+                artifacts.set_uid,
+                ''
+            ) AS display_set_name,
             artifacts.pos,
             artifacts.pos_name,
             artifacts.rarity,
@@ -113,6 +173,14 @@ def _fetch_artifacts(conn) -> list[ArtifactItem]:
             set_flower_icons.local_path AS set_flower_icon_local_path,
             equipment.character_name
         FROM artifacts
+        LEFT JOIN artifact_sets
+            ON artifact_sets.set_uid = artifacts.set_uid
+        LEFT JOIN artifact_set_names AS preferred_set_names
+            ON preferred_set_names.set_uid = artifacts.set_uid
+            AND preferred_set_names.lang = ?
+        LEFT JOIN artifact_set_names AS fallback_set_names
+            ON fallback_set_names.set_uid = artifacts.set_uid
+            AND fallback_set_names.lang = ?
         LEFT JOIN artifact_set_piece_icons AS set_icons
             ON set_icons.set_uid = artifacts.set_uid
             AND set_icons.pos = artifacts.pos
@@ -125,9 +193,11 @@ def _fetch_artifacts(conn) -> list[ArtifactItem]:
             artifacts.pos,
             COALESCE(artifacts.rarity, 0) DESC,
             COALESCE(artifacts.level, 0) DESC,
-            artifacts.set_name COLLATE NOCASE,
+            display_set_name COLLATE NOCASE,
             artifacts.name COLLATE NOCASE
         """
+        ,
+        (preferred_lang, fallback_lang),
     ).fetchall()
 
     artifact_ids = [int(row["id"]) for row in rows]
@@ -148,7 +218,7 @@ def _fetch_artifacts(conn) -> list[ArtifactItem]:
                 name=row["name"],
                 set_id=int_or_none(row["set_id"]),
                 set_uid=set_uid,
-                set_name=row["set_name"],
+                set_name=row["display_set_name"],
                 pos=pos,
                 pos_name=row["pos_name"] or ARTIFACT_POSITIONS[pos],
                 rarity=int_or_none(row["rarity"]) or 0,

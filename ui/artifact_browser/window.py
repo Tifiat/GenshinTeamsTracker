@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import ctypes
+import ctypes.wintypes
 import html
 import json
 import re
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt, QSize
+from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt, QSize, QTimer
 from PySide6.QtWidgets import (
     QApplication,
+    QAbstractItemView,
     QButtonGroup,
+    QFileDialog,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -68,14 +72,18 @@ from ui.utils.tooltips import install_custom_tooltip
 from .list_model import ArtifactRoles
 from .queries import (
     calculate_build_summary,
+    clear_json_imported_artifacts,
+    count_json_imported_artifacts,
     create_custom_set,
     delete_custom_set,
     get_custom_set_artifact_ids,
     get_build_preset,
+    import_artiscan_json_files,
     list_build_presets,
     replace_custom_set_artifacts,
     save_build_preset,
     delete_build_preset,
+    delete_build_presets,
 )
 from .card_delegate import ArtifactCardDelegate, GRID_SIZE
 from .filter_popup import SetsFilterPopup
@@ -108,9 +116,17 @@ from .stat_types import (
 )
 from localization import tr
 
-TARGET_PANEL_WIDTH = 330
+TARGET_PANEL_WIDTH = 316
+TARGET_PANEL_MIN_WIDTH = 220
+TARGET_PANEL_MAX_WIDTH = 410
 TARGET_PANEL_MARGINS = (7, 10, 7, 10)
 TARGET_PANEL_SPACING = 8
+BUILD_PANEL_WIDTH = 384
+ARTIFACT_GRID_FIT_PADDING = 4
+ADAPTIVE_TARGET_RESIZE_DELAY_MS = 650
+ADAPTIVE_TARGET_RESIZE_SETTLE_MS = 40
+WM_ENTERSIZEMOVE = 0x0231
+WM_EXITSIZEMOVE = 0x0232
 
 TARGET_HEADER_SPACING = 6
 TARGET_HEADER_BALANCE_WIDTH = 72
@@ -747,6 +763,17 @@ class ArtifactBrowserWindow(QWidget):
         self._build_row_bonus_pixmap_cache: dict[str, QPixmap] = {}
         self._target_preview_icon_cache: dict[str, QPixmap] = {}
         self._target_preview_strip_cache: dict[str, QPixmap] = {}
+        self.import_json_button: QPushButton | None = None
+        self.clear_json_button: QPushButton | None = None
+        self.content_layout: QHBoxLayout | None = None
+        self.build_target_panel: QFrame | None = None
+        self.build_panel: QFrame | None = None
+        self._window_in_native_sizemove = False
+        self._adaptive_target_resize_timer = QTimer(self)
+        self._adaptive_target_resize_timer.setSingleShot(True)
+        self._adaptive_target_resize_timer.timeout.connect(
+            self.update_adaptive_target_panel_width
+        )
         self.load_build_target_items()
 
         root = QVBoxLayout(self)
@@ -757,6 +784,7 @@ class ArtifactBrowserWindow(QWidget):
         content = QHBoxLayout()
         content.setContentsMargins(0, 0, 0, 0)
         content.setSpacing(8)
+        self.content_layout = content
         self._build_list_view(content)
         self._build_build_target_selector(content)
         self._build_build_panel(content)
@@ -767,6 +795,125 @@ class ArtifactBrowserWindow(QWidget):
         self.apply_current_filters()
         self.update_custom_edit_bar()
         self.update_build_panel()
+        self.schedule_adaptive_target_panel_width_update(delay_ms=0)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if self._window_in_native_sizemove:
+            return
+        self.schedule_adaptive_target_panel_width_update()
+
+    def nativeEvent(self, event_type, message):
+        try:
+            native_message = ctypes.wintypes.MSG.from_address(int(message))
+        except Exception:
+            return super().nativeEvent(event_type, message)
+
+        if native_message.message == WM_ENTERSIZEMOVE:
+            self._window_in_native_sizemove = True
+            self._adaptive_target_resize_timer.stop()
+        elif native_message.message == WM_EXITSIZEMOVE:
+            self._window_in_native_sizemove = False
+            self.schedule_adaptive_target_panel_width_update(
+                delay_ms=ADAPTIVE_TARGET_RESIZE_SETTLE_MS
+            )
+
+        return super().nativeEvent(event_type, message)
+
+    def schedule_adaptive_target_panel_width_update(
+        self,
+        delay_ms: int = ADAPTIVE_TARGET_RESIZE_DELAY_MS,
+    ) -> None:
+        if not hasattr(self, "_adaptive_target_resize_timer"):
+            return
+        if self._window_in_native_sizemove:
+            self._adaptive_target_resize_timer.stop()
+            return
+        if self.model.rowCount() <= 0:
+            return
+        self._adaptive_target_resize_timer.start(delay_ms)
+
+    def update_adaptive_target_panel_width(self) -> None:
+        if self.content_layout is None or self.build_target_panel is None:
+            return
+        if self.model.rowCount() <= 0:
+            return
+
+        content_width = self.content_layout.geometry().width()
+        if content_width <= 0:
+            return
+
+        spacing = max(0, self.content_layout.spacing())
+        fixed_panel_width = (
+            self.build_panel.width()
+            if self.build_panel is not None and self.build_panel.width() > 0
+            else BUILD_PANEL_WIDTH
+        )
+        available_at_preferred = (
+            content_width
+            - fixed_panel_width
+            - TARGET_PANEL_WIDTH
+            - spacing * 2
+        )
+        grid_width = GRID_SIZE.width()
+        viewport_chrome_width = max(
+            0,
+            self.list_view.width() - self.list_view.viewport().width(),
+        )
+        viewport_at_preferred = (
+            available_at_preferred
+            - viewport_chrome_width
+            - ARTIFACT_GRID_FIT_PADDING
+        )
+        if viewport_at_preferred <= grid_width or grid_width <= 0:
+            return
+        else:
+            # Keep the artifact viewport aligned to the card grid by spending
+            # bounded slack from the target selector before leaving a partial column.
+            remainder = viewport_at_preferred % grid_width
+            shrink_needed = (grid_width - remainder) % grid_width
+            shrink_budget = TARGET_PANEL_WIDTH - TARGET_PANEL_MIN_WIDTH
+            expand_budget = TARGET_PANEL_MAX_WIDTH - TARGET_PANEL_WIDTH
+
+            candidates = [TARGET_PANEL_WIDTH]
+            if shrink_needed and shrink_needed <= shrink_budget:
+                candidates.append(TARGET_PANEL_WIDTH - shrink_needed)
+            if remainder and remainder <= expand_budget:
+                candidates.append(TARGET_PANEL_WIDTH + remainder)
+
+            def list_width_for_target(width: int) -> int:
+                return (
+                    content_width
+                    - fixed_panel_width
+                    - width
+                    - spacing * 2
+                    - viewport_chrome_width
+                    - ARTIFACT_GRID_FIT_PADDING
+                )
+
+            def column_count(width: int) -> int:
+                list_width = list_width_for_target(width)
+                if list_width <= 0:
+                    return 0
+                return list_width // grid_width
+
+            def trailing_gap(width: int) -> int:
+                list_width = list_width_for_target(width)
+                if list_width <= 0:
+                    return grid_width
+                return list_width % grid_width
+
+            target_width = min(
+                candidates,
+                key=lambda width: (
+                    -column_count(width),
+                    trailing_gap(width),
+                    abs(width - TARGET_PANEL_WIDTH),
+                ),
+            )
+
+        if self.build_target_panel.width() != target_width:
+            self.build_target_panel.setFixedWidth(target_width)
 
     def _build_top_bar(self, root: QVBoxLayout) -> None:
         top_frame = QFrame()
@@ -815,6 +962,11 @@ class ArtifactBrowserWindow(QWidget):
         root.addWidget(top_frame)
 
     def _build_list_view(self, root: QVBoxLayout) -> None:
+        panel = QWidget()
+        layout = QVBoxLayout(panel)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
         self.list_view = QListView()
         self.list_view.setModel(self.model)
         self.list_view.setItemDelegate(self.delegate)
@@ -824,20 +976,38 @@ class ArtifactBrowserWindow(QWidget):
         self.list_view.setResizeMode(QListView.ResizeMode.Adjust)
         self.list_view.setMovement(QListView.Movement.Static)
         self.list_view.setUniformItemSizes(True)
+        self.list_view.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.list_view.setGridSize(QSize(GRID_SIZE.width(), GRID_SIZE.height()))
         self.list_view.setSpacing(0)
+        self.list_view.verticalScrollBar().setSingleStep(20)
         self.list_view.setMouseTracking(True)
         self.list_view.setProperty("artifactEditMode", False)
         self.list_view.setSelectionMode(QListView.SelectionMode.NoSelection)
         self.list_view.clicked.connect(self.on_artifact_clicked)
+        layout.addWidget(self.list_view, 1)
 
+        action_row = QHBoxLayout()
+        action_row.setContentsMargins(0, 0, 0, 0)
+        action_row.setSpacing(6)
+        action_row.addStretch()
 
-        root.addWidget(self.list_view, 1)
+        self.import_json_button = QPushButton(tr("artifact.json.import_button"))
+        self.import_json_button.clicked.connect(self.import_artiscan_json)
+        action_row.addWidget(self.import_json_button)
+
+        self.clear_json_button = QPushButton(tr("artifact.json.clear_button"))
+        self.clear_json_button.clicked.connect(self.clear_json_imports)
+        action_row.addWidget(self.clear_json_button)
+
+        layout.addLayout(action_row)
+        root.addWidget(panel, 1)
+        self.update_json_import_actions()
 
     def _build_build_target_selector(self, root) -> None:
         panel = QFrame()
         panel.setObjectName("build_target_panel")
         panel.setFixedWidth(TARGET_PANEL_WIDTH)
+        self.build_target_panel = panel
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(*TARGET_PANEL_MARGINS)
@@ -937,7 +1107,8 @@ class ArtifactBrowserWindow(QWidget):
     def _build_build_panel(self, root) -> None:
         panel = QFrame()
         panel.setObjectName("build_panel")
-        panel.setFixedWidth(384)
+        panel.setFixedWidth(BUILD_PANEL_WIDTH)
+        self.build_panel = panel
 
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(7, 10, 7, 10)
@@ -1216,6 +1387,10 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_title_label.setText(tr("artifact.build.targets_title"))
         self.build_target_reset_button.setText(tr("artifact.build.targets_reset"))
         self.build_target_hint_label.setText(tr("artifact.build.no_target_hint"))
+        if self.import_json_button is not None:
+            self.import_json_button.setText(tr("artifact.json.import_button"))
+        if self.clear_json_button is not None:
+            self.clear_json_button.setText(tr("artifact.json.clear_button"))
         if BUILD_TARGET_UNIVERSAL_KEY in self.build_target_items_by_key:
             self.build_target_items_by_key[BUILD_TARGET_UNIVERSAL_KEY][
                 "character_name"
@@ -1450,6 +1625,137 @@ class ArtifactBrowserWindow(QWidget):
         else:
             self.empty_label.setText("")
 
+    def update_json_import_actions(self) -> None:
+        if self.clear_json_button is None:
+            return
+        self.clear_json_button.setEnabled(count_json_imported_artifacts() > 0)
+
+    def import_artiscan_json(self) -> None:
+        if not self.confirm_discard_custom_edit():
+            return
+        if not self.confirm_discard_build_edit():
+            return
+
+        paths, _selected_filter = QFileDialog.getOpenFileNames(
+            self,
+            tr("artifact.json.import_dialog_title"),
+            str(PROJECT_ROOT),
+            tr("artifact.json.file_filter"),
+        )
+        if not paths:
+            return
+
+        summaries: list[dict] = []
+        errors: list[str] = []
+
+        for path in paths:
+            try:
+                summaries.extend(import_artiscan_json_files([path]))
+            except Exception as exc:
+                errors.append(f"{Path(path).name}: {exc}")
+
+        if summaries:
+            totals = {
+                "files": len(paths),
+                "inserted": sum(int(item.get("inserted") or 0) for item in summaries),
+                "duplicates": sum(
+                    int(item.get("skipped_duplicates") or 0)
+                    for item in summaries
+                ),
+                "invalid": sum(
+                    int(item.get("skipped_invalid") or 0)
+                    for item in summaries
+                ),
+            }
+            self.reload_from_database(
+                reset_filters=False,
+                reset_sort=False,
+                confirm_custom_edit=False,
+            )
+            message = tr("artifact.json.import_summary", **totals)
+            if errors:
+                message = (
+                    message
+                    + "\n\n"
+                    + tr(
+                        "artifact.json.import_error_summary",
+                        errors="\n".join(errors[:8]),
+                    )
+                )
+                QMessageBox.warning(self, tr("artifact.json.import_button"), message)
+            else:
+                QMessageBox.information(self, tr("artifact.json.import_button"), message)
+            return
+
+        self.update_json_import_actions()
+        QMessageBox.warning(
+            self,
+            tr("artifact.json.import_button"),
+            tr(
+                "artifact.json.import_error_summary",
+                errors="\n".join(errors[:8]) if errors else "",
+            ),
+        )
+
+    def clear_json_imports(self) -> None:
+        if not self.confirm_discard_custom_edit():
+            return
+        if not self.confirm_discard_build_edit():
+            return
+
+        count = count_json_imported_artifacts()
+        if count <= 0:
+            self.update_json_import_actions()
+            QMessageBox.information(
+                self,
+                tr("artifact.json.clear_button"),
+                tr("artifact.json.clear_none"),
+            )
+            return
+
+        answer = QMessageBox.question(
+            self,
+            tr("artifact.json.clear_button"),
+            tr("artifact.json.clear_confirm", count=count),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+
+        summary = clear_json_imported_artifacts()
+        affected_presets = list(summary.get("affected_presets") or [])
+        deleted_presets = 0
+
+        if affected_presets:
+            answer = QMessageBox.question(
+                self,
+                tr("artifact.json.clear_button"),
+                tr("artifact.json.delete_affected_presets_confirm"),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer == QMessageBox.StandardButton.Yes:
+                deleted_presets = delete_build_presets(
+                    [int(item["id"]) for item in affected_presets]
+                )
+
+        self.reload_from_database(
+            reset_filters=False,
+            reset_sort=False,
+            confirm_custom_edit=False,
+        )
+        QMessageBox.information(
+            self,
+            tr("artifact.json.clear_button"),
+            tr(
+                "artifact.json.clear_summary",
+                deleted=int(summary.get("deleted_artifacts") or 0),
+                slots=int(summary.get("cleared_slots") or 0),
+                presets=int(deleted_presets),
+            ),
+        )
+
     def reload_from_database(
         self,
         *,
@@ -1491,6 +1797,7 @@ class ArtifactBrowserWindow(QWidget):
             self.update_sort_button_text()
         self.load_build_presets()
         self.refresh_build_target_list()
+        self.update_json_import_actions()
         self.update_custom_edit_bar()
         self.update_build_panel()
 

@@ -448,6 +448,157 @@ def update_artifact_import_batch_summary(
     )
 
 
+def count_json_imported_artifacts(
+    conn: sqlite3.Connection,
+    *,
+    source: str | None = "artiscan",
+) -> int:
+    clauses = ["json_imported = 1"]
+    params: list[Any] = []
+    if source:
+        clauses.append("import_source = ?")
+        params.append(source)
+
+    row = conn.execute(
+        f"""
+        SELECT COUNT(*) AS count
+        FROM artifacts
+        WHERE {' AND '.join(clauses)}
+        """,
+        params,
+    ).fetchone()
+    return int(row["count"] or 0)
+
+
+def list_json_imported_artifact_ids(
+    conn: sqlite3.Connection,
+    *,
+    source: str | None = "artiscan",
+) -> list[int]:
+    clauses = ["json_imported = 1"]
+    params: list[Any] = []
+    if source:
+        clauses.append("import_source = ?")
+        params.append(source)
+
+    rows = conn.execute(
+        f"""
+        SELECT id
+        FROM artifacts
+        WHERE {' AND '.join(clauses)}
+        ORDER BY id
+        """,
+        params,
+    ).fetchall()
+    return [int(row["id"]) for row in rows]
+
+
+def list_build_presets_referencing_artifacts(
+    conn: sqlite3.Connection,
+    artifact_ids: list[int],
+) -> list[dict[str, Any]]:
+    artifact_ids = [int(artifact_id) for artifact_id in artifact_ids]
+    if not artifact_ids:
+        return []
+
+    placeholders = ",".join("?" for _ in artifact_ids)
+    rows = conn.execute(
+        f"""
+        SELECT
+            builds.id,
+            builds.name,
+            COUNT(slots.pos) AS slot_count
+        FROM artifact_build_slots AS slots
+        JOIN artifact_builds AS builds
+            ON builds.id = slots.build_id
+        WHERE slots.artifact_id IN ({placeholders})
+        GROUP BY builds.id
+        ORDER BY builds.name COLLATE NOCASE, builds.id
+        """,
+        artifact_ids,
+    ).fetchall()
+    return [
+        {
+            "id": int(row["id"]),
+            "name": row["name"],
+            "slot_count": int(row["slot_count"] or 0),
+        }
+        for row in rows
+    ]
+
+
+def clear_json_imported_artifacts(
+    conn: sqlite3.Connection,
+    *,
+    source: str | None = "artiscan",
+) -> dict[str, Any]:
+    artifact_ids = list_json_imported_artifact_ids(conn, source=source)
+    affected_presets = list_build_presets_referencing_artifacts(conn, artifact_ids)
+
+    if not artifact_ids:
+        return {
+            "deleted_artifacts": 0,
+            "cleared_slots": 0,
+            "affected_presets": [],
+        }
+
+    placeholders = ",".join("?" for _ in artifact_ids)
+    cleared_slots = conn.execute(
+        f"""
+        DELETE FROM artifact_build_slots
+        WHERE artifact_id IN ({placeholders})
+        """,
+        artifact_ids,
+    ).rowcount
+
+    affected_build_ids = [item["id"] for item in affected_presets]
+    if affected_build_ids:
+        build_placeholders = ",".join("?" for _ in affected_build_ids)
+        conn.execute(
+            f"""
+            UPDATE artifact_builds
+            SET updated_at = ?
+            WHERE id IN ({build_placeholders})
+            """,
+            [utc_now(), *affected_build_ids],
+        )
+
+    deleted_artifacts = conn.execute(
+        f"""
+        DELETE FROM artifacts
+        WHERE id IN ({placeholders})
+        """,
+        artifact_ids,
+    ).rowcount
+
+    return {
+        "deleted_artifacts": int(deleted_artifacts or 0),
+        "cleared_slots": int(cleared_slots or 0),
+        "affected_presets": affected_presets,
+    }
+
+
+def delete_build_presets(
+    conn: sqlite3.Connection,
+    build_ids: list[int],
+) -> int:
+    build_ids = [int(build_id) for build_id in build_ids]
+    if not build_ids:
+        return 0
+
+    placeholders = ",".join("?" for _ in build_ids)
+    return int(
+        conn.execute(
+            f"""
+            DELETE FROM artifact_builds
+            WHERE id IN ({placeholders})
+            """,
+            build_ids,
+        ).rowcount
+        or 0
+    )
+
+
 def upsert_artifact(
     conn: sqlite3.Connection,
     *,

@@ -184,15 +184,9 @@ async def wait_for_character_list_response(
             items = payload.get("data", {}).get("list", [])
             if not isinstance(items, list):
                 raise RuntimeError("character/list response has no data.list array")
-            first_names = [
-                str(item.get("name") or item.get("id"))
-                for item in items[:8]
-                if isinstance(item, dict)
-            ]
             if not character_list_future.done():
                 character_list_future.set_result(items)
-
-            print(f"[HoYoLAB Inventory] Captured character/list: {len(items)} characters")
+                print(f"[HoYoLAB Inventory] Captured character/list: {len(items)} characters")
         except Exception as exc:
             if not character_list_future.done():
                 character_list_future.set_exception(exc)

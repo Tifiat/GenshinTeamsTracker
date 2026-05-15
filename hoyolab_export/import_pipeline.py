@@ -11,6 +11,7 @@ from .auth import AuthStatus, get_auth_status
 from .artifact_db import ARTIFACT_DB_PATH
 from .artifact_importer import import_character_details_payload
 from .artifact_set_catalog import (
+    ensure_artifact_set_bonus_descriptions,
     ensure_artifact_set_names,
     ensure_hoyolab_set_mapping,
     normalize_language,
@@ -262,10 +263,13 @@ async def run_hoyolab_import() -> dict[str, Any]:
         download = await exporter._run_export_flow(
             export_page,
             after_character_list_open=after_character_list_open,
+            status_callback=print_status,
         )
 
         image_path.parent.mkdir(parents=True, exist_ok=True)
+        print_status("downloading_image")
         await download.save_as(str(image_path))
+        print_status("image_downloaded")
         exporter._validate_image(image_path)
 
         await export_page.wait_for_timeout(500)
@@ -300,10 +304,14 @@ async def run_hoyolab_import() -> dict[str, Any]:
         )
         character_details = await fetch_character_details_batch(export_page, real_ids)
 
-        print_status("importing_artifacts")
         content_language = normalize_language(character_details.get("detectedLanguage"))
         print(f"[HoYoLAB Import] HoYoLAB content language: {content_language}")
+        print_status("updating_artifact_catalog")
         set_names_summary = ensure_artifact_set_names(
+            content_language,
+            db_path=ARTIFACT_DB_PATH,
+        )
+        set_bonus_summary = ensure_artifact_set_bonus_descriptions(
             content_language,
             db_path=ARTIFACT_DB_PATH,
         )
@@ -314,9 +322,11 @@ async def run_hoyolab_import() -> dict[str, Any]:
                 "source": "character/detail.x-rpc-language",
                 "capturedAt": int(time.time() * 1000),
                 "artifactSetNames": set_names_summary,
+                "artifactSetBonusDescriptions": set_bonus_summary,
             },
         )
 
+        print_status("mapping_artifact_sets")
         print("[HoYoLAB Import] Preparing artifact set id mapping...")
         set_mapping_summary = await ensure_hoyolab_set_mapping(
             character_details,
@@ -325,6 +335,12 @@ async def run_hoyolab_import() -> dict[str, Any]:
             db_path=ARTIFACT_DB_PATH,
         )
 
+        print_status("closing_browser")
+        print("[HoYoLAB Import] Closing HoYoLAB browser...")
+        await close_export_context(context)
+        context = None
+
+        print_status("importing_artifacts")
         print("[HoYoLAB Import] Importing artifacts into SQLite...")
         artifact_summary = import_character_details_payload(
             character_details,
@@ -333,7 +349,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
         artifact_summary["set_names"] = set_names_summary
         artifact_summary["set_mapping"] = set_mapping_summary
 
-        print_status("writing_inventory")
+        print_status("updating_hoyolab_data")
         print("[HoYoLAB Import] Updating local HoYoLAB data/assets...")
         previous_manifest = read_json_or_none(manifest_path)
         previous_characters = read_json_or_none(characters_path)
@@ -370,6 +386,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
             merge_existing_assets=True,
         )
 
+        print_status("writing_import_log")
         log = build_import_log(
             image_path=image_path,
             layout_path=layout_path,

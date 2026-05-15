@@ -4,7 +4,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .models import ARTIFACT_POSITIONS, ArtifactItem, parse_hoyolab_stat_value
-from .queries import artifact_db_exists, list_all_artifacts, list_custom_sets
+from .queries import (
+    artifact_db_exists,
+    current_hoyolab_content_language,
+    list_all_artifacts,
+    list_custom_sets,
+    list_set_bonus_description_map,
+)
 from .stat_types import CRIT_DAMAGE, CRIT_RATE, CRIT_VALUE, PROC_COUNT
 
 
@@ -30,8 +36,12 @@ class ArtifactBrowserStore:
             database_exists: bool,
             artifacts: list[ArtifactItem],
             custom_sets: list[dict] | None = None,
+            set_bonus_descriptions: dict[tuple[str, int], str] | None = None,
+            content_language: str = "en-us",
     ):
         self.database_exists = database_exists
+        self.content_language = content_language
+        self.set_bonus_descriptions = set_bonus_descriptions or {}
 
         self.artifacts_by_id: dict[int, ArtifactItem] = {
             artifact.id: artifact
@@ -65,10 +75,18 @@ class ArtifactBrowserStore:
         exists = artifact_db_exists()
         artifacts = list_all_artifacts() if exists else []
         custom_sets = list_custom_sets() if exists else []
+        content_language = current_hoyolab_content_language() if exists else "en-us"
+        set_bonus_descriptions = (
+            list_set_bonus_description_map(preferred_lang=content_language)
+            if exists
+            else {}
+        )
         return cls(
             database_exists=exists,
             artifacts=artifacts,
             custom_sets=custom_sets,
+            set_bonus_descriptions=set_bonus_descriptions,
+            content_language=content_language,
         )
 
     @classmethod
@@ -77,6 +95,10 @@ class ArtifactBrowserStore:
 
     def artifact(self, artifact_id: int) -> ArtifactItem:
         return self.artifacts_by_id[artifact_id]
+
+    def set_bonus_description(self, set_uid: str, piece_count: int) -> str | None:
+        description = self.set_bonus_descriptions.get((str(set_uid or ""), int(piece_count)))
+        return description or None
 
     def ids_for_position(self, pos: int) -> list[int]:
         return list(self.ids_by_pos.get(pos, []))

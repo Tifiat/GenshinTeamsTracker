@@ -10,7 +10,13 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote, urlsplit, urlunsplit
 
-from .artifact_db import ARTIFACT_DB_PATH, connect_db, init_db
+from .artifact_db import (
+    ARTIFACT_DB_PATH,
+    connect_db,
+    init_db,
+    list_artifact_set_bonus_descriptions,
+    upsert_artifact_set_bonus_description,
+)
 from .paths import PROJECT_ROOT
 
 
@@ -21,6 +27,7 @@ SEED_CATALOG_PATH = PROJECT_ROOT / "data" / "static" / "artifact_set_catalog.jso
 
 USER_AGENT = "GenshinTeamsTracker/1.0"
 CANONICAL_LANGUAGE = "en-us"
+SEED_CATALOG_SCHEMA_VERSION = 3
 
 PIECE_ICON_FIELDS = {
     1: "flower_of_life_icon_url",
@@ -28,6 +35,10 @@ PIECE_ICON_FIELDS = {
     3: "sands_of_eon_icon_url",
     4: "goblet_of_eonothem_icon_url",
     5: "circlet_of_logos_icon_url",
+}
+BONUS_DESCRIPTION_FIELDS = {
+    2: "two_set_effect",
+    4: "four_set_effect",
 }
 ARTIFACT_POSITION_TO_POS = {
     "flower of life": 1,
@@ -307,6 +318,17 @@ def piece_icons_from_display_field(display_field: dict[str, Any]) -> dict[int, s
     return result
 
 
+def bonus_descriptions_from_display_field(display_field: dict[str, Any]) -> dict[int, str]:
+    result: dict[int, str] = {}
+
+    for piece_count, field_name in BONUS_DESCRIPTION_FIELDS.items():
+        description = str(display_field.get(field_name) or "").strip()
+        if description:
+            result[piece_count] = description
+
+    return result
+
+
 def _cached_piece_icon_url(conn, *, set_uid: str, pos: int) -> str:
     row = conn.execute(
         """
@@ -365,6 +387,31 @@ def _upsert_artifact_set_name(
         (set_uid, lang, name, normalized_name, now),
     )
     return True
+
+
+def _upsert_artifact_set_bonus_descriptions(
+    conn,
+    *,
+    set_uid: str,
+    lang: str,
+    descriptions: dict[int, str],
+    now: str,
+) -> int:
+    count = 0
+
+    for piece_count, description in sorted(descriptions.items()):
+        if upsert_artifact_set_bonus_description(
+            conn,
+            set_uid=set_uid,
+            lang=lang,
+            piece_count=piece_count,
+            description=description,
+            source="hoyowiki",
+            updated_at=now,
+        ):
+            count += 1
+
+    return count
 
 
 def _ensure_en_us_names_from_catalog(conn) -> int:
@@ -435,6 +482,7 @@ def update_artifact_set_catalog(
         "sets_seen": 0,
         "sets_upserted": 0,
         "names_upserted": 0,
+        "bonus_descriptions_upserted": 0,
         "icons_seen": 0,
         "icons_downloaded": 0,
         "icons_already_cached": 0,
@@ -535,6 +583,16 @@ def update_artifact_set_catalog(
                 now=now,
             ):
                 summary["names_upserted"] += 1
+
+            summary["bonus_descriptions_upserted"] += (
+                _upsert_artifact_set_bonus_descriptions(
+                    conn,
+                    set_uid=set_uid,
+                    lang=CANONICAL_LANGUAGE,
+                    descriptions=bonus_descriptions_from_display_field(display_field),
+                    now=now,
+                )
+            )
 
             for pos, icon_url in sorted(piece_icons.items()):
                 icon_url = str(icon_url or "").strip()
@@ -655,8 +713,11 @@ def export_seed_catalog(
             """
         ).fetchall()
 
+        bonus_rows = list_artifact_set_bonus_descriptions(conn)
+
     icons_by_set: dict[str, list[dict[str, Any]]] = {}
     names_by_set: dict[str, list[dict[str, Any]]] = {}
+    bonus_by_set: dict[str, list[dict[str, Any]]] = {}
 
     for row in icon_rows:
         icons_by_set.setdefault(row["set_uid"], []).append(
@@ -678,8 +739,20 @@ def export_seed_catalog(
             }
         )
 
+    for row in bonus_rows:
+        set_uid = row["set_uid"]
+        bonus_by_set.setdefault(set_uid, []).append(
+            {
+                "lang": row["lang"],
+                "piece_count": int(row["piece_count"]),
+                "description": row["description"],
+                "source": row["source"],
+                "updated_at": row["updated_at"],
+            }
+        )
+
     payload = {
-        "schema_version": 2,
+        "schema_version": SEED_CATALOG_SCHEMA_VERSION,
         "generated_at": utc_now(),
         "sets": [
             {
@@ -691,6 +764,7 @@ def export_seed_catalog(
                 "updated_at": row["updated_at"],
                 "names": names_by_set.get(row["set_uid"], []),
                 "icons": icons_by_set.get(row["set_uid"], []),
+                "bonus_descriptions": bonus_by_set.get(row["set_uid"], []),
             }
             for row in set_rows
         ],
@@ -721,6 +795,7 @@ def seed_artifact_set_catalog_from_file(
     sets_inserted = 0
     icons_inserted = 0
     names_inserted = 0
+    bonus_inserted = 0
 
     for item in sets:
         set_uid = item["set_uid"]
@@ -803,11 +878,27 @@ def seed_artifact_set_catalog_from_file(
             )
             icons_inserted += 1
 
+        for bonus in item.get("bonus_descriptions") or []:
+            if not isinstance(bonus, dict):
+                continue
+
+            if upsert_artifact_set_bonus_description(
+                conn,
+                set_uid=set_uid,
+                lang=bonus.get("lang") or CANONICAL_LANGUAGE,
+                piece_count=bonus.get("piece_count"),
+                description=bonus.get("description") or "",
+                source=bonus.get("source") or "seed",
+                updated_at=bonus.get("updated_at") or now,
+            ):
+                bonus_inserted += 1
+
     return {
         "seeded": True,
         "sets": sets_inserted,
         "icons": icons_inserted,
         "names": names_inserted,
+        "bonus_descriptions": bonus_inserted,
     }
 
 
@@ -940,6 +1031,134 @@ def ensure_artifact_set_names(
         "updated": matched,
         "skipped": skipped,
         "catalog": catalog_summary,
+    }
+
+
+def _ensure_artifact_set_bonus_descriptions_for_language(
+    lang: str,
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+    allow_network: bool = True,
+) -> dict[str, Any]:
+    lang = normalize_language(lang)
+    catalog_summary = ensure_artifact_set_catalog(db_path=db_path, allow_network=False)
+
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        existing_row = conn.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM artifact_set_bonus_descriptions
+            WHERE lang = ?
+            """,
+            (lang,),
+        ).fetchone()
+        existing_count = int(existing_row["count"] or 0)
+        conn.commit()
+
+    if not allow_network:
+        return {
+            "lang": lang,
+            "source": "existing",
+            "existing": existing_count,
+            "updated": 0,
+            "catalog": catalog_summary,
+        }
+
+    try:
+        items = fetch_hoyowiki_artifact_sets(language=lang)
+    except (OSError, urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as exc:
+        return {
+            "lang": lang,
+            "source": "fallback",
+            "existing": existing_count,
+            "updated": 0,
+            "error": str(exc),
+            "catalog": catalog_summary,
+        }
+
+    now = utc_now()
+    updated = 0
+    skipped = 0
+
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        entry_rows = conn.execute(
+            """
+            SELECT set_uid, hoyowiki_entry_id
+            FROM artifact_sets
+            """
+        ).fetchall()
+        set_uid_by_entry_id = {
+            str(row["hoyowiki_entry_id"]): row["set_uid"]
+            for row in entry_rows
+        }
+
+        for item in items:
+            entry_id = _entry_page_id(item)
+            set_uid = set_uid_by_entry_id.get(entry_id)
+            if not set_uid:
+                skipped += 1
+                continue
+
+            display_field = item.get("display_field")
+            if not isinstance(display_field, dict):
+                skipped += 1
+                continue
+
+            descriptions = bonus_descriptions_from_display_field(display_field)
+            if not descriptions:
+                skipped += 1
+                continue
+
+            updated += _upsert_artifact_set_bonus_descriptions(
+                conn,
+                set_uid=set_uid,
+                lang=lang,
+                descriptions=descriptions,
+                now=now,
+            )
+
+        conn.commit()
+
+    return {
+        "lang": lang,
+        "source": "hoyowiki",
+        "existing": existing_count,
+        "updated": updated,
+        "skipped": skipped,
+        "catalog": catalog_summary,
+    }
+
+
+def ensure_artifact_set_bonus_descriptions(
+    lang: str | None,
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+    allow_network: bool = True,
+    include_english: bool = True,
+) -> dict[str, Any]:
+    requested_lang = normalize_language(lang)
+    languages: list[str] = []
+
+    if include_english:
+        languages.append(CANONICAL_LANGUAGE)
+    if requested_lang not in languages:
+        languages.append(requested_lang)
+
+    results = {
+        language: _ensure_artifact_set_bonus_descriptions_for_language(
+            language,
+            db_path=db_path,
+            allow_network=allow_network,
+        )
+        for language in languages
+    }
+
+    return {
+        "requested_lang": requested_lang,
+        "languages": languages,
+        "results": results,
     }
 
 

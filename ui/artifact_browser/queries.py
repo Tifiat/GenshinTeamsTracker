@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -11,12 +12,14 @@ from hoyolab_export.artifact_db import (
     delete_build_preset as db_delete_build_preset,
     get_build_preset as db_get_build_preset,
     init_db,
+    list_artifact_set_bonus_descriptions as db_list_artifact_set_bonus_descriptions,
     list_build_presets as db_list_build_presets,
+    normalize_artifact_set_lang,
     replace_artifact_build_slots,
     replace_artifact_build_targets,
     update_build_preset as db_update_build_preset,
 )
-from hoyolab_export.paths import PROJECT_ROOT
+from hoyolab_export.paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
 
 from .models import (
     ARTIFACT_POSITIONS,
@@ -29,6 +32,43 @@ from .models import (
 
 def artifact_db_exists(db_path: str | Path = ARTIFACT_DB_PATH) -> bool:
     return Path(db_path).exists()
+
+
+def current_hoyolab_content_language() -> str:
+    path = HOYOLAB_DATA_DIR / "account_language.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return "en-us"
+
+    return normalize_artifact_set_lang(data.get("contentLanguage"))
+
+
+def list_set_bonus_description_map(
+    *,
+    preferred_lang: str | None = None,
+    fallback_lang: str = "en-us",
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> dict[tuple[str, int], str]:
+    if not artifact_db_exists(db_path):
+        return {}
+
+    fallback = normalize_artifact_set_lang(fallback_lang)
+    preferred = normalize_artifact_set_lang(preferred_lang or current_hoyolab_content_language())
+    languages = [fallback]
+    if preferred != fallback:
+        languages.append(preferred)
+
+    result: dict[tuple[str, int], str] = {}
+    with connect_db(db_path) as conn:
+        init_db(conn)
+        for language in languages:
+            for row in db_list_artifact_set_bonus_descriptions(conn, lang=language):
+                description = str(row.get("description") or "").strip()
+                if not description:
+                    continue
+                result[(str(row["set_uid"]), int(row["piece_count"]))] = description
+    return result
 
 
 def _resolve_icon_path(local_path: str | None) -> Path | None:

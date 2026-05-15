@@ -24,6 +24,13 @@ def connect_db(db_path: str | Path = ARTIFACT_DB_PATH) -> sqlite3.Connection:
     return conn
 
 
+def normalize_artifact_set_lang(language: str | None) -> str:
+    value = str(language or "").strip().replace("_", "-").lower()
+    if not value or value == "en":
+        return "en-us"
+    return value
+
+
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(
         """
@@ -62,6 +69,19 @@ def init_db(conn: sqlite3.Connection) -> None:
 
             PRIMARY KEY (set_uid, lang),
             FOREIGN KEY (set_uid) REFERENCES artifact_sets(set_uid) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS artifact_set_bonus_descriptions (
+            set_uid TEXT NOT NULL,
+            lang TEXT NOT NULL,
+            piece_count INTEGER NOT NULL,
+            description TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'hoyowiki',
+            updated_at TEXT NOT NULL,
+
+            PRIMARY KEY (set_uid, lang, piece_count),
+            FOREIGN KEY (set_uid) REFERENCES artifact_sets(set_uid) ON DELETE CASCADE,
+            CHECK (piece_count IN (2, 4))
         );
 
         CREATE TABLE IF NOT EXISTS artifacts (
@@ -141,6 +161,9 @@ def init_db(conn: sqlite3.Connection) -> None:
 
         CREATE INDEX IF NOT EXISTS idx_artifact_set_names_lang_normalized
             ON artifact_set_names(lang, normalized_name);
+
+        CREATE INDEX IF NOT EXISTS idx_artifact_set_bonus_descriptions_lang
+            ON artifact_set_bonus_descriptions(lang);
         
         CREATE INDEX IF NOT EXISTS idx_artifacts_pos
             ON artifacts(pos);
@@ -350,6 +373,121 @@ def upsert_artifact(
     )
 
     return int(cursor.lastrowid), True
+
+
+def upsert_artifact_set_bonus_description(
+    conn: sqlite3.Connection,
+    *,
+    set_uid: str,
+    lang: str,
+    piece_count: int,
+    description: str,
+    source: str = "hoyowiki",
+    updated_at: str | None = None,
+) -> bool:
+    set_uid = str(set_uid or "").strip()
+    lang = normalize_artifact_set_lang(lang)
+    try:
+        piece_count = int(piece_count)
+    except (TypeError, ValueError):
+        return False
+    description = str(description or "").strip()
+    source = str(source or "hoyowiki").strip() or "hoyowiki"
+    updated_at = updated_at or utc_now()
+
+    if not set_uid or not lang or piece_count not in {2, 4} or not description:
+        return False
+
+    conn.execute(
+        """
+        INSERT INTO artifact_set_bonus_descriptions (
+            set_uid,
+            lang,
+            piece_count,
+            description,
+            source,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(set_uid, lang, piece_count) DO UPDATE SET
+            description = excluded.description,
+            source = excluded.source,
+            updated_at = excluded.updated_at
+        """,
+        (set_uid, lang, piece_count, description, source, updated_at),
+    )
+    return True
+
+
+def get_artifact_set_bonus_description(
+    conn: sqlite3.Connection,
+    *,
+    set_uid: str,
+    lang: str,
+    piece_count: int,
+) -> str | None:
+    row = conn.execute(
+        """
+        SELECT description
+        FROM artifact_set_bonus_descriptions
+        WHERE set_uid = ?
+            AND lang = ?
+            AND piece_count = ?
+        """,
+        (
+            str(set_uid or "").strip(),
+            normalize_artifact_set_lang(lang),
+            int(piece_count),
+        ),
+    ).fetchone()
+    return str(row["description"]) if row else None
+
+
+def list_artifact_set_bonus_descriptions(
+    conn: sqlite3.Connection,
+    *,
+    set_uid: str | None = None,
+    lang: str | None = None,
+) -> list[dict[str, Any]]:
+    clauses = []
+    params: list[Any] = []
+
+    if set_uid is not None:
+        clauses.append("set_uid = ?")
+        params.append(str(set_uid or "").strip())
+
+    if lang is not None:
+        clauses.append("lang = ?")
+        params.append(normalize_artifact_set_lang(lang))
+
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    rows = conn.execute(
+        f"""
+        SELECT
+            set_uid,
+            lang,
+            piece_count,
+            description,
+            source,
+            updated_at
+        FROM artifact_set_bonus_descriptions
+        {where}
+        ORDER BY set_uid, lang, piece_count
+        """,
+        params,
+    ).fetchall()
+
+    return [
+        {
+            "set_uid": row["set_uid"],
+            "lang": row["lang"],
+            "piece_count": int(row["piece_count"]),
+            "description": row["description"],
+            "source": row["source"],
+            "updated_at": row["updated_at"],
+        }
+        for row in rows
+    ]
 
 
 def replace_substats(
@@ -1282,6 +1420,7 @@ def count_rows(conn: sqlite3.Connection) -> dict[str, int]:
         "artifact_sets",
         "artifact_set_piece_icons",
         "artifact_set_names",
+        "artifact_set_bonus_descriptions",
     ]
 
     result = {}

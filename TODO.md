@@ -95,12 +95,12 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
   - icon with `2`: show 2-piece bonus description;
   - icon with `4`: show 4-piece bonus description;
   - 2+2: show both 2-piece descriptions.
-- [ ] Refactor existing custom tooltip logic into `ui/utils/tooltips.py`.
-- [ ] Blocker: artifact set bonus descriptions are not yet available in the local data pipeline/storage.
-- [ ] Extend HoYoWiki artifact set catalog/import pipeline to collect 2p/4p bonus descriptions.
-- [ ] Store set bonus descriptions with language/content locale.
-- [ ] Content language should follow HoYoLAB/API content language, not necessarily UI language.
-- [ ] Add DB/catalog support for set bonus descriptions if missing.
+- [x] Refactor existing custom tooltip logic into `ui/utils/tooltips.py`.
+- [x] Extend HoYoWiki artifact set catalog/import pipeline to collect 2p/4p bonus descriptions.
+- [x] Store set bonus descriptions with language/content locale.
+- [x] Content language should follow HoYoLAB/API content language, not necessarily UI language.
+- [x] Add DB/catalog support for set bonus descriptions if missing.
+- [ ] Wire stored set bonus descriptions into custom tooltip UI.
 
 ## Artifact Browser: Popup Selection UI
 

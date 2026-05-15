@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import html
 import json
+import re
 from pathlib import Path
 
 from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt, QSize
@@ -54,6 +56,7 @@ from ui.utils.pixmap_utils import (
     save_persistent_pixmap,
     scale_trimmed_pixmap_to_size,
 )
+from ui.utils.tooltips import install_custom_tooltip
 from .list_model import ArtifactRoles
 from .queries import (
     calculate_build_summary,
@@ -2214,6 +2217,10 @@ class ArtifactBrowserWindow(QWidget):
             label.setFixedSize(BUILD_ROW_BONUS_STACK_WIDTH, BUILD_ROW_BONUS_STACK_HEIGHT)
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             label.setPixmap(pixmap)
+            rows: list[tuple[int, str]] = []
+            for item in active_sets:
+                rows.extend(self._set_bonus_tooltip_rows(item))
+            self._install_set_bonus_tooltip(label, rows)
             return label
 
         if not active_sets:
@@ -2231,6 +2238,7 @@ class ArtifactBrowserWindow(QWidget):
         label.setFixedSize(BUILD_ROW_BONUS_STACK_WIDTH, BUILD_ROW_BONUS_STACK_HEIGHT)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setPixmap(pixmap)
+        self._install_set_bonus_tooltip(label, self._set_bonus_tooltip_rows(active_sets[0]))
         return label
 
     def start_new_build_preset(self) -> None:
@@ -2841,6 +2849,75 @@ class ArtifactBrowserWindow(QWidget):
                 active_sets.append(active)
         return active_sets
 
+    @staticmethod
+    def _clean_set_bonus_description(description: str) -> str:
+        text = str(description or "").strip()
+        if not text:
+            return ""
+
+        text = re.sub(r"</p>\s*<p[^>]*>", "\n", text, flags=re.IGNORECASE)
+        text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+        text = re.sub(r"</?p[^>]*>", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"<[^>]+>", "", text)
+        text = html.unescape(text)
+        text = re.sub(r"[ \t]+", " ", text)
+        text = re.sub(r"\s*\n\s*", "\n", text)
+        return text.strip()
+
+    def _set_bonus_tooltip_rows(self, item: dict) -> list[tuple[int, str]]:
+        set_uid = str(item.get("set_uid") or "").strip()
+        if not set_uid:
+            return []
+
+        count = int(item.get("count") or 0)
+        piece_counts = (2, 4) if count >= 4 else (2,) if count >= 2 else ()
+        rows: list[tuple[int, str]] = []
+
+        for piece_count in piece_counts:
+            description = self.store.set_bonus_description(set_uid, piece_count)
+            description = self._clean_set_bonus_description(description or "")
+            if description:
+                rows.append((piece_count, description))
+
+        return rows
+
+    def _set_bonus_tooltip_html(self, rows: list[tuple[int, str]]) -> str:
+        rendered_rows = []
+        for piece_count, description in rows:
+            description_html = html.escape(description).replace("\n", "<br>")
+            rendered_rows.append(
+                "<tr>"
+                "<td valign='top' style='padding: 1px 8px 5px 0;'>"
+                "<span style='"
+                "background-color: #4a3b22; "
+                "color: #f0d58a; "
+                "border: 1px solid #8f7440; "
+                "border-radius: 5px; "
+                "font-weight: 800; "
+                "padding: 1px 6px;"
+                f"'>{int(piece_count)}</span>"
+                "</td>"
+                "<td valign='top' style='padding: 1px 0 5px 0;'>"
+                f"{description_html}"
+                "</td>"
+                "</tr>"
+            )
+
+        if not rendered_rows:
+            return ""
+
+        return (
+            "<table cellspacing='0' cellpadding='0' "
+            "style='color: #f4ead8; font-size: 12px; font-weight: 600;'>"
+            f"{''.join(rendered_rows)}"
+            "</table>"
+        )
+
+    def _install_set_bonus_tooltip(self, widget: QWidget, rows: list[tuple[int, str]]) -> None:
+        tooltip = self._set_bonus_tooltip_html(rows)
+        if tooltip:
+            install_custom_tooltip(widget, tooltip)
+
     def _make_set_bonus_cell(self, item: dict) -> QFrame:
         cell = QFrame()
         cell.setObjectName("build_slot_mini")
@@ -2873,6 +2950,7 @@ class ArtifactBrowserWindow(QWidget):
         if icon.pixmap() is None:
             count = str(item["count"])
             icon.setText(f"{str(item.get('set_name') or item.get('set_uid') or '?')[:2]}{count}")
+        self._install_set_bonus_tooltip(icon, self._set_bonus_tooltip_rows(item))
         layout.addWidget(icon)
         return cell
 

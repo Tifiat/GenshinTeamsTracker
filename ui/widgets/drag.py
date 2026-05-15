@@ -1,65 +1,11 @@
 import os
 
-from PySide6.QtCore import Qt, QMimeData, QEvent, QTimer, QPoint
+from PySide6.QtCore import Qt, QMimeData, QEvent, QTimer
 from PySide6.QtGui import QPixmap, QDrag
 from PySide6.QtWidgets import QLabel, QMessageBox, QApplication
 
 from localization import tr
-
-
-class FloatingTooltip(QLabel):
-	def __init__(self):
-		super().__init__(None)
-
-		self.setWindowFlags(
-			Qt.ToolTip
-			| Qt.FramelessWindowHint
-			| Qt.WindowStaysOnTopHint
-			| Qt.WindowTransparentForInput
-			| Qt.WindowDoesNotAcceptFocus
-		)
-		self.setAttribute(Qt.WA_ShowWithoutActivating, True)
-
-		self.setWordWrap(True)
-		self.setMaximumWidth(280)
-		self.setStyleSheet(
-			"""
-			QLabel {
-				color: #f4ead8;
-				background-color: rgba(24, 22, 20, 245);
-				border: 1px solid rgba(226, 202, 148, 180);
-				border-radius: 8px;
-				padding: 7px 10px;
-				font-size: 12px;
-				font-weight: 600;
-			}
-			"""
-		)
-
-	def show_for(self, owner, text: str):
-		if not text:
-			self.hide()
-			return
-
-		self.setText(text)
-		self.adjustSize()
-
-		# Стабильная позиция: над иконкой по центру.
-		global_top_center = owner.mapToGlobal(QPoint(owner.width() // 2, 0))
-		x = global_top_center.x() - self.width() // 2
-		y = global_top_center.y() - self.height() - 8
-
-		screen = QApplication.screenAt(global_top_center)
-		if screen is None:
-			screen = QApplication.primaryScreen()
-
-		if screen is not None:
-			area = screen.availableGeometry()
-			x = max(area.left() + 8, min(x, area.right() - self.width() - 8))
-			y = max(area.top() + 8, min(y, area.bottom() - self.height() - 8))
-
-		self.move(x, y)
-		self.show()
+from ui.utils.tooltips import install_custom_tooltip
 
 
 class DraggableIcon(QLabel):
@@ -68,12 +14,7 @@ class DraggableIcon(QLabel):
 		self.image_path = image_path
 		self.base_size = size
 		self._src_pixmap = QPixmap(image_path)
-
-		self._custom_tooltip = ""
-		self._tooltip_popup = FloatingTooltip()
-		self._tooltip_timer = QTimer(self)
-		self._tooltip_timer.setSingleShot(True)
-		self._tooltip_timer.timeout.connect(self._show_custom_tooltip)
+		self._tooltip_controller = install_custom_tooltip(self)
 
 		self.setFixedSize(size, size)
 		self.setCursor(Qt.OpenHandCursor)
@@ -82,32 +23,11 @@ class DraggableIcon(QLabel):
 
 	def setToolTip(self, text):
 		"""Перехватываем системный tooltip Qt и используем свой стабильный popup."""
-		self._custom_tooltip = text or ""
+		self._tooltip_controller.set_text(text or "")
 		super().setToolTip("")
 
-	def _show_custom_tooltip(self):
-		if not self._custom_tooltip:
-			return
-		if not self.isVisible():
-			return
-		self._tooltip_popup.show_for(self, self._custom_tooltip)
-
 	def _hide_custom_tooltip(self):
-		self._tooltip_timer.stop()
-		self._tooltip_popup.hide()
-
-	def enterEvent(self, event):
-		if self._custom_tooltip:
-			self._tooltip_timer.start(180)
-		super().enterEvent(event)
-
-	def leaveEvent(self, event):
-		self._hide_custom_tooltip()
-		super().leaveEvent(event)
-
-	def hideEvent(self, event):
-		self._hide_custom_tooltip()
-		super().hideEvent(event)
+		self._tooltip_controller.hide()
 
 	def _update_pixmap(self):
 		"""Пересобрать pixmap с учетом текущего DPI экрана."""

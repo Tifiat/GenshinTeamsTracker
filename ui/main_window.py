@@ -7,6 +7,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, QProcess, QSize, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QGridLayout,
     QHBoxLayout,
@@ -55,6 +56,7 @@ from ui.widgets.drag import DraggableIcon
 from ui.widgets.team import TeamSlot
 from ui.widgets.timers import AbyssFloorRow
 from ui.widgets.loader import HoYoLABLoadingDialog
+from ui.widgets.overlays.login_hint import HoYoLABLoginHintOverlay
 
 ASSETS_CHAR = str(HOYOLAB_CHARACTER_ASSETS_DIR)
 ASSETS_WEAP = str(HOYOLAB_WEAPON_ASSETS_DIR)
@@ -62,15 +64,31 @@ STATE_FILE = "state.json"
 RUNS_FILE = "runs_history.json"
 HOYOLAB_MANIFEST_FILE = PROJECT_ROOT / "data" / "hoyolab" / "crop_manifest.json"
 HOYOLAB_IMPORT_STATUSES = {
-    "preparing": ("loader.preparing", 0.05),
-    "opening_hoyolab": ("loader.opening_hoyolab", 0.15),
-    "collecting_inventory": ("loader.collecting_inventory", 0.30),
-    "exporting_image": ("loader.exporting_image", 0.45),
-    "building_layout": ("loader.building_layout", 0.65),
-    "writing_inventory": ("loader.writing_inventory", 0.72),
-    "fetching_character_details": ("loader.fetching_character_details", 0.80),
-    "importing_artifacts": ("loader.importing_artifacts", 0.86),
-    "cropping_assets": ("loader.cropping_assets", 0.92),
+    "preparing": ("loader.preparing", 0.03),
+    "opening_hoyolab": ("loader.opening_hoyolab", 0.10),
+    "exporting_image": ("loader.exporting_image", 0.15),
+    "opening_character_list": ("loader.opening_character_list", 0.18),
+    "collecting_inventory": ("loader.collecting_inventory", 0.24),
+    "waiting_export_images": ("loader.waiting_export_images", 0.30),
+    "opening_share_menu": ("loader.opening_share_menu", 0.34),
+    "starting_image_download": ("loader.starting_image_download", 0.38),
+    "waiting_image_download": ("loader.waiting_image_download", 0.42),
+    "retrying_image_download_2": ("loader.retrying_image_download_2", 0.43),
+    "retrying_image_download_3": ("loader.retrying_image_download_3", 0.44),
+    "waiting_image_generation": ("loader.waiting_image_generation", 0.45),
+    "using_image_fallback": ("loader.using_image_fallback", 0.46),
+    "downloading_image": ("loader.downloading_image", 0.48),
+    "image_downloaded": ("loader.image_downloaded", 0.52),
+    "building_layout": ("loader.building_layout", 0.58),
+    "writing_inventory": ("loader.writing_inventory", 0.63),
+    "fetching_character_details": ("loader.fetching_character_details", 0.70),
+    "updating_artifact_catalog": ("loader.updating_artifact_catalog", 0.76),
+    "mapping_artifact_sets": ("loader.mapping_artifact_sets", 0.80),
+    "closing_browser": ("loader.closing_browser", 0.84),
+    "importing_artifacts": ("loader.importing_artifacts", 0.87),
+    "updating_hoyolab_data": ("loader.updating_hoyolab_data", 0.91),
+    "cropping_assets": ("loader.cropping_assets", 0.95),
+    "writing_import_log": ("loader.writing_import_log", 0.98),
     "done": ("loader.done", 1.0),
 }
 HOYOLAB_IMPORT_COOLDOWN_MS = 5000
@@ -150,6 +168,8 @@ class App(QWidget):
         self._initial_grid_built = False
         self._run_history_window = None
         self._hoyolab_login_process = None
+        self._hoyolab_login_hint = None
+        self._hoyolab_login_screen = None
         self._hoyolab_export_process = None
         self._hoyolab_loader = None
         self._hoyolab_import_output_buffer = ""
@@ -280,26 +300,62 @@ class App(QWidget):
             return
 
         try:
-            self._hoyolab_login_process = open_login_browser(HOYOLAB_PROFILE_DIR)
+            self._hoyolab_login_screen = QApplication.primaryScreen() or self.screen()
+            login_geometry = self._hoyolab_login_screen.availableGeometry() if self._hoyolab_login_screen else None
+            window_x = login_geometry.left() + 40 if login_geometry is not None else None
+            window_y = login_geometry.top() + 40 if login_geometry is not None else None
+            self._hoyolab_login_process = open_login_browser(
+                HOYOLAB_PROFILE_DIR,
+                x=window_x,
+                y=window_y,
+            )
         except Exception as exc:
+            self._hoyolab_login_screen = None
             QMessageBox.warning(self, tr("common.hoyolab"), tr("hoyolab.open_browser_failed", error=exc))
             return
 
         self.btn_hoyolab_export.setText(tr("hoyolab.login_waiting_button"))
         self.btn_hoyolab_export.setEnabled(False)
+        self._show_hoyolab_login_hint()
         self._hoyolab_auth_timer.start()
+
+    def _show_hoyolab_login_hint(self):
+        if self._hoyolab_login_hint is not None:
+            self._hoyolab_login_hint.raise_()
+            self._hoyolab_login_hint.set_target_screen(self._hoyolab_login_screen)
+            self._hoyolab_login_hint.position_on_screen()
+            return
+
+        self._hoyolab_login_hint = HoYoLABLoginHintOverlay(self, target_screen=self._hoyolab_login_screen)
+        self._hoyolab_login_hint.show()
+        self._hoyolab_login_hint.raise_()
+
+    def _close_hoyolab_login_hint(self):
+        if self._hoyolab_login_hint is None:
+            return
+
+        hint = self._hoyolab_login_hint
+        self._hoyolab_login_hint = None
+        hint.close()
+        hint.deleteLater()
 
     def poll_hoyolab_login_browser(self):
         if self._hoyolab_login_process is None:
             self._hoyolab_auth_timer.stop()
+            self._hoyolab_login_screen = None
+            self._close_hoyolab_login_hint()
             self.refresh_hoyolab_auth_status()
             return
 
         if self._hoyolab_login_process.poll() is None:
+            if self._hoyolab_login_hint is not None:
+                self._hoyolab_login_hint.position_on_screen()
             return
 
         self._hoyolab_login_process = None
+        self._hoyolab_login_screen = None
         self._hoyolab_auth_timer.stop()
+        self._close_hoyolab_login_hint()
         self.refresh_hoyolab_auth_status()
 
     def change_hoyolab_account(self):
@@ -810,6 +866,9 @@ class App(QWidget):
 
         if self._hoyolab_loader is not None and hasattr(self._hoyolab_loader, "retranslate_ui"):
             self._hoyolab_loader.retranslate_ui()
+
+        if self._hoyolab_login_hint is not None and hasattr(self._hoyolab_login_hint, "retranslate_ui"):
+            self._hoyolab_login_hint.retranslate_ui()
 
         self.refresh_hoyolab_auth_status()
 

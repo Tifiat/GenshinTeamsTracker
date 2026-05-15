@@ -1,5 +1,6 @@
 ﻿import asyncio
 import base64
+import os
 import re
 import subprocess
 import time
@@ -37,6 +38,22 @@ def safe_exception_summary(exc: BaseException | None) -> str:
     if len(text) > 500:
         text = text[:500] + "..."
     return text or type(exc).__name__
+
+
+def hoyolab_debug_logs_enabled() -> bool:
+    return os.environ.get("GTT_HOYOLAB_DEBUG_LOGS", "").lower() in {"1", "true", "yes", "on"}
+
+
+def debug_log(message: str) -> None:
+    if hoyolab_debug_logs_enabled():
+        print(message)
+
+
+def short_log_text(value: object, limit: int = 180) -> str:
+    text = re.sub(r"\s+", " ", str(value or "")).strip()
+    if len(text) > limit:
+        return text[:limit] + "..."
+    return text
 
 
 def wait_for_devtools_port(
@@ -667,15 +684,15 @@ class HoyolabExporter:
             self.html2canvas_patch_status["errors"].append(
                 f"html2canvas runtime wrapper did not find {html2canvas_target!r} in route: {url}"
             )
-            print(f"[HoYoLAB Exporter] html2canvas runtime wrapper did not match: {url}")
+            debug_log(f"[HoYoLAB Exporter] html2canvas runtime wrapper did not match: {url}")
 
         if html2canvas_matched:
-            print(
+            debug_log(
                 "[HoYoLAB Exporter] html2canvas runtime wrapper matched "
                 f"({html2canvas_strategy}, count={html2canvas_match_count}): {url}"
             )
         else:
-            print(f"[HoYoLAB Exporter] JS patched without html2canvas runtime wrapper match: {url}")
+            debug_log(f"[HoYoLAB Exporter] JS patched without html2canvas runtime wrapper match: {url}")
 
         await route.fulfill(
             status=200,
@@ -798,7 +815,7 @@ class HoyolabExporter:
 
             dismissed = True
             label = clicked.get("text") or clicked.get("aria") or clicked.get("title") or clicked.get("className")
-            print(f"[HoYoLAB Exporter] Dismissed popup: {label}")
+            debug_log(f"[HoYoLAB Exporter] Dismissed popup: {short_log_text(label)}")
             await page.wait_for_timeout(400)
 
         if press_escape:
@@ -877,18 +894,97 @@ class HoyolabExporter:
             }
             """
         )
-        print(f"[HoYoLAB Exporter] Visible blockers debug: {blockers}")
+        if hoyolab_debug_logs_enabled():
+            print(f"[HoYoLAB Exporter] Visible blockers debug: {blockers}")
+        else:
+            print(
+                "[HoYoLAB Exporter] Visible blockers debug: "
+                f"{len(blockers)} candidates. Set GTT_HOYOLAB_DEBUG_LOGS=1 for details."
+            )
 
-    async def _captured_canvas_download(self, page: Page) -> InMemoryDownload:
+    async def _clear_captured_canvas_state(self, page: Page) -> None:
+        try:
+            await page.evaluate(
+                """
+                () => {
+                    window.__gtt_last_export_canvas_data_url__ = null;
+                    window.__gtt_last_export_canvas_error__ = null;
+                }
+                """
+            )
+        except Exception:
+            pass
+
+    async def _visible_loading_image_count(self, page: Page) -> int:
+        return int(await page.evaluate(
+            """
+            () => {
+                const visible = (el) => {
+                    const rect = el.getBoundingClientRect();
+                    const style = getComputedStyle(el);
+                    return rect.width > 0
+                        && rect.height > 0
+                        && style.display !== "none"
+                        && style.visibility !== "hidden"
+                        && Number(style.opacity || 1) > 0;
+                };
+
+                return Array.from(document.querySelectorAll(".gt-image--loading"))
+                    .filter(visible)
+                    .length;
+            }
+            """
+        ))
+
+    async def _html2canvas_call_count(self, page: Page) -> int:
+        try:
+            return int(await page.evaluate(
+                """
+                () => {
+                    const status = window.__genshin_html2canvas_patch_status__ || {};
+                    return Array.isArray(status.calls) ? status.calls.length : 0;
+                }
+                """
+            ))
+        except Exception:
+            return 0
+
+    async def _wait_for_export_images_ready(self, page: Page, timeout_ms: int = 15_000) -> None:
+        deadline = time.time() + timeout_ms / 1000
+        last_count = 0
+
+        while time.time() < deadline:
+            try:
+                last_count = await self._visible_loading_image_count(page)
+            except Exception:
+                return
+
+            if last_count <= 0:
+                return
+
+            await page.wait_for_timeout(500)
+
+        print(
+            "[HoYoLAB Exporter] Warning: "
+            f"{last_count} visible HoYoLAB images were still loading before export."
+        )
+
+    async def _captured_canvas_download(
+        self,
+        page: Page,
+        *,
+        attempts: int = 20,
+        interval_ms: int = 500,
+    ) -> InMemoryDownload:
         data_url = None
 
-        for _ in range(20):
+        for _ in range(attempts):
             data_url = await page.evaluate(
                 "() => window.__gtt_last_export_canvas_data_url__ || null"
             )
             if data_url:
                 break
-            await page.wait_for_timeout(500)
+            await page.wait_for_timeout(interval_ms)
 
         if not data_url:
             error = await page.evaluate(
@@ -903,6 +999,221 @@ class HoyolabExporter:
 
         data = base64.b64decode(str(data_url)[len(prefix):])
         return InMemoryDownload(data)
+
+    async def _ensure_share_popover_open(self, page: Page, item_selector: str) -> None:
+        item = page.locator(item_selector).first
+        try:
+            if await item.is_visible(timeout=700):
+                return
+        except Exception:
+            pass
+
+        await self._click_with_popup_retry(page, ".me-share__btn", timeout=10_000)
+        await page.wait_for_timeout(900)
+        await item.wait_for(state="visible", timeout=10_000)
+
+    async def _download_export_image_from_popover(
+        self,
+        page: Page,
+        item_selector: str,
+        *,
+        attempts: int = 3,
+        status_callback: Optional[Callable[[str], None]] = None,
+    ) -> InMemoryDownload:
+        last_error: Exception | None = None
+        loop = asyncio.get_running_loop()
+        download_future = loop.create_future()
+
+        def on_download(download):
+            if not download_future.done():
+                download_future.set_result(download)
+
+        async def wait_for_download(timeout_ms: int):
+            return await asyncio.wait_for(
+                asyncio.shield(download_future),
+                timeout=timeout_ms / 1000,
+            )
+
+        async def return_download_if_ready():
+            if download_future.done():
+                return await download_future
+            return None
+
+        async def wait_for_captured_canvas(timeout_ms: int) -> InMemoryDownload | None:
+            attempts_count = max(1, timeout_ms // 500)
+            try:
+                return await self._captured_canvas_download(
+                    page,
+                    attempts=attempts_count,
+                    interval_ms=500,
+                )
+            except Exception:
+                return None
+
+        page.on("download", on_download)
+
+        try:
+            for attempt in range(1, attempts + 1):
+                download = await return_download_if_ready()
+                if download is not None:
+                    return download
+
+                if attempt > 1:
+                    try:
+                        return await wait_for_download(1_500)
+                    except asyncio.TimeoutError:
+                        pass
+
+                    print(
+                        "[HoYoLAB Exporter] Retrying export image download "
+                        f"({attempt}/{attempts})..."
+                    )
+                    if status_callback is not None:
+                        status_callback(f"retrying_image_download_{attempt}")
+                    try:
+                        await self._ensure_share_popover_open(page, item_selector)
+                    except Exception as exc:
+                        last_error = exc
+                        print(
+                            "[HoYoLAB Exporter] Could not reopen share popover before "
+                            f"download retry {attempt}/{attempts}: "
+                            f"{safe_exception_summary(exc)}"
+                        )
+                        if attempt < attempts:
+                            await page.wait_for_timeout(1200)
+                        continue
+                    break
+
+                download = await return_download_if_ready()
+                if download is not None:
+                    return download
+
+                await self._clear_captured_canvas_state(page)
+                html2canvas_calls_before = await self._html2canvas_call_count(page)
+
+                try:
+                    if status_callback is not None:
+                        status_callback("starting_image_download")
+                    await self._click_with_popup_retry(
+                        page,
+                        item_selector,
+                        timeout=8_000,
+                        trusted=True,
+                    )
+                except Exception as exc:
+                    last_error = exc
+                    print(
+                        "[HoYoLAB Exporter] Export image download click "
+                        f"{attempt}/{attempts} failed: "
+                        f"{safe_exception_summary(exc)}"
+                    )
+                    if attempt < attempts:
+                        await page.wait_for_timeout(1200)
+                        continue
+                    break
+
+                try:
+                    if status_callback is not None:
+                        status_callback("waiting_image_download")
+                    return await wait_for_download(8_000)
+                except asyncio.TimeoutError:
+                    pass
+
+                fallback = await wait_for_captured_canvas(1_500)
+                download = await return_download_if_ready()
+                if download is not None:
+                    return download
+
+                if fallback is not None:
+                    try:
+                        return await wait_for_download(2_000)
+                    except asyncio.TimeoutError:
+                        print(
+                            "[HoYoLAB Exporter] Browser download event was not emitted; "
+                            "using captured html2canvas PNG fallback."
+                        )
+                        return fallback
+
+                html2canvas_calls_after = await self._html2canvas_call_count(page)
+                if html2canvas_calls_after > html2canvas_calls_before:
+                    print(
+                        "[HoYoLAB Exporter] html2canvas export generation started; "
+                        "waiting longer for the browser download event."
+                    )
+                    if status_callback is not None:
+                        status_callback("waiting_image_generation")
+                    try:
+                        return await wait_for_download(35_000)
+                    except asyncio.TimeoutError:
+                        fallback = await wait_for_captured_canvas(5_000)
+                        download = await return_download_if_ready()
+                        if download is not None:
+                            return download
+
+                        if fallback is not None:
+                            try:
+                                return await wait_for_download(2_000)
+                            except asyncio.TimeoutError:
+                                print(
+                                    "[HoYoLAB Exporter] Browser download event was not emitted; "
+                                    "using captured html2canvas PNG fallback."
+                                )
+                                return fallback
+
+                try:
+                    return await wait_for_download(1_500)
+                except asyncio.TimeoutError:
+                    pass
+
+                print(
+                    "[HoYoLAB Exporter] Export image download attempt "
+                    f"{attempt}/{attempts} did not start a browser download."
+                )
+
+                if attempt < attempts:
+                    await page.wait_for_timeout(1200)
+
+            await self._debug_visible_blockers(page)
+
+            try:
+                if status_callback is not None:
+                    status_callback("using_image_fallback")
+                fallback = await self._captured_canvas_download(page)
+                print(
+                    "[HoYoLAB Exporter] Browser download event was not emitted; "
+                    "using captured html2canvas PNG fallback."
+                )
+                return fallback
+            except Exception as fallback_exc:
+                print(
+                    "[HoYoLAB Exporter] html2canvas PNG fallback failed: "
+                    f"{safe_exception_summary(fallback_exc)}"
+                )
+                try:
+                    if status_callback is not None:
+                        status_callback("using_image_fallback")
+                    dom_fallback = await self._dom_root_screenshot_download(page)
+                    print(
+                        "[HoYoLAB Exporter] Using DOM root screenshot fallback "
+                        "after html2canvas PNG fallback failed."
+                    )
+                    return dom_fallback
+                except Exception as dom_fallback_exc:
+                    print(
+                        "[HoYoLAB Exporter] DOM root screenshot fallback failed: "
+                        f"{safe_exception_summary(dom_fallback_exc)}"
+                    )
+                    if last_error is not None:
+                        print(
+                            "[HoYoLAB Exporter] Last browser download error: "
+                            f"{safe_exception_summary(last_error)}"
+                        )
+                    raise fallback_exc
+        finally:
+            try:
+                page.remove_listener("download", on_download)
+            except Exception:
+                pass
 
     async def _dom_root_screenshot_download(self, page: Page) -> InMemoryDownload:
         selectors = [
@@ -932,6 +1243,7 @@ class HoyolabExporter:
             self,
             page: Page,
             after_character_list_open: Optional[Callable[[], Awaitable[None]]] = None,
+            status_callback: Optional[Callable[[str], None]] = None,
     ):
         await page.wait_for_load_state("domcontentloaded")
         await self._dismiss_known_popups(page)
@@ -939,52 +1251,27 @@ class HoyolabExporter:
         await self._unblock_user_input(page)
 
         try:
+            if status_callback is not None:
+                status_callback("opening_character_list")
             await self._click_with_popup_retry(page, ".block-title-right")
             await page.wait_for_timeout(2500)
 
             if after_character_list_open is not None:
                 await after_character_list_open()
 
+            if status_callback is not None:
+                status_callback("waiting_export_images")
+            await self._wait_for_export_images_ready(page)
+            if status_callback is not None:
+                status_callback("opening_share_menu")
             await self._click_with_popup_retry(page, ".me-share__btn")
             await page.wait_for_timeout(2500)
 
-            try:
-                async with page.expect_download(timeout=45_000) as download_info:
-                    await self._click_with_popup_retry(
-                        page,
-                        '.me-share-popover__item:has(img[src*="35b0742f6ed3b58d65f1491ca1bf94e2"])',
-                        timeout=30_000,
-                        trusted=True,
-                    )
-            except Exception:
-                await self._debug_visible_blockers(page)
-                try:
-                    fallback = await self._captured_canvas_download(page)
-                    print(
-                        "[HoYoLAB Exporter] Browser download event was not emitted; "
-                        "using captured html2canvas PNG fallback."
-                    )
-                    return fallback
-                except Exception as fallback_exc:
-                    print(
-                        "[HoYoLAB Exporter] html2canvas PNG fallback failed: "
-                        f"{safe_exception_summary(fallback_exc)}"
-                    )
-                    try:
-                        dom_fallback = await self._dom_root_screenshot_download(page)
-                        print(
-                            "[HoYoLAB Exporter] Using DOM root screenshot fallback "
-                            "after html2canvas PNG fallback failed."
-                        )
-                        return dom_fallback
-                    except Exception as dom_fallback_exc:
-                        print(
-                            "[HoYoLAB Exporter] DOM root screenshot fallback failed: "
-                            f"{safe_exception_summary(dom_fallback_exc)}"
-                        )
-                        raise fallback_exc
-
-            return await download_info.value
+            return await self._download_export_image_from_popover(
+                page,
+                '.me-share-popover__item:has(img[src*="35b0742f6ed3b58d65f1491ca1bf94e2"])',
+                status_callback=status_callback,
+            )
 
         finally:
             await self._unblock_user_input(page)

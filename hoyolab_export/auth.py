@@ -83,13 +83,15 @@ def open_login_browser(
     profile_dir: str | Path,
     width: int = 1280,
     height: int = 900,
+    x: int | None = None,
+    y: int | None = None,
 ) -> subprocess.Popen:
     profile_dir = Path(profile_dir)
     profile_dir.mkdir(parents=True, exist_ok=True)
     mark_profile_clean(profile_dir)
     browser_exe = find_browser_exe()
 
-    return subprocess.Popen([
+    args = [
         browser_exe,
         f"--user-data-dir={profile_dir}",
         "--no-first-run",
@@ -98,7 +100,11 @@ def open_login_browser(
         "--disable-features=InfiniteSessionRestore",
         f"--window-size={width},{height}",
         HOYOLAB_URL,
-    ])
+    ]
+    if x is not None and y is not None:
+        args.insert(-1, f"--window-position={x},{y}")
+
+    return subprocess.Popen(args)
 
 
 def get_auth_status(profile_dir: str | Path) -> AuthStatus:

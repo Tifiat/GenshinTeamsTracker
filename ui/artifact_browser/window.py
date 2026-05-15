@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QAbstractItemView,
     QButtonGroup,
-    QFileDialog,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -72,21 +71,22 @@ from ui.utils.tooltips import install_custom_tooltip
 from .list_model import ArtifactRoles
 from .queries import (
     calculate_build_summary,
-    clear_json_imported_artifacts,
-    count_json_imported_artifacts,
     create_custom_set,
     delete_custom_set,
     get_custom_set_artifact_ids,
     get_build_preset,
-    import_artiscan_json_files,
     list_build_presets,
     replace_custom_set_artifacts,
     save_build_preset,
     delete_build_preset,
-    delete_build_presets,
 )
 from .card_delegate import ArtifactCardDelegate, GRID_SIZE
 from .filter_popup import SetsFilterPopup
+from .json_import_actions import (
+    json_imports_available,
+    run_artiscan_import_action,
+    run_clear_json_imports_action,
+)
 from .list_model import ArtifactListModel
 from .models import ARTIFACT_POSITIONS
 from .region_popup import RegionFilterPopup
@@ -1628,132 +1628,35 @@ class ArtifactBrowserWindow(QWidget):
     def update_json_import_actions(self) -> None:
         if self.clear_json_button is None:
             return
-        self.clear_json_button.setEnabled(count_json_imported_artifacts() > 0)
+        self.clear_json_button.setEnabled(json_imports_available())
 
-    def import_artiscan_json(self) -> None:
-        if not self.confirm_discard_custom_edit():
-            return
-        if not self.confirm_discard_build_edit():
-            return
-
-        paths, _selected_filter = QFileDialog.getOpenFileNames(
-            self,
-            tr("artifact.json.import_dialog_title"),
-            str(PROJECT_ROOT),
-            tr("artifact.json.file_filter"),
-        )
-        if not paths:
-            return
-
-        summaries: list[dict] = []
-        errors: list[str] = []
-
-        for path in paths:
-            try:
-                summaries.extend(import_artiscan_json_files([path]))
-            except Exception as exc:
-                errors.append(f"{Path(path).name}: {exc}")
-
-        if summaries:
-            totals = {
-                "files": len(paths),
-                "inserted": sum(int(item.get("inserted") or 0) for item in summaries),
-                "duplicates": sum(
-                    int(item.get("skipped_duplicates") or 0)
-                    for item in summaries
-                ),
-                "invalid": sum(
-                    int(item.get("skipped_invalid") or 0)
-                    for item in summaries
-                ),
-            }
-            self.reload_from_database(
-                reset_filters=False,
-                reset_sort=False,
-                confirm_custom_edit=False,
-            )
-            message = tr("artifact.json.import_summary", **totals)
-            if errors:
-                message = (
-                    message
-                    + "\n\n"
-                    + tr(
-                        "artifact.json.import_error_summary",
-                        errors="\n".join(errors[:8]),
-                    )
-                )
-                QMessageBox.warning(self, tr("artifact.json.import_button"), message)
-            else:
-                QMessageBox.information(self, tr("artifact.json.import_button"), message)
-            return
-
-        self.update_json_import_actions()
-        QMessageBox.warning(
-            self,
-            tr("artifact.json.import_button"),
-            tr(
-                "artifact.json.import_error_summary",
-                errors="\n".join(errors[:8]) if errors else "",
-            ),
+    def _confirm_json_action(self) -> bool:
+        return (
+            self.confirm_discard_custom_edit()
+            and self.confirm_discard_build_edit()
         )
 
-    def clear_json_imports(self) -> None:
-        if not self.confirm_discard_custom_edit():
-            return
-        if not self.confirm_discard_build_edit():
-            return
-
-        count = count_json_imported_artifacts()
-        if count <= 0:
-            self.update_json_import_actions()
-            QMessageBox.information(
-                self,
-                tr("artifact.json.clear_button"),
-                tr("artifact.json.clear_none"),
-            )
-            return
-
-        answer = QMessageBox.question(
-            self,
-            tr("artifact.json.clear_button"),
-            tr("artifact.json.clear_confirm", count=count),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if answer != QMessageBox.StandardButton.Yes:
-            return
-
-        summary = clear_json_imported_artifacts()
-        affected_presets = list(summary.get("affected_presets") or [])
-        deleted_presets = 0
-
-        if affected_presets:
-            answer = QMessageBox.question(
-                self,
-                tr("artifact.json.clear_button"),
-                tr("artifact.json.delete_affected_presets_confirm"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if answer == QMessageBox.StandardButton.Yes:
-                deleted_presets = delete_build_presets(
-                    [int(item["id"]) for item in affected_presets]
-                )
-
+    def _reload_after_json_action(self) -> None:
         self.reload_from_database(
             reset_filters=False,
             reset_sort=False,
             confirm_custom_edit=False,
         )
-        QMessageBox.information(
+
+    def import_artiscan_json(self) -> None:
+        run_artiscan_import_action(
             self,
-            tr("artifact.json.clear_button"),
-            tr(
-                "artifact.json.clear_summary",
-                deleted=int(summary.get("deleted_artifacts") or 0),
-                slots=int(summary.get("cleared_slots") or 0),
-                presets=int(deleted_presets),
-            ),
+            confirm_ready=self._confirm_json_action,
+            reload_database=self._reload_after_json_action,
+            update_actions=self.update_json_import_actions,
+        )
+
+    def clear_json_imports(self) -> None:
+        run_clear_json_imports_action(
+            self,
+            confirm_ready=self._confirm_json_action,
+            reload_database=self._reload_after_json_action,
+            update_actions=self.update_json_import_actions,
         )
 
     def reload_from_database(

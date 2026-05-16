@@ -190,6 +190,15 @@ class ArtifactBrowserStore:
         artifact: ArtifactItem,
         selected_stat_types: list[int],
     ) -> int:
+        if (
+            ArtifactBrowserStore._crit_value_main_priority_enabled(
+                selected_stat_types
+            )
+            and artifact.pos == 5
+            and artifact.main_property_type in {CRIT_RATE, CRIT_DAMAGE}
+        ):
+            return 0
+
         for index, property_type in enumerate(selected_stat_types):
             if property_type in {CRIT_VALUE, PROC_COUNT}:
                 continue
@@ -198,6 +207,17 @@ class ArtifactBrowserStore:
                 return index
 
         return 999
+
+    @staticmethod
+    def _crit_value_main_priority_enabled(selected_stat_types: list[int]) -> bool:
+        if not selected_stat_types or selected_stat_types[0] != CRIT_VALUE:
+            return False
+        if CRIT_RATE in selected_stat_types or CRIT_DAMAGE in selected_stat_types:
+            return False
+        return any(
+            property_type not in {CRIT_VALUE, PROC_COUNT}
+            for property_type in selected_stat_types[1:]
+        )
 
     @classmethod
     def _artifact_sort_key(

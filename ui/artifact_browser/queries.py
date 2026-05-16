@@ -32,6 +32,7 @@ from .models import (
     ArtifactTagRef,
     int_or_none,
 )
+from .stat_types import localized_stat_label
 
 
 def artifact_db_exists(db_path: str | Path = ARTIFACT_DB_PATH) -> bool:
@@ -201,7 +202,11 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
     ).fetchall()
 
     artifact_ids = [int(row["id"]) for row in rows]
-    substats_by_artifact = _load_substats(conn, artifact_ids)
+    substats_by_artifact = _load_substats(
+        conn,
+        artifact_ids,
+        preferred_lang=preferred_lang,
+    )
     tags_by_artifact = _load_tags(conn, artifact_ids)
 
     result: list[ArtifactItem] = []
@@ -224,7 +229,11 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
                 rarity=int_or_none(row["rarity"]) or 0,
                 level=int_or_none(row["level"]) or 0,
                 main_property_type=int(row["main_property_type"]),
-                main_property_name=row["main_property_name"],
+                main_property_name=localized_stat_label(
+                    int(row["main_property_type"]),
+                    language=preferred_lang,
+                    fallback=row["main_property_name"],
+                ),
                 main_property_value=row["main_property_value"],
                 icon_key=icon_key,
                 icon_url=row["set_icon_url"] or "",
@@ -239,7 +248,12 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
     return result
 
 
-def _load_substats(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactSubstat]]:
+def _load_substats(
+    conn,
+    artifact_ids: list[int],
+    *,
+    preferred_lang: str | None = None,
+) -> dict[int, list[ArtifactSubstat]]:
     if not artifact_ids:
         return {}
 
@@ -272,7 +286,11 @@ def _load_substats(conn, artifact_ids: list[int]) -> dict[int, list[ArtifactSubs
             ArtifactSubstat(
                 slot_index=int(row["slot_index"]),
                 property_type=int(row["property_type"]),
-                property_name=row["property_name"],
+                property_name=localized_stat_label(
+                    int(row["property_type"]),
+                    language=preferred_lang,
+                    fallback=row["property_name"],
+                ),
                 value=row["value"],
                 times=row["times"],
             )

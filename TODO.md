@@ -27,40 +27,52 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
   - sands/goblet main stats show as a compact badge.
 - Compact preset-row bonus rendering is separate from build preview block set bonus rendering.
 - Compact preset-row bonus icons use in-memory cache plus persistent PNG cache at `data/cache/ui/preset_bonus_icons/`.
+- Compact preset-row set bonus icons have custom tooltips backed by stored artifact set bonus descriptions.
 - Build target preview strip is a baked pixmap strip, not many child widgets; target preview icons are not clickable and no tooltip is planned there.
 - Target preview caches:
   - `data/cache/ui/target_preview_icons/`;
   - `data/cache/ui/target_preview_strips/`.
 - Build preview block geometry is explicit and should keep this structure: target strip, 5 artifact mini-cards, set bonus preview container, summary stats block.
+- Build preview set bonus cells have custom tooltips backed by stored artifact set bonus descriptions.
+- Artifact set 2p/4p bonus descriptions are stored/imported in SQLite.
+- Build target region filters are implemented through the `assets/filters/Statue.png` popup.
+- Character regions come from HoYoWiki character list `menu_id=2` and are cached at
+  `data/cache/hoyowiki/character_region_catalog.json`.
+- Region filters are multi-select: OR inside the region group, AND with element/weapon/rarity.
+- Artifact Browser has fixed bottom-row `Import JSON` / `Clear JSON` buttons under the artifact list.
+- JSON clear deletes only `json_imported=1` + `import_source='artiscan'` artifacts and clears affected build preset slots.
 
 ## Artifact Browser: Current Priority
 
-- [ ] Manually review the new Build Target Selector MVP:
-  - layout is `Artifact grid | Build Target Selector | Preset panel`;
-  - filter strip stays fixed;
-  - Universal is always visible;
-  - character list scrolls;
-  - selected targets filter presets by intersection.
-- [ ] Verify target persistence:
+- [x] Final manual smoke pass for the Build Target Selector:
+  - region popup opens/closes from the Statue button;
+  - region multi-select combines with element/weapon/rarity filters correctly;
+  - reset-all clears element, weapon, rarity, and region filters;
+  - Universal remains consistent with existing target filter behavior.
+- [x] Final manual smoke pass for build preset target persistence:
   - creating a preset with Universal and/or characters creates one preset with all selected targets;
   - editing a saved preset reflects its targets in the selector;
   - saving preserves/updates edited preset targets, then restores previous browsing target selection;
   - cancel restores previous browsing target selection without silently losing draft changes.
-- [ ] Polish target selector width and item spacing after visual review.
-- [ ] Manually verify build preview and target preview after the latest geometry/cache work:
+- [x] Final manual smoke pass for build preview and target preview:
   - target preview strip is a baked pixmap strip;
   - drag-scroll and wheel-scroll work without visible scrollbars;
   - gradient chevrons appear only on scrollable edges;
   - Universal uses `users.svg` through the auto-contrast helper;
   - 5 artifact mini-cards + set-bonus container fit without clipping;
   - stat summary remains 2 columns x 5 rows.
-- [ ] Later round/crop normal character preview portraits with transparent alpha corners, a lightweight mask, or another cheap approach. Do not do this before the current deadline.
-- [ ] Smoke-test build preset lifecycle:
+- [x] Final manual smoke pass for Artifact Browser JSON import/clear:
+  - importing the same Artiscan file twice skips duplicates on the second import;
+  - imported JSON artifacts use localized stat labels in the browser;
+  - clearing JSON imports deletes only Artiscan-inserted artifacts;
+  - affected build preset slots are cleared;
+  - optional affected-preset deletion works.
+- [x] Smoke-test build preset lifecycle:
   - no selected target hides create/list and keeps preview placeholders visible;
   - selecting one target shows only presets containing that target;
   - selecting multiple targets shows only presets containing all selected targets;
   - save/cancel/delete still work for saved and new drafts.
-- [ ] Smoke-test custom sets after the build target selector changes:
+- [x] Smoke-test custom sets after the build target selector changes:
   - create/edit/delete;
   - dirty-confirm;
   - edit highlight and bottom save/cancel bar;
@@ -90,53 +102,55 @@ This file is for future agents. Keep it short, current, English, and mostly ASCI
 
 ## Artifact Browser: Set Bonuses / Tooltips
 
-- [ ] Add custom tooltip support for set bonus icons wherever set bonus icons are shown, except the target preview strip.
-- [ ] Tooltip behavior:
-  - icon with `2`: show 2-piece bonus description;
-  - icon with `4`: show 4-piece bonus description;
-  - 2+2: show both 2-piece descriptions.
 - [x] Refactor existing custom tooltip logic into `ui/utils/tooltips.py`.
 - [x] Extend HoYoWiki artifact set catalog/import pipeline to collect 2p/4p bonus descriptions.
 - [x] Store set bonus descriptions with language/content locale.
-- [x] Content language should follow HoYoLAB/API content language, not necessarily UI language.
-- [x] Add DB/catalog support for set bonus descriptions if missing.
-- [ ] Wire stored set bonus descriptions into custom tooltip UI.
+- [x] Content language follows HoYoLAB/API content language, not necessarily UI language.
+- [x] Wire stored set bonus descriptions into custom tooltip UI.
+- [x] Tooltip behavior:
+  - icon with `2`: show 2-piece bonus description;
+  - icon with `4`: show 4-piece bonus description;
+  - 2+2: show both 2-piece descriptions.
+- [x] Target preview strip intentionally has no set bonus tooltips.
 
 ## Artifact Browser: Popup Selection UI
 
-- [ ] Make Sort popup and Sets popup selection behavior visually consistent with artifacts/targets/presets.
-- [ ] Remove visible checkbox/checkmark UI from those popup rows.
-- [ ] Sort popup should display selected order number on the right, not before text.
-- [ ] Sets popup should use the same selected-row style where applicable.
-- [ ] Sort game/custom sets by number of owned pieces descending.
+- [x] Sort and Sets popup buttons toggle closed on repeated button click.
+- [x] Sort game/custom sets by number of owned pieces descending.
+- [ ] Future polish: make Sort popup and Sets popup selection behavior visually consistent with artifacts/targets/presets.
 
 ## Artifact Browser: Target Selector Follow-Ups
 
 - [x] Add region filters through a popup with region icons.
-- [x] Use HoYoWiki character gallery region tags as the current data source.
-- [ ] Future: replace localized-name region joins with a stable character id mapping if HoYoWiki exposes one.
+- [x] Use HoYoWiki character list `menu_id=2` region data as the current data source.
+- [x] Cache character region catalog at `data/cache/hoyowiki/character_region_catalog.json`.
+- [x] Region filters support multi-select and combine with other target filters through AND.
+- [x] Keep region joins isolated around normalized localized character names; stable game ids are not available from the current HoYoWiki path.
 
 ## Artifact Browser: Sorting / Data
 
-- [ ] Keep default sort stable: rarity desc, level desc, effective crit value desc, set name, artifact name, id.
-- [ ] Circlet CV sorting should include CR/CD main stat contribution for sorting.
-- [ ] Keep Crit Value as the first sort option and Proc Count as the last sort option.
-- [ ] Treat missing proc `times` as `0`; Artiscan/GOOD samples do not include proc counts.
+- [x] Keep default sort stable: rarity desc, level desc, effective crit value desc, set name, artifact name, id.
+- [x] Circlet CV sorting includes CR/CD main stat contribution for sorting.
+- [x] Keep Crit Value as the first sort option and Proc Count as the last sort option.
+- [x] Treat missing proc `times` as `0`; Artiscan/GOOD samples do not include proc counts.
 
 ## Artifact Import / JSON
 
-- [ ] Implement artifact import from JSON, initially for Artiscan-compatible data.
-- [ ] Use structured GOOD fields only; no image matching.
-- [ ] Map GOOD `setKey`, `slotKey`, and stat keys into existing `set_uid`, `pos`, and property types.
-- [ ] Imported JSON artifacts do not have proc counts.
-- [ ] Prevent duplicates: the same artifact must not be inserted twice.
-- [ ] Allow multiple JSON imports.
-- [ ] Add a safe "clear imported from JSON" action.
-- [ ] Clearing JSON-imported artifacts must not delete pre-existing duplicate artifacts that were kept instead of imported copies.
-- [ ] After clearing imported artifacts, clear corresponding preset slots.
-- [ ] Then ask in Russian: "После удаления соответствующие слоты в пресетах будут очищены. Удалить эти пресеты?" with confirm/cancel.
-- [ ] First-day patch TODO after JSON import: automatic proc counting for imported artifacts.
+- [x] Implement backend import foundation for Artiscan/GOOD JSON.
+- [x] Use structured GOOD fields only; no image matching.
+- [x] Map GOOD `setKey`, `slotKey`, and stat keys into existing `set_uid`, `pos`, and property types.
+- [x] Add source-independent `content_fingerprint` duplicate detection.
+- [x] Allow multiple JSON files from the Artifact Browser UI.
+- [x] Add safe "clear imported from JSON" UI action.
+- [x] Clearing JSON-imported artifacts does not delete pre-existing duplicate artifacts that were kept instead of imported copies.
+- [x] After clearing imported artifacts, clear corresponding preset slots.
+- [x] Ask whether to delete affected presets after slot cleanup when applicable.
+- [ ] First-day/future patch: automatic proc counting for imported artifacts.
 - [ ] Check other export/import services and compatibility.
+
+## Pre-Release Patch
+
+- [ ] Round/crop normal character preview portraits after all card-like windows and slots are present, so the final card treatment can be chosen consistently across the app.
 
 ## Artifact Browser: Final UI Polish
 

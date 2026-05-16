@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from localization import available_languages, tr_for_language
+
 
 # Virtual sort key, not a HoYoLAB property type.
 CRIT_VALUE = -1
@@ -124,6 +126,47 @@ def stat_badge(property_type: int) -> str:
 
 def stat_label_key(property_type: int) -> str:
     return STAT_LABEL_KEYS[property_type]
+
+
+def stat_label_language(language: str | None) -> str | None:
+    value = str(language or "").strip().replace("_", "-").lower()
+    if not value:
+        return None
+
+    aliases = {
+        "en-us": "en",
+        "en": "en",
+        "ru-ru": "ru",
+        "ru": "ru",
+        "pt": "pt-br",
+        "pt-br": "pt-br",
+        "br": "pt-br",
+    }
+    value = aliases.get(value, value)
+    supported = set(available_languages())
+    if value in supported:
+        return value
+
+    base = value.split("-", 1)[0]
+    return aliases.get(base, base) if aliases.get(base, base) in supported else None
+
+
+def localized_stat_label(
+    property_type: int,
+    *,
+    language: str | None,
+    fallback: str | None = None,
+) -> str:
+    label_language = stat_label_language(language)
+    if label_language is None:
+        return fallback or str(property_type)
+
+    label_key = STAT_LABEL_KEYS.get(int(property_type))
+    if label_key is None:
+        return fallback or str(property_type)
+
+    label = tr_for_language(label_language, label_key)
+    return fallback if label == label_key and fallback else label
 
 
 def sortable_stat_options() -> list[SortableStatOption]:

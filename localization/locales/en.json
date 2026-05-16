@@ -37,6 +37,7 @@
   "filter.region.nod_krai": "Nod-Krai",
   "filter.region.snezhnaya": "Snezhnaya",
   "filter.region.other": "Other",
+  "filter.target.clear_all": "Clear target filters",
   "hoyolab.login_button": "Authorize",
   "hoyolab.switch_account": "Switch account",
   "hoyolab.login_waiting_button": "Waiting for browser to close",

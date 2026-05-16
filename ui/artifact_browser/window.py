@@ -723,6 +723,8 @@ class ArtifactBrowserWindow(QWidget):
         self.selected_sort_stat_types: list[int] = []
         self._sort_popup: SortStatsPopup | None = None
         self._sets_popup: SetsFilterPopup | None = None
+        self._suppress_next_sort_popup_open = False
+        self._suppress_next_sets_popup_open = False
         self.position_buttons: dict[int, QPushButton] = {}
         self.edit_selection_mode = EDIT_MODE_NONE
         self.editing_custom_set_id: int | None = None
@@ -742,8 +744,10 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_region_filters: set[str] = set()
         self._region_popup: RegionFilterPopup | None = None
         self._suppress_next_region_popup_open = False
+        self.build_target_filter_buttons: list[tuple[QPushButton, set, object]] = []
         self._character_region_by_name: dict[str, dict] = {}
         self._region_names_by_key: dict[str, str] = {}
+        self.build_target_filter_reset_button: QPushButton | None = None
         self.build_target_region_button: QPushButton | None = None
         self.editing_build_id: int | None = None
         self.editing_build_name: str = ""
@@ -949,9 +953,11 @@ class ArtifactBrowserWindow(QWidget):
 
         self.sets_button = QPushButton(tr("artifact.sets.button"))
         self.sort_button = QPushButton(tr("artifact.sort.button"))
+        self.sort_button.pressed.connect(self.on_sort_button_pressed)
         self.sort_button.clicked.connect(self.show_sort_popup)
         top.addWidget(self.sort_button)
         self.sets_button.setObjectName("sets_button")
+        self.sets_button.pressed.connect(self.on_sets_button_pressed)
         self.sets_button.clicked.connect(self.show_sets_popup)
         top.addWidget(self.sets_button)
 
@@ -1020,7 +1026,18 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_title_label = QLabel(tr("artifact.build.targets_title"))
         self.build_target_title_label.setObjectName("panel_title")
         self.build_target_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        header_row.addSpacing(TARGET_HEADER_BALANCE_WIDTH)
+        self.build_target_filter_reset_button = (
+            self._make_build_target_filter_reset_button()
+        )
+        header_row.addWidget(self.build_target_filter_reset_button)
+        header_row.addSpacing(
+            max(
+                0,
+                TARGET_HEADER_BALANCE_WIDTH
+                - TARGET_FILTER_BUTTON_SIZE
+                - TARGET_HEADER_SPACING,
+            )
+        )
         header_row.addWidget(self.build_target_title_label, 1)
 
         self.build_target_reset_button = QPushButton(tr("artifact.build.targets_reset"))
@@ -1090,6 +1107,16 @@ class ArtifactBrowserWindow(QWidget):
                 checked,
             )
         )
+        self.build_target_filter_buttons.append((button, selected_values, value))
+        return button
+
+    def _make_build_target_filter_reset_button(self) -> QPushButton:
+        button = QPushButton()
+        button.setObjectName("target_filter_button")
+        button.setIcon(QIcon(str(FILTER_ASSETS_DIR / "Icon_Back.png")))
+        button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
+        button.setToolTip(tr("filter.target.clear_all"))
+        button.clicked.connect(self.reset_build_target_filters)
         return button
 
     def _make_build_target_region_filter_button(self) -> QPushButton:
@@ -1387,6 +1414,10 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_title_label.setText(tr("artifact.build.targets_title"))
         self.build_target_reset_button.setText(tr("artifact.build.targets_reset"))
         self.build_target_hint_label.setText(tr("artifact.build.no_target_hint"))
+        if self.build_target_filter_reset_button is not None:
+            self.build_target_filter_reset_button.setToolTip(
+                tr("filter.target.clear_all")
+            )
         if self.import_json_button is not None:
             self.import_json_button.setText(tr("artifact.json.import_button"))
         if self.clear_json_button is not None:
@@ -1418,6 +1449,10 @@ class ArtifactBrowserWindow(QWidget):
         self.apply_current_filters()
 
     def show_sets_popup(self) -> None:
+        if self._suppress_next_sets_popup_open:
+            self._suppress_next_sets_popup_open = False
+            return
+
         if self._sets_popup is None:
             self._sets_popup = SetsFilterPopup(
                 game_sets=self.store.game_set_options,
@@ -1430,6 +1465,7 @@ class ArtifactBrowserWindow(QWidget):
                 on_custom_set_delete=self.delete_custom_set_from_popup,
                 parent=self,
             )
+            self._sets_popup.installEventFilter(self)
 
         button_pos = self.sets_button.mapToGlobal(QPoint(0, self.sets_button.height() + 4))
         self._move_popup_inside_screen(self._sets_popup, button_pos)
@@ -1438,18 +1474,33 @@ class ArtifactBrowserWindow(QWidget):
         self._sets_popup.activateWindow()
 
     def show_sort_popup(self) -> None:
+        if self._suppress_next_sort_popup_open:
+            self._suppress_next_sort_popup_open = False
+            return
+
         if self._sort_popup is None:
             self._sort_popup = SortStatsPopup(
                 selected_stat_types=self.selected_sort_stat_types,
                 on_selection_changed=self.on_sort_selection_changed,
                 parent=self,
             )
+            self._sort_popup.installEventFilter(self)
 
         button_pos = self.sort_button.mapToGlobal(QPoint(0, self.sort_button.height() + 4))
         self._move_popup_inside_screen(self._sort_popup, button_pos)
         self._sort_popup.show()
         self._sort_popup.raise_()
         self._sort_popup.activateWindow()
+
+    def on_sets_button_pressed(self) -> None:
+        if self._sets_popup is not None and self._sets_popup.isVisible():
+            self._suppress_next_sets_popup_open = True
+            self._sets_popup.close()
+
+    def on_sort_button_pressed(self) -> None:
+        if self._sort_popup is not None and self._sort_popup.isVisible():
+            self._suppress_next_sort_popup_open = True
+            self._sort_popup.close()
 
     def on_build_target_region_button_pressed(self) -> None:
         if self._region_popup is not None and self._region_popup.isVisible():
@@ -1533,7 +1584,7 @@ class ArtifactBrowserWindow(QWidget):
 
     def on_region_filter_selection_changed(self, selected_region_keys: set[str]) -> None:
         self.build_target_region_filters = set(selected_region_keys)
-        self._sync_build_target_region_filter_button()
+        self.sync_build_target_filter_buttons()
         self.refresh_build_target_list()
 
     def _sync_build_target_region_filter_button(self) -> None:
@@ -1943,6 +1994,7 @@ class ArtifactBrowserWindow(QWidget):
         self._clear_layout(self.build_target_list_layout)
         self.build_target_buttons_by_key.clear()
         self.build_target_reset_button.setEnabled(bool(self.selected_build_target_keys))
+        self.sync_build_target_filter_buttons()
 
         universal = self.build_target_items_by_key.get(BUILD_TARGET_UNIVERSAL_KEY)
         if universal:
@@ -1989,6 +2041,39 @@ class ArtifactBrowserWindow(QWidget):
             selected_values.add(value)
         else:
             selected_values.discard(value)
+        self.sync_build_target_filter_buttons()
+        self.refresh_build_target_list()
+
+    def any_build_target_filters_selected(self) -> bool:
+        return bool(
+            self.build_target_element_filters
+            or self.build_target_weapon_filters
+            or self.build_target_rarity_filters
+            or self.build_target_region_filters
+        )
+
+    def sync_build_target_filter_buttons(self) -> None:
+        for button, selected_values, value in self.build_target_filter_buttons:
+            button.setChecked(value in selected_values)
+        self._sync_build_target_region_filter_button()
+        if self._region_popup is not None:
+            self._region_popup.set_selected_region_keys(
+                self.build_target_region_filters
+            )
+        if self.build_target_filter_reset_button is not None:
+            self.build_target_filter_reset_button.setEnabled(
+                self.any_build_target_filters_selected()
+            )
+
+    def reset_build_target_filters(self) -> None:
+        if not self.any_build_target_filters_selected():
+            return
+
+        self.build_target_element_filters.clear()
+        self.build_target_weapon_filters.clear()
+        self.build_target_rarity_filters.clear()
+        self.build_target_region_filters.clear()
+        self.sync_build_target_filter_buttons()
         self.refresh_build_target_list()
 
     def reset_build_targets(self) -> None:
@@ -3706,6 +3791,16 @@ class ArtifactBrowserWindow(QWidget):
         return False
 
     def eventFilter(self, watched, event) -> bool:
+        if watched is self._sets_popup and event.type() == QEvent.Type.Hide:
+            button_pos = self.sets_button.mapFromGlobal(QCursor.pos())
+            if self.sets_button.rect().contains(button_pos):
+                self._suppress_next_sets_popup_open = True
+
+        if watched is self._sort_popup and event.type() == QEvent.Type.Hide:
+            button_pos = self.sort_button.mapFromGlobal(QCursor.pos())
+            if self.sort_button.rect().contains(button_pos):
+                self._suppress_next_sort_popup_open = True
+
         if watched is self._region_popup and event.type() == QEvent.Type.Hide:
             if self.build_target_region_button is not None:
                 button_pos = self.build_target_region_button.mapFromGlobal(

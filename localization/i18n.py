@@ -120,6 +120,11 @@ def get_language() -> str:
 
 def tr(key: str, **kwargs: Any) -> str:
     language = get_language()
+    return tr_for_language(language, key, **kwargs)
+
+
+def tr_for_language(language: str | None, key: str, **kwargs: Any) -> str:
+    language = _normalize_language(language)
     catalog = _load_catalog(language)
     fallback = _load_catalog(DEFAULT_LANGUAGE)
     text = catalog.get(key) or fallback.get(key) or key

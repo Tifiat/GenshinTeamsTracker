@@ -38,6 +38,7 @@ from hoyolab_export.offline_profile import (
     is_current_profile_exported,
 )
 from localization import get_language, language_options, set_language, tr
+from run_workspace import RunSnapshotV1, build_legacy_abyss_run_snapshot
 from ui.character_assets import (
     CHARACTER_RARITY_FILTERS,
     ELEMENT_FILTERS,
@@ -1043,6 +1044,9 @@ class App(QWidget):
         total = sum(f.calculate() for f in self.floors)
         self.total_label.setText(tr("main.total_seconds", seconds=total))
         self.save_state()
+
+    def build_current_run_snapshot(self) -> RunSnapshotV1:
+        return build_legacy_abyss_run_snapshot(self.teams, self.floors)
 
     def save_state(self):
         data = {

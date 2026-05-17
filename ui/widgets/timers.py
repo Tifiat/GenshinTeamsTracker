@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QSpinBo
 from PySide6.QtCore import Qt
 
 from localization import tr
+from run_workspace import AbyssTimerState, calculate_abyss_chamber_result
 
 
 class WheelSpinBox(QSpinBox):
@@ -171,11 +172,16 @@ class AbyssFloorRow(QWidget):
         self.sum_label.setText(tr("timer.sum"))
 
     def calculate(self):
-        time1 = self.START_TIME - self.t1.seconds_left
-        time2 = self.t1.seconds_left - self.t2.seconds_left
-        total = time1 + time2
+        result = calculate_abyss_chamber_result(
+            AbyssTimerState(
+                team1_left_seconds=self.t1.seconds_left,
+                team2_left_seconds=self.t2.seconds_left,
+                start_seconds=self.START_TIME,
+            ),
+            chamber_index=self.hall_number,
+        )
 
-        self.t1.result.setText(str(time1))
-        self.t2.result.setText(str(time2))
-        self.total.setText(str(total))
-        return total
+        self.t1.result.setText(str(result.team1_elapsed_seconds))
+        self.t2.result.setText(str(result.team2_elapsed_seconds))
+        self.total.setText(str(result.total_elapsed_seconds))
+        return result.total_elapsed_seconds

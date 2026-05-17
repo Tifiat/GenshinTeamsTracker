@@ -2787,6 +2787,7 @@ class ArtifactBrowserWindow(QWidget):
         self.update_edit_selection_mode()
         self.refresh_build_target_list()
         self.refresh_build_preset_list()
+        QTimer.singleShot(0, self._focus_inline_build_name_input)
 
     def select_build_preset(self, build_id: int) -> None:
         if self.edit_selection_mode != EDIT_MODE_NONE:
@@ -2818,6 +2819,15 @@ class ArtifactBrowserWindow(QWidget):
         self.update_build_create_controls()
         self.update_edit_selection_mode()
         self.apply_current_filters()
+
+    def _focus_inline_build_name_input(self) -> None:
+        if (
+            self.edit_selection_mode != EDIT_MODE_BUILD_PRESET
+            or self.build_row_name_input is None
+        ):
+            return
+        self.build_row_name_input.setFocus(Qt.FocusReason.OtherFocusReason)
+        self.build_row_name_input.selectAll()
 
     def assign_build_artifact(self, artifact_id: int) -> None:
         try:

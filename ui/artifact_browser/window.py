@@ -3,7 +3,6 @@ from __future__ import annotations
 import ctypes
 import ctypes.wintypes
 import html
-import json
 import re
 from pathlib import Path
 
@@ -37,7 +36,7 @@ from PySide6.QtGui import (
     QPixmap,
 )
 
-from hoyolab_export.paths import HOYOLAB_CHARACTER_ASSETS_DIR, PROJECT_ROOT
+from hoyolab_export.paths import PROJECT_ROOT
 from hoyolab_export.character_region_catalog import (
     REGION_ICON_FILES,
     REGION_LABEL_KEYS,
@@ -54,7 +53,7 @@ from ui.character_assets import (
     character_matches_filters,
     character_name,
     character_sort_key,
-    manifest_asset_items,
+    load_account_character_asset_items,
 )
 from ui.utils.icon_utils import auto_contrast_svg_icon, auto_contrast_svg_pixmap
 from ui.utils.marquee_label import MarqueeButton
@@ -469,7 +468,6 @@ BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD = 16
 BUILD_ROW_STAT_BADGE_WIDTH = 42
 BUILD_ROW_STAT_BADGE_HEIGHT = 34
 BUILD_ROW_STAT_BADGE_MAX_CHARS = 5
-HOYOLAB_MANIFEST_FILE = PROJECT_ROOT / "data" / "hoyolab" / "crop_manifest.json"
 BUILD_TARGET_UNIVERSAL_KEY = "universal"
 
 PERCENT_STAT_TYPES = {
@@ -1899,12 +1897,7 @@ class ArtifactBrowserWindow(QWidget):
                 "path": None,
             }
         }
-        manifest = self.load_hoyolab_manifest()
-        assets = manifest_asset_items(
-            manifest,
-            "characterAssets",
-            HOYOLAB_CHARACTER_ASSETS_DIR,
-        )
+        assets = load_account_character_asset_items()
         for asset in assets:
             char_id = character_id(asset)
             if char_id is None:
@@ -1924,16 +1917,6 @@ class ArtifactBrowserWindow(QWidget):
                 "region_key": (region_entry or {}).get("region_key") or "",
                 "region_name": (region_entry or {}).get("region_name") or "",
             }
-
-    def load_hoyolab_manifest(self) -> dict:
-        if not HOYOLAB_MANIFEST_FILE.exists():
-            return {}
-        try:
-            with open(HOYOLAB_MANIFEST_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as exc:
-            print(f"Failed to load HoYoLAB manifest: {exc}")
-            return {}
 
     def _region_icon_path(self, region_key: str) -> Path | None:
         icon_name = REGION_ICON_FILES.get(region_key)

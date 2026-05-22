@@ -66,6 +66,15 @@ def main() -> int:
         print("artifacts seen:", artifact_summary.get("relics_seen"))
         print("artifacts inserted:", artifact_summary.get("artifacts_inserted"))
         print("artifacts existing:", artifact_summary.get("artifacts_existing"))
+    account_storage_summary = result.get("accountStorageSummary") or {}
+    account_storage_error = result.get("accountStorageError")
+    if account_storage_summary:
+        print("account characters:", account_storage_summary.get("characters_seen"))
+        print("account talents:", account_storage_summary.get("talents_seen"))
+        print("account weapon stacks:", account_storage_summary.get("weapon_stacks_seen"))
+        print("account sync warnings:", len(account_storage_summary.get("warnings") or []))
+    elif account_storage_error:
+        print("account SQLite sync warning:", account_storage_error)
     print("manifest:", result.get("manifestPath"))
     print("character details:", result.get("characterDetailsPath"))
     print("overlay:", result.get("overlayPath"))

@@ -16,16 +16,28 @@ from ui.team_card_prototype import TeamCardPrototypeWidget
 
 DEFAULT_SMOKE_CHARACTER_NAME = "Тома"
 DEFAULT_SMOKE_BUILD_ID = 20
+DEFAULT_SMOKE_WEAPON_ID = "13407"
+DEFAULT_SMOKE_WEAPON_LEVEL = 70
+DEFAULT_SMOKE_WEAPON_REFINEMENT = 5
+DEFAULT_SMOKE_WEAPON_PROMOTE_LEVEL = 4
 
 
 def build_real_smoke_team_builder_state(
     *,
     character_name: str = DEFAULT_SMOKE_CHARACTER_NAME,
     build_id: int = DEFAULT_SMOKE_BUILD_ID,
+    weapon_id: str = DEFAULT_SMOKE_WEAPON_ID,
+    weapon_level: int = DEFAULT_SMOKE_WEAPON_LEVEL,
+    weapon_refinement: int = DEFAULT_SMOKE_WEAPON_REFINEMENT,
+    weapon_promote_level: int = DEFAULT_SMOKE_WEAPON_PROMOTE_LEVEL,
 ):
     report = build_team_card_data_smoke_report_from_paths(
         character_name=character_name,
         build_id=int(build_id),
+        weapon_id=weapon_id,
+        weapon_level=int(weapon_level),
+        weapon_refinement=int(weapon_refinement),
+        weapon_promote_level=int(weapon_promote_level),
     )
     state = create_empty_team_builder_state(team_count=1)
     state = state.set_character(0, 0, _selected_character(report))
@@ -97,6 +109,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--fake", action="store_true", help="Use local fake data.")
     parser.add_argument("--character-name", default=DEFAULT_SMOKE_CHARACTER_NAME)
     parser.add_argument("--build-id", type=int, default=DEFAULT_SMOKE_BUILD_ID)
+    parser.add_argument("--weapon-id", default=DEFAULT_SMOKE_WEAPON_ID)
+    parser.add_argument("--weapon-level", type=int, default=DEFAULT_SMOKE_WEAPON_LEVEL)
+    parser.add_argument(
+        "--weapon-refinement",
+        type=int,
+        default=DEFAULT_SMOKE_WEAPON_REFINEMENT,
+    )
+    parser.add_argument(
+        "--weapon-promote-level",
+        type=int,
+        default=DEFAULT_SMOKE_WEAPON_PROMOTE_LEVEL,
+    )
     args = parser.parse_args(argv)
 
     if args.fake:
@@ -106,6 +130,10 @@ def main(argv: list[str] | None = None) -> int:
         state = build_real_smoke_team_builder_state(
             character_name=args.character_name,
             build_id=args.build_id,
+            weapon_id=args.weapon_id,
+            weapon_level=args.weapon_level,
+            weapon_refinement=args.weapon_refinement,
+            weapon_promote_level=args.weapon_promote_level,
         )
         title = "TeamCard Prototype"
     return show_team_card_prototype(state, title=title)
@@ -126,15 +154,26 @@ def _selected_character(report: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _details_data_from_smoke_report(report: Mapping[str, Any]) -> dict[str, Any]:
+    full_details = report.get("character_details_full")
+    if isinstance(full_details, Mapping):
+        return dict(full_details)
+
     selected_build = report.get("selected_build")
     if not isinstance(selected_build, Mapping):
         selected_build = {}
+    stat_snapshot_summary = report.get("stat_snapshot_summary")
+    if not isinstance(stat_snapshot_summary, Mapping):
+        stat_snapshot_summary = {}
     return {
         "status": _nested_text(report, "character_details_data", "status") or "partial",
         "account_character": report.get("selected_character"),
         "account_weapon": report.get("selected_weapon"),
         "selected_build": dict(selected_build),
+        "account_stat_sheet": _nested_mapping(report, "account_stat_sheet"),
+        "ascension_bonus": _nested_mapping(report, "ascension_bonus"),
         "stat_snapshot": {
+            "character_base": dict(stat_snapshot_summary.get("character_base") or {}),
+            "weapon": dict(stat_snapshot_summary.get("weapon") or {}),
             "artifact": {
                 "summary": _artifact_summary_from_report(report),
                 "warnings": _nested_list(report, "artifact_contribution", "warnings"),
@@ -151,6 +190,7 @@ def _artifact_summary_from_report(report: Mapping[str, Any]) -> dict[str, Any]:
         "build_id": artifact.get("build_id"),
         "build_name": artifact.get("build_name"),
         "active_set_bonuses": artifact.get("active_set_bonuses") or [],
+        "stat_totals": artifact.get("stat_totals") or [],
         "crit_value": artifact.get("crit_value"),
         "proc_count": artifact.get("proc_count"),
         "missing_positions": artifact.get("missing_positions") or [],

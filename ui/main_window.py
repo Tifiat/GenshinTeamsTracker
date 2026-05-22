@@ -26,8 +26,6 @@ from hoyolab_export.paths import (
     PROJECT_ROOT,
     HOYOLAB_EXPORT_DIR,
     HOYOLAB_PROFILE_DIR,
-    HOYOLAB_CHARACTER_ASSETS_DIR,
-    HOYOLAB_WEAPON_ASSETS_DIR,
     ensure_hoyolab_dirs,
 )
 from hoyolab_export.offline_profile import (
@@ -45,11 +43,10 @@ from ui.character_assets import (
     FILTER_ASSETS_DIR,
     WEAPON_RARITY_FILTERS,
     WEAPON_TYPE_FILTERS,
-    asset_path_from_manifest_crop,
     character_matches_filters,
     character_sort_key,
-    folder_asset_items,
-    manifest_asset_items,
+    load_account_character_asset_items,
+    load_account_weapon_stack_asset_items,
     metadata_int,
 )
 from ui.run_history_window import RunHistoryWindow
@@ -59,11 +56,8 @@ from ui.widgets.timers import AbyssFloorRow
 from ui.widgets.loader import HoYoLABLoadingDialog
 from ui.widgets.overlays.login_hint import HoYoLABLoginHintOverlay
 
-ASSETS_CHAR = str(HOYOLAB_CHARACTER_ASSETS_DIR)
-ASSETS_WEAP = str(HOYOLAB_WEAPON_ASSETS_DIR)
 STATE_FILE = "state.json"
 RUNS_FILE = "runs_history.json"
-HOYOLAB_MANIFEST_FILE = PROJECT_ROOT / "data" / "hoyolab" / "crop_manifest.json"
 HOYOLAB_IMPORT_STATUSES = {
     "preparing": ("loader.preparing", 0.03),
     "opening_hoyolab": ("loader.opening_hoyolab", 0.10),
@@ -89,6 +83,8 @@ HOYOLAB_IMPORT_STATUSES = {
     "importing_artifacts": ("loader.importing_artifacts", 0.87),
     "updating_hoyolab_data": ("loader.updating_hoyolab_data", 0.91),
     "cropping_assets": ("loader.cropping_assets", 0.95),
+    "syncing_account_storage": ("loader.syncing_account_storage", 0.965),
+    "account_storage_sync_warning": ("loader.account_storage_sync_warning", 0.97),
     "writing_import_log": ("loader.writing_import_log", 0.98),
     "done": ("loader.done", 1.0),
 }
@@ -881,26 +877,6 @@ class App(QWidget):
                 widget.setParent(None)
                 widget.deleteLater()
 
-    def load_hoyolab_manifest(self) -> dict:
-        if not HOYOLAB_MANIFEST_FILE.exists():
-            return {}
-
-        try:
-            with open(HOYOLAB_MANIFEST_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as exc:
-            print(f"Failed to load HoYoLAB manifest: {exc}")
-            return {}
-
-    def _asset_path_from_manifest_crop(self, crop: str | None) -> Path | None:
-        return asset_path_from_manifest_crop(crop)
-
-    def _folder_asset_items(self, directory: str | Path) -> list[dict]:
-        return folder_asset_items(directory)
-
-    def _manifest_asset_items(self, manifest: dict, manifest_key: str, directory: str | Path) -> list[dict]:
-        return manifest_asset_items(manifest, manifest_key, directory)
-
     def _character_matches_filters(self, asset: dict) -> bool:
         return character_matches_filters(
             asset,
@@ -997,8 +973,7 @@ class App(QWidget):
         area.viewport().update()
 
     def reload_characters(self):
-        manifest = self.load_hoyolab_manifest()
-        assets = self._manifest_asset_items(manifest, "characterAssets", ASSETS_CHAR)
+        assets = load_account_character_asset_items()
         assets = [asset for asset in assets if self._character_matches_filters(asset)]
         assets.sort(key=self._character_sort_key)
         self._reload_icon_grid(
@@ -1011,8 +986,7 @@ class App(QWidget):
         )
 
     def reload_weapons(self):
-        manifest = self.load_hoyolab_manifest()
-        assets = self._manifest_asset_items(manifest, "weaponAssets", ASSETS_WEAP)
+        assets = load_account_weapon_stack_asset_items()
         assets = [asset for asset in assets if self._weapon_matches_filters(asset)]
         assets.sort(key=self._weapon_sort_key)
         self._reload_icon_grid(

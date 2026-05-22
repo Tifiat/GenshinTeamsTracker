@@ -16,7 +16,15 @@ from .artifact_db import (
     calculate_raw_build_summary,
     get_build_preset,
 )
+from .account_stat_sheet import (
+    AccountCharacterStatSheet,
+    parse_account_character_stat_sheet,
+)
 from .catalog_sanity import STATUS_SPECIAL_DEFERRED
+from .character_ascension_bonus import (
+    CharacterAscensionBonusInfo,
+    extract_character_ascension_bonus,
+)
 from .character_stat_snapshot import (
     CharacterStatSnapshot,
     SNAPSHOT_STATUS_PARTIAL,
@@ -33,7 +41,7 @@ from .character_stats_catalog import CharacterBaseStatsEntry
 from .weapon_stats_catalog import WeaponStatsEntry
 
 
-TEAM_CARD_DATA_SCHEMA_VERSION = 1
+TEAM_CARD_DATA_SCHEMA_VERSION = 2
 
 DATA_STATUS_READY = "ready"
 DATA_STATUS_PARTIAL = "partial"
@@ -111,6 +119,8 @@ class CharacterDetailsData:
     account_weapon: dict[str, Any] | None
     selected_build: SelectedBuildProvenance = field(default_factory=SelectedBuildProvenance)
     stat_snapshot: CharacterStatSnapshot | None = None
+    account_stat_sheet: AccountCharacterStatSheet | None = None
+    ascension_bonus: CharacterAscensionBonusInfo | None = None
     warnings: tuple[str, ...] = ()
     source_notes: dict[str, Any] = field(default_factory=dict)
     gcsim_readiness: GcsimReadinessNote = field(default_factory=GcsimReadinessNote)
@@ -131,6 +141,16 @@ class CharacterDetailsData:
                 if self.stat_snapshot is not None
                 else None
             ),
+            "account_stat_sheet": (
+                self.account_stat_sheet.to_dict()
+                if self.account_stat_sheet is not None
+                else None
+            ),
+            "ascension_bonus": (
+                self.ascension_bonus.to_dict()
+                if self.ascension_bonus is not None
+                else None
+            ),
             "warnings": list(self.warnings),
             "source_notes": dict(self.source_notes),
             "gcsim_readiness": self.gcsim_readiness.to_dict(),
@@ -146,6 +166,7 @@ def build_character_details_data(
     artifact_build_snapshot: ArtifactBuildSnapshot | Mapping[str, Any] | None = None,
     selected_build_id: int | None = None,
     selected_build_name: str = "",
+    account_detail_record: Mapping[str, Any] | None = None,
     character_readiness_status: str | None = None,
     source_notes: Mapping[str, Any] | None = None,
 ) -> CharacterDetailsData:
@@ -188,20 +209,111 @@ def build_character_details_data(
 
     character_ref = account_character_ref(account_character)
     weapon_ref = account_weapon_ref(account_weapon) if account_weapon is not None else None
+    account_character_data = _runtime_account_character_dict(
+        character_ref.to_dict(),
+        account_character,
+    )
+    account_weapon_data = (
+        _runtime_account_weapon_dict(weapon_ref.to_dict(), account_weapon)
+        if weapon_ref is not None and account_weapon is not None
+        else None
+    )
+    account_stat_sheet = (
+        parse_account_character_stat_sheet(account_detail_record)
+        if account_detail_record is not None
+        else None
+    )
+    ascension_bonus = (
+        extract_character_ascension_bonus(character_stats_entry)
+        if character_stats_entry is not None
+        else None
+    )
+    resolved_source_notes = dict(source_notes or {})
+    if account_stat_sheet is not None:
+        resolved_source_notes.setdefault(
+            "account_stat_sheet_role",
+            "base_reference_not_team_builder_final_stats",
+        )
+        resolved_source_notes.setdefault(
+            "display_stats_source",
+            "team_builder_virtual_build",
+        )
+    if ascension_bonus is not None:
+        resolved_source_notes.setdefault(
+            "ascension_bonus_source",
+            "hoyowiki_character_stats_catalog",
+        )
     return CharacterDetailsData(
         schema_version=TEAM_CARD_DATA_SCHEMA_VERSION,
         status=status,
-        account_character=character_ref.to_dict(),
-        account_weapon=weapon_ref.to_dict() if weapon_ref is not None else None,
+        account_character=account_character_data,
+        account_weapon=account_weapon_data,
         selected_build=selected_build,
         stat_snapshot=stat_snapshot,
+        account_stat_sheet=account_stat_sheet,
+        ascension_bonus=ascension_bonus,
         warnings=tuple(_dedupe(warnings)),
-        source_notes=dict(source_notes or {}),
+        source_notes=resolved_source_notes,
         gcsim_readiness=GcsimReadinessNote(
             config_generation_ready=False,
             reasons=tuple(_dedupe(gcsim_reasons)),
         ),
     )
+
+
+def _runtime_account_character_dict(
+    base: Mapping[str, Any],
+    source: Mapping[str, Any],
+) -> dict[str, Any]:
+    result = dict(base)
+    for key in (
+        "weapon_type",
+        "weapon_type_name",
+        "icon_url",
+        "side_icon_url",
+        "portrait_path",
+        "side_icon_path",
+        "base_hp",
+        "base_atk",
+        "base_def",
+        "ascension_bonus_stat_type",
+        "ascension_bonus_value",
+        "talents",
+        "source",
+        "source_key",
+    ):
+        value = source.get(key)
+        if value is not None and value != "":
+            result[key] = value
+    return result
+
+
+def _runtime_account_weapon_dict(
+    base: Mapping[str, Any],
+    source: Mapping[str, Any],
+) -> dict[str, Any]:
+    result = dict(base)
+    for key in (
+        "weapon_type",
+        "weapon_type_name",
+        "type_name",
+        "source",
+        "source_key",
+        "weapon_fingerprint",
+        "known_count",
+        "base_atk",
+        "base_atk_raw",
+        "secondary_property_type",
+        "secondary_stat_value",
+        "secondary_stat_value_raw",
+        "description",
+        "icon_url",
+        "icon_path",
+    ):
+        value = source.get(key)
+        if value is not None and value != "":
+            result[key] = value
+    return result
 
 
 def build_character_details_data_with_build_id(
@@ -212,6 +324,7 @@ def build_character_details_data_with_build_id(
     weapon_stats_entry: WeaponStatsEntry | None = None,
     build_id: int | None = None,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    account_detail_record: Mapping[str, Any] | None = None,
     character_readiness_status: str | None = None,
     source_notes: Mapping[str, Any] | None = None,
 ) -> CharacterDetailsData:
@@ -221,6 +334,7 @@ def build_character_details_data_with_build_id(
             character_stats_entry=character_stats_entry,
             account_weapon=account_weapon,
             weapon_stats_entry=weapon_stats_entry,
+            account_detail_record=account_detail_record,
             character_readiness_status=character_readiness_status,
             source_notes=source_notes,
         )
@@ -237,6 +351,7 @@ def build_character_details_data_with_build_id(
         artifact_build_snapshot=artifact_snapshot,
         selected_build_id=int(build_id),
         selected_build_name=artifact_snapshot.build_name,
+        account_detail_record=account_detail_record,
         character_readiness_status=character_readiness_status,
         source_notes={
             **dict(source_notes or {}),

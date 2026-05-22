@@ -27,8 +27,9 @@ TooltipTextProvider = str | Callable[[], str]
 
 
 class CustomTooltipPopup(QLabel):
-	def __init__(self):
-		super().__init__(None)
+	def __init__(self, parent: QWidget | None = None):
+		super().__init__(parent)
+		self.setObjectName("CustomTooltipPopup")
 
 		self.setWindowFlags(
 			Qt.ToolTip
@@ -138,6 +139,7 @@ class CustomTooltipController(QObject):
 		self._delay_ms = int(delay_ms)
 
 		self.owner.installEventFilter(self)
+		self.owner.destroyed.connect(self._popup.deleteLater)
 		QWidget.setToolTip(self.owner, "")
 
 	def set_text(self, text: TooltipTextProvider) -> None:

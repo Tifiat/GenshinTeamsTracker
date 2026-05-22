@@ -85,6 +85,8 @@
   "loader.importing_artifacts": "Atualizando artefatos no banco local...",
   "loader.updating_hoyolab_data": "Gravando dados do HoYoLAB e atualizando assets...",
   "loader.cropping_assets": "Recortando e combinando ícones...",
+  "loader.syncing_account_storage": "Atualizando dados da conta no SQLite...",
+  "loader.account_storage_sync_warning": "A sincronização SQLite da conta reportou um aviso...",
   "loader.writing_import_log": "Gravando o log final da importação...",
   "loader.done": "Concluído.",
   "loader.unknown_status": "HoYoLAB: {status}",

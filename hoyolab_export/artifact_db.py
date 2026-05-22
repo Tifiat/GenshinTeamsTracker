@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .account_storage import init_account_storage
 from .artifact_fingerprint import artifact_content_fingerprint
 from .paths import PROJECT_ROOT
 
@@ -250,6 +251,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             WHERE target_type = 'universal';
         """
     )
+    init_account_storage(conn)
     artifact_columns = {
         row["name"]
         for row in conn.execute("PRAGMA table_info(artifacts)").fetchall()
@@ -1789,6 +1791,9 @@ def count_rows(conn: sqlite3.Connection) -> dict[str, int]:
         "artifact_set_piece_icons",
         "artifact_set_names",
         "artifact_set_bonus_descriptions",
+        "account_characters",
+        "account_character_talents",
+        "account_weapon_observed_stacks",
     ]
 
     result = {}

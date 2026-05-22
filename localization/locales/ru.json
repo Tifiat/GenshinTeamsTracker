@@ -85,6 +85,8 @@
   "loader.importing_artifacts": "Обновляем артефакты в локальной базе...",
   "loader.updating_hoyolab_data": "Записываем данные HoYoLAB и обновляем ассеты...",
   "loader.cropping_assets": "Вырезаем и сопоставляем иконки...",
+  "loader.syncing_account_storage": "Обновляем данные аккаунта в SQLite...",
+  "loader.account_storage_sync_warning": "Синхронизация аккаунта в SQLite вернула предупреждение...",
   "loader.writing_import_log": "Записываем итоговый лог импорта...",
   "loader.done": "Готово.",
   "loader.unknown_status": "HoYoLAB: {status}",

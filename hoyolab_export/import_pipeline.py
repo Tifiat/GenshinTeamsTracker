@@ -10,6 +10,7 @@ from playwright.async_api import BrowserContext, Error as PlaywrightError, Page
 from .auth import AuthStatus, get_auth_status
 from .artifact_db import ARTIFACT_DB_PATH
 from .artifact_importer import import_character_details_payload
+from .account_storage import sync_account_storage_from_local_files
 from .artifact_set_catalog import (
     ensure_artifact_set_bonus_descriptions,
     ensure_artifact_set_names,
@@ -134,6 +135,35 @@ def merge_inventory_records(
 def print_status(status: str) -> None:
     print(f"[STATUS] {status}", flush=True)
 
+
+def compact_exception_summary(exc: BaseException) -> str:
+    text = str(exc).split("Call log:", 1)[0].strip()
+    if len(text) > 600:
+        text = text[:600] + "..."
+    return text or type(exc).__name__
+
+
+def sync_account_storage_for_import(
+    *,
+    download_side_icons: bool = True,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Best-effort post-import account SQLite sync.
+
+    The HoYoLAB import owns refreshing the raw source/cache files first; account
+    SQLite storage is then updated from those local files. Side icons are an
+    account asset cache path, so normal import opts into caching missing icons.
+    """
+
+    try:
+        summary = sync_account_storage_from_local_files(
+            download_side_icons=download_side_icons,
+        )
+    except Exception as exc:
+        return None, compact_exception_summary(exc)
+
+    return summary.to_dict(), None
+
+
 def build_import_log(
     *,
     image_path: Path,
@@ -145,6 +175,8 @@ def build_import_log(
     weapons: list[dict[str, Any]],
     character_details: dict[str, Any] | None,
     artifact_summary: dict[str, Any] | None,
+    account_storage_summary: dict[str, Any] | None = None,
+    account_storage_error: str | None = None,
     started_at: float,
 ) -> dict[str, Any]:
     return {
@@ -172,6 +204,8 @@ def build_import_log(
         "matchedWeapons": manifest.get("matchedWeapons"),
         "okMatches": manifest.get("okMatches"),
         "warningMatches": manifest.get("warningMatches"),
+        "accountStorage": account_storage_summary,
+        "accountStorageError": account_storage_error,
     }
 
 
@@ -228,6 +262,8 @@ async def run_hoyolab_import() -> dict[str, Any]:
     result: dict[str, Any] | None = None
     manifest: dict[str, Any] | None = None
     artifact_summary: dict[str, Any] | None = None
+    account_storage_summary: dict[str, Any] | None = None
+    account_storage_error: str | None = None
 
     try:
         context = await exporter._create_context()
@@ -386,6 +422,27 @@ async def run_hoyolab_import() -> dict[str, Any]:
             merge_existing_assets=True,
         )
 
+        print_status("syncing_account_storage")
+        print("[HoYoLAB Import] Syncing account SQLite storage...")
+        account_storage_summary, account_storage_error = sync_account_storage_for_import(
+            download_side_icons=True,
+        )
+        if account_storage_error:
+            print_status("account_storage_sync_warning")
+            print(
+                "[HoYoLAB Import] Account SQLite sync failed after raw import:",
+                account_storage_error,
+            )
+        elif account_storage_summary:
+            warnings = account_storage_summary.get("warnings") or []
+            print(
+                "[HoYoLAB Import] Account SQLite:",
+                f"characters={account_storage_summary.get('characters_seen')}",
+                f"talents={account_storage_summary.get('talents_seen')}",
+                f"weapon_stacks={account_storage_summary.get('weapon_stacks_seen')}",
+                f"warnings={len(warnings)}",
+            )
+
         print_status("writing_import_log")
         log = build_import_log(
             image_path=image_path,
@@ -397,6 +454,8 @@ async def run_hoyolab_import() -> dict[str, Any]:
             weapons=weapons,
             character_details=character_details,
             artifact_summary=artifact_summary,
+            account_storage_summary=account_storage_summary,
+            account_storage_error=account_storage_error,
             started_at=started_at,
         )
         write_json(import_log_path, log)
@@ -411,6 +470,8 @@ async def run_hoyolab_import() -> dict[str, Any]:
             "importLogPath": import_log_path,
             "manifest": manifest,
             "artifactSummary": artifact_summary,
+            "accountStorageSummary": account_storage_summary,
+            "accountStorageError": account_storage_error,
         }
         return result
 
@@ -437,3 +498,17 @@ async def run_hoyolab_import() -> dict[str, Any]:
                 f"ok={manifest.get('okMatches')}",
                 f"warnings={manifest.get('warningMatches')}",
             )
+            if account_storage_summary:
+                warnings = account_storage_summary.get("warnings") or []
+                print(
+                    "[HoYoLAB Import] Account SQLite:",
+                    f"characters={account_storage_summary.get('characters_seen')}",
+                    f"talents={account_storage_summary.get('talents_seen')}",
+                    f"weapon_stacks={account_storage_summary.get('weapon_stacks_seen')}",
+                    f"warnings={len(warnings)}",
+                )
+            elif account_storage_error:
+                print(
+                    "[HoYoLAB Import] Account SQLite warning:",
+                    account_storage_error,
+                )

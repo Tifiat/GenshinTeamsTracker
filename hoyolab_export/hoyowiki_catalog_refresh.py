@@ -36,6 +36,7 @@ from .weapon_stats_catalog import (
     fetch_hoyowiki_weapon_list,
     parse_weapon_stats_page,
     read_weapon_stats_cache,
+    weapon_stats_cache_path_for_language,
     write_weapon_stats_cache,
 )
 
@@ -254,6 +255,78 @@ def refresh_weapon_stats_catalog(
     catalog = build_weapon_stats_catalog(merged, language=lang)
     write_weapon_stats_cache(catalog, cache_path)
     return result
+
+
+def refresh_weapon_stats_catalog_entries(
+    entry_page_ids: Iterable[str | int],
+    *,
+    language: str = DEFAULT_HOYOWIKI_LANGUAGE,
+    cache_path: str | Path | None = None,
+    force_refresh: bool = False,
+    existing_catalog: WeaponStatsCatalog | None = None,
+    detail_fetcher: DetailFetcher | None = None,
+) -> CatalogRefreshResult:
+    lang = normalize_hoyowiki_language(language)
+    resolved_cache_path = Path(cache_path or weapon_stats_cache_path_for_language(lang))
+    detail_fetcher = detail_fetcher or _fetch_entry_detail
+    existing_catalog = (
+        existing_catalog
+        if existing_catalog is not None
+        else read_weapon_stats_cache(resolved_cache_path)
+    )
+    existing_by_id = _entries_by_id(existing_catalog.entries if existing_catalog else ())
+    requested_ids = tuple(dict.fromkeys(str(item or "").strip() for item in entry_page_ids))
+    requested_ids = tuple(item for item in requested_ids if item)
+
+    merged_by_id: dict[str, WeaponStatsEntry] = dict(existing_by_id)
+    skipped_existing = 0
+    fetched = 0
+    failures: list[CatalogRefreshFailure] = []
+    preserved_existing_after_failure = 0
+
+    for entry_page_id in requested_ids:
+        existing = existing_by_id.get(entry_page_id)
+        if (
+            not force_refresh
+            and existing is not None
+            and _weapon_entry_is_valid(existing, lang)
+        ):
+            skipped_existing += 1
+            continue
+        try:
+            page = detail_fetcher(entry_page_id, lang)
+            entry = parse_weapon_stats_page(
+                page,
+                entry_page_id=entry_page_id,
+                language=lang,
+            )
+            merged_by_id[entry_page_id] = entry
+            fetched += 1
+        except Exception as exc:
+            failures.append(
+                CatalogRefreshFailure(
+                    entry_page_id=entry_page_id,
+                    name=existing.name if existing else "",
+                    error=str(exc),
+                )
+            )
+            if existing is not None:
+                preserved_existing_after_failure += 1
+
+    catalog = build_weapon_stats_catalog(tuple(merged_by_id.values()), language=lang)
+    write_weapon_stats_cache(catalog, resolved_cache_path)
+    return CatalogRefreshResult(
+        kind="weapon",
+        list_count=len(requested_ids),
+        existing_count=len(existing_by_id),
+        skipped_existing=skipped_existing,
+        fetched=fetched,
+        failed=len(failures),
+        preserved_existing_after_failure=preserved_existing_after_failure,
+        preserved_extra_existing=max(0, len(existing_by_id) - len(requested_ids)),
+        output_path=str(resolved_cache_path),
+        failures=tuple(failures),
+    )
 
 
 def _refresh_entries(

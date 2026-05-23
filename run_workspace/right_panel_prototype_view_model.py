@@ -100,6 +100,34 @@ class RightPanelDetailRowViewModel:
 
 
 @dataclass(frozen=True, slots=True)
+class RightPanelBonusSourceDisplayItem:
+    source_kind: str
+    source_id: str
+    label: str
+    icon_path: str = ""
+    short_effects: tuple[str, ...] = ()
+    tooltip_title: str = ""
+    tooltip_body: str = ""
+    applied: bool = True
+    not_applied_reason: str = ""
+    character_icons: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source_kind": self.source_kind,
+            "source_id": self.source_id,
+            "label": self.label,
+            "icon_path": self.icon_path,
+            "short_effects": list(self.short_effects),
+            "tooltip_title": self.tooltip_title,
+            "tooltip_body": self.tooltip_body,
+            "applied": self.applied,
+            "not_applied_reason": self.not_applied_reason,
+            "character_icons": list(self.character_icons),
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class RightPanelBuildMiniSetViewModel:
     set_uid: str
     set_name: str
@@ -193,6 +221,9 @@ class RightPanelSelectedDetailsViewModel:
     crit_value: float | None = None
     active_sets: tuple[str, ...] = ()
     stat_rows: tuple[RightPanelDetailRowViewModel, ...] = ()
+    bonus_sources: tuple[RightPanelBonusSourceDisplayItem, ...] = ()
+    external_bonuses_enabled: bool = True
+    weapon_tooltip: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -212,6 +243,9 @@ class RightPanelSelectedDetailsViewModel:
             "crit_value": self.crit_value,
             "active_sets": list(self.active_sets),
             "stat_rows": [row.to_dict() for row in self.stat_rows],
+            "bonus_sources": [item.to_dict() for item in self.bonus_sources],
+            "external_bonuses_enabled": self.external_bonuses_enabled,
+            "weapon_tooltip": self.weapon_tooltip,
         }
 
 
@@ -265,6 +299,7 @@ class RightPanelPrototypeViewModel:
     chamber_rows: tuple[RightPanelChamberRowViewModel, ...]
     total_seconds: int
     gcsim_status: RightPanelGcsimStatusViewModel
+    external_bonuses_enabled: bool = True
     action_labels: tuple[str, ...] = ("Reset", "Save Run", "History")
     schema_version: int = RIGHT_PANEL_PROTOTYPE_SCHEMA_VERSION
 
@@ -279,6 +314,7 @@ class RightPanelPrototypeViewModel:
             "chamber_rows": [row.to_dict() for row in self.chamber_rows],
             "total_seconds": self.total_seconds,
             "gcsim_status": self.gcsim_status.to_dict(),
+            "external_bonuses_enabled": self.external_bonuses_enabled,
             "action_labels": list(self.action_labels),
         }
 
@@ -289,6 +325,7 @@ def build_right_panel_prototype_view_model(
     mode: str = MODE_ABYSS,
     selected_team_index: int = 0,
     selected_slot_index: int = 0,
+    external_bonuses_enabled: bool = True,
 ) -> RightPanelPrototypeViewModel:
     normalized_mode = _normalize_mode(mode)
     visible_team_count = 2 if normalized_mode == MODE_ABYSS else 1
@@ -308,6 +345,7 @@ def build_right_panel_prototype_view_model(
         selected_team_index=selected_team_index,
         selected_slot_index=selected_slot_index,
         duplicate_character_ids=duplicate_ids,
+        external_bonuses_enabled=external_bonuses_enabled,
     )
     chamber_rows = _chamber_rows_for_mode(normalized_mode)
     total_seconds = sum(row.total_seconds for row in chamber_rows)
@@ -320,6 +358,7 @@ def build_right_panel_prototype_view_model(
         chamber_rows=chamber_rows,
         total_seconds=total_seconds,
         gcsim_status=_gcsim_status_for_mode(normalized_mode),
+        external_bonuses_enabled=bool(external_bonuses_enabled),
     )
 
 
@@ -620,6 +659,7 @@ def _build_selected_details(
     selected_team_index: int,
     selected_slot_index: int,
     duplicate_character_ids: tuple[str, ...],
+    external_bonuses_enabled: bool,
 ) -> RightPanelSelectedDetailsViewModel:
     try:
         slot = state.team(selected_team_index).slot(selected_slot_index)
@@ -638,6 +678,13 @@ def _build_selected_details(
     account_character = _account_character_for_slot(slot, details)
     account_weapon = _account_weapon_for_slot(slot, details)
     weapon_secondary_label, weapon_secondary_value = _weapon_secondary_meta(details)
+    bonus_sources = tuple(
+        _bonus_source_items(
+            details,
+            artifact=artifact,
+            external_bonuses_enabled=external_bonuses_enabled,
+        )
+    )
     return RightPanelSelectedDetailsViewModel(
         has_selection=True,
         team_index=int(selected_team_index),
@@ -654,7 +701,15 @@ def _build_selected_details(
         weapon_secondary_value=weapon_secondary_value,
         crit_value=artifact.crit_value if artifact is not None else None,
         active_sets=artifact.active_sets if artifact is not None else (),
-        stat_rows=tuple(_stat_rows(details)),
+        stat_rows=tuple(
+            _stat_rows(
+                details,
+                external_bonuses_enabled=external_bonuses_enabled,
+            )
+        ),
+        bonus_sources=bonus_sources,
+        external_bonuses_enabled=bool(external_bonuses_enabled),
+        weapon_tooltip=_weapon_tooltip(details, bonus_sources),
     )
 
 
@@ -1061,7 +1116,213 @@ def _artifact_main_stat_token(
     return ""
 
 
-def _stat_rows(details: Mapping[str, Any]) -> list[RightPanelDetailRowViewModel]:
+def _bonus_source_items(
+    details: Mapping[str, Any],
+    *,
+    artifact: TeamCardArtifactSummaryViewModel | None,
+    external_bonuses_enabled: bool,
+) -> list[RightPanelBonusSourceDisplayItem]:
+    items: list[RightPanelBonusSourceDisplayItem] = []
+    active_sets = _active_set_context(details, artifact=artifact)
+    grouped_artifact_effects: dict[tuple[str, int], list[Mapping[str, Any]]] = {}
+    for effect in details.get("artifact_set_display_stat_effects") or []:
+        if not isinstance(effect, Mapping):
+            continue
+        set_uid = _text(effect.get("set_uid"))
+        pieces_required = _optional_int(effect.get("pieces_required"))
+        if not set_uid or pieces_required is None:
+            continue
+        grouped_artifact_effects.setdefault((set_uid, int(pieces_required)), []).append(effect)
+
+    for (set_uid, pieces_required), effects in grouped_artifact_effects.items():
+        context = active_sets.get(set_uid, {})
+        set_name = _text(context.get("set_name")) or set_uid
+        effect_labels = tuple(_static_effect_short_label(effect) for effect in effects)
+        effect_labels = tuple(label for label in effect_labels if label)
+        if not effect_labels:
+            continue
+        description = _text(effects[0].get("description"))
+        tooltip_lines = [
+            f"{set_name} ({pieces_required}p)",
+            "Effects: " + ", ".join(effect_labels),
+        ]
+        if description:
+            tooltip_lines.append(description)
+        items.append(
+            RightPanelBonusSourceDisplayItem(
+                source_kind="artifact_set_static",
+                source_id=f"{set_uid}:{pieces_required}",
+                label=f"{pieces_required}p",
+                icon_path=_text(context.get("icon_path")),
+                short_effects=effect_labels,
+                tooltip_title=f"{set_name} {pieces_required}p",
+                tooltip_body="\n".join(tooltip_lines),
+                applied=bool(external_bonuses_enabled),
+                not_applied_reason=(
+                    "" if external_bonuses_enabled else "External bonuses disabled"
+                ),
+            )
+        )
+
+    weapon_effects = [
+        effect
+        for effect in details.get("weapon_display_stat_effects") or []
+        if isinstance(effect, Mapping)
+    ]
+    if weapon_effects:
+        account_weapon = _account_weapon_for_details(details)
+        weapon_name = _text(account_weapon.get("name")) or "Weapon passive"
+        effect_labels = tuple(_static_effect_short_label(effect) for effect in weapon_effects)
+        effect_labels = tuple(label for label in effect_labels if label)
+        if effect_labels:
+            refinement = _optional_int(account_weapon.get("refinement"))
+            tooltip_lines = [
+                weapon_name,
+                "Effects: " + ", ".join(effect_labels),
+            ]
+            passive_reference = _mapping(details.get("weapon_passive_reference"))
+            passive_name = _text(passive_reference.get("passive_name"))
+            passive_text = _text(passive_reference.get("passive_text"))
+            if passive_name:
+                tooltip_lines.append(passive_name)
+            if passive_text:
+                tooltip_lines.append(passive_text)
+            items.append(
+                RightPanelBonusSourceDisplayItem(
+                    source_kind="weapon_passive_static",
+                    source_id=_text(account_weapon.get("id"))
+                    or _text(account_weapon.get("weapon_id"))
+                    or weapon_name,
+                    label=f"R{refinement}" if refinement is not None else "WPN",
+                    icon_path=_text(account_weapon.get("icon_path")),
+                    short_effects=effect_labels,
+                    tooltip_title=(
+                        f"{weapon_name} R{refinement}"
+                        if refinement is not None
+                        else weapon_name
+                    ),
+                    tooltip_body="\n".join(tooltip_lines),
+                    applied=bool(external_bonuses_enabled),
+                    not_applied_reason=(
+                        "" if external_bonuses_enabled else "External bonuses disabled"
+                    ),
+                )
+            )
+    return items
+
+
+def _active_set_context(
+    details: Mapping[str, Any],
+    *,
+    artifact: TeamCardArtifactSummaryViewModel | None,
+) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for item in _build_mini_sets(details):
+        result[item.set_uid] = {
+            "set_name": item.set_name,
+            "piece_count": item.piece_count,
+            "icon_path": item.icon_path,
+        }
+    if artifact is not None:
+        for label in artifact.active_sets:
+            piece_count = _piece_count(label)
+            name = label[3:].strip() if label[:2] in {"2p", "4p"} else label
+            for context in result.values():
+                if not context.get("set_name") and name:
+                    context["set_name"] = name
+    return result
+
+
+def _static_effect_short_label(effect: Mapping[str, Any]) -> str:
+    stat_key = _text(effect.get("stat_key")).upper()
+    value = _optional_float(effect.get("value"))
+    value_type = _text(effect.get("value_type"))
+    if not stat_key or value is None:
+        return ""
+    label = _STATIC_EFFECT_LABELS.get(stat_key, _short_stat_label(stat_key))
+    suffix = "%" if value_type == "percent_points" else ""
+    return f"{label} +{value:g}{suffix}"
+
+
+def _weapon_tooltip(
+    details: Mapping[str, Any],
+    bonus_sources: tuple[RightPanelBonusSourceDisplayItem, ...],
+) -> str:
+    account_weapon = _account_weapon_for_details(details)
+    weapon_name = _text(account_weapon.get("name")) or "No weapon selected"
+    lines = [weapon_name]
+    rarity = _optional_int(account_weapon.get("rarity"))
+    if rarity is not None:
+        lines.append(f"Rarity: {rarity}★")
+    level = _optional_int(account_weapon.get("level"))
+    refinement = _optional_int(account_weapon.get("refinement"))
+    meta: list[str] = []
+    if refinement is not None:
+        meta.append(f"R{refinement}")
+    if level is not None:
+        meta.append(f"Lv.{level}")
+    base_atk = _weapon_base_atk_meta(details)
+    if base_atk:
+        meta.append(f"ATK {base_atk}")
+    secondary_label, secondary_value = _weapon_secondary_meta(details)
+    if secondary_label and secondary_value:
+        meta.append(f"{secondary_label} {secondary_value}")
+    if meta:
+        lines.append(" · ".join(meta))
+
+    weapon_sources = [
+        source for source in bonus_sources if source.source_kind == "weapon_passive_static"
+    ]
+    for source in weapon_sources:
+        prefix = "Static passive"
+        if not source.applied and source.not_applied_reason:
+            prefix += f" ({source.not_applied_reason})"
+        lines.append(f"{prefix}: {', '.join(source.short_effects)}")
+    passive_reference = _mapping(details.get("weapon_passive_reference"))
+    passive_name = _text(passive_reference.get("passive_name"))
+    passive_text = _text(passive_reference.get("passive_text"))
+    if passive_name:
+        lines.append(passive_name)
+    if passive_text:
+        lines.append(passive_text)
+    return "\n".join(line for line in lines if line)
+
+
+def _account_weapon_for_details(details: Mapping[str, Any]) -> Mapping[str, Any]:
+    return _mapping(details.get("account_weapon")) or _mapping(
+        _mapping(details.get("stat_snapshot")).get("weapon")
+    )
+
+
+_STATIC_EFFECT_LABELS = {
+    "HP_FLAT": "HP",
+    "HP_PERCENT": "HP",
+    "ATK_FLAT": "ATK",
+    "ATK_PERCENT": "ATK",
+    "DEF_FLAT": "DEF",
+    "DEF_PERCENT": "DEF",
+    "ELEMENTAL_MASTERY": "EM",
+    "ENERGY_RECHARGE": "ER",
+    "CRIT_RATE": "CR",
+    "CRIT_DMG": "CD",
+    "PYRO_DMG_BONUS": "Pyro",
+    "HYDRO_DMG_BONUS": "Hydro",
+    "ELECTRO_DMG_BONUS": "Electro",
+    "CRYO_DMG_BONUS": "Cryo",
+    "ANEMO_DMG_BONUS": "Anemo",
+    "GEO_DMG_BONUS": "Geo",
+    "DENDRO_DMG_BONUS": "Dendro",
+    "PHYSICAL_DMG_BONUS": "Physical",
+    "ALL_ELEMENTAL_DMG_BONUS": "All Elem",
+    "HEALING_BONUS": "Healing",
+}
+
+
+def _stat_rows(
+    details: Mapping[str, Any],
+    *,
+    external_bonuses_enabled: bool,
+) -> list[RightPanelDetailRowViewModel]:
     if not details:
         return []
 
@@ -1069,7 +1330,9 @@ def _stat_rows(details: Mapping[str, Any]) -> list[RightPanelDetailRowViewModel]
     if explicit_rows:
         return explicit_rows
 
-    display_stats = build_character_display_stats(details)
+    stats_input = dict(details)
+    stats_input["external_bonuses_enabled"] = bool(external_bonuses_enabled)
+    display_stats = build_character_display_stats(stats_input)
     return [
         RightPanelDetailRowViewModel(
             label=row.label,
@@ -1319,15 +1582,15 @@ def _account_weapon_for_slot(
 
 
 def _weapon_base_atk_meta(details: Mapping[str, Any]) -> str:
-    snapshot_weapon = _snapshot_weapon(details)
-    snapshot_base_atk = _selected_value(snapshot_weapon.get("base_atk"))
-    if snapshot_base_atk:
-        return snapshot_base_atk
-
     account_weapon = _mapping(details.get("account_weapon"))
     account_base_atk = _text(account_weapon.get("base_atk_raw") or account_weapon.get("base_atk"))
     if account_base_atk:
         return account_base_atk
+
+    snapshot_weapon = _snapshot_weapon(details)
+    snapshot_base_atk = _selected_value(snapshot_weapon.get("base_atk"))
+    if snapshot_base_atk:
+        return snapshot_base_atk
 
     weapon_sheet = _account_stat_sheet_weapon(details)
     main_property = _mapping(weapon_sheet.get("main_property"))
@@ -1427,6 +1690,16 @@ def _optional_int(value: Any) -> int | None:
         return None
     try:
         return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    text = str(value).strip().replace("%", "")
+    try:
+        return float(text)
     except (TypeError, ValueError):
         return None
 

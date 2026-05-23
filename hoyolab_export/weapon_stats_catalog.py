@@ -39,13 +39,29 @@ WARNING_NO_ASCENSION_ROWS = "no_ascension_rows"
 
 _NON_PASSIVE_BASE_INFO_KEYS = {
     "name",
+    "имя",
     "region",
+    "регион",
     "source",
+    "источник",
     "type",
+    "тип",
     "secondary_attributes",
     "secondary_attribute",
+    "дополнительные_характеристики",
+    "дополнительная_характеристика",
     "version_released",
+    "версия_выхода_оружия",
+    "где_найти",
 }
+
+
+def weapon_stats_cache_path_for_language(language: str | None) -> Path:
+    lang = normalize_hoyowiki_language(language)
+    if lang == DEFAULT_HOYOWIKI_LANGUAGE:
+        return WEAPON_STATS_CACHE_PATH
+    suffix = re.sub(r"[^a-z0-9-]+", "-", lang).strip("-") or lang
+    return WEAPON_STATS_CACHE_PATH.with_name(f"weapon_stats_catalog.{suffix}.json")
 
 
 @dataclass(frozen=True, slots=True)
@@ -530,6 +546,6 @@ def _clean_values(values: list[Any]) -> list[str]:
 
 def _normalize_key(value: str) -> str:
     text = _clean_text(value).casefold()
-    text = re.sub(r"[^a-z0-9]+", " ", text)
+    text = re.sub(r"[^\w]+", " ", text, flags=re.UNICODE)
     text = re.sub(r"\s+", " ", text).strip()
     return text.replace(" ", "_")

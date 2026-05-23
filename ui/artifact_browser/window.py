@@ -46,16 +46,23 @@ from hoyolab_export.character_region_catalog import (
 )
 from ui.character_assets import (
     CHARACTER_RARITY_FILTERS,
+    CHARACTER_STANDARD_FILTER,
+    CHARACTER_TRAIT_FILTERS,
     ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
+    STANDARD_FILTER_ALL,
+    STANDARD_FILTER_EXCLUDE,
+    STANDARD_FILTER_ONLY,
     WEAPON_TYPE_FILTERS,
     character_id,
     character_matches_filters,
     character_name,
     character_sort_key,
     load_account_character_asset_items,
+    standard_character_filter_icon,
 )
 from ui.utils.icon_utils import auto_contrast_svg_icon, auto_contrast_svg_pixmap
+from ui.utils.horizontal_scroll import horizontal_wheel_delta
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.pixmap_utils import (
     count_badge_style_cache_key,
@@ -311,6 +318,10 @@ QPushButton#target_filter_button:hover {{
     background: #292c34;
 }}
 QPushButton#target_filter_button:checked {{
+    border-color: #7da7ff;
+    background: #303848;
+}}
+QPushButton#target_filter_button[standardOnly="true"] {{
     border-color: #7da7ff;
     background: #303848;
 }}
@@ -665,14 +676,7 @@ class BuildTargetPreviewStrip(QWidget):
         if hbar.maximum() <= hbar.minimum():
             return False
 
-        pixel_delta = event.pixelDelta()
-        if not pixel_delta.isNull():
-            delta = -pixel_delta.y() if pixel_delta.y() else pixel_delta.x()
-        else:
-            angle_delta = event.angleDelta()
-            raw_delta = -angle_delta.y() if angle_delta.y() else angle_delta.x()
-            delta = int(raw_delta / 120 * BUILD_TARGET_PREVIEW_ICON_SIZE)
-
+        delta = horizontal_wheel_delta(event, step=BUILD_TARGET_PREVIEW_ICON_SIZE)
         if not delta:
             return False
 
@@ -740,6 +744,8 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_weapon_filters: set[str] = set()
         self.build_target_rarity_filters: set[int] = set()
         self.build_target_region_filters: set[str] = set()
+        self.build_target_trait_filters: set[str] = set()
+        self.build_target_standard_filter = STANDARD_FILTER_ALL
         self._region_popup: RegionFilterPopup | None = None
         self._suppress_next_region_popup_open = False
         self.build_target_filter_buttons: list[tuple[QPushButton, set, object]] = []
@@ -1056,6 +1062,7 @@ class ArtifactBrowserWindow(QWidget):
             (ELEMENT_FILTERS, self.build_target_element_filters),
             (CHARACTER_RARITY_FILTERS, self.build_target_rarity_filters),
             (WEAPON_TYPE_FILTERS, self.build_target_weapon_filters),
+            (CHARACTER_TRAIT_FILTERS, self.build_target_trait_filters),
         ):
             for value, icon_name, tooltip_key in filters:
                 filter_column.addWidget(
@@ -1068,6 +1075,8 @@ class ArtifactBrowserWindow(QWidget):
                 )
         self.build_target_region_button = self._make_build_target_region_filter_button()
         filter_column.addWidget(self.build_target_region_button)
+        self.build_target_standard_button = self._make_build_target_standard_filter_button()
+        filter_column.addWidget(self.build_target_standard_button)
         filter_column.addStretch()
         body.addLayout(filter_column)
 
@@ -1097,7 +1106,6 @@ class ArtifactBrowserWindow(QWidget):
         button.setCheckable(True)
         button.setIcon(QIcon(str(FILTER_ASSETS_DIR / icon_name)))
         button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
-        button.setToolTip(tr(tooltip_key))
         button.clicked.connect(
             lambda checked=False, v=value, values=selected_values: self.on_build_target_filter_clicked(
                 values,
@@ -1113,7 +1121,6 @@ class ArtifactBrowserWindow(QWidget):
         button.setObjectName("target_filter_button")
         button.setIcon(QIcon(str(FILTER_ASSETS_DIR / "Icon_Back.png")))
         button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
-        button.setToolTip(tr("filter.target.clear_all"))
         button.clicked.connect(self.reset_build_target_filters)
         return button
 
@@ -1124,9 +1131,46 @@ class ArtifactBrowserWindow(QWidget):
         button.setChecked(bool(self.build_target_region_filters))
         button.setIcon(QIcon(str(FILTER_ASSETS_DIR / "Statue.png")))
         button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
-        button.setToolTip(tr("filter.region.title"))
         button.pressed.connect(self.on_build_target_region_button_pressed)
         button.clicked.connect(self.show_region_filter_popup)
+        return button
+
+    def _make_build_target_standard_filter_button(self) -> QPushButton:
+        button = QPushButton()
+        button.setObjectName("target_filter_button")
+        button.setCheckable(False)
+        button.setIcon(
+            standard_character_filter_icon(
+                STANDARD_FILTER_ALL,
+                size=TARGET_FILTER_ICON_SIZE,
+            )
+        )
+        button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
+        button.setProperty("standardOnly", False)
+
+        def cycle_standard_filter() -> None:
+            if self.build_target_standard_filter == STANDARD_FILTER_ALL:
+                self.build_target_standard_filter = STANDARD_FILTER_ONLY
+            elif self.build_target_standard_filter == STANDARD_FILTER_ONLY:
+                self.build_target_standard_filter = STANDARD_FILTER_EXCLUDE
+            else:
+                self.build_target_standard_filter = STANDARD_FILTER_ALL
+            button.setProperty(
+                "standardOnly",
+                self.build_target_standard_filter == STANDARD_FILTER_ONLY,
+            )
+            button.style().unpolish(button)
+            button.style().polish(button)
+            button.setIcon(
+                standard_character_filter_icon(
+                    self.build_target_standard_filter,
+                    size=TARGET_FILTER_ICON_SIZE,
+                )
+            )
+            self.sync_build_target_filter_buttons()
+            self.refresh_build_target_list()
+
+        button.clicked.connect(cycle_standard_filter)
         return button
 
     def _build_build_panel(self, root) -> None:
@@ -1412,10 +1456,6 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_title_label.setText(tr("artifact.build.targets_title"))
         self.build_target_reset_button.setText(tr("artifact.build.targets_reset"))
         self.build_target_hint_label.setText(tr("artifact.build.no_target_hint"))
-        if self.build_target_filter_reset_button is not None:
-            self.build_target_filter_reset_button.setToolTip(
-                tr("filter.target.clear_all")
-            )
         if self.import_json_button is not None:
             self.import_json_button.setText(tr("artifact.json.import_button"))
         if self.clear_json_button is not None:
@@ -1427,8 +1467,6 @@ class ArtifactBrowserWindow(QWidget):
         self.new_build_button.setToolTip(tr("artifact.build.new"))
         self.cancel_new_build_button.setToolTip(tr("artifact.build.cancel"))
         self.build_name_input.setPlaceholderText(tr("artifact.build.name_placeholder"))
-        if self.build_target_region_button is not None:
-            self.build_target_region_button.setToolTip(tr("filter.region.title"))
         self.update_sets_filter_switch_text()
         self.update_sets_button_text()
         self.update_sort_button_text()
@@ -1993,6 +2031,8 @@ class ArtifactBrowserWindow(QWidget):
                 self.build_target_weapon_filters,
                 self.build_target_rarity_filters,
                 self.build_target_region_filters,
+                self.build_target_trait_filters,
+                self.build_target_standard_filter,
             )
         ]
         character_items.sort(key=lambda item: character_sort_key(item.get("asset") or {}))
@@ -2033,12 +2073,31 @@ class ArtifactBrowserWindow(QWidget):
             or self.build_target_weapon_filters
             or self.build_target_rarity_filters
             or self.build_target_region_filters
+            or self.build_target_trait_filters
+            or self.build_target_standard_filter != STANDARD_FILTER_ALL
         )
 
     def sync_build_target_filter_buttons(self) -> None:
         for button, selected_values, value in self.build_target_filter_buttons:
             button.setChecked(value in selected_values)
         self._sync_build_target_region_filter_button()
+        if getattr(self, "build_target_standard_button", None) is not None:
+            self.build_target_standard_button.setProperty(
+                "standardOnly",
+                self.build_target_standard_filter == STANDARD_FILTER_ONLY
+            )
+            self.build_target_standard_button.style().unpolish(
+                self.build_target_standard_button
+            )
+            self.build_target_standard_button.style().polish(
+                self.build_target_standard_button
+            )
+            self.build_target_standard_button.setIcon(
+                standard_character_filter_icon(
+                    self.build_target_standard_filter,
+                    size=TARGET_FILTER_ICON_SIZE,
+                )
+            )
         if self._region_popup is not None:
             self._region_popup.set_selected_region_keys(
                 self.build_target_region_filters
@@ -2056,6 +2115,8 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_weapon_filters.clear()
         self.build_target_rarity_filters.clear()
         self.build_target_region_filters.clear()
+        self.build_target_trait_filters.clear()
+        self.build_target_standard_filter = STANDARD_FILTER_ALL
         self.sync_build_target_filter_buttons()
         self.refresh_build_target_list()
 

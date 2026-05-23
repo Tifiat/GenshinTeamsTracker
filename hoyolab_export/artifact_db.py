@@ -6,6 +6,10 @@ from typing import Any
 
 from .account_storage import init_account_storage
 from .artifact_fingerprint import artifact_content_fingerprint
+from .display_stat_effects import (
+    init_display_stat_effect_tables,
+    upsert_artifact_set_display_stat_effects_for_description,
+)
 from .paths import PROJECT_ROOT
 
 
@@ -252,6 +256,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         """
     )
     init_account_storage(conn)
+    init_display_stat_effect_tables(conn)
     artifact_columns = {
         row["name"]
         for row in conn.execute("PRAGMA table_info(artifacts)").fetchall()
@@ -786,6 +791,14 @@ def upsert_artifact_set_bonus_description(
         """,
         (set_uid, lang, piece_count, description, source, updated_at),
     )
+    if lang == "en-us":
+        upsert_artifact_set_display_stat_effects_for_description(
+            conn,
+            set_uid=set_uid,
+            pieces_required=piece_count,
+            description=description,
+            updated_at=updated_at,
+        )
     return True
 
 

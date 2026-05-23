@@ -8,15 +8,18 @@ from PIL import Image
 from playwright.async_api import BrowserContext, Error as PlaywrightError, Page
 
 from .auth import AuthStatus, get_auth_status
-from .artifact_db import ARTIFACT_DB_PATH
+from .artifact_db import ARTIFACT_DB_PATH, connect_db
 from .artifact_importer import import_character_details_payload
 from .account_storage import sync_account_storage_from_local_files
 from .artifact_set_catalog import (
+    ensure_artifact_set_catalog,
     ensure_artifact_set_bonus_descriptions,
     ensure_artifact_set_names,
     ensure_hoyolab_set_mapping,
     normalize_language,
 )
+from .character_trait_catalog import refresh_character_trait_catalog
+from .character_region_catalog import load_character_region_catalog
 from .character_detail import fetch_character_details_batch, real_character_ids
 from .collect_account_inventory import (
     build_inventory,
@@ -24,6 +27,14 @@ from .collect_account_inventory import (
     write_inventory,
 )
 from .crop_manifest import build_crop_manifest, character_asset_key, icon_key
+from .display_stat_effects import (
+    read_weapon_wiki_from_account_detail_cache,
+    rebuild_artifact_set_display_stat_effects,
+    rebuild_weapon_passive_tooltips,
+    rebuild_weapon_display_stat_effects,
+    weapon_entry_page_id_to_weapon_id_map,
+)
+from .hoyowiki_catalog_refresh import refresh_weapon_stats_catalog_entries
 from .hoyolab_exporter import HOYOLAB_URL, HoyolabExporter, close_export_context
 from .layout_capture import collect_layout
 from .paths import (
@@ -164,6 +175,80 @@ def sync_account_storage_for_import(
     return summary.to_dict(), None
 
 
+def sync_static_reference_catalogs_for_import(
+    content_language: str | None = None,
+    *,
+    weapon_wiki: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], str | None]:
+    """Best-effort HoYoWiki static catalog refresh used by normal import."""
+
+    summary: dict[str, Any] = {}
+    errors: list[str] = []
+
+    try:
+        summary["artifactSetCatalog"] = ensure_artifact_set_catalog(
+            db_path=ARTIFACT_DB_PATH,
+            allow_network=True,
+            missing_only=True,
+        )
+    except Exception as exc:
+        errors.append(f"artifact set catalog: {compact_exception_summary(exc)}")
+
+    try:
+        trait_catalog = refresh_character_trait_catalog()
+        summary["characterTraitCatalog"] = {
+            "source": trait_catalog.source,
+            "entries": len(trait_catalog.entries),
+            "fetched_at": trait_catalog.fetched_at,
+        }
+    except Exception as exc:
+        errors.append(f"character trait catalog: {compact_exception_summary(exc)}")
+
+    try:
+        if content_language:
+            region_entries = load_character_region_catalog(content_language, allow_network=True)
+            summary["characterRegionCatalog"] = {
+                "language": content_language,
+                "entries": len(region_entries),
+            }
+    except Exception as exc:
+        errors.append(f"character region catalog: {compact_exception_summary(exc)}")
+
+    try:
+        entry_ids = tuple(weapon_entry_page_id_to_weapon_id_map(weapon_wiki or {}).keys())
+        if content_language and entry_ids:
+            result = refresh_weapon_stats_catalog_entries(
+                entry_ids,
+                language=content_language,
+            )
+            summary["localizedWeaponStatsCatalog"] = result.to_dict()
+            with connect_db(ARTIFACT_DB_PATH) as conn:
+                summary["weaponPassiveTooltips"] = {
+                    "language": content_language,
+                    "rows": rebuild_weapon_passive_tooltips(
+                        conn,
+                        weapon_wiki=weapon_wiki or {},
+                        language=content_language,
+                    ),
+                }
+                conn.commit()
+    except Exception as exc:
+        errors.append(
+            f"localized weapon stats/passive tooltips: {compact_exception_summary(exc)}"
+        )
+
+    return summary, "; ".join(errors) if errors else None
+
+
+def _weapon_wiki_from_character_details(character_details: dict[str, Any] | None) -> dict[str, Any]:
+    payload = (character_details or {}).get("json")
+    if not isinstance(payload, dict):
+        payload = character_details or {}
+    data = payload.get("data") if isinstance(payload, dict) else {}
+    weapon_wiki = data.get("weapon_wiki") if isinstance(data, dict) else {}
+    return dict(weapon_wiki) if isinstance(weapon_wiki, dict) else {}
+
+
 def build_import_log(
     *,
     image_path: Path,
@@ -177,6 +262,8 @@ def build_import_log(
     artifact_summary: dict[str, Any] | None,
     account_storage_summary: dict[str, Any] | None = None,
     account_storage_error: str | None = None,
+    static_catalog_summary: dict[str, Any] | None = None,
+    static_catalog_error: str | None = None,
     started_at: float,
 ) -> dict[str, Any]:
     return {
@@ -206,6 +293,8 @@ def build_import_log(
         "warningMatches": manifest.get("warningMatches"),
         "accountStorage": account_storage_summary,
         "accountStorageError": account_storage_error,
+        "staticCatalogs": static_catalog_summary,
+        "staticCatalogError": static_catalog_error,
     }
 
 
@@ -264,6 +353,8 @@ async def run_hoyolab_import() -> dict[str, Any]:
     artifact_summary: dict[str, Any] | None = None
     account_storage_summary: dict[str, Any] | None = None
     account_storage_error: str | None = None
+    static_catalog_summary: dict[str, Any] | None = None
+    static_catalog_error: str | None = None
 
     try:
         context = await exporter._create_context()
@@ -343,6 +434,15 @@ async def run_hoyolab_import() -> dict[str, Any]:
         content_language = normalize_language(character_details.get("detectedLanguage"))
         print(f"[HoYoLAB Import] HoYoLAB content language: {content_language}")
         print_status("updating_artifact_catalog")
+        static_catalog_summary, static_catalog_error = sync_static_reference_catalogs_for_import(
+            content_language,
+            weapon_wiki=_weapon_wiki_from_character_details(character_details),
+        )
+        if static_catalog_error:
+            print(
+                "[HoYoLAB Import] Static HoYoWiki catalog refresh warning:",
+                static_catalog_error,
+            )
         set_names_summary = ensure_artifact_set_names(
             content_language,
             db_path=ARTIFACT_DB_PATH,
@@ -382,6 +482,8 @@ async def run_hoyolab_import() -> dict[str, Any]:
             character_details,
             db_path=ARTIFACT_DB_PATH,
         )
+        artifact_summary["static_catalogs"] = static_catalog_summary
+        artifact_summary["static_catalog_error"] = static_catalog_error
         artifact_summary["set_names"] = set_names_summary
         artifact_summary["set_mapping"] = set_mapping_summary
 
@@ -404,6 +506,19 @@ async def run_hoyolab_import() -> dict[str, Any]:
         write_json(layout_path, layout)
         write_inventory(merged_characters, merged_weapons, HOYOLAB_DATA_DIR)
         write_json(character_details_path, character_details)
+        try:
+            with connect_db(ARTIFACT_DB_PATH) as conn:
+                static_catalog_summary["staticDisplayEffects"] = {
+                    "artifact_set_rows": rebuild_artifact_set_display_stat_effects(conn),
+                    "weapon_rows": rebuild_weapon_display_stat_effects(
+                        conn,
+                        weapon_wiki=read_weapon_wiki_from_account_detail_cache(
+                            character_details_path
+                        ),
+                    ),
+                }
+        except Exception as exc:
+            static_catalog_summary["staticDisplayEffectsError"] = compact_exception_summary(exc)
 
         print_status("cropping_assets")
         print("[HoYoLAB Import] Building crops and manifest...")
@@ -456,6 +571,8 @@ async def run_hoyolab_import() -> dict[str, Any]:
             artifact_summary=artifact_summary,
             account_storage_summary=account_storage_summary,
             account_storage_error=account_storage_error,
+            static_catalog_summary=static_catalog_summary,
+            static_catalog_error=static_catalog_error,
             started_at=started_at,
         )
         write_json(import_log_path, log)

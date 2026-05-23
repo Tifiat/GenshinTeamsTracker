@@ -39,8 +39,13 @@ from localization import get_language, language_options, set_language, tr
 from run_workspace import RunSnapshotV1, build_legacy_abyss_run_snapshot
 from ui.character_assets import (
     CHARACTER_RARITY_FILTERS,
+    CHARACTER_STANDARD_FILTER,
+    CHARACTER_TRAIT_FILTERS,
     ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
+    STANDARD_FILTER_ALL,
+    STANDARD_FILTER_EXCLUDE,
+    STANDARD_FILTER_ONLY,
     WEAPON_RARITY_FILTERS,
     WEAPON_TYPE_FILTERS,
     character_matches_filters,
@@ -48,6 +53,7 @@ from ui.character_assets import (
     load_account_character_asset_items,
     load_account_weapon_stack_asset_items,
     metadata_int,
+    standard_character_filter_icon,
 )
 from ui.run_history_window import RunHistoryWindow
 from ui.widgets.drag import DraggableIcon
@@ -146,6 +152,10 @@ QPushButton#asset_filter_button:checked {
     border-color: #4e91ff;
     background-color: #252936;
 }
+QPushButton#asset_filter_button[standardOnly="true"] {
+    border-color: #4e91ff;
+    background-color: #252936;
+}
 """
 class App(QWidget):
     def __init__(self):
@@ -175,6 +185,8 @@ class App(QWidget):
         self._character_element_filters: set[str] = set()
         self._character_weapon_filters: set[str] = set()
         self._character_rarity_filters: set[int] = set()
+        self._character_trait_filters: set[str] = set()
+        self._character_standard_filter = STANDARD_FILTER_ALL
         self._weapon_type_filters: set[str] = set()
         self._weapon_rarity_filters: set[int] = set()
         self._updating_language_combo = False
@@ -631,7 +643,7 @@ class App(QWidget):
         )
         return True
 
-    def _make_filter_button(self, value, icon_name: str, active_set: set):
+    def _make_filter_button(self, value, icon_name: str, active_set: set, update_callback=None):
         button = QPushButton("")
         button.setObjectName("asset_filter_button")
         button.setCheckable(True)
@@ -650,22 +662,66 @@ class App(QWidget):
                 filters.add(filter_value)
             else:
                 filters.discard(filter_value)
-            self.safe_update_grids()
+            if update_callback is not None:
+                update_callback()
+            else:
+                self.safe_update_grids()
 
         button.clicked.connect(toggle_filter)
         return button
 
-    def _build_filter_row(self, filter_groups):
+    def _build_filter_row(self, filter_groups, *, trailing_widgets=None):
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
         row.setSpacing(3)
 
-        for filters, active_set in filter_groups:
+        for filters, active_set, update_callback in filter_groups:
             for value, icon_name, _tooltip_key in filters:
-                row.addWidget(self._make_filter_button(value, icon_name, active_set))
+                row.addWidget(
+                    self._make_filter_button(
+                        value,
+                        icon_name,
+                        active_set,
+                        update_callback,
+                    )
+                )
+
+        for widget in trailing_widgets or ():
+            row.addWidget(widget)
 
         row.addStretch()
         return row
+
+    def _make_standard_filter_button(self) -> QPushButton:
+        value, icon_name, _tooltip_key = CHARACTER_STANDARD_FILTER
+        button = QPushButton("")
+        button.setObjectName("asset_filter_button")
+        button.setCheckable(False)
+        button.setFixedSize(30, 30)
+        button.setIconSize(QSize(24, 24))
+        button.setStyleSheet(FILTER_BUTTON_STYLE)
+        button.setIcon(standard_character_filter_icon(STANDARD_FILTER_ALL, size=24))
+        button.setProperty("standardOnly", False)
+
+        def cycle_standard_filter() -> None:
+            if self._character_standard_filter == STANDARD_FILTER_ALL:
+                self._character_standard_filter = STANDARD_FILTER_ONLY
+            elif self._character_standard_filter == STANDARD_FILTER_ONLY:
+                self._character_standard_filter = STANDARD_FILTER_EXCLUDE
+            else:
+                self._character_standard_filter = STANDARD_FILTER_ALL
+            button.setProperty(
+                "standardOnly",
+                self._character_standard_filter == STANDARD_FILTER_ONLY,
+            )
+            button.style().unpolish(button)
+            button.style().polish(button)
+            button.setIcon(standard_character_filter_icon(self._character_standard_filter, size=24))
+            button.repaint()
+            QTimer.singleShot(0, self.reload_characters)
+
+        button.clicked.connect(cycle_standard_filter)
+        return button
 
     def build_left_panel(self):
         left = QVBoxLayout()
@@ -701,8 +757,8 @@ class App(QWidget):
         left.addLayout(
             self._build_filter_row(
                 (
-                    (WEAPON_TYPE_FILTERS, self._weapon_type_filters),
-                    (WEAPON_RARITY_FILTERS, self._weapon_rarity_filters),
+                    (WEAPON_TYPE_FILTERS, self._weapon_type_filters, self.reload_weapons),
+                    (WEAPON_RARITY_FILTERS, self._weapon_rarity_filters, self.reload_weapons),
                 )
             )
         )
@@ -720,10 +776,12 @@ class App(QWidget):
         left.addLayout(
             self._build_filter_row(
                 (
-                    (ELEMENT_FILTERS, self._character_element_filters),
-                    (WEAPON_TYPE_FILTERS, self._character_weapon_filters),
-                    (CHARACTER_RARITY_FILTERS, self._character_rarity_filters),
-                )
+                    (ELEMENT_FILTERS, self._character_element_filters, self.reload_characters),
+                    (WEAPON_TYPE_FILTERS, self._character_weapon_filters, self.reload_characters),
+                    (CHARACTER_RARITY_FILTERS, self._character_rarity_filters, self.reload_characters),
+                    (CHARACTER_TRAIT_FILTERS, self._character_trait_filters, self.reload_characters),
+                ),
+                trailing_widgets=(self._make_standard_filter_button(),),
             )
         )
         self.char_area = QScrollArea()
@@ -883,6 +941,8 @@ class App(QWidget):
             self._character_element_filters,
             self._character_weapon_filters,
             self._character_rarity_filters,
+            trait_filters=self._character_trait_filters,
+            standard_filter=self._character_standard_filter,
         )
 
     def _weapon_matches_filters(self, asset: dict) -> bool:

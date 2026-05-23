@@ -21,6 +21,13 @@ from .catalog_mapping_report import (
     DEFAULT_ACCOUNT_WEAPONS_PATH,
 )
 from .character_ascension_bonus import extract_character_ascension_bonus_by_base_stats
+from .character_identity import (
+    CharacterIdentityRecord,
+    identity_by_character_id,
+    init_character_identity_storage,
+    sync_character_identity_from_account_rows,
+)
+from .character_region_catalog import load_character_region_catalog
 from .character_stats_catalog import (
     CHARACTER_BASE_STATS_CACHE_PATH,
     CharacterBaseStatsCatalog,
@@ -30,13 +37,15 @@ from .character_stats_catalog import (
 from .crop_manifest import IGNORED_CHARACTER_IDS, icon_key
 from .paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
 from .paths import HOYOLAB_CHARACTER_ASSETS_DIR
+from .character_trait_catalog import load_character_trait_catalog
 
 
 DEFAULT_ACCOUNT_CHARACTER_DETAILS_PATH = HOYOLAB_DATA_DIR / "account_character_details.json"
 DEFAULT_CROP_MANIFEST_PATH = HOYOLAB_DATA_DIR / "crop_manifest.json"
+DEFAULT_ACCOUNT_LANGUAGE_PATH = HOYOLAB_DATA_DIR / "account_language.json"
 DEFAULT_ACCOUNT_DB_PATH = PROJECT_ROOT / "data" / "artifacts.db"
 
-ACCOUNT_STORAGE_SCHEMA_VERSION = 2
+ACCOUNT_STORAGE_SCHEMA_VERSION = 3
 DEFAULT_SIDE_ICON_CACHE_DIR = HOYOLAB_CHARACTER_ASSETS_DIR / "side_icons"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -151,6 +160,10 @@ class AccountCharacterRuntimeRecord:
     side_icon_url: str = ""
     portrait_path: str = ""
     side_icon_path: str = ""
+    region_key: str = ""
+    region_name: str = ""
+    traits: tuple[str, ...] = ()
+    is_standard_5_star: bool = False
     base_hp: float | None = None
     base_atk: float | None = None
     base_def: float | None = None
@@ -178,6 +191,10 @@ class AccountCharacterRuntimeRecord:
             "side_icon_url": self.side_icon_url,
             "portrait_path": self.portrait_path,
             "side_icon_path": self.side_icon_path,
+            "region_key": self.region_key,
+            "region_name": self.region_name,
+            "traits": list(self.traits),
+            "is_standard_5_star": self.is_standard_5_star,
             "base_hp": self.base_hp,
             "base_atk": self.base_atk,
             "base_def": self.base_def,
@@ -205,6 +222,10 @@ class AccountCharacterRuntimeRecord:
             "side_icon_url": self.side_icon_url,
             "portrait_path": self.portrait_path,
             "side_icon_path": self.side_icon_path,
+            "region_key": self.region_key,
+            "region_name": self.region_name,
+            "traits": list(self.traits),
+            "is_standard_5_star": self.is_standard_5_star,
             "base_hp": self.base_hp,
             "base_atk": self.base_atk,
             "base_def": self.base_def,
@@ -273,6 +294,7 @@ class AccountWeaponObservedStack:
         }
 
     def to_team_builder_weapon_ref(self) -> dict[str, Any]:
+        source_metadata = dict(self.source_metadata or {})
         return {
             "id": self.weapon_id,
             "name": self.name,
@@ -291,10 +313,12 @@ class AccountWeaponObservedStack:
             "secondary_property_type": self.secondary_property_type,
             "secondary_stat_value": self.secondary_stat_value,
             "secondary_stat_value_raw": self.secondary_stat_value_raw,
+            "weapon_catalog_entry_page_id": source_metadata.get("hoyowiki_weapon_entry_id", ""),
             "description": self.description,
             "icon_url": self.icon_url,
             "icon_path": self.icon_path,
             "warnings": list(self.warnings),
+            "source_metadata": source_metadata,
         }
 
 
@@ -438,6 +462,7 @@ def init_account_storage(conn: sqlite3.Connection) -> None:
     _ensure_account_character_columns(conn)
     _ensure_account_character_talent_columns(conn)
     _ensure_observed_weapon_columns(conn)
+    init_character_identity_storage(conn)
 
 
 def sync_account_storage_from_local_files(
@@ -447,6 +472,7 @@ def sync_account_storage_from_local_files(
     account_weapons_path: str | Path = DEFAULT_ACCOUNT_WEAPONS_PATH,
     account_character_details_path: str | Path = DEFAULT_ACCOUNT_CHARACTER_DETAILS_PATH,
     crop_manifest_path: str | Path = DEFAULT_CROP_MANIFEST_PATH,
+    account_language_path: str | Path = DEFAULT_ACCOUNT_LANGUAGE_PATH,
     character_stats_catalog_path: str | Path = CHARACTER_BASE_STATS_CACHE_PATH,
     side_icon_cache_dir: str | Path = DEFAULT_SIDE_ICON_CACHE_DIR,
     download_side_icons: bool = False,
@@ -461,7 +487,11 @@ def sync_account_storage_from_local_files(
 
     account_details = _load_json_dict(account_character_details_path)
     crop_manifest = _load_json_dict(crop_manifest_path)
+    account_language = _load_json_dict(account_language_path)
     character_catalog = read_character_base_stats_cache(character_stats_catalog_path)
+    content_language = _text(account_language.get("contentLanguage")) or "en-us"
+    region_entries = load_character_region_catalog(content_language, allow_network=False)
+    trait_catalog = load_character_trait_catalog()
 
     with connect_db(db_path) as conn:
         init_db(conn)
@@ -472,6 +502,8 @@ def sync_account_storage_from_local_files(
             account_character_details=account_details,
             crop_manifest=crop_manifest,
             character_stats_catalog=character_catalog,
+            character_region_entries=region_entries,
+            character_trait_entries=trait_catalog.entries,
             side_icon_cache_dir=side_icon_cache_dir,
             side_icon_downloader=_download_url_to_file if download_side_icons else None,
         )
@@ -487,6 +519,8 @@ def sync_account_storage_from_sources(
     account_character_details: Mapping[str, Any] | None = None,
     crop_manifest: Mapping[str, Any] | None = None,
     character_stats_catalog: CharacterBaseStatsCatalog | None = None,
+    character_region_entries: list[dict[str, Any]] | tuple[dict[str, Any], ...] = (),
+    character_trait_entries: tuple[Any, ...] = (),
     side_icon_cache_dir: str | Path = DEFAULT_SIDE_ICON_CACHE_DIR,
     side_icon_downloader: Callable[[str, Path], None] | None = None,
 ) -> AccountStorageSyncSummary:
@@ -498,6 +532,7 @@ def sync_account_storage_from_sources(
     detail_rows = _detail_rows(details_data)
     details_by_id = _details_by_character_id(detail_rows)
     avatar_wiki = _string_map(details_data.get("avatar_wiki"))
+    weapon_wiki = _string_map(details_data.get("weapon_wiki"))
     character_entries = _character_entries_by_id(character_stats_catalog)
     character_crops = _character_crops_by_id(crop_manifest or {})
     weapon_icon_paths = _weapon_icon_paths(crop_manifest or {})
@@ -523,6 +558,7 @@ def sync_account_storage_from_sources(
 
             base_values = None
             ascension_bonus = None
+            entry_id = ""
             if detail is not None:
                 stat_sheet = parse_account_character_stat_sheet(detail)
                 base_values = extract_account_character_base_values(stat_sheet)
@@ -562,6 +598,7 @@ def sync_account_storage_from_sources(
                     "data/hoyolab/crop_manifest.json",
                 ],
                 "authoritative_character_source": "account_characters_json",
+                "hoyowiki_character_entry_id": entry_id,
                 "detail_record_present": detail is not None,
                 "canonical_base_values": (
                     "hoyolab_base_properties_base_fields_with_character_atk_derived"
@@ -612,9 +649,17 @@ def sync_account_storage_from_sources(
     else:
         warnings.append(WARNING_CHARACTER_SOURCE_EMPTY_PRESERVED)
 
+    identity_rows = sync_character_identity_from_account_rows(
+        conn,
+        region_entries=character_region_entries,
+        trait_entries=character_trait_entries,
+        now=now,
+    )
+
     observations = _weapon_observations(
         account_weapons=account_weapons,
         detail_rows=detail_rows,
+        weapon_wiki=weapon_wiki,
         weapon_icon_paths=weapon_icon_paths,
     )
     observation_by_key: dict[str, _WeaponObservation] = {}
@@ -792,6 +837,10 @@ def list_account_characters(
         ORDER BY name COLLATE NOCASE ASC, character_id ASC
         """
     ).fetchall()
+    identities = identity_by_character_id(
+        conn,
+        [_optional_int(row["character_id"]) for row in rows],
+    )
     talents_by_character = _talents_by_character_id(
         conn,
         [_optional_int(row["character_id"]) for row in rows],
@@ -800,6 +849,7 @@ def list_account_characters(
         _account_character_runtime_record(
             row,
             talents=talents_by_character.get(_optional_int(row["character_id"]), ()),
+            identity=identities.get(_optional_int(row["character_id"])),
         )
         for row in rows
     )
@@ -823,9 +873,11 @@ def get_account_character(
         return None
     character_id_int = _optional_int(row["character_id"])
     talents_by_character = _talents_by_character_id(conn, [character_id_int])
+    identities = identity_by_character_id(conn, [character_id_int])
     return _account_character_runtime_record(
         row,
         talents=talents_by_character.get(character_id_int, ()),
+        identity=identities.get(character_id_int),
     )
 
 
@@ -1165,6 +1217,7 @@ def _weapon_observations(
     *,
     account_weapons: list[dict[str, Any]],
     detail_rows: list[dict[str, Any]],
+    weapon_wiki: Mapping[str, str],
     weapon_icon_paths: _WeaponIconPathMap,
 ) -> list[_WeaponObservation]:
     observations: list[_WeaponObservation] = []
@@ -1184,6 +1237,7 @@ def _weapon_observations(
                     detail,
                     account_weapon=account_weapon,
                     observation_key=f"character:{character_id}",
+                    weapon_wiki=weapon_wiki,
                     icon_path=_weapon_icon_path_for_observation(
                         account_weapon=account_weapon,
                         detail=detail,
@@ -1204,9 +1258,10 @@ def _weapon_observations(
         )
         observations.append(
             _weapon_observation_from_account_weapon(
-                account_weapon,
-                observation_key=observation_key,
-                source_row_index=index,
+            account_weapon,
+            observation_key=observation_key,
+            weapon_wiki=weapon_wiki,
+            source_row_index=index,
                 icon_path=_weapon_icon_path_for_observation(
                     account_weapon=account_weapon,
                     detail=None,
@@ -1230,6 +1285,7 @@ def _weapon_observations(
                 detail,
                 account_weapon=None,
                 observation_key=f"character:{character_id}",
+                weapon_wiki=weapon_wiki,
                 icon_path=_weapon_icon_path_for_observation(
                     account_weapon=None,
                     detail=detail,
@@ -1247,6 +1303,7 @@ def _weapon_observation_from_detail(
     *,
     account_weapon: Mapping[str, Any] | None,
     observation_key: str,
+    weapon_wiki: Mapping[str, str],
     icon_path: str,
     source_files: tuple[str, ...],
 ) -> _WeaponObservation:
@@ -1293,10 +1350,12 @@ def _weapon_observation_from_detail(
     )
 
     character_id = _text(base.get("id"))
+    weapon_catalog_entry_page_id = _entry_id_from_url(weapon_wiki.get(str(weapon_id)))
     source_metadata = {
         "observation_key": observation_key,
         "equipped_character_id": character_id,
         "equipped_character_name": _text(base.get("name")),
+        "hoyowiki_weapon_entry_id": weapon_catalog_entry_page_id,
         "source_files": list(source_files),
         "detail_weapon_present": True,
         "account_weapon_row_present": bool(account_weapon),
@@ -1331,6 +1390,7 @@ def _weapon_observation_from_account_weapon(
     account_weapon: Mapping[str, Any],
     *,
     observation_key: str,
+    weapon_wiki: Mapping[str, str],
     source_row_index: int,
     icon_path: str,
 ) -> _WeaponObservation:
@@ -1360,6 +1420,7 @@ def _weapon_observation_from_account_weapon(
         "observation_key": observation_key,
         "equipped_character_id": _text(equipped_by.get("id")),
         "equipped_character_name": _text(equipped_by.get("name")),
+        "hoyowiki_weapon_entry_id": _entry_id_from_url(weapon_wiki.get(str(weapon_id))),
         "source_files": ["data/hoyolab/account_weapons.json"],
         "source_row_index": source_row_index,
         "detail_weapon_present": False,
@@ -1418,6 +1479,7 @@ def _account_character_runtime_record(
     row: sqlite3.Row | Mapping[str, Any],
     *,
     talents: tuple[AccountCharacterTalentRecord, ...] = (),
+    identity: CharacterIdentityRecord | None = None,
 ) -> AccountCharacterRuntimeRecord:
     return AccountCharacterRuntimeRecord(
         character_id=_text(row["character_id"]),
@@ -1432,6 +1494,10 @@ def _account_character_runtime_record(
         side_icon_url=_text(row["side_icon_url"]),
         portrait_path=_text(row["portrait_path"]),
         side_icon_path=_text(row["side_icon_path"]),
+        region_key=identity.region_key if identity else "",
+        region_name=identity.region_name if identity else "",
+        traits=identity.traits if identity else (),
+        is_standard_5_star=identity.is_standard_5_star if identity else False,
         base_hp=_number_or_none(row["base_hp"]),
         base_atk=_number_or_none(row["base_atk"]),
         base_def=_number_or_none(row["base_def"]),

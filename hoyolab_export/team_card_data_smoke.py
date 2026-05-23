@@ -421,6 +421,7 @@ def _weapon_stack_dict(
 
 
 def _weapon_ref_for_team_builder(stack: Mapping[str, Any]) -> dict[str, Any]:
+    source_metadata = dict(stack.get("source_metadata") or {})
     return {
         "id": _text(stack.get("weapon_id") or stack.get("id")),
         "name": _text(stack.get("name")),
@@ -439,10 +440,15 @@ def _weapon_ref_for_team_builder(stack: Mapping[str, Any]) -> dict[str, Any]:
         "secondary_property_type": stack.get("secondary_property_type"),
         "secondary_stat_value": stack.get("secondary_stat_value"),
         "secondary_stat_value_raw": stack.get("secondary_stat_value_raw"),
+        "weapon_catalog_entry_page_id": _text(
+            stack.get("weapon_catalog_entry_page_id")
+            or source_metadata.get("hoyowiki_weapon_entry_id")
+        ),
         "description": _text(stack.get("description")),
         "icon_url": _text(stack.get("icon_url")),
         "icon_path": _text(stack.get("icon_path")),
         "warnings": list(stack.get("warnings") or []),
+        "source_metadata": source_metadata,
     }
 
 

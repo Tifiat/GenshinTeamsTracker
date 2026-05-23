@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from contextlib import closing
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 from urllib.parse import quote
 
 from .artifact_build_snapshot import (
@@ -15,6 +16,11 @@ from .artifact_db import (
     ARTIFACT_DB_PATH,
     calculate_raw_build_summary,
     get_build_preset,
+)
+from .display_stat_effects import (
+    get_weapon_passive_tooltip,
+    list_artifact_set_display_stat_effects_for_active_sets,
+    list_weapon_display_stat_effects,
 )
 from .account_stat_sheet import (
     AccountCharacterStatSheet,
@@ -38,6 +44,7 @@ from .character_stat_snapshot import (
     build_character_stat_snapshot,
 )
 from .character_stats_catalog import CharacterBaseStatsEntry
+from .paths import PROJECT_ROOT
 from .weapon_stats_catalog import WeaponStatsEntry
 
 
@@ -121,6 +128,9 @@ class CharacterDetailsData:
     stat_snapshot: CharacterStatSnapshot | None = None
     account_stat_sheet: AccountCharacterStatSheet | None = None
     ascension_bonus: CharacterAscensionBonusInfo | None = None
+    artifact_set_display_stat_effects: tuple[dict[str, Any], ...] = ()
+    weapon_display_stat_effects: tuple[dict[str, Any], ...] = ()
+    weapon_passive_reference: dict[str, Any] = field(default_factory=dict)
     warnings: tuple[str, ...] = ()
     source_notes: dict[str, Any] = field(default_factory=dict)
     gcsim_readiness: GcsimReadinessNote = field(default_factory=GcsimReadinessNote)
@@ -151,6 +161,13 @@ class CharacterDetailsData:
                 if self.ascension_bonus is not None
                 else None
             ),
+            "artifact_set_display_stat_effects": [
+                dict(item) for item in self.artifact_set_display_stat_effects
+            ],
+            "weapon_display_stat_effects": [
+                dict(item) for item in self.weapon_display_stat_effects
+            ],
+            "weapon_passive_reference": dict(self.weapon_passive_reference),
             "warnings": list(self.warnings),
             "source_notes": dict(self.source_notes),
             "gcsim_readiness": self.gcsim_readiness.to_dict(),
@@ -168,6 +185,9 @@ def build_character_details_data(
     selected_build_name: str = "",
     account_detail_record: Mapping[str, Any] | None = None,
     character_readiness_status: str | None = None,
+    artifact_set_display_stat_effects: Iterable[Mapping[str, Any]] = (),
+    weapon_display_stat_effects: Iterable[Mapping[str, Any]] = (),
+    weapon_passive_reference: Mapping[str, Any] | None = None,
     source_notes: Mapping[str, Any] | None = None,
 ) -> CharacterDetailsData:
     artifact_input = _artifact_input_for_snapshot(
@@ -252,6 +272,13 @@ def build_character_details_data(
         stat_snapshot=stat_snapshot,
         account_stat_sheet=account_stat_sheet,
         ascension_bonus=ascension_bonus,
+        artifact_set_display_stat_effects=tuple(
+            dict(item) for item in artifact_set_display_stat_effects
+        ),
+        weapon_display_stat_effects=tuple(
+            dict(item) for item in weapon_display_stat_effects
+        ),
+        weapon_passive_reference=dict(weapon_passive_reference or {}),
         warnings=tuple(_dedupe(warnings)),
         source_notes=resolved_source_notes,
         gcsim_readiness=GcsimReadinessNote(
@@ -328,14 +355,21 @@ def build_character_details_data_with_build_id(
     character_readiness_status: str | None = None,
     source_notes: Mapping[str, Any] | None = None,
 ) -> CharacterDetailsData:
+    resolved_weapon_stats_entry = weapon_stats_entry
+    passive_reference = _weapon_passive_reference_from_db(
+        db_path,
+        account_weapon,
+        source_notes=source_notes,
+    )
     if build_id is None:
         return build_character_details_data(
             account_character=account_character,
             character_stats_entry=character_stats_entry,
             account_weapon=account_weapon,
-            weapon_stats_entry=weapon_stats_entry,
+            weapon_stats_entry=resolved_weapon_stats_entry,
             account_detail_record=account_detail_record,
             character_readiness_status=character_readiness_status,
+            weapon_passive_reference=passive_reference,
             source_notes=source_notes,
         )
 
@@ -343,16 +377,29 @@ def build_character_details_data_with_build_id(
         int(build_id),
         db_path=db_path,
     )
+    with closing(_connect_readonly_db(db_path)) as conn:
+        artifact_set_effects = list_artifact_set_display_stat_effects_for_active_sets(
+            conn,
+            artifact_snapshot.to_dict().get("active_set_bonuses") or [],
+        )
+        weapon_effects = list_weapon_display_stat_effects(
+            conn,
+            weapon_id=(account_weapon or {}).get("id") or (account_weapon or {}).get("weapon_id"),
+            refinement=(account_weapon or {}).get("refinement"),
+        )
     return build_character_details_data(
         account_character=account_character,
         character_stats_entry=character_stats_entry,
         account_weapon=account_weapon,
-        weapon_stats_entry=weapon_stats_entry,
+        weapon_stats_entry=resolved_weapon_stats_entry,
         artifact_build_snapshot=artifact_snapshot,
         selected_build_id=int(build_id),
         selected_build_name=artifact_snapshot.build_name,
         account_detail_record=account_detail_record,
         character_readiness_status=character_readiness_status,
+        artifact_set_display_stat_effects=artifact_set_effects,
+        weapon_display_stat_effects=weapon_effects,
+        weapon_passive_reference=passive_reference,
         source_notes={
             **dict(source_notes or {}),
             "artifact_db": Path(db_path).name,
@@ -457,6 +504,48 @@ def _connect_readonly_db(path: str | Path) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+def _weapon_passive_reference_from_db(
+    db_path: str | Path,
+    account_weapon: Mapping[str, Any] | None,
+    *,
+    source_notes: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    weapon = dict(account_weapon or {})
+    weapon_id = _text(weapon.get("id") or weapon.get("weapon_id"))
+    if not weapon_id:
+        return {}
+    language = _text(
+        _mapping(source_notes).get("content_language")
+        or _mapping(source_notes).get("account_content_language")
+    ) or _account_content_language()
+    try:
+        with closing(_connect_readonly_db(db_path)) as conn:
+            return get_weapon_passive_tooltip(
+                conn,
+                weapon_id=weapon_id,
+                language=language,
+            )
+    except sqlite3.Error:
+        return {}
+
+
+def _account_content_language() -> str:
+    path = PROJECT_ROOT / "data" / "hoyolab" / "account_language.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    return _text(data.get("contentLanguage")) if isinstance(data, dict) else ""
+
+
+def _text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
 
 
 def _optional_int(value: Any) -> int | None:

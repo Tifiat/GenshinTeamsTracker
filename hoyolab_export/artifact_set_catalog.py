@@ -474,12 +474,16 @@ def update_artifact_set_catalog(
     db_path: str | Path = ARTIFACT_DB_PATH,
     language: str = CANONICAL_LANGUAGE,
     force_download: bool = False,
+    missing_only: bool = False,
 ) -> dict[str, Any]:
     requested_language = normalize_language(language)
     summary: dict[str, Any] = {
         "language": CANONICAL_LANGUAGE,
         "requested_language": requested_language,
         "sets_seen": 0,
+        "sets_existing": 0,
+        "sets_missing": 0,
+        "sets_skipped_existing": 0,
         "sets_upserted": 0,
         "names_upserted": 0,
         "bonus_descriptions_upserted": 0,
@@ -503,6 +507,28 @@ def update_artifact_set_catalog(
 
     with connect_db(db_path) as conn:
         init_db(conn)
+        existing_entry_ids = {
+            str(row["hoyowiki_entry_id"] or "")
+            for row in conn.execute(
+                """
+                SELECT hoyowiki_entry_id
+                FROM artifact_sets
+                WHERE hoyowiki_entry_id IS NOT NULL
+                    AND hoyowiki_entry_id != ''
+                """
+            ).fetchall()
+        }
+        existing_set_uids = {
+            str(row["set_uid"] or "")
+            for row in conn.execute(
+                """
+                SELECT set_uid
+                FROM artifact_sets
+                WHERE set_uid IS NOT NULL
+                    AND set_uid != ''
+                """
+            ).fetchall()
+        }
 
         for item_index, item in enumerate(items, start=1):
             entry_id = _entry_page_id(item)
@@ -513,6 +539,16 @@ def update_artifact_set_catalog(
 
             set_uid = set_uid_from_english_name(fallback_name)
             if not set_uid:
+                continue
+
+            is_existing = entry_id in existing_entry_ids or set_uid in existing_set_uids
+            if is_existing:
+                summary["sets_existing"] += 1
+            else:
+                summary["sets_missing"] += 1
+
+            if missing_only and is_existing and not force_download:
+                summary["sets_skipped_existing"] += 1
                 continue
 
             print(f"[{item_index}/{len(items)}] {set_uid}")
@@ -659,6 +695,7 @@ def update_artifact_set_catalog(
         backfill_artifact_set_uids(conn)
         conn.commit()
 
+    conn.close()
     return summary
 
 
@@ -906,6 +943,7 @@ def ensure_artifact_set_catalog(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
     allow_network: bool = False,
+    missing_only: bool = False,
 ) -> dict[str, Any]:
     with connect_db(db_path) as conn:
         init_db(conn)
@@ -917,6 +955,7 @@ def ensure_artifact_set_catalog(
             conn.commit()
 
             if seed_summary.get("seeded"):
+                conn.close()
                 return {
                     "source": "seed",
                     "en_us_names_from_catalog": en_us_names,
@@ -927,8 +966,12 @@ def ensure_artifact_set_catalog(
         backfill_artifact_set_uids(conn)
         conn.commit()
 
+    conn.close()
     if allow_network:
-        summary = update_artifact_set_catalog(db_path=db_path)
+        summary = update_artifact_set_catalog(
+            db_path=db_path,
+            missing_only=missing_only,
+        )
         return {"source": "network", **summary}
 
     return {"source": "existing", "en_us_names_from_catalog": en_us_names}

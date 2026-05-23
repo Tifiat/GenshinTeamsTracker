@@ -3,6 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon, QPainter, QPixmap
+
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
 from hoyolab_export.account_storage import (
     AccountCharacterRuntimeRecord,
@@ -30,10 +33,21 @@ from hoyolab_export.artifact_stats import (
 )
 from hoyolab_export.crop_manifest import IGNORED_CHARACTER_IDS, IGNORED_WEAPON_RARITIES
 from hoyolab_export.paths import PROJECT_ROOT
+from hoyolab_export.character_trait_catalog import (
+    TRAIT_HEXEREI,
+    TRAIT_MOONSIGN,
+    TRAIT_STANDARD_5_STAR,
+)
 from localization import get_language
 from ui.artifact_browser.stat_types import localized_stat_label
+from ui.utils.icon_utils import tinted_svg_pixmap
 
 FILTER_ASSETS_DIR = PROJECT_ROOT / "assets" / "filters"
+TEAM_BONUS_ASSETS_DIR = PROJECT_ROOT / "assets" / "team_bonus"
+
+STANDARD_FILTER_ALL = "all"
+STANDARD_FILTER_ONLY = "only"
+STANDARD_FILTER_EXCLUDE = "exclude"
 
 ELEMENT_FILTERS = [
     ("Pyro", "element_pyro.png", "filter.element.pyro"),
@@ -63,6 +77,36 @@ WEAPON_RARITY_FILTERS = [
     (4, "rarity_4.png", "filter.rarity.4"),
     (3, "rarity_3.png", "filter.rarity.3"),
 ]
+
+CHARACTER_TRAIT_FILTERS = [
+    (TRAIT_MOONSIGN, "../team_bonus/Moonsign.png", "filter.trait.moonsign"),
+    (TRAIT_HEXEREI, "../team_bonus/Hexerei.png", "filter.trait.hexerei"),
+]
+
+CHARACTER_STANDARD_FILTER = (
+    TRAIT_STANDARD_5_STAR,
+    "standard.png",
+    "filter.standard_5_star",
+)
+
+
+def standard_character_filter_icon(
+    mode: str,
+    *,
+    size: int = 24,
+) -> QIcon:
+    base = QIcon(str(FILTER_ASSETS_DIR / CHARACTER_STANDARD_FILTER[1])).pixmap(size, size)
+    if mode != STANDARD_FILTER_EXCLUDE:
+        return QIcon(base)
+
+    canvas = QPixmap(size, size)
+    canvas.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(canvas)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    painter.drawPixmap(0, 0, base)
+    painter.drawPixmap(0, 0, tinted_svg_pixmap("ban", size, "#ef4444"))
+    painter.end()
+    return QIcon(canvas)
 
 PERCENT_PROPERTY_TYPES = {
     HP_PERCENT,
@@ -189,6 +233,10 @@ def account_character_asset_item(
     metadata = {
         "source": "account_sqlite",
         "character": record.to_team_builder_character_ref(),
+        "region_key": record.region_key,
+        "region_name": record.region_name,
+        "traits": list(record.traits),
+        "is_standard_5_star": record.is_standard_5_star,
         "talents": [talent.to_dict() for talent in record.talents],
         "source_metadata": dict(record.source_metadata or {}),
         "warnings": list(record.warnings),
@@ -333,8 +381,11 @@ def character_matches_filters(
     weapon_filters: set[str],
     rarity_filters: set[int],
     region_filters: set[str] | None = None,
+    trait_filters: set[str] | None = None,
+    standard_filter: str = STANDARD_FILTER_ALL,
 ) -> bool:
     region_filters = region_filters or set()
+    trait_filters = trait_filters or set()
     metadata = asset.get("metadata")
     if not metadata:
         return True
@@ -344,6 +395,12 @@ def character_matches_filters(
     weapon_type = str(character.get("weapon_type_name") or "").lower()
     rarity = metadata_int(character.get("rarity"))
     region_key = str(character.get("region_key") or metadata.get("region_key") or "")
+    traits = set(character.get("traits") or metadata.get("traits") or [])
+    is_standard = bool(
+        character.get("is_standard_5_star")
+        or metadata.get("is_standard_5_star")
+        or TRAIT_STANDARD_5_STAR in traits
+    )
 
     if element_filters and element not in element_filters:
         return False
@@ -352,6 +409,12 @@ def character_matches_filters(
     if rarity_filters and rarity not in rarity_filters:
         return False
     if region_filters and region_key not in region_filters:
+        return False
+    if trait_filters and not traits.intersection(trait_filters):
+        return False
+    if standard_filter == STANDARD_FILTER_ONLY and not is_standard:
+        return False
+    if standard_filter == STANDARD_FILTER_EXCLUDE and is_standard:
         return False
 
     return True

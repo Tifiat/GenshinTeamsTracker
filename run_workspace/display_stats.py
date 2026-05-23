@@ -27,6 +27,15 @@ DISPLAY_TOTALS_ACCOUNT_BASE_REFERENCE_HOYOLAB_STAT_SHEET = (
 DISPLAY_TOTALS_WEAPON_REFERENCE_HOYOLAB_STAT_SHEET = (
     "display_totals_weapon_reference_from_hoyolab_stat_sheet"
 )
+DISPLAY_TOTALS_INCLUDE_STATIC_ARTIFACT_SET_EFFECTS = (
+    "display_totals_include_static_artifact_set_effects"
+)
+DISPLAY_TOTALS_INCLUDE_STATIC_WEAPON_PASSIVES = (
+    "display_totals_include_static_weapon_passives"
+)
+DISPLAY_TOTALS_EXTERNAL_BONUSES_DISABLED = (
+    "display_totals_external_bonuses_disabled"
+)
 
 
 TOTAL_HP = 2000
@@ -103,6 +112,29 @@ ARTIFACT_PROPERTY_TO_BONUS = {
     ANEMO_DAMAGE: ("anemo_dmg", True),
     GEO_DAMAGE: ("geo_dmg", True),
     CRYO_DAMAGE: ("cryo_dmg", True),
+}
+
+STATIC_EFFECT_STAT_TO_BONUS = {
+    "HP_FLAT": "hp_flat",
+    "HP_PERCENT": "hp_percent",
+    "ATK_FLAT": "atk_flat",
+    "ATK_PERCENT": "atk_percent",
+    "DEF_FLAT": "def_flat",
+    "DEF_PERCENT": "def_percent",
+    "ELEMENTAL_MASTERY": "elemental_mastery",
+    "ENERGY_RECHARGE": "energy_recharge",
+    "CRIT_RATE": "crit_rate",
+    "CRIT_DMG": "crit_damage",
+    "PYRO_DMG_BONUS": "pyro_dmg",
+    "HYDRO_DMG_BONUS": "hydro_dmg",
+    "ELECTRO_DMG_BONUS": "electro_dmg",
+    "CRYO_DMG_BONUS": "cryo_dmg",
+    "ANEMO_DMG_BONUS": "anemo_dmg",
+    "GEO_DMG_BONUS": "geo_dmg",
+    "DENDRO_DMG_BONUS": "dendro_dmg",
+    "PHYSICAL_DMG_BONUS": "physical_dmg",
+    "ALL_ELEMENTAL_DMG_BONUS": "",
+    "HEALING_BONUS": "healing_bonus",
 }
 
 STAT_LABEL_ALIASES = {
@@ -218,6 +250,7 @@ def _display_rows_from_team_builder_virtual_sources(
     artifact = _to_mapping(snapshot.get("artifact"))
     artifact_summary = _to_mapping(artifact.get("summary"))
     source_notes: list[str] = []
+    external_bonuses_enabled = bool(data.get("external_bonuses_enabled", True))
 
     base_hp, base_atk, base_def, base_source_notes = _virtual_character_base_values(
         data,
@@ -238,6 +271,17 @@ def _display_rows_from_team_builder_virtual_sources(
     for stat in artifact_summary.get("stat_totals") or []:
         if isinstance(stat, Mapping):
             _apply_artifact_bonus(bonuses, stat)
+    if external_bonuses_enabled:
+        for effect in data.get("artifact_set_display_stat_effects") or []:
+            if isinstance(effect, Mapping):
+                if _apply_static_display_effect(bonuses, effect):
+                    source_notes.append(DISPLAY_TOTALS_INCLUDE_STATIC_ARTIFACT_SET_EFFECTS)
+        for effect in data.get("weapon_display_stat_effects") or []:
+            if isinstance(effect, Mapping):
+                if _apply_static_display_effect(bonuses, effect):
+                    source_notes.append(DISPLAY_TOTALS_INCLUDE_STATIC_WEAPON_PASSIVES)
+    else:
+        source_notes.append(DISPLAY_TOTALS_EXTERNAL_BONUSES_DISABLED)
 
     rows: list[DisplayedStatRow] = []
     hp = base_hp * (1 + bonuses["hp_percent"] / 100.0) + bonuses["hp_flat"]
@@ -549,6 +593,33 @@ def _apply_property_bonus(
     key, _is_percent = ARTIFACT_PROPERTY_TO_BONUS[int(property_type)]
     amount, _parsed_percent = _parse_stat_value(raw_value)
     bonuses[key] += amount
+
+
+def _apply_static_display_effect(
+    bonuses: dict[str, float],
+    effect: Mapping[str, Any],
+) -> bool:
+    stat_key = str(effect.get("stat_key") or "").strip().upper()
+    amount = _number(effect.get("value"))
+    if not stat_key or amount == 0:
+        return False
+    target = STATIC_EFFECT_STAT_TO_BONUS.get(stat_key)
+    if target is None:
+        return False
+    if stat_key == "ALL_ELEMENTAL_DMG_BONUS":
+        for key in (
+            "pyro_dmg",
+            "hydro_dmg",
+            "electro_dmg",
+            "cryo_dmg",
+            "anemo_dmg",
+            "geo_dmg",
+            "dendro_dmg",
+        ):
+            bonuses[key] += amount
+        return True
+    bonuses[target] += amount
+    return True
 
 
 def _selected_number(value: Any) -> float:

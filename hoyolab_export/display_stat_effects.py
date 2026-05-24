@@ -47,11 +47,18 @@ STATIC_DISPLAY_STAT_KEYS = {
 }
 
 _CONDITION_MARKERS = (
+    " if ",
     " after ",
     " when ",
     " while ",
+    " using ",
+    " use ",
+    " uses ",
+    " used ",
+    " within ",
     " stack",
     " duration",
+    " lasts ",
     " for 6s",
     " for 5s",
     " for 12s",
@@ -67,14 +74,27 @@ _CONDITION_MARKERS = (
 _UNSUPPORTED_DISPLAY_MARKERS = (
     "elemental skill dmg",
     "elemental burst dmg",
-    "normal attack dmg",
-    "charged attack dmg",
-    "plunging attack dmg",
-    " atk spd",
+    "elemental skill crit rate",
+    "elemental burst crit rate",
+    "elemental skill crit dmg",
+    "elemental burst crit dmg",
+    "normal attack crit rate",
+    "charged attack crit rate",
+    "plunging attack crit rate",
+    "normal attack crit dmg",
+    "charged attack crit dmg",
+    "plunging attack crit dmg",
+    "elemental skill",
+    "elemental burst",
     "res ",
     " res",
     "shield strength",
     "incoming healing",
+)
+
+_DURATION_PATTERN = re.compile(
+    r"\b(?:for|within)\s+\d+(?:\.\d+)?\s*(?:s|sec|secs|second|seconds)\b",
+    flags=re.IGNORECASE,
 )
 
 _STAT_PATTERNS: tuple[tuple[str, str, str], ...] = (
@@ -93,7 +113,7 @@ _STAT_PATTERNS: tuple[tuple[str, str, str], ...] = (
     (r"healing bonus|healing effectiveness|character healing effectiveness", "HEALING_BONUS", VALUE_TYPE_PERCENT_POINTS),
     (r"elemental mastery", "ELEMENTAL_MASTERY", VALUE_TYPE_FLAT),
     (r"(?:max )?hp", "HP_PERCENT", VALUE_TYPE_PERCENT_POINTS),
-    (r"\batk\b|attack", "ATK_PERCENT", VALUE_TYPE_PERCENT_POINTS),
+    (r"\batk\b(?!\s*(?:spd|dmg))|attack(?!\s*(?:spd|dmg))", "ATK_PERCENT", VALUE_TYPE_PERCENT_POINTS),
     (r"\bdef\b|defense", "DEF_PERCENT", VALUE_TYPE_PERCENT_POINTS),
 )
 
@@ -172,6 +192,8 @@ def detect_static_display_stat_effects(text: str) -> tuple[DisplayStatEffect, ..
     first_clause = _first_clause(source)
     lowered = f" {first_clause.casefold()} "
     if any(marker in lowered for marker in _CONDITION_MARKERS):
+        return ()
+    if _DURATION_PATTERN.search(first_clause):
         return ()
     if any(marker in lowered for marker in _UNSUPPORTED_DISPLAY_MARKERS):
         return ()
@@ -586,7 +608,7 @@ def list_weapon_display_stat_effects(
 
 
 def _first_clause(text: str) -> str:
-    parts = re.split(r"(?<=[.])\s+|,\s+", text, maxsplit=1)
+    parts = re.split(r"(?<=[.])\s+", text, maxsplit=1)
     return parts[0].strip()
 
 

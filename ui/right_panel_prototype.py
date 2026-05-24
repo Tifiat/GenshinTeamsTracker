@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QScrollArea,
     QSizePolicy,
     QStyle,
     QToolTip,
@@ -41,6 +40,7 @@ from ui.utils.pixmap_utils import (
     scale_trimmed_pixmap_to_size,
 )
 from ui.utils.horizontal_scroll import HorizontalDragScrollArea
+from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.tooltips import install_custom_tooltip
 from ui.artifact_browser.queries import list_set_bonus_description_map
 
@@ -86,7 +86,7 @@ class RightPanelPrototypeWidget(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        self._scroll = QScrollArea()
+        self._scroll = OverlayVerticalScrollArea(auto_hide_ms=850)
         self._scroll.setWidgetResizable(True)
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -152,6 +152,14 @@ class RightPanelPrototypeWidget(QWidget):
         )
         self._details_frame.set_details(model.selected_details)
         self._actions.set_labels(model.action_labels)
+
+    def recommended_standalone_size(self) -> QSize:
+        self._content.adjustSize()
+        hint = self._content.sizeHint()
+        return QSize(
+            max(RIGHT_PANEL_PROTOTYPE_MIN_WIDTH, hint.width()),
+            max(1, hint.height() + self._scroll.frameWidth() * 2),
+        )
 
     def _create_tabs(self, model: RightPanelPrototypeViewModel) -> None:
         for label in model.mode_tabs:
@@ -277,6 +285,8 @@ class RightPanelSlotPrototypeWidget(QFrame):
         if weapon_pixmap is not None:
             weapon.setText("")
             weapon.setPixmap(weapon_pixmap)
+        if model.weapon_tooltip:
+            install_custom_tooltip(weapon, model.weapon_tooltip)
         side.addWidget(weapon, alignment=Qt.AlignmentFlag.AlignLeft)
 
         artifact = BuildMiniSetStackWidget(model)
@@ -480,9 +490,26 @@ class SelectedCharacterDetailsWidget(QFrame):
             chips.addWidget(chip)
         chips.addStretch(1)
 
-        weapon_value = self._add_meta_line(meta_layout, "Weapon", details.weapon_name)
-        if weapon_value is not None and details.weapon_tooltip:
-            install_custom_tooltip(weapon_value, details.weapon_tooltip)
+        self._add_weapon_summary(meta_layout, details)
+        if details.crit_value is not None:
+            self._add_cv_summary(meta_layout, details.crit_value)
+        meta_layout.addStretch(1)
+
+        bonus_strip = BonusSourceStripWidget()
+        bonus_strip.external_bonuses_toggled.connect(self.external_bonuses_toggled.emit)
+        bonus_strip.set_items(
+            details.bonus_sources,
+            external_bonuses_enabled=details.external_bonuses_enabled,
+        )
+        self._layout.addWidget(bonus_strip)
+
+    def _add_weapon_summary(
+        self,
+        layout: QVBoxLayout,
+        details: RightPanelSelectedDetailsViewModel,
+    ) -> None:
+        if not details.weapon_name and not details.weapon_icon_path:
+            return
         weapon_bits = []
         if details.weapon_refinement is not None:
             weapon_bits.append(f"R{details.weapon_refinement}")
@@ -494,21 +521,64 @@ class SelectedCharacterDetailsWidget(QFrame):
             weapon_bits.append(
                 f"{details.weapon_secondary_label} {details.weapon_secondary_value}"
             )
-        if weapon_bits:
-            weapon_meta = self._add_meta_line(meta_layout, "Weapon Meta", " · ".join(weapon_bits))
-            if weapon_meta is not None and details.weapon_tooltip:
-                install_custom_tooltip(weapon_meta, details.weapon_tooltip)
-        if details.crit_value is not None:
-            self._add_meta_line(meta_layout, "CV", f"{details.crit_value:g}")
-        meta_layout.addStretch(1)
 
-        bonus_strip = BonusSourceStripWidget()
-        bonus_strip.external_bonuses_toggled.connect(self.external_bonuses_toggled.emit)
-        bonus_strip.set_items(
-            details.bonus_sources,
-            external_bonuses_enabled=details.external_bonuses_enabled,
-        )
-        self._layout.addWidget(bonus_strip)
+        frame = QFrame()
+        frame.setObjectName("MetaSummaryBox")
+        frame_layout = QHBoxLayout(frame)
+        frame_layout.setContentsMargins(6, 6, 6, 6)
+        frame_layout.setSpacing(8)
+        layout.addWidget(frame)
+
+        icon = QLabel("WPN")
+        icon.setObjectName("DetailsWeaponIcon")
+        icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon.setFixedSize(48, 48)
+        pixmap = _fit_pixmap(details.weapon_icon_path, QSize(50, 50))
+        if pixmap is not None:
+            icon.setText("")
+            icon.setPixmap(pixmap)
+        if details.weapon_tooltip:
+            install_custom_tooltip(icon, details.weapon_tooltip)
+        frame_layout.addWidget(icon, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        text_column = QVBoxLayout()
+        text_column.setContentsMargins(0, 0, 0, 0)
+        text_column.setSpacing(4)
+        frame_layout.addLayout(text_column, 1)
+
+        weapon_name = QLabel(details.weapon_name)
+        weapon_name.setObjectName("MetaValueStrong")
+        weapon_name.setWordWrap(True)
+        if details.weapon_tooltip:
+            install_custom_tooltip(weapon_name, details.weapon_tooltip)
+        text_column.addWidget(weapon_name)
+
+        if weapon_bits:
+            weapon_meta = QLabel(" · ".join(weapon_bits))
+            weapon_meta.setObjectName("MetaValue")
+            weapon_meta.setWordWrap(True)
+            if details.weapon_tooltip:
+                install_custom_tooltip(weapon_meta, details.weapon_tooltip)
+            text_column.addWidget(weapon_meta)
+        text_column.addStretch(1)
+
+    def _add_cv_summary(self, layout: QVBoxLayout, crit_value: float) -> None:
+        frame = QFrame()
+        frame.setObjectName("MetaSummaryBox")
+        row = QHBoxLayout()
+        row.setContentsMargins(8, 5, 8, 5)
+        row.setSpacing(8)
+        frame.setLayout(row)
+        layout.addWidget(frame)
+
+        key = QLabel("CV")
+        key.setObjectName("MetaLabel")
+        row.addWidget(key)
+
+        value = QLabel(f"{crit_value:g}")
+        value.setObjectName("MetaValueStrong")
+        value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        row.addWidget(value, 1)
 
     def _add_meta_line(self, layout: QVBoxLayout, label: str, value: str) -> QLabel | None:
         if not value:
@@ -641,7 +711,7 @@ def _bonus_source_tooltip_html(item: RightPanelBonusSourceDisplayItem) -> str:
     title = html.escape(item.tooltip_title or item.label)
     if title:
         rows.append(f"<b>{title}</b>")
-    if item.short_effects:
+    if item.short_effects and item.source_kind != "weapon_passive_static":
         rows.append(html.escape(", ".join(item.short_effects)))
     if not item.applied and item.not_applied_reason:
         rows.append(
@@ -957,6 +1027,19 @@ def _stylesheet() -> str:
         background: #4a382f;
         color: #ffd2ad;
     }
+    #DetailsWeaponIcon {
+        border-radius: 5px;
+        border: 1px solid #626b78;
+        background: #343a44;
+        color: #edf2f5;
+        font-size: 10px;
+        font-weight: 800;
+    }
+    #MetaSummaryBox {
+        border-radius: 5px;
+        border: 1px solid #303741;
+        background: #15181d;
+    }
     #SlotName {
         color: #f8f3e7;
         font-weight: 800;
@@ -1053,6 +1136,10 @@ def _stylesheet() -> str:
     #MetaValue {
         color: #e6ecef;
         font-weight: 700;
+    }
+    #MetaValueStrong {
+        color: #ffffff;
+        font-weight: 900;
     }
     #SetsLine {
         border-radius: 5px;

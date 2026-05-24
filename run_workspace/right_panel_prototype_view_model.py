@@ -158,6 +158,7 @@ class RightPanelSlotPrototypeViewModel:
     weapon_label: str
     weapon_square_label: str
     weapon_image_path: str
+    weapon_tooltip: str
     build_label: str
     artifact_square_label: str
     artifact_image_path: str
@@ -180,6 +181,7 @@ class RightPanelSlotPrototypeViewModel:
             "weapon_label": self.weapon_label,
             "weapon_square_label": self.weapon_square_label,
             "weapon_image_path": self.weapon_image_path,
+            "weapon_tooltip": self.weapon_tooltip,
             "build_label": self.build_label,
             "artifact_square_label": self.artifact_square_label,
             "artifact_image_path": self.artifact_image_path,
@@ -218,6 +220,7 @@ class RightPanelSelectedDetailsViewModel:
     weapon_base_atk: str = ""
     weapon_secondary_label: str = ""
     weapon_secondary_value: str = ""
+    weapon_icon_path: str = ""
     crit_value: float | None = None
     active_sets: tuple[str, ...] = ()
     stat_rows: tuple[RightPanelDetailRowViewModel, ...] = ()
@@ -240,6 +243,7 @@ class RightPanelSelectedDetailsViewModel:
             "weapon_base_atk": self.weapon_base_atk,
             "weapon_secondary_label": self.weapon_secondary_label,
             "weapon_secondary_value": self.weapon_secondary_value,
+            "weapon_icon_path": self.weapon_icon_path,
             "crit_value": self.crit_value,
             "active_sets": list(self.active_sets),
             "stat_rows": [row.to_dict() for row in self.stat_rows],
@@ -642,6 +646,7 @@ def _build_slot(
         weapon_label=card_slot.weapon_label,
         weapon_square_label=_square_label(card_slot.weapon_label, fallback="WPN"),
         weapon_image_path=_image_path(details, "weapon_image_path", "weapon_path"),
+        weapon_tooltip=_weapon_tooltip(details) if details else "",
         build_label=card_slot.build_label,
         artifact_square_label=_artifact_square_label(card_slot),
         artifact_image_path=_image_path(details, "artifact_image_path", "build_image_path"),
@@ -699,6 +704,7 @@ def _build_selected_details(
         weapon_base_atk=_weapon_base_atk_meta(details),
         weapon_secondary_label=weapon_secondary_label,
         weapon_secondary_value=weapon_secondary_value,
+        weapon_icon_path=_image_path(details, "weapon_image_path", "weapon_path"),
         crit_value=artifact.crit_value if artifact is not None else None,
         active_sets=artifact.active_sets if artifact is not None else (),
         stat_rows=tuple(
@@ -709,7 +715,7 @@ def _build_selected_details(
         ),
         bonus_sources=bonus_sources,
         external_bonuses_enabled=bool(external_bonuses_enabled),
-        weapon_tooltip=_weapon_tooltip(details, bonus_sources),
+        weapon_tooltip=_weapon_tooltip(details),
     )
 
 
@@ -1159,7 +1165,7 @@ def _bonus_source_items(
                 tooltip_body="\n".join(tooltip_lines),
                 applied=bool(external_bonuses_enabled),
                 not_applied_reason=(
-                    "" if external_bonuses_enabled else "External bonuses disabled"
+                    "" if external_bonuses_enabled else "Внешние бонусы отключены"
                 ),
             )
         )
@@ -1176,17 +1182,7 @@ def _bonus_source_items(
         effect_labels = tuple(label for label in effect_labels if label)
         if effect_labels:
             refinement = _optional_int(account_weapon.get("refinement"))
-            tooltip_lines = [
-                weapon_name,
-                "Effects: " + ", ".join(effect_labels),
-            ]
-            passive_reference = _mapping(details.get("weapon_passive_reference"))
-            passive_name = _text(passive_reference.get("passive_name"))
-            passive_text = _text(passive_reference.get("passive_text"))
-            if passive_name:
-                tooltip_lines.append(passive_name)
-            if passive_text:
-                tooltip_lines.append(passive_text)
+            tooltip_title, tooltip_body = _weapon_tooltip_title_body(details)
             items.append(
                 RightPanelBonusSourceDisplayItem(
                     source_kind="weapon_passive_static",
@@ -1196,15 +1192,11 @@ def _bonus_source_items(
                     label=f"R{refinement}" if refinement is not None else "WPN",
                     icon_path=_text(account_weapon.get("icon_path")),
                     short_effects=effect_labels,
-                    tooltip_title=(
-                        f"{weapon_name} R{refinement}"
-                        if refinement is not None
-                        else weapon_name
-                    ),
-                    tooltip_body="\n".join(tooltip_lines),
+                    tooltip_title=tooltip_title,
+                    tooltip_body=tooltip_body,
                     applied=bool(external_bonuses_enabled),
                     not_applied_reason=(
-                        "" if external_bonuses_enabled else "External bonuses disabled"
+                        "" if external_bonuses_enabled else "Внешние бонусы отключены"
                     ),
                 )
             )
@@ -1244,21 +1236,21 @@ def _static_effect_short_label(effect: Mapping[str, Any]) -> str:
     return f"{label} +{value:g}{suffix}"
 
 
-def _weapon_tooltip(
-    details: Mapping[str, Any],
-    bonus_sources: tuple[RightPanelBonusSourceDisplayItem, ...],
-) -> str:
+def _weapon_tooltip(details: Mapping[str, Any]) -> str:
+    title, body = _weapon_tooltip_title_body(details)
+    return "\n".join(line for line in (title, body) if line)
+
+
+def _weapon_tooltip_title_body(details: Mapping[str, Any]) -> tuple[str, str]:
     account_weapon = _account_weapon_for_details(details)
     weapon_name = _text(account_weapon.get("name")) or "No weapon selected"
-    lines = [weapon_name]
-    rarity = _optional_int(account_weapon.get("rarity"))
-    if rarity is not None:
-        lines.append(f"Rarity: {rarity}★")
-    level = _optional_int(account_weapon.get("level"))
     refinement = _optional_int(account_weapon.get("refinement"))
-    meta: list[str] = []
+    title = weapon_name
     if refinement is not None:
-        meta.append(f"R{refinement}")
+        title = f"{weapon_name} R{refinement}"
+    lines: list[str] = []
+    level = _optional_int(account_weapon.get("level"))
+    meta: list[str] = []
     if level is not None:
         meta.append(f"Lv.{level}")
     base_atk = _weapon_base_atk_meta(details)
@@ -1269,15 +1261,6 @@ def _weapon_tooltip(
         meta.append(f"{secondary_label} {secondary_value}")
     if meta:
         lines.append(" · ".join(meta))
-
-    weapon_sources = [
-        source for source in bonus_sources if source.source_kind == "weapon_passive_static"
-    ]
-    for source in weapon_sources:
-        prefix = "Static passive"
-        if not source.applied and source.not_applied_reason:
-            prefix += f" ({source.not_applied_reason})"
-        lines.append(f"{prefix}: {', '.join(source.short_effects)}")
     passive_reference = _mapping(details.get("weapon_passive_reference"))
     passive_name = _text(passive_reference.get("passive_name"))
     passive_text = _text(passive_reference.get("passive_text"))
@@ -1285,7 +1268,7 @@ def _weapon_tooltip(
         lines.append(passive_name)
     if passive_text:
         lines.append(passive_text)
-    return "\n".join(line for line in lines if line)
+    return title, "\n".join(line for line in lines if line)
 
 
 def _account_weapon_for_details(details: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -1664,24 +1647,30 @@ def _warning_tooltip(warnings: tuple[str, ...]) -> str:
 
 def _warning_label(warning: str) -> str:
     labels = {
-        "final_totals_not_computed": "Display totals are provisional.",
-        "character_stats_unavailable": "Static character catalog row was not attached.",
-        "weapon_stats_unavailable": "Static weapon catalog row was not attached.",
-        "artifact_build_incomplete": "Selected build is missing one or more artifact slots.",
-        "set_bonus_formulas_not_included": "Artifact set bonus formulas are not applied.",
-        "conditional_set_bonuses_not_included": "Conditional set bonuses are not applied.",
-        "duplicate_selected_character": "Character is selected more than once.",
+        "artifact_build_incomplete": (
+            "В выбранном билде нет одного или нескольких слотов артефактов; "
+            "имеющиеся артефакты всё равно считаются."
+        ),
+        "duplicate_selected_character": "Персонаж выбран больше одного раза.",
     }
     return labels.get(str(warning or ""), str(warning or ""))
 
 
 def _visible_slot_warnings(warnings: tuple[str, ...]) -> tuple[str, ...]:
-    if "set_bonus_formulas_not_included" not in warnings:
-        return warnings
+    hidden = {
+        "account_weapon_identity_no_source_instance_id",
+        "account_weapon_observed_stack_not_full_inventory",
+        "character_stats_unavailable",
+        "conditional_set_bonuses_not_included",
+        "final_totals_not_computed",
+        "gcsim_config_generation_not_implemented",
+        "set_bonus_formulas_not_included",
+        "weapon_stats_unavailable",
+    }
     return tuple(
         warning
         for warning in warnings
-        if warning != "conditional_set_bonuses_not_included"
+        if warning not in hidden
     )
 
 

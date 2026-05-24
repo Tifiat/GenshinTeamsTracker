@@ -48,8 +48,8 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertEqual([item.piece_count for item in slot.build_mini_sets], [2, 2])
         self.assertEqual(slot.build_mini_sets[0].set_name, "Silken Moon")
         self.assertEqual(slot.stat_badge, "ER/PYRO")
-        self.assertGreater(slot.warning_count, 0)
-        self.assertIn("Selected build is missing", slot.warning_tooltip)
+        self.assertEqual(slot.warning_count, 1)
+        self.assertIn("имеющиеся артефакты всё равно считаются", slot.warning_tooltip)
         self.assertNotIn("warnings", slot_dict)
         self.assertNotIn("warnings", slot_dict["artifact_summary"])
 
@@ -64,7 +64,7 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertEqual(slot.portrait_label, "+")
         self.assertEqual(slot.stat_badge, "EMPTY")
 
-    def test_slot_warning_count_compacts_redundant_set_bonus_warning(self) -> None:
+    def test_slot_warning_count_hides_decorative_model_warnings(self) -> None:
         state = create_empty_team_builder_state(team_count=1)
         state = state.set_character(
             0,
@@ -77,6 +77,9 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
             {
                 "account_character": {"id": "10000024", "name": "Beidou"},
                 "warnings": (
+                    "account_weapon_identity_no_source_instance_id",
+                    "account_weapon_observed_stack_not_full_inventory",
+                    "final_totals_not_computed",
                     "set_bonus_formulas_not_included",
                     "conditional_set_bonuses_not_included",
                 ),
@@ -86,9 +89,8 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         model = build_right_panel_prototype_view_model(state)
         slot = model.teams[0].slots[0]
 
-        self.assertEqual(slot.warning_count, 1)
-        self.assertIn("Artifact set bonus formulas are not applied", slot.warning_tooltip)
-        self.assertNotIn("Conditional set bonuses", slot.warning_tooltip)
+        self.assertEqual(slot.warning_count, 0)
+        self.assertEqual(slot.warning_tooltip, "")
 
     def test_filled_slot_without_selected_build_uses_equip_placeholder(self) -> None:
         state = create_empty_team_builder_state(team_count=1)
@@ -556,6 +558,11 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
                         "value_type": "percent_points",
                     }
                 ],
+                "weapon_passive_reference": {
+                    "passive_name": "Static passive",
+                    "passive_text": "Increases HP by 20%.",
+                    "language": "en-us",
+                },
             },
         )
 
@@ -579,8 +586,26 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertTrue(
             all(not item.applied for item in disabled_model.selected_details.bonus_sources)
         )
+        self.assertEqual(
+            disabled_model.selected_details.bonus_sources[0].not_applied_reason,
+            "Внешние бонусы отключены",
+        )
+        weapon_bonus = enabled_model.selected_details.bonus_sources[1]
+        self.assertEqual(weapon_bonus.tooltip_title, "Static Spear R2")
+        self.assertIn("Lv.70", weapon_bonus.tooltip_body)
+        self.assertIn("ATK 429", weapon_bonus.tooltip_body)
+        self.assertIn("Static passive", weapon_bonus.tooltip_body)
+        self.assertNotIn("Effects:", weapon_bonus.tooltip_body)
         self.assertIn("Static Spear", enabled_model.selected_details.weapon_tooltip)
+        self.assertEqual(
+            enabled_model.selected_details.weapon_icon_path,
+            "assets/hoyolab/weapons/static_spear.png",
+        )
         self.assertIn("Static passive", enabled_model.selected_details.weapon_tooltip)
+        self.assertIn("Lv.70", enabled_model.selected_details.weapon_tooltip)
+        self.assertIn("ATK 429", enabled_model.selected_details.weapon_tooltip)
+        self.assertNotIn("Effects:", enabled_model.selected_details.weapon_tooltip)
+        self.assertNotIn("Rarity:", enabled_model.selected_details.weapon_tooltip)
 
     def test_weapon_tooltip_uses_passive_reference_not_weapon_flavor_description(self) -> None:
         state = create_empty_team_builder_state()
@@ -624,9 +649,11 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         model = build_right_panel_prototype_view_model(state)
         tooltip = model.selected_details.weapon_tooltip
 
+        self.assertIn("Favonius Lance R5", tooltip)
         self.assertIn("Windfall", tooltip)
         self.assertIn("Elemental Particles", tooltip)
         self.assertNotIn("A polearm made", tooltip)
+        self.assertNotIn("Rarity:", tooltip)
 
     def test_dps_dummy_model_shows_one_team_and_single_chamber_row(self) -> None:
         state = build_fake_right_panel_prototype_state()

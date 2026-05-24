@@ -125,6 +125,44 @@ class DisplayStatEffectsTest(unittest.TestCase):
         self.assertEqual(rows[4][0], 5)
         self.assertEqual(rows[4][1].value, 32.0)
 
+    def test_detects_direct_weapon_stat_with_additionally_prefix(self) -> None:
+        rows = detect_weapon_static_display_stat_effects(
+            "Additionally, the wielder's DEF is increased by 20%/25%/30%/35%/40%."
+        )
+
+        self.assertEqual(rows[0][1].stat_key, "DEF_PERCENT")
+        self.assertEqual(rows[0][1].value, 20.0)
+
+    def test_detects_direct_weapon_stat_before_unsupported_neighbor(self) -> None:
+        rows = detect_weapon_static_display_stat_effects(
+            "Increases CRIT Rate by 8%/10%/12%/14%/16% and increases Normal ATK SPD by 12%."
+        )
+
+        self.assertEqual(rows[0][1].stat_key, "CRIT_RATE")
+        self.assertEqual(rows[0][1].value, 8.0)
+
+        rows = detect_weapon_static_display_stat_effects(
+            "Healing Bonus increased by 10%/12.5%/15%/17.5%/20%, "
+            "Normal Attack DMG is increased by 1%/1.5%/2%/2.5%/3% of Max HP."
+        )
+
+        self.assertEqual(rows[0][1].stat_key, "HEALING_BONUS")
+        self.assertEqual(rows[0][1].value, 10.0)
+
+    def test_rejects_scoped_or_conditional_weapon_stats(self) -> None:
+        cases = (
+            "Increases Elemental Skill CRIT Rate by 8%/10%/12%/14%/16%.",
+            "Using an Elemental Skill increases DEF by 16%/20%/24%/28%/32% for 15s.",
+            "Using an Elemental Burst grants a 12% increase in ATK and Movement SPD for 15s.",
+            "If a Normal or Charged Attack hits a target within 0.3s of being fired, increases DMG by 36%.",
+            "Increases Elemental Burst DMG by 16% and Elemental Burst CRIT Rate by 6%.",
+            "Increases Normal ATK SPD by 12%.",
+        )
+
+        for text in cases:
+            with self.subTest(text=text):
+                self.assertEqual(detect_weapon_static_display_stat_effects(text), ())
+
     def test_weapon_rebuild_uses_entry_page_id_to_weapon_id_mapping(self) -> None:
         catalog = WeaponStatsCatalog(
             entries=(

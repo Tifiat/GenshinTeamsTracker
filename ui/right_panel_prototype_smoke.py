@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import Any, Mapping
 
+from PySide6.QtCore import QSize
 from PySide6.QtWidgets import QApplication, QMainWindow
 
 from hoyolab_export.account_storage import (
@@ -15,7 +16,10 @@ from hoyolab_export.account_storage import (
     list_account_weapon_observed_stacks,
 )
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
-from hoyolab_export.display_stat_effects import get_weapon_passive_tooltip
+from hoyolab_export.display_stat_effects import (
+    get_weapon_passive_tooltip,
+    list_weapon_display_stat_effects,
+)
 from hoyolab_export.paths import PROJECT_ROOT
 from run_workspace.right_panel_prototype_view_model import (
     MODE_ABYSS,
@@ -60,8 +64,8 @@ def show_right_panel_prototype(
     window = QMainWindow()
     window.setWindowTitle(title)
     window.setCentralWidget(widget)
-    window.setMinimumSize(RIGHT_PANEL_PROTOTYPE_MIN_WIDTH, 640)
-    window.resize(RIGHT_PANEL_PROTOTYPE_MIN_WIDTH, 940)
+    window.setMinimumSize(RIGHT_PANEL_PROTOTYPE_MIN_WIDTH, 560)
+    window.resize(_initial_window_size(app, widget))
 
     def on_mode_requested(mode: str) -> None:
         nonlocal current_mode, selected_team_index, selected_slot_index
@@ -86,6 +90,24 @@ def show_right_panel_prototype(
     widget.external_bonuses_toggled.connect(on_external_bonuses_toggled)
     window.show()
     return app.exec()
+
+
+def _initial_window_size(
+    app: QApplication,
+    widget: RightPanelPrototypeWidget,
+) -> QSize:
+    recommended = widget.recommended_standalone_size()
+    screen = app.primaryScreen()
+    available_height = (
+        screen.availableGeometry().height()
+        if screen is not None
+        else recommended.height()
+    )
+    max_height = max(560, available_height - 80)
+    return QSize(
+        max(RIGHT_PANEL_PROTOTYPE_MIN_WIDTH, recommended.width()),
+        min(recommended.height(), max_height),
+    )
 
 
 def build_real_thoma_state() -> TeamBuilderState:
@@ -317,6 +339,7 @@ def _details_from_account_record(
     source_note: str,
 ) -> dict[str, Any]:
     passive_reference = _weapon_passive_tooltip_for_stack(weapon_stack)
+    weapon_effects = _weapon_display_stat_effects_for_stack(weapon_stack)
     return {
         "status": "partial",
         "account_character": record.to_team_builder_character_ref(),
@@ -326,6 +349,7 @@ def _details_from_account_record(
             else None
         ),
         "weapon_passive_reference": passive_reference,
+        "weapon_display_stat_effects": weapon_effects,
         "selected_build": {},
         "source_notes": [
             "prototype_no_selected_artifact_preset",
@@ -337,6 +361,22 @@ def _details_from_account_record(
             *(weapon_stack.warnings if weapon_stack is not None else ()),
         ],
     }
+
+
+def _weapon_display_stat_effects_for_stack(
+    weapon_stack: AccountWeaponObservedStack | None,
+) -> list[dict[str, Any]]:
+    if weapon_stack is None:
+        return []
+    try:
+        with connect_db(ARTIFACT_DB_PATH) as conn:
+            return list_weapon_display_stat_effects(
+                conn,
+                weapon_id=weapon_stack.weapon_id,
+                refinement=weapon_stack.refinement,
+            )
+    except Exception:
+        return []
 
 
 def _weapon_passive_tooltip_for_stack(

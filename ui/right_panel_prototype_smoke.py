@@ -38,6 +38,22 @@ LINNEA_CHARACTER_ID = "10000130"
 LINNEA_SIGNATURE_WEAPON_ID = "15516"
 YELAN_CHARACTER_ID = "10000060"
 YELAN_SIGNATURE_WEAPON_ID = "15508"
+LAUMA_CHARACTER_ID = "10000119"
+INEFFA_CHARACTER_ID = "10000116"
+NAHIDA_CHARACTER_ID = "10000073"
+MONA_CHARACTER_ID = "10000041"
+SUCROSE_CHARACTER_ID = "10000043"
+FISCHL_CHARACTER_ID = "10000031"
+FLINS_CHARACTER_ID = "10000120"
+AINO_CHARACTER_ID = "10000121"
+JAHODA_CHARACTER_ID = "10000124"
+ILLUGA_CHARACTER_ID = "10000127"
+THOMA_CHARACTER_ID = "10000050"
+NOELLE_CHARACTER_ID = "10000034"
+ZHONGLI_CHARACTER_ID = "10000030"
+RAZOR_CHARACTER_ID = "10000020"
+DURIN_CHARACTER_ID = "10000123"
+TEAM_PRESET_CHOICES = ("fake", "default", "moonsign", "hexerei", "resonance-sanity")
 
 
 def show_right_panel_prototype(
@@ -115,25 +131,226 @@ def build_real_thoma_state() -> TeamBuilderState:
 
     real_state = build_real_smoke_team_builder_state()
     state = TeamBuilderState(teams=(real_state.team(0), create_empty_team()))
-    state = _attach_no_preset_account_characters(
-        state,
-        limit=REAL_NO_PRESET_CHARACTER_LIMIT,
-    )
-    state = _attach_specific_account_character_weapon(
-        state,
-        team_index=0,
-        slot_index=1,
-        character_id=LINNEA_CHARACTER_ID,
-        weapon_id=LINNEA_SIGNATURE_WEAPON_ID,
-    )
+    state = _attach_hexerei_smoke_slot(state, team_index=0, slot_index=1)
     state = _attach_specific_account_character_weapon(
         state,
         team_index=0,
         slot_index=2,
-        character_id=YELAN_CHARACTER_ID,
-        weapon_id=YELAN_SIGNATURE_WEAPON_ID,
+        character_id=MONA_CHARACTER_ID,
+    )
+    state = _attach_moonsign_smoke_team(state, team_index=1)
+    state = _attach_no_preset_account_characters(
+        state,
+        limit=REAL_NO_PRESET_CHARACTER_LIMIT,
     )
     return _attach_prototype_visual_assets(state)
+
+
+def build_team_preset_state(preset: str) -> TeamBuilderState:
+    preset_key = _text(preset).casefold() or "default"
+    if preset_key == "fake":
+        return build_fake_right_panel_prototype_state()
+    if preset_key == "moonsign":
+        return _attach_prototype_visual_assets(_build_moonsign_preset_state())
+    if preset_key == "hexerei":
+        return _attach_prototype_visual_assets(_build_hexerei_preset_state())
+    if preset_key == "resonance-sanity":
+        return _attach_prototype_visual_assets(_build_resonance_sanity_preset_state())
+    return build_real_thoma_state()
+
+
+def _empty_two_team_state() -> TeamBuilderState:
+    return TeamBuilderState(teams=(create_empty_team(), create_empty_team()))
+
+
+def _build_moonsign_preset_state() -> TeamBuilderState:
+    state = _empty_two_team_state()
+    state = _attach_preferred_character_team(
+        state,
+        team_index=0,
+        preferred_ids=(
+            LAUMA_CHARACTER_ID,
+            INEFFA_CHARACTER_ID,
+            FLINS_CHARACTER_ID,
+            AINO_CHARACTER_ID,
+            JAHODA_CHARACTER_ID,
+            ILLUGA_CHARACTER_ID,
+            LINNEA_CHARACTER_ID,
+        ),
+        required_trait="moonsign",
+        limit=4,
+    )
+    return _attach_moonsign_smoke_team(state, team_index=1)
+
+
+def _build_hexerei_preset_state() -> TeamBuilderState:
+    state = _empty_two_team_state()
+    state = _attach_hexerei_smoke_slot(state, team_index=0, slot_index=0)
+    state = _attach_preferred_character_team(
+        state,
+        team_index=0,
+        preferred_ids=(
+            THOMA_CHARACTER_ID,
+            NAHIDA_CHARACTER_ID,
+            YELAN_CHARACTER_ID,
+            AINO_CHARACTER_ID,
+        ),
+        excluded_traits={"hexerei"},
+        start_slot=1,
+        limit=3,
+    )
+    return _attach_preferred_character_team(
+        state,
+        team_index=1,
+        preferred_ids=(
+            MONA_CHARACTER_ID,
+            SUCROSE_CHARACTER_ID,
+            FISCHL_CHARACTER_ID,
+            DURIN_CHARACTER_ID,
+            RAZOR_CHARACTER_ID,
+            THOMA_CHARACTER_ID,
+        ),
+        limit=4,
+    )
+
+
+def _build_resonance_sanity_preset_state() -> TeamBuilderState:
+    state = _empty_two_team_state()
+    state = _attach_preferred_character_team(
+        state,
+        team_index=0,
+        preferred_ids=(
+            THOMA_CHARACTER_ID,
+            LINNEA_CHARACTER_ID,
+            ILLUGA_CHARACTER_ID,
+            NOELLE_CHARACTER_ID,
+            ZHONGLI_CHARACTER_ID,
+            YELAN_CHARACTER_ID,
+        ),
+        limit=4,
+    )
+    return _attach_preferred_character_team(
+        state,
+        team_index=1,
+        preferred_ids=(
+            NAHIDA_CHARACTER_ID,
+            LAUMA_CHARACTER_ID,
+            INEFFA_CHARACTER_ID,
+            YELAN_CHARACTER_ID,
+        ),
+        limit=4,
+    )
+
+
+def _attach_hexerei_smoke_slot(
+    state: TeamBuilderState,
+    *,
+    team_index: int,
+    slot_index: int,
+) -> TeamBuilderState:
+    characters, _weapon_stacks = _load_sqlite_account_runtime_records()
+    preferred_ids = (SUCROSE_CHARACTER_ID, FISCHL_CHARACTER_ID)
+    character_id = _first_available_character_id(characters, preferred_ids)
+    if character_id is None:
+        character_id = _first_available_trait_character_id(
+            characters,
+            trait="hexerei",
+            excluded_ids={MONA_CHARACTER_ID},
+        )
+    if character_id is None:
+        return state
+    return _attach_specific_account_character_weapon(
+        state,
+        team_index=team_index,
+        slot_index=slot_index,
+        character_id=character_id,
+    )
+
+
+def _attach_moonsign_smoke_team(
+    state: TeamBuilderState,
+    *,
+    team_index: int,
+) -> TeamBuilderState:
+    result = state
+    for slot_index, (character_id, weapon_id) in enumerate(
+        (
+            (LAUMA_CHARACTER_ID, None),
+            (INEFFA_CHARACTER_ID, None),
+            (NAHIDA_CHARACTER_ID, None),
+            (YELAN_CHARACTER_ID, YELAN_SIGNATURE_WEAPON_ID),
+        )
+    ):
+        result = _attach_specific_account_character_weapon(
+            result,
+            team_index=team_index,
+            slot_index=slot_index,
+            character_id=character_id,
+            weapon_id=weapon_id,
+        )
+    return result
+
+
+def _attach_preferred_character_team(
+    state: TeamBuilderState,
+    *,
+    team_index: int,
+    preferred_ids: tuple[str, ...],
+    limit: int,
+    start_slot: int = 0,
+    required_trait: str | None = None,
+    excluded_traits: set[str] | None = None,
+) -> TeamBuilderState:
+    characters, _weapon_stacks = _load_sqlite_account_runtime_records()
+    by_id = {_text(record.character_id): record for record in characters}
+    selected_ids: list[str] = []
+    excluded_keys = {_text(item).casefold() for item in (excluded_traits or set())}
+    required_key = _text(required_trait).casefold()
+
+    def accepts(record: AccountCharacterRuntimeRecord) -> bool:
+        traits = {_text(item).casefold() for item in getattr(record, "traits", ())}
+        if required_key and required_key not in traits:
+            return False
+        if excluded_keys and traits.intersection(excluded_keys):
+            return False
+        return True
+
+    for character_id in preferred_ids:
+        record = by_id.get(_text(character_id))
+        if record is None or not accepts(record):
+            continue
+        if character_id in selected_ids:
+            continue
+        selected_ids.append(character_id)
+        if len(selected_ids) >= int(limit):
+            break
+
+    if len(selected_ids) < int(limit):
+        for record in sorted(characters, key=lambda item: (_text(item.name), _text(item.character_id))):
+            character_id = _text(record.character_id)
+            if (
+                not character_id
+                or character_id in selected_ids
+                or character_id in TRAVELER_CHARACTER_IDS
+                or not accepts(record)
+            ):
+                continue
+            selected_ids.append(character_id)
+            if len(selected_ids) >= int(limit):
+                break
+
+    result = state
+    for offset, character_id in enumerate(selected_ids[: int(limit)]):
+        slot_index = int(start_slot) + offset
+        if slot_index >= 4:
+            break
+        result = _attach_specific_account_character_weapon(
+            result,
+            team_index=team_index,
+            slot_index=slot_index,
+            character_id=character_id,
+        )
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -148,19 +365,108 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "Use the existing no-network Thoma + build id 20 smoke data for "
-            "one selected slot plus several local no-preset account characters. "
+            "one selected slot plus deterministic local Hexerei/Moonsign "
+            "validation teams. "
             "Fake data is used by default."
         ),
     )
+    parser.add_argument(
+        "--team-preset",
+        choices=TEAM_PRESET_CHOICES,
+        default=None,
+        help=(
+            "Open a deterministic no-network team-bonus preset. "
+            "'default' is the real Thoma smoke with team-bonus validation slots; "
+            "'fake' keeps the pure fake data mode."
+        ),
+    )
+    parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="Print a no-GUI preset/team bonus summary instead of opening the window.",
+    )
     args = parser.parse_args(argv)
 
-    state = build_real_thoma_state() if args.real_thoma else build_fake_right_panel_prototype_state()
+    preset = args.team_preset
+    if preset is None:
+        preset = "default" if args.real_thoma else "fake"
+    state = build_team_preset_state(preset)
+    if args.summary:
+        print(build_preset_summary(state, preset_name=preset))
+        return 0
     title = (
-        "Right Panel / TeamBuilder Prototype v6 (Real Thoma + local no-preset slots)"
-        if args.real_thoma
+        f"Right Panel / TeamBuilder Prototype v6 ({preset} preset)"
+        if preset != "fake"
         else "Right Panel / TeamBuilder Prototype v6 (Fake Data)"
     )
     return show_right_panel_prototype(state, title=title)
+
+
+def build_preset_summary(
+    state: TeamBuilderState,
+    *,
+    preset_name: str,
+) -> str:
+    lines = [f"preset: {preset_name}"]
+    for team_index, team in enumerate(state.teams):
+        lines.append(f"team {team_index}:")
+        traits_by_slot: dict[int, tuple[str, ...]] = {}
+        for slot in team.slots:
+            if slot.character is None:
+                lines.append(f"  slot {slot.slot_index}: empty")
+                continue
+            details = _mapping(slot.character_details_data)
+            account_character = _mapping(details.get("account_character"))
+            traits = tuple(_text(item) for item in account_character.get("traits") or ())
+            traits_by_slot[int(slot.slot_index)] = traits
+            trait_text = ",".join(traits) if traits else "-"
+            lines.append(
+                "  slot "
+                f"{slot.slot_index}: {slot.character.name} | "
+                f"{_text(account_character.get('element')) or '-'} | "
+                f"traits={trait_text}"
+            )
+        moonsign_count = sum(
+            1 for traits in traits_by_slot.values()
+            if "moonsign" in {trait.casefold() for trait in traits}
+        )
+        has_non_moonsign = any(
+            "moonsign" not in {trait.casefold() for trait in traits}
+            for traits in traits_by_slot.values()
+        )
+        lines.append(f"  moonsign_count={moonsign_count}; non_moonsign_trigger={has_non_moonsign}")
+        model = build_right_panel_prototype_view_model(
+            state,
+            selected_team_index=team_index,
+            selected_slot_index=0,
+        )
+        selected = model.selected_details.character_name or "None"
+        lines.append(f"  selected={selected}")
+        lines.append("  active chips:")
+        for item in model.selected_details.bonus_sources:
+            effects = ", ".join(item.short_effects) if item.short_effects else "-"
+            lines.append(
+                f"    {item.source_kind} | {item.label} | {effects} | applied={item.applied}"
+            )
+            if item.source_kind == "moonsign":
+                for tooltip_line in item.tooltip_body.splitlines():
+                    if "->" in tooltip_line or "лимит" in tooltip_line.casefold():
+                        lines.append(f"      {tooltip_line}")
+            if item.source_kind == "hexerei":
+                tooltip_status = (
+                    "fallback"
+                    if "not cached yet" in item.tooltip_body.casefold()
+                    else "cached"
+                )
+                lines.append(
+                    "      "
+                    f"member_icons={len(item.character_icons)}; "
+                    f"member_tooltips={len(item.character_tooltips)}; "
+                    f"tooltip_text={tooltip_status}"
+                )
+        if not model.selected_details.bonus_sources:
+            lines.append("    -")
+    return "\n".join(lines)
 
 
 def _attach_no_preset_account_characters(
@@ -201,7 +507,15 @@ def _attach_no_preset_account_characters(
         if added >= len(target_slots):
             break
 
-        team_index, slot_index = target_slots[added]
+        next_slot = None
+        for candidate in target_slots:
+            team_index, slot_index = candidate
+            if result.team(team_index).slot(slot_index).character is None:
+                next_slot = candidate
+                break
+        if next_slot is None:
+            break
+        team_index, slot_index = next_slot
         character = record.to_team_builder_character_ref()
         weapon_stack = _weapon_stack_for_character_record(
             weapon_stacks,
@@ -228,19 +542,26 @@ def _attach_specific_account_character_weapon(
     team_index: int,
     slot_index: int,
     character_id: str,
-    weapon_id: str,
+    weapon_id: str | None = None,
 ) -> TeamBuilderState:
     characters, weapon_stacks = _load_sqlite_account_runtime_records()
     character = next(
         (record for record in characters if _text(record.character_id) == _text(character_id)),
         None,
     )
-    weapon_stack = next(
-        (stack for stack in weapon_stacks if _text(stack.weapon_id) == _text(weapon_id)),
-        None,
-    )
+    weapon_stack = None
+    if weapon_id:
+        weapon_stack = next(
+            (stack for stack in weapon_stacks if _text(stack.weapon_id) == _text(weapon_id)),
+            None,
+        )
     if character is None:
         return state
+    if weapon_stack is None:
+        weapon_stack = _weapon_stack_for_character_record(
+            weapon_stacks,
+            record=character,
+        )
 
     result = state.set_character(
         team_index,
@@ -256,9 +577,39 @@ def _attach_specific_account_character_weapon(
     details = _details_from_account_record(
         character,
         weapon_stack,
-        source_note="prototype_explicit_weapon_option",
+        source_note=(
+            "prototype_explicit_weapon_option"
+            if weapon_id and weapon_stack is not None and _text(weapon_stack.weapon_id) == _text(weapon_id)
+            else "prototype_weapon_option_by_type_not_equipped"
+        ),
     )
     return result.attach_character_details_data(team_index, slot_index, details)
+
+
+def _first_available_character_id(
+    characters: tuple[AccountCharacterRuntimeRecord, ...],
+    preferred_ids: tuple[str, ...],
+) -> str | None:
+    available_ids = {_text(record.character_id) for record in characters}
+    return next((character_id for character_id in preferred_ids if character_id in available_ids), None)
+
+
+def _first_available_trait_character_id(
+    characters: tuple[AccountCharacterRuntimeRecord, ...],
+    *,
+    trait: str,
+    excluded_ids: set[str] | None = None,
+) -> str | None:
+    excluded_ids = {_text(value) for value in (excluded_ids or set())}
+    trait_key = _text(trait).casefold()
+    for record in characters:
+        character_id = _text(record.character_id)
+        if character_id in excluded_ids:
+            continue
+        traits = {_text(item).casefold() for item in getattr(record, "traits", ())}
+        if trait_key in traits:
+            return character_id
+    return None
 
 
 def _attach_prototype_visual_assets(state: TeamBuilderState) -> TeamBuilderState:

@@ -12,6 +12,7 @@ from run_workspace.display_stats import (
     DISPLAY_TOTALS_EXCLUDE_PASSIVES,
     DISPLAY_TOTALS_EXCLUDE_RESONANCE,
     DISPLAY_TOTALS_EXCLUDE_SET_FORMULAS,
+    DISPLAY_TOTALS_INCLUDE_ELEMENTAL_RESONANCE,
     DISPLAY_TOTALS_SOURCE_TEAM_BUILDER_VIRTUAL_BUILD,
     ELEMENTAL_MASTERY,
     ENERGY_RECHARGE,
@@ -435,6 +436,54 @@ class CharacterDisplayStatsTest(unittest.TestCase):
         self.assertEqual(rows["HP"], "1100")
         self.assertEqual(rows["ATK"], "350")
         self.assertEqual(rows["ER"], "125%")
+
+    def test_team_bonus_display_stat_effects_are_external_bonuses(self) -> None:
+        enabled = build_character_display_stats(
+            {
+                "account_character": {
+                    "base_hp": 1000,
+                    "base_atk": 200,
+                    "base_def": 500,
+                },
+                "account_weapon": {"base_atk": 100},
+                "team_bonus_display_stat_effects": [
+                    {
+                        "source_kind": "elemental_resonance",
+                        "stat_key": "ATK_PERCENT",
+                        "value": 25,
+                        "value_type": "percent_points",
+                    }
+                ],
+            }
+        )
+        disabled = build_character_display_stats(
+            {
+                "external_bonuses_enabled": False,
+                "account_character": {
+                    "base_hp": 1000,
+                    "base_atk": 200,
+                    "base_def": 500,
+                },
+                "account_weapon": {"base_atk": 100},
+                "team_bonus_display_stat_effects": [
+                    {
+                        "source_kind": "elemental_resonance",
+                        "stat_key": "ATK_PERCENT",
+                        "value": 25,
+                        "value_type": "percent_points",
+                    }
+                ],
+            }
+        )
+
+        enabled_rows = {row.label: row.value for row in enabled.rows}
+        disabled_rows = {row.label: row.value for row in disabled.rows}
+
+        self.assertEqual(enabled_rows["ATK"], "375")
+        self.assertEqual(disabled_rows["ATK"], "300")
+        self.assertIn(DISPLAY_TOTALS_INCLUDE_ELEMENTAL_RESONANCE, enabled.notes)
+        self.assertNotIn(DISPLAY_TOTALS_EXCLUDE_RESONANCE, enabled.notes)
+        self.assertIn(DISPLAY_TOTALS_EXCLUDE_RESONANCE, disabled.notes)
 
     def test_ignores_unsupported_static_effect_rows(self) -> None:
         result = build_character_display_stats(

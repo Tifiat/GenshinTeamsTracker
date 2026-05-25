@@ -18,6 +18,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Update this file only with active tasks and useful follow-ups.
 - After each completed task, update handoff docs before final response when the task changes roadmap, state, or reusable context: mark completed subitems compactly, add durable new knowledge to `CODEX.md`/`TODO.md` or a dedicated handoff file, and remove stale active-task/development-log leftovers.
 - When adding/changing persistent structures, source/cache formats, domain models, raw payload discoveries, UI prototype contracts, or long-lived research, update the relevant project map in `docs/handoff/` and keep root docs as concise entrypoint pointers.
+- Obsidian map maintenance: The Obsidian vault is stored in `docs/obsidian/GTT/`. `docs/obsidian/GTT/GenshinTeamsTracker.canvas` is the human project navigation map. `docs/obsidian/GTT/DataFlow.canvas` is the human data-flow map. `docs/obsidian/GTT/SourceBoundaries.canvas` is the human source/runtime boundary map for avoiding data-owner confusion. These maps do not replace `CODEX.md`/`TODO.md` or detailed handoff files. After meaningful structural changes, update the maps together with handoff files when the change affects human understanding of the project layout: new major subsystem, renamed/moved important folder, changed data flow, changed current priority, changed architecture direction, or an important feature moving from planned to active/done. Do not update maps for tiny bugfixes, one-line styling changes, or internal refactors that do not affect the project map.
 - Do not bring Known Bugs into planning/discussion unless the user explicitly asks about bugs or the affected area.
 
 ## Known Bugs
@@ -43,6 +44,23 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 1. Pre-Integration Architecture
 
+- New target main app shell is documented in `docs/handoff/APP_SHELL_WORKSPACE_PLAN.md`: `[LeftWorkspaceHost] [RightOperationsDock]`. Treat `ui/main_window.py` as legacy once the new shell begins; do not patch the old right column as the final architecture.
+- Future AppShell tasks:
+  - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`;
+  - finish/wire the reduced fixed-width right operations dock around `RightPanelPrototypeWidget`; it must not be user-resizable or expand with the window;
+  - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, typed `TeamBuilderState`, weapon type/rarity filters, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, and transitional session weapon memory;
+  - add left workspace navigation / `QStackedWidget`;
+  - continue the production adapter: next step is richer `CharacterDetailsData` preparation and artifact build selection without raw JSON runtime reads;
+  - keep roster clicks as quick-pick add/remove and right-panel slot clicks as selected build/details target toggle;
+  - AppShell quick-pick marker latency is fixed with incremental visible-card marker updates; roster clicks now update markers immediately and defer/coalesce right-panel refreshes through a short scheduler;
+  - AppShell filters now use session-cached character/weapon asset lists plus shared scaled roster/weapon pixmap caching; remaining performance work is to avoid recreating visible card widgets on filter changes, likely with hide/show or a virtualized/lazy grid if profiling still warrants it;
+  - add future drag/swap for right-panel character cards within a team and between teams after quick-pick remains stable;
+  - embed Artifact Browser later with browse-only behavior when no target is selected and equip/apply behavior only when a target is selected;
+  - design persistent account equipment state later: per-character current weapon, per-character current artifact slots, owner side icons, in-game-like move/swap semantics, and explicit preset equip that copies a preset into one character's current equipped state without mutating the preset definition;
+  - separate timer/run logic into a model/controller while keeping timer UI visually in the right operations dock;
+  - reserve right operations dock future modes for import/settings/language controls and PvP draft/deck/opponent controls;
+  - keep PvP as a separate mode/window direction initially, reusing the build panel only after a buildable pool/team exists;
+  - clean legacy main-window right panel and legacy history only after the new shell is stable.
 - Do not keep developing the current main-window right panel as the final structure. It is legacy/prototype UI and should be replaced by a shared Run Workspace.
 - Do not blindly discard useful legacy behavior. Extract reusable logic into modules/helpers when it fits the new model, for example timer editing that reacts to mouse wheel and updates values.
 - Separate these domains clearly:
@@ -163,10 +181,9 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - include direct static display-stat bonuses only when explicitly modeled in
     SQLite (`artifact_set_display_stat_effects`, `weapon_display_stat_effects`);
   - explain applied external bonuses in the Right Panel through compact
-    source chips. The prototype source item shape currently covers
-    `artifact_set_static` and `weapon_passive_static`; future elemental
-    resonance, `Moonsign`, `Hexerei`, lunar, and other team bonuses should reuse
-    that shape.
+    source chips. The prototype source item shape now covers
+    `elemental_resonance`, `moonsign`, `hexerei`, `artifact_set_static`, and
+    `weapon_passive_static`; future team bonuses should reuse that shape.
   - keep localized weapon passive/effect tooltip text separate from structured
     static effects: `weapon_passive_tooltips` is display/reference text by
     `(weapon_id, lang)`, while `weapon_display_stat_effects` is the applied
@@ -180,10 +197,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
     ATK/secondary stat, or artifact main/sub stat totals.
   - skip conditional bonuses or mark them as condition-required/not automatically included;
   - add manual toggles later if needed.
-- Need data-driven resonance model for elemental resonances, `Moonsign`, `Hexerei`, and future resonance-like systems. Use the in-game/source terms `moonsign` and `hexerei` when searching code/docs/sources; do not substitute guessed terms.
-- Elemental resonances can usually be inferred from character elements. `Moonsign`/`Hexerei` require character trait/tag data from a confirmed source such as HoYoWiki pages/lists or a local seeded/updatable trait catalog. `hoyolab_export/character_trait_catalog.py` refreshes `data/cache/hoyowiki/character_trait_catalog.json` from HoYoWiki entries `8782` (`Moonsign`) and `9347` (`Hexerei`), names the character groups only, and deliberately does not define resonance bonus formulas. Account sync joins these static tags into SQLite `character_identity` as runtime fields for filters/history/PvP/resonance calculation.
-- UI should show active resonances, why each resonance is active/inactive, description tooltip, and involved characters.
-- For lunar resonance, first implementation can show total bonus, contribution by character when known, and clear explanation when activation is impossible.
+- Right Panel prototype team bonus chips now include direct display-stat elemental resonances, a `Moonsign` Lunar Reaction DMG indicator, and display-only `Hexerei`. Use the in-game/source terms `moonsign` and `hexerei` when searching code/docs/sources; do not substitute guessed terms. Elemental resonances are inferred from character elements. Implemented stat contributors are Pyro `ATK +25%`, Hydro `HP +25%`, Cryo `CR +15%`, Geo selected-character elemental DMG `+15%`, and simplified Dendro `EM +50/+80/+100`; Electro/Anemo and non-display-stat resonance effects are not modeled in stat rows. `Moonsign` uses `character_identity.traits_json`, shows a capped Lunar Reaction DMG indicator only when at least 2 team members have `moonsign`, reads team member stats after direct external stat bonuses when the external-bonus toggle is on, requires a non-`moonsign` trigger teammate for a nonzero value, and does not alter normal display stat rows. Bonus strip source chips use `[large source icon] [separate compact effect badge(s)]`, with cached alpha-trim scaling so transparent PNG padding does not shrink source icons inside chips. Compact Hexerei/member side icons use a separate cached bottom-aligned side-icon renderer rather than alpha-fit cropping. The shared bonus tooltip formatter owns the single `Effects:` section so source bodies should not duplicate effect labels. `Hexerei` appears only with 2+ Hexerei team members and is tooltip/display-only; member tooltips read normalized SQLite Hexerei sections, filter locked sections by account constellation, prefer localized content-language rows, and fall back to en-us. `ui.right_panel_prototype_smoke` supports `--team-preset moonsign|hexerei|resonance-sanity` and `--summary` for no-GUI team bonus sanity checks.
+- `hoyolab_export/character_trait_catalog.py` refreshes HoYoWiki trait sources. Raw/source cache remains `data/cache/hoyowiki/character_trait_catalog.json`; normalized trait reference data lives in SQLite tables `character_trait_definitions`, `character_trait_memberships`, and `character_trait_tooltip_sections`. Account sync joins owned-character trait tags into SQLite `character_identity` as runtime fields for filters/history/PvP/resonance calculation. Targeted Hexerei tooltip refresh command: `python -m hoyolab_export.character_trait_catalog --refresh-hexerei-tooltips --language ru-ru`; it always refreshes en-us entry `9347` as canonical, then content-language override, with en-us fallback and no UI web reads.
 - Refactor future catalog/update code into a common location instead of scattering it in UI modules. Use bundled seed/static data, downloaded cache, schema version, source, timestamp, language, and updater modules.
 - App should work offline with last known or bundled data.
 - Data categories likely needing common catalog/updater support: artifact set catalog/icons, character base stats, weapon base stats, resonance definitions, current Abyss enemies/HP, monster stats, standard build profiles, tournament rulesets.
@@ -366,6 +381,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## Other Future / Maintenance Items
 
+- Review `docs/obsidian/GTT/GenshinTeamsTracker.canvas`, `docs/obsidian/GTT/DataFlow.canvas`, and `docs/obsidian/GTT/SourceBoundaries.canvas` in Obsidian: check readability, missing descriptions, broken nodes, and whether the data flow/source boundaries are understandable.
 - Add color highlighting for build summary Crit Value and Proc Count later; choose thresholds/colors first.
 - Later unify reset controls in target selector, sort popup, and sets popup.
 - Future polish: make Sort popup and Sets popup selection behavior visually consistent with artifacts/targets/presets.

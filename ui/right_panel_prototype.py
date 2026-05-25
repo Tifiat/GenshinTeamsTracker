@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 import re
 from functools import lru_cache
+from pathlib import Path
 
 from PySide6.QtCore import QEvent, QSize, Qt, Signal
 from PySide6.QtGui import QPainter, QPixmap
@@ -39,14 +40,15 @@ from ui.utils.pixmap_utils import (
     make_diagonal_split_pixmap,
     scale_trimmed_pixmap_to_size,
 )
+from run_workspace.perf import log_perf, perf_ms, perf_now
 from ui.utils.horizontal_scroll import HorizontalDragScrollArea
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.tooltips import install_custom_tooltip
 from ui.artifact_browser.queries import list_set_bonus_description_map
 
 
-RIGHT_PANEL_PROTOTYPE_MIN_WIDTH = 700
-RIGHT_PANEL_PROTOTYPE_CONTENT_MIN_WIDTH = 680
+RIGHT_PANEL_PROTOTYPE_MIN_WIDTH = 660
+RIGHT_PANEL_PROTOTYPE_CONTENT_MIN_WIDTH = 640
 SLOT_CARD_MARGIN = 5
 SLOT_PORTRAIT_SIZE = 96
 SLOT_EQUIP_BOX_SIZE = 46
@@ -62,6 +64,16 @@ SLOT_CARD_FIXED_HEIGHT = 154
 SLOT_NAME_HEIGHT = 18
 
 _FIT_PIXMAP_CACHE: dict[tuple[str, int, int], QPixmap | None] = {}
+_BONUS_SOURCE_ICON_PIXMAP_CACHE: dict[
+    tuple[str, int, int, int, int],
+    QPixmap | None,
+] = {}
+_BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE: dict[
+    tuple[str, int, int, int, int, int, int],
+    QPixmap | None,
+] = {}
+BONUS_MEMBER_ICON_SCALE = 125
+BONUS_MEMBER_ICON_BOTTOM_PADDING = 0
 
 
 class RightPanelPrototypeWidget(QWidget):
@@ -132,9 +144,13 @@ class RightPanelPrototypeWidget(QWidget):
         self.set_model(model)
 
     def set_model(self, model: RightPanelPrototypeViewModel) -> None:
+        total_start = perf_now()
         QToolTip.hideText()
         self._model = model
+        tabs_start = perf_now()
         self._sync_tabs(model.mode)
+        tabs_ms = perf_ms(tabs_start)
+        teams_start = perf_now()
         self._clear_layout(self._teams_layout)
         self._slot_widgets.clear()
 
@@ -143,15 +159,31 @@ class RightPanelPrototypeWidget(QWidget):
             team_widget.slot_selected.connect(self.slot_selected.emit)
             self._slot_widgets.extend(team_widget.slot_widgets())
             self._teams_layout.addWidget(team_widget)
+        teams_ms = perf_ms(teams_start)
 
+        chamber_start = perf_now()
         self._chamber_table.set_rows(
             model.chamber_headers,
             model.chamber_rows,
             total_seconds=model.total_seconds,
             gcsim_status=model.gcsim_status,
         )
+        chamber_ms = perf_ms(chamber_start)
+        details_start = perf_now()
         self._details_frame.set_details(model.selected_details)
+        details_ms = perf_ms(details_start)
+        actions_start = perf_now()
         self._actions.set_labels(model.action_labels)
+        actions_ms = perf_ms(actions_start)
+        log_perf(
+            "right_panel_set_model_widget",
+            total=perf_ms(total_start),
+            tabs=tabs_ms,
+            teams=teams_ms,
+            chamber=chamber_ms,
+            details=details_ms,
+            actions=actions_ms,
+        )
 
     def recommended_standalone_size(self) -> QSize:
         self._content.adjustSize()
@@ -682,28 +714,58 @@ class BonusSourceChipWidget(QFrame):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(3, 2, 5, 2)
-        layout.setSpacing(4)
+        layout.setContentsMargins(2, 1, 4, 1)
+        layout.setSpacing(3)
 
         icon = QLabel(item.label[:3].upper() if item.label else "BON")
         icon.setObjectName("BonusSourceIcon")
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        icon.setFixedSize(20, 20)
-        icon.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        pixmap = _fit_pixmap(item.icon_path, QSize(20, 20)) if item.icon_path else None
+        icon.setFixedSize(22, 22)
+        icon.setAttribute(
+            Qt.WidgetAttribute.WA_TransparentForMouseEvents,
+            not bool(item.character_tooltips),
+        )
+        pixmap = (
+            _bonus_source_icon_pixmap(item.icon_path, QSize(22, 22))
+            if item.icon_path
+            else None
+        )
         if pixmap is not None:
             icon.setText("")
             icon.setPixmap(pixmap)
         layout.addWidget(icon)
 
-        effects = QLabel(" · ".join(item.short_effects) if item.short_effects else item.label)
-        effects.setObjectName("BonusSourceEffects")
-        effects.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        layout.addWidget(effects)
+        for index, path in enumerate(item.character_icons[:4]):
+            member_icon = QLabel("")
+            member_icon.setObjectName("BonusSourceMemberIcon")
+            member_icon.setFixedSize(22, 22)
+            member_pixmap = _bonus_member_side_icon_pixmap(path, QSize(22, 22)) if path else None
+            if member_pixmap is not None:
+                member_icon.setPixmap(member_pixmap)
+                if index < len(item.character_tooltips) and item.character_tooltips[index]:
+                    install_custom_tooltip(member_icon, item.character_tooltips[index])
+                layout.addWidget(member_icon)
+
+        if item.short_effects:
+            for effect_text in item.short_effects:
+                badge = QLabel(effect_text)
+                badge.setObjectName("BonusSourceEffectBadge")
+                badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                badge.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+                layout.addWidget(badge)
+        elif not item.character_icons:
+            fallback = QLabel(item.label)
+            fallback.setObjectName("BonusSourceEffectBadge")
+            fallback.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            fallback.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+            layout.addWidget(fallback)
 
         tooltip = _bonus_source_tooltip_html(item)
         if tooltip:
-            install_custom_tooltip(self, tooltip)
+            if item.character_tooltips:
+                install_custom_tooltip(icon, tooltip)
+            else:
+                install_custom_tooltip(self, tooltip)
 
 
 def _bonus_source_tooltip_html(item: RightPanelBonusSourceDisplayItem) -> str:
@@ -711,15 +773,62 @@ def _bonus_source_tooltip_html(item: RightPanelBonusSourceDisplayItem) -> str:
     title = html.escape(item.tooltip_title or item.label)
     if title:
         rows.append(f"<b>{title}</b>")
-    if item.short_effects and item.source_kind != "weapon_passive_static":
-        rows.append(html.escape(", ".join(item.short_effects)))
+    effect_lines = _unique_text_lines(tuple(item.short_effects))
+    if effect_lines:
+        rows.append(
+            "<b>Effects:</b><br>"
+            + "<br>".join(f"- {html.escape(line)}" for line in effect_lines)
+        )
     if not item.applied and item.not_applied_reason:
         rows.append(
             f"<span style='color:#f09c9c;'>{html.escape(item.not_applied_reason)}</span>"
         )
     if item.tooltip_body:
-        rows.append(html.escape(item.tooltip_body).replace("\n", "<br>"))
+        body_lines = _filtered_bonus_tooltip_body_lines(
+            item.tooltip_body,
+            title=item.tooltip_title or item.label,
+            effects=effect_lines,
+        )
+        if body_lines:
+            rows.append("<br>".join(html.escape(line) for line in body_lines))
     return "<br>".join(rows)
+
+
+def _unique_text_lines(lines: tuple[str, ...]) -> tuple[str, ...]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for line in lines:
+        text = str(line or "").strip()
+        key = text.casefold()
+        if not text or key in seen:
+            continue
+        result.append(text)
+        seen.add(key)
+    return tuple(result)
+
+
+def _filtered_bonus_tooltip_body_lines(
+    body: str,
+    *,
+    title: str,
+    effects: tuple[str, ...],
+) -> tuple[str, ...]:
+    title_key = str(title or "").strip().casefold()
+    effect_keys = {effect.casefold() for effect in effects}
+    result: list[str] = []
+    seen: set[str] = set()
+    for raw_line in str(body or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        key = line.casefold()
+        if key == title_key or key in effect_keys or key in seen:
+            continue
+        if key.startswith("effects:"):
+            continue
+        result.append(line)
+        seen.add(key)
+    return tuple(result)
 
 
 class ActionBarPrototypeWidget(QFrame):
@@ -951,6 +1060,93 @@ def _fit_pixmap(path: str, size: QSize) -> QPixmap | None:
     return canvas
 
 
+def _bonus_source_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
+    if not path:
+        return None
+    try:
+        resolved = Path(path)
+        stat = resolved.stat()
+        key = (
+            str(resolved),
+            int(size.width()),
+            int(size.height()),
+            int(stat.st_mtime_ns),
+            int(stat.st_size),
+        )
+    except OSError:
+        key = (str(path), int(size.width()), int(size.height()), 0, 0)
+
+    if key in _BONUS_SOURCE_ICON_PIXMAP_CACHE:
+        cached = _BONUS_SOURCE_ICON_PIXMAP_CACHE[key]
+        return QPixmap(cached) if cached is not None else None
+
+    source = QPixmap(str(path))
+    if source.isNull():
+        _BONUS_SOURCE_ICON_PIXMAP_CACHE[key] = None
+        return None
+
+    pixmap = scale_trimmed_pixmap_to_size(
+        source,
+        int(size.width()),
+        int(size.height()),
+        padding=1,
+        alpha_threshold=4,
+    )
+    _BONUS_SOURCE_ICON_PIXMAP_CACHE[key] = QPixmap(pixmap)
+    return pixmap
+
+
+def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
+    if not path:
+        return None
+    try:
+        resolved = Path(path)
+        stat = resolved.stat()
+        key = (
+            str(resolved),
+            int(size.width()),
+            int(size.height()),
+            BONUS_MEMBER_ICON_SCALE,
+            BONUS_MEMBER_ICON_BOTTOM_PADDING,
+            int(stat.st_mtime_ns),
+            int(stat.st_size),
+        )
+    except OSError:
+        key = (
+            str(path),
+            int(size.width()),
+            int(size.height()),
+            BONUS_MEMBER_ICON_SCALE,
+            BONUS_MEMBER_ICON_BOTTOM_PADDING,
+            0,
+            0,
+        )
+
+    if key in _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE:
+        cached = _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key]
+        return QPixmap(cached) if cached is not None else None
+
+    source = QPixmap(str(path))
+    if source.isNull():
+        _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key] = None
+        return None
+
+    target_height = max(1, int(round(size.height() * BONUS_MEMBER_ICON_SCALE / 100)))
+    scaled = source.scaledToHeight(
+        target_height,
+        Qt.TransformationMode.SmoothTransformation,
+    )
+    canvas = QPixmap(size)
+    canvas.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(canvas)
+    x = (size.width() - scaled.width()) // 2
+    y = size.height() - scaled.height() - BONUS_MEMBER_ICON_BOTTOM_PADDING
+    painter.drawPixmap(x, y, scaled)
+    painter.end()
+    _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key] = QPixmap(canvas)
+    return canvas
+
+
 def _clear_layout(layout) -> None:
     while layout.count():
         item = layout.takeAt(0)
@@ -1175,20 +1371,33 @@ def _stylesheet() -> str:
         border-color: #30343b;
         background: #191c21;
     }
-    #BonusSourceChip[disabled="true"] #BonusSourceEffects {
+    #BonusSourceChip[disabled="true"] #BonusSourceEffectBadge {
         color: #8f99a4;
+        border-color: #30343b;
+        background: #13161a;
     }
     #BonusSourceIcon {
         border-radius: 4px;
-        background: #303743;
+        background: transparent;
+        border: none;
         color: #f4ddb0;
         font-size: 9px;
         font-weight: 900;
     }
-    #BonusSourceEffects {
+    #BonusSourceMemberIcon {
+        border-radius: 3px;
+        border: none;
+        background: transparent;
+    }
+    #BonusSourceEffectBadge {
+        border-radius: 4px;
+        border: 1px solid #3d4653;
+        background: #151a20;
         color: #f4ddb0;
         font-size: 10px;
         font-weight: 900;
+        padding: 1px 5px;
+        min-height: 16px;
     }
     #BonusStripEmpty {
         color: #8f99a4;

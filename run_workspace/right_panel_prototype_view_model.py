@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
+import json
+from pathlib import Path
+import sqlite3
 from typing import Any, Mapping
+
+from localization import tr_for_language
 
 from .display_stats import build_character_display_stats
 from .team_builder import (
@@ -15,6 +21,11 @@ from .team_card_view_model import (
     TeamCardSlotViewModel,
     build_team_card_slot_view_model,
 )
+from hoyolab_export.character_trait_catalog import (
+    get_hexerei_tooltip_sections,
+    hexerei_tooltip_reference,
+)
+from .perf import log_perf, perf_ms, perf_now
 
 
 RIGHT_PANEL_PROTOTYPE_SCHEMA_VERSION = 6
@@ -83,6 +94,43 @@ CHAMBER_TABLE_HEADERS = (
 )
 ARTIFACT_SANDS_POSITION = 3
 ARTIFACT_GOBLET_POSITION = 4
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+TEAM_BONUS_ICON_DIR = PROJECT_ROOT / "assets" / "team_bonus"
+ARTIFACT_DB_PATH = PROJECT_ROOT / "data" / "artifacts.db"
+MOONSIGN_SOURCE_URL = "https://wiki.hoyolab.com/pc/genshin/entry/8782"
+HEXEREI_SOURCE_URL = "https://wiki.hoyolab.com/pc/genshin/entry/9347"
+TRAIT_MOONSIGN = "moonsign"
+TRAIT_HEXEREI = "hexerei"
+ELEMENT_RESONANCE_ICONS = {
+    "anemo": "anemo_resonance.png",
+    "cryo": "cryo_resonance.png",
+    "dendro": "dendro_resonance.png",
+    "electro": "electro_resonance.png",
+    "geo": "geo_resonance.png",
+    "hydro": "hydro_resonance.png",
+    "pyro": "pyro_resonance.png",
+}
+ELEMENT_TO_DMG_STAT_KEY = {
+    "pyro": "PYRO_DMG_BONUS",
+    "hydro": "HYDRO_DMG_BONUS",
+    "cryo": "CRYO_DMG_BONUS",
+    "electro": "ELECTRO_DMG_BONUS",
+    "anemo": "ANEMO_DMG_BONUS",
+    "geo": "GEO_DMG_BONUS",
+    "dendro": "DENDRO_DMG_BONUS",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class _TeamBonusMember:
+    slot_index: int
+    name: str
+    element: str
+    traits: tuple[str, ...]
+    icon_path: str
+    details: dict[str, Any]
+    hoyowiki_entry_id: str = ""
+    constellation: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +159,7 @@ class RightPanelBonusSourceDisplayItem:
     applied: bool = True
     not_applied_reason: str = ""
     character_icons: tuple[str, ...] = ()
+    character_tooltips: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -124,6 +173,7 @@ class RightPanelBonusSourceDisplayItem:
             "applied": self.applied,
             "not_applied_reason": self.not_applied_reason,
             "character_icons": list(self.character_icons),
+            "character_tooltips": list(self.character_tooltips),
         }
 
 
@@ -331,9 +381,13 @@ def build_right_panel_prototype_view_model(
     selected_slot_index: int = 0,
     external_bonuses_enabled: bool = True,
 ) -> RightPanelPrototypeViewModel:
+    total_start = perf_now()
     normalized_mode = _normalize_mode(mode)
     visible_team_count = 2 if normalized_mode == MODE_ABYSS else 1
+    duplicate_start = perf_now()
     duplicate_ids = state.duplicate_character_ids()
+    duplicate_ms = perf_ms(duplicate_start)
+    teams_start = perf_now()
     teams = tuple(
         _build_team(
             state,
@@ -344,6 +398,8 @@ def build_right_panel_prototype_view_model(
         )
         for index in range(min(visible_team_count, len(state.teams)))
     )
+    teams_ms = perf_ms(teams_start)
+    selected_start = perf_now()
     selected_details = _build_selected_details(
         state,
         selected_team_index=selected_team_index,
@@ -351,9 +407,12 @@ def build_right_panel_prototype_view_model(
         duplicate_character_ids=duplicate_ids,
         external_bonuses_enabled=external_bonuses_enabled,
     )
+    selected_ms = perf_ms(selected_start)
+    chamber_start = perf_now()
     chamber_rows = _chamber_rows_for_mode(normalized_mode)
     total_seconds = sum(row.total_seconds for row in chamber_rows)
-    return RightPanelPrototypeViewModel(
+    chamber_ms = perf_ms(chamber_start)
+    model = RightPanelPrototypeViewModel(
         mode=normalized_mode,
         mode_tabs=MODE_TABS,
         teams=teams,
@@ -364,6 +423,15 @@ def build_right_panel_prototype_view_model(
         gcsim_status=_gcsim_status_for_mode(normalized_mode),
         external_bonuses_enabled=bool(external_bonuses_enabled),
     )
+    log_perf(
+        "right_panel_vm",
+        total=perf_ms(total_start),
+        duplicate=duplicate_ms,
+        teams=teams_ms,
+        selected_details=selected_ms,
+        chamber=chamber_ms,
+    )
+    return model
 
 
 def build_fake_right_panel_prototype_state() -> TeamBuilderState:
@@ -631,6 +699,8 @@ def _build_slot(
         duplicate_character_ids=duplicate_character_ids,
     )
     details = _details_dict(slot.character_details_data)
+    account_weapon = _account_weapon_for_slot(slot, details)
+    has_weapon = _has_weapon_reference(account_weapon)
     artifact = card_slot.artifact_summary
     warnings = _visible_slot_warnings(tuple(card_slot.warnings))
     warning_count = len(warnings)
@@ -645,8 +715,10 @@ def _build_slot(
         portrait_path=_portrait_path(details),
         weapon_label=card_slot.weapon_label,
         weapon_square_label=_square_label(card_slot.weapon_label, fallback="WPN"),
-        weapon_image_path=_image_path(details, "weapon_image_path", "weapon_path"),
-        weapon_tooltip=_weapon_tooltip(details) if details else "",
+        weapon_image_path=(
+            _image_path(details, "weapon_image_path", "weapon_path") if has_weapon else ""
+        ),
+        weapon_tooltip=_weapon_tooltip(details) if has_weapon and details else "",
         build_label=card_slot.build_label,
         artifact_square_label=_artifact_square_label(card_slot),
         artifact_image_path=_image_path(details, "artifact_image_path", "build_image_path"),
@@ -666,6 +738,7 @@ def _build_selected_details(
     duplicate_character_ids: tuple[str, ...],
     external_bonuses_enabled: bool,
 ) -> RightPanelSelectedDetailsViewModel:
+    total_start = perf_now()
     try:
         slot = state.team(selected_team_index).slot(selected_slot_index)
     except IndexError:
@@ -682,15 +755,56 @@ def _build_selected_details(
     artifact = card_slot.artifact_summary
     account_character = _account_character_for_slot(slot, details)
     account_weapon = _account_weapon_for_slot(slot, details)
-    weapon_secondary_label, weapon_secondary_value = _weapon_secondary_meta(details)
+    has_weapon = _has_weapon_reference(account_weapon)
+    if has_weapon:
+        weapon_secondary_label, weapon_secondary_value = _weapon_secondary_meta(details)
+        weapon_base_atk = _weapon_base_atk_meta(details)
+        weapon_icon_path = _image_path(details, "weapon_image_path", "weapon_path")
+        weapon_tooltip = _weapon_tooltip(details)
+    else:
+        weapon_secondary_label, weapon_secondary_value = "", ""
+        weapon_base_atk = ""
+        weapon_icon_path = ""
+        weapon_tooltip = ""
+    team_bonus_start = perf_now()
+    team_members = _team_bonus_members(state.team(selected_team_index))
+    selected_member = _selected_team_bonus_member(
+        team_members,
+        selected_slot_index=selected_slot_index,
+    )
+    team_bonus_effects = _elemental_resonance_effect_rows(
+        team_members,
+        selected_member=selected_member,
+    )
+    team_bonus_ms = perf_ms(team_bonus_start)
+    stat_details = dict(details)
+    if team_bonus_effects:
+        stat_details["team_bonus_display_stat_effects"] = team_bonus_effects
+    bonus_sources_start = perf_now()
+    team_bonus_sources = _team_bonus_source_items(
+        team_members,
+        selected_member=selected_member,
+        elemental_effects=team_bonus_effects,
+        external_bonuses_enabled=external_bonuses_enabled,
+    )
     bonus_sources = tuple(
         _bonus_source_items(
             details,
             artifact=artifact,
             external_bonuses_enabled=external_bonuses_enabled,
+            leading_items=team_bonus_sources,
         )
     )
-    return RightPanelSelectedDetailsViewModel(
+    bonus_sources_ms = perf_ms(bonus_sources_start)
+    stat_rows_start = perf_now()
+    stat_rows = tuple(
+        _stat_rows(
+            stat_details,
+            external_bonuses_enabled=external_bonuses_enabled,
+        )
+    )
+    stat_rows_ms = perf_ms(stat_rows_start)
+    model = RightPanelSelectedDetailsViewModel(
         has_selection=True,
         team_index=int(selected_team_index),
         slot_index=int(selected_slot_index),
@@ -698,25 +812,30 @@ def _build_selected_details(
         character_level=_optional_int(account_character.get("level")),
         constellation=_optional_int(account_character.get("constellation")),
         element=_text(account_character.get("element")),
-        weapon_name=_text(account_weapon.get("name")) or "No weapon selected",
-        weapon_level=_optional_int(account_weapon.get("level")),
-        weapon_refinement=_optional_int(account_weapon.get("refinement")),
-        weapon_base_atk=_weapon_base_atk_meta(details),
+        weapon_name=_text(account_weapon.get("name")) if has_weapon else "",
+        weapon_level=_optional_int(account_weapon.get("level")) if has_weapon else None,
+        weapon_refinement=(
+            _optional_int(account_weapon.get("refinement")) if has_weapon else None
+        ),
+        weapon_base_atk=weapon_base_atk,
         weapon_secondary_label=weapon_secondary_label,
         weapon_secondary_value=weapon_secondary_value,
-        weapon_icon_path=_image_path(details, "weapon_image_path", "weapon_path"),
+        weapon_icon_path=weapon_icon_path,
         crit_value=artifact.crit_value if artifact is not None else None,
         active_sets=artifact.active_sets if artifact is not None else (),
-        stat_rows=tuple(
-            _stat_rows(
-                details,
-                external_bonuses_enabled=external_bonuses_enabled,
-            )
-        ),
+        stat_rows=stat_rows,
         bonus_sources=bonus_sources,
         external_bonuses_enabled=bool(external_bonuses_enabled),
-        weapon_tooltip=_weapon_tooltip(details),
+        weapon_tooltip=weapon_tooltip,
     )
+    log_perf(
+        "selected_details_vm",
+        total=perf_ms(total_start),
+        team_bonus=team_bonus_ms,
+        bonus_sources=bonus_sources_ms,
+        stat_rows=stat_rows_ms,
+    )
+    return model
 
 
 def _chamber_rows_for_mode(mode: str) -> tuple[RightPanelChamberRowViewModel, ...]:
@@ -1127,8 +1246,9 @@ def _bonus_source_items(
     *,
     artifact: TeamCardArtifactSummaryViewModel | None,
     external_bonuses_enabled: bool,
+    leading_items: tuple[RightPanelBonusSourceDisplayItem, ...] = (),
 ) -> list[RightPanelBonusSourceDisplayItem]:
-    items: list[RightPanelBonusSourceDisplayItem] = []
+    items: list[RightPanelBonusSourceDisplayItem] = list(leading_items)
     active_sets = _active_set_context(details, artifact=artifact)
     grouped_artifact_effects: dict[tuple[str, int], list[Mapping[str, Any]]] = {}
     for effect in details.get("artifact_set_display_stat_effects") or []:
@@ -1148,12 +1268,6 @@ def _bonus_source_items(
         if not effect_labels:
             continue
         description = _text(effects[0].get("description"))
-        tooltip_lines = [
-            f"{set_name} ({pieces_required}p)",
-            "Effects: " + ", ".join(effect_labels),
-        ]
-        if description:
-            tooltip_lines.append(description)
         items.append(
             RightPanelBonusSourceDisplayItem(
                 source_kind="artifact_set_static",
@@ -1162,7 +1276,7 @@ def _bonus_source_items(
                 icon_path=_text(context.get("icon_path")),
                 short_effects=effect_labels,
                 tooltip_title=f"{set_name} {pieces_required}p",
-                tooltip_body="\n".join(tooltip_lines),
+                tooltip_body=description,
                 applied=bool(external_bonuses_enabled),
                 not_applied_reason=(
                     "" if external_bonuses_enabled else "Внешние бонусы отключены"
@@ -1236,6 +1350,493 @@ def _static_effect_short_label(effect: Mapping[str, Any]) -> str:
     return f"{label} +{value:g}{suffix}"
 
 
+def _team_bonus_members(team: Any) -> tuple[_TeamBonusMember, ...]:
+    members: list[_TeamBonusMember] = []
+    for slot in getattr(team, "slots", ()):
+        if getattr(slot, "character", None) is None:
+            continue
+        details = _details_dict(getattr(slot, "character_details_data", None))
+        account_character = _account_character_for_slot(slot, details)
+        traits = tuple(
+            _normalize_token(item)
+            for item in (account_character.get("traits") or [])
+            if _normalize_token(item)
+        )
+        members.append(
+            _TeamBonusMember(
+                slot_index=int(getattr(slot, "slot_index", 0)),
+                name=_text(account_character.get("name")) or "Character",
+                element=_normalize_token(account_character.get("element")),
+                traits=traits,
+                icon_path=_text(
+                    account_character.get("side_icon_path")
+                    or account_character.get("portrait_path")
+                ),
+                details=details,
+                hoyowiki_entry_id=_text(account_character.get("hoyowiki_entry_id")),
+                constellation=_optional_int(account_character.get("constellation")),
+            )
+        )
+    return tuple(members)
+
+
+def _selected_team_bonus_member(
+    members: tuple[_TeamBonusMember, ...],
+    *,
+    selected_slot_index: int,
+) -> _TeamBonusMember | None:
+    return next(
+        (member for member in members if member.slot_index == int(selected_slot_index)),
+        None,
+    )
+
+
+def _elemental_resonance_effect_rows(
+    members: tuple[_TeamBonusMember, ...],
+    *,
+    selected_member: _TeamBonusMember | None,
+) -> tuple[dict[str, Any], ...]:
+    counts = Counter(member.element for member in members if member.element)
+    effects: list[dict[str, Any]] = []
+    for element, count in counts.items():
+        if count < 2:
+            continue
+        if element == "pyro":
+            effects.append(_team_bonus_effect("pyro", "ATK_PERCENT", 25, "ATK +25%"))
+        elif element == "hydro":
+            effects.append(_team_bonus_effect("hydro", "HP_PERCENT", 25, "HP +25%"))
+        elif element == "cryo":
+            effects.append(_team_bonus_effect("cryo", "CRIT_RATE", 15, "CR +15%"))
+        elif element == "geo" and selected_member is not None:
+            stat_key = ELEMENT_TO_DMG_STAT_KEY.get(selected_member.element)
+            if stat_key:
+                label = _STATIC_EFFECT_LABELS.get(stat_key, selected_member.element.title())
+                effects.append(_team_bonus_effect("geo", stat_key, 15, f"{label} +15%"))
+        elif element == "dendro":
+            value = _dendro_resonance_em_value(counts)
+            effects.append(_team_bonus_effect("dendro", "ELEMENTAL_MASTERY", value, f"EM +{value:g}"))
+    return tuple(effects)
+
+
+def _team_bonus_effect(
+    element: str,
+    stat_key: str,
+    value: float,
+    short_label: str,
+) -> dict[str, Any]:
+    return {
+        "source_kind": "elemental_resonance",
+        "source_id": f"{element}_resonance",
+        "element": element,
+        "stat_key": stat_key,
+        "value": value,
+        "value_type": "percent_points" if stat_key != "ELEMENTAL_MASTERY" else "flat",
+        "short_label": short_label,
+    }
+
+
+def _dendro_resonance_em_value(counts: Counter[str]) -> float:
+    value = 50.0
+    has_pyro = counts.get("pyro", 0) > 0
+    has_hydro = counts.get("hydro", 0) > 0
+    has_electro = counts.get("electro", 0) > 0
+    if has_pyro or has_hydro or has_electro:
+        value += 30.0
+    if has_electro or (has_hydro and has_pyro):
+        value += 20.0
+    return value
+
+
+def _team_bonus_source_items(
+    members: tuple[_TeamBonusMember, ...],
+    *,
+    selected_member: _TeamBonusMember | None,
+    elemental_effects: tuple[dict[str, Any], ...],
+    external_bonuses_enabled: bool,
+) -> tuple[RightPanelBonusSourceDisplayItem, ...]:
+    total_start = perf_now()
+    items: list[RightPanelBonusSourceDisplayItem] = []
+    resonance_start = perf_now()
+    for effect in elemental_effects:
+        element = _text(effect.get("element"))
+        short_label = _text(effect.get("short_label"))
+        items.append(
+            RightPanelBonusSourceDisplayItem(
+                source_kind="elemental_resonance",
+                source_id=_text(effect.get("source_id")),
+                label="Res",
+                icon_path=_team_bonus_icon(ELEMENT_RESONANCE_ICONS.get(element, "")),
+                short_effects=(short_label,) if short_label else (),
+                tooltip_title=f"{element.title()} Resonance",
+                tooltip_body=_elemental_resonance_tooltip(effect, selected_member),
+                applied=bool(external_bonuses_enabled),
+                not_applied_reason=(
+                    "" if external_bonuses_enabled else "Внешние бонусы отключены"
+                ),
+            )
+        )
+    resonance_ms = perf_ms(resonance_start)
+
+    moonsign_start = perf_now()
+    moonsign_item = _moonsign_bonus_item(
+        members,
+        external_bonuses_enabled=external_bonuses_enabled,
+    )
+    if moonsign_item is not None:
+        items.append(moonsign_item)
+    moonsign_ms = perf_ms(moonsign_start)
+
+    hexerei_start = perf_now()
+    hexerei_item = _hexerei_bonus_item(members)
+    if hexerei_item is not None:
+        items.append(hexerei_item)
+    hexerei_ms = perf_ms(hexerei_start)
+    log_perf(
+        "team_bonus_sources",
+        total=perf_ms(total_start),
+        resonance=resonance_ms,
+        moonsign=moonsign_ms,
+        hexerei=hexerei_ms,
+        count=len(items),
+    )
+    return tuple(items)
+
+
+def _elemental_resonance_tooltip(
+    effect: Mapping[str, Any],
+    selected_member: _TeamBonusMember | None,
+) -> str:
+    element = _text(effect.get("element")).title()
+    label = _text(effect.get("short_label"))
+    if _text(effect.get("element")) == "dendro":
+        return (
+            "Simplified rule: 2 Dendro gives EM +50; Pyro/Hydro/Electro adds "
+            "+30; Electro or Hydro+Pyro adds another +20."
+        )
+    if _text(effect.get("element")) == "geo":
+        target = selected_member.element.title() if selected_member else "selected"
+        return f"Applies to the selected character's {target} DMG Bonus."
+    return "Direct display-stat elemental resonance bonus."
+
+
+def _moonsign_bonus_item(
+    members: tuple[_TeamBonusMember, ...],
+    *,
+    external_bonuses_enabled: bool,
+) -> RightPanelBonusSourceDisplayItem | None:
+    moonsign_members = [
+        member for member in members if TRAIT_MOONSIGN in set(member.traits)
+    ]
+    if len(moonsign_members) < 2:
+        return None
+    has_non_moonsign = any(TRAIT_MOONSIGN not in set(member.traits) for member in members)
+    value, total_before_cap, contribution_lines = (
+        _moonsign_lunar_bonus(
+            members,
+            external_bonuses_enabled=external_bonuses_enabled,
+        )
+        if has_non_moonsign
+        else (0.0, 0.0, ())
+    )
+    applied = bool(external_bonuses_enabled)
+    reason = ""
+    if not external_bonuses_enabled:
+        reason = "Внешние бонусы отключены"
+    body_lines = [
+        (
+            "Считается после прямых внешних бонусов."
+            if external_bonuses_enabled
+            else "Считается без внешних бонусов, потому что они отключены."
+        ),
+        "Нужны минимум 2 Moonsign персонажа.",
+        "Для ненулевого бонуса нужен хотя бы один персонаж без Moonsign.",
+        f"До лимита: {_format_bonus_percent(total_before_cap)}; лимит: 36%.",
+        "Это индикатор Lunar Reaction DMG, не строка обычного elemental DMG.",
+    ]
+    if contribution_lines:
+        body_lines.append("Вклад:")
+        body_lines.extend(contribution_lines)
+    return RightPanelBonusSourceDisplayItem(
+        source_kind="moonsign",
+        source_id="moonsign_lunar_reaction_bonus",
+        label="Lunar",
+        icon_path=_team_bonus_icon("Moonsign.png"),
+        short_effects=(f"Lunar +{_format_bonus_percent(value)}",),
+        tooltip_title="Moonsign",
+        tooltip_body="\n".join(body_lines),
+        applied=applied,
+        not_applied_reason=reason,
+        character_icons=tuple(member.icon_path for member in moonsign_members if member.icon_path),
+    )
+
+
+def _moonsign_lunar_bonus(
+    members: tuple[_TeamBonusMember, ...],
+    *,
+    external_bonuses_enabled: bool,
+) -> tuple[float, float, tuple[str, ...]]:
+    total = 0.0
+    lines: list[str] = []
+    for member in members:
+        stats = _member_display_stats_for_lunar(
+            member,
+            members=members,
+            external_bonuses_enabled=external_bonuses_enabled,
+        )
+        contribution = 0.0
+        stat_label = ""
+        stat_key = ""
+        stat_value = 0.0
+        if member.element in {"pyro", "electro", "cryo"}:
+            stat_key = "atk"
+            stat_label = "ATK"
+            stat_value = stats.get("atk", 0.0)
+            contribution = stat_value / 100.0 * 0.9
+        elif member.element == "hydro":
+            stat_key = "hp"
+            stat_label = "HP"
+            stat_value = stats.get("hp", 0.0)
+            contribution = stat_value / 1000.0 * 0.6
+        elif member.element == "geo":
+            stat_key = "def"
+            stat_label = "DEF"
+            stat_value = stats.get("def", 0.0)
+            contribution = stat_value / 100.0
+        elif member.element in {"anemo", "dendro"}:
+            stat_key = "em"
+            stat_label = "EM"
+            stat_value = stats.get("em", 0.0)
+            contribution = stat_value / 100.0 * 2.25
+        if stat_key:
+            lines.append(
+                f"{member.name}: {member.element.title()} {stat_label} "
+                f"{_format_numeric(stat_value)} -> +{_format_bonus_percent(contribution)}"
+            )
+        total += contribution
+    return min(36.0, total), total, tuple(lines)
+
+
+def _member_display_stats_for_lunar(
+    member: _TeamBonusMember,
+    *,
+    members: tuple[_TeamBonusMember, ...],
+    external_bonuses_enabled: bool,
+) -> dict[str, float]:
+    data = dict(member.details)
+    data["external_bonuses_enabled"] = bool(external_bonuses_enabled)
+    data["team_bonus_display_stat_effects"] = (
+        _elemental_resonance_effect_rows(members, selected_member=member)
+        if external_bonuses_enabled
+        else []
+    )
+    result = build_character_display_stats(data)
+    return {
+        row.key: _numeric_display_value(row.value)
+        for row in result.rows
+        if row.key in {"hp", "atk", "def", "em"}
+    }
+
+
+def _hexerei_bonus_item(
+    members: tuple[_TeamBonusMember, ...],
+) -> RightPanelBonusSourceDisplayItem | None:
+    hexerei_members = [member for member in members if TRAIT_HEXEREI in set(member.traits)]
+    if len(hexerei_members) < 2:
+        return None
+    names = ", ".join(member.name for member in hexerei_members)
+    reference = hexerei_tooltip_reference()
+    reference_body = reference.body.strip()
+    source_url = reference.source_url or HEXEREI_SOURCE_URL
+    missing_text = "Localized Hexerei bonus text is not cached yet."
+    member_tooltips = _hexerei_member_tooltips(
+        hexerei_members,
+        fallback_reference=reference,
+        fallback_body=reference_body,
+        source_url=source_url,
+        missing_text=missing_text,
+    )
+    tooltip_title, tooltip_body = _hexerei_source_tooltip_text(names)
+    return RightPanelBonusSourceDisplayItem(
+        source_kind="hexerei",
+        source_id="hexerei_membership",
+        label="Hexerei",
+        icon_path=_team_bonus_icon("Hexerei.png"),
+        short_effects=(),
+        tooltip_title=tooltip_title,
+        tooltip_body=tooltip_body,
+        applied=True,
+        character_icons=tuple(member.icon_path for member in hexerei_members if member.icon_path),
+        character_tooltips=member_tooltips,
+    )
+
+
+def _hexerei_source_tooltip_text(
+    names: str,
+    *,
+    language: str | None = None,
+) -> tuple[str, str]:
+    resolved_language = _hexerei_tooltip_locale(language or _account_content_language())
+    return (
+        tr_for_language(resolved_language, "right_panel.hexerei.tooltip_title"),
+        tr_for_language(resolved_language, "right_panel.hexerei.source_tooltip_body"),
+    )
+
+
+def _hexerei_tooltip_locale(language: str | None) -> str:
+    value = _text(language).replace("_", "-").casefold()
+    if value.startswith("ru"):
+        return "ru"
+    if value in {"pt", "pt-br", "br"} or value.startswith("pt-"):
+        return "pt-br"
+    if value.startswith("en"):
+        return "en"
+    return "en"
+
+
+def _hexerei_member_tooltips(
+    members: list[_TeamBonusMember],
+    *,
+    fallback_reference: Any,
+    fallback_body: str,
+    source_url: str,
+    missing_text: str,
+) -> tuple[str, ...]:
+    total_start = perf_now()
+    result: list[str] = []
+    language = _account_content_language()
+    conn: sqlite3.Connection | None = None
+    try:
+        if ARTIFACT_DB_PATH.exists():
+            conn = sqlite3.connect(ARTIFACT_DB_PATH)
+            conn.row_factory = sqlite3.Row
+        for member in members:
+            if not member.icon_path:
+                continue
+            sections: tuple[dict[str, Any], ...] = ()
+            if conn is not None and member.hoyowiki_entry_id:
+                sections = get_hexerei_tooltip_sections(
+                    conn,
+                    character_entry_page_id=member.hoyowiki_entry_id,
+                    account_constellation=member.constellation,
+                    preferred_language=language,
+                )
+            text = _format_hexerei_sections_for_tooltip(sections)
+            if not text:
+                text = (
+                    fallback_reference.text_for_member(name=member.name)
+                    or fallback_body
+                    or ""
+                )
+            result.append(
+                _hexerei_member_tooltip(
+                    member.name,
+                    text,
+                    source_url=source_url,
+                    missing_text=missing_text,
+                    constellation=member.constellation,
+                )
+            )
+    except sqlite3.Error:
+        result = [
+            _hexerei_member_tooltip(
+                member.name,
+                fallback_reference.text_for_member(name=member.name)
+                or fallback_body
+                or "",
+                source_url=source_url,
+                missing_text=missing_text,
+                constellation=member.constellation,
+            )
+            for member in members
+            if member.icon_path
+        ]
+    finally:
+        if conn is not None:
+            conn.close()
+    log_perf(
+        "hexerei_tooltips",
+        total=perf_ms(total_start),
+        members=len(members),
+    )
+    return tuple(result)
+
+
+def _format_hexerei_sections_for_tooltip(
+    sections: tuple[dict[str, Any], ...],
+) -> str:
+    blocks: list[str] = []
+    sorted_sections = sorted(
+        sections,
+        key=lambda section: (
+            _optional_int(section.get("required_constellation")) or 0,
+            _optional_int(section.get("section_index")) or 0,
+        ),
+    )
+    for section in sorted_sections:
+        body = _text(section.get("body"))
+        if not body:
+            continue
+        constellation = _optional_int(section.get("required_constellation")) or 0
+        paragraphs = [line.strip() for line in body.splitlines() if line.strip()]
+        if not paragraphs:
+            continue
+        first, *rest = paragraphs
+        block_lines = [f"C{constellation}: {first}"]
+        block_lines.extend(rest)
+        blocks.append("\n".join(block_lines))
+    return "\n\n".join(blocks)
+
+
+def _hexerei_member_tooltip(
+    name: str,
+    text: str,
+    *,
+    source_url: str,
+    missing_text: str,
+    constellation: int | None = None,
+) -> str:
+    lines = [name]
+    lines.append("")
+    lines.append(text.strip() or missing_text)
+    return "\n".join(lines)
+
+
+def _team_bonus_icon(filename: str) -> str:
+    return str(TEAM_BONUS_ICON_DIR / filename) if filename else ""
+
+
+def _account_content_language() -> str:
+    path = PROJECT_ROOT / "data" / "hoyolab" / "account_language.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "en-us"
+    return _text(data.get("contentLanguage") or data.get("language") or "en-us") or "en-us"
+
+
+def _format_bonus_percent(value: float) -> str:
+    if abs(value - round(value)) < 0.05:
+        return f"{int(round(value))}%"
+    return f"{value:.1f}%"
+
+
+def _format_numeric(value: float) -> str:
+    if abs(value - round(value)) < 0.05:
+        return str(int(round(value)))
+    return f"{value:.1f}"
+
+
+def _numeric_display_value(value: str) -> float:
+    try:
+        return float(str(value or "").replace("%", "").replace(",", "").strip())
+    except ValueError:
+        return 0.0
+
+
+def _normalize_token(value: Any) -> str:
+    return str(value or "").strip().casefold().replace(" ", "_").replace("-", "_")
+
+
 def _weapon_tooltip(details: Mapping[str, Any]) -> str:
     title, body = _weapon_tooltip_title_body(details)
     return "\n".join(line for line in (title, body) if line)
@@ -1243,7 +1844,9 @@ def _weapon_tooltip(details: Mapping[str, Any]) -> str:
 
 def _weapon_tooltip_title_body(details: Mapping[str, Any]) -> tuple[str, str]:
     account_weapon = _account_weapon_for_details(details)
-    weapon_name = _text(account_weapon.get("name")) or "No weapon selected"
+    if not _has_weapon_reference(account_weapon):
+        return "", ""
+    weapon_name = _text(account_weapon.get("name"))
     refinement = _optional_int(account_weapon.get("refinement"))
     title = weapon_name
     if refinement is not None:
@@ -1274,6 +1877,14 @@ def _weapon_tooltip_title_body(details: Mapping[str, Any]) -> tuple[str, str]:
 def _account_weapon_for_details(details: Mapping[str, Any]) -> Mapping[str, Any]:
     return _mapping(details.get("account_weapon")) or _mapping(
         _mapping(details.get("stat_snapshot")).get("weapon")
+    )
+
+
+def _has_weapon_reference(account_weapon: Mapping[str, Any]) -> bool:
+    return bool(
+        _text(account_weapon.get("id"))
+        or _text(account_weapon.get("weapon_id"))
+        or _text(account_weapon.get("name"))
     )
 
 
@@ -1315,7 +1926,14 @@ def _stat_rows(
 
     stats_input = dict(details)
     stats_input["external_bonuses_enabled"] = bool(external_bonuses_enabled)
+    display_start = perf_now()
     display_stats = build_character_display_stats(stats_input)
+    display_ms = perf_ms(display_start)
+    log_perf(
+        "display_stats_calc",
+        total=display_ms,
+        rows=len(display_stats.rows),
+    )
     return [
         RightPanelDetailRowViewModel(
             label=row.label,

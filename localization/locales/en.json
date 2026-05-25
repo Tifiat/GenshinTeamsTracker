@@ -1,5 +1,7 @@
 {
   "app.title": "Genshin Teams Tracker",
+  "app_shell.title": "Genshin Teams Tracker - App Shell Prototype",
+  "app_shell.workspace.characters_weapons": "Characters / Weapons",
   "common.error": "Error",
   "common.done": "Done",
   "common.hoyolab": "HoYoLAB",
@@ -27,6 +29,8 @@
   "filter.rarity.3": "Rarity 3★",
   "filter.trait.moonsign": "Moonsign",
   "filter.trait.hexerei": "Hexerei",
+  "right_panel.hexerei.tooltip_title": "Hexerei",
+  "right_panel.hexerei.source_tooltip_body": "Display-only team reference. Does not affect stats.\nHover a member icon to view that character's active Hexerei bonuses.",
   "filter.standard_5_star": "Standard 5-star",
   "filter.region.title": "Region",
   "filter.region.clear": "Clear regions",

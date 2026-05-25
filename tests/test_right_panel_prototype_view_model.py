@@ -6,6 +6,9 @@ import unittest
 from run_workspace.right_panel_prototype_view_model import (
     MODE_ABYSS,
     MODE_DPS_DUMMY,
+    _format_hexerei_sections_for_tooltip,
+    _hexerei_member_tooltip,
+    _hexerei_source_tooltip_text,
     build_fake_right_panel_prototype_state,
     build_right_panel_prototype_view_model,
 )
@@ -591,6 +594,11 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
             "Внешние бонусы отключены",
         )
         weapon_bonus = enabled_model.selected_details.bonus_sources[1]
+        artifact_bonus = enabled_model.selected_details.bonus_sources[0]
+        self.assertEqual(artifact_bonus.tooltip_title, "Emblem of Severed Fate 2p")
+        self.assertEqual(artifact_bonus.tooltip_body, "Energy Recharge +20%")
+        self.assertNotIn("Effects:", artifact_bonus.tooltip_body)
+        self.assertNotIn("Emblem of Severed Fate (2p)", artifact_bonus.tooltip_body)
         self.assertEqual(weapon_bonus.tooltip_title, "Static Spear R2")
         self.assertIn("Lv.70", weapon_bonus.tooltip_body)
         self.assertIn("ATK 429", weapon_bonus.tooltip_body)
@@ -655,6 +663,260 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertNotIn("A polearm made", tooltip)
         self.assertNotIn("Rarity:", tooltip)
 
+    def test_elemental_resonance_chips_apply_direct_display_stats(self) -> None:
+        cases = [
+            ("Pyro", ("Pyro", "Pyro"), "elemental_resonance", "ATK +25%", "ATK", "375"),
+            ("Hydro", ("Hydro", "Hydro"), "elemental_resonance", "HP +25%", "HP", "1250"),
+            ("Cryo", ("Cryo", "Cryo"), "elemental_resonance", "CR +15%", "Crit Rate", "20%"),
+            ("Geo", ("Pyro", "Geo", "Geo"), "elemental_resonance", "Pyro +15%", "Pyro DMG", "15%"),
+        ]
+        for _name, elements, source_kind, chip_label, stat_label, stat_value in cases:
+            with self.subTest(elements=elements):
+                state = _state_with_characters(elements)
+                model = build_right_panel_prototype_view_model(state)
+
+                chips = [
+                    item
+                    for item in model.selected_details.bonus_sources
+                    if item.source_kind == source_kind
+                ]
+                rows = {row.label: row.value for row in model.selected_details.stat_rows}
+
+                self.assertTrue(any(chip_label in item.short_effects for item in chips))
+                self.assertEqual(rows[stat_label], stat_value)
+
+    def test_dendro_resonance_uses_simplified_team_element_rule(self) -> None:
+        cases = [
+            (("Dendro", "Dendro"), "EM +50", "50"),
+            (("Dendro", "Dendro", "Hydro"), "EM +80", "80"),
+            (("Dendro", "Dendro", "Electro"), "EM +100", "100"),
+            (("Dendro", "Dendro", "Hydro", "Pyro"), "EM +100", "100"),
+        ]
+        for elements, chip_label, em_value in cases:
+            with self.subTest(elements=elements):
+                state = _state_with_characters(elements)
+                model = build_right_panel_prototype_view_model(state)
+                chips = [
+                    item
+                    for item in model.selected_details.bonus_sources
+                    if item.source_kind == "elemental_resonance"
+                ]
+                rows = {row.label: row.value for row in model.selected_details.stat_rows}
+
+                self.assertTrue(any(chip_label in item.short_effects for item in chips))
+                self.assertEqual(rows["EM"], em_value)
+
+    def test_external_bonus_toggle_disables_elemental_resonance_stats(self) -> None:
+        state = _state_with_characters(("Pyro", "Pyro"))
+
+        model = build_right_panel_prototype_view_model(state, external_bonuses_enabled=False)
+        rows = {row.label: row.value for row in model.selected_details.stat_rows}
+        resonance = next(
+            item for item in model.selected_details.bonus_sources
+            if item.source_kind == "elemental_resonance"
+        )
+
+        self.assertEqual(rows["ATK"], "300")
+        self.assertFalse(resonance.applied)
+        self.assertEqual(resonance.not_applied_reason, "Внешние бонусы отключены")
+
+    def test_moonsign_chip_is_lunar_indicator_not_normal_stat_row(self) -> None:
+        state = _state_with_characters(
+            ("Hydro", "Pyro", "Cryo"),
+            traits_by_slot={0: ("moonsign",), 1: ("moonsign",)},
+            base_by_slot={
+                0: {"base_hp": 100000, "base_atk": 100, "base_def": 100},
+                1: {"base_hp": 1000, "base_atk": 10000, "base_def": 100},
+                2: {"base_hp": 1000, "base_atk": 100, "base_def": 100},
+            },
+        )
+
+        model = build_right_panel_prototype_view_model(state)
+        moonsign = next(
+            item for item in model.selected_details.bonus_sources
+            if item.source_kind == "moonsign"
+        )
+        rows = {row.label: row.value for row in model.selected_details.stat_rows}
+
+        self.assertEqual(moonsign.short_effects, ("Lunar +36%",))
+        self.assertIn("36%", moonsign.tooltip_body)
+        self.assertIn("Hydro 0: Hydro HP 100000", moonsign.tooltip_body)
+        self.assertIn("Pyro 1: Pyro ATK 10100", moonsign.tooltip_body)
+        self.assertNotIn("Lunar", rows)
+
+    def test_moonsign_reads_stats_after_direct_external_bonuses(self) -> None:
+        state = _state_with_characters(
+            ("Pyro", "Pyro", "Pyro"),
+            traits_by_slot={0: ("moonsign",), 1: ("moonsign",)},
+        )
+
+        enabled_model = build_right_panel_prototype_view_model(state)
+        disabled_model = build_right_panel_prototype_view_model(
+            state,
+            external_bonuses_enabled=False,
+        )
+        enabled = next(
+            item for item in enabled_model.selected_details.bonus_sources
+            if item.source_kind == "moonsign"
+        )
+        disabled = next(
+            item for item in disabled_model.selected_details.bonus_sources
+            if item.source_kind == "moonsign"
+        )
+
+        self.assertEqual(enabled.short_effects, ("Lunar +10.1%",))
+        self.assertIn("Pyro 0: Pyro ATK 375", enabled.tooltip_body)
+        self.assertEqual(disabled.short_effects, ("Lunar +8.1%",))
+        self.assertFalse(disabled.applied)
+
+    def test_moonsign_requires_two_moonsign_members(self) -> None:
+        state = _state_with_characters(
+            ("Hydro", "Pyro"),
+            traits_by_slot={0: ("moonsign",)},
+        )
+
+        model = build_right_panel_prototype_view_model(state)
+
+        self.assertFalse(
+            any(item.source_kind == "moonsign" for item in model.selected_details.bonus_sources)
+        )
+
+    def test_moonsign_is_zero_without_non_moonsign_teammate(self) -> None:
+        state = _state_with_characters(
+            ("Hydro", "Pyro"),
+            traits_by_slot={0: ("moonsign",), 1: ("moonsign",)},
+        )
+
+        model = build_right_panel_prototype_view_model(state)
+        moonsign = next(
+            item for item in model.selected_details.bonus_sources
+            if item.source_kind == "moonsign"
+        )
+
+        self.assertEqual(moonsign.short_effects, ("Lunar +0%",))
+        self.assertTrue(moonsign.applied)
+        self.assertEqual(moonsign.not_applied_reason, "")
+        self.assertIn("Moonsign", moonsign.tooltip_body)
+        self.assertIn("0%", moonsign.tooltip_body)
+
+    def test_hexerei_requires_two_members(self) -> None:
+        state = _state_with_characters(
+            ("Electro", "Pyro"),
+            traits_by_slot={0: ("hexerei",)},
+        )
+
+        model = build_right_panel_prototype_view_model(state)
+
+        self.assertFalse(
+            any(item.source_kind == "hexerei" for item in model.selected_details.bonus_sources)
+        )
+
+    def test_hexerei_chip_is_display_only_for_two_members(self) -> None:
+        state = _state_with_characters(
+            ("Electro", "Pyro"),
+            traits_by_slot={0: ("hexerei",), 1: ("hexerei",)},
+        )
+
+        model = build_right_panel_prototype_view_model(state)
+        hexerei = next(
+            item for item in model.selected_details.bonus_sources
+            if item.source_kind == "hexerei"
+        )
+        rows = {row.label: row.value for row in model.selected_details.stat_rows}
+
+        self.assertEqual(hexerei.label, "Hexerei")
+        self.assertEqual(hexerei.short_effects, ())
+        self.assertNotIn("Source:", hexerei.tooltip_body)
+        self.assertNotIn("Member tooltips use cached", hexerei.tooltip_body)
+        self.assertEqual(len(hexerei.character_tooltips), len(hexerei.character_icons))
+        self.assertNotIn("Hexerei", rows)
+
+    def test_hexerei_source_tooltip_uses_localized_ru_copy(self) -> None:
+        title, body = _hexerei_source_tooltip_text("Мона, Сахароза", language="ru-ru")
+
+        self.assertEqual(title, "Ведьмовство")
+        self.assertNotIn("Участники:", body)
+        self.assertIn("Справочный бонус отряда", body)
+        self.assertNotIn("Source:", body)
+        self.assertNotIn("Display/reference", body)
+
+    def test_hexerei_source_tooltip_unknown_locale_falls_back_to_en(self) -> None:
+        title, body = _hexerei_source_tooltip_text("Mona, Sucrose", language="xx-xx")
+
+        self.assertEqual(title, "Hexerei")
+        self.assertNotIn("Members:", body)
+        self.assertIn("Display-only team reference", body)
+        self.assertNotIn("Source:", body)
+
+    def test_hexerei_source_tooltip_uses_portuguese_locale(self) -> None:
+        title, body = _hexerei_source_tooltip_text("Mona, Sucrose", language="pt-br")
+
+        self.assertEqual(title, "Hexerei")
+        self.assertIn("Referência visual de bônus de equipe", body)
+        self.assertIn("Não afeta os atributos", body)
+
+    def test_hexerei_member_formatter_keeps_constellation_on_first_body_line(self) -> None:
+        text = _format_hexerei_sections_for_tooltip(
+            (
+                {
+                    "required_constellation": 0,
+                    "section_index": 0,
+                    "title": "Decorative Passive Title",
+                    "body": "First body line.\nSecond paragraph.",
+                },
+            )
+        )
+
+        self.assertIn("C0: First body line.", text)
+        self.assertNotIn("C0:\nFirst body line.", text)
+        self.assertIn("Second paragraph.", text)
+        self.assertNotIn("Decorative Passive Title", text)
+
+    def test_hexerei_member_formatter_orders_mona_c4_and_hides_c6_when_filtered(self) -> None:
+        text = _format_hexerei_sections_for_tooltip(
+            (
+                {
+                    "required_constellation": 4,
+                    "section_index": 0,
+                    "title": "Пророчество забвения",
+                    "body": "C4 body.",
+                },
+                {
+                    "required_constellation": 0,
+                    "section_index": 0,
+                    "title": "Ведьмин ритуал кануна",
+                    "body": "C0 body.",
+                },
+                {
+                    "required_constellation": 2,
+                    "section_index": 0,
+                    "title": "Лунная цепь",
+                    "body": "C2 body.",
+                },
+                {
+                    "required_constellation": 1,
+                    "section_index": 0,
+                    "title": "Пророчество потопа",
+                    "body": "C1 body.",
+                },
+            )
+        )
+        tooltip = _hexerei_member_tooltip(
+            "Мона",
+            text,
+            source_url="https://wiki.hoyolab.com/pc/genshin/entry/9347",
+            missing_text="missing",
+            constellation=4,
+        )
+
+        self.assertLess(tooltip.index("C0:"), tooltip.index("C1:"))
+        self.assertLess(tooltip.index("C1:"), tooltip.index("C2:"))
+        self.assertLess(tooltip.index("C2:"), tooltip.index("C4:"))
+        self.assertNotIn("C6:", tooltip)
+        self.assertNotIn("Source:", tooltip)
+        self.assertNotIn("Пророчество", tooltip)
+        self.assertNotIn("Ведьмин ритуал", tooltip)
+
     def test_dps_dummy_model_shows_one_team_and_single_chamber_row(self) -> None:
         state = build_fake_right_panel_prototype_state()
 
@@ -689,6 +951,46 @@ def _contains_forbidden_key(value: object, forbidden: set[str]) -> bool:
     if isinstance(value, list):
         return any(_contains_forbidden_key(item, forbidden) for item in value)
     return False
+
+
+def _state_with_characters(
+    elements: tuple[str, ...],
+    *,
+    traits_by_slot: dict[int, tuple[str, ...]] | None = None,
+    base_by_slot: dict[int, dict[str, float]] | None = None,
+):
+    state = create_empty_team_builder_state(team_count=1)
+    traits_by_slot = traits_by_slot or {}
+    base_by_slot = base_by_slot or {}
+    for index, element in enumerate(elements):
+        base = {
+            "base_hp": 1000.0,
+            "base_atk": 200.0,
+            "base_def": 500.0,
+            **base_by_slot.get(index, {}),
+        }
+        character = {
+            "id": str(10000000 + index),
+            "name": f"{element} {index}",
+            "element": element,
+            "traits": list(traits_by_slot.get(index, ())),
+            **base,
+        }
+        state = state.set_character(0, index, character)
+        state = state.set_weapon(
+            0,
+            index,
+            {"id": str(11000 + index), "name": "Test Weapon", "base_atk": 100},
+        )
+        state = state.attach_character_details_data(
+            0,
+            index,
+            {
+                "account_character": character,
+                "account_weapon": {"name": "Test Weapon", "base_atk": 100},
+            },
+        )
+    return state
 
 
 if __name__ == "__main__":

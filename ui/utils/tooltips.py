@@ -7,7 +7,8 @@ from PySide6.QtWidgets import QApplication, QLabel, QWidget
 
 
 CUSTOM_TOOLTIP_DELAY_MS = 180
-CUSTOM_TOOLTIP_MAX_WIDTH = 280
+CUSTOM_TOOLTIP_MAX_WIDTH = 420
+CUSTOM_TOOLTIP_LONG_TEXT_MIN_WIDTH = 360
 CUSTOM_TOOLTIP_OFFSET = 8
 CUSTOM_TOOLTIP_SCREEN_MARGIN = 8
 
@@ -18,7 +19,7 @@ QLabel {
 	border: 1px solid rgba(226, 202, 148, 180);
 	border-radius: 8px;
 	padding: 7px 10px;
-	font-size: 12px;
+	font-size: 13px;
 	font-weight: 600;
 }
 """
@@ -46,7 +47,12 @@ class CustomTooltipPopup(QLabel):
 
 	def _content_size(self) -> QSize:
 		self.ensurePolished()
-		self.setMinimumWidth(0)
+		minimum_width = (
+			CUSTOM_TOOLTIP_LONG_TEXT_MIN_WIDTH
+			if len(self.text()) > 220 or "\n\n" in self.text()
+			else 0
+		)
+		self.setMinimumWidth(minimum_width)
 		self.setMaximumWidth(CUSTOM_TOOLTIP_MAX_WIDTH)
 		self.adjustSize()
 

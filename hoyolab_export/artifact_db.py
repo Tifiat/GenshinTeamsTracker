@@ -6,6 +6,7 @@ from typing import Any
 
 from .account_storage import init_account_storage
 from .artifact_fingerprint import artifact_content_fingerprint
+from .character_trait_catalog import init_character_trait_reference_storage
 from .display_stat_effects import (
     init_display_stat_effect_tables,
     upsert_artifact_set_display_stat_effects_for_description,
@@ -257,6 +258,7 @@ def init_db(conn: sqlite3.Connection) -> None:
     )
     init_account_storage(conn)
     init_display_stat_effect_tables(conn)
+    init_character_trait_reference_storage(conn)
     artifact_columns = {
         row["name"]
         for row in conn.execute("PRAGMA table_info(artifacts)").fetchall()

@@ -9,6 +9,7 @@ from .character_region_catalog import normalize_character_name
 from .character_trait_catalog import (
     TRAIT_STANDARD_5_STAR,
     CharacterTraitEntry,
+    character_trait_entries_from_sqlite,
     load_character_trait_catalog,
 )
 
@@ -71,7 +72,12 @@ def sync_character_identity_from_account_rows(
     }
     traits_by_entry_id: dict[str, set[str]] = {}
     traits_by_name: dict[str, set[str]] = {}
-    for entry in trait_entries or load_character_trait_catalog().entries:
+    resolved_trait_entries = tuple(trait_entries or ())
+    if not resolved_trait_entries:
+        resolved_trait_entries = character_trait_entries_from_sqlite(conn)
+    if not resolved_trait_entries:
+        resolved_trait_entries = load_character_trait_catalog().entries
+    for entry in resolved_trait_entries:
         for trait in entry.traits:
             if entry.source_character_entry_page_id:
                 traits_by_entry_id.setdefault(entry.source_character_entry_page_id, set()).add(trait)

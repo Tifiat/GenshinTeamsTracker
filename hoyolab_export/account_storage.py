@@ -37,7 +37,10 @@ from .character_stats_catalog import (
 from .crop_manifest import IGNORED_CHARACTER_IDS, icon_key
 from .paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
 from .paths import HOYOLAB_CHARACTER_ASSETS_DIR
-from .character_trait_catalog import load_character_trait_catalog
+from .character_trait_catalog import (
+    load_character_trait_catalog,
+    rebuild_character_trait_reference_from_catalog,
+)
 
 
 DEFAULT_ACCOUNT_CHARACTER_DETAILS_PATH = HOYOLAB_DATA_DIR / "account_character_details.json"
@@ -162,6 +165,7 @@ class AccountCharacterRuntimeRecord:
     side_icon_path: str = ""
     region_key: str = ""
     region_name: str = ""
+    hoyowiki_entry_id: str = ""
     traits: tuple[str, ...] = ()
     is_standard_5_star: bool = False
     base_hp: float | None = None
@@ -193,6 +197,7 @@ class AccountCharacterRuntimeRecord:
             "side_icon_path": self.side_icon_path,
             "region_key": self.region_key,
             "region_name": self.region_name,
+            "hoyowiki_entry_id": self.hoyowiki_entry_id,
             "traits": list(self.traits),
             "is_standard_5_star": self.is_standard_5_star,
             "base_hp": self.base_hp,
@@ -224,6 +229,7 @@ class AccountCharacterRuntimeRecord:
             "side_icon_path": self.side_icon_path,
             "region_key": self.region_key,
             "region_name": self.region_name,
+            "hoyowiki_entry_id": self.hoyowiki_entry_id,
             "traits": list(self.traits),
             "is_standard_5_star": self.is_standard_5_star,
             "base_hp": self.base_hp,
@@ -495,6 +501,7 @@ def sync_account_storage_from_local_files(
 
     with connect_db(db_path) as conn:
         init_db(conn)
+        rebuild_character_trait_reference_from_catalog(conn, trait_catalog)
         summary = sync_account_storage_from_sources(
             conn,
             account_characters=_load_json_list(account_characters_path),
@@ -1496,6 +1503,7 @@ def _account_character_runtime_record(
         side_icon_path=_text(row["side_icon_path"]),
         region_key=identity.region_key if identity else "",
         region_name=identity.region_name if identity else "",
+        hoyowiki_entry_id=identity.hoyowiki_entry_id if identity else "",
         traits=identity.traits if identity else (),
         is_standard_5_star=identity.is_standard_5_star if identity else False,
         base_hp=_number_or_none(row["base_hp"]),

@@ -33,6 +33,9 @@ DISPLAY_TOTALS_INCLUDE_STATIC_ARTIFACT_SET_EFFECTS = (
 DISPLAY_TOTALS_INCLUDE_STATIC_WEAPON_PASSIVES = (
     "display_totals_include_static_weapon_passives"
 )
+DISPLAY_TOTALS_INCLUDE_ELEMENTAL_RESONANCE = (
+    "display_totals_include_elemental_resonance"
+)
 DISPLAY_TOTALS_EXTERNAL_BONUSES_DISABLED = (
     "display_totals_external_bonuses_disabled"
 )
@@ -220,6 +223,11 @@ def build_character_display_stats(value: Mapping[str, Any] | Any) -> CharacterDi
     data = _to_mapping(value)
     snapshot = _to_mapping(data.get("stat_snapshot")) if "stat_snapshot" in data else data
     rows, source_notes = _display_rows_from_team_builder_virtual_sources(data, snapshot)
+    resonance_notes = (
+        []
+        if DISPLAY_TOTALS_INCLUDE_ELEMENTAL_RESONANCE in source_notes
+        else [DISPLAY_TOTALS_EXCLUDE_RESONANCE]
+    )
     return CharacterDisplayStats(
         rows=tuple(rows),
         notes=tuple(
@@ -230,7 +238,7 @@ def build_character_display_stats(value: Mapping[str, Any] | Any) -> CharacterDi
                     DISPLAY_TOTALS_NOTE,
                     DISPLAY_TOTALS_EXCLUDE_PASSIVES,
                     DISPLAY_TOTALS_EXCLUDE_SET_FORMULAS,
-                    DISPLAY_TOTALS_EXCLUDE_RESONANCE,
+                    *resonance_notes,
                     DISPLAY_TOTALS_EXCLUDE_CONDITIONALS,
                     DISPLAY_TOTALS_EXCLUDE_TALENTS_CONSTELLATIONS,
                 ]
@@ -272,6 +280,10 @@ def _display_rows_from_team_builder_virtual_sources(
         if isinstance(stat, Mapping):
             _apply_artifact_bonus(bonuses, stat)
     if external_bonuses_enabled:
+        for effect in data.get("team_bonus_display_stat_effects") or []:
+            if isinstance(effect, Mapping):
+                if _apply_static_display_effect(bonuses, effect):
+                    source_notes.append(DISPLAY_TOTALS_INCLUDE_ELEMENTAL_RESONANCE)
         for effect in data.get("artifact_set_display_stat_effects") or []:
             if isinstance(effect, Mapping):
                 if _apply_static_display_effect(bonuses, effect):

@@ -1,5 +1,7 @@
 {
   "app.title": "Genshin Teams Tracker",
+  "app_shell.title": "Genshin Teams Tracker - прототип App Shell",
+  "app_shell.workspace.characters_weapons": "Персонажи / оружие",
   "common.error": "Ошибка",
   "common.done": "Готово",
   "common.hoyolab": "HoYoLAB",
@@ -27,6 +29,8 @@
   "filter.rarity.3": "Редкость 3★",
   "filter.trait.moonsign": "?????? ????????",
   "filter.trait.hexerei": "???????????",
+  "right_panel.hexerei.tooltip_title": "Ведьмовство",
+  "right_panel.hexerei.source_tooltip_body": "Справочный бонус отряда. На характеристики не влияет.\nНаведите на иконку персонажа, чтобы посмотреть его активные бонусы Ведьмовства.",
   "filter.standard_5_star": "??????????? 5?",
   "filter.region.title": "Регион",
   "filter.region.clear": "Сбросить регионы",

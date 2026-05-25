@@ -19,6 +19,7 @@ from .artifact_set_catalog import (
     normalize_language,
 )
 from .character_trait_catalog import refresh_character_trait_catalog
+from .character_trait_catalog import rebuild_character_trait_reference_from_catalog
 from .character_region_catalog import load_character_region_catalog
 from .character_detail import fetch_character_details_batch, real_character_ids
 from .collect_account_inventory import (
@@ -196,9 +197,16 @@ def sync_static_reference_catalogs_for_import(
 
     try:
         trait_catalog = refresh_character_trait_catalog()
+        with connect_db(ARTIFACT_DB_PATH) as conn:
+            trait_reference_rows = rebuild_character_trait_reference_from_catalog(
+                conn,
+                trait_catalog,
+            )
+            conn.commit()
         summary["characterTraitCatalog"] = {
             "source": trait_catalog.source,
             "entries": len(trait_catalog.entries),
+            "sqlite_reference_rows": trait_reference_rows,
             "fetched_at": trait_catalog.fetched_at,
         }
     except Exception as exc:

@@ -1,0 +1,737 @@
+from __future__ import annotations
+
+from contextlib import nullcontext
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+from PySide6.QtGui import QColor, QPixmap
+from PySide6.QtWidgets import QApplication
+
+from ui.app_shell import (
+    AppShell,
+    AppShellController,
+    AssetIconLabel,
+    CharacterWeaponWorkspace,
+    RIGHT_OPERATIONS_DOCK_WIDTH,
+    RosterSelectionMarker,
+    _SCALED_ICON_PIXMAP_CACHE,
+)
+from run_workspace.perf import perf_enabled
+from ui.utils.overlay_scroll import OverlayVerticalScrollArea
+from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
+
+
+class AppShellTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._app = QApplication.instance() or QApplication([])
+
+    def test_app_shell_constructs_with_character_weapon_workspace(self) -> None:
+        shell = AppShell()
+
+        self.assertIsInstance(
+            shell.left_host.character_weapon_workspace,
+            CharacterWeaponWorkspace,
+        )
+        self.assertEqual(shell.left_host.stack.currentIndex(), 0)
+        self.assertEqual(shell.left_host.stack.count(), 1)
+
+    def test_perf_logging_is_disabled_by_default(self) -> None:
+        with patch.dict("os.environ", {"GTT_PERF_LOG": ""}):
+            self.assertFalse(perf_enabled())
+
+    def test_right_dock_uses_fixed_width(self) -> None:
+        shell = AppShell()
+
+        self.assertEqual(shell.right_dock.minimumWidth(), shell.right_dock.maximumWidth())
+        self.assertEqual(shell.right_dock.minimumWidth(), RIGHT_OPERATIONS_DOCK_WIDTH)
+        self.assertEqual(shell.right_dock.sizePolicy().horizontalPolicy().name, "Fixed")
+
+    def test_character_weapon_workspace_uses_overlay_scroll_areas(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+
+        self.assertIsInstance(workspace.weapon_area, OverlayVerticalScrollArea)
+        self.assertIsInstance(workspace.char_area, OverlayVerticalScrollArea)
+        self.assertEqual(
+            workspace.weapon_area.verticalScrollBarPolicy().name,
+            "ScrollBarAlwaysOff",
+        )
+        self.assertEqual(
+            workspace.char_area.verticalScrollBarPolicy().name,
+            "ScrollBarAlwaysOff",
+        )
+
+    def test_initial_right_panel_has_no_selected_target(self) -> None:
+        shell = AppShell()
+
+        model = shell.controller.right_panel_model()
+        self.assertFalse(model.selected_details.has_selection)
+        self.assertEqual(shell.controller.selected_team_index, -1)
+        self.assertEqual(shell.controller.selected_slot_index, -1)
+
+    def test_controller_character_without_selection_fills_first_empty_slot(self) -> None:
+        controller = AppShellController.empty()
+
+        changed = controller.add_or_replace_character(_character_asset("10000050", "Thoma"))
+
+        self.assertTrue(changed)
+        slot = controller.state.team(0).slot(0)
+        self.assertEqual(slot.character.id, "10000050")
+        self.assertEqual(controller.selected_team_index, 0)
+        self.assertEqual(controller.selected_slot_index, 0)
+        self.assertEqual(slot.character_details_data["account_character"]["portrait_path"], "thoma.png")
+
+    def test_controller_character_with_selection_still_fills_first_empty_slot(self) -> None:
+        controller = AppShellController.empty()
+        controller.toggle_slot_selection(0, 2)
+
+        changed = controller.add_or_replace_character(_character_asset("10000089", "Furina"))
+
+        self.assertTrue(changed)
+        self.assertEqual(controller.state.team(0).slot(0).character.id, "10000089")
+        self.assertIsNone(controller.state.team(0).slot(2).character)
+        self.assertEqual(controller.selected_slot_index, 0)
+
+    def test_controller_existing_character_click_removes_without_compacting(self) -> None:
+        controller = AppShellController.empty()
+        controller.add_or_replace_character(_character_asset("10000050", "Thoma"))
+        controller.add_or_replace_character(_character_asset("10000089", "Furina"))
+
+        changed = controller.add_or_replace_character(_character_asset("10000050", "Thoma"))
+
+        self.assertTrue(changed)
+        self.assertIsNone(controller.state.team(0).slot(0).character)
+        self.assertEqual(controller.state.team(0).slot(1).character.id, "10000089")
+        selected_ids = [
+            slot.character.id
+            for slot in controller.state.team(0).slots
+            if slot.character is not None
+        ]
+        self.assertEqual(selected_ids, ["10000089"])
+
+    def test_repeated_slot_click_clears_selected_target(self) -> None:
+        controller = AppShellController.empty()
+
+        controller.toggle_slot_selection(0, 1)
+        controller.toggle_slot_selection(0, 1)
+
+        self.assertEqual(controller.selected_team_index, -1)
+        self.assertEqual(controller.selected_slot_index, -1)
+
+    def test_weapon_without_selected_character_does_not_assign(self) -> None:
+        controller = AppShellController.empty()
+
+        changed = controller.assign_weapon_to_selected_slot(_weapon_asset("13407", "Favonius Lance"))
+
+        self.assertFalse(changed)
+
+    def test_weapon_with_selected_character_assigns_compatible_weapon(self) -> None:
+        controller = AppShellController.empty()
+        controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
+
+        changed = controller.assign_weapon_to_selected_slot(
+            _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+        )
+
+        self.assertTrue(changed)
+        slot = controller.state.team(0).slot(0)
+        self.assertEqual(slot.weapon.id, "13407")
+        self.assertEqual(slot.character_details_data["account_weapon"]["icon_path"], "fav.png")
+
+    def test_incompatible_weapon_fails_soft(self) -> None:
+        controller = AppShellController.empty()
+        controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
+
+        changed = controller.assign_weapon_to_selected_slot(
+            _weapon_asset("11401", "Sword", weapon_type=1)
+        )
+
+        self.assertFalse(changed)
+        self.assertIsNone(controller.state.team(0).slot(0).weapon)
+
+    def test_weapon_type_filter_uses_stable_weapon_type_metadata(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+        workspace._weapon_type_filters = {"polearm"}
+
+        self.assertTrue(
+            workspace._weapon_matches_filters(
+                _weapon_asset(
+                    "13407",
+                    "Favonius Lance",
+                    weapon_type=13,
+                    weapon_type_name="localized polearm label",
+                )
+            )
+        )
+        self.assertFalse(
+            workspace._weapon_matches_filters(
+                _weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="sword")
+            )
+        )
+
+    def test_weapon_rarity_and_type_filters_can_combine(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+        workspace._weapon_type_filters = {"polearm"}
+        workspace._weapon_rarity_filters = {4}
+
+        self.assertTrue(
+            workspace._weapon_matches_filters(
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13, rarity=4)
+            )
+        )
+        self.assertFalse(
+            workspace._weapon_matches_filters(
+                _weapon_asset("13505", "Five Star Spear", weapon_type=13, rarity=5)
+            )
+        )
+
+    def test_session_weapon_clears_for_new_character_and_restores_old_character(self) -> None:
+        controller = AppShellController.empty()
+        controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
+        controller.assign_weapon_to_selected_slot(
+            _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+        )
+
+        controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
+        controller.add_or_replace_character(_character_asset("10000089", "Furina", weapon_type=1))
+
+        furina_slot = controller.state.team(0).slot(0)
+        self.assertEqual(furina_slot.character.id, "10000089")
+        self.assertIsNone(furina_slot.weapon)
+        details = controller.right_panel_model().selected_details
+        self.assertEqual(details.weapon_name, "")
+        self.assertEqual(details.weapon_icon_path, "")
+        self.assertEqual(details.weapon_tooltip, "")
+
+        controller.add_or_replace_character(_character_asset("10000089", "Furina", weapon_type=1))
+        controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
+
+        thoma_slot = controller.state.team(0).slot(0)
+        self.assertEqual(thoma_slot.character.id, "10000050")
+        self.assertEqual(thoma_slot.weapon.id, "13407")
+
+    def test_sequential_quick_pick_fills_team_one_then_team_two(self) -> None:
+        controller = AppShellController.empty()
+
+        for index in range(5):
+            controller.add_or_replace_character(
+                _character_asset(f"1000005{index}", f"Character {index}")
+            )
+
+        self.assertEqual(
+            [slot.character.id for slot in controller.state.team(0).slots],
+            ["10000050", "10000051", "10000052", "10000053"],
+        )
+        self.assertEqual(controller.state.team(1).slot(0).character.id, "10000054")
+
+    def test_sequential_quick_pick_preserves_gaps_and_blocks_when_full(self) -> None:
+        controller = AppShellController.empty()
+        for index in range(8):
+            controller.add_or_replace_character(
+                _character_asset(f"1000005{index}", f"Character {index}")
+            )
+
+        self.assertFalse(
+            controller.add_or_replace_character(_character_asset("10000099", "Overflow"))
+        )
+
+        controller.add_or_replace_character(_character_asset("10000051", "Character 1"))
+        self.assertIsNone(controller.state.team(0).slot(1).character)
+        controller.add_or_replace_character(_character_asset("10000099", "Overflow"))
+
+        self.assertEqual(controller.state.team(0).slot(1).character.id, "10000099")
+        self.assertEqual(controller.state.team(0).slot(2).character.id, "10000052")
+
+    def test_mode_states_keep_independent_quick_picks(self) -> None:
+        controller = AppShellController.empty()
+        controller.add_or_replace_character(_character_asset("10000050", "Thoma"))
+
+        controller.set_mode(MODE_DPS_DUMMY)
+        controller.add_or_replace_character(_character_asset("10000089", "Furina"))
+
+        self.assertEqual(controller.state.team(0).slot(0).character.id, "10000089")
+        self.assertEqual(len(controller.state.teams), 1)
+
+        controller.set_mode(MODE_ABYSS)
+        self.assertEqual(controller.state.team(0).slot(0).character.id, "10000050")
+        self.assertEqual(len(controller.state.teams), 2)
+
+    def test_roster_selection_markers_expose_team_color_and_slot_number(self) -> None:
+        controller = AppShellController.empty()
+        for index in range(5):
+            controller.add_or_replace_character(
+                _character_asset(f"1000005{index}", f"Character {index}")
+            )
+
+        markers = controller.roster_selection_markers()
+
+        self.assertEqual(markers["10000050"].slot_number, 1)
+        self.assertEqual(markers["10000050"].team_index, 0)
+        self.assertEqual(markers["10000054"].slot_number, 1)
+        self.assertEqual(markers["10000054"].team_index, 1)
+        self.assertNotEqual(markers["10000050"].color, markers["10000054"].color)
+
+        controller.add_or_replace_character(_character_asset("10000054", "Character 4"))
+        self.assertNotIn("10000054", controller.roster_selection_markers())
+
+    def test_marker_update_does_not_reload_character_grid(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+        workspace._initial_grid_built = True
+        card = AssetIconLabel("portrait.png", 24, asset=_character_asset("10000050", "Thoma"))
+        workspace._character_cards_by_id = {"10000050": card}
+
+        with patch.object(workspace, "reload_characters", side_effect=AssertionError):
+            workspace.set_character_selection_markers(
+                {
+                    "10000050": RosterSelectionMarker(
+                        team_index=0,
+                        slot_index=0,
+                        slot_number=1,
+                        color="#3ed47b",
+                    )
+                },
+                affected_character_ids={"10000050"},
+            )
+
+        self.assertIsNotNone(card.selection_marker)
+        self.assertEqual(card.selection_marker.slot_number, 1)
+
+    def test_marker_update_clears_removed_card_without_pixmap_reload(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+        workspace._initial_grid_built = True
+        card = AssetIconLabel("portrait.png", 24, asset=_character_asset("10000050", "Thoma"))
+        marker = RosterSelectionMarker(
+            team_index=0,
+            slot_index=0,
+            slot_number=1,
+            color="#3ed47b",
+        )
+        card.set_selection_marker(marker)
+        workspace._character_selection_markers = {"10000050": marker}
+        workspace._character_cards_by_id = {"10000050": card}
+
+        with (
+            patch.object(workspace, "reload_characters", side_effect=AssertionError),
+            patch.object(card, "_update_pixmap", side_effect=AssertionError),
+        ):
+            workspace.set_character_selection_markers(
+                {},
+                affected_character_ids={"10000050"},
+            )
+
+        self.assertIsNone(card.selection_marker)
+
+    def test_app_shell_character_click_uses_incremental_marker_update(self) -> None:
+        shell = AppShell()
+        workspace = shell.left_host.character_weapon_workspace
+        workspace._initial_grid_built = True
+        card = AssetIconLabel("portrait.png", 24, asset=_character_asset("10000050", "Thoma"))
+        workspace._character_cards_by_id = {"10000050": card}
+
+        with patch.object(workspace, "reload_characters", side_effect=AssertionError):
+            shell._on_character_clicked(_character_asset("10000050", "Thoma"))
+
+        self.assertIsNotNone(card.selection_marker)
+        self.assertEqual(card.selection_marker.slot_number, 1)
+        shell.flush_pending_right_panel_refresh()
+
+    def test_roster_click_defers_right_panel_refresh(self) -> None:
+        shell = AppShell()
+        workspace = shell.left_host.character_weapon_workspace
+        workspace._initial_grid_built = True
+        card = AssetIconLabel("portrait.png", 24, asset=_character_asset("10000050", "Thoma"))
+        workspace._character_cards_by_id = {"10000050": card}
+
+        with patch.object(shell.right_panel, "set_model", wraps=shell.right_panel.set_model) as set_model:
+            shell._on_character_clicked(_character_asset("10000050", "Thoma"))
+
+            self.assertIsNotNone(card.selection_marker)
+            self.assertEqual(set_model.call_count, 0)
+            self.assertTrue(shell._right_panel_refresh_pending)
+
+            shell.flush_pending_right_panel_refresh()
+
+        self.assertEqual(set_model.call_count, 1)
+
+    def test_rapid_roster_clicks_coalesce_right_panel_refresh(self) -> None:
+        shell = AppShell()
+
+        with patch.object(shell.right_panel, "set_model", wraps=shell.right_panel.set_model) as set_model:
+            for index in range(4):
+                shell._on_character_clicked(
+                    _character_asset(f"1000005{index}", f"Character {index}")
+                )
+
+            self.assertEqual(set_model.call_count, 0)
+            self.assertTrue(shell._right_panel_refresh_pending)
+
+            shell.flush_pending_right_panel_refresh()
+
+        self.assertEqual(set_model.call_count, 1)
+
+    def test_weapon_click_schedules_right_panel_refresh(self) -> None:
+        shell = AppShell()
+        shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
+        shell.flush_pending_right_panel_refresh()
+
+        with patch.object(shell.right_panel, "set_model", wraps=shell.right_panel.set_model) as set_model:
+            shell._on_weapon_clicked(_weapon_asset("13407", "Favonius Lance", weapon_type=13))
+
+            self.assertEqual(set_model.call_count, 0)
+            self.assertTrue(shell._right_panel_refresh_pending)
+
+            shell.flush_pending_right_panel_refresh()
+
+        self.assertEqual(set_model.call_count, 1)
+
+    def test_right_panel_uses_visible_asset_path_for_character_portrait(self) -> None:
+        shell = AppShell()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "portrait.png"
+            pixmap = QPixmap(8, 8)
+            pixmap.fill(QColor("#00ff00"))
+            self.assertTrue(pixmap.save(str(path)))
+            asset = _character_asset("10000050", "Thoma")
+            asset["path"] = str(path)
+            asset["metadata"]["character"]["portrait_path"] = "missing-relative.png"
+
+            shell._on_character_clicked(asset)
+            shell.flush_pending_right_panel_refresh()
+
+            model = shell.controller.right_panel_model()
+
+        self.assertEqual(model.teams[0].slots[0].portrait_path, str(path))
+
+    def test_right_panel_uses_visible_asset_path_for_weapon_icon(self) -> None:
+        shell = AppShell()
+        shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
+        shell.flush_pending_right_panel_refresh()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "weapon.png"
+            pixmap = QPixmap(8, 8)
+            pixmap.fill(QColor("#00ff00"))
+            self.assertTrue(pixmap.save(str(path)))
+            asset = _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+            asset["path"] = str(path)
+            asset["metadata"]["weapon"]["icon_path"] = "missing-relative-weapon.png"
+
+            shell._on_weapon_clicked(asset)
+            shell.flush_pending_right_panel_refresh()
+
+            model = shell.controller.right_panel_model()
+
+        self.assertEqual(model.teams[0].slots[0].weapon_image_path, str(path))
+        self.assertEqual(model.selected_details.weapon_icon_path, str(path))
+
+    def test_app_shell_weapon_assignment_loads_passive_tooltip_and_bonus_source(self) -> None:
+        shell = AppShell()
+        shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
+        shell.flush_pending_right_panel_refresh()
+
+        fake_conn = object()
+        with (
+            patch("ui.app_shell.connect_db", return_value=nullcontext(fake_conn)),
+            patch(
+                "ui.app_shell.get_weapon_passive_tooltip",
+                return_value={
+                    "passive_name": "Windfall",
+                    "passive_text": "CRIT Hits generate Elemental Particles.",
+                    "language": "en-us",
+                },
+            ) as passive_lookup,
+            patch(
+                "ui.app_shell.list_weapon_display_stat_effects",
+                return_value=[
+                    {
+                        "weapon_id": 13407,
+                        "refinement": 5,
+                        "stat_key": "ENERGY_RECHARGE",
+                        "value": 12,
+                        "value_type": "percent_points",
+                    }
+                ],
+            ) as effects_lookup,
+        ):
+            weapon_asset = _weapon_asset("13407", "Favonius Lance", weapon_type=13, rarity=4)
+            weapon_asset["metadata"]["weapon"]["desc"] = "A polearm made from old lore."
+            shell._on_weapon_clicked(
+                weapon_asset
+            )
+            shell.flush_pending_right_panel_refresh()
+
+        model = shell.controller.right_panel_model()
+        weapon_sources = [
+            item
+            for item in model.selected_details.bonus_sources
+            if item.source_kind == "weapon_passive_static"
+        ]
+
+        self.assertEqual(passive_lookup.call_count, 1)
+        self.assertEqual(effects_lookup.call_count, 1)
+        self.assertIn("Favonius Lance R5", model.selected_details.weapon_tooltip)
+        self.assertIn("Windfall", model.selected_details.weapon_tooltip)
+        self.assertIn("Elemental Particles", model.selected_details.weapon_tooltip)
+        self.assertNotIn("old lore", model.selected_details.weapon_tooltip)
+        self.assertEqual(len(weapon_sources), 1)
+        self.assertEqual(weapon_sources[0].short_effects, ("ER +12%",))
+        self.assertIn("Windfall", weapon_sources[0].tooltip_body)
+
+    def test_team_bonus_member_icons_use_visible_asset_paths(self) -> None:
+        shell = AppShell()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            first_path = Path(temp_dir) / "first.png"
+            second_path = Path(temp_dir) / "second.png"
+            first_pixmap = QPixmap(8, 8)
+            first_pixmap.fill(QColor("#00ff00"))
+            second_pixmap = QPixmap(8, 8)
+            second_pixmap.fill(QColor("#0000ff"))
+            self.assertTrue(first_pixmap.save(str(first_path)))
+            self.assertTrue(second_pixmap.save(str(second_path)))
+            first = _character_asset("10000050", "Thoma")
+            second = _character_asset("10000089", "Furina", weapon_type=1)
+            for asset, path in ((first, first_path), (second, second_path)):
+                asset["path"] = str(path)
+                character = asset["metadata"]["character"]
+                character["portrait_path"] = "missing-relative-portrait.png"
+                character["side_icon_path"] = "missing-relative-side.png"
+                character["traits"] = ["hexerei", "moonsign"]
+
+            shell._on_character_clicked(first)
+            shell._on_character_clicked(second)
+            model = shell.controller.right_panel_model()
+
+        sources = {item.source_kind: item for item in model.selected_details.bonus_sources}
+        self.assertIn("hexerei", sources)
+        self.assertIn("moonsign", sources)
+        self.assertEqual(sources["hexerei"].character_icons[:2], (str(first_path), str(second_path)))
+        self.assertEqual(sources["moonsign"].character_icons[:2], (str(first_path), str(second_path)))
+
+    def test_selected_character_auto_filters_weapons_by_type_and_clears_on_cancel(self) -> None:
+        shell = AppShell()
+        workspace = shell.left_host.character_weapon_workspace
+        with patch(
+            "ui.app_shell.load_account_weapon_stack_asset_items",
+            return_value=[
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13),
+                _weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword"),
+            ],
+        ):
+            shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
+            shell.flush_pending_weapon_filter_sync()
+
+            self.assertEqual(workspace._weapon_type_filters, {"polearm"})
+            self.assertTrue(workspace._weapon_type_buttons["polearm"].isChecked())
+            self.assertFalse(workspace._weapon_type_buttons["sword"].isChecked())
+            self.assertEqual(workspace.weapon_grid.count(), 1)
+
+            shell._on_slot_selected(0, 0)
+            shell.flush_pending_weapon_filter_sync()
+
+            self.assertEqual(workspace._weapon_type_filters, set())
+            self.assertFalse(workspace._weapon_type_buttons["polearm"].isChecked())
+            self.assertFalse(workspace._weapon_type_buttons["sword"].isChecked())
+
+            shell._on_character_clicked(_character_asset("10000089", "Furina", weapon_type=1))
+            shell.flush_pending_weapon_filter_sync()
+
+            self.assertEqual(workspace._weapon_type_filters, {"sword"})
+            self.assertTrue(workspace._weapon_type_buttons["sword"].isChecked())
+            self.assertFalse(workspace._weapon_type_buttons["polearm"].isChecked())
+
+        shell.flush_pending_right_panel_refresh()
+
+    def test_mode_switch_syncs_markers_without_grid_rebuild(self) -> None:
+        shell = AppShell()
+        workspace = shell.left_host.character_weapon_workspace
+        workspace._initial_grid_built = True
+        card = AssetIconLabel("portrait.png", 24, asset=_character_asset("10000050", "Thoma"))
+        workspace._character_cards_by_id = {"10000050": card}
+
+        with patch.object(workspace, "reload_characters", side_effect=AssertionError):
+            shell._on_character_clicked(_character_asset("10000050", "Thoma"))
+            self.assertIsNotNone(card.selection_marker)
+            shell._on_mode_requested(MODE_DPS_DUMMY)
+
+        self.assertIsNone(card.selection_marker)
+        self.assertTrue(shell._right_panel_refresh_pending)
+        shell.flush_pending_right_panel_refresh()
+
+    def test_mode_switch_schedules_refresh_without_immediate_set_model(self) -> None:
+        shell = AppShell()
+        shell._on_character_clicked(_character_asset("10000050", "Thoma"))
+        shell.flush_pending_right_panel_refresh()
+
+        with patch.object(shell.right_panel, "set_model", wraps=shell.right_panel.set_model) as set_model:
+            shell._on_mode_requested(MODE_DPS_DUMMY)
+
+            self.assertEqual(set_model.call_count, 0)
+            self.assertTrue(shell._right_panel_refresh_pending)
+
+            shell.flush_pending_right_panel_refresh()
+
+        self.assertEqual(set_model.call_count, 1)
+
+    def test_character_filters_use_session_cached_items(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+        workspace._initial_grid_built = True
+
+        with patch(
+            "ui.app_shell.load_account_character_asset_items",
+            return_value=[
+                _character_asset("10000050", "Thoma"),
+                _character_asset("10000089", "Furina", weapon_type=1),
+            ],
+        ) as load_items:
+            workspace.reload_characters()
+            workspace._character_weapon_filters = {"sword"}
+            workspace.reload_characters()
+
+        self.assertEqual(load_items.call_count, 1)
+        self.assertEqual(list(workspace._character_cards_by_id), ["10000089"])
+
+    def test_weapon_filters_use_session_cached_items(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+        workspace._initial_grid_built = True
+
+        with patch(
+            "ui.app_shell.load_account_weapon_stack_asset_items",
+            return_value=[
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13),
+                _weapon_asset("11401", "Sword", weapon_type=1),
+            ],
+        ) as load_items:
+            workspace.reload_weapons()
+            workspace._weapon_type_filters = {"sword"}
+            workspace.reload_weapons()
+
+        self.assertEqual(load_items.call_count, 1)
+        self.assertEqual(workspace.weapon_grid.count(), 1)
+
+    def test_marker_registry_survives_filter_rebuilds(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+        workspace._initial_grid_built = True
+        marker = RosterSelectionMarker(
+            team_index=0,
+            slot_index=0,
+            slot_number=1,
+            color="#3ed47b",
+        )
+        workspace.set_character_selection_markers({"10000050": marker})
+
+        with patch(
+            "ui.app_shell.load_account_character_asset_items",
+            return_value=[
+                _character_asset("10000050", "Thoma"),
+                _character_asset("10000089", "Furina", weapon_type=1),
+            ],
+        ):
+            workspace.reload_characters()
+            workspace._character_weapon_filters = {"sword"}
+            workspace.reload_characters()
+            workspace._character_weapon_filters = set()
+            workspace.reload_characters()
+
+        self.assertIn("10000050", workspace._character_cards_by_id)
+        self.assertIsNotNone(workspace._character_cards_by_id["10000050"].selection_marker)
+
+    def test_scaled_icon_pixmap_cache_reuses_scaled_pixmaps(self) -> None:
+        _SCALED_ICON_PIXMAP_CACHE.clear()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "icon.png"
+            pixmap = QPixmap(8, 8)
+            pixmap.fill(QColor("#ff0000"))
+            self.assertTrue(pixmap.save(str(path)))
+
+            first = AssetIconLabel(str(path), 24)
+            first_hit = first._last_pixmap_cache_hit
+            second = AssetIconLabel(str(path), 24)
+            second_hit = second._last_pixmap_cache_hit
+
+        self.assertFalse(first_hit)
+        self.assertTrue(second_hit)
+
+    def test_workspace_character_signal_updates_app_shell_state(self) -> None:
+        shell = AppShell()
+
+        shell.left_host.character_weapon_workspace.character_clicked.emit(
+            _character_asset("10000050", "Thoma")
+        )
+        shell.flush_pending_right_panel_refresh()
+
+        self.assertEqual(shell.controller.state.team(0).slot(0).character.id, "10000050")
+        self.assertEqual(shell.controller.selected_slot_index, 0)
+
+    def test_workspace_weapon_signal_updates_selected_slot(self) -> None:
+        shell = AppShell()
+        shell.left_host.character_weapon_workspace.character_clicked.emit(
+            _character_asset("10000050", "Thoma", weapon_type=13)
+        )
+        shell.flush_pending_right_panel_refresh()
+
+        shell.left_host.character_weapon_workspace.weapon_clicked.emit(
+            _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+        )
+        shell.flush_pending_right_panel_refresh()
+
+        self.assertEqual(shell.controller.state.team(0).slot(0).weapon.id, "13407")
+
+
+def _character_asset(
+    character_id: str,
+    name: str,
+    *,
+    weapon_type: int = 13,
+) -> dict:
+    weapon_names = {
+        1: "sword",
+        10: "catalyst",
+        11: "claymore",
+        12: "bow",
+        13: "polearm",
+    }
+    return {
+        "path": "portrait.png",
+        "filename": "portrait.png",
+        "metadata": {
+            "character": {
+                "id": character_id,
+                "name": name,
+                "level": 90,
+                "element": "Pyro",
+                "rarity": 4,
+                "constellation": 6,
+                "weapon_type": weapon_type,
+                "weapon_type_name": weapon_names.get(weapon_type, "polearm"),
+                "portrait_path": f"{name.casefold()}.png",
+            }
+        },
+    }
+
+
+def _weapon_asset(
+    weapon_id: str,
+    name: str,
+    *,
+    weapon_type: int = 13,
+    weapon_type_name: str = "Polearm",
+    rarity: int = 4,
+) -> dict:
+    return {
+        "path": "weapon.png",
+        "filename": "weapon.png",
+        "metadata": {
+            "weapon": {
+                "id": weapon_id,
+                "name": name,
+                "level": 90,
+                "rarity": rarity,
+                "refinement": 5,
+                "weapon_type": weapon_type,
+                "weapon_type_name": weapon_type_name,
+                "type_name": weapon_type_name,
+                "icon_path": "fav.png",
+            }
+        },
+    }

@@ -48,7 +48,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Future AppShell tasks:
   - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`;
   - finish/wire the reduced fixed-width right operations dock around `RightPanelPrototypeWidget`; it must not be user-resizable or expand with the window;
-  - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, typed `TeamBuilderState`, weapon type/rarity filters, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, and transitional session weapon memory;
+  - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, normalized local icon paths for right-panel display, SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips, and transitional session weapon memory;
   - add left workspace navigation / `QStackedWidget`;
   - continue the production adapter: next step is richer `CharacterDetailsData` preparation and artifact build selection without raw JSON runtime reads;
   - keep roster clicks as quick-pick add/remove and right-panel slot clicks as selected build/details target toggle;

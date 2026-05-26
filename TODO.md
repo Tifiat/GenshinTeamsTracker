@@ -48,7 +48,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Future AppShell tasks:
   - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`;
   - finish/wire the reduced fixed-width right operations dock around `RightPanelPrototypeWidget`; it must not be user-resizable or expand with the window;
-  - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, normalized local icon paths for right-panel display, SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips, and transitional session weapon memory;
+  - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
   - add left workspace navigation / `QStackedWidget`;
   - continue the production adapter: next step is richer `CharacterDetailsData` preparation and artifact build selection without raw JSON runtime reads;
   - keep roster clicks as quick-pick add/remove and right-panel slot clicks as selected build/details target toggle;
@@ -56,7 +56,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - AppShell filters now use session-cached character/weapon asset lists plus shared scaled roster/weapon pixmap caching; remaining performance work is to avoid recreating visible card widgets on filter changes, likely with hide/show or a virtualized/lazy grid if profiling still warrants it;
   - add future drag/swap for right-panel character cards within a team and between teams after quick-pick remains stable;
   - embed Artifact Browser later with browse-only behavior when no target is selected and equip/apply behavior only when a target is selected;
-  - design persistent account equipment state later: per-character current weapon, per-character current artifact slots, owner side icons, in-game-like move/swap semantics, and explicit preset equip that copies a preset into one character's current equipped state without mutating the preset definition;
+  - persistent account equipment Stage B is implemented for AppShell weapons: adding a character restores current weapon from SQLite, weapon clicks persist through `equip_weapon(...)`, equipment is per character not per mode, and slot removal does not unequip; next Stage B2 is to convert read-only current equipped artifact ids into a live artifact snapshot/display path without creating fake build presets;
+  - Artifact Browser equipment UX is documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`: right-panel selected character can drive the browser operation target, the `Текущая сборка` zone is current equipment rather than a preset, preset apply is explicit, incomplete preset apply clears missing target slots, and owner side icons come from current equipment tables;
   - separate timer/run logic into a model/controller while keeping timer UI visually in the right operations dock;
   - reserve right operations dock future modes for import/settings/language controls and PvP draft/deck/opponent controls;
   - keep PvP as a separate mode/window direction initially, reusing the build panel only after a buildable pool/team exists;
@@ -115,13 +116,14 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Preserve build presets as shared ownership categories, not "one build = one character".
 - A preset can belong to Universal and/or multiple character targets; selected target filters use intersection semantics and should not auto-include Universal unless Universal is selected.
 - Keep build data separate from visual skin/delegate rendering.
-- Future equip-context rule: keep one shared Artifact Browser with `library mode` and `equip mode(character_slot)`, not one browser per TeamBuilder slot. Equip mode may later be docked/attached around the right panel and selected presets should immediately equip the originating character slot.
-- Domain rule: a character equips a preset, and a preset assigns artifacts. Artifacts in an assigned preset are reserved by that character. Build id/name alone is not enough for saved history; saved runs must snapshot immutable artifact/build contents.
-- If equip mode manually clicks artifacts instead of selecting a preset, create/update a temporary preset for that character. Temporary presets count as equipped and may later be edited like normal presets, while hidden/separated in library mode to avoid clutter.
-- Occupied artifacts/presets should use compact side-profile account character icon overlays. Occupied artifacts show reserving character icon(s); conflicting presets show red/conflict outline plus owner icon(s).
-- Clicking an occupied artifact in equip mode should require confirmation because it mutates another character's assigned preset. Empty current position moves the artifact and previous owner loses the slot; occupied current position swaps artifacts between the two assigned presets.
-- Whole presets containing occupied artifacts should not be silently equipped with one click in MVP/design. Show conflict state and owner overlays; allow opening/editing the preset to replace conflicting pieces. Full multi-artifact preset swap can be considered later.
-- Editing a preset currently assigned to a character changes that character's equipment because the character wears the preset.
+- Future equip-context rule: keep one shared Artifact Browser with browse mode and equip mode for exactly one operation target, not one browser per TeamBuilder slot. Equip mode may later be docked/attached around the right panel, but selecting a preset only previews it; an explicit `Надеть пресет` action performs the equipment write.
+- Domain rule: current equipment is separate from build presets. A preset is a reusable definition; the live/free per-character equipment state is stored in persistent equipment tables.
+- Artifact Browser target/equip-mode UX is documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`. Equip mode is active only for exactly one operation target. Right-panel selected target wins when present; otherwise the browser may use exactly one selected character. With 0 or 2+ browser-selected characters, free artifact clicks do not equip.
+- `Текущая сборка` is a top current-equipment zone above presets, not an `artifact_build` preset. Selecting a preset previews it; `Надеть пресет` is the explicit action that copies preset artifacts into the operation target's current equipment.
+- Applying an incomplete preset clears the missing target slots so current equipment matches exactly what the preset shows. The applied preset name may be temporary UI-buffer text only and resets to `Текущая сборка` after manual artifact changes.
+- Manual artifact click in equip mode equips that artifact through the equipment service and does not mutate presets. In preset-edit mode, artifact clicks edit the preset only.
+- If a preset contains artifacts currently worn by other characters, show a compact confirmation with character side icons only before applying. Accepted apply uses equipment service move/swap semantics.
+- Artifact owner icons, preset owner icons, and weapon owner icons come from current equipment tables, not `artifact_build_targets`. Weapon owner icons must respect `weapon_fingerprint` + `known_count` without fake weapon instance ids.
 
 ## 6. Abyss History / Seasons
 

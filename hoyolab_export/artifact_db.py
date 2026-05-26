@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .account_equipment import init_account_equipment_storage
 from .account_storage import init_account_storage
 from .artifact_fingerprint import artifact_content_fingerprint
 from .character_trait_catalog import init_character_trait_reference_storage
@@ -257,6 +258,7 @@ def init_db(conn: sqlite3.Connection) -> None:
         """
     )
     init_account_storage(conn)
+    init_account_equipment_storage(conn)
     init_display_stat_effect_tables(conn)
     init_character_trait_reference_storage(conn)
     artifact_columns = {

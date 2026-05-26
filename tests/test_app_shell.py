@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
+from contextlib import closing
 from pathlib import Path
 import tempfile
 import unittest
@@ -9,6 +9,12 @@ from unittest.mock import patch
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import QApplication
 
+from hoyolab_export.account_equipment import (
+    equip_artifact,
+    equip_weapon,
+    get_equipped_weapon_for_character,
+)
+from hoyolab_export.artifact_db import connect_db, init_db
 from ui.app_shell import (
     AppShell,
     AppShellController,
@@ -128,17 +134,23 @@ class AppShellTest(unittest.TestCase):
         self.assertFalse(changed)
 
     def test_weapon_with_selected_character_assigns_compatible_weapon(self) -> None:
-        controller = AppShellController.empty()
-        controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
+        with temp_app_shell_db() as db_path:
+            controller = AppShellController.empty(equipment_db_path=db_path)
+            controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
 
-        changed = controller.assign_weapon_to_selected_slot(
-            _weapon_asset("13407", "Favonius Lance", weapon_type=13)
-        )
+            changed = controller.assign_weapon_to_selected_slot(
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+            )
+            with closing(connect_db(db_path)) as conn:
+                persisted = get_equipped_weapon_for_character(conn, 10000050)
 
         self.assertTrue(changed)
         slot = controller.state.team(0).slot(0)
         self.assertEqual(slot.weapon.id, "13407")
         self.assertEqual(slot.character_details_data["account_weapon"]["icon_path"], "fav.png")
+        self.assertIsNotNone(persisted)
+        assert persisted is not None
+        self.assertEqual(persisted.weapon_fingerprint, "fingerprint-13407")
 
     def test_incompatible_weapon_fails_soft(self) -> None:
         controller = AppShellController.empty()
@@ -187,30 +199,134 @@ class AppShellTest(unittest.TestCase):
             )
         )
 
-    def test_session_weapon_clears_for_new_character_and_restores_old_character(self) -> None:
-        controller = AppShellController.empty()
-        controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
-        controller.assign_weapon_to_selected_slot(
-            _weapon_asset("13407", "Favonius Lance", weapon_type=13)
-        )
+    def test_persistent_weapon_clears_for_new_character_and_restores_old_character(self) -> None:
+        with temp_app_shell_db() as db_path:
+            controller = AppShellController.empty(equipment_db_path=db_path)
+            controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
+            controller.assign_weapon_to_selected_slot(
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+            )
 
-        controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
-        controller.add_or_replace_character(_character_asset("10000089", "Furina", weapon_type=1))
+            controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
+            with closing(connect_db(db_path)) as conn:
+                persisted_after_remove = get_equipped_weapon_for_character(conn, 10000050)
+            controller.add_or_replace_character(_character_asset("10000089", "Furina", weapon_type=1))
 
-        furina_slot = controller.state.team(0).slot(0)
+            furina_slot = controller.state.team(0).slot(0)
+            details = controller.right_panel_model().selected_details
+
+            controller.add_or_replace_character(_character_asset("10000089", "Furina", weapon_type=1))
+            controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
+            thoma_slot = controller.state.team(0).slot(0)
+
+        self.assertIsNotNone(persisted_after_remove)
         self.assertEqual(furina_slot.character.id, "10000089")
         self.assertIsNone(furina_slot.weapon)
-        details = controller.right_panel_model().selected_details
         self.assertEqual(details.weapon_name, "")
         self.assertEqual(details.weapon_icon_path, "")
         self.assertEqual(details.weapon_tooltip, "")
-
-        controller.add_or_replace_character(_character_asset("10000089", "Furina", weapon_type=1))
-        controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
-
-        thoma_slot = controller.state.team(0).slot(0)
         self.assertEqual(thoma_slot.character.id, "10000050")
         self.assertEqual(thoma_slot.weapon.id, "13407")
+
+    def test_adding_character_restores_persistent_weapon_from_sqlite(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_weapon(conn, 10000050, "fingerprint-13407")
+                conn.commit()
+            controller = AppShellController.empty(equipment_db_path=db_path)
+
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+
+        slot = controller.state.team(0).slot(0)
+        self.assertEqual(slot.weapon.id, "13407")
+        self.assertEqual(
+            slot.character_details_data["account_weapon"]["source_key"],
+            "fingerprint-13407",
+        )
+
+    def test_replacing_character_restores_incoming_own_persistent_weapon(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_weapon(conn, 10000050, "fingerprint-13407")
+                equip_weapon(conn, 10000089, "fingerprint-11401")
+                conn.commit()
+            controller = AppShellController.empty(equipment_db_path=db_path)
+
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            controller.add_or_replace_character(
+                _character_asset("10000089", "Furina", weapon_type=1)
+            )
+
+        slot = controller.state.team(0).slot(0)
+        self.assertEqual(slot.character.id, "10000089")
+        self.assertEqual(slot.weapon.id, "11401")
+        self.assertEqual(slot.character_details_data["account_weapon"]["name"], "Sword")
+
+    def test_app_shell_assignment_respects_known_count_without_stale_slot(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_weapon(conn, 10000051, "fingerprint-13407")
+                conn.commit()
+            controller = AppShellController.empty(equipment_db_path=db_path)
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+
+            changed = controller.assign_weapon_to_selected_slot(
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+            )
+
+        self.assertFalse(changed)
+        self.assertIsNone(controller.state.team(0).slot(0).weapon)
+        self.assertIn("No available copy", controller.last_equipment_error)
+
+    def test_app_shell_has_no_session_weapon_memory_source_of_truth(self) -> None:
+        controller = AppShellController.empty()
+
+        self.assertFalse(hasattr(controller, "session_equipment_by_character_id"))
+
+    def test_persistent_equipment_is_per_character_across_modes(self) -> None:
+        with temp_app_shell_db() as db_path:
+            controller = AppShellController.empty(equipment_db_path=db_path)
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            controller.assign_weapon_to_selected_slot(
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+            )
+
+            controller.set_mode(MODE_DPS_DUMMY)
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+
+        self.assertEqual(len(controller.state.teams), 1)
+        self.assertEqual(controller.state.team(0).slot(0).weapon.id, "13407")
+
+    def test_adding_character_reads_current_equipped_artifact_ids_readonly(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_artifact(conn, 10000050, 1)
+                conn.commit()
+            controller = AppShellController.empty(equipment_db_path=db_path)
+
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+
+        details = controller.state.team(0).slot(0).character_details_data
+        self.assertEqual(
+            details["current_equipped_artifact_ids_by_slot"],
+            {"flower": 1},
+        )
+        self.assertTrue(details["source_notes"]["current_equipped_artifacts_readonly"])
 
     def test_sequential_quick_pick_fills_team_one_then_team_two(self) -> None:
         controller = AppShellController.empty()
@@ -372,17 +488,20 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(set_model.call_count, 1)
 
     def test_weapon_click_schedules_right_panel_refresh(self) -> None:
-        shell = AppShell()
-        shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
-        shell.flush_pending_right_panel_refresh()
-
-        with patch.object(shell.right_panel, "set_model", wraps=shell.right_panel.set_model) as set_model:
-            shell._on_weapon_clicked(_weapon_asset("13407", "Favonius Lance", weapon_type=13))
-
-            self.assertEqual(set_model.call_count, 0)
-            self.assertTrue(shell._right_panel_refresh_pending)
-
+        with temp_app_shell_db() as db_path:
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+            shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
             shell.flush_pending_right_panel_refresh()
+
+            with patch.object(shell.right_panel, "set_model", wraps=shell.right_panel.set_model) as set_model:
+                shell._on_weapon_clicked(_weapon_asset("13407", "Favonius Lance", weapon_type=13))
+
+                self.assertEqual(set_model.call_count, 0)
+                self.assertTrue(shell._right_panel_refresh_pending)
+
+                shell.flush_pending_right_panel_refresh()
 
         self.assertEqual(set_model.call_count, 1)
 
@@ -405,63 +524,67 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(model.teams[0].slots[0].portrait_path, str(path))
 
     def test_right_panel_uses_visible_asset_path_for_weapon_icon(self) -> None:
-        shell = AppShell()
-        shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
-        shell.flush_pending_right_panel_refresh()
-        with tempfile.TemporaryDirectory() as temp_dir:
-            path = Path(temp_dir) / "weapon.png"
-            pixmap = QPixmap(8, 8)
-            pixmap.fill(QColor("#00ff00"))
-            self.assertTrue(pixmap.save(str(path)))
-            asset = _weapon_asset("13407", "Favonius Lance", weapon_type=13)
-            asset["path"] = str(path)
-            asset["metadata"]["weapon"]["icon_path"] = "missing-relative-weapon.png"
-
-            shell._on_weapon_clicked(asset)
+        with temp_app_shell_db() as db_path:
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+            shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
             shell.flush_pending_right_panel_refresh()
+            with tempfile.TemporaryDirectory() as temp_dir:
+                path = Path(temp_dir) / "weapon.png"
+                pixmap = QPixmap(8, 8)
+                pixmap.fill(QColor("#00ff00"))
+                self.assertTrue(pixmap.save(str(path)))
+                asset = _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+                asset["path"] = str(path)
+                asset["metadata"]["weapon"]["icon_path"] = "missing-relative-weapon.png"
 
-            model = shell.controller.right_panel_model()
+                shell._on_weapon_clicked(asset)
+                shell.flush_pending_right_panel_refresh()
+
+                model = shell.controller.right_panel_model()
 
         self.assertEqual(model.teams[0].slots[0].weapon_image_path, str(path))
         self.assertEqual(model.selected_details.weapon_icon_path, str(path))
 
     def test_app_shell_weapon_assignment_loads_passive_tooltip_and_bonus_source(self) -> None:
-        shell = AppShell()
-        shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
-        shell.flush_pending_right_panel_refresh()
+        with temp_app_shell_db() as db_path:
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+            shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
+            shell.flush_pending_right_panel_refresh()
 
-        fake_conn = object()
-        with (
-            patch("ui.app_shell.connect_db", return_value=nullcontext(fake_conn)),
-            patch(
+            with (
+                patch(
                 "ui.app_shell.get_weapon_passive_tooltip",
                 return_value={
                     "passive_name": "Windfall",
                     "passive_text": "CRIT Hits generate Elemental Particles.",
                     "language": "en-us",
                 },
-            ) as passive_lookup,
-            patch(
-                "ui.app_shell.list_weapon_display_stat_effects",
-                return_value=[
-                    {
-                        "weapon_id": 13407,
-                        "refinement": 5,
-                        "stat_key": "ENERGY_RECHARGE",
-                        "value": 12,
-                        "value_type": "percent_points",
-                    }
-                ],
-            ) as effects_lookup,
-        ):
-            weapon_asset = _weapon_asset("13407", "Favonius Lance", weapon_type=13, rarity=4)
-            weapon_asset["metadata"]["weapon"]["desc"] = "A polearm made from old lore."
-            shell._on_weapon_clicked(
-                weapon_asset
-            )
-            shell.flush_pending_right_panel_refresh()
+                ) as passive_lookup,
+                patch(
+                    "ui.app_shell.list_weapon_display_stat_effects",
+                    return_value=[
+                        {
+                            "weapon_id": 13407,
+                            "refinement": 5,
+                            "stat_key": "ENERGY_RECHARGE",
+                            "value": 12,
+                            "value_type": "percent_points",
+                        }
+                    ],
+                ) as effects_lookup,
+            ):
+                weapon_asset = _weapon_asset("13407", "Favonius Lance", weapon_type=13, rarity=4)
+                weapon_asset["metadata"]["weapon"]["desc"] = "A polearm made from old lore."
+                shell._on_weapon_clicked(
+                    weapon_asset
+                )
+                shell.flush_pending_right_panel_refresh()
 
-        model = shell.controller.right_panel_model()
+            model = shell.controller.right_panel_model()
         weapon_sources = [
             item
             for item in model.selected_details.bonus_sources
@@ -664,16 +787,19 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.controller.selected_slot_index, 0)
 
     def test_workspace_weapon_signal_updates_selected_slot(self) -> None:
-        shell = AppShell()
-        shell.left_host.character_weapon_workspace.character_clicked.emit(
-            _character_asset("10000050", "Thoma", weapon_type=13)
-        )
-        shell.flush_pending_right_panel_refresh()
+        with temp_app_shell_db() as db_path:
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+            shell.left_host.character_weapon_workspace.character_clicked.emit(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            shell.flush_pending_right_panel_refresh()
 
-        shell.left_host.character_weapon_workspace.weapon_clicked.emit(
-            _weapon_asset("13407", "Favonius Lance", weapon_type=13)
-        )
-        shell.flush_pending_right_panel_refresh()
+            shell.left_host.character_weapon_workspace.weapon_clicked.emit(
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+            )
+            shell.flush_pending_right_panel_refresh()
 
         self.assertEqual(shell.controller.state.team(0).slot(0).weapon.id, "13407")
 
@@ -717,7 +843,9 @@ def _weapon_asset(
     weapon_type: int = 13,
     weapon_type_name: str = "Polearm",
     rarity: int = 4,
+    weapon_fingerprint: str | None = None,
 ) -> dict:
+    fingerprint = weapon_fingerprint or f"fingerprint-{weapon_id}"
     return {
         "path": "weapon.png",
         "filename": "weapon.png",
@@ -732,6 +860,88 @@ def _weapon_asset(
                 "weapon_type_name": weapon_type_name,
                 "type_name": weapon_type_name,
                 "icon_path": "fav.png",
+                "source_key": fingerprint,
+                "weapon_fingerprint": fingerprint,
             }
         },
     }
+
+
+class temp_app_shell_db:
+    def __enter__(self) -> Path:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.path = Path(self._tmp.name) / "artifacts.db"
+        with closing(connect_db(self.path)) as conn:
+            init_db(conn)
+            _seed_app_shell_characters(conn)
+            _seed_app_shell_weapons(conn)
+            _seed_app_shell_artifacts(conn)
+            conn.commit()
+        return self.path
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self._tmp.cleanup()
+
+
+def _seed_app_shell_characters(conn) -> None:
+    conn.executemany(
+        """
+        INSERT INTO account_characters (
+            character_id,
+            name,
+            weapon_type,
+            weapon_type_name
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        [
+            (10000050, "Thoma", 13, "polearm"),
+            (10000051, "Polearm Friend", 13, "polearm"),
+            (10000089, "Furina", 1, "sword"),
+        ],
+    )
+
+
+def _seed_app_shell_weapons(conn) -> None:
+    conn.executemany(
+        """
+        INSERT INTO account_weapon_observed_stacks (
+            weapon_fingerprint,
+            weapon_id,
+            name,
+            weapon_type,
+            weapon_type_name,
+            rarity,
+            level,
+            refinement,
+            icon_path,
+            known_count
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            ("fingerprint-13407", 13407, "Favonius Lance", 13, "Polearm", 4, 90, 5, "fav.png", 1),
+            ("fingerprint-13408", 13408, "Kitain Cross Spear", 13, "Polearm", 4, 90, 1, "kitain.png", 1),
+            ("fingerprint-11401", 11401, "Sword", 1, "Sword", 4, 90, 1, "sword.png", 1),
+        ],
+    )
+
+
+def _seed_app_shell_artifacts(conn) -> None:
+    conn.executemany(
+        """
+        INSERT INTO artifacts (
+            id,
+            fingerprint,
+            name,
+            pos,
+            first_seen_at,
+            last_seen_at
+        )
+        VALUES (?, ?, ?, ?, '2026-05-26T00:00:00+00:00', '2026-05-26T00:00:00+00:00')
+        """,
+        [
+            (1, "artifact-flower-a", "Flower A", 1),
+            (2, "artifact-plume-a", "Plume A", 2),
+        ],
+    )

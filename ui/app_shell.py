@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from contextlib import closing
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from hoyolab_export.account_equipment import (
+    EquipmentError,
+    equip_weapon,
+    get_equipped_weapon_for_character,
+    list_equipped_artifacts_for_character,
+)
+from hoyolab_export.account_storage import get_account_weapon_observed_stack
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
 from hoyolab_export.display_stat_effects import (
     get_weapon_passive_tooltip,
@@ -118,28 +126,27 @@ class RosterSelectionMarker:
 
 @dataclass
 class AppShellController:
-    """Tiny temporary boundary for the AppShell prototype.
-
-    This deliberately owns only in-memory shell state. Future production work
-    should extend this boundary instead of coupling left workspaces directly to
-    right-panel widgets.
-    """
+    """Tiny boundary for the separate AppShell prototype."""
 
     state: TeamBuilderState
+    equipment_db_path: str | Path = ARTIFACT_DB_PATH
     mode: str = MODE_ABYSS
     selected_team_index: int = -1
     selected_slot_index: int = -1
     external_bonuses_enabled: bool = True
     mode_states: dict[str, TeamBuilderState] = field(default_factory=dict)
-    session_equipment_by_character_id: dict[str, dict[str, Any] | None] = field(
-        default_factory=dict
-    )
+    last_equipment_error: str = ""
 
     @classmethod
-    def empty(cls) -> "AppShellController":
+    def empty(
+        cls,
+        *,
+        equipment_db_path: str | Path = ARTIFACT_DB_PATH,
+    ) -> "AppShellController":
         abyss_state = _empty_state_for_mode(MODE_ABYSS)
         return cls(
             state=abyss_state,
+            equipment_db_path=equipment_db_path,
             mode=MODE_ABYSS,
             mode_states={
                 MODE_ABYSS: abyss_state,
@@ -197,7 +204,6 @@ class AppShellController:
         existing_slot = self._find_character_slot(character_id)
         if existing_slot is not None:
             team_index, slot_index = existing_slot
-            self._save_slot_session_weapon(team_index, slot_index)
             self.state = self.state.clear_slot(team_index, slot_index)
             if (
                 self.selected_team_index == team_index
@@ -212,7 +218,7 @@ class AppShellController:
             return False
         team_index, slot_index = target_slot
 
-        self._set_character_with_session_equipment(
+        self._set_character_with_persistent_equipment(
             team_index,
             slot_index,
             character,
@@ -246,6 +252,31 @@ class AppShellController:
         if not _weapon_matches_character(character, weapon):
             return False
 
+        weapon_fingerprint = _weapon_equipment_fingerprint(weapon)
+        if not weapon_fingerprint:
+            self.last_equipment_error = "weapon_fingerprint_missing"
+            return False
+        character_id = _text(character.get("id")) or _text(slot.character.id)
+        if not character_id:
+            return False
+        try:
+            with self._equipment_connection() as conn:
+                equip_weapon(conn, character_id, weapon_fingerprint)
+                persisted_weapon = self._persistent_weapon_for_character(
+                    conn,
+                    character_id,
+                    character,
+                    preferred_weapon=weapon,
+                )
+                conn.commit()
+        except EquipmentError as exc:
+            self.last_equipment_error = str(exc)
+            return False
+        except Exception as exc:
+            self.last_equipment_error = str(exc)
+            return False
+
+        weapon = persisted_weapon or weapon
         self.state = self.state.set_weapon(
             self.selected_team_index,
             self.selected_slot_index,
@@ -255,15 +286,13 @@ class AppShellController:
         details["account_weapon"] = dict(weapon)
         if _text(weapon.get("icon_path")):
             details["weapon_image_path"] = _text(weapon.get("icon_path"))
-        details.update(_weapon_bonus_context(weapon))
+        details.update(_weapon_bonus_context(weapon, db_path=self.equipment_db_path))
         self.state = self.state.attach_character_details_data(
             self.selected_team_index,
             self.selected_slot_index,
             details,
         )
-        character_id = _text(character.get("id")) or _text(slot.character.id)
-        if character_id:
-            self.session_equipment_by_character_id[character_id] = dict(weapon)
+        self.last_equipment_error = ""
         self._store_current_mode_state()
         return True
 
@@ -311,7 +340,7 @@ class AppShellController:
                     return team_index, slot.slot_index
         return None
 
-    def _set_character_with_session_equipment(
+    def _set_character_with_persistent_equipment(
         self,
         team_index: int,
         slot_index: int,
@@ -327,32 +356,76 @@ class AppShellController:
         portrait_path = _text(character.get("local_portrait_path") or character.get("portrait_path"))
         if portrait_path:
             details["portrait_path"] = portrait_path
-        session_weapon = self.session_equipment_by_character_id.get(character_id)
-        if session_weapon and _weapon_matches_character(character, session_weapon):
-            session_weapon = _normalized_weapon_image_paths(session_weapon)
+        with self._equipment_connection() as conn:
+            session_weapon = self._persistent_weapon_for_character(
+                conn,
+                character_id,
+                character,
+            )
+            current_artifacts = self._persistent_artifact_ids_for_character(
+                conn,
+                character_id,
+            )
+        if current_artifacts:
+            details["current_equipped_artifact_ids_by_slot"] = dict(current_artifacts)
+            details.setdefault("source_notes", {})[
+                "current_equipped_artifacts_readonly"
+            ] = True
+        if session_weapon:
             self.state = self.state.set_weapon(team_index, slot_index, session_weapon)
             details["account_weapon"] = dict(session_weapon)
             if _text(session_weapon.get("icon_path")):
                 details["weapon_image_path"] = _text(session_weapon.get("icon_path"))
-            details.update(_weapon_bonus_context(session_weapon))
+            details.update(
+                _weapon_bonus_context(session_weapon, db_path=self.equipment_db_path)
+            )
         self.state = self.state.attach_character_details_data(team_index, slot_index, details)
 
-    def _save_slot_session_weapon(self, team_index: int, slot_index: int) -> None:
-        try:
-            slot = self.state.team(team_index).slot(slot_index)
-        except IndexError:
-            return
-        if slot.character is None:
-            return
-        character_id = _text(slot.character.id)
+    def _equipment_connection(self):
+        return closing(connect_db(self.equipment_db_path))
+
+    def _persistent_weapon_for_character(
+        self,
+        conn,
+        character_id: str,
+        character: dict[str, Any],
+        *,
+        preferred_weapon: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         if not character_id:
-            return
-        details = _mapping(slot.character_details_data)
-        weapon = _mapping(details.get("account_weapon"))
-        if not weapon and slot.weapon is not None:
-            weapon = slot.weapon.to_dict()
+            return None
+        record = get_equipped_weapon_for_character(conn, character_id)
+        if record is None:
+            return None
+        stack = get_account_weapon_observed_stack(conn, record.weapon_fingerprint)
+        if stack is None:
+            return None
+        weapon = stack.to_team_builder_weapon_ref()
+        if preferred_weapon:
+            preferred_path = _text(preferred_weapon.get("icon_path"))
+            if preferred_path:
+                weapon["icon_path"] = preferred_path
+                weapon["local_icon_path"] = preferred_path
         weapon = _normalized_weapon_image_paths(weapon)
-        self.session_equipment_by_character_id[character_id] = dict(weapon) if weapon else None
+        if not _weapon_matches_character(character, weapon):
+            return None
+        return weapon
+
+    def _persistent_artifact_ids_for_character(
+        self,
+        conn,
+        character_id: str,
+    ) -> dict[str, int]:
+        if not character_id:
+            return {}
+        try:
+            records = list_equipped_artifacts_for_character(conn, character_id)
+        except EquipmentError:
+            return {}
+        return {
+            record.slot_key: record.artifact_id
+            for record in records
+        }
 
     def _store_current_mode_state(self) -> None:
         self.mode_states[self.mode] = self.state
@@ -1329,13 +1402,17 @@ def _normalized_weapon_image_paths(
     return normalized
 
 
-def _weapon_bonus_context(weapon: dict[str, Any]) -> dict[str, Any]:
+def _weapon_bonus_context(
+    weapon: dict[str, Any],
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> dict[str, Any]:
     weapon_id = _text(weapon.get("id") or weapon.get("weapon_id"))
     refinement = _optional_int(weapon.get("refinement"))
     if not weapon_id:
         return {}
     try:
-        with connect_db(ARTIFACT_DB_PATH) as conn:
+        with closing(connect_db(db_path)) as conn:
             passive_reference = get_weapon_passive_tooltip(
                 conn,
                 weapon_id=weapon_id,
@@ -1354,6 +1431,14 @@ def _weapon_bonus_context(weapon: dict[str, Any]) -> dict[str, Any]:
     if weapon_effects:
         result["weapon_display_stat_effects"] = weapon_effects
     return result
+
+
+def _weapon_equipment_fingerprint(weapon: dict[str, Any]) -> str:
+    return (
+        _text(weapon.get("source_key"))
+        or _text(weapon.get("weapon_fingerprint"))
+        or _text(weapon.get("variant_key"))
+    )
 
 
 def _account_content_language() -> str:

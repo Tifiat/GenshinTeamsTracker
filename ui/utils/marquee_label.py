@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtCore import QRect, QSize, Qt, QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QPushButton,
     QSizePolicy,
@@ -74,20 +75,36 @@ class MarqueeButton(QPushButton):
         self.initStyleOption(option)
 
         text = option.text
+        icon = QIcon(option.icon)
+        icon_size = QSize(option.iconSize)
         option.text = ""
+        option.icon = QIcon()
         painter.drawControl(QStyle.ControlElement.CE_PushButton, option)
 
-        text_rect = self.style().subElementRect(
-            QStyle.SubElement.SE_PushButtonContents,
-            option,
-            self,
-        )
-        text_rect.adjust(4, 0, -4, 0)
+        text_rect = self._text_rect(option)
+        if not icon.isNull():
+            icon_rect = self._icon_rect(text_rect, icon_size)
+            mode = (
+                QIcon.Mode.Disabled
+                if not self.isEnabled()
+                else QIcon.Mode.Active
+                if self._hovered or self.hasFocus()
+                else QIcon.Mode.Normal
+            )
+            state = QIcon.State.On if self.isChecked() else QIcon.State.Off
+            pixmap = icon.pixmap(icon_size, mode, state)
+            painter.drawPixmap(icon_rect, pixmap)
+            text_rect.setLeft(icon_rect.right() + 7)
 
         metrics = painter.fontMetrics()
         text_width = metrics.horizontalAdvance(text)
-        painter.setClipRect(text_rect)
         painter.setPen(option.palette.buttonText().color())
+
+        if text_rect.width() <= 0:
+            self._sync_timer(text_width, 0)
+            return
+
+        painter.setClipRect(text_rect)
 
         if not text:
             self._sync_timer(text_width, text_rect.width())
@@ -151,13 +168,31 @@ class MarqueeButton(QPushButton):
     def _available_text_width(self) -> int:
         option = QStyleOptionButton()
         self.initStyleOption(option)
+        text_rect = self._text_rect(option)
+        if not option.icon.isNull():
+            icon_rect = self._icon_rect(text_rect, option.iconSize)
+            text_rect.setLeft(icon_rect.right() + 7)
+        return max(0, text_rect.width())
+
+    def _text_rect(self, option: QStyleOptionButton) -> QRect:
         text_rect = self.style().subElementRect(
             QStyle.SubElement.SE_PushButtonContents,
             option,
             self,
         )
         text_rect.adjust(4, 0, -4, 0)
-        return max(0, text_rect.width())
+        return text_rect
+
+    @staticmethod
+    def _icon_rect(text_rect: QRect, icon_size: QSize) -> QRect:
+        icon_width = max(0, icon_size.width())
+        icon_height = max(0, icon_size.height())
+        return QRect(
+            text_rect.left(),
+            text_rect.y() + max(0, (text_rect.height() - icon_height) // 2),
+            icon_width,
+            icon_height,
+        )
 
     def _sync_timer(
         self,

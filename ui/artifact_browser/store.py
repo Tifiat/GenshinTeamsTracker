@@ -4,13 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .models import ARTIFACT_POSITIONS, ArtifactItem, parse_hoyolab_stat_value
-from .queries import (
-    artifact_db_exists,
-    current_hoyolab_content_language,
-    list_all_artifacts,
-    list_custom_sets,
-    list_set_bonus_description_map,
-)
+from .queries import load_artifact_browser_store_data
 from .stat_types import CRIT_DAMAGE, CRIT_RATE, CRIT_VALUE, PROC_COUNT
 
 
@@ -72,21 +66,13 @@ class ArtifactBrowserStore:
 
     @classmethod
     def load_from_db(cls) -> "ArtifactBrowserStore":
-        exists = artifact_db_exists()
-        artifacts = list_all_artifacts() if exists else []
-        custom_sets = list_custom_sets() if exists else []
-        content_language = current_hoyolab_content_language() if exists else "en-us"
-        set_bonus_descriptions = (
-            list_set_bonus_description_map(preferred_lang=content_language)
-            if exists
-            else {}
-        )
+        data = load_artifact_browser_store_data()
         return cls(
-            database_exists=exists,
-            artifacts=artifacts,
-            custom_sets=custom_sets,
-            set_bonus_descriptions=set_bonus_descriptions,
-            content_language=content_language,
+            database_exists=bool(data["database_exists"]),
+            artifacts=list(data["artifacts"]),
+            custom_sets=list(data["custom_sets"]),
+            set_bonus_descriptions=dict(data["set_bonus_descriptions"]),
+            content_language=str(data["content_language"]),
         )
 
     @classmethod

@@ -19,9 +19,10 @@ from PySide6.QtWidgets import (
     QListView,
     QMessageBox,
     QPushButton,
-    QScrollArea,
     QVBoxLayout,
     QWidget,
+    QScrollArea,
+    QSizePolicy,
 )
 from PySide6.QtGui import (
     QColor,
@@ -74,6 +75,11 @@ from ui.utils.pixmap_utils import (
     scale_trimmed_pixmap_to_size,
 )
 from ui.utils.tooltips import install_custom_tooltip
+from run_workspace.perf import log_perf, perf_ms, perf_now
+from ui.utils.overlay_scroll import (
+    OverlayVerticalScrollArea,
+    install_overlay_vertical_scrollbar,
+)
 from .list_model import ArtifactRoles
 from .queries import (
     calculate_build_summary,
@@ -122,27 +128,29 @@ from .stat_types import (
 )
 from localization import tr
 
-TARGET_PANEL_WIDTH = 316
-TARGET_PANEL_MIN_WIDTH = 220
+TARGET_PANEL_WIDTH = 144
+TARGET_PANEL_MIN_WIDTH = 144
 TARGET_PANEL_MAX_WIDTH = 410
-TARGET_PANEL_MARGINS = (7, 10, 7, 10)
-TARGET_PANEL_SPACING = 8
+TARGET_PANEL_MARGINS = (5, 8, 5, 8)
+TARGET_PANEL_SPACING = 6
 BUILD_PANEL_WIDTH = 384
 ARTIFACT_GRID_FIT_PADDING = 4
+CONTENT_LAYOUT_SPACING = 4
 ADAPTIVE_TARGET_RESIZE_DELAY_MS = 650
 ADAPTIVE_TARGET_RESIZE_SETTLE_MS = 40
 WM_ENTERSIZEMOVE = 0x0231
 WM_EXITSIZEMOVE = 0x0232
 
-TARGET_HEADER_SPACING = 6
+TARGET_HEADER_SPACING = 4
 TARGET_HEADER_BALANCE_WIDTH = 72
-TARGET_RESET_BUTTON_WIDTH = 72
+TARGET_RESET_BUTTON_WIDTH = 30
 TARGET_RESET_BUTTON_MIN_HEIGHT = 24
 TARGET_RESET_BUTTON_PADDING_VERTICAL = 2
 TARGET_RESET_BUTTON_PADDING_HORIZONTAL = 8
 TARGET_RESET_BUTTON_RADIUS = 6
 
-TARGET_BODY_SPACING = 6
+TARGET_BODY_SPACING = 4
+TARGET_TITLE_MIN_WIDTH = 54
 
 TARGET_FILTER_BUTTON_SIZE = 30
 TARGET_FILTER_ICON_SIZE = 26
@@ -155,6 +163,7 @@ TARGET_ITEM_MIN_HEIGHT = 34
 TARGET_ITEM_PADDING_VERTICAL = 3
 TARGET_ITEM_PADDING_HORIZONTAL = 6
 TARGET_ITEM_ICON_SIZE = 38
+TARGET_ITEM_MIN_WIDTH = 88
 
 TARGET_ITEM_SPACING = 4
 
@@ -223,6 +232,32 @@ QPushButton#close_button {
 }
 QLabel#status_label {
     color: #aab0bd;
+}
+QFrame#equipment_zone {
+    border: 1px solid #343b49;
+    border-radius: 8px;
+    background: #20242d;
+}
+QFrame#equipment_zone[equipMode="true"] {
+    border-color: #7dd7b7;
+    background: #1f302d;
+}
+QLabel#equipment_target_label {
+    color: #cbd3df;
+    font-size: 12px;
+}
+QLabel#equipment_zone_label {
+    color: #ffffff;
+    font-weight: 700;
+}
+QPushButton#equipment_zone_action_button {
+    min-height: 24px;
+    padding: 2px 8px;
+}
+QPushButton#equipment_zone_action_button:disabled {
+    color: #798291;
+    background: #222630;
+    border-color: #343b49;
 }
 QFrame#top_bar {
     border: 1px solid #2b3039;
@@ -303,6 +338,15 @@ QLabel#panel_title {
     font-weight: 700;
     font-size: 14px;
 }
+QLabel#target_panel_title,
+QPushButton#target_panel_title {
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 14px;
+    background: transparent;
+    border: none;
+    padding: 0;
+}
 """ + f"""
 QPushButton#target_filter_button {{
     min-width: {TARGET_FILTER_BUTTON_SIZE}px;
@@ -331,6 +375,14 @@ QPushButton#target_item {{
     text-align: left;
 }}
 QPushButton#target_item:checked {{
+    border-color: #d6b35f;
+    background: #3a3224;
+}}
+QPushButton#target_item[operationTarget="true"] {{
+    border-color: #7dd7b7;
+    background: #20332e;
+}}
+QPushButton#target_item[operationTarget="true"]:checked {{
     border-color: #d6b35f;
     background: #3a3224;
 }}
@@ -707,17 +759,30 @@ class BuildTargetPreviewStrip(QWidget):
 
 
 class ArtifactBrowserWindow(QWidget):
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        embedded: bool = False,
+    ):
+        init_start = perf_now()
         super().__init__(parent)
-        self.setWindowFlag(Qt.Window, True)
+        self.embedded = bool(embedded)
+        if not self.embedded:
+            self.setWindowFlag(Qt.Window, True)
         self.setWindowTitle(tr("artifact.browser.title"))
-        self.resize(1180, 760)
+        if not self.embedded:
+            self.resize(1180, 760)
         self.setStyleSheet(WINDOW_STYLE)
 
         self.current_pos = 1
+        store_start = perf_now()
         self.store = ArtifactBrowserStore.load_from_db()
+        store_ms = perf_ms(store_start)
+        model_start = perf_now()
         self.model = ArtifactListModel(self.store, self)
         self.delegate = ArtifactCardDelegate(self)
+        model_ms = perf_ms(model_start)
 
         self.sets_filter_enabled = True
         self.selected_game_set_ids: set[str] = set()
@@ -762,6 +827,12 @@ class ArtifactBrowserWindow(QWidget):
         self.pending_delete_build_id: int | None = None
         self.build_preset_row_buttons: dict[int, QPushButton] = {}
         self.build_row_name_input: QLineEdit | None = None
+        self._right_panel_operation_target: dict | None = None
+        self._right_panel_target_selection_suppressed = False
+        self.operation_target_character_id: int | None = None
+        self.operation_target_character_name = ""
+        self.operation_target_source: str | None = None
+        self.equip_mode_enabled = False
         self.build_slot_rows: dict[int, QFrame] = {}
         self.build_slot_icon_labels: dict[int, QLabel] = {}
         self.build_slot_stat_labels: dict[int, QLabel] = {}
@@ -771,45 +842,91 @@ class ArtifactBrowserWindow(QWidget):
         self._build_row_bonus_pixmap_cache: dict[str, QPixmap] = {}
         self._target_preview_icon_cache: dict[str, QPixmap] = {}
         self._target_preview_strip_cache: dict[str, QPixmap] = {}
+        self.artifact_grid_overlay_scrollbar = None
         self.import_json_button: QPushButton | None = None
         self.clear_json_button: QPushButton | None = None
         self.content_layout: QHBoxLayout | None = None
         self.build_target_panel: QFrame | None = None
         self.build_panel: QFrame | None = None
         self._window_in_native_sizemove = False
+        self._resize_event_count = 0
+        self._adaptive_update_count = 0
+        self._last_adaptive_target_layout_key: tuple[int, int, int, int, int, int] | None = None
         self._adaptive_target_resize_timer = QTimer(self)
         self._adaptive_target_resize_timer.setSingleShot(True)
         self._adaptive_target_resize_timer.timeout.connect(
             self.update_adaptive_target_panel_width
         )
+        target_load_start = perf_now()
         self.load_build_target_items()
+        target_load_ms = perf_ms(target_load_start)
 
+        ui_start = perf_now()
         root = QVBoxLayout(self)
-        root.setContentsMargins(10, 10, 10, 10)
-        root.setSpacing(8)
+        if self.embedded:
+            root.setContentsMargins(4, 4, 0, 4)
+            root.setSpacing(6)
+        else:
+            root.setContentsMargins(10, 10, 10, 10)
+            root.setSpacing(8)
 
         self._build_top_bar(root)
         content = QHBoxLayout()
         content.setContentsMargins(0, 0, 0, 0)
-        content.setSpacing(8)
+        content.setSpacing(CONTENT_LAYOUT_SPACING)
         self.content_layout = content
         self._build_list_view(content)
         self._build_build_target_selector(content)
         self._build_build_panel(content)
         root.addLayout(content, 1)
         self._build_bottom_bar(root)
+        self._prewarm_transient_edit_controls()
+        ui_ms = perf_ms(ui_start)
 
+        preset_start = perf_now()
         self.load_build_presets()
+        preset_ms = perf_ms(preset_start)
+        filter_start = perf_now()
         self.apply_current_filters()
+        filter_ms = perf_ms(filter_start)
         self.update_custom_edit_bar()
+        build_panel_start = perf_now()
         self.update_build_panel()
-        self.schedule_adaptive_target_panel_width_update(delay_ms=0)
+        build_panel_ms = perf_ms(build_panel_start)
+        if not self.embedded:
+            self.schedule_adaptive_target_panel_width_update(delay_ms=0)
+        log_perf(
+            "artifact_browser_init",
+            embedded=self.embedded,
+            total=perf_ms(init_start),
+            store=store_ms,
+            model=model_ms,
+            targets=target_load_ms,
+            ui=ui_ms,
+            presets=preset_ms,
+            filter=filter_ms,
+            build_panel=build_panel_ms,
+            artifacts=self.model.rowCount(),
+            resize_events=self._resize_event_count,
+        )
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
+        self._resize_event_count += 1
         if self._window_in_native_sizemove:
             return
-        self.schedule_adaptive_target_panel_width_update()
+        if self.embedded and not self.isVisible():
+            return
+        self.schedule_adaptive_target_panel_width_update(
+            delay_ms=ADAPTIVE_TARGET_RESIZE_SETTLE_MS
+            if self.embedded
+            else ADAPTIVE_TARGET_RESIZE_DELAY_MS
+        )
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._adaptive_target_resize_timer.stop()
+        self.update_adaptive_target_panel_width()
 
     def nativeEvent(self, event_type, message):
         try:
@@ -839,7 +956,7 @@ class ArtifactBrowserWindow(QWidget):
             return
         if self.model.rowCount() <= 0:
             return
-        self._adaptive_target_resize_timer.start(delay_ms)
+        self._adaptive_target_resize_timer.start(max(0, int(delay_ms)))
 
     def update_adaptive_target_panel_width(self) -> None:
         if self.content_layout is None or self.build_target_panel is None:
@@ -847,6 +964,12 @@ class ArtifactBrowserWindow(QWidget):
         if self.model.rowCount() <= 0:
             return
 
+        top_level = self.window()
+        top_before = top_level.size()
+        left_workspace = self.parentWidget()
+        if left_workspace is not None and left_workspace.parentWidget() is not None:
+            left_workspace = left_workspace.parentWidget()
+        self._adaptive_update_count += 1
         content_width = self.content_layout.geometry().width()
         if content_width <= 0:
             return
@@ -857,75 +980,104 @@ class ArtifactBrowserWindow(QWidget):
             if self.build_panel is not None and self.build_panel.width() > 0
             else BUILD_PANEL_WIDTH
         )
-        available_at_preferred = (
-            content_width
-            - fixed_panel_width
-            - TARGET_PANEL_WIDTH
-            - spacing * 2
-        )
         grid_width = GRID_SIZE.width()
+        item_spacing = max(0, self.list_view.spacing())
+        item_pitch = grid_width + item_spacing
+        if grid_width <= 0 or item_pitch <= 0:
+            return
         viewport_chrome_width = max(
             0,
             self.list_view.width() - self.list_view.viewport().width(),
         )
-        viewport_at_preferred = (
-            available_at_preferred
-            - viewport_chrome_width
-            - ARTIFACT_GRID_FIT_PADDING
+        max_target_width = (
+            TARGET_PANEL_WIDTH
+            if self.embedded
+            else TARGET_PANEL_MAX_WIDTH
         )
-        if viewport_at_preferred <= grid_width or grid_width <= 0:
+        layout_key = (
+            content_width,
+            fixed_panel_width,
+            viewport_chrome_width,
+            TARGET_PANEL_MIN_WIDTH,
+            max_target_width,
+            item_pitch,
+        )
+        if layout_key == self._last_adaptive_target_layout_key:
             return
-        else:
-            # Keep the artifact viewport aligned to the card grid by spending
-            # bounded slack from the target selector before leaving a partial column.
-            remainder = viewport_at_preferred % grid_width
-            shrink_needed = (grid_width - remainder) % grid_width
-            shrink_budget = TARGET_PANEL_WIDTH - TARGET_PANEL_MIN_WIDTH
-            expand_budget = TARGET_PANEL_MAX_WIDTH - TARGET_PANEL_WIDTH
+        self._last_adaptive_target_layout_key = layout_key
 
-            candidates = [TARGET_PANEL_WIDTH]
-            if shrink_needed and shrink_needed <= shrink_budget:
-                candidates.append(TARGET_PANEL_WIDTH - shrink_needed)
-            if remainder and remainder <= expand_budget:
-                candidates.append(TARGET_PANEL_WIDTH + remainder)
-
-            def list_width_for_target(width: int) -> int:
-                return (
-                    content_width
-                    - fixed_panel_width
-                    - width
-                    - spacing * 2
-                    - viewport_chrome_width
-                    - ARTIFACT_GRID_FIT_PADDING
-                )
-
-            def column_count(width: int) -> int:
-                list_width = list_width_for_target(width)
-                if list_width <= 0:
-                    return 0
-                return list_width // grid_width
-
-            def trailing_gap(width: int) -> int:
-                list_width = list_width_for_target(width)
-                if list_width <= 0:
-                    return grid_width
-                return list_width % grid_width
-
-            target_width = min(
-                candidates,
-                key=lambda width: (
-                    -column_count(width),
-                    trailing_gap(width),
-                    abs(width - TARGET_PANEL_WIDTH),
-                ),
+        def list_width_for_target(width: int) -> int:
+            return (
+                content_width
+                - fixed_panel_width
+                - width
+                - spacing * 2
+                - viewport_chrome_width
+                - ARTIFACT_GRID_FIT_PADDING
             )
 
-        if self.build_target_panel.width() != target_width:
-            self.build_target_panel.setFixedWidth(target_width)
+        def column_count(width: int) -> int:
+            list_width = list_width_for_target(width)
+            if list_width < grid_width:
+                return 0
+            return (list_width + item_spacing) // item_pitch
+
+        def trailing_gap(width: int) -> int:
+            list_width = list_width_for_target(width)
+            columns = column_count(width)
+            if columns <= 0:
+                return max(0, list_width)
+            used = columns * grid_width + max(0, columns - 1) * item_spacing
+            return max(0, list_width - used)
+
+        min_width = int(TARGET_PANEL_MIN_WIDTH)
+        max_width = max(min_width, int(max_target_width))
+        candidates = range(min_width, max_width + 1)
+        target_width = min(
+            candidates,
+            key=lambda width: (
+                -column_count(width),
+                trailing_gap(width),
+                abs(width - TARGET_PANEL_WIDTH),
+            ),
+        )
+
+        minimum_required_width = fixed_panel_width + target_width + spacing * 2
+        applied = False
+        if abs(self.build_target_panel.width() - target_width) > 1:
+            if minimum_required_width <= content_width:
+                self.build_target_panel.setFixedWidth(target_width)
+                applied = True
+        top_after = top_level.size()
+        log_perf(
+            "artifact_browser_grid_layout",
+            embedded=self.embedded,
+            top_before=f"{top_before.width()}x{top_before.height()}",
+            top_after=f"{top_after.width()}x{top_after.height()}",
+            left_workspace=left_workspace.width() if left_workspace is not None else "-",
+            content_width=content_width,
+            fixed_panel=fixed_panel_width,
+            target_panel=target_width,
+            target_current=self.build_target_panel.width(),
+            target_min=TARGET_PANEL_MIN_WIDTH,
+            target_default=TARGET_PANEL_WIDTH,
+            preset_panel=fixed_panel_width,
+            viewport=self.list_view.viewport().width(),
+            columns=column_count(target_width),
+            trailing_gap=trailing_gap(target_width),
+            applied=applied,
+            adaptive_runs=self._adaptive_update_count,
+            resize_events=self._resize_event_count,
+        )
 
     def _build_top_bar(self, root: QVBoxLayout) -> None:
         top_frame = QFrame()
         top_frame.setObjectName("top_bar")
+        if self.embedded:
+            top_frame.setSizePolicy(
+                QSizePolicy.Policy.Ignored,
+                QSizePolicy.Policy.Preferred,
+            )
 
         top = QHBoxLayout(top_frame)
         top.setContentsMargins(8, 8, 8, 8)
@@ -967,12 +1119,16 @@ class ArtifactBrowserWindow(QWidget):
 
         self.status_label = QLabel("")
         self.status_label.setObjectName("status_label")
+        status_policy = self.status_label.sizePolicy()
+        status_policy.setHorizontalPolicy(QSizePolicy.Policy.Ignored)
+        self.status_label.setSizePolicy(status_policy)
         top.addWidget(self.status_label)
 
         root.addWidget(top_frame)
 
     def _build_list_view(self, root: QVBoxLayout) -> None:
         panel = QWidget()
+        panel.setMinimumWidth(GRID_SIZE.width())
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
@@ -987,29 +1143,44 @@ class ArtifactBrowserWindow(QWidget):
         self.list_view.setMovement(QListView.Movement.Static)
         self.list_view.setUniformItemSizes(True)
         self.list_view.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.list_view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.list_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.list_view.setGridSize(QSize(GRID_SIZE.width(), GRID_SIZE.height()))
         self.list_view.setSpacing(0)
+        self.list_view.setMinimumWidth(0)
         self.list_view.verticalScrollBar().setSingleStep(20)
+        self.artifact_grid_overlay_scrollbar = install_overlay_vertical_scrollbar(
+            self.list_view
+        )
         self.list_view.setMouseTracking(True)
         self.list_view.setProperty("artifactEditMode", False)
         self.list_view.setSelectionMode(QListView.SelectionMode.NoSelection)
         self.list_view.clicked.connect(self.on_artifact_clicked)
         layout.addWidget(self.list_view, 1)
 
-        action_row = QHBoxLayout()
+        action_row_widget = QWidget()
+        action_row_widget.setFixedWidth(GRID_SIZE.width())
+        action_row = QHBoxLayout(action_row_widget)
         action_row.setContentsMargins(0, 0, 0, 0)
         action_row.setSpacing(6)
-        action_row.addStretch()
+        json_action_width = max(
+            0,
+            (GRID_SIZE.width() - action_row.spacing()) // 2,
+        )
 
-        self.import_json_button = QPushButton(tr("artifact.json.import_button"))
+        self.import_json_button = MarqueeButton(tr("artifact.json.import_button"))
+        self.import_json_button.setObjectName("json_action_button")
+        self.import_json_button.setFixedWidth(json_action_width)
         self.import_json_button.clicked.connect(self.import_artiscan_json)
         action_row.addWidget(self.import_json_button)
 
-        self.clear_json_button = QPushButton(tr("artifact.json.clear_button"))
+        self.clear_json_button = MarqueeButton(tr("artifact.json.clear_button"))
+        self.clear_json_button.setObjectName("json_action_button")
+        self.clear_json_button.setFixedWidth(json_action_width)
         self.clear_json_button.clicked.connect(self.clear_json_imports)
         action_row.addWidget(self.clear_json_button)
 
-        layout.addLayout(action_row)
+        layout.addWidget(action_row_widget)
         root.addWidget(panel, 1)
         self.update_json_import_actions()
 
@@ -1027,26 +1198,32 @@ class ArtifactBrowserWindow(QWidget):
         header_row.setContentsMargins(0, 0, 0, 0)
         header_row.setSpacing(TARGET_HEADER_SPACING)
 
-        self.build_target_title_label = QLabel(tr("artifact.build.targets_title"))
-        self.build_target_title_label.setObjectName("panel_title")
-        self.build_target_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.build_target_title_label = MarqueeButton(
+            tr("artifact.build.targets_title")
+        )
+        self.build_target_title_label.setObjectName("target_panel_title")
+        self.build_target_title_label.setFlat(True)
+        self.build_target_title_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.build_target_title_label.setMinimumWidth(TARGET_TITLE_MIN_WIDTH)
+        self.build_target_title_label.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
         self.build_target_filter_reset_button = (
             self._make_build_target_filter_reset_button()
         )
         header_row.addWidget(self.build_target_filter_reset_button)
-        header_row.addSpacing(
-            max(
-                0,
-                TARGET_HEADER_BALANCE_WIDTH
-                - TARGET_FILTER_BUTTON_SIZE
-                - TARGET_HEADER_SPACING,
-            )
-        )
         header_row.addWidget(self.build_target_title_label, 1)
 
         self.build_target_reset_button = QPushButton(tr("artifact.build.targets_reset"))
         self.build_target_reset_button.setObjectName("target_reset_button")
         self.build_target_reset_button.setFixedWidth(TARGET_RESET_BUTTON_WIDTH)
+        self.build_target_reset_button.setText("")
+        self.build_target_reset_button.setIcon(self._ui_icon("x"))
+        self.build_target_reset_button.setIconSize(
+            QSize(UI_ICON_DEFAULT_SIZE, UI_ICON_DEFAULT_SIZE)
+        )
+        self.build_target_reset_button.setToolTip(tr("artifact.build.targets_reset"))
         self.build_target_reset_button.clicked.connect(self.reset_build_targets)
         header_row.addWidget(self.build_target_reset_button)
         layout.addLayout(header_row)
@@ -1080,7 +1257,8 @@ class ArtifactBrowserWindow(QWidget):
         filter_column.addStretch()
         body.addLayout(filter_column)
 
-        target_scroll = QScrollArea()
+        target_scroll = OverlayVerticalScrollArea()
+        self.build_target_scroll = target_scroll
         target_scroll.setWidgetResizable(True)
         target_scroll.setFrameShape(QFrame.Shape.NoFrame)
         target_content = QWidget()
@@ -1183,6 +1361,30 @@ class ArtifactBrowserWindow(QWidget):
         layout.setContentsMargins(7, 10, 7, 10)
         layout.setSpacing(8)
 
+        self.equipment_zone_frame = QFrame()
+        self.equipment_zone_frame.setObjectName("equipment_zone")
+        equipment_layout = QVBoxLayout(self.equipment_zone_frame)
+        equipment_layout.setContentsMargins(8, 7, 8, 7)
+        equipment_layout.setSpacing(5)
+
+        self.equipment_target_label = QLabel()
+        self.equipment_target_label.setObjectName("equipment_target_label")
+        self.equipment_target_label.setWordWrap(True)
+        equipment_layout.addWidget(self.equipment_target_label)
+
+        equipment_row = QHBoxLayout()
+        equipment_row.setContentsMargins(0, 0, 0, 0)
+        equipment_row.setSpacing(6)
+        self.equipment_zone_label = QLabel()
+        self.equipment_zone_label.setObjectName("equipment_zone_label")
+        equipment_row.addWidget(self.equipment_zone_label, 1)
+        self.equipment_zone_action_button = QPushButton()
+        self.equipment_zone_action_button.setObjectName("equipment_zone_action_button")
+        self.equipment_zone_action_button.setEnabled(False)
+        equipment_row.addWidget(self.equipment_zone_action_button, 0)
+        equipment_layout.addLayout(equipment_row)
+        layout.addWidget(self.equipment_zone_frame)
+
         self.build_title_label = QLabel(tr("artifact.build.presets_title"))
         self.build_title_label.setObjectName("panel_title")
         layout.addWidget(self.build_title_label)
@@ -1220,7 +1422,7 @@ class ArtifactBrowserWindow(QWidget):
         )
         layout.addWidget(self.build_target_hint_label, 1)
 
-        self.build_preset_list_scroll = QScrollArea()
+        self.build_preset_list_scroll = OverlayVerticalScrollArea()
         self.build_preset_list_scroll.setWidgetResizable(True)
         self.build_preset_list_scroll.setFrameShape(QFrame.Shape.NoFrame)
         self.build_preset_list_scroll.setHorizontalScrollBarPolicy(
@@ -1349,6 +1551,8 @@ class ArtifactBrowserWindow(QWidget):
         self.close_button = QPushButton(tr("common.close"))
         self.close_button.setObjectName("close_button")
         self.close_button.clicked.connect(self.close)
+        if self.embedded:
+            self.close_button.setVisible(False)
         bottom.addWidget(self.close_button)
 
         root.addLayout(bottom)
@@ -1363,6 +1567,34 @@ class ArtifactBrowserWindow(QWidget):
             UI_ICON_DEFAULT_SIZE,
             UI_ICON_BUTTON_BACKGROUND,
         )
+
+    def _prewarm_transient_edit_controls(self) -> None:
+        for icon_name in ("check", "x", "save", "edit", "delete", "plus"):
+            self._ui_icon(icon_name)
+        for button in (
+            self.save_edit_button,
+            self.cancel_edit_button,
+            self.new_build_button,
+            self.cancel_new_build_button,
+        ):
+            self._prepare_button_for_first_show(button)
+        for object_name, icon_name in (
+            ("row_save_button", "check"),
+            ("row_cancel_button", "x"),
+        ):
+            button = QPushButton(self)
+            button.setObjectName(object_name)
+            button.setIcon(self._ui_icon(icon_name))
+            self._prepare_button_for_first_show(button)
+            button.deleteLater()
+
+    def _prepare_button_for_first_show(self, button: QPushButton) -> None:
+        button.ensurePolished()
+        button.sizeHint()
+        button.minimumSizeHint()
+
+    def _prepare_row_action_button(self, button: QPushButton) -> None:
+        self._prepare_button_for_first_show(button)
 
     def _load_scaled_center_crop_pixmap(self, path, size: int) -> QPixmap:
         reader = QImageReader(str(path))
@@ -1474,6 +1706,158 @@ class ArtifactBrowserWindow(QWidget):
         self.refresh_build_preset_list()
         self.update_build_panel()
         self.apply_current_filters()
+
+    def set_right_panel_operation_target(self, target: dict | None) -> None:
+        old_key = self._right_panel_operation_target_key()
+        self._right_panel_operation_target = self._normalized_operation_target(
+            target,
+            source="right_panel",
+        )
+        new_key = self._right_panel_operation_target_key()
+        selection_changed = False
+
+        if new_key != old_key:
+            self._right_panel_target_selection_suppressed = False
+            if self._right_panel_operation_target is not None and new_key:
+                self._ensure_operation_target_item(self._right_panel_operation_target)
+                next_keys = {new_key}
+                selection_changed = next_keys != self.selected_build_target_keys
+                self.selected_build_target_keys = next_keys
+                if self.edit_selection_mode == EDIT_MODE_NONE:
+                    self.selected_build_id = None
+                    self.selected_build_slots = {}
+                    self.selected_build_targets = []
+                self.pending_delete_build_id = None
+        elif self._right_panel_operation_target is not None and new_key:
+            self._ensure_operation_target_item(self._right_panel_operation_target)
+
+        self.refresh_equipment_target_state()
+        if selection_changed:
+            self.refresh_build_target_list()
+            self.refresh_build_preset_list()
+            self.update_build_panel()
+            self.update_edit_selection_mode()
+            if self.edit_selection_mode == EDIT_MODE_NONE:
+                self.apply_current_filters()
+        else:
+            self._sync_build_target_button_selection()
+            self.update_build_panel()
+
+    def refresh_equipment_target_state(self) -> None:
+        target = self._right_panel_operation_target or self._browser_operation_target()
+        if target is None:
+            self.operation_target_character_id = None
+            self.operation_target_character_name = ""
+            self.operation_target_source = None
+            self.equip_mode_enabled = False
+        else:
+            self.operation_target_character_id = target["character_id"]
+            self.operation_target_character_name = target.get("character_name") or ""
+            self.operation_target_source = target.get("source") or "artifact_browser"
+            self.equip_mode_enabled = True
+        self._update_equipment_zone()
+
+    def _right_panel_operation_target_key(self) -> str | None:
+        if self._right_panel_operation_target is None:
+            return None
+        character_id_value = self._right_panel_operation_target.get("character_id")
+        if character_id_value is None:
+            return None
+        try:
+            return self._character_target_key(int(character_id_value))
+        except (TypeError, ValueError):
+            return None
+
+    def _browser_operation_target(self) -> dict | None:
+        targets = []
+        for key in self.selected_build_target_keys:
+            if key == BUILD_TARGET_UNIVERSAL_KEY:
+                continue
+            item = self.build_target_items_by_key.get(key)
+            target = self._normalized_operation_target(item, source="artifact_browser")
+            if target is not None:
+                targets.append(target)
+        return targets[0] if len(targets) == 1 else None
+
+    def _normalized_operation_target(self, target: dict | None, *, source: str) -> dict | None:
+        if not target:
+            return None
+        character_id_value = target.get("character_id")
+        if character_id_value is None:
+            return None
+        try:
+            character_id_value = int(character_id_value)
+        except (TypeError, ValueError):
+            return None
+        return {
+            "character_id": character_id_value,
+            "character_name": str(
+                target.get("character_name")
+                or target.get("name")
+                or character_id_value
+            ),
+            "source": source,
+        }
+
+    def _ensure_operation_target_item(self, target: dict) -> None:
+        character_id_value = target.get("character_id")
+        if character_id_value is None:
+            return
+        try:
+            key = self._character_target_key(int(character_id_value))
+        except (TypeError, ValueError):
+            return
+        if key in self.build_target_items_by_key:
+            return
+        self.build_target_items_by_key[key] = {
+            "key": key,
+            "target_type": "character",
+            "character_id": int(character_id_value),
+            "character_name": target.get("character_name") or str(character_id_value),
+            "asset": None,
+            "path": None,
+        }
+
+    def _update_equipment_zone(self) -> None:
+        if not hasattr(self, "equipment_target_label"):
+            return
+
+        self.equipment_zone_frame.setProperty("equipMode", self.equip_mode_enabled)
+        self.equipment_zone_frame.style().unpolish(self.equipment_zone_frame)
+        self.equipment_zone_frame.style().polish(self.equipment_zone_frame)
+
+        self.equipment_target_label.setText("")
+        self.equipment_target_label.setVisible(False)
+
+        preset_preview_active = (
+            self.selected_build_id is not None
+            and self.edit_selection_mode == EDIT_MODE_NONE
+        )
+        apply_text = tr("artifact.equipment.apply_preset")
+        self.equipment_zone_action_button.setText(apply_text)
+        self.equipment_zone_action_button.setVisible(
+            self.equip_mode_enabled and preset_preview_active
+        )
+        self.equipment_zone_action_button.setEnabled(False)
+        if self.equip_mode_enabled and preset_preview_active:
+            self.equipment_zone_label.setText(apply_text)
+        else:
+            self.equipment_zone_label.setText(tr("artifact.build.current_equipment"))
+
+    def _target_button_checked(self, key: str) -> bool:
+        return key in self.selected_build_target_keys
+
+    def _sync_build_target_button_selection(self) -> None:
+        operation_key = self._right_panel_operation_target_key()
+        if self.build_target_reset_button is not None:
+            self.build_target_reset_button.setEnabled(bool(self.selected_build_target_keys))
+        for key, button in self.build_target_buttons_by_key.items():
+            was_blocked = button.blockSignals(True)
+            button.setChecked(self._target_button_checked(key))
+            button.setProperty("operationTarget", key == operation_key)
+            button.style().unpolish(button)
+            button.style().polish(button)
+            button.blockSignals(was_blocked)
 
     def set_position(self, pos: int) -> None:
         self.current_pos = pos
@@ -1802,6 +2186,10 @@ class ArtifactBrowserWindow(QWidget):
 
         if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
             self.assign_build_artifact(artifact.id)
+            return
+
+        if self.equip_mode_enabled:
+            self.empty_label.setText(tr("artifact.equipment.not_wired"))
 
     def toggle_custom_set_artifact(self, artifact_id: int) -> None:
         if artifact_id in self.editing_custom_artifact_ids:
@@ -2025,14 +2413,18 @@ class ArtifactBrowserWindow(QWidget):
             item
             for key, item in self.build_target_items_by_key.items()
             if key != BUILD_TARGET_UNIVERSAL_KEY
-            and character_matches_filters(
-                item.get("asset") or {},
-                self.build_target_element_filters,
-                self.build_target_weapon_filters,
-                self.build_target_rarity_filters,
-                self.build_target_region_filters,
-                self.build_target_trait_filters,
-                self.build_target_standard_filter,
+            and (
+                key in self.selected_build_target_keys
+                or key == self._right_panel_operation_target_key()
+                or character_matches_filters(
+                    item.get("asset") or {},
+                    self.build_target_element_filters,
+                    self.build_target_weapon_filters,
+                    self.build_target_rarity_filters,
+                    self.build_target_region_filters,
+                    self.build_target_trait_filters,
+                    self.build_target_standard_filter,
+                )
             )
         ]
         character_items.sort(key=lambda item: character_sort_key(item.get("asset") or {}))
@@ -2042,10 +2434,12 @@ class ArtifactBrowserWindow(QWidget):
 
     def _make_build_target_button(self, item: dict) -> QPushButton:
         key = item["key"]
-        button = QPushButton(item.get("character_name") or "")
+        button = MarqueeButton(item.get("character_name") or "")
         button.setObjectName("target_item")
         button.setCheckable(True)
-        button.setChecked(key in self.selected_build_target_keys)
+        button.setMinimumWidth(TARGET_ITEM_MIN_WIDTH)
+        button.setChecked(self._target_button_checked(key))
+        button.setProperty("operationTarget", key == self._right_panel_operation_target_key())
         path = item.get("path")
         if key == BUILD_TARGET_UNIVERSAL_KEY:
             button.setIcon(QIcon(self._make_universal_target_preview_pixmap()))
@@ -2131,6 +2525,8 @@ class ArtifactBrowserWindow(QWidget):
             if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
                 self.finish_build_preset_edit()
 
+        if self._right_panel_operation_target_key() in self.selected_build_target_keys:
+            self._right_panel_target_selection_suppressed = True
         self.selected_build_target_keys.clear()
         self.selected_build_id = None
         self.selected_build_slots = {}
@@ -2144,10 +2540,15 @@ class ArtifactBrowserWindow(QWidget):
 
     def toggle_build_target(self, key: str) -> None:
         next_keys = set(self.selected_build_target_keys)
+        operation_key = self._right_panel_operation_target_key()
         if key in next_keys:
             next_keys.remove(key)
+            if key == operation_key:
+                self._right_panel_target_selection_suppressed = True
         else:
             next_keys.add(key)
+            if key == operation_key:
+                self._right_panel_target_selection_suppressed = False
 
         if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET and not next_keys:
             self.empty_label.setText(tr("artifact.build.no_target_hint"))
@@ -2164,7 +2565,7 @@ class ArtifactBrowserWindow(QWidget):
             self.selected_build_targets = []
 
         self.pending_delete_build_id = None
-        self.refresh_build_target_list()
+        self._sync_build_target_button_selection()
         self.refresh_build_preset_list()
         self.update_build_panel()
         self.update_edit_selection_mode()
@@ -2287,10 +2688,15 @@ class ArtifactBrowserWindow(QWidget):
             empty_label.setObjectName("status_label")
             empty_label.setWordWrap(True)
             self.build_preset_list_layout.addWidget(empty_label)
+            empty_label.show()
             return
 
         for preset in filtered_presets:
-            self.build_preset_list_layout.addWidget(self._make_build_preset_row(preset))
+            row = self._make_build_preset_row(preset)
+            self.build_preset_list_layout.addWidget(row)
+            row.show()
+            for child in row.findChildren(QWidget):
+                child.show()
         self.build_preset_list_layout.addStretch()
 
     def on_build_create_button_clicked(self) -> None:
@@ -2356,6 +2762,7 @@ class ArtifactBrowserWindow(QWidget):
             confirm_button.clicked.connect(
                 lambda _checked=False, value=build_id: self.confirm_delete_build_preset(value)
             )
+            self._prepare_row_action_button(confirm_button)
             layout.addWidget(confirm_button)
 
             cancel_button = QPushButton()
@@ -2363,6 +2770,7 @@ class ArtifactBrowserWindow(QWidget):
             cancel_button.setIcon(self._ui_icon("x"))
             cancel_button.setToolTip(tr("common.cancel"))
             cancel_button.clicked.connect(self.cancel_delete_build_preset)
+            self._prepare_row_action_button(cancel_button)
             layout.addWidget(cancel_button)
             return row
 
@@ -2372,6 +2780,7 @@ class ArtifactBrowserWindow(QWidget):
             save_button.setIcon(self._ui_icon("check"))
             save_button.setToolTip(tr("artifact.build.save"))
             save_button.clicked.connect(self.save_build_preset_edit)
+            self._prepare_row_action_button(save_button)
             layout.addWidget(save_button)
 
             cancel_button = QPushButton()
@@ -2379,6 +2788,7 @@ class ArtifactBrowserWindow(QWidget):
             cancel_button.setIcon(self._ui_icon("x"))
             cancel_button.setToolTip(tr("artifact.build.cancel"))
             cancel_button.clicked.connect(self.cancel_build_preset_edit)
+            self._prepare_row_action_button(cancel_button)
             layout.addWidget(cancel_button)
             return row
 
@@ -2795,6 +3205,7 @@ class ArtifactBrowserWindow(QWidget):
         self.update_build_panel()
         self.update_edit_selection_mode()
         self.refresh_build_preset_list()
+        self._activate_preset_edit_layout()
 
     def start_build_preset_edit(self, build_id: int) -> None:
         if not self.confirm_discard_custom_edit():
@@ -2831,6 +3242,7 @@ class ArtifactBrowserWindow(QWidget):
         self.update_edit_selection_mode()
         self.refresh_build_target_list()
         self.refresh_build_preset_list()
+        self._activate_preset_edit_layout()
         QTimer.singleShot(0, self._focus_inline_build_name_input)
 
     def select_build_preset(self, build_id: int) -> None:
@@ -2872,6 +3284,23 @@ class ArtifactBrowserWindow(QWidget):
             return
         self.build_row_name_input.setFocus(Qt.FocusReason.OtherFocusReason)
         self.build_row_name_input.selectAll()
+
+    def _activate_preset_edit_layout(self) -> None:
+        content = self.build_preset_list_scroll.widget()
+        if content is not None and content.layout() is not None:
+            content.layout().activate()
+            content.updateGeometry()
+        if self.build_preset_list_scroll.layout() is not None:
+            self.build_preset_list_scroll.layout().activate()
+        root_layout = self.layout()
+        if root_layout is not None:
+            root_layout.activate()
+        self.updateGeometry()
+        QApplication.sendPostedEvents(None, QEvent.Type.LayoutRequest)
+        if content is not None and content.layout() is not None:
+            content.layout().activate()
+        if root_layout is not None:
+            root_layout.activate()
 
     def assign_build_artifact(self, artifact_id: int) -> None:
         try:
@@ -2966,6 +3395,7 @@ class ArtifactBrowserWindow(QWidget):
         self.update_build_target_preview()
         self.update_build_summary()
         self.update_build_create_controls()
+        self.refresh_equipment_target_state()
 
     def update_build_target_preview(self) -> None:
         strip_pixmap = self._cached_target_preview_strip(
@@ -3235,6 +3665,7 @@ class ArtifactBrowserWindow(QWidget):
         for button in (self.new_build_button, self.cancel_new_build_button):
             button.style().unpolish(button)
             button.style().polish(button)
+            self._prepare_button_for_first_show(button)
 
     def on_build_name_changed(self, text: str) -> None:
         if (
@@ -3693,30 +4124,32 @@ class ArtifactBrowserWindow(QWidget):
         editing = self.edit_selection_mode != EDIT_MODE_NONE
         ids = self.current_highlight_artifact_ids()
         self.delegate.set_edit_selection_artifact_ids(ids)
+
+        if self.edit_selection_mode == EDIT_MODE_CUSTOM_SET:
+            edit_mode_text = tr(
+                "artifact.custom.editing_status",
+                name=self.editing_custom_set_name,
+                count=len(self.editing_custom_artifact_ids),
+            )
+        elif self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            edit_mode_text = tr("artifact.build.editing_status", name=self.editing_build_name)
+        else:
+            edit_mode_text = ""
+
+        self.edit_mode_label.setText(edit_mode_text)
+        self.save_edit_button.setToolTip(self.active_save_tooltip())
+        self.cancel_edit_button.setToolTip(self.active_cancel_tooltip())
+        self._prepare_button_for_first_show(self.save_edit_button)
+        self._prepare_button_for_first_show(self.cancel_edit_button)
+        self.edit_mode_label.ensurePolished()
+        self.edit_mode_label.sizeHint()
         self.edit_mode_label.setVisible(editing)
         self.save_edit_button.setVisible(editing)
         self.cancel_edit_button.setVisible(editing)
-        self.save_edit_button.setToolTip(self.active_save_tooltip())
-        self.cancel_edit_button.setToolTip(self.active_cancel_tooltip())
         self.list_view.setProperty("artifactEditMode", editing)
         self.list_view.style().unpolish(self.list_view)
         self.list_view.style().polish(self.list_view)
         self.list_view.viewport().update()
-
-        if self.edit_selection_mode == EDIT_MODE_CUSTOM_SET:
-            self.edit_mode_label.setText(
-                tr(
-                    "artifact.custom.editing_status",
-                    name=self.editing_custom_set_name,
-                    count=len(self.editing_custom_artifact_ids),
-                )
-            )
-        elif self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
-            self.edit_mode_label.setText(
-                tr("artifact.build.editing_status", name=self.editing_build_name)
-            )
-        else:
-            self.edit_mode_label.setText("")
 
     def save_custom_set_edit(self) -> None:
         self._save_custom_set_edit(reload_after=True)

@@ -6,6 +6,7 @@ from contextlib import closing
 from pathlib import Path
 
 from hoyolab_export.artifact_build_snapshot import build_artifact_build_snapshot
+from hoyolab_export.account_equipment import equip_artifact
 from hoyolab_export.account_stat_sheet import (
     PROPERTY_TOTAL_ATK,
     PROPERTY_TOTAL_DEF,
@@ -26,10 +27,12 @@ from hoyolab_export.team_card_data import (
     DATA_STATUS_READY,
     DATA_STATUS_UNSUPPORTED,
     ERROR_BUILD_PRESET_NOT_FOUND,
+    WARNING_CURRENT_EQUIPMENT_ARTIFACT_MISSING,
     WARNING_ARTIFACT_BUILD_SNAPSHOT_MISSING_FOR_SELECTED_BUILD,
     TeamCardDataError,
     build_character_details_data,
     build_character_details_data_with_build_id,
+    build_current_equipment_artifact_snapshot,
 )
 from hoyolab_export.weapon_stats_catalog import (
     WeaponReferenceField,
@@ -291,6 +294,82 @@ class TeamCardDataTest(unittest.TestCase):
         self.assertTrue(data.source_notes["artifact_db_readonly"])
         self.assertEqual(data.stat_snapshot.artifact.summary["build_id"], build_id)
 
+    def test_current_equipment_snapshot_uses_equipped_artifacts_without_build_row(self) -> None:
+        with temp_artifact_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                init_db(conn)
+                seed_current_equipment_artifacts(conn)
+                before_count = _artifact_build_count(conn)
+                equip_artifact(conn, 10000050, 1)
+
+                snapshot = build_current_equipment_artifact_snapshot(
+                    conn,
+                    10000050,
+                    build_name="Current Equipment",
+                )
+                after_count = _artifact_build_count(conn)
+
+        stat_totals = {
+            item.property_type: item.raw_value
+            for item in snapshot.stat_totals
+        }
+        self.assertIsNone(snapshot.build_id)
+        self.assertEqual(snapshot.build_name, "Current Equipment")
+        self.assertEqual(snapshot.artifact_ids_by_pos, {1: 1})
+        self.assertEqual(stat_totals[2], 4780.0)
+        self.assertEqual(after_count, before_count)
+
+    def test_current_equipment_details_can_use_current_equipment_identity(self) -> None:
+        with temp_artifact_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                init_db(conn)
+                seed_current_equipment_artifacts(conn)
+                equip_artifact(conn, 10000050, 1)
+                snapshot = build_current_equipment_artifact_snapshot(
+                    conn,
+                    10000050,
+                    build_name="Current Equipment",
+                )
+
+        data = build_character_details_data(
+            account_character={"id": 10000050, "name": "Thoma", "level": 90},
+            artifact_build_snapshot=snapshot,
+            selected_build_name=snapshot.build_name,
+        )
+
+        self.assertIsNone(data.selected_build.build_id)
+        self.assertEqual(data.selected_build.build_name, "Current Equipment")
+        self.assertEqual(
+            data.stat_snapshot.artifact.summary["artifact_ids_by_pos"],
+            {"1": 1},
+        )
+
+    def test_current_equipment_snapshot_skips_missing_artifact_rows(self) -> None:
+        with temp_artifact_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                init_db(conn)
+                seed_current_equipment_artifacts(conn)
+                conn.commit()
+                conn.execute("PRAGMA foreign_keys = OFF")
+                conn.execute(
+                    """
+                    INSERT INTO account_character_equipped_artifacts (
+                        character_id,
+                        slot_key,
+                        artifact_id,
+                        source,
+                        updated_at
+                    )
+                    VALUES (?, ?, ?, 'manual', ?)
+                    """,
+                    (10000050, "flower", 404, "2026-05-26T00:00:00+00:00"),
+                )
+
+                snapshot = build_current_equipment_artifact_snapshot(conn, 10000050)
+
+        self.assertEqual(snapshot.artifact_ids_by_pos, {})
+        self.assertIn(WARNING_CURRENT_EQUIPMENT_ARTIFACT_MISSING, snapshot.warnings)
+
     def test_traveler_is_special_deferred(self) -> None:
         data = build_character_details_data(
             account_character={"id": 10000007, "name": "Traveler", "level": 90},
@@ -373,6 +452,96 @@ def seed_artifact_build(conn) -> int:
         slots={1: 1},
         targets=[],
     )
+
+
+def seed_current_equipment_artifacts(conn) -> None:
+    now = "2026-01-01T00:00:00+00:00"
+    conn.execute(
+        """
+        INSERT INTO account_characters (
+            character_id,
+            name,
+            weapon_type,
+            weapon_type_name
+        )
+        VALUES (?, ?, ?, ?)
+        """,
+        (10000050, "Thoma", 13, "polearm"),
+    )
+    conn.executemany(
+        """
+        INSERT INTO artifacts (
+            id,
+            fingerprint,
+            name,
+            set_uid,
+            set_name,
+            pos,
+            pos_name,
+            rarity,
+            level,
+            main_property_type,
+            main_property_name,
+            main_property_value,
+            first_seen_at,
+            last_seen_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        [
+            (
+                1,
+                "current-flower",
+                "Current Flower",
+                "current_set",
+                "Current Set",
+                1,
+                "Flower",
+                5,
+                20,
+                2,
+                "HP",
+                "4780",
+                now,
+                now,
+            ),
+            (
+                2,
+                "current-plume",
+                "Current Plume",
+                "current_set",
+                "Current Set",
+                2,
+                "Plume",
+                5,
+                20,
+                5,
+                "ATK",
+                "311",
+                now,
+                now,
+            ),
+        ],
+    )
+    conn.execute(
+        """
+        INSERT INTO artifact_substats (
+            artifact_id,
+            slot_index,
+            property_type,
+            property_name,
+            value,
+            times
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (1, 1, 20, "CRIT Rate", "12.5%", 3),
+    )
+
+
+def _artifact_build_count(conn) -> int:
+    row = conn.execute("SELECT COUNT(*) AS count FROM artifact_builds").fetchone()
+    return int(row["count"])
 
 
 def _contains_forbidden_key(value: object, forbidden: set[str]) -> bool:

@@ -34,9 +34,14 @@ from hoyolab_export.account_storage import get_account_weapon_observed_stack
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
 from hoyolab_export.display_stat_effects import (
     get_weapon_passive_tooltip,
+    list_artifact_set_display_stat_effects_for_active_sets,
     list_weapon_display_stat_effects,
 )
 from hoyolab_export.paths import PROJECT_ROOT
+from hoyolab_export.team_card_data import (
+    BUILD_IDENTITY_SOURCE_CURRENT_EQUIPMENT,
+    build_current_equipment_artifact_snapshot,
+)
 from localization import tr
 from run_workspace.right_panel_prototype_view_model import (
     MODE_ABYSS,
@@ -284,8 +289,7 @@ class AppShellController:
         )
         details["account_character"] = dict(character)
         details["account_weapon"] = dict(weapon)
-        if _text(weapon.get("icon_path")):
-            details["weapon_image_path"] = _text(weapon.get("icon_path"))
+        details["weapon_image_path"] = _text(weapon.get("icon_path"))
         details.update(_weapon_bonus_context(weapon, db_path=self.equipment_db_path))
         self.state = self.state.attach_character_details_data(
             self.selected_team_index,
@@ -308,6 +312,31 @@ class AppShellController:
         details = _mapping(slot.character_details_data)
         character = _mapping(details.get("account_character")) or slot.character.to_dict()
         return _character_weapon_type_filter_key(character)
+
+    def selected_operation_target(self) -> dict[str, Any] | None:
+        if self.selected_team_index < 0 or self.selected_slot_index < 0:
+            return None
+        try:
+            slot = self.state.team(self.selected_team_index).slot(self.selected_slot_index)
+        except IndexError:
+            return None
+        if slot.character is None:
+            return None
+        details = _mapping(slot.character_details_data)
+        character = _mapping(details.get("account_character")) or slot.character.to_dict()
+        character_id = _text(character.get("id")) or _text(slot.character.id)
+        if not character_id:
+            return None
+        try:
+            normalized_character_id: int | str = int(character_id)
+        except ValueError:
+            normalized_character_id = character_id
+        return {
+            "character_id": normalized_character_id,
+            "character_name": _text(character.get("name")) or _text(slot.character.name),
+            "team_index": self.selected_team_index,
+            "slot_index": self.selected_slot_index,
+        }
 
     def roster_selection_markers(self) -> dict[str, RosterSelectionMarker]:
         markers: dict[str, RosterSelectionMarker] = {}
@@ -366,11 +395,34 @@ class AppShellController:
                 conn,
                 character_id,
             )
+            artifact_snapshot = (
+                build_current_equipment_artifact_snapshot(
+                    conn,
+                    character_id,
+                    build_name=tr("artifact.build.current_equipment"),
+                )
+                if current_artifacts
+                else None
+            )
+            artifact_set_effects = (
+                list_artifact_set_display_stat_effects_for_active_sets(
+                    conn,
+                    artifact_snapshot.to_dict().get("active_set_bonuses") or [],
+                )
+                if artifact_snapshot is not None
+                else []
+            )
         if current_artifacts:
             details["current_equipped_artifact_ids_by_slot"] = dict(current_artifacts)
             details.setdefault("source_notes", {})[
                 "current_equipped_artifacts_readonly"
             ] = True
+        if artifact_snapshot is not None:
+            _apply_current_artifact_snapshot_to_details(
+                details,
+                artifact_snapshot,
+                artifact_set_effects=artifact_set_effects,
+            )
         if session_weapon:
             self.state = self.state.set_weapon(team_index, slot_index, session_weapon)
             details["account_weapon"] = dict(session_weapon)
@@ -431,6 +483,44 @@ class AppShellController:
         self.mode_states[self.mode] = self.state
 
 
+def _apply_current_artifact_snapshot_to_details(
+    details: dict[str, Any],
+    artifact_snapshot,
+    *,
+    artifact_set_effects: list[dict[str, Any]],
+) -> None:
+    summary = artifact_snapshot.to_dict()
+    warnings = [str(item) for item in artifact_snapshot.warnings if str(item)]
+    details["selected_build"] = {
+        "build_id": None,
+        "build_name": artifact_snapshot.build_name,
+        "identity_source": BUILD_IDENTITY_SOURCE_CURRENT_EQUIPMENT,
+        "provenance_note": (
+            "Current equipment is runtime SQLite state, not an artifact_build preset."
+        ),
+    }
+    details["stat_snapshot"] = {
+        "artifact": {
+            "summary": summary,
+            "warnings": warnings,
+        }
+    }
+    details["artifact_set_display_stat_effects"] = [
+        dict(item)
+        for item in artifact_set_effects
+    ]
+    details["warnings"] = _dedupe(
+        [
+            *[str(item) for item in details.get("warnings") or []],
+            *warnings,
+        ]
+    )
+    details["status"] = "partial" if warnings else "ready"
+    source_notes = details.setdefault("source_notes", {})
+    source_notes["current_equipment_artifact_snapshot"] = True
+    source_notes["current_equipment_snapshot_persisted_as_build"] = False
+
+
 class AppShell(QWidget):
     """Prototype entrypoint for the future app shell.
 
@@ -446,11 +536,11 @@ class AppShell(QWidget):
         super().__init__(parent)
         self.controller = controller or AppShellController.empty()
         self.setWindowTitle(tr("app_shell.title"))
-        self.resize(1440, 820)
+        self.resize(1408, 820)
 
         root = QHBoxLayout(self)
-        root.setContentsMargins(8, 8, 8, 8)
-        root.setSpacing(8)
+        root.setContentsMargins(6, 6, 6, 6)
+        root.setSpacing(4)
 
         self.left_host = LeftWorkspaceHost()
         root.addWidget(self.left_host, 1)
@@ -471,6 +561,12 @@ class AppShell(QWidget):
         self._weapon_filter_sync_timer.timeout.connect(
             self.flush_pending_weapon_filter_sync
         )
+        self._resize_event_count = 0
+        self._resize_settle_timer = QTimer(self)
+        self._resize_settle_timer.setSingleShot(True)
+        self._resize_settle_timer.timeout.connect(
+            lambda: self._log_resize_geometry("settled")
+        )
 
         self.right_panel.mode_requested.connect(self._on_mode_requested)
         self.right_panel.slot_selected.connect(self._on_slot_selected)
@@ -484,6 +580,60 @@ class AppShell(QWidget):
             self._on_weapon_clicked
         )
         self._refresh_character_selection_markers()
+        self._sync_artifact_browser_operation_target()
+
+    def resizeEvent(self, event) -> None:
+        if not hasattr(self, "left_host") or not hasattr(self, "_resize_settle_timer"):
+            super().resizeEvent(event)
+            return
+        self._resize_event_count += 1
+        self._log_resize_geometry(
+            "before",
+            old_size=event.oldSize(),
+            new_size=event.size(),
+        )
+        super().resizeEvent(event)
+        self._log_resize_geometry(
+            "during",
+            old_size=event.oldSize(),
+            new_size=event.size(),
+        )
+        self._resize_settle_timer.start(120)
+
+    def _log_resize_geometry(
+        self,
+        phase: str,
+        *,
+        old_size: QSize | None = None,
+        new_size: QSize | None = None,
+    ) -> None:
+        current_widget = self.left_host.stack.currentWidget()
+        current_name = type(current_widget).__name__ if current_widget is not None else "-"
+        current_min_hint = (
+            current_widget.minimumSizeHint()
+            if current_widget is not None
+            else QSize()
+        )
+        geom = self.geometry()
+        frame = self.frameGeometry()
+        right_geom = self.right_dock.geometry()
+        log_perf(
+            "app_shell_resize",
+            phase=phase,
+            count=self._resize_event_count,
+            old=f"{old_size.width()}x{old_size.height()}" if old_size else "-",
+            new=f"{new_size.width()}x{new_size.height()}" if new_size else "-",
+            geom=f"{geom.x()},{geom.y()} {geom.width()}x{geom.height()}",
+            frame=f"{frame.x()},{frame.y()} {frame.width()}x{frame.height()}",
+            min=f"{self.minimumSize().width()}x{self.minimumSize().height()}",
+            min_hint=f"{self.minimumSizeHint().width()}x{self.minimumSizeHint().height()}",
+            left=f"{self.left_host.width()}",
+            left_min_hint=f"{self.left_host.minimumSizeHint().width()}",
+            stack_min_hint=f"{self.left_host.stack.minimumSizeHint().width()}",
+            current=current_name,
+            current_min_hint=f"{current_min_hint.width()}x{current_min_hint.height()}",
+            right=f"{right_geom.x()} {right_geom.width()}",
+        )
 
     def schedule_right_panel_refresh(self) -> None:
         if self._right_panel_refresh_pending:
@@ -527,6 +677,11 @@ class AppShell(QWidget):
         timings = self._refresh_right_panel()
         log_perf("right_panel_refresh_deferred", **timings)
         return timings
+
+    def _sync_artifact_browser_operation_target(self) -> None:
+        self.left_host.set_artifact_right_panel_operation_target(
+            self.controller.selected_operation_target()
+        )
 
     def _refresh_right_panel(self) -> dict[str, float]:
         total_start = perf_now()
@@ -600,6 +755,7 @@ class AppShell(QWidget):
         marker_timings = self._refresh_character_selection_markers(
             affected_character_ids=None
         )
+        self._sync_artifact_browser_operation_target()
         self.schedule_weapon_filter_sync()
         self.schedule_right_panel_refresh()
         log_perf("mode_switch", mode=mode, **marker_timings)
@@ -607,6 +763,7 @@ class AppShell(QWidget):
     def _on_slot_selected(self, team_index: int, slot_index: int) -> None:
         total_start = perf_now()
         self.controller.toggle_slot_selection(team_index, slot_index)
+        self._sync_artifact_browser_operation_target()
         self.schedule_weapon_filter_sync()
         self.schedule_right_panel_refresh()
         log_perf("slot_select", total=perf_ms(total_start), scheduled=True)
@@ -631,6 +788,7 @@ class AppShell(QWidget):
                 affected_character_ids=affected_character_ids,
                 markers=after_markers,
             )
+            self._sync_artifact_browser_operation_target()
             self.schedule_weapon_filter_sync()
             self.schedule_right_panel_refresh()
         log_perf(
@@ -665,14 +823,14 @@ class LeftWorkspaceHost(QWidget):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        layout.setSpacing(4)
 
         self.nav_group = QButtonGroup(self)
         self.nav_group.setExclusive(True)
-        nav = QHBoxLayout()
-        nav.setContentsMargins(0, 0, 0, 0)
-        nav.setSpacing(6)
-        layout.addLayout(nav)
+        self.nav_layout = QHBoxLayout()
+        self.nav_layout.setContentsMargins(0, 0, 0, 0)
+        self.nav_layout.setSpacing(4)
+        layout.addLayout(self.nav_layout)
 
         self.stack = QStackedWidget()
         layout.addWidget(self.stack, 1)
@@ -682,6 +840,28 @@ class LeftWorkspaceHost(QWidget):
             tr("app_shell.workspace.characters_weapons"),
             self.character_weapon_workspace,
         )
+        self.artifact_browser_workspace = None
+        self._pending_artifact_right_panel_target: dict[str, Any] | None = None
+        self.artifact_browser_placeholder = self._make_artifact_browser_placeholder()
+        self.artifact_browser_index = self.stack.addWidget(
+            self.artifact_browser_placeholder
+        )
+        self.artifact_browser_button = QPushButton(tr("app_shell.workspace.artifacts"))
+        self.artifact_browser_button.setCheckable(True)
+        self.artifact_browser_button.clicked.connect(
+            lambda _checked=False: self.show_artifact_browser_workspace()
+        )
+        self.nav_group.addButton(self.artifact_browser_button)
+        self.nav_layout.addWidget(self.artifact_browser_button)
+
+    def _make_artifact_browser_placeholder(self) -> QWidget:
+        placeholder = QFrame()
+        layout = QVBoxLayout(placeholder)
+        layout.setContentsMargins(0, 0, 0, 0)
+        label = QLabel(tr("artifact.browser.title"))
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(label, 1)
+        return placeholder
 
     def add_workspace(self, label: str, widget: QWidget) -> QPushButton:
         index = self.stack.addWidget(widget)
@@ -689,11 +869,48 @@ class LeftWorkspaceHost(QWidget):
         button.setCheckable(True)
         button.clicked.connect(lambda _checked=False, page=index: self.stack.setCurrentIndex(page))
         self.nav_group.addButton(button)
-        self.layout().itemAt(0).layout().addWidget(button)
+        self.nav_layout.addWidget(button)
         if index == 0:
             button.setChecked(True)
             self.stack.setCurrentIndex(0)
         return button
+
+    def show_artifact_browser_workspace(self) -> None:
+        self.ensure_artifact_browser_workspace()
+        self.stack.setCurrentIndex(self.artifact_browser_index)
+        self.artifact_browser_button.setChecked(True)
+
+    def ensure_artifact_browser_workspace(self):
+        if self.artifact_browser_workspace is not None:
+            return self.artifact_browser_workspace
+
+        from ui.artifact_browser.window import ArtifactBrowserWindow
+
+        create_start = perf_now()
+        browser = ArtifactBrowserWindow(parent=self.stack, embedded=True)
+        self.stack.removeWidget(self.artifact_browser_placeholder)
+        self.artifact_browser_placeholder.deleteLater()
+        self.stack.insertWidget(self.artifact_browser_index, browser)
+        self.artifact_browser_workspace = browser
+        browser.set_right_panel_operation_target(
+            self._pending_artifact_right_panel_target
+        )
+        log_perf(
+            "artifact_workspace_lazy_create",
+            total=perf_ms(create_start),
+            artifacts=browser.model.rowCount(),
+            adaptive_runs=getattr(browser, "_adaptive_update_count", 0),
+            resize_events=getattr(browser, "_resize_event_count", 0),
+        )
+        return browser
+
+    def set_artifact_right_panel_operation_target(
+        self,
+        target: dict[str, Any] | None,
+    ) -> None:
+        self._pending_artifact_right_panel_target = target
+        if self.artifact_browser_workspace is not None:
+            self.artifact_browser_workspace.set_right_panel_operation_target(target)
 
 
 class RightOperationsDock(QFrame):
@@ -1409,8 +1626,12 @@ def _weapon_bonus_context(
 ) -> dict[str, Any]:
     weapon_id = _text(weapon.get("id") or weapon.get("weapon_id"))
     refinement = _optional_int(weapon.get("refinement"))
+    result: dict[str, Any] = {
+        "weapon_passive_reference": {},
+        "weapon_display_stat_effects": [],
+    }
     if not weapon_id:
-        return {}
+        return result
     try:
         with closing(connect_db(db_path)) as conn:
             passive_reference = get_weapon_passive_tooltip(
@@ -1424,8 +1645,7 @@ def _weapon_bonus_context(
                 refinement=refinement,
             )
     except Exception:
-        return {}
-    result: dict[str, Any] = {}
+        return result
     if passive_reference:
         result["weapon_passive_reference"] = passive_reference
     if weapon_effects:
@@ -1545,6 +1765,14 @@ def _optional_int(value: Any) -> int | None:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _dedupe(values: list[str]) -> list[str]:
+    result: list[str] = []
+    for value in values:
+        if value and value not in result:
+            result.append(value)
+    return result
 
 
 def launch_app_shell() -> int:

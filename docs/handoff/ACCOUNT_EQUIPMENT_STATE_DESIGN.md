@@ -8,9 +8,12 @@ Implementation status, 2026-05-26: Stage A is implemented in
 `hoyolab_export/account_equipment.py` and initialized through
 `hoyolab_export/artifact_db.py::init_db`. The schema and focused service helpers
 exist, with tests in `tests/test_account_equipment.py`. Stage B wires AppShell
-weapon restore/assignment to this persistent state. Artifact Browser is not
-wired yet. Artifact Browser equipment UX and ownership side-icon rules are now
-documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`.
+weapon restore/assignment to this persistent state. Stage B2 builds a
+runtime-only current-equipment artifact snapshot for right-panel stats/set
+bonuses without creating saved build rows. Stage C1 embeds Artifact Browser in
+AppShell and adds target/current-equipment UI scaffolding, but does not write
+artifact equipment yet. Artifact Browser equipment UX and ownership side-icon
+rules are documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`.
 
 ## Scope
 
@@ -411,11 +414,13 @@ When a character is quick-picked into a slot:
   `account_character_equipped_artifacts`;
 - attach current weapon to the slot and selected-details model;
 - attach current artifact ids as read-only `current_equipped_artifact_ids_by_slot`
-  metadata.
+  metadata;
+- convert those ids into a runtime-only current-equipment `ArtifactBuildSnapshot`
+  for right-panel artifact stat and set-bonus display.
 
-Current limitation: the right-panel path does not yet convert current equipped
-artifact ids into an `ArtifactBuildSnapshot`, set bonuses, or artifact-derived
-display stats. That is Stage B2 / artifact live-build snapshot work.
+This runtime snapshot is built from persistent current equipment rows and
+existing artifact ids. It is not saved as an `artifact_build` row and does not
+mutate saved preset definitions.
 
 ### AppShell Character Removed From Slot
 
@@ -502,18 +507,34 @@ Stage B: AppShell equipment persistence
 - current artifact ids are restored read-only into details metadata;
 - artifact-derived stats/display are deferred.
 
-Stage B2: current artifact live snapshot
+Stage B2: current artifact live snapshot - implemented 2026-05-26
 
-- convert current equipped artifact ids into a prepared artifact snapshot without
-  creating or mutating build presets;
-- show current artifact-derived stats/set bonuses in right-panel details;
-- keep Artifact Browser equip/apply separate.
+- `hoyolab_export.team_card_data.build_current_equipment_artifact_snapshot(...)`
+  reads `account_character_equipped_artifacts`, reuses
+  `calculate_raw_build_summary(..., slots=...)`, and returns a runtime-only
+  `ArtifactBuildSnapshot` with `build_id=None`;
+- AppShell attaches that snapshot to selected details so current artifact
+  main/sub stats and direct static set effects can appear in the right panel;
+- missing artifact rows are skipped softly with a warning instead of crashing
+  the shell;
+- saved build/preset tables are not created or mutated;
+- Artifact Browser equip/apply remains separate.
 
-Stage C: Artifact Browser equipment UX
+Stage C1: Artifact Browser embedded target UI - implemented 2026-05-26
 
-- add Artifact Browser operation-target/equip-mode UI;
-- add the current equipment top zone;
-- add explicit preset preview and `Надеть пресет`;
+- AppShell has an `Artifacts` left workspace that lazy-creates embedded
+  `ArtifactBrowserWindow(embedded=True)`;
+- the embedded browser reflects the right-panel selected character as the
+  operation target;
+- when the right panel has no target, exactly one browser-selected character
+  can become the scaffolded operation target;
+- the current equipment top zone and disabled preset-apply action are visible
+  scaffolding only;
+- artifact clicks and preset apply do not write equipment yet.
+
+Stage C2+: Artifact Browser equipment writes
+
+- add explicit preset preview and equip-preset action;
 - apply incomplete presets as exact contents, clearing missing target slots;
 - add compact conflict confirmation when preset artifacts are worn by other
   characters.

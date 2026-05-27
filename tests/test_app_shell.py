@@ -6,8 +6,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPixmap
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QStyleOptionButton, QWidget
 
 from hoyolab_export.account_equipment import (
     equip_artifact,
@@ -24,8 +25,16 @@ from ui.app_shell import (
     RosterSelectionMarker,
     _SCALED_ICON_PIXMAP_CACHE,
 )
+from ui.artifact_browser.card_delegate import GRID_SIZE
+from ui.artifact_browser.window import (
+    ArtifactBrowserWindow,
+    BUILD_PANEL_WIDTH,
+    TARGET_PANEL_WIDTH,
+)
 from run_workspace.perf import perf_enabled
-from ui.utils.overlay_scroll import OverlayVerticalScrollArea
+from localization import tr
+from ui.utils.marquee_label import MarqueeButton
+from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
 
 
@@ -42,7 +51,8 @@ class AppShellTest(unittest.TestCase):
             CharacterWeaponWorkspace,
         )
         self.assertEqual(shell.left_host.stack.currentIndex(), 0)
-        self.assertEqual(shell.left_host.stack.count(), 1)
+        self.assertEqual(shell.left_host.stack.count(), 2)
+        self.assertIsNone(shell.left_host.artifact_browser_workspace)
 
     def test_perf_logging_is_disabled_by_default(self) -> None:
         with patch.dict("os.environ", {"GTT_PERF_LOG": ""}):
@@ -54,6 +64,313 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.minimumWidth(), shell.right_dock.maximumWidth())
         self.assertEqual(shell.right_dock.minimumWidth(), RIGHT_OPERATIONS_DOCK_WIDTH)
         self.assertEqual(shell.right_dock.sizePolicy().horizontalPolicy().name, "Fixed")
+
+    def test_artifact_workspace_can_be_created_and_switched_to(self) -> None:
+        shell = AppShell()
+
+        shell.left_host.show_artifact_browser_workspace()
+
+        self.assertIsInstance(
+            shell.left_host.artifact_browser_workspace,
+            ArtifactBrowserWindow,
+        )
+        self.assertEqual(
+            shell.left_host.stack.currentWidget(),
+            shell.left_host.artifact_browser_workspace,
+        )
+        self.assertEqual(shell.right_dock.minimumWidth(), RIGHT_OPERATIONS_DOCK_WIDTH)
+
+    def test_artifact_workspace_minimum_width_lands_on_one_grid_cell(self) -> None:
+        shell = AppShell()
+        shell.move(0, 0)
+        shell.resize(1535, 900)
+        shell.show()
+        self._app.processEvents()
+        shell.left_host.show_artifact_browser_workspace()
+        self._app.processEvents()
+        browser = shell.left_host.artifact_browser_workspace
+        assert browser is not None
+
+        shell.resize(shell.minimumSizeHint().width(), shell.height())
+        self._app.processEvents()
+        browser.update_adaptive_target_panel_width()
+        self._app.processEvents()
+
+        viewport_width = browser.list_view.viewport().width()
+        self.assertGreaterEqual(viewport_width, GRID_SIZE.width())
+        self.assertLessEqual(viewport_width, GRID_SIZE.width() + 8)
+        self.assertGreaterEqual(
+            browser.build_target_panel.width(),
+            browser.build_target_panel.minimumSizeHint().width(),
+        )
+        self.assertEqual(browser.build_target_panel.width(), TARGET_PANEL_WIDTH)
+        self.assertLess(browser.build_target_panel.width(), 180)
+        self.assertEqual(browser.build_panel.width(), BUILD_PANEL_WIDTH)
+
+        content_right = (
+            browser.content_layout.geometry().x()
+            + browser.content_layout.geometry().width()
+        )
+        for index in range(browser.content_layout.count()):
+            widget = browser.content_layout.itemAt(index).widget()
+            assert widget is not None
+            self.assertLessEqual(widget.geometry().x() + widget.width(), content_right)
+
+        shell.close()
+        self._app.processEvents()
+
+    def test_switching_artifact_workspace_preserves_team_state(self) -> None:
+        shell = AppShell()
+        shell.left_host.character_weapon_workspace.character_clicked.emit(
+            _character_asset("10000050", "Thoma")
+        )
+
+        shell.left_host.show_artifact_browser_workspace()
+        shell.left_host.stack.setCurrentIndex(0)
+
+        self.assertEqual(shell.controller.state.team(0).slot(0).character.id, "10000050")
+        self.assertEqual(shell.controller.selected_slot_index, 0)
+
+    def test_embedded_artifact_browser_is_not_standalone_window(self) -> None:
+        parent = QWidget()
+        browser = ArtifactBrowserWindow(parent=parent, embedded=True)
+
+        self.assertFalse(bool(browser.windowFlags() & Qt.Window))
+        self.assertFalse(browser.close_button.isVisible())
+        self.assertTrue(browser.embedded)
+        browser.update_adaptive_target_panel_width()
+        self.assertFalse(browser._adaptive_target_resize_timer.isActive())
+
+    def test_embedded_artifact_browser_uses_non_shifting_scrollbars(self) -> None:
+        browser = ArtifactBrowserWindow(embedded=True)
+
+        self.assertIsInstance(browser.build_target_scroll, OverlayVerticalScrollArea)
+        self.assertIsInstance(browser.build_preset_list_scroll, OverlayVerticalScrollArea)
+        self.assertIsInstance(
+            browser.artifact_grid_overlay_scrollbar,
+            OverlayVerticalScrollbar,
+        )
+        self.assertEqual(
+            browser.list_view.verticalScrollBarPolicy(),
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff,
+        )
+        self.assertIs(
+            browser.artifact_grid_overlay_scrollbar._overlay.parent(),
+            browser.list_view,
+        )
+
+    def test_artifact_browser_target_title_has_room_for_localized_text(self) -> None:
+        browser = ArtifactBrowserWindow(embedded=True)
+
+        self.assertIsInstance(browser.build_target_title_label, MarqueeButton)
+        self.assertGreaterEqual(browser.build_target_title_label.minimumWidth(), 50)
+        self.assertLessEqual(browser.build_target_title_label.minimumWidth(), 70)
+        self.assertEqual(browser.build_target_title_label.sizeHint().width(), 0)
+        self.assertEqual(
+            browser.build_target_title_label.minimumSizeHint().width(),
+            0,
+        )
+        self.assertEqual(
+            browser.build_target_title_label.sizePolicy().horizontalPolicy().name,
+            "Expanding",
+        )
+
+    def test_artifact_browser_json_buttons_use_compact_marquee_text(self) -> None:
+        browser = ArtifactBrowserWindow(embedded=True)
+
+        self.assertIsInstance(browser.import_json_button, MarqueeButton)
+        self.assertIsInstance(browser.clear_json_button, MarqueeButton)
+        assert browser.import_json_button is not None
+        assert browser.clear_json_button is not None
+        self.assertEqual(browser.import_json_button.sizeHint().width(), 0)
+        self.assertEqual(browser.clear_json_button.sizeHint().width(), 0)
+        self.assertLessEqual(
+            browser.import_json_button.minimumWidth(),
+            GRID_SIZE.width() // 2,
+        )
+        self.assertLessEqual(
+            browser.clear_json_button.minimumWidth(),
+            GRID_SIZE.width() // 2,
+        )
+
+    def test_artifact_browser_target_buttons_use_marquee_without_forcing_width(self) -> None:
+        browser = ArtifactBrowserWindow(embedded=True)
+        long_key = "character:99999999"
+        icon_path = next(
+            (
+                item.get("path")
+                for item in browser.build_target_items_by_key.values()
+                if item.get("path")
+            ),
+            None,
+        )
+        browser.build_target_items_by_key[long_key] = {
+            "key": long_key,
+            "target_type": "character",
+            "character_id": 99999999,
+            "character_name": "Очень Длинное Имя Персонажа Для Проверки Прокрутки",
+            "asset": {},
+            "path": icon_path,
+        }
+
+        browser.refresh_build_target_list()
+        button = browser.build_target_buttons_by_key[long_key]
+
+        self.assertIsInstance(button, MarqueeButton)
+        self.assertEqual(button.sizeHint().width(), 0)
+        self.assertEqual(button.minimumSizeHint().width(), 0)
+        self.assertLessEqual(button.minimumWidth(), 100)
+        self.assertEqual(browser.build_target_panel.width(), TARGET_PANEL_WIDTH)
+
+        option = QStyleOptionButton()
+        button.initStyleOption(option)
+        text_rect = button._text_rect(option)
+        icon_rect = button._icon_rect(text_rect, option.iconSize)
+        text_start = icon_rect.right() + 7
+
+        self.assertFalse(option.icon.isNull())
+        self.assertGreater(text_start, icon_rect.right())
+        self.assertGreater(button._available_text_width(), 0)
+        self.assertGreaterEqual(text_start, text_rect.left() + option.iconSize.width())
+        self.assertLess(text_start, text_rect.right())
+
+    def test_right_panel_target_updates_artifact_browser_equip_state(self) -> None:
+        with temp_app_shell_db() as db_path:
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+            browser = shell.left_host.ensure_artifact_browser_workspace()
+            browser.build_target_items_by_key["character:10000050"] = {
+                "key": "character:10000050",
+                "target_type": "character",
+                "character_id": 10000050,
+                "character_name": "Thoma",
+            }
+            browser.refresh_build_target_list()
+
+            shell.left_host.character_weapon_workspace.character_clicked.emit(
+                _character_asset("10000050", "Thoma")
+            )
+
+            self.assertEqual(browser.operation_target_character_id, 10000050)
+            self.assertEqual(browser.operation_target_source, "right_panel")
+            self.assertTrue(browser.equip_mode_enabled)
+            self.assertEqual(browser.equipment_target_label.text(), "")
+            self.assertNotIn("right panel", browser.equipment_target_label.text().casefold())
+            self.assertNotIn("правой панели", browser.equipment_target_label.text().casefold())
+            self.assertEqual(browser.selected_build_target_keys, {"character:10000050"})
+            self.assertFalse(browser.build_preset_list_scroll.isHidden())
+            self.assertTrue(
+                browser.build_target_buttons_by_key["character:10000050"].isChecked()
+            )
+
+            browser.toggle_build_target("character:10000050")
+
+            self.assertEqual(browser.selected_build_target_keys, set())
+            self.assertEqual(browser.operation_target_character_id, 10000050)
+            self.assertEqual(browser.operation_target_source, "right_panel")
+            self.assertTrue(browser.equip_mode_enabled)
+            self.assertTrue(browser.build_preset_list_scroll.isHidden())
+            button = browser.build_target_buttons_by_key["character:10000050"]
+            self.assertFalse(button.isChecked())
+            self.assertTrue(button.property("operationTarget"))
+
+            shell._on_slot_selected(0, 0)
+
+            self.assertFalse(browser.equip_mode_enabled)
+            self.assertFalse(
+                browser.build_target_buttons_by_key["character:10000050"].isChecked()
+            )
+            self.assertFalse(
+                browser.build_target_buttons_by_key["character:10000050"].property(
+                    "operationTarget"
+                )
+            )
+
+    def test_artifact_browser_can_browse_other_target_while_right_target_stays_active(self) -> None:
+        browser = ArtifactBrowserWindow(embedded=True)
+        browser.build_target_items_by_key["character:10000050"] = {
+            "key": "character:10000050",
+            "target_type": "character",
+            "character_id": 10000050,
+            "character_name": "Thoma",
+        }
+        browser.build_target_items_by_key["character:10000089"] = {
+            "key": "character:10000089",
+            "target_type": "character",
+            "character_id": 10000089,
+            "character_name": "Furina",
+        }
+        browser.refresh_build_target_list()
+
+        browser.set_right_panel_operation_target(
+            {"character_id": 10000050, "character_name": "Thoma"}
+        )
+        browser.toggle_build_target("character:10000050")
+        browser.toggle_build_target("character:10000089")
+
+        self.assertEqual(browser.selected_build_target_keys, {"character:10000089"})
+        self.assertEqual(browser.operation_target_character_id, 10000050)
+        self.assertEqual(browser.operation_target_source, "right_panel")
+        self.assertTrue(browser.equip_mode_enabled)
+        self.assertTrue(browser.build_target_buttons_by_key["character:10000089"].isChecked())
+        self.assertFalse(browser.build_target_buttons_by_key["character:10000050"].isChecked())
+        self.assertTrue(
+            browser.build_target_buttons_by_key["character:10000050"].property(
+                "operationTarget"
+            )
+        )
+
+    def test_artifact_browser_target_falls_back_to_one_browser_character(self) -> None:
+        browser = ArtifactBrowserWindow(embedded=True)
+        browser.build_target_items_by_key["character:10000050"] = {
+            "key": "character:10000050",
+            "target_type": "character",
+            "character_id": 10000050,
+            "character_name": "Thoma",
+        }
+        browser.build_target_items_by_key["character:10000089"] = {
+            "key": "character:10000089",
+            "target_type": "character",
+            "character_id": 10000089,
+            "character_name": "Furina",
+        }
+
+        browser.selected_build_target_keys = {"character:10000050"}
+        browser.refresh_equipment_target_state()
+
+        self.assertEqual(browser.operation_target_character_id, 10000050)
+        self.assertEqual(browser.operation_target_source, "artifact_browser")
+        self.assertTrue(browser.equip_mode_enabled)
+
+        browser.selected_build_target_keys = {"character:10000050", "character:10000089"}
+        browser.refresh_equipment_target_state()
+
+        self.assertFalse(browser.equip_mode_enabled)
+
+    def test_artifact_browser_current_equipment_zone_scaffold(self) -> None:
+        browser = ArtifactBrowserWindow(embedded=True)
+
+        self.assertEqual(
+            browser.equipment_zone_label.text(),
+            tr("artifact.build.current_equipment"),
+        )
+        browser.set_right_panel_operation_target(
+            {"character_id": 10000050, "character_name": "Thoma"}
+        )
+        self.assertEqual(
+            browser.equipment_zone_label.text(),
+            tr("artifact.build.current_equipment"),
+        )
+
+        browser.selected_build_id = 123
+        browser.update_build_panel()
+
+        self.assertEqual(
+            browser.equipment_zone_label.text(),
+            tr("artifact.equipment.apply_preset"),
+        )
+        self.assertFalse(browser.equipment_zone_action_button.isEnabled())
 
     def test_character_weapon_workspace_uses_overlay_scroll_areas(self) -> None:
         workspace = CharacterWeaponWorkspace()
@@ -326,7 +643,83 @@ class AppShellTest(unittest.TestCase):
             details["current_equipped_artifact_ids_by_slot"],
             {"flower": 1},
         )
+        self.assertEqual(details["selected_build"]["build_id"], None)
+        self.assertEqual(
+            details["selected_build"]["identity_source"],
+            "current_equipment",
+        )
+        self.assertEqual(
+            details["stat_snapshot"]["artifact"]["summary"]["artifact_ids_by_pos"],
+            {"1": 1},
+        )
+        stat_totals = {
+            item["property_type"]: item["raw_value"]
+            for item in details["stat_snapshot"]["artifact"]["summary"]["stat_totals"]
+        }
+        self.assertEqual(stat_totals[2], 4780.0)
         self.assertTrue(details["source_notes"]["current_equipped_artifacts_readonly"])
+        self.assertTrue(details["source_notes"]["current_equipment_artifact_snapshot"])
+
+    def test_current_equipped_artifact_set_bonus_appears_in_right_panel(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_artifact(conn, 10000050, 1)
+                equip_artifact(conn, 10000050, 2)
+                conn.commit()
+            controller = AppShellController.empty(equipment_db_path=db_path)
+
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            model = controller.right_panel_model()
+
+        artifact_sources = [
+            item
+            for item in model.selected_details.bonus_sources
+            if item.source_kind == "artifact_set_static"
+        ]
+        self.assertEqual(model.selected_details.active_sets, ("2p Current Set",))
+        self.assertEqual(len(artifact_sources), 1)
+        self.assertEqual(artifact_sources[0].short_effects, ("ATK +18%",))
+
+    def test_replacing_character_clears_current_artifact_snapshot_from_slot(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_artifact(conn, 10000050, 1)
+                conn.commit()
+            controller = AppShellController.empty(equipment_db_path=db_path)
+
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            controller.add_or_replace_character(
+                _character_asset("10000089", "Furina", weapon_type=1)
+            )
+
+        details = controller.state.team(0).slot(0).character_details_data
+        self.assertEqual(details["account_character"]["id"], "10000089")
+        self.assertNotIn("current_equipped_artifact_ids_by_slot", details)
+        self.assertNotIn("stat_snapshot", details)
+        self.assertEqual(controller.right_panel_model().selected_details.active_sets, ())
+
+    def test_current_equipped_artifact_restore_does_not_create_build_rows(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_artifact(conn, 10000050, 1)
+                before = _artifact_build_count(conn)
+                conn.commit()
+            controller = AppShellController.empty(equipment_db_path=db_path)
+
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            with closing(connect_db(db_path)) as conn:
+                after = _artifact_build_count(conn)
+
+        self.assertEqual(after, before)
 
     def test_sequential_quick_pick_fills_team_one_then_team_two(self) -> None:
         controller = AppShellController.empty()
@@ -600,6 +993,98 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(len(weapon_sources), 1)
         self.assertEqual(weapon_sources[0].short_effects, ("ER +12%",))
         self.assertIn("Windfall", weapon_sources[0].tooltip_body)
+
+    def test_switching_weapon_clears_stale_static_passive_and_tooltip(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                _seed_weapon_static_effect(
+                    conn,
+                    weapon_id=13407,
+                    stat_key="ATK_PERCENT",
+                    value=15.0,
+                    value_type="percent_points",
+                    passive_name="Old ATK Passive",
+                    passive_text="Increases ATK by 15%.",
+                )
+                conn.commit()
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+            shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
+            shell.flush_pending_right_panel_refresh()
+
+            shell._on_weapon_clicked(
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+            )
+            shell.flush_pending_right_panel_refresh()
+            with_bonus = shell.controller.right_panel_model()
+            shell._on_weapon_clicked(
+                _weapon_asset("13408", "Kitain Cross Spear", weapon_type=13)
+            )
+            shell.flush_pending_right_panel_refresh()
+            no_bonus = shell.controller.right_panel_model()
+
+        self.assertTrue(
+            any(
+                item.source_kind == "weapon_passive_static"
+                and item.short_effects == ("ATK +15%",)
+                for item in with_bonus.selected_details.bonus_sources
+            )
+        )
+        slot_details = shell.controller.state.team(0).slot(0).character_details_data
+        self.assertEqual(slot_details["weapon_display_stat_effects"], [])
+        self.assertEqual(slot_details["weapon_passive_reference"], {})
+        self.assertFalse(
+            any(
+                item.source_kind == "weapon_passive_static"
+                for item in no_bonus.selected_details.bonus_sources
+            )
+        )
+        self.assertNotIn("Old ATK Passive", no_bonus.selected_details.weapon_tooltip)
+        self.assertNotIn("Increases ATK", no_bonus.selected_details.weapon_tooltip)
+
+    def test_switching_weapon_clears_stale_em_static_passive_display_stats(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                _seed_weapon_static_effect(
+                    conn,
+                    weapon_id=13407,
+                    stat_key="ELEMENTAL_MASTERY",
+                    value=100.0,
+                    value_type="flat",
+                    passive_name="Old EM Passive",
+                    passive_text="Increases Elemental Mastery by 100.",
+                )
+                conn.commit()
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+            shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
+            shell.flush_pending_right_panel_refresh()
+
+            shell._on_weapon_clicked(
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+            )
+            shell.flush_pending_right_panel_refresh()
+            with_bonus = shell.controller.right_panel_model()
+            shell._on_weapon_clicked(
+                _weapon_asset("13408", "Kitain Cross Spear", weapon_type=13)
+            )
+            shell.flush_pending_right_panel_refresh()
+            no_bonus = shell.controller.right_panel_model()
+
+        self.assertTrue(
+            any(row.label == "EM" and row.value == "100" for row in with_bonus.selected_details.stat_rows)
+        )
+        self.assertFalse(
+            any(row.label == "EM" for row in no_bonus.selected_details.stat_rows)
+        )
+        self.assertFalse(
+            any(
+                item.source_kind == "weapon_passive_static"
+                for item in no_bonus.selected_details.bonus_sources
+            )
+        )
 
     def test_team_bonus_member_icons_use_visible_asset_paths(self) -> None:
         shell = AppShell()
@@ -928,20 +1413,96 @@ def _seed_app_shell_weapons(conn) -> None:
 
 
 def _seed_app_shell_artifacts(conn) -> None:
+    conn.execute(
+        """
+        INSERT INTO artifact_sets (
+            set_uid,
+            hoyowiki_entry_id,
+            fallback_name,
+            updated_at
+        )
+        VALUES ('current_set', 'current-set-entry', 'Current Set', '2026-05-26T00:00:00+00:00')
+        """
+    )
     conn.executemany(
         """
         INSERT INTO artifacts (
             id,
             fingerprint,
             name,
+            set_uid,
+            set_name,
             pos,
+            pos_name,
+            rarity,
+            level,
+            main_property_type,
+            main_property_name,
+            main_property_value,
             first_seen_at,
             last_seen_at
         )
-        VALUES (?, ?, ?, ?, '2026-05-26T00:00:00+00:00', '2026-05-26T00:00:00+00:00')
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '2026-05-26T00:00:00+00:00', '2026-05-26T00:00:00+00:00')
         """,
         [
-            (1, "artifact-flower-a", "Flower A", 1),
-            (2, "artifact-plume-a", "Plume A", 2),
+            (1, "artifact-flower-a", "Flower A", "current_set", "Current Set", 1, "Flower", 5, 20, 2, "HP", "4780"),
+            (2, "artifact-plume-a", "Plume A", "current_set", "Current Set", 2, "Plume", 5, 20, 5, "ATK", "311"),
         ],
     )
+    conn.execute(
+        """
+        INSERT INTO artifact_set_display_stat_effects (
+            set_uid,
+            pieces_required,
+            stat_key,
+            value,
+            value_type,
+            updated_at
+        )
+        VALUES ('current_set', 2, 'ATK_PERCENT', 18.0, 'percent_points', '2026-05-26T00:00:00+00:00')
+        """
+    )
+
+
+def _seed_weapon_static_effect(
+    conn,
+    *,
+    weapon_id: int,
+    stat_key: str,
+    value: float,
+    value_type: str,
+    passive_name: str,
+    passive_text: str,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO weapon_display_stat_effects (
+            weapon_id,
+            refinement,
+            stat_key,
+            value,
+            value_type,
+            updated_at
+        )
+        VALUES (?, 5, ?, ?, ?, '2026-05-26T00:00:00+00:00')
+        """,
+        (weapon_id, stat_key, value, value_type),
+    )
+    conn.execute(
+        """
+        INSERT INTO weapon_passive_tooltips (
+            weapon_id,
+            lang,
+            passive_name,
+            passive_text,
+            updated_at
+        )
+        VALUES (?, 'en-us', ?, ?, '2026-05-26T00:00:00+00:00')
+        """,
+        (weapon_id, passive_name, passive_text),
+    )
+
+
+def _artifact_build_count(conn) -> int:
+    row = conn.execute("SELECT COUNT(*) AS count FROM artifact_builds").fetchone()
+    return int(row["count"])

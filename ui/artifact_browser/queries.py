@@ -24,6 +24,7 @@ from hoyolab_export.artifact_db import (
 )
 from hoyolab_export.artiscan_importer import import_artiscan_file
 from hoyolab_export.paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
+from run_workspace.perf import log_perf, perf_ms, perf_now
 
 from .models import (
     ARTIFACT_POSITIONS,
@@ -74,6 +75,68 @@ def list_set_bonus_description_map(
                     continue
                 result[(str(row["set_uid"]), int(row["piece_count"]))] = description
     return result
+
+
+def load_artifact_browser_store_data(
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> dict[str, Any]:
+    if not artifact_db_exists(db_path):
+        return {
+            "database_exists": False,
+            "artifacts": [],
+            "custom_sets": [],
+            "set_bonus_descriptions": {},
+            "content_language": "en-us",
+        }
+
+    preferred_lang = current_hoyolab_content_language()
+    fallback_lang = "en-us"
+    fallback = normalize_artifact_set_lang(fallback_lang)
+    preferred = normalize_artifact_set_lang(preferred_lang)
+    languages = [fallback]
+    if preferred != fallback:
+        languages.append(preferred)
+
+    with connect_db(db_path) as conn:
+        init_start = perf_now()
+        init_db(conn)
+        init_ms = perf_ms(init_start)
+        artifacts_start = perf_now()
+        artifacts = _fetch_artifacts(conn, preferred_lang=preferred)
+        artifacts_ms = perf_ms(artifacts_start)
+        custom_start = perf_now()
+        custom_sets = _fetch_custom_sets(conn)
+        custom_ms = perf_ms(custom_start)
+        descriptions_start = perf_now()
+        set_bonus_descriptions: dict[tuple[str, int], str] = {}
+        for language in languages:
+            for row in db_list_artifact_set_bonus_descriptions(conn, lang=language):
+                description = str(row.get("description") or "").strip()
+                if not description:
+                    continue
+                set_bonus_descriptions[
+                    (str(row["set_uid"]), int(row["piece_count"]))
+                ] = description
+        descriptions_ms = perf_ms(descriptions_start)
+
+    log_perf(
+        "artifact_store_load",
+        init=init_ms,
+        artifacts=artifacts_ms,
+        custom_sets=custom_ms,
+        set_bonuses=descriptions_ms,
+        artifact_count=len(artifacts),
+        custom_set_count=len(custom_sets),
+    )
+
+    return {
+        "database_exists": True,
+        "artifacts": artifacts,
+        "custom_sets": custom_sets,
+        "set_bonus_descriptions": set_bonus_descriptions,
+        "content_language": preferred,
+    }
 
 
 def _resolve_icon_path(local_path: str | None) -> Path | None:
@@ -208,6 +271,24 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
         preferred_lang=preferred_lang,
     )
     tags_by_artifact = _load_tags(conn, artifact_ids)
+    icon_path_cache: dict[str, Path | None] = {}
+    stat_label_cache: dict[tuple[int, str], str] = {}
+
+    def cached_icon_path(local_path: str | None) -> Path | None:
+        key = str(local_path or "")
+        if key not in icon_path_cache:
+            icon_path_cache[key] = _resolve_icon_path(local_path)
+        return icon_path_cache[key]
+
+    def cached_stat_label(property_type: int, fallback: str | None) -> str:
+        key = (int(property_type), str(fallback or ""))
+        if key not in stat_label_cache:
+            stat_label_cache[key] = localized_stat_label(
+                int(property_type),
+                language=preferred_lang,
+                fallback=fallback,
+            )
+        return stat_label_cache[key]
 
     result: list[ArtifactItem] = []
 
@@ -229,16 +310,15 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
                 rarity=int_or_none(row["rarity"]) or 0,
                 level=int_or_none(row["level"]) or 0,
                 main_property_type=int(row["main_property_type"]),
-                main_property_name=localized_stat_label(
+                main_property_name=cached_stat_label(
                     int(row["main_property_type"]),
-                    language=preferred_lang,
-                    fallback=row["main_property_name"],
+                    row["main_property_name"],
                 ),
                 main_property_value=row["main_property_value"],
                 icon_key=icon_key,
                 icon_url=row["set_icon_url"] or "",
-                icon_path=_resolve_icon_path(row["set_icon_local_path"]),
-                set_icon_path=_resolve_icon_path(row["set_flower_icon_local_path"]),
+                icon_path=cached_icon_path(row["set_icon_local_path"]),
+                set_icon_path=cached_icon_path(row["set_flower_icon_local_path"]),
                 character_name=row["character_name"] or "",
                 tags=tags_by_artifact.get(artifact_id, []),
                 substats=substats_by_artifact.get(artifact_id, []),
@@ -279,6 +359,17 @@ def _load_substats(
         artifact_id: []
         for artifact_id in artifact_ids
     }
+    stat_label_cache: dict[tuple[int, str], str] = {}
+
+    def cached_stat_label(property_type: int, fallback: str | None) -> str:
+        key = (int(property_type), str(fallback or ""))
+        if key not in stat_label_cache:
+            stat_label_cache[key] = localized_stat_label(
+                int(property_type),
+                language=preferred_lang,
+                fallback=fallback,
+            )
+        return stat_label_cache[key]
 
     for row in rows:
         artifact_id = int(row["artifact_id"])
@@ -286,10 +377,9 @@ def _load_substats(
             ArtifactSubstat(
                 slot_index=int(row["slot_index"]),
                 property_type=int(row["property_type"]),
-                property_name=localized_stat_label(
+                property_name=cached_stat_label(
                     int(row["property_type"]),
-                    language=preferred_lang,
-                    fallback=row["property_name"],
+                    row["property_name"],
                 ),
                 value=row["value"],
                 times=row["times"],
@@ -344,22 +434,25 @@ def list_custom_sets(
 
     with connect_db(db_path) as conn:
         init_db(conn)
-        rows = conn.execute(
-            """
-            SELECT
-                tags.id,
-                tags.name,
-                tags.color,
-                tags.sort_order,
-                COUNT(links.artifact_id) AS count
-            FROM artifact_tags AS tags
-            LEFT JOIN artifact_tag_links AS links
-                ON links.tag_id = tags.id
-            GROUP BY tags.id
-            ORDER BY tags.sort_order, tags.name COLLATE NOCASE
-            """
-        ).fetchall()
+        return _fetch_custom_sets(conn)
 
+
+def _fetch_custom_sets(conn) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT
+            tags.id,
+            tags.name,
+            tags.color,
+            tags.sort_order,
+            COUNT(links.artifact_id) AS count
+        FROM artifact_tags AS tags
+        LEFT JOIN artifact_tag_links AS links
+            ON links.tag_id = tags.id
+        GROUP BY tags.id
+        ORDER BY tags.sort_order, tags.name COLLATE NOCASE
+        """
+    ).fetchall()
     return [
         {
             "tag_id": int(row["id"]),

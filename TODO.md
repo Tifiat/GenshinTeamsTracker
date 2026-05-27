@@ -29,7 +29,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## Current Artifact Browser State
 
-- Artifact Browser is stable enough to stop treating it as a pure prototype, but direct main-UI integration should wait for the Run Workspace architecture below.
+- Artifact Browser is stable enough to stop treating it as a pure prototype. C1 embeds it as an AppShell left workspace, but artifact equip/apply and owner side icons are still future work.
 - Completed manual smoke passes: Build Target Selector, target persistence, build/target preview, JSON import/clear, build preset lifecycle, and custom sets.
 - Compact preset rows show set-bonus metadata, sands/goblet main-stat badge, and cached set-bonus icons.
 - Build preset inline rename focus is fixed: entering edit mode focuses the name field and selects text so typing/backspace works immediately without an extra click.
@@ -49,14 +49,14 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`;
   - finish/wire the reduced fixed-width right operations dock around `RightPanelPrototypeWidget`; it must not be user-resizable or expand with the window;
   - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
-  - add left workspace navigation / `QStackedWidget`;
+  - AppShell left workspace navigation exists with Character/Weapon and lazy-created Artifacts workspaces;
   - continue the production adapter: next step is richer `CharacterDetailsData` preparation and artifact build selection without raw JSON runtime reads;
   - keep roster clicks as quick-pick add/remove and right-panel slot clicks as selected build/details target toggle;
   - AppShell quick-pick marker latency is fixed with incremental visible-card marker updates; roster clicks now update markers immediately and defer/coalesce right-panel refreshes through a short scheduler;
   - AppShell filters now use session-cached character/weapon asset lists plus shared scaled roster/weapon pixmap caching; remaining performance work is to avoid recreating visible card widgets on filter changes, likely with hide/show or a virtualized/lazy grid if profiling still warrants it;
   - add future drag/swap for right-panel character cards within a team and between teams after quick-pick remains stable;
-  - embed Artifact Browser later with browse-only behavior when no target is selected and equip/apply behavior only when a target is selected;
-  - persistent account equipment Stage B is implemented for AppShell weapons: adding a character restores current weapon from SQLite, weapon clicks persist through `equip_weapon(...)`, equipment is per character not per mode, and slot removal does not unequip; next Stage B2 is to convert read-only current equipped artifact ids into a live artifact snapshot/display path without creating fake build presets;
+  - Artifact Browser C1 is embedded as the `Artifacts` workspace and reflects the right-panel selected operation target through target highlight/current-equipment zone; artifact click equip and preset apply remain future C2 work;
+  - persistent account equipment Stage B/B2 is implemented for AppShell: adding a character restores current weapon from SQLite, weapon clicks persist through `equip_weapon(...)`, equipment is per character not per mode, slot removal does not unequip, and current equipped artifact ids are converted into a runtime live snapshot for right-panel artifact stats/set bonuses without creating fake build presets;
   - Artifact Browser equipment UX is documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`: right-panel selected character can drive the browser operation target, the `Текущая сборка` zone is current equipment rather than a preset, preset apply is explicit, incomplete preset apply clears missing target slots, and owner side icons come from current equipment tables;
   - separate timer/run logic into a model/controller while keeping timer UI visually in the right operations dock;
   - reserve right operations dock future modes for import/settings/language controls and PvP draft/deck/opponent controls;
@@ -112,18 +112,21 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 ## 5. Artifact Browser Integration Into Main UI
 
 - Do not integrate Artifact Browser as a disconnected button. It should feed artifact builds/build presets into Team Builder and TeamCard.
-- The current Artifact Browser can still open as its own window, but main UI needs a clean path to select/use builds in teams.
+- The current Artifact Browser can still open as its own window. AppShell C1 also embeds it as the `Artifacts` left workspace with target/current-equipment UI scaffolding.
 - Preserve build presets as shared ownership categories, not "one build = one character".
 - A preset can belong to Universal and/or multiple character targets; selected target filters use intersection semantics and should not auto-include Universal unless Universal is selected.
 - Keep build data separate from visual skin/delegate rendering.
 - Future equip-context rule: keep one shared Artifact Browser with browse mode and equip mode for exactly one operation target, not one browser per TeamBuilder slot. Equip mode may later be docked/attached around the right panel, but selecting a preset only previews it; an explicit `Надеть пресет` action performs the equipment write.
 - Domain rule: current equipment is separate from build presets. A preset is a reusable definition; the live/free per-character equipment state is stored in persistent equipment tables.
-- Artifact Browser target/equip-mode UX is documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`. Equip mode is active only for exactly one operation target. Right-panel selected target wins when present; otherwise the browser may use exactly one selected character. With 0 or 2+ browser-selected characters, free artifact clicks do not equip.
+- Artifact Browser target/equip-mode UX is documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`. Equip mode is active only for exactly one operation target. Right-panel selected target wins when present; it initially syncs as the browser's single selected character so presets appear, and if the user deselects it in the browser it remains only as a secondary/background operation target. Without a right-panel target, the browser may use exactly one selected character. With 0 or 2+ browser-selected characters, free artifact clicks do not equip.
+- C1 status: embedded browser target selection/secondary marker and current-equipment/preset-apply scaffold exist; artifact clicks still do not call equipment writes, and preset apply is disabled/not wired.
 - `Текущая сборка` is a top current-equipment zone above presets, not an `artifact_build` preset. Selecting a preset previews it; `Надеть пресет` is the explicit action that copies preset artifacts into the operation target's current equipment.
+- Future current/preset zone UX: render the current equipment row like a compact preset row with plain text (`Текущий пресет` / `Текущая сборка`) and no dark button background, show current set bonuses/main-stat badge, omit edit/delete controls, change the label/action to `Надеть пресет` only when a saved preset is selected, and make repeated preset clicks deselect the preset.
 - Applying an incomplete preset clears the missing target slots so current equipment matches exactly what the preset shows. The applied preset name may be temporary UI-buffer text only and resets to `Текущая сборка` after manual artifact changes.
 - Manual artifact click in equip mode equips that artifact through the equipment service and does not mutate presets. In preset-edit mode, artifact clicks edit the preset only.
 - If a preset contains artifacts currently worn by other characters, show a compact confirmation with character side icons only before applying. Accepted apply uses equipment service move/swap semantics.
 - Artifact owner icons, preset owner icons, and weapon owner icons come from current equipment tables, not `artifact_build_targets`. Weapon owner icons must respect `weapon_fingerprint` + `known_count` without fake weapon instance ids.
+- Future weapon panel move/swap UI: when all known copies of a `weapon_fingerprint` are assigned, require an explicit current owner/source choice before moving or swapping. Do not silently steal an exhausted assigned weapon by fingerprint.
 
 ## 6. Abyss History / Seasons
 
@@ -227,6 +230,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Artifact-only build snapshot foundation exists in `hoyolab_export/artifact_build_snapshot.py`. It is explicit-input only: callers pass already-loaded raw build summaries/presets, and `CharacterStatSnapshot` carries the resulting artifact contribution without querying Artifact Browser DB/UI. Build id/name are provenance only; future saved runs still need actual artifact/build contents. Set bonus formulas, conditional bonuses, resonances, weapon passives, and final totals are still not applied.
 - Real Artifact Browser build snapshot smoke exists: `python -m hoyolab_export.artifact_build_snapshot_smoke --build-name test111` or `--build-id <id>`. It opens `data/artifacts.db` read-only, loads one selected build preset, converts the existing raw build summary into `ArtifactBuildSnapshot`, and can pass it into `CharacterStatSnapshot` as explicit artifact input. The `test111` smoke confirmed build id 20, four artifact slots, missing position 5, active 2+2 set metadata, CV 95.6, proc count 12. Build name is only acceptable for explicit smoke/debug selection; final UI/team-builder paths must pass `build_id`.
 - TeamCard / CharacterDetails backend data adapter exists in `hoyolab_export/team_card_data.py`. It accepts explicit selected account character + selected account weapon + prepared build snapshot, or an outer read-only build-id loader that converts the selected Artifact Browser preset to `ArtifactBuildSnapshot`. `CharacterStatSnapshot` remains DB/UI-free. `CharacterDetailsData` now carries selected character/weapon/build provenance, the snapshot/provenance layer, parsed HoYoLAB `account_stat_sheet` when raw account detail is supplied, HoYoWiki `ascension_bonus` reference data, warnings, and GCSIM-readiness notes.
+- Current-equipment artifact snapshot builder exists in `hoyolab_export/team_card_data.py`: `build_current_equipment_artifact_snapshot(...)` reads `account_character_equipped_artifacts`, reuses `calculate_raw_build_summary(..., slots=...)`, skips missing artifact rows softly with a warning, and returns a runtime-only `ArtifactBuildSnapshot` with `build_id=None`. AppShell uses it for right-panel artifact stats/set bonuses; it must not create or mutate `artifact_builds`, `artifact_build_slots`, or `artifact_build_targets`.
 - Real no-network `CharacterDetailsData` smoke exists: `python -m hoyolab_export.team_card_data_smoke --character-id 10000050 --weapon-id 13407 --weapon-level 70 --weapon-refinement 5 --weapon-promote-level 4 --build-id 20`. It reads SQLite account runtime storage and `data/artifacts.db` read-only, not raw account JSON. The smoke validates selected character + explicit observed weapon option + build id -> prepared details data with artifact contribution, while still not applying passives/set/resonance formulas.
 - Minimal backend TeamBuilder slot-state model exists in `run_workspace/team_builder.py`. It stores typed selections (`SelectedCharacterRef`, `SelectedWeaponRef`, `SelectedArtifactBuildRef`) instead of legacy image paths, supports set/clear/swap/move operations, detects duplicate selected characters, and can optionally carry prepared `CharacterDetailsData`. It does not replace the legacy right panel yet.
 - Isolated read-only TeamCard prototype exists: pure view-model in `run_workspace/team_card_view_model.py` plus isolated QWidget prototype in `ui/team_card_prototype.py`. Manual visual smoke launcher: `python -m ui.team_card_prototype_smoke` for real no-network `Тома` + build id 20, or `python -m ui.team_card_prototype_smoke --fake` for fake data. It consumes `TeamBuilderState` / optional `CharacterDetailsData`, displays four slots, empty placeholders, character/weapon/build labels, artifact summary, status, and compact warnings. It is not wired into the legacy right panel and is not the final Run Workspace UI.
@@ -387,6 +391,28 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Add color highlighting for build summary Crit Value and Proc Count later; choose thresholds/colors first.
 - Later unify reset controls in target selector, sort popup, and sets popup.
 - Future polish: make Sort popup and Sets popup selection behavior visually consistent with artifacts/targets/presets.
+- Artifact Browser geometry next step: implement a pure divmod/remainder adaptive
+  fit helper from the calibrated minimum layout (`GRID_SIZE.width()` artifact
+  cell, compact Assignment rows, fixed preset panel). Current calibration:
+  Assignment width 144px, target row about 94px, AppShell minimum about 1408px.
+  Do not use candidate-width search or guessed card/gap constants.
+- Future startup preload/cache concept, after real optimization work: prewarm
+  heavy tabs/widgets under the startup loader or a progress strip, including
+  Artifact Browser, Character/Weapon workspace, preset-edit controls, and
+  pixmap/text/marquee caches. Persistent caches should reduce loader time on
+  later launches. Do not use this loader as a substitute for fixing current
+  optimization or layout bugs.
+- Artifact Browser polish: give JSON import/clear controls a clean compact
+  placement/scaling behavior; they must not force the one-column artifact
+  viewport wider than one `GRID_SIZE.width()` cell.
+- Artifact Browser polish: shift the artifact grid overlay scrollbar visually
+  right by roughly one scrollbar width plus a small 1-5px margin, while keeping
+  it overlay-style and non-layout-consuming.
+- AppShell geometry polish: investigate horizontal resize crawl/jitter as a
+  top-level AppShell window movement/minimum-size propagation issue. Inspect
+  top-level geometry, `minimumSizeHint` propagation, `QStackedWidget` /
+  `LeftWorkspaceHost` constraints, and resize-settle behavior; do not treat it
+  as internal Assignment/preset panel jitter.
 - First-day/future patch: automatic proc counting for imported Artiscan artifacts.
 - Check other export/import services and compatibility.
 - Do not do final cleanup of old DB physical schema until the new browser path is stable.

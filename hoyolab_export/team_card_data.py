@@ -3,11 +3,16 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import closing
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 from urllib.parse import quote
 
+from .account_equipment import (
+    ARTIFACT_POS_BY_SLOT_KEY,
+    EquipmentError,
+    list_equipped_artifacts_for_character,
+)
 from .artifact_build_snapshot import (
     ArtifactBuildSnapshot,
     build_artifact_build_snapshot,
@@ -56,11 +61,13 @@ DATA_STATUS_UNSUPPORTED = "unsupported"
 DATA_STATUS_ERROR = "error"
 
 BUILD_IDENTITY_SOURCE_BUILD_ID = "build_id"
+BUILD_IDENTITY_SOURCE_CURRENT_EQUIPMENT = "current_equipment"
 BUILD_IDENTITY_SOURCE_NONE = "none"
 
 ERROR_BUILD_PRESET_NOT_FOUND = "build_preset_not_found"
 ERROR_INVALID_BUILD_ID = "invalid_build_id"
 
+WARNING_CURRENT_EQUIPMENT_ARTIFACT_MISSING = "current_equipment_artifact_missing"
 WARNING_ARTIFACT_BUILD_SNAPSHOT_MISSING_FOR_SELECTED_BUILD = (
     "artifact_build_snapshot_missing_for_selected_build"
 )
@@ -434,6 +441,129 @@ def load_artifact_build_snapshot_by_id(
         raw_summary = calculate_raw_build_summary(conn, build_id=build_id)
 
     return build_artifact_build_snapshot(raw_summary, build_preset=preset)
+
+
+def load_current_equipped_artifact_snapshot(
+    character_id: int | str,
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+    build_name: str = "Current Equipment",
+) -> ArtifactBuildSnapshot:
+    with closing(_connect_readonly_db(db_path)) as conn:
+        return build_current_equipment_artifact_snapshot(
+            conn,
+            character_id,
+            build_name=build_name,
+        )
+
+
+def build_current_equipment_artifact_snapshot(
+    conn: sqlite3.Connection,
+    character_id: int | str,
+    *,
+    build_name: str = "Current Equipment",
+) -> ArtifactBuildSnapshot:
+    try:
+        records = list_equipped_artifacts_for_character(conn, character_id)
+    except (EquipmentError, TypeError, ValueError):
+        records = ()
+
+    slots_by_pos: dict[int, int] = {}
+    for record in records:
+        pos = ARTIFACT_POS_BY_SLOT_KEY.get(record.slot_key)
+        if pos is None:
+            continue
+        slots_by_pos[int(pos)] = int(record.artifact_id)
+
+    existing_slots, slot_rows, missing_artifact_ids = _current_equipment_slot_rows(
+        conn,
+        slots_by_pos,
+    )
+    raw_summary = calculate_raw_build_summary(conn, slots=existing_slots)
+    snapshot = build_artifact_build_snapshot(
+        raw_summary,
+        build_preset={
+            "id": None,
+            "name": build_name,
+            "slots": slot_rows,
+        },
+    )
+    if missing_artifact_ids:
+        snapshot = replace(
+            snapshot,
+            warnings=tuple(
+                _dedupe(
+                    [
+                        *snapshot.warnings,
+                        WARNING_CURRENT_EQUIPMENT_ARTIFACT_MISSING,
+                    ]
+                )
+            ),
+        )
+    return snapshot
+
+
+def _current_equipment_slot_rows(
+    conn: sqlite3.Connection,
+    slots_by_pos: Mapping[int, int],
+) -> tuple[dict[int, int], list[dict[str, Any]], list[int]]:
+    if not slots_by_pos:
+        return {}, [], []
+
+    artifact_ids = sorted({int(artifact_id) for artifact_id in slots_by_pos.values()})
+    placeholders = ",".join("?" for _ in artifact_ids)
+    rows = conn.execute(
+        f"""
+        SELECT
+            id AS artifact_id,
+            name,
+            set_uid,
+            set_name,
+            pos,
+            pos_name,
+            rarity,
+            level,
+            main_property_type,
+            main_property_name,
+            main_property_value
+        FROM artifacts
+        WHERE id IN ({placeholders})
+        ORDER BY pos
+        """,
+        artifact_ids,
+    ).fetchall()
+    rows_by_id = {int(row["artifact_id"]): row for row in rows}
+    missing_artifact_ids = [
+        artifact_id
+        for artifact_id in artifact_ids
+        if artifact_id not in rows_by_id
+    ]
+    existing_slots = {
+        int(pos): int(artifact_id)
+        for pos, artifact_id in slots_by_pos.items()
+        if int(artifact_id) in rows_by_id
+    }
+    slot_rows = [
+        _artifact_slot_row_to_dict(rows_by_id[artifact_id])
+        for _pos, artifact_id in sorted(existing_slots.items())
+    ]
+    return existing_slots, slot_rows, missing_artifact_ids
+
+
+def _artifact_slot_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
+    return {
+        "pos": int(row["pos"]),
+        "artifact_id": int(row["artifact_id"]),
+        "name": row["name"] or "",
+        "set_uid": row["set_uid"] or "",
+        "set_name": row["set_name"] or "",
+        "pos_name": row["pos_name"] or "",
+        "rarity": int(row["rarity"] or 0),
+        "level": int(row["level"] or 0),
+        "main_property_type": row["main_property_type"],
+        "main_property_name": row["main_property_name"] or "",
+        "main_property_value": row["main_property_value"] or "",
+    }
 
 
 def unsupported_traveler_details_data(

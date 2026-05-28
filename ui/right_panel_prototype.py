@@ -899,11 +899,14 @@ def _build_mini_set_stack_pixmap(
     if not active_sets:
         return None
 
-    icons = [
-        _build_mini_set_icon_pixmap(item.icon_path)
-        for item in active_sets
-        if item.icon_path
-    ]
+    icons: list[QPixmap] = []
+    for item in active_sets:
+        if not item.icon_path:
+            continue
+        icon = _build_mini_set_icon_pixmap(item.icon_path)
+        if icon is not None and not icon.isNull():
+            icons.append(icon)
+
     if len(active_sets) == 2 and len(icons) == 2:
         composite = make_diagonal_split_pixmap(
             icons[0],
@@ -923,7 +926,9 @@ def _build_mini_set_stack_pixmap(
 
 
 def _build_mini_set_icon_pixmap(path: str) -> QPixmap | None:
-    pixmap = QPixmap(path)
+    if not path:
+        return None
+    pixmap = QPixmap(str(path))
     if pixmap.isNull():
         return None
     return scale_trimmed_pixmap_to_size(

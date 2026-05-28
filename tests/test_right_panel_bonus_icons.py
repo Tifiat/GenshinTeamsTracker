@@ -9,14 +9,21 @@ from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QColor, QImage, QPainter
 from PySide6.QtWidgets import QApplication, QLabel
 
-from run_workspace.right_panel_prototype_view_model import RightPanelBonusSourceDisplayItem
+from run_workspace.right_panel_prototype_view_model import (
+    RightPanelBonusSourceDisplayItem,
+    RightPanelBuildMiniSetViewModel,
+    build_right_panel_prototype_view_model,
+)
+from run_workspace.team_builder import create_empty_team_builder_state
 from ui.right_panel_prototype import (
     _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE,
     _BONUS_SOURCE_ICON_PIXMAP_CACHE,
     BonusSourceChipWidget,
+    RightPanelPrototypeWidget,
     _bonus_member_side_icon_pixmap,
     _bonus_source_tooltip_html,
     _bonus_source_icon_pixmap,
+    _build_mini_set_stack_pixmap,
 )
 
 

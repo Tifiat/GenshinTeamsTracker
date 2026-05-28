@@ -238,7 +238,11 @@ Stage 2 interaction status:
 - Current equipped artifact ids are read into `character_details_data` as
   read-only `current_equipped_artifact_ids_by_slot` metadata, then converted
   into a runtime-only current-equipment `ArtifactBuildSnapshot` for right-panel
-  artifact stat and set-bonus display. This does not create or mutate
+  artifact stat and set-bonus display. Right-panel artifact set icons should be
+  resolved from the same persistent artifact/set icon data used by Artifact
+  Browser rows; guessed set-icon paths are only a last fallback, and text labels
+  such as `2p`/`2+2` should appear only when icon assets are genuinely missing
+  or invalid. This does not create or mutate
   `artifact_builds`, `artifact_build_slots`, or `artifact_build_targets`.
 - The right panel is refreshed through `RightPanelPrototypeWidget.set_model(...)`
   after controller state changes.
@@ -356,6 +360,25 @@ Performance fix status:
   grid widget recreation on filter changes. Data load and pixmap scaling are no
   longer the dominant filter costs; the next safe step is hide/show or a
   virtualized/lazy grid if manual UX still feels slow.
+- Current smoothness priority: finish removing destructive or layout-changing
+  work from normal right-panel refreshes. Team/slot widgets already support
+  same-structure in-place updates; remaining twitch is expected from chamber,
+  selected details, action bar, bonus strip, set-bonus tooltip, and
+  minimal-to-hydrated selected-detail layout changes. Prefer skip-unchanged and
+  persistent child widgets before adding loading masks.
+- Next safe right-panel steps: skip unchanged chamber rows/actions/bonus-source
+  strips, cache mini set tooltip HTML by active-set key, avoid loading set bonus
+  descriptions in the first visible frame, and stabilize selected-details height
+  so hydration fills values without moving the rest of the panel.
+- Later performance steps: bulk prewarm persistent equipment/negative cache for
+  account characters, then staged/lazy Artifact Browser cold-start init with a
+  persistent store cache. Startup loaders/progress strips may hide cold work
+  only after the synchronous rebuild/layout problems are fixed.
+- Future right-panel slot drag/drop is feasible because `TeamBuilderState`
+  already supports whole-slot swap/move across teams. The UI should drag a full
+  slot payload, not just a portrait, so weapon/artifact/details move together;
+  resonances and team bonuses must be recalculated from the post-drop team
+  composition rather than copied as slot data.
 - Later startup preload/cache idea, after the actual layout/performance bugs are
   fixed: run heavy workspace/widget prewarm behind a startup loader or progress
   strip. Good candidates are Artifact Browser lazy construction, the

@@ -1248,11 +1248,13 @@ class AppShell(QWidget):
             target_ms = perf_ms(target_start)
             timings["operation_target_sync"] = target_ms
             self.schedule_weapon_filter_sync()
-            self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
             if result.added:
                 self.schedule_persistent_equipment_hydration(result)
             elif result.removed:
                 self.cancel_pending_equipment_hydration(result)
+                self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+            else:
+                self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
         log_perf(
             "character_click",
             total=perf_ms(total_start),

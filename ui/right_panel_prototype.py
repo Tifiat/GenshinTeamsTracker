@@ -310,6 +310,7 @@ class RightPanelSlotPrototypeWidget(QFrame):
     ):
         super().__init__(parent)
         self._model = model
+        self._model_key: tuple[object, ...] | None = None
         self._weapon_tooltip_controller = None
         self._warning_tooltip_controller = None
         self.setObjectName("SlotCard")
@@ -385,6 +386,29 @@ class RightPanelSlotPrototypeWidget(QFrame):
         self.set_model(model)
 
     def set_model(self, model: RightPanelSlotPrototypeViewModel) -> None:
+        model_key = (
+            model.team_index,
+            model.slot_index,
+            model.is_empty,
+            model.is_selected,
+            model.character_title,
+            model.portrait_label,
+            model.portrait_path,
+            model.weapon_square_label,
+            model.weapon_image_path,
+            model.weapon_tooltip,
+            model.artifact_square_label,
+            model.artifact_image_path,
+            tuple(model.build_mini_sets),
+            model.stat_badge,
+            model.warning_count,
+            model.warning_tooltip,
+        )
+        if model_key == self._model_key:
+            self._model = model
+            return
+
+        self._model_key = model_key
         self._model = model
         _set_object_name(self, "SlotCardSelected" if model.is_selected else "SlotCard")
 
@@ -452,11 +476,21 @@ class BuildMiniSetStackWidget(QLabel):
     ):
         super().__init__("", parent)
         self._tooltip_controller = None
+        self._model_key: tuple[object, ...] | None = None
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setFixedSize(SLOT_EQUIP_BOX_SIZE, SLOT_EQUIP_BOX_SIZE)
         self.set_model(model)
 
     def set_model(self, model: RightPanelSlotPrototypeViewModel) -> None:
+        model_key = (
+            model.artifact_square_label,
+            model.artifact_image_path,
+            tuple(model.build_mini_sets),
+        )
+        if model_key == self._model_key:
+            return
+
+        self._model_key = model_key
         is_missing = model.artifact_square_label in {"Equip", "Fix", "ART"}
         _set_object_name(self, "MiniEquipBoxMissing" if is_missing else "MiniEquipBox")
         self.clear()
@@ -487,6 +521,7 @@ class ChamberTableBlockWidget(QFrame):
         super().__init__(parent)
         self.setObjectName("InfoBlock")
         self._layout = QVBoxLayout(self)
+        self._rows_key: tuple[object, ...] | None = None
         self._layout.setContentsMargins(10, 10, 10, 10)
         self._layout.setSpacing(7)
 
@@ -498,6 +533,31 @@ class ChamberTableBlockWidget(QFrame):
         total_seconds: int,
         gcsim_status: RightPanelGcsimStatusViewModel,
     ) -> None:
+        rows_key = (
+            tuple(headers),
+            tuple(
+                (
+                    row.chamber_label,
+                    row.team1_time,
+                    row.team1_seconds,
+                    row.team2_time,
+                    row.team2_seconds,
+                    row.factual_team1,
+                    row.factual_team2,
+                    row.sim_team1,
+                    row.sim_team2,
+                    row.total_seconds,
+                )
+                for row in rows
+            ),
+            int(total_seconds),
+            gcsim_status.status,
+            gcsim_status.button_label,
+        )
+        if rows_key == self._rows_key:
+            return
+        self._rows_key = rows_key
+
         _clear_layout(self._layout)
 
         grid_container = QWidget()
@@ -751,6 +811,7 @@ class BonusSourceStripWidget(QFrame):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("BonusSourceStrip")
+        self._items_key: tuple[object, ...] | None = None
         self._external_bonuses_enabled = True
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         root = QHBoxLayout(self)
@@ -779,6 +840,11 @@ class BonusSourceStripWidget(QFrame):
         *,
         external_bonuses_enabled: bool,
     ) -> None:
+        items_key = _bonus_source_strip_key(items, external_bonuses_enabled)
+        if items_key == self._items_key:
+            return
+        self._items_key = items_key
+
         _clear_layout(self._layout)
         self._external_bonuses_enabled = bool(external_bonuses_enabled)
         self.setProperty("active", self._external_bonuses_enabled)
@@ -813,6 +879,31 @@ class BonusSourceStripWidget(QFrame):
                 self._toggle_external_bonuses()
                 return True
         return super().eventFilter(watched, event)
+
+
+def _bonus_source_strip_key(
+    items: tuple[RightPanelBonusSourceDisplayItem, ...],
+    external_bonuses_enabled: bool,
+) -> tuple[object, ...]:
+    return (
+        bool(external_bonuses_enabled),
+        tuple(
+            (
+                item.source_kind,
+                item.source_id,
+                item.label,
+                item.icon_path,
+                tuple(item.short_effects),
+                item.tooltip_title,
+                item.tooltip_body,
+                bool(item.applied),
+                item.not_applied_reason,
+                tuple(item.character_icons),
+                tuple(item.character_tooltips),
+            )
+            for item in items
+        ),
+    )
 
 
 class BonusSourceChipWidget(QFrame):
@@ -953,12 +1044,17 @@ class ActionBarPrototypeWidget(QFrame):
     ):
         super().__init__(parent)
         self.setObjectName("ActionBar")
+        self._labels: tuple[str, ...] | None = None
         self._layout = QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
         self._layout.setSpacing(8)
         self.set_labels(labels)
 
     def set_labels(self, labels: tuple[str, ...]) -> None:
+        labels = tuple(labels)
+        if labels == self._labels:
+            return
+        self._labels = labels
         _clear_layout(self._layout)
         standard_icons = [
             QStyle.StandardPixmap.SP_BrowserReload,

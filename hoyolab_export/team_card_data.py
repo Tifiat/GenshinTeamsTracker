@@ -515,20 +515,31 @@ def _current_equipment_slot_rows(
     rows = conn.execute(
         f"""
         SELECT
-            id AS artifact_id,
-            name,
-            set_uid,
-            set_name,
-            pos,
-            pos_name,
-            rarity,
-            level,
-            main_property_type,
-            main_property_name,
-            main_property_value
+            artifacts.id AS artifact_id,
+            artifacts.name,
+            artifacts.set_uid,
+            artifacts.set_name,
+            artifacts.pos,
+            artifacts.pos_name,
+            artifacts.rarity,
+            artifacts.level,
+            artifacts.main_property_type,
+            artifacts.main_property_name,
+            artifacts.main_property_value,
+            COALESCE(
+                set_flower_icons.local_path,
+                set_icons.local_path,
+                ''
+            ) AS set_icon_path
         FROM artifacts
-        WHERE id IN ({placeholders})
-        ORDER BY pos
+        LEFT JOIN artifact_set_piece_icons AS set_icons
+            ON set_icons.set_uid = artifacts.set_uid
+            AND set_icons.pos = artifacts.pos
+        LEFT JOIN artifact_set_piece_icons AS set_flower_icons
+            ON set_flower_icons.set_uid = artifacts.set_uid
+            AND set_flower_icons.pos = 1
+        WHERE artifacts.id IN ({placeholders})
+        ORDER BY artifacts.pos
         """,
         artifact_ids,
     ).fetchall()
@@ -557,6 +568,7 @@ def _artifact_slot_row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
         "name": row["name"] or "",
         "set_uid": row["set_uid"] or "",
         "set_name": row["set_name"] or "",
+        "set_icon_path": row["set_icon_path"] or "",
         "pos_name": row["pos_name"] or "",
         "rarity": int(row["rarity"] or 0),
         "level": int(row["level"] or 0),

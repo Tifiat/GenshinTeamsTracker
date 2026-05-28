@@ -25,6 +25,7 @@ class ArtifactBuildSlotSnapshot:
     name: str = ""
     set_uid: str = ""
     set_name: str = ""
+    set_icon_path: str = ""
     rarity: int | None = None
     level: int | None = None
     main_property_type: int | None = None
@@ -38,6 +39,7 @@ class ArtifactBuildSlotSnapshot:
             "name": self.name,
             "set_uid": self.set_uid,
             "set_name": self.set_name,
+            "set_icon_path": self.set_icon_path,
             "rarity": self.rarity,
             "level": self.level,
             "main_property_type": self.main_property_type,
@@ -201,6 +203,7 @@ def _slots_from_build_preset(
                 name=_text(slot.get("name")),
                 set_uid=_text(slot.get("set_uid")),
                 set_name=_text(slot.get("set_name")),
+                set_icon_path=_text(slot.get("set_icon_path")),
                 rarity=_optional_int(slot.get("rarity")),
                 level=_optional_int(slot.get("level")),
                 main_property_type=_optional_int(slot.get("main_property_type")),

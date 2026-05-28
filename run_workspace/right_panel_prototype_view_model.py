@@ -1121,12 +1121,19 @@ def _image_path(details: Mapping[str, Any], *keys: str) -> str:
 
 
 def _build_mini_sets(details: Mapping[str, Any]) -> list[RightPanelBuildMiniSetViewModel]:
+    summary = _artifact_summary_mapping(details)
+    icon_paths_by_set_uid = _set_icon_paths_from_summary_slots(summary)
+
     explicit = details.get("build_mini_sets")
     if isinstance(explicit, list):
-        rows = [_build_mini_set_from_mapping(item) for item in explicit]
-        return [row for row in rows if row is not None]
+        rows: list[RightPanelBuildMiniSetViewModel] = []
+        for item in explicit:
+            row = _build_mini_set_from_mapping(item)
+            if row is not None:
+                row = _with_mini_set_icon_path(row, icon_paths_by_set_uid)
+                rows.append(row)
+        return rows
 
-    summary = _artifact_summary_mapping(details)
     icon_paths_by_set_uid = _set_icon_paths_from_summary_slots(summary)
     active_sets = summary.get("active_set_bonuses")
     if not isinstance(active_sets, list):
@@ -1186,18 +1193,18 @@ def _with_mini_set_icon_path(
     row: RightPanelBuildMiniSetViewModel,
     icon_paths_by_set_uid: Mapping[str, str],
 ) -> RightPanelBuildMiniSetViewModel:
-    if row.icon_path:
-        return row
-    icon_path = _text(icon_paths_by_set_uid.get(row.set_uid))
+    icon_path = _text(icon_paths_by_set_uid.get(row.set_uid)) or row.icon_path
     if not icon_path:
         return row
-    return RightPanelBuildMiniSetViewModel(
+    if icon_path != row.icon_path:
+        return RightPanelBuildMiniSetViewModel(
         set_uid=row.set_uid,
         set_name=row.set_name,
         piece_count=row.piece_count,
         owned_count=row.owned_count,
         icon_path=icon_path,
     )
+    return row
 
 
 def _artifact_set_icon_path(set_uid: str) -> str:

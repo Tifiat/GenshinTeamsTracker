@@ -74,6 +74,7 @@ _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE: dict[
 ] = {}
 BONUS_MEMBER_ICON_SCALE = 125
 BONUS_MEMBER_ICON_BOTTOM_PADDING = 0
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class RightPanelPrototypeWidget(QWidget):
@@ -928,7 +929,8 @@ def _build_mini_set_stack_pixmap(
 def _build_mini_set_icon_pixmap(path: str) -> QPixmap | None:
     if not path:
         return None
-    pixmap = QPixmap(str(path))
+    resolved = _resolve_pixmap_path(path)
+    pixmap = QPixmap(str(resolved))
     if pixmap.isNull():
         return None
     return scale_trimmed_pixmap_to_size(
@@ -1069,7 +1071,7 @@ def _bonus_source_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
     if not path:
         return None
     try:
-        resolved = Path(path)
+        resolved = _resolve_pixmap_path(path)
         stat = resolved.stat()
         key = (
             str(resolved),
@@ -1085,7 +1087,7 @@ def _bonus_source_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
         cached = _BONUS_SOURCE_ICON_PIXMAP_CACHE[key]
         return QPixmap(cached) if cached is not None else None
 
-    source = QPixmap(str(path))
+    source = QPixmap(str(resolved))
     if source.isNull():
         _BONUS_SOURCE_ICON_PIXMAP_CACHE[key] = None
         return None
@@ -1099,6 +1101,16 @@ def _bonus_source_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
     )
     _BONUS_SOURCE_ICON_PIXMAP_CACHE[key] = QPixmap(pixmap)
     return pixmap
+
+
+def _resolve_pixmap_path(path: str) -> Path:
+    resolved = Path(path)
+    if resolved.is_absolute():
+        return resolved
+    project_path = _PROJECT_ROOT / resolved
+    if project_path.is_file():
+        return project_path
+    return resolved
 
 
 def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:

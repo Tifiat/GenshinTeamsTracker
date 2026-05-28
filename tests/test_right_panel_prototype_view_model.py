@@ -212,6 +212,10 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertEqual(len(first.build_mini_sets), 1)
         self.assertEqual(first.build_mini_sets[0].set_uid, "NoblesseOblige")
         self.assertEqual(first.build_mini_sets[0].piece_count, 4)
+        self.assertEqual(
+            first.build_mini_sets[0].icon_path,
+            "assets/artifact_sets/NoblesseOblige_1.png",
+        )
         self.assertEqual(second.build_mini_sets, ())
 
     def test_stat_badge_uses_selected_build_sands_and_goblet_slots(self) -> None:

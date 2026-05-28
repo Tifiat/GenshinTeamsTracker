@@ -1149,7 +1149,7 @@ def _build_mini_set_from_mapping(
     owned_count = _optional_int(item.get("owned_count")) or piece_count
     set_name = _text(item.get("set_name"))
     set_uid = _text(item.get("set_uid"))
-    icon_path = _text(item.get("icon_path"))
+    icon_path = _text(item.get("icon_path")) or _artifact_set_icon_path(set_uid)
     if piece_count <= 0 or not (set_name or set_uid):
         return None
     return RightPanelBuildMiniSetViewModel(
@@ -1159,6 +1159,16 @@ def _build_mini_set_from_mapping(
         owned_count=owned_count,
         icon_path=icon_path,
     )
+
+
+def _artifact_set_icon_path(set_uid: str) -> str:
+    set_uid = _text(set_uid)
+    if not set_uid:
+        return ""
+    path = Path("assets") / "artifact_sets" / f"{set_uid}_1.png"
+    if (PROJECT_ROOT / path).is_file():
+        return path.as_posix()
+    return ""
 
 
 def _artifact_summary_mapping(details: Mapping[str, Any]) -> dict[str, Any]:

@@ -338,6 +338,33 @@ class AppShellController:
             "slot_index": self.selected_slot_index,
         }
 
+    def refresh_persistent_equipment_for_character(self, character_id: int | str) -> bool:
+        character_id_text = _text(character_id)
+        if not character_id_text:
+            return False
+        slot_location = self._find_character_slot(character_id_text)
+        if slot_location is None:
+            return False
+        team_index, slot_index = slot_location
+        slot = self.state.team(team_index).slot(slot_index)
+        if slot.character is None:
+            return False
+        details = _mapping(slot.character_details_data)
+        character = _mapping(details.get("account_character")) or slot.character.to_dict()
+        asset_path = _text(
+            details.get("portrait_path")
+            or character.get("local_portrait_path")
+            or character.get("portrait_path")
+        )
+        self._set_character_with_persistent_equipment(
+            team_index,
+            slot_index,
+            character,
+            asset_path=asset_path,
+        )
+        self._store_current_mode_state()
+        return True
+
     def roster_selection_markers(self) -> dict[str, RosterSelectionMarker]:
         markers: dict[str, RosterSelectionMarker] = {}
         for team_index, team in enumerate(self.state.teams):
@@ -542,7 +569,10 @@ class AppShell(QWidget):
         root.setContentsMargins(6, 6, 6, 6)
         root.setSpacing(4)
 
-        self.left_host = LeftWorkspaceHost()
+        self.left_host = LeftWorkspaceHost(
+            artifact_db_path=self.controller.equipment_db_path,
+            artifact_equipment_changed=self._on_artifact_browser_equipment_changed,
+        )
         root.addWidget(self.left_host, 1)
 
         self.right_panel = RightPanelPrototypeWidget(self.controller.right_panel_model())
@@ -683,6 +713,26 @@ class AppShell(QWidget):
             self.controller.selected_operation_target()
         )
 
+    def _on_artifact_browser_equipment_changed(self, result: object) -> None:
+        affected_ids = {
+            str(character_id)
+            for character_id in getattr(result, "affected_character_ids", ()) or ()
+            if str(character_id)
+        }
+        if not affected_ids:
+            target = self.controller.selected_operation_target()
+            if target is not None and target.get("character_id") is not None:
+                affected_ids.add(str(target["character_id"]))
+
+        refreshed = False
+        for character_id in affected_ids:
+            refreshed = (
+                self.controller.refresh_persistent_equipment_for_character(character_id)
+                or refreshed
+            )
+        if refreshed:
+            self.schedule_right_panel_refresh()
+
     def _refresh_right_panel(self) -> dict[str, float]:
         total_start = perf_now()
         vm_start = perf_now()
@@ -819,8 +869,16 @@ class AppShell(QWidget):
 
 
 class LeftWorkspaceHost(QWidget):
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        artifact_db_path: str | Path = ARTIFACT_DB_PATH,
+        artifact_equipment_changed=None,
+    ) -> None:
         super().__init__(parent)
+        self.artifact_db_path = artifact_db_path
+        self.artifact_equipment_changed = artifact_equipment_changed
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
@@ -887,11 +945,17 @@ class LeftWorkspaceHost(QWidget):
         from ui.artifact_browser.window import ArtifactBrowserWindow
 
         create_start = perf_now()
-        browser = ArtifactBrowserWindow(parent=self.stack, embedded=True)
+        browser = ArtifactBrowserWindow(
+            parent=self.stack,
+            embedded=True,
+            db_path=self.artifact_db_path,
+        )
         self.stack.removeWidget(self.artifact_browser_placeholder)
         self.artifact_browser_placeholder.deleteLater()
         self.stack.insertWidget(self.artifact_browser_index, browser)
         self.artifact_browser_workspace = browser
+        if self.artifact_equipment_changed is not None:
+            browser.equipment_changed.connect(self.artifact_equipment_changed)
         browser.set_right_panel_operation_target(
             self._pending_artifact_right_panel_target
         )

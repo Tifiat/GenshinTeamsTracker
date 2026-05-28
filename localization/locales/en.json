@@ -213,6 +213,7 @@
   "artifact.equipment.target_right_panel": "Equipment: {name}",
   "artifact.equipment.target_browser": "Equipment: {name}",
   "artifact.equipment.apply_preset": "Equip preset",
+  "artifact.equipment.conflict_confirm": "This will change equipment for these characters:",
   "artifact.equipment.not_wired": "Artifact equip is not wired yet.",
   "artifact.build.new": "+ New preset",
   "artifact.build.name": "Name",

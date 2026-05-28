@@ -13,9 +13,16 @@ from PySide6.QtWidgets import QApplication, QStyleOptionButton, QWidget
 from hoyolab_export.account_equipment import (
     equip_artifact,
     equip_weapon,
+    get_equipped_artifact_owner,
     get_equipped_weapon_for_character,
+    list_equipped_artifacts_for_character,
 )
-from hoyolab_export.artifact_db import connect_db, init_db
+from hoyolab_export.artifact_db import (
+    connect_db,
+    create_build_preset,
+    get_artifact_build_slots,
+    init_db,
+)
 from ui.app_shell import (
     AppShell,
     AppShellController,
@@ -27,10 +34,15 @@ from ui.app_shell import (
 )
 from ui.artifact_browser.card_delegate import GRID_SIZE
 from ui.artifact_browser.window import (
+    ARTIFACT_GRID_FIT_PADDING,
     ArtifactBrowserWindow,
     BUILD_PANEL_WIDTH,
+    BUILD_TARGET_UNIVERSAL_KEY,
+    CONTENT_LAYOUT_SPACING,
     EDIT_MODE_BUILD_PRESET,
+    TARGET_PANEL_MIN_WIDTH,
     TARGET_PANEL_WIDTH,
+    calculate_assignment_width_fit,
 )
 from run_workspace.perf import perf_enabled
 from localization import tr
@@ -66,6 +78,90 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.minimumWidth(), RIGHT_OPERATIONS_DOCK_WIDTH)
         self.assertEqual(shell.right_dock.sizePolicy().horizontalPolicy().name, "Fixed")
 
+    def test_assignment_width_fit_minimum_one_column(self) -> None:
+        fixed_gaps = CONTENT_LAYOUT_SPACING * 2 + 4
+        content_width = (
+            BUILD_PANEL_WIDTH
+            + fixed_gaps
+            + TARGET_PANEL_MIN_WIDTH
+            + GRID_SIZE.width()
+        )
+
+        fit = calculate_assignment_width_fit(
+            content_width=content_width,
+            preset_panel_width=BUILD_PANEL_WIDTH,
+            fixed_internal_gaps=fixed_gaps,
+            assignment_min_width=TARGET_PANEL_MIN_WIDTH,
+            column_step=GRID_SIZE.width(),
+        )
+
+        assert fit is not None
+        self.assertEqual(fit.columns, 1)
+        self.assertEqual(fit.remainder, 0)
+        self.assertEqual(fit.assignment_width, TARGET_PANEL_MIN_WIDTH)
+        self.assertLessEqual(fit.total_used_width, content_width)
+
+    def test_assignment_width_fit_sends_1440_like_extra_to_assignment(self) -> None:
+        fixed_gaps = CONTENT_LAYOUT_SPACING * 2 + 4
+        extra_width = 32
+        content_width = (
+            BUILD_PANEL_WIDTH
+            + fixed_gaps
+            + TARGET_PANEL_MIN_WIDTH
+            + GRID_SIZE.width()
+            + extra_width
+        )
+
+        fit = calculate_assignment_width_fit(
+            content_width=content_width,
+            preset_panel_width=BUILD_PANEL_WIDTH,
+            fixed_internal_gaps=fixed_gaps,
+            assignment_min_width=TARGET_PANEL_MIN_WIDTH,
+            column_step=GRID_SIZE.width(),
+        )
+
+        assert fit is not None
+        self.assertEqual(fit.columns, 1)
+        self.assertEqual(fit.remainder, extra_width)
+        self.assertEqual(fit.assignment_width, TARGET_PANEL_MIN_WIDTH + extra_width)
+        self.assertLessEqual(fit.total_used_width, content_width)
+
+    def test_assignment_width_fit_transitions_to_two_and_three_columns(self) -> None:
+        fixed_gaps = CONTENT_LAYOUT_SPACING * 2 + 4
+        for columns in (2, 3):
+            with self.subTest(columns=columns):
+                content_width = (
+                    BUILD_PANEL_WIDTH
+                    + fixed_gaps
+                    + TARGET_PANEL_MIN_WIDTH
+                    + GRID_SIZE.width() * columns
+                )
+
+                fit = calculate_assignment_width_fit(
+                    content_width=content_width,
+                    preset_panel_width=BUILD_PANEL_WIDTH,
+                    fixed_internal_gaps=fixed_gaps,
+                    assignment_min_width=TARGET_PANEL_MIN_WIDTH,
+                    column_step=GRID_SIZE.width(),
+                )
+
+                assert fit is not None
+                self.assertEqual(fit.columns, columns)
+                self.assertEqual(fit.remainder, 0)
+                self.assertEqual(fit.assignment_width, TARGET_PANEL_MIN_WIDTH)
+                self.assertLessEqual(fit.total_used_width, content_width)
+
+    def test_assignment_width_fit_never_returns_assignment_below_min(self) -> None:
+        fit = calculate_assignment_width_fit(
+            content_width=BUILD_PANEL_WIDTH + TARGET_PANEL_MIN_WIDTH,
+            preset_panel_width=BUILD_PANEL_WIDTH,
+            fixed_internal_gaps=0,
+            assignment_min_width=TARGET_PANEL_MIN_WIDTH,
+            column_step=GRID_SIZE.width(),
+        )
+
+        self.assertIsNone(fit)
+
     def test_artifact_workspace_can_be_created_and_switched_to(self) -> None:
         shell = AppShell()
 
@@ -100,14 +196,111 @@ class AppShellTest(unittest.TestCase):
         viewport_width = browser.list_view.viewport().width()
         self.assertGreaterEqual(viewport_width, GRID_SIZE.width())
         self.assertLessEqual(viewport_width, GRID_SIZE.width() + 8)
+        spacing = max(0, browser.content_layout.spacing())
+        viewport_chrome_width = max(
+            0,
+            browser.list_view.width() - browser.list_view.viewport().width(),
+        )
+        fit = calculate_assignment_width_fit(
+            content_width=browser.content_layout.geometry().width(),
+            preset_panel_width=browser.build_panel.width(),
+            fixed_internal_gaps=(
+                spacing * 2
+                + viewport_chrome_width
+                + ARTIFACT_GRID_FIT_PADDING
+            ),
+            assignment_min_width=TARGET_PANEL_MIN_WIDTH,
+            column_step=GRID_SIZE.width(),
+        )
         self.assertGreaterEqual(
             browser.build_target_panel.width(),
             browser.build_target_panel.minimumSizeHint().width(),
         )
-        self.assertEqual(browser.build_target_panel.width(), TARGET_PANEL_WIDTH)
-        self.assertLess(browser.build_target_panel.width(), 180)
+        if fit is not None:
+            self.assertEqual(fit.columns, 1)
+            self.assertEqual(browser.build_target_panel.width(), fit.assignment_width)
+        else:
+            self.assertEqual(browser.build_target_panel.width(), TARGET_PANEL_MIN_WIDTH)
+        self.assertLess(
+            browser.build_target_panel.width(),
+            TARGET_PANEL_MIN_WIDTH + GRID_SIZE.width(),
+        )
         self.assertEqual(browser.build_panel.width(), BUILD_PANEL_WIDTH)
 
+        content_right = (
+            browser.content_layout.geometry().x()
+            + browser.content_layout.geometry().width()
+        )
+        for index in range(browser.content_layout.count()):
+            widget = browser.content_layout.itemAt(index).widget()
+            assert widget is not None
+            self.assertLessEqual(widget.geometry().x() + widget.width(), content_right)
+
+        shell.close()
+        self._app.processEvents()
+
+    def test_artifact_browser_assignment_fit_keeps_children_inside_content(self) -> None:
+        shell = AppShell()
+        shell.move(0, 0)
+        shell.resize(1440, 900)
+        shell.show()
+        self._app.processEvents()
+        shell.left_host.show_artifact_browser_workspace()
+        self._app.processEvents()
+        browser = shell.left_host.artifact_browser_workspace
+        assert browser is not None
+
+        browser.update_adaptive_target_panel_width()
+        self._app.processEvents()
+
+        self.assertEqual(browser.build_panel.width(), BUILD_PANEL_WIDTH)
+        self.assertGreaterEqual(browser.build_target_panel.width(), TARGET_PANEL_MIN_WIDTH)
+        self.assertLess(
+            browser.build_target_panel.width(),
+            TARGET_PANEL_MIN_WIDTH + GRID_SIZE.width(),
+        )
+        content_right = (
+            browser.content_layout.geometry().x()
+            + browser.content_layout.geometry().width()
+        )
+        for index in range(browser.content_layout.count()):
+            widget = browser.content_layout.itemAt(index).widget()
+            assert widget is not None
+            self.assertLessEqual(widget.geometry().x() + widget.width(), content_right)
+
+        shell.close()
+        self._app.processEvents()
+
+    def test_artifact_browser_expanded_assignment_does_not_block_shrink(self) -> None:
+        shell = AppShell()
+        shell.move(0, 0)
+        shell.resize(1700, 900)
+        shell.show()
+        self._app.processEvents()
+        shell.left_host.show_artifact_browser_workspace()
+        self._app.processEvents()
+        browser = shell.left_host.artifact_browser_workspace
+        assert browser is not None
+
+        browser.update_adaptive_target_panel_width()
+        self._app.processEvents()
+
+        expanded_width = browser.build_target_panel.width()
+        expanded_shell_min = shell.minimumSizeHint().width()
+        self.assertGreater(expanded_width, TARGET_PANEL_MIN_WIDTH)
+        self.assertEqual(browser.build_target_panel.minimumWidth(), TARGET_PANEL_MIN_WIDTH)
+        self.assertEqual(browser.build_target_panel.minimumSizeHint().width(), TARGET_PANEL_MIN_WIDTH)
+        self.assertEqual(browser.build_panel.width(), BUILD_PANEL_WIDTH)
+
+        shell.resize(expanded_shell_min, shell.height())
+        self._app.processEvents()
+        browser.update_adaptive_target_panel_width()
+        self._app.processEvents()
+
+        self.assertEqual(shell.minimumSizeHint().width(), expanded_shell_min)
+        self.assertLessEqual(browser.build_target_panel.width(), expanded_width)
+        self.assertEqual(browser.build_target_panel.minimumWidth(), TARGET_PANEL_MIN_WIDTH)
+        self.assertEqual(browser.build_panel.width(), BUILD_PANEL_WIDTH)
         content_right = (
             browser.content_layout.geometry().x()
             + browser.content_layout.geometry().width()
@@ -184,8 +377,11 @@ class AppShellTest(unittest.TestCase):
         self.assertIsInstance(browser.clear_json_button, MarqueeButton)
         assert browser.import_json_button is not None
         assert browser.clear_json_button is not None
+        assert browser.json_action_row_widget is not None
         self.assertEqual(browser.import_json_button.sizeHint().width(), 0)
         self.assertEqual(browser.clear_json_button.sizeHint().width(), 0)
+        self.assertEqual(browser.json_action_row_widget.minimumWidth(), GRID_SIZE.width())
+        self.assertEqual(browser.json_action_row_widget.sizeHint().width(), GRID_SIZE.width())
         self.assertLessEqual(
             browser.import_json_button.minimumWidth(),
             GRID_SIZE.width() // 2,
@@ -194,6 +390,53 @@ class AppShellTest(unittest.TestCase):
             browser.clear_json_button.minimumWidth(),
             GRID_SIZE.width() // 2,
         )
+
+    def test_artifact_browser_json_buttons_expand_at_two_columns(self) -> None:
+        shell = AppShell()
+        shell.move(0, 0)
+        shell.resize(1700, 900)
+        shell.show()
+        self._app.processEvents()
+        shell.left_host.show_artifact_browser_workspace()
+        self._app.processEvents()
+        browser = shell.left_host.artifact_browser_workspace
+        assert browser is not None
+        assert browser.import_json_button is not None
+        assert browser.clear_json_button is not None
+        assert browser.json_action_row_widget is not None
+
+        browser.update_adaptive_target_panel_width()
+        self._app.processEvents()
+
+        self.assertGreaterEqual(browser._artifact_column_count, 2)
+        self.assertGreaterEqual(
+            browser.json_action_row_widget.width(),
+            GRID_SIZE.width() * browser._artifact_column_count,
+        )
+        self.assertEqual(browser.json_action_row_widget.minimumWidth(), GRID_SIZE.width())
+        self.assertEqual(
+            browser.json_action_row_widget.sizeHint().width(),
+            GRID_SIZE.width() * browser._artifact_column_count,
+        )
+        self.assertGreater(browser.import_json_button.width(), GRID_SIZE.width() // 2)
+        self.assertGreater(browser.clear_json_button.width(), GRID_SIZE.width() // 2)
+        self.assertEqual(browser.build_panel.width(), BUILD_PANEL_WIDTH)
+        self.assertGreaterEqual(browser.build_target_panel.width(), TARGET_PANEL_MIN_WIDTH)
+
+        shell.resize(shell.minimumSizeHint().width(), shell.height())
+        self._app.processEvents()
+        browser.update_adaptive_target_panel_width()
+        self._app.processEvents()
+
+        self.assertEqual(browser._artifact_column_count, 1)
+        self.assertEqual(browser.json_action_row_widget.width(), GRID_SIZE.width())
+        self.assertLessEqual(browser.import_json_button.width(), GRID_SIZE.width() // 2)
+        self.assertLessEqual(browser.clear_json_button.width(), GRID_SIZE.width() // 2)
+        self.assertEqual(browser.build_panel.width(), BUILD_PANEL_WIDTH)
+        self.assertGreaterEqual(browser.build_target_panel.width(), TARGET_PANEL_MIN_WIDTH)
+
+        shell.close()
+        self._app.processEvents()
 
     def test_artifact_browser_json_buttons_become_edit_actions_without_layout_jump(self) -> None:
         browser = ArtifactBrowserWindow(embedded=True)
@@ -393,6 +636,98 @@ class AppShellTest(unittest.TestCase):
 
         self.assertFalse(browser.equip_mode_enabled)
 
+    def test_assignment_only_target_updates_current_equipment_preview(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_artifact(conn, 10000050, 1)
+                conn.commit()
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+            browser.build_target_items_by_key["character:10000050"] = {
+                "key": "character:10000050",
+                "target_type": "character",
+                "character_id": 10000050,
+                "character_name": "Thoma",
+            }
+
+            browser.selected_build_target_keys = {"character:10000050"}
+            browser.update_build_panel()
+            browser.update_edit_selection_mode()
+
+            self.assertEqual(browser.operation_target_character_id, 10000050)
+            self.assertEqual(browser.operation_target_source, "artifact_browser")
+            self.assertEqual(browser.current_equipment_preview_slots, {1: 1})
+            self.assertEqual(browser.current_build_artifact_ids(), {1})
+            self.assertEqual(browser.delegate.edit_selection_artifact_ids, {1})
+
+    def test_assignment_without_single_character_shows_placeholders(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_artifact(conn, 10000050, 1)
+                equip_artifact(conn, 10000089, 2)
+                conn.commit()
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+            browser.build_target_items_by_key["character:10000050"] = {
+                "key": "character:10000050",
+                "target_type": "character",
+                "character_id": 10000050,
+                "character_name": "Thoma",
+            }
+            browser.build_target_items_by_key["character:10000089"] = {
+                "key": "character:10000089",
+                "target_type": "character",
+                "character_id": 10000089,
+                "character_name": "Furina",
+            }
+
+            for selected_keys in (
+                set(),
+                {BUILD_TARGET_UNIVERSAL_KEY},
+                {"character:10000050", "character:10000089"},
+            ):
+                with self.subTest(selected_keys=selected_keys):
+                    browser.selected_build_target_keys = set(selected_keys)
+                    browser.update_build_panel()
+                    browser.update_edit_selection_mode()
+
+                    self.assertFalse(browser.equip_mode_enabled)
+                    self.assertIsNone(browser.operation_target_character_id)
+                    self.assertEqual(browser.current_equipment_preview_slots, {})
+                    self.assertEqual(browser.current_build_artifact_ids(), set())
+                    self.assertEqual(browser.delegate.edit_selection_artifact_ids, set())
+
+    def test_right_panel_target_overrides_assignment_for_current_equipment_preview(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_artifact(conn, 10000050, 1)
+                equip_artifact(conn, 10000089, 2)
+                conn.commit()
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+            browser.build_target_items_by_key["character:10000089"] = {
+                "key": "character:10000089",
+                "target_type": "character",
+                "character_id": 10000089,
+                "character_name": "Furina",
+            }
+            browser.set_right_panel_operation_target(
+                {"character_id": 10000050, "character_name": "Thoma"}
+            )
+
+            for selected_keys in (
+                set(),
+                {"character:10000050", "character:10000089"},
+            ):
+                with self.subTest(selected_keys=selected_keys):
+                    browser.selected_build_target_keys = set(selected_keys)
+                    browser.update_build_panel()
+                    browser.update_edit_selection_mode()
+
+                    self.assertTrue(browser.equip_mode_enabled)
+                    self.assertEqual(browser.operation_target_character_id, 10000050)
+                    self.assertEqual(browser.operation_target_source, "right_panel")
+                    self.assertEqual(browser.current_equipment_preview_slots, {1: 1})
+                    self.assertEqual(browser.current_build_artifact_ids(), {1})
+                    self.assertEqual(browser.delegate.edit_selection_artifact_ids, {1})
+
     def test_artifact_browser_current_equipment_zone_scaffold(self) -> None:
         browser = ArtifactBrowserWindow(embedded=True)
 
@@ -412,10 +747,350 @@ class AppShellTest(unittest.TestCase):
         browser.update_build_panel()
 
         self.assertEqual(
-            browser.equipment_zone_label.text(),
+            browser.equipment_zone_action_button.text(),
             tr("artifact.equipment.apply_preset"),
         )
-        self.assertFalse(browser.equipment_zone_action_button.isEnabled())
+        self.assertTrue(browser.equipment_zone_label.isHidden())
+        self.assertFalse(browser.equipment_zone_action_button.isHidden())
+        self.assertTrue(browser.equipment_zone_action_button.isEnabled())
+
+    def test_artifact_click_without_operation_target_does_not_equip(self) -> None:
+        with temp_app_shell_db() as db_path:
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+            index = browser.model.index(0, 0)
+
+            browser.on_artifact_clicked(index)
+
+            with closing(connect_db(db_path)) as conn:
+                self.assertIsNone(get_equipped_artifact_owner(conn, 1))
+
+    def test_artifact_click_with_right_panel_target_equips_and_refreshes_panel(self) -> None:
+        with temp_app_shell_db() as db_path:
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+            shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
+            shell.flush_pending_right_panel_refresh()
+            browser = shell.left_host.ensure_artifact_browser_workspace()
+            index = browser.model.index(0, 0)
+
+            with patch.object(shell.right_panel, "set_model", wraps=shell.right_panel.set_model) as set_model:
+                browser.on_artifact_clicked(index)
+
+                self.assertTrue(shell._right_panel_refresh_pending)
+                shell.flush_pending_right_panel_refresh()
+
+            with closing(connect_db(db_path)) as conn:
+                self.assertEqual(get_equipped_artifact_owner(conn, 1), 10000050)
+            self.assertGreaterEqual(set_model.call_count, 1)
+            details = shell.controller.state.team(0).slot(0).character_details_data
+            self.assertEqual(
+                details["current_equipped_artifact_ids_by_slot"],
+                {"flower": 1},
+            )
+            stat_totals = {
+                item["property_type"]: item["raw_value"]
+                for item in details["stat_snapshot"]["artifact"]["summary"]["stat_totals"]
+            }
+            self.assertEqual(stat_totals[2], 4780.0)
+
+    def test_artifact_click_does_not_mutate_presets(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                build_id = create_build_preset(
+                    conn,
+                    name="Preset",
+                    slots={1: 1},
+                    targets=[
+                        {
+                            "target_type": "character",
+                            "character_id": 10000050,
+                            "character_name": "Thoma",
+                        }
+                    ],
+                )
+                before_slots = get_artifact_build_slots(conn, build_id)
+                conn.commit()
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+            shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
+            shell.flush_pending_right_panel_refresh()
+            browser = shell.left_host.ensure_artifact_browser_workspace()
+
+            browser.on_artifact_clicked(browser.model.index(0, 0))
+
+            with closing(connect_db(db_path)) as conn:
+                self.assertEqual(get_artifact_build_slots(conn, build_id), before_slots)
+
+    def test_artifact_click_in_preset_edit_does_not_current_equip(self) -> None:
+        with temp_app_shell_db() as db_path:
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+            browser.set_right_panel_operation_target(
+                {"character_id": 10000050, "character_name": "Thoma"}
+            )
+            browser.edit_selection_mode = EDIT_MODE_BUILD_PRESET
+            browser.editing_build_id = 1
+            browser.editing_build_name = "Preset"
+
+            browser.on_artifact_clicked(browser.model.index(0, 0))
+
+            self.assertEqual(browser.editing_build_slots, {1: 1})
+            with closing(connect_db(db_path)) as conn:
+                self.assertIsNone(get_equipped_artifact_owner(conn, 1))
+
+    def test_artifact_click_uses_service_move_swap_semantics(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                _insert_app_shell_artifact(conn, artifact_id=3, pos=1, name="Flower B")
+                equip_artifact(conn, 10000050, 1)
+                equip_artifact(conn, 10000051, 3)
+                conn.commit()
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+            shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
+            shell.flush_pending_right_panel_refresh()
+            browser = shell.left_host.ensure_artifact_browser_workspace()
+            row = browser.model.artifact_ids.index(3)
+
+            browser.on_artifact_clicked(browser.model.index(row, 0))
+
+            with closing(connect_db(db_path)) as conn:
+                self.assertEqual(get_equipped_artifact_owner(conn, 3), 10000050)
+                self.assertEqual(get_equipped_artifact_owner(conn, 1), 10000051)
+                self.assertEqual(
+                    [
+                        (row.slot_key, row.artifact_id)
+                        for row in list_equipped_artifacts_for_character(conn, 10000051)
+                    ],
+                    [("flower", 1)],
+                )
+
+    def test_artifact_click_updates_preview_and_owner_markers(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                _insert_app_shell_artifact(conn, artifact_id=3, pos=1, name="Flower B")
+                conn.commit()
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+            browser.set_right_panel_operation_target(
+                {"character_id": 10000050, "character_name": "Thoma"}
+            )
+
+            browser.on_artifact_clicked(browser.model.index(0, 0))
+
+            self.assertEqual(browser.current_equipment_preview_slots, {1: 1})
+            self.assertEqual(browser.delegate.edit_selection_artifact_ids, {1})
+            self.assertEqual(browser.store.artifact(1).character_name, "Thoma")
+
+            row = browser.model.artifact_ids.index(3)
+            browser.on_artifact_clicked(browser.model.index(row, 0))
+
+            self.assertEqual(browser.current_equipment_preview_slots, {1: 3})
+            self.assertEqual(browser.delegate.edit_selection_artifact_ids, {3})
+            self.assertEqual(browser.store.artifact(1).character_name, "")
+            self.assertEqual(browser.store.artifact(3).character_name, "Thoma")
+
+    def test_preset_click_toggles_between_preset_and_current_equipment_preview(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                _insert_app_shell_artifact(conn, artifact_id=3, pos=1, name="Flower B")
+                equip_artifact(conn, 10000050, 3)
+                build_id = create_build_preset(
+                    conn,
+                    name="Preset",
+                    slots={1: 1, 2: 2},
+                    targets=[
+                        {
+                            "target_type": "character",
+                            "character_id": 10000050,
+                            "character_name": "Thoma",
+                        }
+                    ],
+                )
+                conn.commit()
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+            browser.set_right_panel_operation_target(
+                {"character_id": 10000050, "character_name": "Thoma"}
+            )
+
+            browser.select_build_preset(build_id)
+
+            self.assertEqual(browser.selected_build_id, build_id)
+            self.assertEqual(browser.current_build_artifact_ids(), {1, 2})
+            self.assertEqual(browser.delegate.edit_selection_artifact_ids, {1, 2})
+            self.assertEqual(
+                browser.equipment_zone_action_button.text(),
+                tr("artifact.equipment.apply_preset"),
+            )
+            self.assertTrue(browser.equipment_zone_label.isHidden())
+            self.assertFalse(browser.equipment_zone_action_button.isHidden())
+            self.assertTrue(browser.equipment_zone_action_button.isEnabled())
+
+            browser.select_build_preset(build_id)
+
+            self.assertIsNone(browser.selected_build_id)
+            self.assertEqual(browser.current_equipment_preview_slots, {1: 3})
+            self.assertEqual(browser.current_build_artifact_ids(), {3})
+            self.assertEqual(browser.delegate.edit_selection_artifact_ids, {3})
+            self.assertEqual(
+                browser.equipment_zone_label.text(),
+                tr("artifact.build.current_equipment"),
+            )
+            self.assertFalse(browser.equipment_zone_label.isHidden())
+            self.assertTrue(browser.equipment_zone_action_button.isHidden())
+
+    def test_apply_preset_updates_current_equipment_and_clears_missing_slots(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_artifact(conn, 10000050, 1)
+                equip_artifact(conn, 10000050, 2)
+                build_id = create_build_preset(
+                    conn,
+                    name="Flower only",
+                    slots={1: 1},
+                    targets=[
+                        {
+                            "target_type": "character",
+                            "character_id": 10000050,
+                            "character_name": "Thoma",
+                        }
+                    ],
+                )
+                before_slots = get_artifact_build_slots(conn, build_id)
+                conn.commit()
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+            browser.set_right_panel_operation_target(
+                {"character_id": 10000050, "character_name": "Thoma"}
+            )
+            browser.select_build_preset(build_id)
+
+            browser.apply_selected_build_preset_to_current_equipment()
+
+            with closing(connect_db(db_path)) as conn:
+                self.assertEqual(
+                    [
+                        (row.slot_key, row.artifact_id)
+                        for row in list_equipped_artifacts_for_character(conn, 10000050)
+                    ],
+                    [("flower", 1)],
+                )
+                self.assertEqual(get_artifact_build_slots(conn, build_id), before_slots)
+            self.assertIsNone(browser.selected_build_id)
+            self.assertEqual(browser.current_equipment_preview_slots, {1: 1})
+            self.assertEqual(browser.equipment_zone_label.text(), "Flower only")
+            self.assertEqual(browser.store.artifact(1).character_name, "Thoma")
+            self.assertEqual(browser.store.artifact(2).character_name, "")
+
+            browser.equip_clicked_artifact(2)
+
+            self.assertEqual(
+                browser.equipment_zone_label.text(),
+                tr("artifact.build.current_equipment"),
+            )
+            self.assertEqual(browser.current_equipment_preview_slots, {1: 1, 2: 2})
+
+    def test_apply_preset_conflict_confirmation_blocks_or_applies(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_artifact(conn, 10000051, 2)
+                build_id = create_build_preset(
+                    conn,
+                    name="Borrow plume",
+                    slots={2: 2},
+                    targets=[
+                        {
+                            "target_type": "character",
+                            "character_id": 10000050,
+                            "character_name": "Thoma",
+                        }
+                    ],
+                )
+                conn.commit()
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+            browser.set_right_panel_operation_target(
+                {"character_id": 10000050, "character_name": "Thoma"}
+            )
+            browser.select_build_preset(build_id)
+
+            with patch.object(
+                browser,
+                "confirm_preset_equipment_conflicts",
+                return_value=False,
+            ) as confirm:
+                browser.apply_selected_build_preset_to_current_equipment()
+
+            confirm.assert_called_once_with((10000051,))
+            with closing(connect_db(db_path)) as conn:
+                self.assertEqual(get_equipped_artifact_owner(conn, 2), 10000051)
+
+            with patch.object(
+                browser,
+                "confirm_preset_equipment_conflicts",
+                return_value=True,
+            ) as confirm:
+                browser.apply_selected_build_preset_to_current_equipment()
+
+            confirm.assert_called_once_with((10000051,))
+            with closing(connect_db(db_path)) as conn:
+                self.assertEqual(get_equipped_artifact_owner(conn, 2), 10000050)
+            self.assertIsNone(browser.selected_build_id)
+            self.assertEqual(browser.current_equipment_preview_slots, {2: 2})
+
+    def test_apply_preset_refreshes_right_panel_stats(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                build_id = create_build_preset(
+                    conn,
+                    name="Two piece",
+                    slots={1: 1, 2: 2},
+                    targets=[
+                        {
+                            "target_type": "character",
+                            "character_id": 10000050,
+                            "character_name": "Thoma",
+                        }
+                    ],
+                )
+                conn.commit()
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+            shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
+            shell.flush_pending_right_panel_refresh()
+            browser = shell.left_host.ensure_artifact_browser_workspace()
+            browser.select_build_preset(build_id)
+
+            with patch.object(shell.right_panel, "set_model", wraps=shell.right_panel.set_model) as set_model:
+                browser.apply_selected_build_preset_to_current_equipment()
+                self.assertTrue(shell._right_panel_refresh_pending)
+                shell.flush_pending_right_panel_refresh()
+
+            details = shell.controller.state.team(0).slot(0).character_details_data
+            self.assertEqual(
+                details["current_equipped_artifact_ids_by_slot"],
+                {"flower": 1, "plume": 2},
+            )
+            self.assertGreaterEqual(set_model.call_count, 1)
+
+    def test_artifact_click_missing_artifact_fails_cleanly(self) -> None:
+        class FakeIndex:
+            def data(self, role):
+                class FakeArtifact:
+                    id = 999999
+
+                return FakeArtifact()
+
+        with temp_app_shell_db() as db_path:
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+            browser.set_right_panel_operation_target(
+                {"character_id": 10000050, "character_name": "Thoma"}
+            )
+
+            browser.on_artifact_clicked(FakeIndex())
+
+            with closing(connect_db(db_path)) as conn:
+                self.assertIsNone(get_equipped_artifact_owner(conn, 999999))
 
     def test_character_weapon_workspace_uses_overlay_scroll_areas(self) -> None:
         workspace = CharacterWeaponWorkspace()
@@ -1506,6 +2181,37 @@ def _seed_app_shell_artifacts(conn) -> None:
         )
         VALUES ('current_set', 2, 'ATK_PERCENT', 18.0, 'percent_points', '2026-05-26T00:00:00+00:00')
         """
+    )
+
+
+def _insert_app_shell_artifact(
+    conn,
+    *,
+    artifact_id: int,
+    pos: int,
+    name: str,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO artifacts (
+            id,
+            fingerprint,
+            name,
+            set_uid,
+            set_name,
+            pos,
+            pos_name,
+            rarity,
+            level,
+            main_property_type,
+            main_property_name,
+            main_property_value,
+            first_seen_at,
+            last_seen_at
+        )
+        VALUES (?, ?, ?, 'current_set', 'Current Set', ?, 'Flower', 5, 20, 2, 'HP', '4780', '2026-05-26T00:00:00+00:00', '2026-05-26T00:00:00+00:00')
+        """,
+        (artifact_id, f"artifact-{artifact_id}", name, pos),
     )
 
 

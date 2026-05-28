@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import html
 import re
+from contextlib import closing
+from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt, QSize, QTimer
+from PySide6.QtCore import QEvent, QPoint, QRect, QRectF, Qt, QSize, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractItemView,
@@ -78,6 +80,16 @@ from ui.utils.overlay_scroll import (
     OverlayVerticalScrollArea,
     install_overlay_vertical_scrollbar,
 )
+from hoyolab_export.account_equipment import (
+    ARTIFACT_POS_BY_SLOT_KEY,
+    EquipmentChangeResult,
+    EquipmentError,
+    equip_artifact,
+    get_equipped_artifact_owner,
+    list_equipped_artifacts_for_character,
+    unequip_artifact_slot,
+)
+from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
 from .list_model import ArtifactRoles
 from .queries import (
     calculate_build_summary,
@@ -163,6 +175,123 @@ TARGET_ITEM_MIN_WIDTH = 88
 
 TARGET_ITEM_SPACING = 4
 
+
+@dataclass(frozen=True)
+class AssignmentWidthFit:
+    columns: int
+    assignment_width: int
+    artifact_viewport_width: int
+    remainder: int
+    total_used_width: int
+
+
+def calculate_assignment_width_fit(
+    *,
+    content_width: int,
+    preset_panel_width: int,
+    fixed_internal_gaps: int,
+    assignment_min_width: int,
+    column_step: int,
+) -> AssignmentWidthFit | None:
+    content_width = int(content_width)
+    preset_panel_width = int(preset_panel_width)
+    fixed_internal_gaps = int(fixed_internal_gaps)
+    assignment_min_width = int(assignment_min_width)
+    column_step = int(column_step)
+
+    if (
+        content_width <= 0
+        or preset_panel_width < 0
+        or fixed_internal_gaps < 0
+        or assignment_min_width <= 0
+        or column_step <= 0
+    ):
+        return None
+
+    available = content_width - preset_panel_width - fixed_internal_gaps
+    max_artifact_width = available - assignment_min_width
+    if max_artifact_width < column_step:
+        return None
+
+    columns, remainder = divmod(max_artifact_width, column_step)
+    if columns <= 0:
+        return None
+
+    artifact_viewport_width = columns * column_step
+    assignment_width = assignment_min_width + remainder
+    total_used_width = (
+        preset_panel_width
+        + fixed_internal_gaps
+        + assignment_width
+        + artifact_viewport_width
+    )
+    if assignment_width < assignment_min_width or total_used_width > content_width:
+        return None
+
+    return AssignmentWidthFit(
+        columns=columns,
+        assignment_width=assignment_width,
+        artifact_viewport_width=artifact_viewport_width,
+        remainder=remainder,
+        total_used_width=total_used_width,
+    )
+
+
+class AdaptiveAssignmentPanel(QFrame):
+    def __init__(self, minimum_width: int, preferred_width: int, parent=None):
+        super().__init__(parent)
+        self._preferred_width = max(int(minimum_width), int(preferred_width))
+        self.setMinimumWidth(int(minimum_width))
+        self.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Expanding,
+        )
+
+    def set_preferred_width(self, width: int) -> None:
+        width = max(self.minimumWidth(), int(width))
+        if self._preferred_width == width:
+            return
+        self._preferred_width = width
+        self.updateGeometry()
+
+    def sizeHint(self) -> QSize:
+        hint = super().sizeHint()
+        hint.setWidth(self._preferred_width)
+        return hint
+
+    def minimumSizeHint(self) -> QSize:
+        hint = super().minimumSizeHint()
+        hint.setWidth(self.minimumWidth())
+        return hint
+
+
+class AdaptiveJsonActionRow(QWidget):
+    def __init__(self, minimum_width: int, preferred_width: int, parent=None):
+        super().__init__(parent)
+        self._preferred_width = max(int(minimum_width), int(preferred_width))
+        self.setMinimumWidth(int(minimum_width))
+        self.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Fixed,
+        )
+
+    def set_preferred_width(self, width: int) -> None:
+        width = max(self.minimumWidth(), int(width))
+        if self._preferred_width == width:
+            return
+        self._preferred_width = width
+        self.updateGeometry()
+
+    def sizeHint(self) -> QSize:
+        hint = super().sizeHint()
+        hint.setWidth(self._preferred_width)
+        return hint
+
+    def minimumSizeHint(self) -> QSize:
+        hint = super().minimumSizeHint()
+        hint.setWidth(self.minimumWidth())
+        return hint
+
 BUILD_TARGET_PREVIEW_ROW_HEIGHT = 40
 BUILD_TARGET_PREVIEW_SPACING = 0
 BUILD_TARGET_PREVIEW_ICON_SIZE = 40
@@ -243,10 +372,12 @@ QLabel#equipment_target_label {
 QLabel#equipment_zone_label {
     color: #ffffff;
     font-weight: 700;
+    background: transparent;
 }
 QPushButton#equipment_zone_action_button {
-    min-height: 24px;
-    padding: 2px 8px;
+    min-height: 30px;
+    padding: 4px 10px;
+    font-weight: 800;
 }
 QPushButton#equipment_zone_action_button:disabled {
     color: #798291;
@@ -753,15 +884,19 @@ class BuildTargetPreviewStrip(QWidget):
 
 
 class ArtifactBrowserWindow(QWidget):
+    equipment_changed = Signal(object)
+
     def __init__(
         self,
         parent: QWidget | None = None,
         *,
         embedded: bool = False,
+        db_path: str | Path = ARTIFACT_DB_PATH,
     ):
         init_start = perf_now()
         super().__init__(parent)
         self.embedded = bool(embedded)
+        self.db_path = Path(db_path)
         if not self.embedded:
             self.setWindowFlag(Qt.Window, True)
         self.setWindowTitle(tr("artifact.browser.title"))
@@ -771,7 +906,7 @@ class ArtifactBrowserWindow(QWidget):
 
         self.current_pos = 1
         store_start = perf_now()
-        self.store = ArtifactBrowserStore.load_from_db()
+        self.store = ArtifactBrowserStore.load_from_db(self.db_path)
         store_ms = perf_ms(store_start)
         model_start = perf_now()
         self.model = ArtifactListModel(self.store, self)
@@ -827,6 +962,8 @@ class ArtifactBrowserWindow(QWidget):
         self.operation_target_character_name = ""
         self.operation_target_source: str | None = None
         self.equip_mode_enabled = False
+        self.applied_current_equipment_label = ""
+        self.current_equipment_preview_slots: dict[int, int] = {}
         self.build_slot_rows: dict[int, QFrame] = {}
         self.build_slot_icon_labels: dict[int, QLabel] = {}
         self.build_slot_stat_labels: dict[int, QLabel] = {}
@@ -839,6 +976,8 @@ class ArtifactBrowserWindow(QWidget):
         self.artifact_grid_overlay_scrollbar = None
         self.import_json_button: QPushButton | None = None
         self.clear_json_button: QPushButton | None = None
+        self.json_action_row_widget: AdaptiveJsonActionRow | None = None
+        self._artifact_column_count = 0
         self.content_layout: QHBoxLayout | None = None
         self.build_target_panel: QFrame | None = None
         self.build_panel: QFrame | None = None
@@ -952,73 +1091,48 @@ class ArtifactBrowserWindow(QWidget):
             else BUILD_PANEL_WIDTH
         )
         grid_width = GRID_SIZE.width()
-        item_spacing = max(0, self.list_view.spacing())
-        item_pitch = grid_width + item_spacing
-        if grid_width <= 0 or item_pitch <= 0:
-            return
         viewport_chrome_width = max(
             0,
             self.list_view.width() - self.list_view.viewport().width(),
         )
-        max_target_width = (
-            TARGET_PANEL_WIDTH
-            if self.embedded
-            else TARGET_PANEL_MAX_WIDTH
+        fixed_internal_gaps = (
+            spacing * 2
+            + viewport_chrome_width
+            + ARTIFACT_GRID_FIT_PADDING
         )
         layout_key = (
             content_width,
             fixed_panel_width,
             viewport_chrome_width,
             TARGET_PANEL_MIN_WIDTH,
-            max_target_width,
-            item_pitch,
+            grid_width,
         )
         if layout_key == self._last_adaptive_target_layout_key:
             return
         self._last_adaptive_target_layout_key = layout_key
 
-        def list_width_for_target(width: int) -> int:
-            return (
-                content_width
-                - fixed_panel_width
-                - width
-                - spacing * 2
-                - viewport_chrome_width
-                - ARTIFACT_GRID_FIT_PADDING
-            )
-
-        def column_count(width: int) -> int:
-            list_width = list_width_for_target(width)
-            if list_width < grid_width:
-                return 0
-            return (list_width + item_spacing) // item_pitch
-
-        def trailing_gap(width: int) -> int:
-            list_width = list_width_for_target(width)
-            columns = column_count(width)
-            if columns <= 0:
-                return max(0, list_width)
-            used = columns * grid_width + max(0, columns - 1) * item_spacing
-            return max(0, list_width - used)
-
-        min_width = int(TARGET_PANEL_MIN_WIDTH)
-        max_width = max(min_width, int(max_target_width))
-        candidates = range(min_width, max_width + 1)
-        target_width = min(
-            candidates,
-            key=lambda width: (
-                -column_count(width),
-                trailing_gap(width),
-                abs(width - TARGET_PANEL_WIDTH),
-            ),
+        fit = calculate_assignment_width_fit(
+            content_width=content_width,
+            preset_panel_width=fixed_panel_width,
+            fixed_internal_gaps=fixed_internal_gaps,
+            assignment_min_width=TARGET_PANEL_MIN_WIDTH,
+            column_step=grid_width,
         )
+        if fit is None:
+            if isinstance(self.build_target_panel, AdaptiveAssignmentPanel):
+                self.build_target_panel.set_preferred_width(TARGET_PANEL_MIN_WIDTH)
+            self._set_json_button_column_mode(1)
+            return
 
-        minimum_required_width = fixed_panel_width + target_width + spacing * 2
+        self._set_json_button_column_mode(fit.columns)
         applied = False
-        if abs(self.build_target_panel.width() - target_width) > 1:
-            if minimum_required_width <= content_width:
-                self.build_target_panel.setFixedWidth(target_width)
-                applied = True
+        if abs(self.build_target_panel.width() - fit.assignment_width) > 1:
+            if isinstance(self.build_target_panel, AdaptiveAssignmentPanel):
+                self.build_target_panel.set_preferred_width(fit.assignment_width)
+            else:
+                self.build_target_panel.setMinimumWidth(TARGET_PANEL_MIN_WIDTH)
+                self.build_target_panel.setMaximumWidth(fit.assignment_width)
+            applied = True
         top_after = top_level.size()
         log_perf(
             "artifact_browser_grid_layout",
@@ -1028,14 +1142,17 @@ class ArtifactBrowserWindow(QWidget):
             left_workspace=left_workspace.width() if left_workspace is not None else "-",
             content_width=content_width,
             fixed_panel=fixed_panel_width,
-            target_panel=target_width,
+            fixed_gaps=fixed_internal_gaps,
+            target_panel=fit.assignment_width,
             target_current=self.build_target_panel.width(),
             target_min=TARGET_PANEL_MIN_WIDTH,
             target_default=TARGET_PANEL_WIDTH,
             preset_panel=fixed_panel_width,
             viewport=self.list_view.viewport().width(),
-            columns=column_count(target_width),
-            trailing_gap=trailing_gap(target_width),
+            columns=fit.columns,
+            artifact_viewport=fit.artifact_viewport_width,
+            trailing_gap=fit.remainder,
+            total_used=fit.total_used_width,
             applied=applied,
             adaptive_runs=self._adaptive_update_count,
             resize_events=self._resize_event_count,
@@ -1129,36 +1246,65 @@ class ArtifactBrowserWindow(QWidget):
         self.list_view.clicked.connect(self.on_artifact_clicked)
         layout.addWidget(self.list_view, 1)
 
-        action_row_widget = QWidget()
-        action_row_widget.setFixedWidth(GRID_SIZE.width())
+        action_row_widget = AdaptiveJsonActionRow(
+            GRID_SIZE.width(),
+            GRID_SIZE.width(),
+        )
+        self.json_action_row_widget = action_row_widget
         action_row = QHBoxLayout(action_row_widget)
         action_row.setContentsMargins(0, 0, 0, 0)
         action_row.setSpacing(6)
-        json_action_width = max(
-            0,
-            (GRID_SIZE.width() - action_row.spacing()) // 2,
-        )
 
         self.import_json_button = MarqueeButton(tr("artifact.json.import_button"))
         self.import_json_button.setObjectName("json_action_button")
-        self.import_json_button.setFixedWidth(json_action_width)
         self.import_json_button.clicked.connect(self.import_artiscan_json)
         action_row.addWidget(self.import_json_button)
 
         self.clear_json_button = MarqueeButton(tr("artifact.json.clear_button"))
         self.clear_json_button.setObjectName("json_action_button")
-        self.clear_json_button.setFixedWidth(json_action_width)
         self.clear_json_button.clicked.connect(self.clear_json_imports)
         action_row.addWidget(self.clear_json_button)
 
+        self._set_json_button_column_mode(1)
         layout.addWidget(action_row_widget)
         root.addWidget(panel, 1)
         self.update_json_import_actions()
 
+    def _set_json_button_column_mode(self, columns: int) -> None:
+        if (
+            self.json_action_row_widget is None
+            or self.import_json_button is None
+            or self.clear_json_button is None
+        ):
+            return
+        columns = max(1, int(columns))
+        if self._artifact_column_count == columns:
+            return
+        self._artifact_column_count = columns
+
+        row_layout = self.json_action_row_widget.layout()
+        spacing = row_layout.spacing() if row_layout is not None else 0
+        row_width = GRID_SIZE.width() * columns if columns >= 2 else GRID_SIZE.width()
+        button_width = max(0, (row_width - spacing) // 2)
+        compact_button_width = max(0, (GRID_SIZE.width() - spacing) // 2)
+        self.json_action_row_widget.set_preferred_width(row_width)
+        for button in (self.import_json_button, self.clear_json_button):
+            button.setMinimumWidth(compact_button_width)
+            button.setMaximumWidth(button_width)
+            button.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Fixed,
+            )
+        self.json_action_row_widget.updateGeometry()
+
     def _build_build_target_selector(self, root) -> None:
-        panel = QFrame()
+        panel = AdaptiveAssignmentPanel(
+            TARGET_PANEL_MIN_WIDTH,
+            TARGET_PANEL_WIDTH,
+        )
         panel.setObjectName("build_target_panel")
-        panel.setFixedWidth(TARGET_PANEL_WIDTH)
+        panel.setMaximumWidth(TARGET_PANEL_MIN_WIDTH + GRID_SIZE.width() - 1)
+        panel.resize(TARGET_PANEL_WIDTH, panel.height())
         self.build_target_panel = panel
 
         layout = QVBoxLayout(panel)
@@ -1352,7 +1498,14 @@ class ArtifactBrowserWindow(QWidget):
         self.equipment_zone_action_button = QPushButton()
         self.equipment_zone_action_button.setObjectName("equipment_zone_action_button")
         self.equipment_zone_action_button.setEnabled(False)
-        equipment_row.addWidget(self.equipment_zone_action_button, 0)
+        self.equipment_zone_action_button.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
+        self.equipment_zone_action_button.clicked.connect(
+            self.apply_selected_build_preset_to_current_equipment
+        )
+        equipment_row.addWidget(self.equipment_zone_action_button, 1)
         equipment_layout.addLayout(equipment_row)
         layout.addWidget(self.equipment_zone_frame)
 
@@ -1671,6 +1824,10 @@ class ArtifactBrowserWindow(QWidget):
             self.update_build_panel()
 
     def refresh_equipment_target_state(self) -> None:
+        previous_target = (
+            self.operation_target_source,
+            self.operation_target_character_id,
+        )
         target = self._right_panel_operation_target or self._browser_operation_target()
         if target is None:
             self.operation_target_character_id = None
@@ -1682,6 +1839,12 @@ class ArtifactBrowserWindow(QWidget):
             self.operation_target_character_name = target.get("character_name") or ""
             self.operation_target_source = target.get("source") or "artifact_browser"
             self.equip_mode_enabled = True
+        current_target = (
+            self.operation_target_source,
+            self.operation_target_character_id,
+        )
+        if current_target != previous_target:
+            self.applied_current_equipment_label = ""
         self._update_equipment_zone()
 
     def _right_panel_operation_target_key(self) -> str | None:
@@ -1762,14 +1925,18 @@ class ArtifactBrowserWindow(QWidget):
         )
         apply_text = tr("artifact.equipment.apply_preset")
         self.equipment_zone_action_button.setText(apply_text)
-        self.equipment_zone_action_button.setVisible(
+        self.equipment_zone_action_button.setVisible(preset_preview_active)
+        self.equipment_zone_action_button.setEnabled(
             self.equip_mode_enabled and preset_preview_active
         )
-        self.equipment_zone_action_button.setEnabled(False)
-        if self.equip_mode_enabled and preset_preview_active:
-            self.equipment_zone_label.setText(apply_text)
+        self.equipment_zone_label.setVisible(not preset_preview_active)
+        if preset_preview_active:
+            self.equipment_zone_label.setText("")
         else:
-            self.equipment_zone_label.setText(tr("artifact.build.current_equipment"))
+            self.equipment_zone_label.setText(
+                self.applied_current_equipment_label
+                or tr("artifact.build.current_equipment")
+            )
 
     def _target_button_checked(self, key: str) -> bool:
         return key in self.selected_build_target_keys
@@ -2135,7 +2302,7 @@ class ArtifactBrowserWindow(QWidget):
             if not self.confirm_discard_build_edit():
                 return
 
-        self.store = ArtifactBrowserStore.load_from_db()
+        self.store = ArtifactBrowserStore.load_from_db(self.db_path)
         self.model.set_store(self.store)
         self._clear_build_row_pixmap_cache()
         self._clear_target_preview_pixmap_cache()
@@ -2179,7 +2346,273 @@ class ArtifactBrowserWindow(QWidget):
             return
 
         if self.equip_mode_enabled:
-            self.empty_label.setText(tr("artifact.equipment.not_wired"))
+            self.equip_clicked_artifact(artifact.id)
+
+    def equip_clicked_artifact(self, artifact_id: int) -> None:
+        if not self.equip_mode_enabled or self.operation_target_character_id is None:
+            return
+        try:
+            artifact_id = int(artifact_id)
+        except (TypeError, ValueError):
+            return
+        try:
+            with closing(connect_db(self.db_path)) as conn:
+                result = equip_artifact(
+                    conn,
+                    self.operation_target_character_id,
+                    artifact_id,
+                )
+                conn.commit()
+        except EquipmentError as exc:
+            self.status_label.setText(str(exc))
+            log_perf("artifact_equip_failed", artifact_id=artifact_id, error=str(exc))
+            return
+        except Exception as exc:
+            self.status_label.setText(str(exc))
+            log_perf("artifact_equip_failed", artifact_id=artifact_id, error=str(exc))
+            return
+
+        self.refresh_equipment_target_state()
+        self.applied_current_equipment_label = ""
+        self.refresh_current_equipment_markers(result.affected_artifact_ids)
+        self.update_build_panel()
+        self.update_edit_selection_mode()
+        self.equipment_changed.emit(result)
+
+    def refresh_current_equipment_markers(self, artifact_ids) -> None:
+        artifact_ids = sorted({int(artifact_id) for artifact_id in artifact_ids or []})
+        if not artifact_ids:
+            return
+
+        owner_names = self._current_equipment_owner_names(artifact_ids)
+        changed_rows: list[int] = []
+        for artifact_id in artifact_ids:
+            try:
+                artifact = self.store.artifact(artifact_id)
+            except KeyError:
+                continue
+            next_name = owner_names.get(artifact_id, "")
+            if artifact.character_name == next_name:
+                continue
+            artifact.character_name = next_name
+            changed_rows.extend(
+                row
+                for row, row_artifact_id in enumerate(self.model.artifact_ids)
+                if int(row_artifact_id) == artifact_id
+            )
+
+        for row in changed_rows:
+            index = self.model.index(row, 0)
+            self.model.dataChanged.emit(
+                index,
+                index,
+                [ArtifactRoles.ArtifactRole, Qt.ItemDataRole.DisplayRole],
+            )
+        if changed_rows:
+            self.list_view.viewport().update()
+
+    def _current_equipment_owner_names(self, artifact_ids: list[int]) -> dict[int, str]:
+        if not artifact_ids:
+            return {}
+        placeholders = ",".join("?" for _ in artifact_ids)
+        try:
+            with closing(connect_db(self.db_path)) as conn:
+                rows = conn.execute(
+                    f"""
+                    SELECT
+                        equipped.artifact_id,
+                        characters.name AS character_name
+                    FROM account_character_equipped_artifacts AS equipped
+                    JOIN account_characters AS characters
+                        ON characters.character_id = equipped.character_id
+                    WHERE equipped.artifact_id IN ({placeholders})
+                    """,
+                    tuple(artifact_ids),
+                ).fetchall()
+        except Exception as exc:
+            log_perf("artifact_owner_marker_refresh_failed", error=str(exc))
+            return {}
+        return {
+            int(row["artifact_id"]): str(row["character_name"] or "")
+            for row in rows
+        }
+
+    def apply_selected_build_preset_to_current_equipment(self) -> None:
+        if (
+            not self.equip_mode_enabled
+            or self.operation_target_character_id is None
+            or self.selected_build_id is None
+            or self.edit_selection_mode != EDIT_MODE_NONE
+        ):
+            return
+
+        target_character_id = int(self.operation_target_character_id)
+        applied_label = self._selected_build_preset_name()
+        preset_slots = {
+            int(pos): int(artifact_id)
+            for pos, artifact_id in self.selected_build_slots.items()
+            if artifact_id is not None
+        }
+
+        if not self._confirm_selected_preset_conflicts(
+            target_character_id,
+            preset_slots.values(),
+        ):
+            return
+
+        affected_character_ids: set[int] = set()
+        affected_artifact_ids: set[int] = set()
+        changed = False
+        try:
+            with closing(connect_db(self.db_path)) as conn:
+                for pos in ARTIFACT_POSITIONS:
+                    artifact_id = preset_slots.get(pos)
+                    if artifact_id is None:
+                        result = unequip_artifact_slot(
+                            conn,
+                            target_character_id,
+                            pos,
+                            source="preset_equip",
+                        )
+                    else:
+                        result = equip_artifact(
+                            conn,
+                            target_character_id,
+                            artifact_id,
+                            source="preset_equip",
+                        )
+                    changed = changed or result.changed
+                    affected_character_ids.update(result.affected_character_ids)
+                    affected_artifact_ids.update(result.affected_artifact_ids)
+                conn.commit()
+        except EquipmentError as exc:
+            self.status_label.setText(str(exc))
+            log_perf("artifact_preset_equip_failed", error=str(exc))
+            return
+        except Exception as exc:
+            self.status_label.setText(str(exc))
+            log_perf("artifact_preset_equip_failed", error=str(exc))
+            return
+
+        self.selected_build_id = None
+        self.selected_build_slots = {}
+        self.selected_build_targets = []
+        self.pending_delete_build_id = None
+        self.applied_current_equipment_label = (
+            applied_label or tr("artifact.build.current_equipment")
+        )
+        self.refresh_current_equipment_markers(affected_artifact_ids)
+        self.refresh_build_preset_list()
+        self.update_build_panel()
+        self.update_build_create_controls()
+        self.update_edit_selection_mode()
+        self.equipment_changed.emit(
+            EquipmentChangeResult(
+                operation="apply_build_preset",
+                changed=changed,
+                affected_character_ids=tuple(sorted(affected_character_ids)),
+                affected_artifact_ids=tuple(sorted(affected_artifact_ids)),
+            )
+        )
+
+    def _selected_build_preset_name(self) -> str:
+        selected_id = self.selected_build_id
+        if selected_id is None:
+            return ""
+        for preset in self.build_presets:
+            try:
+                if int(preset.get("id")) == int(selected_id):
+                    return str(preset.get("name") or "").strip()
+            except (TypeError, ValueError):
+                continue
+        preset = get_build_preset(int(selected_id), db_path=self.db_path)
+        return str((preset or {}).get("name") or "").strip()
+
+    def _confirm_selected_preset_conflicts(
+        self,
+        target_character_id: int,
+        artifact_ids,
+    ) -> bool:
+        conflict_character_ids = self._preset_conflict_character_ids(
+            target_character_id,
+            artifact_ids,
+        )
+        if not conflict_character_ids:
+            return True
+        return self.confirm_preset_equipment_conflicts(conflict_character_ids)
+
+    def _preset_conflict_character_ids(
+        self,
+        target_character_id: int,
+        artifact_ids,
+    ) -> tuple[int, ...]:
+        owners: set[int] = set()
+        try:
+            with closing(connect_db(self.db_path)) as conn:
+                for artifact_id in artifact_ids:
+                    owner = get_equipped_artifact_owner(conn, artifact_id)
+                    if owner is not None and int(owner) != int(target_character_id):
+                        owners.add(int(owner))
+        except Exception as exc:
+            log_perf("artifact_preset_conflict_check_failed", error=str(exc))
+            return ()
+        return tuple(sorted(owners))
+
+    def confirm_preset_equipment_conflicts(
+        self,
+        character_ids: tuple[int, ...],
+    ) -> bool:
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle(tr("artifact.equipment.apply_preset"))
+        dialog.setText(tr("artifact.equipment.conflict_confirm"))
+        dialog.setStandardButtons(
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        dialog.setDefaultButton(QMessageBox.StandardButton.No)
+        icon_pixmap = self._conflict_character_strip_pixmap(character_ids)
+        if icon_pixmap is not None and not icon_pixmap.isNull():
+            dialog.setIconPixmap(icon_pixmap)
+        return dialog.exec() == QMessageBox.StandardButton.Yes
+
+    def _conflict_character_strip_pixmap(
+        self,
+        character_ids: tuple[int, ...],
+    ) -> QPixmap | None:
+        targets = [
+            self._equipment_character_target(character_id)
+            for character_id in character_ids
+        ]
+        targets = [target for target in targets if target is not None]
+        if not targets:
+            return None
+        return self._cached_target_preview_strip(targets)
+
+    def _equipment_character_target(self, character_id: int) -> dict | None:
+        key = self._character_target_key(character_id)
+        item = self.build_target_items_by_key.get(key)
+        if item is not None:
+            return {
+                "target_type": "character",
+                "character_id": character_id,
+                "character_name": item.get("character_name") or str(character_id),
+            }
+        try:
+            with closing(connect_db(self.db_path)) as conn:
+                row = conn.execute(
+                    """
+                    SELECT name
+                    FROM account_characters
+                    WHERE character_id = ?
+                    """,
+                    (character_id,),
+                ).fetchone()
+        except Exception:
+            row = None
+        return {
+            "target_type": "character",
+            "character_id": character_id,
+            "character_name": (row["name"] if row is not None else str(character_id)),
+        }
 
     def toggle_custom_set_artifact(self, artifact_id: int) -> None:
         if artifact_id in self.editing_custom_artifact_ids:
@@ -2620,6 +3053,13 @@ class ArtifactBrowserWindow(QWidget):
             return list(self.editing_build_targets)
         if self.selected_build_id is not None:
             return list(self.selected_build_targets)
+        if self.equip_mode_enabled and self.operation_target_character_id is not None:
+            target = {
+                "target_type": "character",
+                "character_id": self.operation_target_character_id,
+                "character_name": self.operation_target_character_name,
+            }
+            return [target]
         return []
 
     def preset_matches_selected_targets(self, preset: dict) -> bool:
@@ -2629,7 +3069,7 @@ class ArtifactBrowserWindow(QWidget):
         return self.selected_build_target_keys.issubset(preset_keys)
 
     def load_build_presets(self) -> None:
-        self.build_presets = list_build_presets()
+        self.build_presets = list_build_presets(db_path=self.db_path)
         self.refresh_build_preset_list()
 
     def _sync_build_preset_row_selection(self) -> None:
@@ -3204,7 +3644,7 @@ class ArtifactBrowserWindow(QWidget):
             self.empty_label.setText(tr("artifact.build.finish_edit_first"))
             return
         self.finish_custom_set_edit()
-        preset = get_build_preset(build_id)
+        preset = get_build_preset(build_id, db_path=self.db_path)
         if preset is None:
             return
 
@@ -3241,7 +3681,19 @@ class ArtifactBrowserWindow(QWidget):
             self.refresh_build_preset_list()
             return
 
-        preset = get_build_preset(build_id)
+        if self.selected_build_id == int(build_id):
+            self.selected_build_id = None
+            self.selected_build_slots = {}
+            self.selected_build_targets = []
+            self.pending_delete_build_id = None
+            self._sync_build_preset_row_selection()
+            self.update_build_panel()
+            self.update_build_create_controls()
+            self.update_edit_selection_mode()
+            self.apply_current_filters()
+            return
+
+        preset = get_build_preset(build_id, db_path=self.db_path)
         if preset is None:
             return
 
@@ -3328,6 +3780,7 @@ class ArtifactBrowserWindow(QWidget):
             name=name,
             slots=self.editing_build_slots,
             targets=targets,
+            db_path=self.db_path,
         )
         self.selected_build_id = build_id
         self.selected_build_slots = dict(self.editing_build_slots)
@@ -3374,9 +3827,10 @@ class ArtifactBrowserWindow(QWidget):
         self.update_edit_selection_mode()
 
     def update_build_panel(self) -> None:
+        self.refresh_equipment_target_state()
         editing = self.edit_selection_mode == EDIT_MODE_BUILD_PRESET
-        has_selection = editing or bool(self.selected_build_id)
-        slots = self.editing_build_slots if editing else self.selected_build_slots
+        slots = self._preview_slots()
+        has_selection = editing or bool(self.selected_build_id) or bool(slots)
 
         for pos in ARTIFACT_POSITIONS:
             artifact_id = slots.get(pos) if has_selection else None
@@ -3385,7 +3839,39 @@ class ArtifactBrowserWindow(QWidget):
         self.update_build_target_preview()
         self.update_build_summary()
         self.update_build_create_controls()
-        self.refresh_equipment_target_state()
+
+    def _preview_slots(self) -> dict[int, int]:
+        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
+            return self.editing_build_slots
+        if self.selected_build_id is not None:
+            return self.selected_build_slots
+        return self._current_equipment_slots_for_operation_target()
+
+    def _current_equipment_slots_for_operation_target(self) -> dict[int, int]:
+        character_id = self.operation_target_character_id
+        if not self.equip_mode_enabled or character_id is None:
+            self.current_equipment_preview_slots = {}
+            return {}
+
+        try:
+            with closing(connect_db(self.db_path)) as conn:
+                rows = list_equipped_artifacts_for_character(conn, character_id)
+        except Exception as exc:
+            log_perf(
+                "artifact_current_equipment_preview_failed",
+                character_id=character_id,
+                error=str(exc),
+            )
+            self.current_equipment_preview_slots = {}
+            return {}
+
+        slots: dict[int, int] = {}
+        for row in rows:
+            pos = ARTIFACT_POS_BY_SLOT_KEY.get(str(row.slot_key))
+            if pos is not None:
+                slots[int(pos)] = int(row.artifact_id)
+        self.current_equipment_preview_slots = dict(slots)
+        return slots
 
     def update_build_target_preview(self) -> None:
         strip_pixmap = self._cached_target_preview_strip(
@@ -3743,9 +4229,7 @@ class ArtifactBrowserWindow(QWidget):
         )
 
     def current_build_artifact_ids(self) -> set[int]:
-        if self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
-            return set(self.editing_build_slots.values())
-        return set(self.selected_build_slots.values())
+        return set(self._preview_slots().values())
 
     def current_highlight_artifact_ids(self) -> set[int]:
         if self.edit_selection_mode == EDIT_MODE_CUSTOM_SET:
@@ -3760,7 +4244,7 @@ class ArtifactBrowserWindow(QWidget):
         self._clear_layout(self.build_summary_stats_layout)
 
         editing = self.edit_selection_mode == EDIT_MODE_BUILD_PRESET
-        slots = self.editing_build_slots if editing else self.selected_build_slots
+        slots = self._preview_slots()
 
         if not slots:
             self.fill_build_stat_summary({})
@@ -3768,11 +4252,17 @@ class ArtifactBrowserWindow(QWidget):
 
         try:
             if editing and self.editing_build_id is not None and not self.editing_build_dirty:
-                summary = calculate_build_summary(build_id=self.editing_build_id)
+                summary = calculate_build_summary(
+                    build_id=self.editing_build_id,
+                    db_path=self.db_path,
+                )
             elif not editing and self.selected_build_id is not None:
-                summary = calculate_build_summary(build_id=self.selected_build_id)
+                summary = calculate_build_summary(
+                    build_id=self.selected_build_id,
+                    db_path=self.db_path,
+                )
             else:
-                summary = calculate_build_summary(slots=slots)
+                summary = calculate_build_summary(slots=slots, db_path=self.db_path)
         except Exception as exc:
             label = QLabel(tr("artifact.build.summary_error", error=str(exc)))
             label.setObjectName("small_muted")
@@ -4079,7 +4569,7 @@ class ArtifactBrowserWindow(QWidget):
     def confirm_delete_build_preset(self, build_id: int) -> None:
         if self.pending_delete_build_id != int(build_id):
             return
-        delete_build_preset(int(build_id))
+        delete_build_preset(int(build_id), db_path=self.db_path)
         if self.selected_build_id == int(build_id):
             self.selected_build_id = None
             self.selected_build_slots = {}

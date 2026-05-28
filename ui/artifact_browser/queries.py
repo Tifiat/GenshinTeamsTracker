@@ -1,5 +1,6 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
+from contextlib import closing
 import json
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,7 @@ from hoyolab_export.artifact_db import (
     replace_artifact_build_targets,
     update_build_preset as db_update_build_preset,
 )
+from hoyolab_export.account_equipment import init_account_equipment_storage
 from hoyolab_export.artiscan_importer import import_artiscan_file
 from hoyolab_export.paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
 from run_workspace.perf import log_perf, perf_ms, perf_now
@@ -66,7 +68,7 @@ def list_set_bonus_description_map(
         languages.append(preferred)
 
     result: dict[tuple[str, int], str] = {}
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         for language in languages:
             for row in db_list_artifact_set_bonus_descriptions(conn, lang=language):
@@ -98,9 +100,10 @@ def load_artifact_browser_store_data(
     if preferred != fallback:
         languages.append(preferred)
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_start = perf_now()
         init_db(conn)
+        init_account_equipment_storage(conn)
         init_ms = perf_ms(init_start)
         artifacts_start = perf_now()
         artifacts = _fetch_artifacts(conn, preferred_lang=preferred)
@@ -156,8 +159,9 @@ def list_all_artifacts(
         return []
 
     preferred_lang = current_hoyolab_content_language()
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
+        init_account_equipment_storage(conn)
         return _fetch_artifacts(conn, preferred_lang=preferred_lang)
 
 
@@ -179,7 +183,7 @@ def count_json_imported_artifacts(
     if not artifact_db_exists(db_path):
         return 0
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         return db_count_json_imported_artifacts(conn, source="artiscan")
 
@@ -188,7 +192,7 @@ def clear_json_imported_artifacts(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
 ) -> dict[str, Any]:
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         summary = db_clear_json_imported_artifacts(conn, source="artiscan")
         conn.commit()
@@ -200,7 +204,7 @@ def delete_build_presets(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
 ) -> int:
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         deleted = db_delete_build_presets(conn, build_ids)
         conn.commit()
@@ -232,10 +236,10 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
             artifacts.main_property_type,
             artifacts.main_property_name,
             artifacts.main_property_value,
-                        set_icons.icon_url AS set_icon_url,
+            set_icons.icon_url AS set_icon_url,
             set_icons.local_path AS set_icon_local_path,
             set_flower_icons.local_path AS set_flower_icon_local_path,
-            equipment.character_name
+            equipment_character.name AS character_name
         FROM artifacts
         LEFT JOIN artifact_sets
             ON artifact_sets.set_uid = artifacts.set_uid
@@ -251,8 +255,10 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
         LEFT JOIN artifact_set_piece_icons AS set_flower_icons
             ON set_flower_icons.set_uid = artifacts.set_uid
             AND set_flower_icons.pos = 1
-        LEFT JOIN artifact_equipment AS equipment
-            ON equipment.artifact_id = artifacts.id
+        LEFT JOIN account_character_equipped_artifacts AS current_equipment
+            ON current_equipment.artifact_id = artifacts.id
+        LEFT JOIN account_characters AS equipment_character
+            ON equipment_character.character_id = current_equipment.character_id
         ORDER BY
             artifacts.pos,
             COALESCE(artifacts.rarity, 0) DESC,
@@ -432,7 +438,7 @@ def list_custom_sets(
     if not artifact_db_exists(db_path):
         return []
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         return _fetch_custom_sets(conn)
 
@@ -472,7 +478,7 @@ def create_custom_set(
     if not name:
         raise ValueError("Custom artifact set name is empty")
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         row = conn.execute(
             "SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM artifact_tags"
@@ -509,7 +515,7 @@ def delete_custom_set(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
 ) -> None:
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         conn.execute("DELETE FROM artifact_tags WHERE id = ?", (int(tag_id),))
         conn.commit()
@@ -523,7 +529,7 @@ def get_custom_set_artifact_ids(
     if not artifact_db_exists(db_path):
         return set()
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         rows = conn.execute(
             """
@@ -546,7 +552,7 @@ def replace_custom_set_artifacts(
     tag_id = int(tag_id)
     artifact_ids = {int(artifact_id) for artifact_id in artifact_ids}
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
 
         conn.execute(
@@ -576,7 +582,7 @@ def list_build_presets(
     if not artifact_db_exists(db_path):
         return []
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         return db_list_build_presets(conn)
 
@@ -589,7 +595,7 @@ def get_build_preset(
     if not artifact_db_exists(db_path):
         return None
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         return db_get_build_preset(conn, build_id)
 
@@ -602,7 +608,7 @@ def save_build_preset(
     targets: list[dict[str, Any]] | None = None,
     db_path: str | Path = ARTIFACT_DB_PATH,
 ) -> int:
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         if build_id is None:
             build_id = db_create_build_preset(
@@ -625,7 +631,7 @@ def delete_build_preset(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
 ) -> None:
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         db_delete_build_preset(conn, build_id)
         conn.commit()
@@ -641,7 +647,7 @@ def calculate_build_summary(
     if not artifact_db_exists(db_path):
         return None
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         init_db(conn)
         return db_calculate_raw_build_summary(
             conn,
@@ -649,4 +655,5 @@ def calculate_build_summary(
             slots=slots,
             artifact_ids=artifact_ids,
         )
+
 

@@ -213,6 +213,7 @@
   "artifact.equipment.target_right_panel": "Equipamento: {name}",
   "artifact.equipment.target_browser": "Equipamento: {name}",
   "artifact.equipment.apply_preset": "Equipar preset",
+  "artifact.equipment.conflict_confirm": "Isso vai alterar o equipamento destes personagens:",
   "artifact.equipment.not_wired": "Equipar artefato ainda nao esta conectado.",
   "artifact.build.new": "+ Nova predefinição",
   "artifact.build.name": "Nome",

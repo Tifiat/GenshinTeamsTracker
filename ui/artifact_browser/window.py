@@ -2145,17 +2145,32 @@ class ArtifactBrowserWindow(QWidget):
         )
 
     def apply_current_filters(self) -> None:
+        total_start = perf_now()
         if not self.store.database_exists:
-            self.model.set_artifact_ids([])
+            model_start = perf_now()
+            model_changed = self._set_visible_artifact_ids([])
+            model_ms = perf_ms(model_start)
             self.status_label.setText(tr("artifact.browser.database_missing"))
             self.empty_label.setText(tr("artifact.browser.import_first"))
+            log_perf(
+                "artifact_filter_apply",
+                total=perf_ms(total_start),
+                database_missing=True,
+                model=model_ms,
+                model_changed=model_changed,
+                visible=0,
+                total_count=0,
+            )
             return
 
+        base_start = perf_now()
         base_ids = self.store.ids_for_position(self.current_pos)
         visible_ids = list(base_ids)
+        base_ms = perf_ms(base_start)
 
         selected_any_sets = bool(self.selected_game_set_ids or self.selected_custom_set_ids)
 
+        set_filter_start = perf_now()
         if self.sets_filter_enabled and selected_any_sets:
             allowed_ids: set[int] = set()
             allowed_ids.update(self.store.ids_for_game_sets(self.selected_game_set_ids))
@@ -2165,19 +2180,53 @@ class ArtifactBrowserWindow(QWidget):
                 for artifact_id in base_ids
                 if artifact_id in allowed_ids
             ]
+        set_filter_ms = perf_ms(set_filter_start)
 
+        sort_start = perf_now()
         visible_ids = self.store.sort_artifact_ids(
             visible_ids,
             self.selected_sort_stat_types,
         )
+        sort_ms = perf_ms(sort_start)
+
+        priority_start = perf_now()
         priority_ids = self.current_highlight_artifact_ids()
         if priority_ids:
             visible_ids = sorted(
                 visible_ids,
                 key=lambda artifact_id: 0 if artifact_id in priority_ids else 1,
             )
-        self.model.set_artifact_ids(visible_ids)
+        priority_ms = perf_ms(priority_start)
+
+        model_start = perf_now()
+        model_changed = self._set_visible_artifact_ids(visible_ids)
+        model_ms = perf_ms(model_start)
+
+        status_start = perf_now()
         self.update_status(len(visible_ids), len(base_ids))
+        status_ms = perf_ms(status_start)
+        log_perf(
+            "artifact_filter_apply",
+            total=perf_ms(total_start),
+            pos=self.current_pos,
+            base=base_ms,
+            set_filter=set_filter_ms,
+            sort=sort_ms,
+            priority=priority_ms,
+            model=model_ms,
+            status=status_ms,
+            model_changed=model_changed,
+            selected_sets=len(self.selected_game_set_ids) + len(self.selected_custom_set_ids),
+            sort_stats=len(self.selected_sort_stat_types),
+            visible=len(visible_ids),
+            total_count=len(base_ids),
+        )
+
+    def _set_visible_artifact_ids(self, visible_ids: list[int]) -> bool:
+        if list(visible_ids) == self.model.artifact_ids:
+            return False
+        self.model.set_artifact_ids(visible_ids)
+        return True
 
     def update_status(self, visible_count: int, total_count: int) -> None:
         slot_name = self._position_label(self.current_pos)

@@ -78,6 +78,9 @@ from ui.utils.tooltips import install_custom_tooltip
 
 RIGHT_OPERATIONS_DOCK_WIDTH = RIGHT_PANEL_PROTOTYPE_MIN_WIDTH
 RIGHT_PANEL_REFRESH_DEBOUNCE_MS = 30
+RIGHT_PANEL_FAST_REFRESH_MS = 1
+WEAPON_FILTER_SYNC_DEBOUNCE_MS = 80
+PERSISTENT_EQUIPMENT_HYDRATION_DELAY_MS = 40
 MODE_TEAM_COUNTS = {
     MODE_ABYSS: 2,
     MODE_DPS_DUMMY: 1,
@@ -129,6 +132,25 @@ class RosterSelectionMarker:
     color: str
 
 
+@dataclass(frozen=True)
+class CharacterPlacementResult:
+    changed: bool = False
+    added: bool = False
+    removed: bool = False
+    character_id: str = ""
+    team_index: int = -1
+    slot_index: int = -1
+
+
+@dataclass
+class PersistentEquipmentHydration:
+    weapon: dict[str, Any] | None = None
+    current_artifacts: dict[str, int] = field(default_factory=dict)
+    artifact_snapshot: Any | None = None
+    artifact_set_effects: list[dict[str, Any]] = field(default_factory=list)
+    weapon_bonus_context: dict[str, Any] = field(default_factory=dict)
+
+
 @dataclass
 class AppShellController:
     """Tiny boundary for the separate AppShell prototype."""
@@ -141,6 +163,9 @@ class AppShellController:
     external_bonuses_enabled: bool = True
     mode_states: dict[str, TeamBuilderState] = field(default_factory=dict)
     last_equipment_error: str = ""
+    _persistent_equipment_cache: dict[str, PersistentEquipmentHydration] = field(
+        default_factory=dict
+    )
 
     @classmethod
     def empty(
@@ -200,11 +225,14 @@ class AppShellController:
         self.selected_team_index = -1
         self.selected_slot_index = -1
 
-    def add_or_replace_character(self, asset: dict[str, Any]) -> bool:
+    def add_or_replace_character_fast(
+        self,
+        asset: dict[str, Any],
+    ) -> CharacterPlacementResult:
         character = _asset_metadata_mapping(asset, "character")
         character_id = _text(character.get("id"))
         if not character_id:
-            return False
+            return CharacterPlacementResult()
 
         existing_slot = self._find_character_slot(character_id)
         if existing_slot is not None:
@@ -216,14 +244,20 @@ class AppShellController:
             ):
                 self.clear_selection()
             self._store_current_mode_state()
-            return True
+            return CharacterPlacementResult(
+                changed=True,
+                removed=True,
+                character_id=character_id,
+                team_index=team_index,
+                slot_index=slot_index,
+            )
 
         target_slot = self._first_empty_slot()
         if target_slot is None:
-            return False
+            return CharacterPlacementResult()
         team_index, slot_index = target_slot
 
-        self._set_character_with_persistent_equipment(
+        self._set_character_minimal(
             team_index,
             slot_index,
             character,
@@ -232,7 +266,24 @@ class AppShellController:
         self.selected_team_index = team_index
         self.selected_slot_index = slot_index
         self._store_current_mode_state()
-        return True
+        return CharacterPlacementResult(
+            changed=True,
+            added=True,
+            character_id=character_id,
+            team_index=team_index,
+            slot_index=slot_index,
+        )
+
+    def add_or_replace_character(self, asset: dict[str, Any]) -> bool:
+        result = self.add_or_replace_character_fast(asset)
+        if result.added:
+            self.hydrate_persistent_equipment_for_slot(
+                result.team_index,
+                result.slot_index,
+                result.character_id,
+            )
+            self._store_current_mode_state()
+        return result.changed
 
     def assign_weapon_to_selected_slot(self, asset: dict[str, Any]) -> bool:
         if self.selected_team_index < 0 or self.selected_slot_index < 0:
@@ -281,6 +332,7 @@ class AppShellController:
             self.last_equipment_error = str(exc)
             return False
 
+        self.invalidate_persistent_equipment_cache({character_id})
         weapon = persisted_weapon or weapon
         self.state = self.state.set_weapon(
             self.selected_team_index,
@@ -338,6 +390,28 @@ class AppShellController:
             "slot_index": self.selected_slot_index,
         }
 
+    def selected_equipment_hydration_target(
+        self,
+    ) -> CharacterPlacementResult | None:
+        if self.selected_team_index < 0 or self.selected_slot_index < 0:
+            return None
+        try:
+            slot = self.state.team(self.selected_team_index).slot(self.selected_slot_index)
+        except IndexError:
+            return None
+        if slot.character is None:
+            return None
+        character_id = _text(slot.character.id)
+        if not character_id:
+            return None
+        return CharacterPlacementResult(
+            changed=True,
+            added=True,
+            character_id=character_id,
+            team_index=self.selected_team_index,
+            slot_index=self.selected_slot_index,
+        )
+
     def refresh_persistent_equipment_for_character(self, character_id: int | str) -> bool:
         character_id_text = _text(character_id)
         if not character_id_text:
@@ -356,6 +430,7 @@ class AppShellController:
             or character.get("local_portrait_path")
             or character.get("portrait_path")
         )
+        self.invalidate_persistent_equipment_cache({character_id_text})
         self._set_character_with_persistent_equipment(
             team_index,
             slot_index,
@@ -396,6 +471,16 @@ class AppShellController:
                     return team_index, slot.slot_index
         return None
 
+    def invalidate_persistent_equipment_cache(
+        self,
+        character_ids: set[str] | set[int] | None = None,
+    ) -> None:
+        if character_ids is None:
+            self._persistent_equipment_cache.clear()
+            return
+        for character_id in character_ids:
+            self._persistent_equipment_cache.pop(_text(character_id), None)
+
     def _set_character_with_persistent_equipment(
         self,
         team_index: int,
@@ -404,61 +489,250 @@ class AppShellController:
         *,
         asset_path: str = "",
     ) -> None:
+        character = self._set_character_minimal(
+            team_index,
+            slot_index,
+            character,
+            asset_path=asset_path,
+        )
+        self.hydrate_persistent_equipment_for_slot(
+            team_index,
+            slot_index,
+            _text(character.get("id")),
+        )
+
+    def _set_character_minimal(
+        self,
+        team_index: int,
+        slot_index: int,
+        character: dict[str, Any],
+        *,
+        asset_path: str = "",
+    ) -> dict[str, Any]:
         character = _normalized_character_image_paths(character, asset_path=asset_path)
-        character_id = _text(character.get("id"))
         self.state = self.state.clear_slot(team_index, slot_index)
         self.state = self.state.set_character(team_index, slot_index, character)
         details: dict[str, Any] = {"account_character": dict(character)}
         portrait_path = _text(character.get("local_portrait_path") or character.get("portrait_path"))
         if portrait_path:
             details["portrait_path"] = portrait_path
-        with self._equipment_connection() as conn:
+        self.state = self.state.attach_character_details_data(team_index, slot_index, details)
+        return character
+
+    def hydrate_persistent_equipment_for_slot(
+        self,
+        team_index: int,
+        slot_index: int,
+        character_id: str,
+        *,
+        use_cache: bool = True,
+    ) -> dict[str, float]:
+        total_start = perf_now()
+        character_id = _text(character_id)
+        if not character_id:
+            return {"hydration_total": perf_ms(total_start), "hydration_applied": 0.0}
+        try:
+            slot = self.state.team(team_index).slot(slot_index)
+        except IndexError:
+            return {"hydration_total": perf_ms(total_start), "hydration_applied": 0.0}
+        if slot.character is None or _text(slot.character.id) != character_id:
+            log_perf(
+                "persistent_equipment_hydration",
+                total=perf_ms(total_start),
+                character=character_id,
+                applied=False,
+                stale=True,
+            )
+            return {"hydration_total": perf_ms(total_start), "hydration_applied": 0.0}
+        details = _mapping(slot.character_details_data)
+        character = _mapping(details.get("account_character")) or slot.character.to_dict()
+        load_start = perf_now()
+        hydration, load_timings = self._load_persistent_equipment(
+            character_id,
+            character,
+            use_cache=use_cache,
+        )
+        load_ms = perf_ms(load_start)
+        try:
+            current_slot = self.state.team(team_index).slot(slot_index)
+        except IndexError:
+            return {"hydration_total": perf_ms(total_start), "hydration_applied": 0.0}
+        if current_slot.character is None or _text(current_slot.character.id) != character_id:
+            log_perf(
+                "persistent_equipment_hydration",
+                total=perf_ms(total_start),
+                character=character_id,
+                applied=False,
+                stale=True,
+                load=load_ms,
+            )
+            return {
+                "hydration_total": perf_ms(total_start),
+                "hydration_load": load_ms,
+                "hydration_applied": 0.0,
+            }
+
+        attach_start = perf_now()
+        details = dict(_mapping(current_slot.character_details_data))
+        details["account_character"] = dict(character)
+        for key in (
+            "current_equipped_artifact_ids_by_slot",
+            "selected_build",
+            "stat_snapshot",
+            "artifact_set_display_stat_effects",
+            "warnings",
+            "status",
+            "weapon_passive_reference",
+            "weapon_display_stat_effects",
+        ):
+            details.pop(key, None)
+        source_notes = dict(_mapping(details.get("source_notes")))
+        for key in (
+            "current_equipped_artifacts_readonly",
+            "current_equipment_artifact_snapshot",
+            "current_equipment_snapshot_persisted_as_build",
+        ):
+            source_notes.pop(key, None)
+        if source_notes:
+            details["source_notes"] = source_notes
+        else:
+            details.pop("source_notes", None)
+
+        if hydration.current_artifacts:
+            details["current_equipped_artifact_ids_by_slot"] = dict(
+                hydration.current_artifacts
+            )
+            details.setdefault("source_notes", {})[
+                "current_equipped_artifacts_readonly"
+            ] = True
+        if hydration.artifact_snapshot is not None:
+            _apply_current_artifact_snapshot_to_details(
+                details,
+                hydration.artifact_snapshot,
+                artifact_set_effects=hydration.artifact_set_effects,
+            )
+        if hydration.weapon:
+            self.state = self.state.set_weapon(team_index, slot_index, hydration.weapon)
+            details["account_weapon"] = dict(hydration.weapon)
+            if _text(hydration.weapon.get("icon_path")):
+                details["weapon_image_path"] = _text(hydration.weapon.get("icon_path"))
+            details.update(hydration.weapon_bonus_context)
+        else:
+            self.state = self.state.clear_weapon(team_index, slot_index)
+            details.pop("account_weapon", None)
+            details.pop("weapon_image_path", None)
+            details.update(
+                {
+                    "weapon_passive_reference": {},
+                    "weapon_display_stat_effects": [],
+                }
+            )
+        self.state = self.state.attach_character_details_data(
+            team_index,
+            slot_index,
+            details,
+        )
+        self._store_current_mode_state()
+        attach_ms = perf_ms(attach_start)
+        total_ms = perf_ms(total_start)
+        timings = {
+            "hydration_total": total_ms,
+            "hydration_load": load_ms,
+            "hydration_attach_details": attach_ms,
+            "hydration_applied": 1.0,
+            **load_timings,
+        }
+        log_perf(
+            "persistent_equipment_hydration",
+            total=total_ms,
+            character=character_id,
+            applied=True,
+            **load_timings,
+            attach_details=attach_ms,
+        )
+        return timings
+
+    def _load_persistent_equipment(
+        self,
+        character_id: str,
+        character: dict[str, Any],
+        *,
+        use_cache: bool = True,
+    ) -> tuple[PersistentEquipmentHydration, dict[str, float]]:
+        character_id = _text(character_id)
+        if use_cache and character_id in self._persistent_equipment_cache:
+            return self._persistent_equipment_cache[character_id], {
+                "hydration_cache_hit": 1.0
+            }
+
+        timings: dict[str, float] = {"hydration_cache_hit": 0.0}
+        connect_start = perf_now()
+        conn = connect_db(self.equipment_db_path)
+        timings["hydration_connect_db"] = perf_ms(connect_start)
+        try:
+            weapon_start = perf_now()
             session_weapon = self._persistent_weapon_for_character(
                 conn,
                 character_id,
                 character,
             )
+            timings["hydration_get_weapon"] = perf_ms(weapon_start)
+
+            artifact_ids_start = perf_now()
             current_artifacts = self._persistent_artifact_ids_for_character(
                 conn,
                 character_id,
             )
-            artifact_snapshot = (
-                build_current_equipment_artifact_snapshot(
+            timings["hydration_get_artifact_ids"] = perf_ms(artifact_ids_start)
+
+            artifact_snapshot = None
+            artifact_set_effects: list[dict[str, Any]] = []
+            if current_artifacts:
+                snapshot_start = perf_now()
+                artifact_snapshot = build_current_equipment_artifact_snapshot(
                     conn,
                     character_id,
                     build_name=tr("artifact.build.current_equipment"),
                 )
-                if current_artifacts
-                else None
-            )
-            artifact_set_effects = (
-                list_artifact_set_display_stat_effects_for_active_sets(
-                    conn,
-                    artifact_snapshot.to_dict().get("active_set_bonuses") or [],
+                timings["hydration_build_artifact_snapshot"] = perf_ms(snapshot_start)
+
+                effects_start = perf_now()
+                artifact_set_effects = (
+                    list_artifact_set_display_stat_effects_for_active_sets(
+                        conn,
+                        artifact_snapshot.to_dict().get("active_set_bonuses") or [],
+                    )
+                    if artifact_snapshot is not None
+                    else []
                 )
-                if artifact_snapshot is not None
-                else []
+                timings["hydration_list_artifact_set_effects"] = perf_ms(effects_start)
+            else:
+                timings["hydration_build_artifact_snapshot"] = 0.0
+                timings["hydration_list_artifact_set_effects"] = 0.0
+
+            weapon_bonus_start = perf_now()
+            weapon_bonus_context = (
+                _weapon_bonus_context_from_conn(conn, session_weapon)
+                if session_weapon
+                else {
+                    "weapon_passive_reference": {},
+                    "weapon_display_stat_effects": [],
+                }
             )
-        if current_artifacts:
-            details["current_equipped_artifact_ids_by_slot"] = dict(current_artifacts)
-            details.setdefault("source_notes", {})[
-                "current_equipped_artifacts_readonly"
-            ] = True
-        if artifact_snapshot is not None:
-            _apply_current_artifact_snapshot_to_details(
-                details,
-                artifact_snapshot,
-                artifact_set_effects=artifact_set_effects,
-            )
-        if session_weapon:
-            self.state = self.state.set_weapon(team_index, slot_index, session_weapon)
-            details["account_weapon"] = dict(session_weapon)
-            if _text(session_weapon.get("icon_path")):
-                details["weapon_image_path"] = _text(session_weapon.get("icon_path"))
-            details.update(
-                _weapon_bonus_context(session_weapon, db_path=self.equipment_db_path)
-            )
-        self.state = self.state.attach_character_details_data(team_index, slot_index, details)
+            timings["hydration_weapon_bonus_context"] = perf_ms(weapon_bonus_start)
+        finally:
+            conn.close()
+
+        hydration = PersistentEquipmentHydration(
+            weapon=session_weapon,
+            current_artifacts=dict(current_artifacts),
+            artifact_snapshot=artifact_snapshot,
+            artifact_set_effects=[dict(item) for item in artifact_set_effects],
+            weapon_bonus_context=dict(weapon_bonus_context),
+        )
+        if use_cache:
+            self._persistent_equipment_cache[character_id] = hydration
+        return hydration, timings
 
     def _equipment_connection(self):
         return closing(connect_db(self.equipment_db_path))
@@ -591,6 +865,13 @@ class AppShell(QWidget):
         self._weapon_filter_sync_timer.timeout.connect(
             self.flush_pending_weapon_filter_sync
         )
+        self._equipment_hydration_pending: CharacterPlacementResult | None = None
+        self._equipment_hydration_generation = 0
+        self._equipment_hydration_timer = QTimer(self)
+        self._equipment_hydration_timer.setSingleShot(True)
+        self._equipment_hydration_timer.timeout.connect(
+            self.flush_pending_equipment_hydration
+        )
         self._resize_event_count = 0
         self._resize_settle_timer = QTimer(self)
         self._resize_settle_timer.setSingleShot(True)
@@ -665,25 +946,97 @@ class AppShell(QWidget):
             right=f"{right_geom.x()} {right_geom.width()}",
         )
 
-    def schedule_right_panel_refresh(self) -> None:
+    def schedule_right_panel_refresh(
+        self,
+        delay_ms: int = RIGHT_PANEL_REFRESH_DEBOUNCE_MS,
+    ) -> None:
         if self._right_panel_refresh_pending:
-            log_perf("right_panel_refresh_schedule", pending=True)
+            remaining = self._right_panel_refresh_timer.remainingTime()
+            if remaining < 0:
+                self._right_panel_refresh_timer.start(delay_ms)
+                log_perf(
+                    "right_panel_refresh_schedule",
+                    pending=True,
+                    delay=delay_ms,
+                    restarted=True,
+                )
+                return
+            if delay_ms >= remaining:
+                log_perf(
+                    "right_panel_refresh_schedule",
+                    pending=True,
+                    delay=remaining,
+                )
+                return
+            self._right_panel_refresh_timer.start(delay_ms)
+            log_perf(
+                "right_panel_refresh_schedule",
+                pending=True,
+                delay=delay_ms,
+                restarted=True,
+            )
             return
         self._right_panel_refresh_pending = True
-        self._right_panel_refresh_timer.start(RIGHT_PANEL_REFRESH_DEBOUNCE_MS)
+        self._right_panel_refresh_timer.start(delay_ms)
         log_perf(
             "right_panel_refresh_schedule",
             pending=False,
-            delay=RIGHT_PANEL_REFRESH_DEBOUNCE_MS,
+            delay=delay_ms,
         )
 
-    def schedule_weapon_filter_sync(self) -> None:
+    def schedule_weapon_filter_sync(
+        self,
+        delay_ms: int = WEAPON_FILTER_SYNC_DEBOUNCE_MS,
+    ) -> None:
         if self._weapon_filter_sync_pending:
-            log_perf("weapon_filter_sync_schedule", pending=True)
+            self._weapon_filter_sync_timer.start(delay_ms)
+            log_perf(
+                "weapon_filter_sync_schedule",
+                pending=True,
+                delay=delay_ms,
+                restarted=True,
+            )
             return
         self._weapon_filter_sync_pending = True
-        self._weapon_filter_sync_timer.start(0)
-        log_perf("weapon_filter_sync_schedule", pending=False)
+        self._weapon_filter_sync_timer.start(delay_ms)
+        log_perf("weapon_filter_sync_schedule", pending=False, delay=delay_ms)
+
+    def schedule_persistent_equipment_hydration(
+        self,
+        result: CharacterPlacementResult,
+    ) -> None:
+        if not result.added:
+            return
+        self._equipment_hydration_generation += 1
+        self._equipment_hydration_pending = result
+        self._equipment_hydration_timer.start(PERSISTENT_EQUIPMENT_HYDRATION_DELAY_MS)
+        log_perf(
+            "persistent_equipment_hydration_schedule",
+            generation=self._equipment_hydration_generation,
+            character=result.character_id,
+            delay=PERSISTENT_EQUIPMENT_HYDRATION_DELAY_MS,
+        )
+
+    def cancel_pending_equipment_hydration(
+        self,
+        result: CharacterPlacementResult | None = None,
+    ) -> None:
+        if result is not None and self._equipment_hydration_pending is not None:
+            pending = self._equipment_hydration_pending
+            if (
+                pending.character_id != result.character_id
+                or pending.team_index != result.team_index
+                or pending.slot_index != result.slot_index
+            ):
+                return
+        self._equipment_hydration_generation += 1
+        self._equipment_hydration_pending = None
+        if self._equipment_hydration_timer.isActive():
+            self._equipment_hydration_timer.stop()
+        log_perf(
+            "persistent_equipment_hydration_cancel",
+            generation=self._equipment_hydration_generation,
+        )
 
     def flush_pending_weapon_filter_sync(self) -> bool:
         if self._weapon_filter_sync_timer.isActive():
@@ -691,12 +1044,54 @@ class AppShell(QWidget):
         if not self._weapon_filter_sync_pending:
             return False
         self._weapon_filter_sync_pending = False
+        total_start = perf_now()
+        filter_start = perf_now()
         filter_key = self.controller.selected_character_weapon_filter_key()
+        filter_ms = perf_ms(filter_start)
+        apply_start = perf_now()
         changed = self.left_host.character_weapon_workspace.set_auto_weapon_type_filter(
             filter_key
         )
-        log_perf("weapon_filter_sync", filter=filter_key or "all", changed=changed)
+        apply_ms = perf_ms(apply_start)
+        log_perf(
+            "weapon_filter_sync",
+            total=perf_ms(total_start),
+            selected_filter=filter_ms,
+            apply=apply_ms,
+            filter=filter_key or "all",
+            changed=changed,
+        )
         return changed
+
+    def flush_pending_equipment_hydration(self) -> dict[str, float]:
+        if self._equipment_hydration_timer.isActive():
+            self._equipment_hydration_timer.stop()
+        result = self._equipment_hydration_pending
+        self._equipment_hydration_pending = None
+        if result is None or not result.added:
+            return {}
+        total_start = perf_now()
+        timings = self.controller.hydrate_persistent_equipment_for_slot(
+            result.team_index,
+            result.slot_index,
+            result.character_id,
+        )
+        total_ms = perf_ms(total_start)
+        applied = bool(timings.get("hydration_applied"))
+        if applied:
+            sync_start = perf_now()
+            self._sync_artifact_browser_operation_target()
+            sync_ms = perf_ms(sync_start)
+            self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+            timings["operation_target_sync"] = sync_ms
+        log_perf(
+            "persistent_equipment_hydration_flush",
+            total=total_ms,
+            character=result.character_id,
+            applied=applied,
+            **timings,
+        )
+        return timings
 
     def flush_pending_right_panel_refresh(self) -> dict[str, float]:
         if self._right_panel_refresh_timer.isActive():
@@ -814,6 +1209,11 @@ class AppShell(QWidget):
         total_start = perf_now()
         self.controller.toggle_slot_selection(team_index, slot_index)
         self._sync_artifact_browser_operation_target()
+        hydration_target = self.controller.selected_equipment_hydration_target()
+        if hydration_target is not None:
+            self.schedule_persistent_equipment_hydration(hydration_target)
+        else:
+            self.cancel_pending_equipment_hydration()
         self.schedule_weapon_filter_sync()
         self.schedule_right_panel_refresh()
         log_perf("slot_select", total=perf_ms(total_start), scheduled=True)
@@ -828,7 +1228,8 @@ class AppShell(QWidget):
         total_start = perf_now()
         before_markers = self.controller.roster_selection_markers()
         state_start = perf_now()
-        changed = self.controller.add_or_replace_character(asset)
+        result = self.controller.add_or_replace_character_fast(asset)
+        changed = result.changed
         state_ms = perf_ms(state_start)
         timings: dict[str, float] = {}
         if changed:
@@ -838,9 +1239,16 @@ class AppShell(QWidget):
                 affected_character_ids=affected_character_ids,
                 markers=after_markers,
             )
+            target_start = perf_now()
             self._sync_artifact_browser_operation_target()
+            target_ms = perf_ms(target_start)
+            timings["operation_target_sync"] = target_ms
             self.schedule_weapon_filter_sync()
-            self.schedule_right_panel_refresh()
+            self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+            if result.added:
+                self.schedule_persistent_equipment_hydration(result)
+            elif result.removed:
+                self.cancel_pending_equipment_hydration(result)
         log_perf(
             "character_click",
             total=perf_ms(total_start),
@@ -1688,6 +2096,18 @@ def _weapon_bonus_context(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
 ) -> dict[str, Any]:
+    try:
+        with closing(connect_db(db_path)) as conn:
+            return _weapon_bonus_context_from_conn(conn, weapon)
+    except Exception:
+        return {
+            "weapon_passive_reference": {},
+            "weapon_display_stat_effects": [],
+        }
+
+
+def _weapon_bonus_context_from_conn(conn, weapon: dict[str, Any] | None) -> dict[str, Any]:
+    weapon = weapon or {}
     weapon_id = _text(weapon.get("id") or weapon.get("weapon_id"))
     refinement = _optional_int(weapon.get("refinement"))
     result: dict[str, Any] = {
@@ -1697,17 +2117,16 @@ def _weapon_bonus_context(
     if not weapon_id:
         return result
     try:
-        with closing(connect_db(db_path)) as conn:
-            passive_reference = get_weapon_passive_tooltip(
-                conn,
-                weapon_id=weapon_id,
-                language=_account_content_language(),
-            )
-            weapon_effects = list_weapon_display_stat_effects(
-                conn,
-                weapon_id=weapon_id,
-                refinement=refinement,
-            )
+        passive_reference = get_weapon_passive_tooltip(
+            conn,
+            weapon_id=weapon_id,
+            language=_account_content_language(),
+        )
+        weapon_effects = list_weapon_display_stat_effects(
+            conn,
+            weapon_id=weapon_id,
+            refinement=refinement,
+        )
     except Exception:
         return result
     if passive_reference:

@@ -64,6 +64,10 @@ SLOT_CARD_FIXED_HEIGHT = 154
 SLOT_NAME_HEIGHT = 18
 
 _FIT_PIXMAP_CACHE: dict[tuple[str, int, int], QPixmap | None] = {}
+_BUILD_MINI_SET_ICON_PIXMAP_CACHE: dict[
+    tuple[str, int, int, int, int],
+    QPixmap | None,
+] = {}
 _BONUS_SOURCE_ICON_PIXMAP_CACHE: dict[
     tuple[str, int, int, int, int],
     QPixmap | None,
@@ -477,6 +481,7 @@ class SelectedCharacterDetailsWidget(QFrame):
         self._layout.setSpacing(8)
 
     def set_details(self, details: RightPanelSelectedDetailsViewModel) -> None:
+        total_start = perf_now()
         _clear_layout(self._layout)
 
         if not details.has_selection:
@@ -484,12 +489,16 @@ class SelectedCharacterDetailsWidget(QFrame):
             empty.setObjectName("SubtleText")
             empty.setWordWrap(True)
             self._layout.addWidget(empty)
+            log_perf("right_panel_details_set", total=perf_ms(total_start), empty=True)
             return
 
+        body_start = perf_now()
         body = QHBoxLayout()
         body.setSpacing(10)
         self._layout.addLayout(body)
+        body_ms = perf_ms(body_start)
 
+        stats_start = perf_now()
         stats_frame = QFrame()
         stats_frame.setObjectName("StatsPanel")
         stats_layout = QVBoxLayout(stats_frame)
@@ -500,7 +509,9 @@ class SelectedCharacterDetailsWidget(QFrame):
         for row in details.stat_rows:
             stats_layout.addLayout(_detail_row_layout(row, metric=False))
         stats_layout.addStretch(1)
+        stats_ms = perf_ms(stats_start)
 
+        meta_start = perf_now()
         meta_frame = QFrame()
         meta_frame.setObjectName("MetaPanel")
         meta_layout = QVBoxLayout(meta_frame)
@@ -527,7 +538,9 @@ class SelectedCharacterDetailsWidget(QFrame):
         if details.crit_value is not None:
             self._add_cv_summary(meta_layout, details.crit_value)
         meta_layout.addStretch(1)
+        meta_ms = perf_ms(meta_start)
 
+        bonus_start = perf_now()
         bonus_strip = BonusSourceStripWidget()
         bonus_strip.external_bonuses_toggled.connect(self.external_bonuses_toggled.emit)
         bonus_strip.set_items(
@@ -535,6 +548,17 @@ class SelectedCharacterDetailsWidget(QFrame):
             external_bonuses_enabled=details.external_bonuses_enabled,
         )
         self._layout.addWidget(bonus_strip)
+        bonus_ms = perf_ms(bonus_start)
+        log_perf(
+            "right_panel_details_set",
+            total=perf_ms(total_start),
+            empty=False,
+            body=body_ms,
+            stats=stats_ms,
+            meta=meta_ms,
+            bonus_strip=bonus_ms,
+            bonus_count=len(details.bonus_sources),
+        )
 
     def _add_weapon_summary(
         self,
@@ -930,16 +954,45 @@ def _build_mini_set_icon_pixmap(path: str) -> QPixmap | None:
     if not path:
         return None
     resolved = _resolve_pixmap_path(path)
+    try:
+        stat = resolved.stat()
+        key = (
+            str(resolved),
+            SLOT_EQUIP_ICON_SIZE,
+            SLOT_EQUIP_ICON_SIZE,
+            int(stat.st_mtime_ns),
+            int(stat.st_size),
+        )
+    except OSError:
+        key = (
+            str(path),
+            SLOT_EQUIP_ICON_SIZE,
+            SLOT_EQUIP_ICON_SIZE,
+            0,
+            0,
+        )
+
+    if key in _BUILD_MINI_SET_ICON_PIXMAP_CACHE:
+        cached = _BUILD_MINI_SET_ICON_PIXMAP_CACHE[key]
+        return QPixmap(cached) if cached is not None else None
+
+    if not resolved.is_file():
+        _BUILD_MINI_SET_ICON_PIXMAP_CACHE[key] = None
+        return None
+
     pixmap = QPixmap(str(resolved))
     if pixmap.isNull():
+        _BUILD_MINI_SET_ICON_PIXMAP_CACHE[key] = None
         return None
-    return scale_trimmed_pixmap_to_size(
+    result = _scale_trimmed_icon_for_chip(
         pixmap,
         SLOT_EQUIP_ICON_SIZE,
         SLOT_EQUIP_ICON_SIZE,
         padding=1,
         alpha_threshold=16,
     )
+    _BUILD_MINI_SET_ICON_PIXMAP_CACHE[key] = QPixmap(result)
+    return result
 
 
 def _build_mini_set_fallback_text(
@@ -1040,12 +1093,17 @@ def _clean_set_bonus_description(description: str) -> str:
 def _fit_pixmap(path: str, size: QSize) -> QPixmap | None:
     if not path:
         return None
-    key = (str(path), int(size.width()), int(size.height()))
+    resolved = _resolve_pixmap_path(path)
+    if not resolved.is_file():
+        key = (str(path), int(size.width()), int(size.height()))
+        _FIT_PIXMAP_CACHE[key] = None
+        return None
+    key = (str(resolved), int(size.width()), int(size.height()))
     if key in _FIT_PIXMAP_CACHE:
         cached = _FIT_PIXMAP_CACHE[key]
         return QPixmap(cached) if cached is not None else None
 
-    source = QPixmap(path)
+    source = QPixmap(str(resolved))
     if source.isNull():
         _FIT_PIXMAP_CACHE[key] = None
         return None
@@ -1070,8 +1128,8 @@ def _fit_pixmap(path: str, size: QSize) -> QPixmap | None:
 def _bonus_source_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
     if not path:
         return None
+    resolved = _resolve_pixmap_path(path)
     try:
-        resolved = _resolve_pixmap_path(path)
         stat = resolved.stat()
         key = (
             str(resolved),
@@ -1087,12 +1145,16 @@ def _bonus_source_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
         cached = _BONUS_SOURCE_ICON_PIXMAP_CACHE[key]
         return QPixmap(cached) if cached is not None else None
 
+    if not resolved.is_file():
+        _BONUS_SOURCE_ICON_PIXMAP_CACHE[key] = None
+        return None
+
     source = QPixmap(str(resolved))
     if source.isNull():
         _BONUS_SOURCE_ICON_PIXMAP_CACHE[key] = None
         return None
 
-    pixmap = scale_trimmed_pixmap_to_size(
+    pixmap = _scale_trimmed_icon_for_chip(
         source,
         int(size.width()),
         int(size.height()),
@@ -1116,8 +1178,8 @@ def _resolve_pixmap_path(path: str) -> Path:
 def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
     if not path:
         return None
+    resolved = _resolve_pixmap_path(path)
     try:
-        resolved = Path(path)
         stat = resolved.stat()
         key = (
             str(resolved),
@@ -1143,7 +1205,11 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
         cached = _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key]
         return QPixmap(cached) if cached is not None else None
 
-    source = QPixmap(str(path))
+    if not resolved.is_file():
+        _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key] = None
+        return None
+
+    source = QPixmap(str(resolved))
     if source.isNull():
         _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key] = None
         return None
@@ -1162,6 +1228,31 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
     painter.end()
     _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key] = QPixmap(canvas)
     return canvas
+
+
+def _scale_trimmed_icon_for_chip(
+    source: QPixmap,
+    width: int,
+    height: int,
+    *,
+    padding: int,
+    alpha_threshold: int,
+) -> QPixmap:
+    prescale_width = max(1, int(width) * 2)
+    prescale_height = max(1, int(height) * 2)
+    prescaled = source.scaled(
+        prescale_width,
+        prescale_height,
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
+    )
+    return scale_trimmed_pixmap_to_size(
+        prescaled,
+        width,
+        height,
+        padding=padding,
+        alpha_threshold=alpha_threshold,
+    )
 
 
 def _clear_layout(layout) -> None:

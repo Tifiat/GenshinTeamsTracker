@@ -1584,6 +1584,89 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(set_model.call_count, 1)
 
+    def test_roster_click_defers_persistent_equipment_hydration(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_artifact(conn, 10000050, 1)
+                conn.commit()
+            shell = AppShell(
+                controller=AppShellController.empty(equipment_db_path=db_path)
+            )
+
+            shell._on_character_clicked(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+
+            details = shell.controller.state.team(0).slot(0).character_details_data
+            self.assertNotIn("current_equipped_artifact_ids_by_slot", details)
+            self.assertIsNotNone(shell._equipment_hydration_pending)
+            self.assertEqual(
+                shell.controller.right_panel_model().selected_details.active_sets,
+                (),
+            )
+
+            shell.flush_pending_equipment_hydration()
+
+        details = shell.controller.state.team(0).slot(0).character_details_data
+        self.assertEqual(
+            details["current_equipped_artifact_ids_by_slot"],
+            {"flower": 1},
+        )
+        self.assertEqual(
+            shell.controller.right_panel_model().selected_details.active_sets,
+            (),
+        )
+
+    def test_persistent_equipment_hydration_stale_guard_skips_changed_slot(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_artifact(conn, 10000050, 1)
+                conn.commit()
+            controller = AppShellController.empty(equipment_db_path=db_path)
+
+            result = controller.add_or_replace_character_fast(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            controller.add_or_replace_character_fast(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            controller.add_or_replace_character_fast(
+                _character_asset("10000089", "Furina", weapon_type=1)
+            )
+            timings = controller.hydrate_persistent_equipment_for_slot(
+                result.team_index,
+                result.slot_index,
+                result.character_id,
+            )
+
+        slot = controller.state.team(0).slot(0)
+        self.assertEqual(slot.character.id, "10000089")
+        self.assertEqual(timings["hydration_applied"], 0.0)
+        self.assertNotIn(
+            "current_equipped_artifact_ids_by_slot",
+            slot.character_details_data,
+        )
+
+    def test_roster_click_defers_weapon_filter_reload(self) -> None:
+        shell = AppShell()
+        workspace = shell.left_host.character_weapon_workspace
+
+        with patch.object(
+            workspace,
+            "set_auto_weapon_type_filter",
+            wraps=workspace.set_auto_weapon_type_filter,
+        ) as apply_filter:
+            shell._on_character_clicked(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+
+            self.assertEqual(apply_filter.call_count, 0)
+            self.assertTrue(shell._weapon_filter_sync_pending)
+
+            shell.flush_pending_weapon_filter_sync()
+
+        self.assertEqual(apply_filter.call_count, 1)
+
     def test_rapid_roster_clicks_coalesce_right_panel_refresh(self) -> None:
         shell = AppShell()
 

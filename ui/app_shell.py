@@ -401,6 +401,9 @@ class AppShellController:
             return None
         if slot.character is None:
             return None
+        details = _mapping(slot.character_details_data)
+        if bool(details.get("persistent_equipment_hydrated")):
+            return None
         character_id = _text(slot.character.id)
         if not character_id:
             return None
@@ -627,6 +630,7 @@ class AppShellController:
                     "weapon_display_stat_effects": [],
                 }
             )
+        details["persistent_equipment_hydrated"] = True
         self.state = self.state.attach_character_details_data(
             team_index,
             slot_index,

@@ -275,11 +275,13 @@ class RightPanelTeamPrototypeWidget(QFrame):
         self._grid.setVerticalSpacing(6)
         layout.addWidget(self._grid_container)
         self._rebuild_slot_widgets(model)
+        self._sync_fixed_height()
 
     def set_model(self, model: RightPanelTeamPrototypeViewModel) -> None:
         self._model = model
         if len(model.slots) != len(self._slot_widgets):
             self._rebuild_slot_widgets(model)
+            self._sync_fixed_height()
             return
         for slot_widget, slot in zip(self._slot_widgets, model.slots):
             slot_widget.set_model(slot)
@@ -298,6 +300,15 @@ class RightPanelTeamPrototypeWidget(QFrame):
             widget.clicked.connect(self.slot_selected.emit)
             self._slot_widgets.append(widget)
             self._grid.addWidget(widget, index // 4, index % 4)
+
+    def _sync_fixed_height(self) -> None:
+        slot_count = max(1, len(self._slot_widgets))
+        rows = max(1, (slot_count + 3) // 4)
+        vertical_spacing = max(0, self._grid.verticalSpacing())
+        grid_height = rows * SLOT_CARD_FIXED_HEIGHT + max(0, rows - 1) * vertical_spacing
+        frame_height = grid_height + 8
+        self._grid_container.setFixedHeight(grid_height)
+        self.setFixedHeight(frame_height)
 
 
 class RightPanelSlotPrototypeWidget(QFrame):
@@ -1502,12 +1513,12 @@ def _stylesheet() -> str:
         font-size: 13px;
     }
     #SlotCard, #SlotCardSelected {
-        border: 1px solid #3f4652;
+        border: 2px solid #3f4652;
         border-radius: 7px;
         background: #292e37;
     }
     #SlotCardSelected {
-        border: 2px solid #d7b461;
+        border-color: #d7b461;
         background: #303743;
     }
     #PortraitBox, #PortraitBoxEmpty {

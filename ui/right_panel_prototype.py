@@ -97,6 +97,7 @@ class RightPanelPrototypeWidget(QWidget):
         self.setObjectName("RightPanelPrototypeWidget")
         self.setMinimumWidth(RIGHT_PANEL_PROTOTYPE_MIN_WIDTH)
         self._model = model
+        self._team_widgets: list[RightPanelTeamPrototypeWidget] = []
         self._slot_widgets: list[RightPanelSlotPrototypeWidget] = []
 
         root = QVBoxLayout(self)
@@ -156,14 +157,18 @@ class RightPanelPrototypeWidget(QWidget):
         self._sync_tabs(model.mode)
         tabs_ms = perf_ms(tabs_start)
         teams_start = perf_now()
-        self._clear_layout(self._teams_layout)
-        self._slot_widgets.clear()
-
-        for team in model.teams:
-            team_widget = RightPanelTeamPrototypeWidget(team)
-            team_widget.slot_selected.connect(self.slot_selected.emit)
-            self._slot_widgets.extend(team_widget.slot_widgets())
-            self._teams_layout.addWidget(team_widget)
+        teams_mode = "in_place"
+        if self._teams_structure_matches(model):
+            for team_widget, team in zip(self._team_widgets, model.teams):
+                team_widget.set_model(team)
+        else:
+            teams_mode = "rebuild"
+            self._rebuild_team_widgets(model)
+        self._slot_widgets = [
+            slot_widget
+            for team_widget in self._team_widgets
+            for slot_widget in team_widget.slot_widgets()
+        ]
         teams_ms = perf_ms(teams_start)
 
         chamber_start = perf_now()
@@ -185,6 +190,7 @@ class RightPanelPrototypeWidget(QWidget):
             total=perf_ms(total_start),
             tabs=tabs_ms,
             teams=teams_ms,
+            teams_mode=teams_mode,
             chamber=chamber_ms,
             details=details_ms,
             actions=actions_ms,
@@ -225,6 +231,26 @@ class RightPanelPrototypeWidget(QWidget):
             if widget is not None:
                 widget.deleteLater()
 
+    def _teams_structure_matches(self, model: RightPanelPrototypeViewModel) -> bool:
+        if len(self._team_widgets) != len(model.teams):
+            return False
+        return all(
+            team_widget.slot_count() == len(team.slots)
+            for team_widget, team in zip(self._team_widgets, model.teams)
+        )
+
+    def _rebuild_team_widgets(self, model: RightPanelPrototypeViewModel) -> None:
+        self._clear_layout(self._teams_layout)
+        self._team_widgets.clear()
+        self._slot_widgets.clear()
+
+        for team in model.teams:
+            team_widget = RightPanelTeamPrototypeWidget(team)
+            team_widget.slot_selected.connect(self.slot_selected.emit)
+            self._team_widgets.append(team_widget)
+            self._slot_widgets.extend(team_widget.slot_widgets())
+            self._teams_layout.addWidget(team_widget)
+
 
 class RightPanelTeamPrototypeWidget(QFrame):
     slot_selected = Signal(int, int)
@@ -236,26 +262,42 @@ class RightPanelTeamPrototypeWidget(QFrame):
     ):
         super().__init__(parent)
         self.setObjectName("TeamSlotRow")
+        self._model = model
         self._slot_widgets: list[RightPanelSlotPrototypeWidget] = []
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(0)
 
-        grid_container = QWidget()
-        grid = QGridLayout(grid_container)
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(4)
-        grid.setVerticalSpacing(6)
-        layout.addWidget(grid_container)
+        self._grid_container = QWidget()
+        self._grid = QGridLayout(self._grid_container)
+        self._grid.setContentsMargins(0, 0, 0, 0)
+        self._grid.setHorizontalSpacing(4)
+        self._grid.setVerticalSpacing(6)
+        layout.addWidget(self._grid_container)
+        self._rebuild_slot_widgets(model)
 
+    def set_model(self, model: RightPanelTeamPrototypeViewModel) -> None:
+        self._model = model
+        if len(model.slots) != len(self._slot_widgets):
+            self._rebuild_slot_widgets(model)
+            return
+        for slot_widget, slot in zip(self._slot_widgets, model.slots):
+            slot_widget.set_model(slot)
+
+    def slot_count(self) -> int:
+        return len(self._slot_widgets)
+
+    def slot_widgets(self) -> list["RightPanelSlotPrototypeWidget"]:
+        return list(self._slot_widgets)
+
+    def _rebuild_slot_widgets(self, model: RightPanelTeamPrototypeViewModel) -> None:
+        _clear_layout(self._grid)
+        self._slot_widgets.clear()
         for index, slot in enumerate(model.slots):
             widget = RightPanelSlotPrototypeWidget(slot)
             widget.clicked.connect(self.slot_selected.emit)
             self._slot_widgets.append(widget)
-            grid.addWidget(widget, index // 4, index % 4)
-
-    def slot_widgets(self) -> list["RightPanelSlotPrototypeWidget"]:
-        return list(self._slot_widgets)
+            self._grid.addWidget(widget, index // 4, index % 4)
 
 
 class RightPanelSlotPrototypeWidget(QFrame):
@@ -268,7 +310,9 @@ class RightPanelSlotPrototypeWidget(QFrame):
     ):
         super().__init__(parent)
         self._model = model
-        self.setObjectName("SlotCardSelected" if model.is_selected else "SlotCard")
+        self._weapon_tooltip_controller = None
+        self._warning_tooltip_controller = None
+        self.setObjectName("SlotCard")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.setFixedWidth(SLOT_CARD_WIDTH)
@@ -295,68 +339,104 @@ class RightPanelSlotPrototypeWidget(QFrame):
         top.setSpacing(SLOT_TOP_SPACING)
         cluster_layout.addLayout(top)
 
-        portrait = QLabel(model.portrait_label)
-        portrait.setObjectName("PortraitBox" if not model.is_empty else "PortraitBoxEmpty")
-        portrait.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._portrait = QLabel("")
+        self._portrait.setAlignment(Qt.AlignmentFlag.AlignCenter)
         portrait_size = QSize(SLOT_PORTRAIT_SIZE, SLOT_PORTRAIT_SIZE)
-        portrait.setFixedSize(portrait_size)
-        portrait_pixmap = _fit_pixmap(model.portrait_path, portrait_size)
-        if portrait_pixmap is not None:
-            portrait.setText("")
-            portrait.setPixmap(portrait_pixmap)
-        top.addWidget(portrait, alignment=Qt.AlignmentFlag.AlignLeft)
+        self._portrait.setFixedSize(portrait_size)
+        top.addWidget(self._portrait, alignment=Qt.AlignmentFlag.AlignLeft)
 
         side = QVBoxLayout()
         side.setSpacing(4)
         side.setContentsMargins(0, 0, 0, 0)
         top.addLayout(side)
 
-        weapon = QLabel(model.weapon_square_label)
-        weapon.setObjectName("MiniEquipBox")
-        weapon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        weapon.setFixedSize(SLOT_EQUIP_BOX_SIZE, SLOT_EQUIP_BOX_SIZE)
-        weapon_pixmap = _fit_pixmap(
-            model.weapon_image_path,
-            QSize(SLOT_WEAPON_ICON_SIZE, SLOT_WEAPON_ICON_SIZE),
-        )
-        if weapon_pixmap is not None:
-            weapon.setText("")
-            weapon.setPixmap(weapon_pixmap)
-        if model.weapon_tooltip:
-            install_custom_tooltip(weapon, model.weapon_tooltip)
-        side.addWidget(weapon, alignment=Qt.AlignmentFlag.AlignLeft)
+        self._weapon = QLabel("")
+        self._weapon.setObjectName("MiniEquipBox")
+        self._weapon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._weapon.setFixedSize(SLOT_EQUIP_BOX_SIZE, SLOT_EQUIP_BOX_SIZE)
+        side.addWidget(self._weapon, alignment=Qt.AlignmentFlag.AlignLeft)
 
-        artifact = BuildMiniSetStackWidget(model)
-        side.addWidget(artifact, alignment=Qt.AlignmentFlag.AlignLeft)
+        self._artifact = BuildMiniSetStackWidget(model)
+        side.addWidget(self._artifact, alignment=Qt.AlignmentFlag.AlignLeft)
 
         footer = QHBoxLayout()
         footer.setContentsMargins(0, 0, 0, 0)
         footer.setSpacing(4)
         cluster_layout.addLayout(footer)
 
-        badge = QLabel(model.stat_badge)
-        badge.setObjectName("StatBadge")
-        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        badge.setFixedSize(SLOT_PORTRAIT_SIZE, SLOT_BADGE_HEIGHT)
-        footer.addWidget(badge)
+        self._stat_badge = QLabel("")
+        self._stat_badge.setObjectName("StatBadge")
+        self._stat_badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._stat_badge.setFixedSize(SLOT_PORTRAIT_SIZE, SLOT_BADGE_HEIGHT)
+        footer.addWidget(self._stat_badge)
         footer.addSpacing(SLOT_TOP_SPACING)
 
-        if model.warning_count:
-            warning = QLabel(f"!{model.warning_count}", image_cluster)
-            warning.setObjectName("WarningBadge")
-            warning.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            warning.setFixedSize(SLOT_WARNING_BADGE_WIDTH, SLOT_BADGE_HEIGHT)
-            footer.addWidget(warning)
-            install_custom_tooltip(warning, model.warning_tooltip)
-        else:
-            footer.addSpacing(SLOT_WARNING_BADGE_WIDTH)
+        self._warning = QLabel("")
+        self._warning.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._warning.setFixedSize(SLOT_WARNING_BADGE_WIDTH, SLOT_BADGE_HEIGHT)
+        footer.addWidget(self._warning)
 
-        name = QLabel(model.character_title)
-        name.setObjectName("SlotName")
-        name.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        name.setWordWrap(False)
-        name.setFixedHeight(SLOT_NAME_HEIGHT)
-        outer.addWidget(name)
+        self._name = QLabel("")
+        self._name.setObjectName("SlotName")
+        self._name.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._name.setWordWrap(False)
+        self._name.setFixedHeight(SLOT_NAME_HEIGHT)
+        outer.addWidget(self._name)
+        self.set_model(model)
+
+    def set_model(self, model: RightPanelSlotPrototypeViewModel) -> None:
+        self._model = model
+        _set_object_name(self, "SlotCardSelected" if model.is_selected else "SlotCard")
+
+        _set_object_name(
+            self._portrait,
+            "PortraitBoxEmpty" if model.is_empty else "PortraitBox",
+        )
+        self._portrait.clear()
+        portrait_pixmap = _fit_pixmap(
+            model.portrait_path,
+            QSize(SLOT_PORTRAIT_SIZE, SLOT_PORTRAIT_SIZE),
+        )
+        if portrait_pixmap is not None:
+            self._portrait.setPixmap(portrait_pixmap)
+        else:
+            self._portrait.setText(model.portrait_label)
+
+        self._weapon.clear()
+        self._weapon.setText(model.weapon_square_label)
+        weapon_pixmap = _fit_pixmap(
+            model.weapon_image_path,
+            QSize(SLOT_WEAPON_ICON_SIZE, SLOT_WEAPON_ICON_SIZE),
+        )
+        if weapon_pixmap is not None:
+            self._weapon.setPixmap(weapon_pixmap)
+        self._weapon_tooltip_controller = _set_custom_tooltip_text(
+            self._weapon,
+            self._weapon_tooltip_controller,
+            model.weapon_tooltip,
+        )
+
+        self._artifact.set_model(model)
+        self._stat_badge.setText(model.stat_badge)
+
+        if model.warning_count:
+            _set_object_name(self._warning, "WarningBadge")
+            self._warning.setText(f"!{model.warning_count}")
+            self._warning_tooltip_controller = _set_custom_tooltip_text(
+                self._warning,
+                self._warning_tooltip_controller,
+                model.warning_tooltip,
+            )
+        else:
+            _set_object_name(self._warning, "")
+            self._warning.setText("")
+            self._warning_tooltip_controller = _set_custom_tooltip_text(
+                self._warning,
+                self._warning_tooltip_controller,
+                "",
+            )
+
+        self._name.setText(model.character_title)
 
     def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt override
         if event.button() == Qt.MouseButton.LeftButton:
@@ -370,11 +450,17 @@ class BuildMiniSetStackWidget(QLabel):
         model: RightPanelSlotPrototypeViewModel,
         parent: QWidget | None = None,
     ):
-        super().__init__(model.artifact_square_label, parent)
-        is_missing = model.artifact_square_label in {"Equip", "Fix", "ART"}
-        self.setObjectName("MiniEquipBoxMissing" if is_missing else "MiniEquipBox")
+        super().__init__("", parent)
+        self._tooltip_controller = None
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setFixedSize(SLOT_EQUIP_BOX_SIZE, SLOT_EQUIP_BOX_SIZE)
+        self.set_model(model)
+
+    def set_model(self, model: RightPanelSlotPrototypeViewModel) -> None:
+        is_missing = model.artifact_square_label in {"Equip", "Fix", "ART"}
+        _set_object_name(self, "MiniEquipBoxMissing" if is_missing else "MiniEquipBox")
+        self.clear()
+        self.setText(model.artifact_square_label)
 
         pixmap = _build_mini_set_stack_pixmap(model.build_mini_sets)
         if pixmap is None and model.artifact_image_path:
@@ -389,8 +475,11 @@ class BuildMiniSetStackWidget(QLabel):
             self.setText(_build_mini_set_fallback_text(model.build_mini_sets))
 
         tooltip = _build_mini_set_tooltip_html(model.build_mini_sets)
-        if tooltip:
-            install_custom_tooltip(self, tooltip)
+        self._tooltip_controller = _set_custom_tooltip_text(
+            self,
+            self._tooltip_controller,
+            tooltip,
+        )
 
 
 class ChamberTableBlockWidget(QFrame):
@@ -1228,6 +1317,26 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
     painter.end()
     _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key] = QPixmap(canvas)
     return canvas
+
+
+def _set_object_name(widget: QWidget, object_name: str) -> None:
+    if widget.objectName() == object_name:
+        return
+    widget.setObjectName(object_name)
+    widget.style().unpolish(widget)
+    widget.style().polish(widget)
+    widget.update()
+
+
+def _set_custom_tooltip_text(owner: QWidget, controller, text: str):
+    text = str(text or "")
+    if controller is not None:
+        controller.set_text(text)
+        return controller
+    if text:
+        return install_custom_tooltip(owner, text)
+    QWidget.setToolTip(owner, "")
+    return None
 
 
 def _scale_trimmed_icon_for_chip(

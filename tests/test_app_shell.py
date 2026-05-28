@@ -1667,6 +1667,36 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(apply_filter.call_count, 1)
 
+    def test_right_panel_same_structure_refresh_preserves_team_and_slot_widgets(self) -> None:
+        shell = AppShell()
+        team_widgets_before = list(shell.right_panel._team_widgets)
+        slot_widgets_before = list(shell.right_panel._slot_widgets)
+        chamber_before = shell.right_panel._chamber_table
+
+        shell.controller.add_or_replace_character_fast(
+            _character_asset("10000050", "Thoma", weapon_type=13)
+        )
+        shell.right_panel.set_model(shell.controller.right_panel_model())
+
+        self.assertEqual(shell.right_panel._team_widgets, team_widgets_before)
+        self.assertEqual(shell.right_panel._slot_widgets, slot_widgets_before)
+        self.assertIs(shell.right_panel._chamber_table, chamber_before)
+        self.assertEqual(shell.right_panel._slot_widgets[0].objectName(), "SlotCardSelected")
+
+    def test_right_panel_slot_selection_refresh_preserves_slot_widget_identity(self) -> None:
+        shell = AppShell()
+        shell.controller.add_or_replace_character_fast(
+            _character_asset("10000050", "Thoma", weapon_type=13)
+        )
+        shell.right_panel.set_model(shell.controller.right_panel_model())
+        slot_widget = shell.right_panel._slot_widgets[0]
+
+        shell.controller.toggle_slot_selection(0, 0)
+        shell.right_panel.set_model(shell.controller.right_panel_model())
+
+        self.assertIs(shell.right_panel._slot_widgets[0], slot_widget)
+        self.assertEqual(slot_widget.objectName(), "SlotCard")
+
     def test_rapid_roster_clicks_coalesce_right_panel_refresh(self) -> None:
         shell = AppShell()
 

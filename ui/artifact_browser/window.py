@@ -973,6 +973,7 @@ class ArtifactBrowserWindow(QWidget):
         self._build_row_bonus_pixmap_cache: dict[str, QPixmap] = {}
         self._target_preview_icon_cache: dict[str, QPixmap] = {}
         self._target_preview_strip_cache: dict[str, QPixmap] = {}
+        self._universal_target_icon: QIcon | None = None
         self.artifact_grid_overlay_scrollbar = None
         self.import_json_button: QPushButton | None = None
         self.clear_json_button: QPushButton | None = None
@@ -1760,6 +1761,13 @@ class ArtifactBrowserWindow(QWidget):
         )
         painter.end()
         return canvas
+
+    def _cached_universal_target_icon(self) -> QIcon:
+        if self._universal_target_icon is None:
+            self._universal_target_icon = QIcon(
+                self._make_universal_target_preview_pixmap()
+            )
+        return QIcon(self._universal_target_icon)
 
     def retranslate_ui(self) -> None:
         self.setWindowTitle(tr("artifact.browser.title"))
@@ -2869,18 +2877,27 @@ class ArtifactBrowserWindow(QWidget):
         ]
 
     def refresh_build_target_list(self) -> None:
+        total_start = perf_now()
         if not hasattr(self, "build_target_list_layout"):
             return
 
+        clear_start = perf_now()
         self._clear_layout(self.build_target_list_layout)
         self.build_target_buttons_by_key.clear()
-        self.build_target_reset_button.setEnabled(bool(self.selected_build_target_keys))
-        self.sync_build_target_filter_buttons()
+        clear_ms = perf_ms(clear_start)
 
+        self.build_target_reset_button.setEnabled(bool(self.selected_build_target_keys))
+        sync_start = perf_now()
+        self.sync_build_target_filter_buttons()
+        sync_ms = perf_ms(sync_start)
+
+        universal_start = perf_now()
         universal = self.build_target_items_by_key.get(BUILD_TARGET_UNIVERSAL_KEY)
         if universal:
             self.build_target_list_layout.addWidget(self._make_build_target_button(universal))
+        universal_ms = perf_ms(universal_start)
 
+        filter_start = perf_now()
         character_items = [
             item
             for key, item in self.build_target_items_by_key.items()
@@ -2899,10 +2916,31 @@ class ArtifactBrowserWindow(QWidget):
                 )
             )
         ]
+        filter_ms = perf_ms(filter_start)
+
+        sort_start = perf_now()
         character_items.sort(key=lambda item: character_sort_key(item.get("asset") or {}))
+        sort_ms = perf_ms(sort_start)
+
+        build_start = perf_now()
         for item in character_items:
             self.build_target_list_layout.addWidget(self._make_build_target_button(item))
         self.build_target_list_layout.addStretch()
+        build_ms = perf_ms(build_start)
+        log_perf(
+            "artifact_target_filter_refresh",
+            total=perf_ms(total_start),
+            clear=clear_ms,
+            sync=sync_ms,
+            universal=universal_ms,
+            filter=filter_ms,
+            sort=sort_ms,
+            build=build_ms,
+            visible=len(character_items),
+            total_targets=max(0, len(self.build_target_items_by_key) - 1),
+            standard=self.build_target_standard_filter,
+            selected_filters=int(self.any_build_target_filters_selected()),
+        )
 
     def _make_build_target_button(self, item: dict) -> QPushButton:
         key = item["key"]
@@ -2914,7 +2952,7 @@ class ArtifactBrowserWindow(QWidget):
         button.setProperty("operationTarget", key == self._right_panel_operation_target_key())
         path = item.get("path")
         if key == BUILD_TARGET_UNIVERSAL_KEY:
-            button.setIcon(QIcon(self._make_universal_target_preview_pixmap()))
+            button.setIcon(self._cached_universal_target_icon())
             button.setIconSize(QSize(TARGET_ITEM_ICON_SIZE, TARGET_ITEM_ICON_SIZE))
         elif path:
             button.setIcon(QIcon(str(path)))

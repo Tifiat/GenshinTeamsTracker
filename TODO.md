@@ -408,11 +408,10 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Artifact Browser polish: shift the artifact grid overlay scrollbar visually
   right by roughly one scrollbar width plus a small 1-5px margin, while keeping
   it overlay-style and non-layout-consuming.
-- AppShell geometry polish: investigate horizontal resize crawl/jitter as a
-  top-level AppShell window movement/minimum-size propagation issue. Inspect
-  top-level geometry, `minimumSizeHint` propagation, `QStackedWidget` /
-  `LeftWorkspaceHost` constraints, and resize-settle behavior; do not treat it
-  as internal Assignment/preset panel jitter.
+- AppShell resize twitch: isolated probe reproduced the effect outside the app,
+  and it is reduced on a 144Hz monitor without desktop holes. Treat it as
+  system/environment live-resize behavior for now; no active app-level fix is
+  planned.
 - First-day/future patch: automatic proc counting for imported Artiscan artifacts.
 - Check other export/import services and compatibility.
 - Do not do final cleanup of old DB physical schema until the new browser path is stable.

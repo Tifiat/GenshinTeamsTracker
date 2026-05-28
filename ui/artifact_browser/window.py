@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import ctypes
-import ctypes.wintypes
 import html
 import re
 from pathlib import Path
@@ -138,8 +136,6 @@ ARTIFACT_GRID_FIT_PADDING = 4
 CONTENT_LAYOUT_SPACING = 4
 ADAPTIVE_TARGET_RESIZE_DELAY_MS = 650
 ADAPTIVE_TARGET_RESIZE_SETTLE_MS = 40
-WM_ENTERSIZEMOVE = 0x0231
-WM_EXITSIZEMOVE = 0x0232
 
 TARGET_HEADER_SPACING = 4
 TARGET_HEADER_BALANCE_WIDTH = 72
@@ -227,11 +223,9 @@ QPushButton#filter_switch:checked {
 QPushButton#sets_button {
     min-width: 110px;
 }
-QPushButton#close_button {
-    min-width: 90px;
-}
 QLabel#status_label {
     color: #aab0bd;
+    background: transparent;
 }
 QFrame#equipment_zone {
     border: 1px solid #343b49;
@@ -285,18 +279,18 @@ QLineEdit {
     background: #17191f;
     color: #eeeeee;
 }
-QPushButton#custom_save_button {
+QPushButton#json_edit_save_button {
     border-color: #4e9b61;
     background: #24452d;
 }
-QPushButton#custom_save_button:hover {
+QPushButton#json_edit_save_button:hover {
     background: #2d5938;
 }
-QPushButton#custom_cancel_button {
+QPushButton#json_edit_cancel_button {
     border-color: #b85b5b;
     background: #4a2529;
 }
-QPushButton#custom_cancel_button:hover {
+QPushButton#json_edit_cancel_button:hover {
     background: #5c2d32;
 }
 QPushButton#row_save_button {
@@ -848,7 +842,6 @@ class ArtifactBrowserWindow(QWidget):
         self.content_layout: QHBoxLayout | None = None
         self.build_target_panel: QFrame | None = None
         self.build_panel: QFrame | None = None
-        self._window_in_native_sizemove = False
         self._resize_event_count = 0
         self._adaptive_update_count = 0
         self._last_adaptive_target_layout_key: tuple[int, int, int, int, int, int] | None = None
@@ -879,7 +872,7 @@ class ArtifactBrowserWindow(QWidget):
         self._build_build_target_selector(content)
         self._build_build_panel(content)
         root.addLayout(content, 1)
-        self._build_bottom_bar(root)
+        self.empty_label = QLabel("")
         self._prewarm_transient_edit_controls()
         ui_ms = perf_ms(ui_start)
 
@@ -913,8 +906,6 @@ class ArtifactBrowserWindow(QWidget):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._resize_event_count += 1
-        if self._window_in_native_sizemove:
-            return
         if self.embedded and not self.isVisible():
             return
         self.schedule_adaptive_target_panel_width_update(
@@ -928,31 +919,11 @@ class ArtifactBrowserWindow(QWidget):
         self._adaptive_target_resize_timer.stop()
         self.update_adaptive_target_panel_width()
 
-    def nativeEvent(self, event_type, message):
-        try:
-            native_message = ctypes.wintypes.MSG.from_address(int(message))
-        except Exception:
-            return super().nativeEvent(event_type, message)
-
-        if native_message.message == WM_ENTERSIZEMOVE:
-            self._window_in_native_sizemove = True
-            self._adaptive_target_resize_timer.stop()
-        elif native_message.message == WM_EXITSIZEMOVE:
-            self._window_in_native_sizemove = False
-            self.schedule_adaptive_target_panel_width_update(
-                delay_ms=ADAPTIVE_TARGET_RESIZE_SETTLE_MS
-            )
-
-        return super().nativeEvent(event_type, message)
-
     def schedule_adaptive_target_panel_width_update(
         self,
         delay_ms: int = ADAPTIVE_TARGET_RESIZE_DELAY_MS,
     ) -> None:
         if not hasattr(self, "_adaptive_target_resize_timer"):
-            return
-        if self._window_in_native_sizemove:
-            self._adaptive_target_resize_timer.stop()
             return
         if self.model.rowCount() <= 0:
             return
@@ -1521,42 +1492,6 @@ class ArtifactBrowserWindow(QWidget):
         self.build_slot_stat_labels[pos] = stat_label
         return row
 
-    def _build_bottom_bar(self, root: QVBoxLayout) -> None:
-        bottom = QHBoxLayout()
-        bottom.setContentsMargins(0, 0, 0, 0)
-
-        self.empty_label = QLabel("")
-        self.empty_label.setObjectName("status_label")
-
-        self.edit_mode_label = QLabel("")
-        self.edit_mode_label.setObjectName("status_label")
-        bottom.addWidget(self.edit_mode_label)
-
-        self.save_edit_button = QPushButton()
-        self.save_edit_button.setObjectName("custom_save_button")
-        self.save_edit_button.setIcon(self._ui_icon("save"))
-        self.save_edit_button.clicked.connect(self.save_active_edit)
-        bottom.addWidget(self.save_edit_button)
-
-        self.cancel_edit_button = QPushButton()
-        self.cancel_edit_button.setObjectName("custom_cancel_button")
-        self.cancel_edit_button.setIcon(self._ui_icon("x"))
-        self.cancel_edit_button.clicked.connect(self.cancel_active_edit)
-        bottom.addWidget(self.cancel_edit_button)
-
-        bottom.addWidget(self.empty_label)
-
-        bottom.addStretch()
-
-        self.close_button = QPushButton(tr("common.close"))
-        self.close_button.setObjectName("close_button")
-        self.close_button.clicked.connect(self.close)
-        if self.embedded:
-            self.close_button.setVisible(False)
-        bottom.addWidget(self.close_button)
-
-        root.addLayout(bottom)
-
     def _position_label(self, pos: int) -> str:
         label_key = ARTIFACT_POSITION_LABEL_KEYS.get(pos)
         return tr(label_key) if label_key else str(pos)
@@ -1572,14 +1507,12 @@ class ArtifactBrowserWindow(QWidget):
         for icon_name in ("check", "x", "save", "edit", "delete", "plus"):
             self._ui_icon(icon_name)
         for button in (
-            self.save_edit_button,
-            self.cancel_edit_button,
             self.new_build_button,
             self.cancel_new_build_button,
         ):
             self._prepare_button_for_first_show(button)
         for object_name, icon_name in (
-            ("row_save_button", "check"),
+            ("row_save_button", "save"),
             ("row_cancel_button", "x"),
         ):
             button = QPushButton(self)
@@ -1681,17 +1614,11 @@ class ArtifactBrowserWindow(QWidget):
         for pos, button in self.position_buttons.items():
             button.setText(self._position_label(pos))
 
-        self.close_button.setText(tr("common.close"))
-        self.save_edit_button.setToolTip(self.active_save_tooltip())
-        self.cancel_edit_button.setToolTip(self.active_cancel_tooltip())
         self.build_title_label.setText(tr("artifact.build.presets_title"))
         self.build_target_title_label.setText(tr("artifact.build.targets_title"))
         self.build_target_reset_button.setText(tr("artifact.build.targets_reset"))
         self.build_target_hint_label.setText(tr("artifact.build.no_target_hint"))
-        if self.import_json_button is not None:
-            self.import_json_button.setText(tr("artifact.json.import_button"))
-        if self.clear_json_button is not None:
-            self.clear_json_button.setText(tr("artifact.json.clear_button"))
+        self.update_json_import_actions()
         if BUILD_TARGET_UNIVERSAL_KEY in self.build_target_items_by_key:
             self.build_target_items_by_key[BUILD_TARGET_UNIVERSAL_KEY][
                 "character_name"
@@ -2097,9 +2024,72 @@ class ArtifactBrowserWindow(QWidget):
             self.empty_label.setText("")
 
     def update_json_import_actions(self) -> None:
-        if self.clear_json_button is None:
+        if self.import_json_button is None or self.clear_json_button is None:
             return
-        self.clear_json_button.setEnabled(json_imports_available())
+        if self.edit_selection_mode != EDIT_MODE_NONE:
+            self._set_json_action_button(
+                self.import_json_button,
+                object_name="json_edit_save_button",
+                text="",
+                icon_name="save",
+                tooltip=self.active_save_tooltip(),
+                callback=self.save_active_edit,
+                enabled=True,
+            )
+            self._set_json_action_button(
+                self.clear_json_button,
+                object_name="json_edit_cancel_button",
+                text="",
+                icon_name="x",
+                tooltip=self.active_cancel_tooltip(),
+                callback=self.cancel_active_edit,
+                enabled=True,
+            )
+            return
+
+        self._set_json_action_button(
+            self.import_json_button,
+            object_name="json_action_button",
+            text=tr("artifact.json.import_button"),
+            icon_name=None,
+            tooltip="",
+            callback=self.import_artiscan_json,
+            enabled=True,
+        )
+        self._set_json_action_button(
+            self.clear_json_button,
+            object_name="json_action_button",
+            text=tr("artifact.json.clear_button"),
+            icon_name=None,
+            tooltip="",
+            callback=self.clear_json_imports,
+            enabled=json_imports_available(),
+        )
+
+    def _set_json_action_button(
+        self,
+        button: QPushButton,
+        *,
+        object_name: str,
+        text: str,
+        icon_name: str | None,
+        tooltip: str,
+        callback,
+        enabled: bool,
+    ) -> None:
+        try:
+            button.clicked.disconnect()
+        except (RuntimeError, TypeError):
+            pass
+        button.setObjectName(object_name)
+        button.setText(text)
+        button.setIcon(self._ui_icon(icon_name) if icon_name is not None else QIcon())
+        button.setToolTip(tooltip)
+        button.setEnabled(enabled)
+        button.clicked.connect(callback)
+        button.style().unpolish(button)
+        button.style().polish(button)
+        self._prepare_button_for_first_show(button)
 
     def _confirm_json_action(self) -> bool:
         return (
@@ -2777,7 +2767,7 @@ class ArtifactBrowserWindow(QWidget):
         if editing_this_row:
             save_button = QPushButton()
             save_button.setObjectName("row_save_button")
-            save_button.setIcon(self._ui_icon("check"))
+            save_button.setIcon(self._ui_icon("save"))
             save_button.setToolTip(tr("artifact.build.save"))
             save_button.clicked.connect(self.save_build_preset_edit)
             self._prepare_row_action_button(save_button)
@@ -3657,7 +3647,7 @@ class ArtifactBrowserWindow(QWidget):
         self.new_build_button.setObjectName(
             "row_save_button" if new_draft else "icon_button"
         )
-        self.new_build_button.setIcon(self._ui_icon("check" if new_draft else "plus"))
+        self.new_build_button.setIcon(self._ui_icon("save" if new_draft else "plus"))
         self.new_build_button.setToolTip(
             tr("artifact.build.save") if new_draft else tr("artifact.build.new")
         )
@@ -4125,27 +4115,7 @@ class ArtifactBrowserWindow(QWidget):
         ids = self.current_highlight_artifact_ids()
         self.delegate.set_edit_selection_artifact_ids(ids)
 
-        if self.edit_selection_mode == EDIT_MODE_CUSTOM_SET:
-            edit_mode_text = tr(
-                "artifact.custom.editing_status",
-                name=self.editing_custom_set_name,
-                count=len(self.editing_custom_artifact_ids),
-            )
-        elif self.edit_selection_mode == EDIT_MODE_BUILD_PRESET:
-            edit_mode_text = tr("artifact.build.editing_status", name=self.editing_build_name)
-        else:
-            edit_mode_text = ""
-
-        self.edit_mode_label.setText(edit_mode_text)
-        self.save_edit_button.setToolTip(self.active_save_tooltip())
-        self.cancel_edit_button.setToolTip(self.active_cancel_tooltip())
-        self._prepare_button_for_first_show(self.save_edit_button)
-        self._prepare_button_for_first_show(self.cancel_edit_button)
-        self.edit_mode_label.ensurePolished()
-        self.edit_mode_label.sizeHint()
-        self.edit_mode_label.setVisible(editing)
-        self.save_edit_button.setVisible(editing)
-        self.cancel_edit_button.setVisible(editing)
+        self.update_json_import_actions()
         self.list_view.setProperty("artifactEditMode", editing)
         self.list_view.style().unpolish(self.list_view)
         self.list_view.style().polish(self.list_view)

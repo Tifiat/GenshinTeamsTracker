@@ -83,6 +83,20 @@ class MarqueeButton(QPushButton):
 
         text_rect = self._text_rect(option)
         if not icon.isNull():
+            if not text:
+                icon_rect = self._centered_icon_rect(text_rect, icon_size)
+                mode = (
+                    QIcon.Mode.Disabled
+                    if not self.isEnabled()
+                    else QIcon.Mode.Active
+                    if self._hovered or self.hasFocus()
+                    else QIcon.Mode.Normal
+                )
+                state = QIcon.State.On if self.isChecked() else QIcon.State.Off
+                pixmap = icon.pixmap(icon_size, mode, state)
+                painter.drawPixmap(icon_rect, pixmap)
+                self._sync_timer(0, text_rect.width())
+                return
             icon_rect = self._icon_rect(text_rect, icon_size)
             mode = (
                 QIcon.Mode.Disabled
@@ -189,6 +203,17 @@ class MarqueeButton(QPushButton):
         icon_height = max(0, icon_size.height())
         return QRect(
             text_rect.left(),
+            text_rect.y() + max(0, (text_rect.height() - icon_height) // 2),
+            icon_width,
+            icon_height,
+        )
+
+    @staticmethod
+    def _centered_icon_rect(text_rect: QRect, icon_size: QSize) -> QRect:
+        icon_width = max(0, icon_size.width())
+        icon_height = max(0, icon_size.height())
+        return QRect(
+            text_rect.x() + max(0, (text_rect.width() - icon_width) // 2),
             text_rect.y() + max(0, (text_rect.height() - icon_height) // 2),
             icon_width,
             icon_height,

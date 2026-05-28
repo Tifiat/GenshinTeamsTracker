@@ -29,6 +29,7 @@ from ui.artifact_browser.card_delegate import GRID_SIZE
 from ui.artifact_browser.window import (
     ArtifactBrowserWindow,
     BUILD_PANEL_WIDTH,
+    EDIT_MODE_BUILD_PRESET,
     TARGET_PANEL_WIDTH,
 )
 from run_workspace.perf import perf_enabled
@@ -136,7 +137,8 @@ class AppShellTest(unittest.TestCase):
         browser = ArtifactBrowserWindow(parent=parent, embedded=True)
 
         self.assertFalse(bool(browser.windowFlags() & Qt.Window))
-        self.assertFalse(browser.close_button.isVisible())
+        self.assertFalse(hasattr(browser, "close_button"))
+        self.assertFalse(hasattr(browser, "bottom_bar_widget"))
         self.assertTrue(browser.embedded)
         browser.update_adaptive_target_panel_width()
         self.assertFalse(browser._adaptive_target_resize_timer.isActive())
@@ -192,6 +194,49 @@ class AppShellTest(unittest.TestCase):
             browser.clear_json_button.minimumWidth(),
             GRID_SIZE.width() // 2,
         )
+
+    def test_artifact_browser_json_buttons_become_edit_actions_without_layout_jump(self) -> None:
+        browser = ArtifactBrowserWindow(embedded=True)
+        browser.resize(732, 852)
+        browser.show()
+        self._app.processEvents()
+        assert browser.import_json_button is not None
+        assert browser.clear_json_button is not None
+        import_y = browser.import_json_button.mapTo(
+            browser,
+            browser.import_json_button.rect().topLeft(),
+        ).y()
+        clear_y = browser.clear_json_button.mapTo(
+            browser,
+            browser.clear_json_button.rect().topLeft(),
+        ).y()
+
+        browser.edit_selection_mode = EDIT_MODE_BUILD_PRESET
+        browser.editing_build_name = "Smoke preset"
+        browser.update_edit_selection_mode()
+        self._app.processEvents()
+
+        self.assertEqual(browser.import_json_button.text(), "")
+        self.assertEqual(browser.clear_json_button.text(), "")
+        self.assertEqual(browser.import_json_button.objectName(), "json_edit_save_button")
+        self.assertEqual(browser.clear_json_button.objectName(), "json_edit_cancel_button")
+        self.assertFalse(browser.import_json_button.icon().isNull())
+        self.assertFalse(browser.clear_json_button.icon().isNull())
+        self.assertEqual(
+            browser.import_json_button.mapTo(
+                browser,
+                browser.import_json_button.rect().topLeft(),
+            ).y(),
+            import_y,
+        )
+        self.assertEqual(
+            browser.clear_json_button.mapTo(
+                browser,
+                browser.clear_json_button.rect().topLeft(),
+            ).y(),
+            clear_y,
+        )
+        browser.close()
 
     def test_artifact_browser_target_buttons_use_marquee_without_forcing_width(self) -> None:
         browser = ArtifactBrowserWindow(embedded=True)

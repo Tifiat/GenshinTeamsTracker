@@ -1697,6 +1697,30 @@ class AppShellTest(unittest.TestCase):
         self.assertIs(shell.right_panel._slot_widgets[0], slot_widget)
         self.assertEqual(slot_widget.objectName(), "SlotCard")
 
+    def test_right_panel_selected_details_refresh_preserves_skeleton_widgets(self) -> None:
+        shell = AppShell()
+        details_frame = shell.right_panel._details_frame
+
+        shell.controller.add_or_replace_character_fast(
+            _character_asset("10000050", "Thoma", weapon_type=13)
+        )
+        shell.right_panel.set_model(shell.controller.right_panel_model())
+        body = details_frame._body
+        stats_frame = details_frame._stats_frame
+        meta_frame = details_frame._meta_frame
+        bonus_strip = details_frame._bonus_strip
+
+        shell.controller.add_or_replace_character_fast(
+            _character_asset("10000089", "Furina", weapon_type=1)
+        )
+        shell.right_panel.set_model(shell.controller.right_panel_model())
+
+        self.assertIs(details_frame._body, body)
+        self.assertIs(details_frame._stats_frame, stats_frame)
+        self.assertIs(details_frame._meta_frame, meta_frame)
+        self.assertIs(details_frame._bonus_strip, bonus_strip)
+        self.assertEqual(details_frame._mode, "selected")
+
     def test_rapid_roster_clicks_coalesce_right_panel_refresh(self) -> None:
         shell = AppShell()
 

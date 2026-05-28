@@ -647,6 +647,33 @@ class ChamberTableBlockWidget(QFrame):
         bottom.addWidget(button)
 
 
+class DetailRowWidget(QWidget):
+    def __init__(self, *, metric: bool, parent: QWidget | None = None):
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(7)
+
+        self._icon = QLabel("")
+        self._icon.setObjectName("MetricIcon" if metric else "StatIcon")
+        self._icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._icon.setFixedSize(40, 24)
+        layout.addWidget(self._icon)
+
+        self._value = QLabel("")
+        self._value.setObjectName("MetricValue" if metric else "StatValue")
+        self._value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(self._value, 1)
+
+    def set_model(self, row: RightPanelDetailRowViewModel) -> None:
+        self._icon.setText(row.icon_label or row.label[:2].upper())
+        self._value.setText(row.value)
+
+    def clear(self) -> None:
+        self._icon.setText("")
+        self._value.setText("")
+
+
 class SelectedCharacterDetailsWidget(QFrame):
     external_bonuses_toggled = Signal(bool)
 
@@ -656,86 +683,247 @@ class SelectedCharacterDetailsWidget(QFrame):
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(10, 10, 10, 10)
         self._layout.setSpacing(8)
+        self._mode = "empty"
+        self._stat_rows: list[DetailRowWidget] = []
+        self._chip_labels: list[QLabel] = []
+        self._weapon_tooltip_controller = None
+        self._weapon_name_tooltip_controller = None
+        self._weapon_meta_tooltip_controller = None
+        self._build_stable_skeleton()
 
     def set_details(self, details: RightPanelSelectedDetailsViewModel) -> None:
         total_start = perf_now()
-        _clear_layout(self._layout)
+        height_before = self.height()
+        hint_before = self.sizeHint().height()
 
         if not details.has_selection:
-            empty = QLabel("No selected character.")
-            empty.setObjectName("SubtleText")
-            empty.setWordWrap(True)
-            self._layout.addWidget(empty)
-            log_perf("right_panel_details_set", total=perf_ms(total_start), empty=True)
+            mode = self._show_empty_mode()
+            log_perf(
+                "right_panel_details_set",
+                total=perf_ms(total_start),
+                mode=mode,
+                empty=True,
+                height_before=height_before,
+                height_after=self.height(),
+                hint_before=hint_before,
+                hint_after=self.sizeHint().height(),
+            )
             return
 
         body_start = perf_now()
-        body = QHBoxLayout()
-        body.setSpacing(10)
-        self._layout.addLayout(body)
+        mode = self._show_selected_mode()
+        self._set_stat_rows(details.stat_rows)
+        self._set_meta_details(details)
         body_ms = perf_ms(body_start)
 
-        stats_start = perf_now()
-        stats_frame = QFrame()
-        stats_frame.setObjectName("StatsPanel")
-        stats_layout = QVBoxLayout(stats_frame)
-        stats_layout.setContentsMargins(8, 8, 8, 8)
-        stats_layout.setSpacing(6)
-        body.addWidget(stats_frame, 2)
-
-        for row in details.stat_rows:
-            stats_layout.addLayout(_detail_row_layout(row, metric=False))
-        stats_layout.addStretch(1)
-        stats_ms = perf_ms(stats_start)
-
-        meta_start = perf_now()
-        meta_frame = QFrame()
-        meta_frame.setObjectName("MetaPanel")
-        meta_layout = QVBoxLayout(meta_frame)
-        meta_layout.setContentsMargins(8, 8, 8, 8)
-        meta_layout.setSpacing(6)
-        body.addWidget(meta_frame, 3)
-
-        name = QLabel(details.character_name)
-        name.setObjectName("DetailsName")
-        name.setWordWrap(True)
-        meta_layout.addWidget(name)
-
-        chips = QHBoxLayout()
-        chips.setSpacing(5)
-        meta_layout.addLayout(chips)
-        for text in _character_chips(details):
-            chip = QLabel(text)
-            chip.setObjectName("MetaChip")
-            chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            chips.addWidget(chip)
-        chips.addStretch(1)
-
-        self._add_weapon_summary(meta_layout, details)
-        if details.crit_value is not None:
-            self._add_cv_summary(meta_layout, details.crit_value)
-        meta_layout.addStretch(1)
-        meta_ms = perf_ms(meta_start)
-
         bonus_start = perf_now()
-        bonus_strip = BonusSourceStripWidget()
-        bonus_strip.external_bonuses_toggled.connect(self.external_bonuses_toggled.emit)
-        bonus_strip.set_items(
+        bonus_mode = self._bonus_strip.set_items(
             details.bonus_sources,
             external_bonuses_enabled=details.external_bonuses_enabled,
         )
-        self._layout.addWidget(bonus_strip)
         bonus_ms = perf_ms(bonus_start)
         log_perf(
             "right_panel_details_set",
             total=perf_ms(total_start),
+            mode=mode,
             empty=False,
             body=body_ms,
-            stats=stats_ms,
-            meta=meta_ms,
             bonus_strip=bonus_ms,
+            bonus_mode=bonus_mode,
             bonus_count=len(details.bonus_sources),
+            height_before=height_before,
+            height_after=self.height(),
+            hint_before=hint_before,
+            hint_after=self.sizeHint().height(),
         )
+
+    def _build_stable_skeleton(self) -> None:
+        self._empty_label = QLabel("No selected character.")
+        self._empty_label.setObjectName("SubtleText")
+        self._empty_label.setWordWrap(True)
+        self._layout.addWidget(self._empty_label)
+
+        self._body = QWidget()
+        self._body_layout = QHBoxLayout(self._body)
+        self._body_layout.setContentsMargins(0, 0, 0, 0)
+        self._body_layout.setSpacing(10)
+        self._layout.addWidget(self._body)
+
+        self._stats_frame = QFrame()
+        self._stats_frame.setObjectName("StatsPanel")
+        self._stats_frame.setMinimumHeight(128)
+        self._stats_layout = QVBoxLayout(self._stats_frame)
+        self._stats_layout.setContentsMargins(8, 8, 8, 8)
+        self._stats_layout.setSpacing(6)
+        self._stats_layout.addStretch(1)
+        self._body_layout.addWidget(self._stats_frame, 2)
+
+        self._meta_frame = QFrame()
+        self._meta_frame.setObjectName("MetaPanel")
+        self._meta_frame.setMinimumHeight(128)
+        self._meta_layout = QVBoxLayout(self._meta_frame)
+        self._meta_layout.setContentsMargins(8, 8, 8, 8)
+        self._meta_layout.setSpacing(6)
+        self._body_layout.addWidget(self._meta_frame, 3)
+
+        self._name = QLabel("")
+        self._name.setObjectName("DetailsName")
+        self._name.setWordWrap(True)
+        self._meta_layout.addWidget(self._name)
+
+        self._chips_row = QWidget()
+        self._chips_layout = QHBoxLayout(self._chips_row)
+        self._chips_layout.setContentsMargins(0, 0, 0, 0)
+        self._chips_layout.setSpacing(5)
+        self._chips_layout.addStretch(1)
+        self._meta_layout.addWidget(self._chips_row)
+
+        self._weapon_frame = QFrame()
+        self._weapon_frame.setObjectName("MetaSummaryBox")
+        self._weapon_frame.setMinimumHeight(62)
+        weapon_layout = QHBoxLayout(self._weapon_frame)
+        weapon_layout.setContentsMargins(6, 6, 6, 6)
+        weapon_layout.setSpacing(8)
+        self._meta_layout.addWidget(self._weapon_frame)
+
+        self._weapon_icon = QLabel("WPN")
+        self._weapon_icon.setObjectName("DetailsWeaponIcon")
+        self._weapon_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._weapon_icon.setFixedSize(48, 48)
+        weapon_layout.addWidget(self._weapon_icon, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        weapon_text_column = QVBoxLayout()
+        weapon_text_column.setContentsMargins(0, 0, 0, 0)
+        weapon_text_column.setSpacing(4)
+        weapon_layout.addLayout(weapon_text_column, 1)
+
+        self._weapon_name = QLabel("")
+        self._weapon_name.setObjectName("MetaValueStrong")
+        self._weapon_name.setWordWrap(True)
+        weapon_text_column.addWidget(self._weapon_name)
+
+        self._weapon_meta = QLabel("")
+        self._weapon_meta.setObjectName("MetaValue")
+        self._weapon_meta.setWordWrap(True)
+        weapon_text_column.addWidget(self._weapon_meta)
+        weapon_text_column.addStretch(1)
+
+        self._cv_frame = QFrame()
+        self._cv_frame.setObjectName("MetaSummaryBox")
+        self._cv_frame.setMinimumHeight(32)
+        cv_layout = QHBoxLayout(self._cv_frame)
+        cv_layout.setContentsMargins(8, 5, 8, 5)
+        cv_layout.setSpacing(8)
+        self._meta_layout.addWidget(self._cv_frame)
+
+        self._cv_key = QLabel("CV")
+        self._cv_key.setObjectName("MetaLabel")
+        cv_layout.addWidget(self._cv_key)
+
+        self._cv_value = QLabel("")
+        self._cv_value.setObjectName("MetaValueStrong")
+        self._cv_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        cv_layout.addWidget(self._cv_value, 1)
+        self._meta_layout.addStretch(1)
+
+        self._bonus_strip = BonusSourceStripWidget()
+        self._bonus_strip.external_bonuses_toggled.connect(self.external_bonuses_toggled.emit)
+        self._layout.addWidget(self._bonus_strip)
+        self._body.hide()
+        self._bonus_strip.hide()
+
+    def _show_empty_mode(self) -> str:
+        if self._mode == "empty":
+            return "empty_unchanged"
+        self._empty_label.show()
+        self._body.hide()
+        self._bonus_strip.hide()
+        self._mode = "empty"
+        return "rebuild"
+
+    def _show_selected_mode(self) -> str:
+        if self._mode == "selected":
+            return "skeleton_update"
+        self._empty_label.hide()
+        self._body.show()
+        self._bonus_strip.show()
+        self._mode = "selected"
+        return "rebuild"
+
+    def _set_stat_rows(self, rows: tuple[RightPanelDetailRowViewModel, ...]) -> None:
+        while len(self._stat_rows) < len(rows):
+            widget = DetailRowWidget(metric=False)
+            self._stats_layout.insertWidget(len(self._stat_rows), widget)
+            self._stat_rows.append(widget)
+        for index, widget in enumerate(self._stat_rows):
+            if index < len(rows):
+                widget.set_model(rows[index])
+                widget.show()
+            else:
+                widget.clear()
+                widget.hide()
+
+    def _set_meta_details(self, details: RightPanelSelectedDetailsViewModel) -> None:
+        self._name.setText(details.character_name)
+        self._set_character_chips(_character_chips(details))
+        self._set_weapon_summary(details)
+        self._set_cv_summary(details.crit_value)
+
+    def _set_character_chips(self, values: list[str]) -> None:
+        while len(self._chip_labels) < len(values):
+            chip = QLabel("")
+            chip.setObjectName("MetaChip")
+            chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self._chips_layout.insertWidget(len(self._chip_labels), chip)
+            self._chip_labels.append(chip)
+        for index, chip in enumerate(self._chip_labels):
+            if index < len(values):
+                chip.setText(values[index])
+                chip.show()
+            else:
+                chip.setText("")
+                chip.hide()
+
+    def _set_weapon_summary(self, details: RightPanelSelectedDetailsViewModel) -> None:
+        has_weapon = bool(details.weapon_name or details.weapon_icon_path)
+        weapon_bits = []
+        if details.weapon_refinement is not None:
+            weapon_bits.append(f"R{details.weapon_refinement}")
+        if details.weapon_level is not None:
+            weapon_bits.append(f"Lv.{details.weapon_level}")
+        if details.weapon_base_atk:
+            weapon_bits.append(f"ATK {details.weapon_base_atk}")
+        if details.weapon_secondary_label and details.weapon_secondary_value:
+            weapon_bits.append(
+                f"{details.weapon_secondary_label} {details.weapon_secondary_value}"
+            )
+
+        self._weapon_icon.clear()
+        self._weapon_icon.setText("WPN" if has_weapon else "")
+        pixmap = _fit_pixmap(details.weapon_icon_path, QSize(50, 50))
+        if pixmap is not None:
+            self._weapon_icon.setText("")
+            self._weapon_icon.setPixmap(pixmap)
+        self._weapon_name.setText(details.weapon_name)
+        self._weapon_meta.setText(" / ".join(weapon_bits))
+        self._weapon_tooltip_controller = _set_custom_tooltip_text(
+            self._weapon_icon,
+            self._weapon_tooltip_controller,
+            details.weapon_tooltip,
+        )
+        self._weapon_name_tooltip_controller = _set_custom_tooltip_text(
+            self._weapon_name,
+            self._weapon_name_tooltip_controller,
+            details.weapon_tooltip,
+        )
+        self._weapon_meta_tooltip_controller = _set_custom_tooltip_text(
+            self._weapon_meta,
+            self._weapon_meta_tooltip_controller,
+            details.weapon_tooltip,
+        )
+
+    def _set_cv_summary(self, crit_value: float | None) -> None:
+        self._cv_value.setText(f"{crit_value:g}" if crit_value is not None else "")
 
     def _add_weapon_summary(
         self,
@@ -842,6 +1030,7 @@ class BonusSourceStripWidget(QFrame):
         self._items_key: tuple[object, ...] | None = None
         self._external_bonuses_enabled = True
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFixedHeight(30)
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
@@ -867,29 +1056,32 @@ class BonusSourceStripWidget(QFrame):
         items: tuple[RightPanelBonusSourceDisplayItem, ...],
         *,
         external_bonuses_enabled: bool,
-    ) -> None:
-        items_key = _bonus_source_strip_key(items, external_bonuses_enabled)
+    ) -> str:
+        items_key = _bonus_source_strip_key(items)
         if items_key == self._items_key:
-            return
-        self._items_key = items_key
+            external_bonuses_enabled = bool(external_bonuses_enabled)
+            if external_bonuses_enabled == self._external_bonuses_enabled:
+                return "unchanged"
+            self._set_external_bonuses_enabled(external_bonuses_enabled)
+            return "in_place"
 
-        _clear_layout(self._layout)
+        self._items_key = items_key
         self._external_bonuses_enabled = bool(external_bonuses_enabled)
-        self.setProperty("active", self._external_bonuses_enabled)
-        self.style().unpolish(self)
-        self.style().polish(self)
+        _clear_layout(self._layout)
+        self._set_external_bonuses_enabled(external_bonuses_enabled)
         if not items:
             empty = QLabel("No external bonuses")
             empty.setObjectName("BonusStripEmpty")
             empty.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
             self._layout.addWidget(empty)
             self._layout.addStretch(1)
-            return
+            return "rebuild_chips"
         for item in items:
             chip = BonusSourceChipWidget(item)
             chip.installEventFilter(self)
             self._layout.addWidget(chip)
         self._layout.addStretch(1)
+        return "rebuild_chips"
 
     def mouseReleaseEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -901,6 +1093,12 @@ class BonusSourceStripWidget(QFrame):
     def _toggle_external_bonuses(self) -> None:
         self.external_bonuses_toggled.emit(not self._external_bonuses_enabled)
 
+    def _set_external_bonuses_enabled(self, enabled: bool) -> None:
+        self._external_bonuses_enabled = bool(enabled)
+        self.setProperty("active", self._external_bonuses_enabled)
+        self.style().unpolish(self)
+        self.style().polish(self)
+
     def eventFilter(self, watched, event) -> bool:
         if event.type() == QEvent.Type.MouseButtonRelease:
             if event.button() == Qt.MouseButton.LeftButton:
@@ -911,10 +1109,8 @@ class BonusSourceStripWidget(QFrame):
 
 def _bonus_source_strip_key(
     items: tuple[RightPanelBonusSourceDisplayItem, ...],
-    external_bonuses_enabled: bool,
 ) -> tuple[object, ...]:
     return (
-        bool(external_bonuses_enabled),
         tuple(
             (
                 item.source_kind,

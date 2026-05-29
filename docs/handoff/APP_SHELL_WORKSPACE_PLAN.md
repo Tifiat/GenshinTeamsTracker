@@ -362,6 +362,37 @@ Performance fix status:
   place, selected details use a stable skeleton with a persistent bonus strip,
   and adding a character no longer performs a visible intermediate
   minimal-details refresh before hydrated details are available.
+- Right-panel bounce root cause and prevention:
+  - The visible bounce was not one bug. It was a chain of layout and refresh
+    problems that only became obvious under realistic click timing.
+  - First cause: right-panel team/slot area used destructive rebuilds in
+    `RightPanelPrototypeWidget.set_model(...)`. Clearing `_teams_layout`
+    temporarily removed the slot area, so the chamber/timer block could visually
+    jump upward. Fix: keep persistent team/slot widgets for same-structure
+    updates and update slot contents in place.
+  - Second cause: selected-details rebuilt its whole layout and recreated the
+    bonus strip when selected character data changed. Set-bonus icon appearance
+    made this especially visible. Fix: use a stable selected-details skeleton,
+    persistent stats/meta/weapon/CV areas, and a persistent
+    `BonusSourceStripWidget` with in-place item updates.
+  - Third cause: add-character fast path and deferred persistent-equipment
+    hydration could produce two visible right-panel states: minimal selected
+    details first, hydrated details later. Fix: do not show the intermediate
+    minimal details refresh for newly added characters; let the marker update
+    immediately, then refresh the right panel after hydration.
+  - Fourth cause: stale pending right-panel refresh timers from earlier actions
+    could fire between a new fast state change and hydration. Fix: when scheduling
+    persistent equipment hydration for an added character, cancel any pending
+    right-panel refresh first so stale timers cannot draw a half-updated model.
+  - Fifth cause: removing the selected character switched selected details from
+    selected mode to empty mode and collapsed the details block height. Under
+    narrow timing this caused a final small flash around the chamber/slot area.
+    Fix: after selected details have been shown once, remember the selected
+    height and keep that minimum height even in empty mode.
+  - Future browser/panel rule: do not rely on fast repaint masking. Keep widgets
+    owned by stable parent/layouts, update via state/content/visibility, avoid
+    intermediate visible placeholder states during deferred hydration/load, and
+    keep geometry stable when switching between selected/empty/hydrated modes.
 - Artifact Browser target-character filters were separately profiled from
   artifact item filters. Artifact item filters were already cheap
   (`artifact_filter_apply` roughly `0.3-5 ms`). The target-character filter lag

@@ -689,6 +689,7 @@ class SelectedCharacterDetailsWidget(QFrame):
         self._weapon_tooltip_controller = None
         self._weapon_name_tooltip_controller = None
         self._weapon_meta_tooltip_controller = None
+        self._stable_selected_height = 0
         self._build_stable_skeleton()
 
     def set_details(self, details: RightPanelSelectedDetailsViewModel) -> None:
@@ -721,6 +722,7 @@ class SelectedCharacterDetailsWidget(QFrame):
             details.bonus_sources,
             external_bonuses_enabled=details.external_bonuses_enabled,
         )
+        self._remember_selected_height()
         bonus_ms = perf_ms(bonus_start)
         log_perf(
             "right_panel_details_set",
@@ -838,6 +840,8 @@ class SelectedCharacterDetailsWidget(QFrame):
         self._empty_label.show()
         self._body.hide()
         self._bonus_strip.hide()
+        if self._stable_selected_height:
+            self.setMinimumHeight(self._stable_selected_height)
         self._mode = "empty"
         return "rebuild"
 
@@ -849,6 +853,13 @@ class SelectedCharacterDetailsWidget(QFrame):
         self._bonus_strip.show()
         self._mode = "selected"
         return "rebuild"
+
+    def _remember_selected_height(self) -> None:
+        height = max(self.sizeHint().height(), self.minimumHeight())
+        if height <= self._stable_selected_height:
+            return
+        self._stable_selected_height = height
+        self.setMinimumHeight(height)
 
     def _set_stat_rows(self, rows: tuple[RightPanelDetailRowViewModel, ...]) -> None:
         while len(self._stat_rows) < len(rows):

@@ -46,6 +46,7 @@ from ui.artifact_browser.window import (
 )
 from run_workspace.perf import perf_enabled
 from localization import tr
+from ui.character_assets import STANDARD_FILTER_ONLY
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
@@ -521,6 +522,45 @@ class AppShellTest(unittest.TestCase):
         self.assertGreater(button._available_text_width(), 0)
         self.assertGreaterEqual(text_start, text_rect.left() + option.iconSize.width())
         self.assertLess(text_start, text_rect.right())
+
+    def test_artifact_browser_target_filter_refresh_preserves_button_widgets(self) -> None:
+        browser = ArtifactBrowserWindow(embedded=True)
+        target_key = "character:99999999"
+        browser.build_target_items_by_key[target_key] = {
+            "key": target_key,
+            "target_type": "character",
+            "character_id": 99999999,
+            "character_name": "Nonstandard Target",
+            "asset": {
+                "metadata": {
+                    "character": {
+                        "id": 99999999,
+                        "name": "Nonstandard Target",
+                        "rarity": 5,
+                        "weapon_type_name": "sword",
+                        "is_standard_5_star": False,
+                    }
+                }
+            },
+            "path": None,
+        }
+        browser.refresh_build_target_list()
+        button = browser.build_target_buttons_by_key[target_key]
+        existing_count = len(browser.build_target_buttons_by_key)
+
+        browser.build_target_standard_filter = STANDARD_FILTER_ONLY
+        browser.refresh_build_target_list()
+
+        self.assertIs(browser.build_target_buttons_by_key[target_key], button)
+        self.assertEqual(len(browser.build_target_buttons_by_key), existing_count)
+        self.assertTrue(button.isHidden())
+
+        browser.selected_build_target_keys = {target_key}
+        browser.refresh_build_target_list()
+
+        self.assertIs(browser.build_target_buttons_by_key[target_key], button)
+        self.assertFalse(button.isHidden())
+        self.assertTrue(button.isChecked())
 
     def test_right_panel_target_updates_artifact_browser_equip_state(self) -> None:
         with temp_app_shell_db() as db_path:

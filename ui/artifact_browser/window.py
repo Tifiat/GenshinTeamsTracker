@@ -934,6 +934,9 @@ class ArtifactBrowserWindow(QWidget):
         self.selected_build_target_keys: set[str] = set()
         self.build_target_items_by_key: dict[str, dict] = {}
         self.build_target_buttons_by_key: dict[str, QPushButton] = {}
+        self._build_target_buttons_initialized = False
+        self._build_target_button_order: list[str] = []
+        self._build_target_list_stretch_added = False
         self.build_target_element_filters: set[str] = set()
         self.build_target_weapon_filters: set[str] = set()
         self.build_target_rarity_filters: set[int] = set()
@@ -2881,62 +2884,52 @@ class ArtifactBrowserWindow(QWidget):
         if not hasattr(self, "build_target_list_layout"):
             return
 
-        clear_start = perf_now()
-        self._clear_layout(self.build_target_list_layout)
-        self.build_target_buttons_by_key.clear()
-        clear_ms = perf_ms(clear_start)
-
         self.build_target_reset_button.setEnabled(bool(self.selected_build_target_keys))
         sync_start = perf_now()
         self.sync_build_target_filter_buttons()
         sync_ms = perf_ms(sync_start)
 
-        universal_start = perf_now()
-        universal = self.build_target_items_by_key.get(BUILD_TARGET_UNIVERSAL_KEY)
-        if universal:
-            self.build_target_list_layout.addWidget(self._make_build_target_button(universal))
-        universal_ms = perf_ms(universal_start)
+        ensure_start = perf_now()
+        created_buttons = self._ensure_build_target_buttons()
+        ensure_ms = perf_ms(ensure_start)
 
         filter_start = perf_now()
-        character_items = [
-            item
-            for key, item in self.build_target_items_by_key.items()
-            if key != BUILD_TARGET_UNIVERSAL_KEY
-            and (
-                key in self.selected_build_target_keys
-                or key == self._right_panel_operation_target_key()
-                or character_matches_filters(
-                    item.get("asset") or {},
-                    self.build_target_element_filters,
-                    self.build_target_weapon_filters,
-                    self.build_target_rarity_filters,
-                    self.build_target_region_filters,
-                    self.build_target_trait_filters,
-                    self.build_target_standard_filter,
-                )
-            )
-        ]
+        visible_keys = self._visible_build_target_keys()
         filter_ms = perf_ms(filter_start)
 
-        sort_start = perf_now()
-        character_items.sort(key=lambda item: character_sort_key(item.get("asset") or {}))
-        sort_ms = perf_ms(sort_start)
-
-        build_start = perf_now()
-        for item in character_items:
-            self.build_target_list_layout.addWidget(self._make_build_target_button(item))
-        self.build_target_list_layout.addStretch()
-        build_ms = perf_ms(build_start)
+        update_start = perf_now()
+        shown_count = 0
+        hidden_count = 0
+        for key in self._build_target_button_order:
+            button = self.build_target_buttons_by_key.get(key)
+            if button is None:
+                continue
+            should_show = key in visible_keys
+            if button.property("targetVisible") != should_show:
+                if should_show:
+                    shown_count += 1
+                else:
+                    hidden_count += 1
+                button.setProperty("targetVisible", should_show)
+                button.setVisible(should_show)
+            self._sync_build_target_button_state(key, button)
+        update_ms = perf_ms(update_start)
+        visible_character_count = max(
+            0,
+            len([key for key in visible_keys if key != BUILD_TARGET_UNIVERSAL_KEY]),
+        )
         log_perf(
             "artifact_target_filter_refresh",
             total=perf_ms(total_start),
-            clear=clear_ms,
             sync=sync_ms,
-            universal=universal_ms,
+            ensure=ensure_ms,
             filter=filter_ms,
-            sort=sort_ms,
-            build=build_ms,
-            visible=len(character_items),
+            update=update_ms,
+            mode="in_place",
+            created_buttons=created_buttons,
+            shown=shown_count,
+            hidden=hidden_count,
+            visible=visible_character_count,
             total_targets=max(0, len(self.build_target_items_by_key) - 1),
             standard=self.build_target_standard_filter,
             selected_filters=int(self.any_build_target_filters_selected()),
@@ -2950,18 +2943,123 @@ class ArtifactBrowserWindow(QWidget):
         button.setMinimumWidth(TARGET_ITEM_MIN_WIDTH)
         button.setChecked(self._target_button_checked(key))
         button.setProperty("operationTarget", key == self._right_panel_operation_target_key())
+        button.setProperty("targetIconSource", "")
+        button.setProperty("targetVisible", True)
         path = item.get("path")
         if key == BUILD_TARGET_UNIVERSAL_KEY:
             button.setIcon(self._cached_universal_target_icon())
             button.setIconSize(QSize(TARGET_ITEM_ICON_SIZE, TARGET_ITEM_ICON_SIZE))
+            button.setProperty("targetIconSource", BUILD_TARGET_UNIVERSAL_KEY)
         elif path:
             button.setIcon(QIcon(str(path)))
             button.setIconSize(QSize(TARGET_ITEM_ICON_SIZE, TARGET_ITEM_ICON_SIZE))
+            button.setProperty("targetIconSource", str(path))
         button.clicked.connect(
             lambda checked=False, value=key: self.toggle_build_target(value)
         )
         self.build_target_buttons_by_key[key] = button
         return button
+
+    def _ensure_build_target_buttons(self) -> int:
+        created = 0
+        if not self._build_target_buttons_initialized:
+            for item in self._ordered_build_target_items():
+                key = item["key"]
+                if key in self.build_target_buttons_by_key:
+                    continue
+                button = self._make_build_target_button(item)
+                self.build_target_list_layout.addWidget(button)
+                self._build_target_button_order.append(key)
+                created += 1
+            self.build_target_list_layout.addStretch()
+            self._build_target_list_stretch_added = True
+            self._build_target_buttons_initialized = True
+            return created
+
+        for item in self._ordered_build_target_items():
+            key = item["key"]
+            button = self.build_target_buttons_by_key.get(key)
+            if button is None:
+                button = self._make_build_target_button(item)
+                insert_at = self._build_target_insert_index(key)
+                self.build_target_list_layout.insertWidget(insert_at, button)
+                self._build_target_button_order.insert(insert_at, key)
+                created += 1
+            else:
+                self._sync_build_target_button_content(button, item)
+        if not self._build_target_list_stretch_added:
+            self.build_target_list_layout.addStretch()
+            self._build_target_list_stretch_added = True
+        return created
+
+    def _ordered_build_target_items(self) -> list[dict]:
+        universal = self.build_target_items_by_key.get(BUILD_TARGET_UNIVERSAL_KEY)
+        character_items = [
+            item
+            for key, item in self.build_target_items_by_key.items()
+            if key != BUILD_TARGET_UNIVERSAL_KEY
+        ]
+        character_items.sort(key=lambda item: character_sort_key(item.get("asset") or {}))
+        return ([universal] if universal else []) + character_items
+
+    def _build_target_insert_index(self, key: str) -> int:
+        ordered_keys = [item["key"] for item in self._ordered_build_target_items()]
+        try:
+            desired_index = ordered_keys.index(key)
+        except ValueError:
+            desired_index = len(self._build_target_button_order)
+        return min(desired_index, len(self._build_target_button_order))
+
+    def _visible_build_target_keys(self) -> set[str]:
+        visible_keys = {BUILD_TARGET_UNIVERSAL_KEY}
+        operation_key = self._right_panel_operation_target_key()
+        for key, item in self.build_target_items_by_key.items():
+            if key == BUILD_TARGET_UNIVERSAL_KEY:
+                continue
+            if (
+                key in self.selected_build_target_keys
+                or key == operation_key
+                or character_matches_filters(
+                    item.get("asset") or {},
+                    self.build_target_element_filters,
+                    self.build_target_weapon_filters,
+                    self.build_target_rarity_filters,
+                    self.build_target_region_filters,
+                    self.build_target_trait_filters,
+                    self.build_target_standard_filter,
+                )
+            ):
+                visible_keys.add(key)
+        return visible_keys
+
+    def _sync_build_target_button_content(self, button: QPushButton, item: dict) -> None:
+        text = item.get("character_name") or ""
+        if button.text() != text:
+            button.setText(text)
+        icon_source = BUILD_TARGET_UNIVERSAL_KEY if item["key"] == BUILD_TARGET_UNIVERSAL_KEY else str(item.get("path") or "")
+        if button.property("targetIconSource") == icon_source:
+            return
+        if item["key"] == BUILD_TARGET_UNIVERSAL_KEY:
+            button.setIcon(self._cached_universal_target_icon())
+            button.setIconSize(QSize(TARGET_ITEM_ICON_SIZE, TARGET_ITEM_ICON_SIZE))
+        elif item.get("path"):
+            button.setIcon(QIcon(str(item.get("path"))))
+            button.setIconSize(QSize(TARGET_ITEM_ICON_SIZE, TARGET_ITEM_ICON_SIZE))
+        else:
+            button.setIcon(QIcon())
+        button.setProperty("targetIconSource", icon_source)
+
+    def _sync_build_target_button_state(self, key: str, button: QPushButton) -> None:
+        operation_target = key == self._right_panel_operation_target_key()
+        checked = self._target_button_checked(key)
+        was_blocked = button.blockSignals(True)
+        if button.isChecked() != checked:
+            button.setChecked(checked)
+        if button.property("operationTarget") != operation_target:
+            button.setProperty("operationTarget", operation_target)
+            button.style().unpolish(button)
+            button.style().polish(button)
+        button.blockSignals(was_blocked)
 
     def on_build_target_filter_clicked(self, selected_values: set, value, checked: bool) -> None:
         if checked:

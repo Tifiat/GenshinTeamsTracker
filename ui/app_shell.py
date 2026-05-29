@@ -1249,6 +1249,7 @@ class AppShell(QWidget):
             timings["operation_target_sync"] = target_ms
             self.schedule_weapon_filter_sync()
             if result.added:
+                self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
                 self.schedule_persistent_equipment_hydration(result)
             elif result.removed:
                 self.cancel_pending_equipment_hydration(result)

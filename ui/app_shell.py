@@ -1266,6 +1266,9 @@ class AppShell(QWidget):
                 self.schedule_persistent_equipment_hydration(result)
             elif result.removed:
                 self.cancel_pending_equipment_hydration(result)
+                self.cancel_pending_right_panel_refresh(
+                    reason="character_removed"
+                )
                 self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
             else:
                 self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)

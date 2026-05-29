@@ -169,6 +169,7 @@ class RightPanelPrototypeWidget(QWidget):
             for team_widget in self._team_widgets
             for slot_widget in team_widget.slot_widgets()
         ]
+        self._sync_teams_container_fixed_height()
         teams_ms = perf_ms(teams_start)
 
         chamber_start = perf_now()
@@ -251,6 +252,17 @@ class RightPanelPrototypeWidget(QWidget):
             self._team_widgets.append(team_widget)
             self._slot_widgets.extend(team_widget.slot_widgets())
             self._teams_layout.addWidget(team_widget)
+
+    def _sync_teams_container_fixed_height(self) -> None:
+        if not self._team_widgets:
+            self._teams_container.setMinimumHeight(0)
+            self._teams_container.setMaximumHeight(16777215)
+            return
+        spacing = max(0, self._teams_layout.spacing())
+        height = sum(team.minimumHeight() for team in self._team_widgets)
+        height += max(0, len(self._team_widgets) - 1) * spacing
+        self._teams_container.setFixedHeight(height)
+
 
     def _settle_content_layout(self) -> None:
         self._teams_layout.activate()

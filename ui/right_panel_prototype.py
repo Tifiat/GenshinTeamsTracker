@@ -185,6 +185,7 @@ class RightPanelPrototypeWidget(QWidget):
         actions_start = perf_now()
         self._actions.set_labels(model.action_labels)
         actions_ms = perf_ms(actions_start)
+        self._settle_content_layout()
         log_perf(
             "right_panel_set_model_widget",
             total=perf_ms(total_start),
@@ -250,6 +251,11 @@ class RightPanelPrototypeWidget(QWidget):
             self._team_widgets.append(team_widget)
             self._slot_widgets.extend(team_widget.slot_widgets())
             self._teams_layout.addWidget(team_widget)
+
+    def _settle_content_layout(self) -> None:
+        self._teams_layout.activate()
+        self._layout.invalidate()
+        self._layout.activate()
 
 class RightPanelTeamPrototypeWidget(QFrame):
     slot_selected = Signal(int, int)

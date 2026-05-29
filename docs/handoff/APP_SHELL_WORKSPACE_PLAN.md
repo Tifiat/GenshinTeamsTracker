@@ -421,6 +421,21 @@ Performance fix status:
   transient windows and multi-second first init. Stable Qt widget ownership is
   required: keep widgets parented in a single layout and update
   visibility/state/content in place.
+- Artifact Browser cold-start audit status:
+  - Baseline after target-filter optimization was about `356 ms` total, with
+    store load around `110 ms`, target item loading around `46-48 ms`, and UI
+    construction around `178-180 ms`.
+  - Embedded Artifact Browser no longer raises the whole AppShell minimum size on
+    first open; setting the embedded browser size policy to ignore vertical
+    minimum hints removed the visible `1408x820 -> 1408x850` resize twitch.
+  - Target character asset items now reuse the already-loaded Character/Weapon
+    workspace session cache when the embedded Artifact Browser is created. This
+    removed the second SQLite target asset pass and reduced `targets` to roughly
+    `7 ms` in the measured cold open.
+  - Remaining cold cost is intentional and loader-ready: SQLite artifact store
+    load plus one-time creation of about 74 target buttons (`ensure ~100 ms`).
+    Do not add persistent bake/cache before the loader pass just to hide this;
+    keep it measurable until the future loader/cache pass.
 - Startup loader + persistent cache/bake work is intentionally later and mostly
   pre-release. Until that loader pass, keep remaining cold-start/stutter sources
   visible and measurable so bad synchronous paths are easy to find and fix.

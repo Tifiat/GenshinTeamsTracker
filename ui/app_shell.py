@@ -1380,6 +1380,7 @@ class LeftWorkspaceHost(QWidget):
             parent=self.stack,
             embedded=True,
             db_path=self.artifact_db_path,
+            character_asset_items=self.character_weapon_workspace.character_asset_items_snapshot(),
         )
         self.stack.removeWidget(self.artifact_browser_placeholder)
         self.artifact_browser_placeholder.deleteLater()
@@ -1520,6 +1521,10 @@ class CharacterWeaponWorkspace(QWidget):
             source = "sqlite"
             self._all_character_items = list(load_account_character_asset_items())
         return list(self._all_character_items), perf_ms(load_start), source
+
+    def character_asset_items_snapshot(self) -> list[dict]:
+        items, _load_ms, _source = self._character_asset_items()
+        return items
 
     def _weapon_asset_items(self) -> tuple[list[dict], float, str]:
         load_start = perf_now()

@@ -892,6 +892,7 @@ class ArtifactBrowserWindow(QWidget):
         *,
         embedded: bool = False,
         db_path: str | Path = ARTIFACT_DB_PATH,
+        character_asset_items: list[dict] | None = None,
     ):
         init_start = perf_now()
         super().__init__(parent)
@@ -908,6 +909,9 @@ class ArtifactBrowserWindow(QWidget):
         if not self.embedded:
             self.resize(1180, 760)
         self.setStyleSheet(WINDOW_STYLE)
+        self._preloaded_character_asset_items = (
+            list(character_asset_items) if character_asset_items is not None else None
+        )
 
         self.current_pos = 1
         store_start = perf_now()
@@ -2811,7 +2815,11 @@ class ArtifactBrowserWindow(QWidget):
                 "path": None,
             }
         }
-        assets = load_account_character_asset_items()
+        if self._preloaded_character_asset_items is not None:
+            assets = list(self._preloaded_character_asset_items)
+        else:
+            assets = load_account_character_asset_items()
+
         for asset in assets:
             char_id = character_id(asset)
             if char_id is None:

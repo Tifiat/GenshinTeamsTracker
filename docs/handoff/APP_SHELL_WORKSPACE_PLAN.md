@@ -385,14 +385,26 @@ Performance fix status:
     persistent equipment hydration for an added character, cancel any pending
     right-panel refresh first so stale timers cannot draw a half-updated model.
   - Fifth cause: removing the selected character switched selected details from
-    selected mode to empty mode and collapsed the details block height. Under
-    narrow timing this caused a final small flash around the chamber/slot area.
-    Fix: after selected details have been shown once, remember the selected
+    selected mode to empty mode and changed details size hints. Under narrow
+    timing this caused a final small flash around the chamber/slot area. Partial
+    fix: after selected details have been shown once, remember the selected
     height and keep that minimum height even in empty mode.
+  - Final trace finding: the remaining remove-bounce was a one-frame layout
+    settle issue. In the failing trace, right after `set_model(...)` the chamber
+    block was at the wrong y-position, then the next event-loop tick (`settled`)
+    returned it to the correct geometry. Synchronous layout activation alone did
+    not guarantee the first visible frame used the settled geometry.
+  - Final fix: keep the stable teams/details geometry guards, call the content
+    layout settle helper, and delay repaint re-enable until the next event-loop
+    tick. In practice this means disabling updates during right-panel
+    `set_model(...)`, then using a zero-delay timer to settle layout again,
+    re-enable updates, and repaint only after Qt has reached settled geometry.
   - Future browser/panel rule: do not rely on fast repaint masking. Keep widgets
     owned by stable parent/layouts, update via state/content/visibility, avoid
     intermediate visible placeholder states during deferred hydration/load, and
     keep geometry stable when switching between selected/empty/hydrated modes.
+    If diagnostics show different `after` vs `settled` geometry, guard painting
+    until the settled tick instead of showing the intermediate frame.
 - Artifact Browser target-character filters were separately profiled from
   artifact item filters. Artifact item filters were already cheap
   (`artifact_filter_apply` roughly `0.3-5 ms`). The target-character filter lag

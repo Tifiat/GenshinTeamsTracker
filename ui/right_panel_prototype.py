@@ -151,9 +151,6 @@ class RightPanelPrototypeWidget(QWidget):
 
     def set_model(self, model: RightPanelPrototypeViewModel) -> None:
         total_start = perf_now()
-        updates_were_enabled = self.updatesEnabled()
-        if updates_were_enabled:
-            self.setUpdatesEnabled(False)
         QToolTip.hideText()
         self._model = model
         tabs_start = perf_now()
@@ -199,9 +196,6 @@ class RightPanelPrototypeWidget(QWidget):
             details=details_ms,
             actions=actions_ms,
         )
-        if updates_were_enabled:
-            self.setUpdatesEnabled(True)
-            self.update()
 
     def recommended_standalone_size(self) -> QSize:
         self._content.adjustSize()

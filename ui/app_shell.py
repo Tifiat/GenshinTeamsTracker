@@ -988,6 +988,17 @@ class AppShell(QWidget):
             delay=delay_ms,
         )
 
+    def cancel_pending_right_panel_refresh(self, *, reason: str) -> None:
+        if not self._right_panel_refresh_pending:
+            return
+        self._right_panel_refresh_pending = False
+        if self._right_panel_refresh_timer.isActive():
+            self._right_panel_refresh_timer.stop()
+        log_perf(
+            "right_panel_refresh_cancel",
+            reason=reason,
+        )
+
     def schedule_weapon_filter_sync(
         self,
         delay_ms: int = WEAPON_FILTER_SYNC_DEBOUNCE_MS,
@@ -1012,6 +1023,9 @@ class AppShell(QWidget):
         if not result.added:
             return
         self._equipment_hydration_generation += 1
+        self.cancel_pending_right_panel_refresh(
+            reason="pending_equipment_hydration"
+        )
         self._equipment_hydration_pending = result
         self._equipment_hydration_timer.start(PERSISTENT_EQUIPMENT_HYDRATION_DELAY_MS)
         log_perf(

@@ -378,22 +378,22 @@ Performance fix status:
   transient windows and multi-second first init. Stable Qt widget ownership is
   required: keep widgets parented in a single layout and update
   visibility/state/content in place.
-- Later performance steps: bulk prewarm persistent equipment/negative cache for
-  account characters, then staged/lazy Artifact Browser cold-start init with a
-  persistent store cache. Startup loaders/progress strips may hide cold work
-  only after the synchronous rebuild/layout problems are fixed.
+- Startup loader + persistent cache/bake work is intentionally later and mostly
+  pre-release. Until that loader pass, keep remaining cold-start/stutter sources
+  visible and measurable so bad synchronous paths are easy to find and fix.
+  Do not add persistent caches just to hide current lag while the UI is still
+  being actively optimized.
+- When the loader pass starts, mark every loader-covered subsystem explicitly
+  and bake/cache repeatable work in the same pass. Candidates include Artifact
+  Browser cold-start store/init data, target/preset UI preparation,
+  preset-edit controls, pixmap/text/marquee caches, and bulk persistent
+  equipment/negative-cache prewarm for account characters. After that point,
+  second and later openings should reuse baked/cache data where safe.
 - Future right-panel slot drag/drop is feasible because `TeamBuilderState`
   already supports whole-slot swap/move across teams. The UI should drag a full
   slot payload, not just a portrait, so weapon/artifact/details move together;
   resonances and team bonuses must be recalculated from the post-drop team
   composition rather than copied as slot data.
-- Later startup preload/cache idea, after the actual layout/performance bugs are
-  fixed: run heavy workspace/widget prewarm behind a startup loader or progress
-  strip. Good candidates are Artifact Browser lazy construction, the
-  Character/Weapon workspace, preset-edit controls, and pixmap/text/marquee
-  caches. Persistent caches should make later launches cheaper. This must remain
-  a startup-smoothing layer, not a replacement for fixing synchronous rebuilds,
-  bad minimum-size propagation, or first-show layout bugs.
 
 Sizing note:
 

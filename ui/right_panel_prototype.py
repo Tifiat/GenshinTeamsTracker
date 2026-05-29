@@ -5,7 +5,7 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QSize, Qt, Signal
+from PySide6.QtCore import QEvent, QSize, Qt, Signal, QTimer
 from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -151,6 +151,9 @@ class RightPanelPrototypeWidget(QWidget):
 
     def set_model(self, model: RightPanelPrototypeViewModel) -> None:
         total_start = perf_now()
+        updates_were_enabled = self.updatesEnabled()
+        if updates_were_enabled:
+            self.setUpdatesEnabled(False)
         QToolTip.hideText()
         self._model = model
         tabs_start = perf_now()
@@ -197,6 +200,8 @@ class RightPanelPrototypeWidget(QWidget):
             details=details_ms,
             actions=actions_ms,
         )
+        if updates_were_enabled:
+            QTimer.singleShot(0, self._finish_deferred_update)
 
     def recommended_standalone_size(self) -> QSize:
         self._content.adjustSize()
@@ -268,6 +273,11 @@ class RightPanelPrototypeWidget(QWidget):
         self._teams_layout.activate()
         self._layout.invalidate()
         self._layout.activate()
+
+    def _finish_deferred_update(self) -> None:
+        self._settle_content_layout()
+        self.setUpdatesEnabled(True)
+        self.update()
 
 class RightPanelTeamPrototypeWidget(QFrame):
     slot_selected = Signal(int, int)

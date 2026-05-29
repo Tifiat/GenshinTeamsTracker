@@ -356,20 +356,28 @@ Performance fix status:
   `~2.6 ms` before a single deferred flush; mode switches `~0.4-0.7 ms` before
   deferred flush; standard-character filter `~14 ms`; character filter clear
   `~111 ms`; weapon type filter `~18 ms`; weapon type/rarity clear `~95-96 ms`.
-- Remaining latency is mostly full right-panel widget rebuild and full visible
-  grid widget recreation on filter changes. Data load and pixmap scaling are no
-  longer the dominant filter costs; the next safe step is hide/show or a
-  virtualized/lazy grid if manual UX still feels slow.
-- Current smoothness priority: finish removing destructive or layout-changing
-  work from normal right-panel refreshes. Team/slot widgets already support
-  same-structure in-place updates; remaining twitch is expected from chamber,
-  selected details, action bar, bonus strip, set-bonus tooltip, and
-  minimal-to-hydrated selected-detail layout changes. Prefer skip-unchanged and
-  persistent child widgets before adding loading masks.
-- Next safe right-panel steps: skip unchanged chamber rows/actions/bonus-source
-  strips, cache mini set tooltip HTML by active-set key, avoid loading set bonus
-  descriptions in the first visible frame, and stabilize selected-details height
-  so hydration fills values without moving the rest of the panel.
+- Right-panel add/select smoothness pass is completed enough for manual UX:
+  quick-pick places/removes characters through a fast UI path, persistent
+  equipment hydration is deferred/stale-guarded, team/slot widgets update in
+  place, selected details use a stable skeleton with a persistent bonus strip,
+  and adding a character no longer performs a visible intermediate
+  minimal-details refresh before hydrated details are available.
+- Artifact Browser target-character filters were separately profiled from
+  artifact item filters. Artifact item filters were already cheap
+  (`artifact_filter_apply` roughly `0.3-5 ms`). The target-character filter lag
+  came from destructive target button rebuilds: standard filter all/exclude
+  recreated about 65-73 `MarqueeButton` target buttons and measured about
+  `50-58 ms` in the build step after universal icon caching.
+- Artifact Browser target-character filters now keep target buttons in one
+  stable layout and refresh by ensuring missing buttons once, calculating
+  visible keys, then updating `setVisible(...)`, checked state, operation-target
+  property, and icon/text only when needed. Normal target filter refresh logs
+  should use `artifact_target_filter_refresh ... mode=in_place`.
+- Do not repeat the failed intermediate approach that cached target button
+  widgets while removing/re-adding them through layouts. That caused blank
+  transient windows and multi-second first init. Stable Qt widget ownership is
+  required: keep widgets parented in a single layout and update
+  visibility/state/content in place.
 - Later performance steps: bulk prewarm persistent equipment/negative cache for
   account characters, then staged/lazy Artifact Browser cold-start init with a
   persistent store cache. Startup loaders/progress strips may hide cold work

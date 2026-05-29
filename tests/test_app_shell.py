@@ -1513,6 +1513,69 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(controller.state.team(0).slot(1).character.id, "10000099")
         self.assertEqual(controller.state.team(0).slot(2).character.id, "10000052")
 
+    def test_slot_swap_moves_full_payload_and_selects_dragged_slot(self) -> None:
+        controller = AppShellController.empty()
+        controller.add_or_replace_character_fast(
+            _character_asset("10000050", "Thoma", weapon_type=13)
+        )
+        controller.add_or_replace_character_fast(
+            _character_asset("10000089", "Furina", weapon_type=1)
+        )
+        controller.state = controller.state.set_weapon(
+            0,
+            0,
+            {
+                "id": "13407",
+                "name": "Favonius Lance",
+                "weapon_type": "polearm",
+            },
+        )
+        controller.state = controller.state.attach_character_details_data(
+            0,
+            0,
+            {
+                "account_character": {"id": "10000050", "name": "Thoma"},
+                "payload_marker": "source-details",
+            },
+        )
+
+        changed = controller.swap_slots(0, 0, 0, 1)
+
+        self.assertTrue(changed)
+        source_after = controller.state.team(0).slot(0)
+        target_after = controller.state.team(0).slot(1)
+        self.assertEqual(source_after.character.id, "10000089")
+        self.assertEqual(target_after.character.id, "10000050")
+        self.assertEqual(target_after.weapon.id, "13407")
+        self.assertEqual(target_after.character_details_data["payload_marker"], "source-details")
+        self.assertEqual(controller.selected_team_index, 0)
+        self.assertEqual(controller.selected_slot_index, 1)
+
+    def test_slot_swap_to_empty_slot_behaves_like_move(self) -> None:
+        controller = AppShellController.empty()
+        controller.add_or_replace_character_fast(
+            _character_asset("10000050", "Thoma", weapon_type=13)
+        )
+
+        changed = controller.swap_slots(0, 0, 1, 0)
+
+        self.assertTrue(changed)
+        self.assertTrue(controller.state.team(0).slot(0).is_empty)
+        self.assertEqual(controller.state.team(1).slot(0).character.id, "10000050")
+        self.assertEqual(controller.selected_team_index, 1)
+        self.assertEqual(controller.selected_slot_index, 0)
+
+    def test_app_shell_slot_drop_swaps_slots_and_schedules_refresh(self) -> None:
+        shell = AppShell()
+        shell.controller.add_or_replace_character_fast(_character_asset("10000050", "Thoma"))
+        shell.controller.add_or_replace_character_fast(_character_asset("10000089", "Furina"))
+
+        shell._on_slot_dropped(0, 0, 0, 1)
+
+        self.assertEqual(shell.controller.state.team(0).slot(1).character.id, "10000050")
+        self.assertEqual(shell.controller.selected_slot_index, 1)
+        self.assertTrue(shell._right_panel_refresh_pending)
+
     def test_mode_states_keep_independent_quick_picks(self) -> None:
         controller = AppShellController.empty()
         controller.add_or_replace_character(_character_asset("10000050", "Thoma"))
@@ -1618,8 +1681,11 @@ class AppShellTest(unittest.TestCase):
 
             self.assertIsNotNone(card.selection_marker)
             self.assertEqual(set_model.call_count, 0)
-            self.assertTrue(shell._right_panel_refresh_pending)
+            self.assertFalse(shell._right_panel_refresh_pending)
+            self.assertIsNotNone(shell._equipment_hydration_pending)
 
+            shell.flush_pending_equipment_hydration()
+            self.assertTrue(shell._right_panel_refresh_pending)
             shell.flush_pending_right_panel_refresh()
 
         self.assertEqual(set_model.call_count, 1)
@@ -1771,8 +1837,11 @@ class AppShellTest(unittest.TestCase):
                 )
 
             self.assertEqual(set_model.call_count, 0)
-            self.assertTrue(shell._right_panel_refresh_pending)
+            self.assertFalse(shell._right_panel_refresh_pending)
+            self.assertIsNotNone(shell._equipment_hydration_pending)
 
+            shell.flush_pending_equipment_hydration()
+            self.assertTrue(shell._right_panel_refresh_pending)
             shell.flush_pending_right_panel_refresh()
 
         self.assertEqual(set_model.call_count, 1)

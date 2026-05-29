@@ -225,6 +225,40 @@ class AppShellController:
         self.selected_team_index = -1
         self.selected_slot_index = -1
 
+    def swap_slots(
+        self,
+        source_team_index: int,
+        source_slot_index: int,
+        target_team_index: int,
+        target_slot_index: int,
+    ) -> bool:
+        source_team_index = int(source_team_index)
+        source_slot_index = int(source_slot_index)
+        target_team_index = int(target_team_index)
+        target_slot_index = int(target_slot_index)
+        if (
+            source_team_index == target_team_index
+            and source_slot_index == target_slot_index
+        ):
+            return False
+        try:
+            source_slot = self.state.team(source_team_index).slot(source_slot_index)
+            self.state.team(target_team_index).slot(target_slot_index)
+        except IndexError:
+            return False
+        if source_slot.is_empty:
+            return False
+        self.state = self.state.swap_slots(
+            source_team_index,
+            source_slot_index,
+            target_team_index,
+            target_slot_index,
+        )
+        self.selected_team_index = target_team_index
+        self.selected_slot_index = target_slot_index
+        self._store_current_mode_state()
+        return True
+
     def add_or_replace_character_fast(
         self,
         asset: dict[str, Any],
@@ -885,6 +919,7 @@ class AppShell(QWidget):
 
         self.right_panel.mode_requested.connect(self._on_mode_requested)
         self.right_panel.slot_selected.connect(self._on_slot_selected)
+        self.right_panel.slot_dropped.connect(self._on_slot_dropped)
         self.right_panel.external_bonuses_toggled.connect(
             self._on_external_bonuses_toggled
         )
@@ -1235,6 +1270,48 @@ class AppShell(QWidget):
         self.schedule_weapon_filter_sync()
         self.schedule_right_panel_refresh()
         log_perf("slot_select", total=perf_ms(total_start), scheduled=True)
+
+    def _on_slot_dropped(
+        self,
+        source_team_index: int,
+        source_slot_index: int,
+        target_team_index: int,
+        target_slot_index: int,
+    ) -> None:
+        total_start = perf_now()
+        self.cancel_pending_equipment_hydration()
+        self.cancel_pending_right_panel_refresh(reason="slot_dropped")
+        state_start = perf_now()
+        changed = self.controller.swap_slots(
+            source_team_index,
+            source_slot_index,
+            target_team_index,
+            target_slot_index,
+        )
+        state_ms = perf_ms(state_start)
+        timings: dict[str, float] = {}
+        if changed:
+            timings.update(self._refresh_character_selection_markers())
+            target_start = perf_now()
+            self._sync_artifact_browser_operation_target()
+            timings["operation_target_sync"] = perf_ms(target_start)
+            hydration_target = self.controller.selected_equipment_hydration_target()
+            if hydration_target is not None:
+                self.schedule_persistent_equipment_hydration(hydration_target)
+            self.schedule_weapon_filter_sync()
+            self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+        log_perf(
+            "slot_drop",
+            total=perf_ms(total_start),
+            state=state_ms,
+            changed=changed,
+            source_team=source_team_index,
+            source_slot=source_slot_index,
+            target_team=target_team_index,
+            target_slot=target_slot_index,
+            scheduled=changed,
+            **timings,
+        )
 
     def _on_external_bonuses_toggled(self, enabled: bool) -> None:
         total_start = perf_now()

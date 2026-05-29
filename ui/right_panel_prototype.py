@@ -5,8 +5,8 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-from PySide6.QtCore import QEvent, QSize, Qt, Signal, QTimer
-from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtCore import QByteArray, QEvent, QMimeData, QSize, Qt, Signal, QTimer
+from PySide6.QtGui import QDrag, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -62,6 +62,7 @@ SLOT_WARNING_BADGE_WIDTH = SLOT_EQUIP_BOX_SIZE
 SLOT_CARD_WIDTH = SLOT_CLUSTER_WIDTH + SLOT_CARD_MARGIN * 2
 SLOT_CARD_FIXED_HEIGHT = 154
 SLOT_NAME_HEIGHT = 18
+SLOT_DRAG_MIME_TYPE = "application/x-gtt-right-panel-slot"
 
 _FIT_PIXMAP_CACHE: dict[tuple[str, int, int], QPixmap | None] = {}
 _BUILD_MINI_SET_ICON_PIXMAP_CACHE: dict[
@@ -86,6 +87,7 @@ class RightPanelPrototypeWidget(QWidget):
 
     mode_requested = Signal(str)
     slot_selected = Signal(int, int)
+    slot_dropped = Signal(int, int, int, int)
     external_bonuses_toggled = Signal(bool)
 
     def __init__(
@@ -254,6 +256,7 @@ class RightPanelPrototypeWidget(QWidget):
         for team in model.teams:
             team_widget = RightPanelTeamPrototypeWidget(team)
             team_widget.slot_selected.connect(self.slot_selected.emit)
+            team_widget.slot_dropped.connect(self.slot_dropped.emit)
             self._team_widgets.append(team_widget)
             self._slot_widgets.extend(team_widget.slot_widgets())
             self._teams_layout.addWidget(team_widget)
@@ -281,6 +284,7 @@ class RightPanelPrototypeWidget(QWidget):
 
 class RightPanelTeamPrototypeWidget(QFrame):
     slot_selected = Signal(int, int)
+    slot_dropped = Signal(int, int, int, int)
 
     def __init__(
         self,
@@ -325,6 +329,7 @@ class RightPanelTeamPrototypeWidget(QFrame):
         for index, slot in enumerate(model.slots):
             widget = RightPanelSlotPrototypeWidget(slot)
             widget.clicked.connect(self.slot_selected.emit)
+            widget.dropped.connect(self.slot_dropped.emit)
             self._slot_widgets.append(widget)
             self._grid.addWidget(widget, index // 4, index % 4)
 
@@ -340,6 +345,7 @@ class RightPanelTeamPrototypeWidget(QFrame):
 
 class RightPanelSlotPrototypeWidget(QFrame):
     clicked = Signal(int, int)
+    dropped = Signal(int, int, int, int)
 
     def __init__(
         self,
@@ -351,11 +357,14 @@ class RightPanelSlotPrototypeWidget(QFrame):
         self._model_key: tuple[object, ...] | None = None
         self._weapon_tooltip_controller = None
         self._warning_tooltip_controller = None
+        self._press_pos = None
+        self._drag_started = False
         self.setObjectName("SlotCard")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.setFixedWidth(SLOT_CARD_WIDTH)
         self.setFixedHeight(SLOT_CARD_FIXED_HEIGHT)
+        self.setAcceptDrops(True)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(
@@ -502,8 +511,106 @@ class RightPanelSlotPrototypeWidget(QFrame):
 
     def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt override
         if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit(self._model.team_index, self._model.slot_index)
+            self._press_pos = event.position().toPoint()
+            self._drag_started = False
+            event.accept()
+            return
         super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:  # noqa: N802 - Qt override
+        if (
+            self._press_pos is None
+            or self._drag_started
+            or self._model.is_empty
+            or not (event.buttons() & Qt.MouseButton.LeftButton)
+        ):
+            super().mouseMoveEvent(event)
+            return
+
+        distance = (event.position().toPoint() - self._press_pos).manhattanLength()
+        if distance < QApplication.startDragDistance():
+            super().mouseMoveEvent(event)
+            return
+
+        self._drag_started = True
+        payload = f"{self._model.team_index}:{self._model.slot_index}"
+        mime = QMimeData()
+        mime.setData(SLOT_DRAG_MIME_TYPE, QByteArray(payload.encode("ascii")))
+
+        drag = QDrag(self)
+        drag.setMimeData(mime)
+        drag.setPixmap(self.grab())
+        drag.setHotSpot(event.position().toPoint())
+        drag.exec(Qt.DropAction.MoveAction)
+        self._press_pos = None
+        event.accept()
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802 - Qt override
+        if event.button() == Qt.MouseButton.LeftButton:
+            if self._press_pos is not None and not self._drag_started:
+                self.clicked.emit(self._model.team_index, self._model.slot_index)
+            self._press_pos = None
+            self._drag_started = False
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def dragEnterEvent(self, event) -> None:  # noqa: N802 - Qt override
+        source = self._drag_source_from_event(event)
+        if source is None or source == (self._model.team_index, self._model.slot_index):
+            event.ignore()
+            return
+        self._set_drag_hover(True)
+        event.acceptProposedAction()
+
+    def dragMoveEvent(self, event) -> None:  # noqa: N802 - Qt override
+        source = self._drag_source_from_event(event)
+        if source is None or source == (self._model.team_index, self._model.slot_index):
+            event.ignore()
+            return
+        event.acceptProposedAction()
+
+    def dragLeaveEvent(self, event) -> None:  # noqa: N802 - Qt override
+        self._set_drag_hover(False)
+        super().dragLeaveEvent(event)
+
+    def dropEvent(self, event) -> None:  # noqa: N802 - Qt override
+        source = self._drag_source_from_event(event)
+        self._set_drag_hover(False)
+        if source is None:
+            event.ignore()
+            return
+        source_team_index, source_slot_index = source
+        target = (self._model.team_index, self._model.slot_index)
+        if source == target:
+            event.ignore()
+            return
+        self.dropped.emit(
+            source_team_index,
+            source_slot_index,
+            self._model.team_index,
+            self._model.slot_index,
+        )
+        event.acceptProposedAction()
+
+    def _drag_source_from_event(self, event) -> tuple[int, int] | None:
+        mime = event.mimeData()
+        if mime is None or not mime.hasFormat(SLOT_DRAG_MIME_TYPE):
+            return None
+        try:
+            payload = bytes(mime.data(SLOT_DRAG_MIME_TYPE)).decode("ascii")
+            team_text, slot_text = payload.split(":", 1)
+            return int(team_text), int(slot_text)
+        except (TypeError, ValueError):
+            return None
+
+    def _set_drag_hover(self, enabled: bool) -> None:
+        if self.property("dragHover") == bool(enabled):
+            return
+        self.setProperty("dragHover", bool(enabled))
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.update()
 
 
 class BuildMiniSetStackWidget(QLabel):
@@ -1659,6 +1766,10 @@ def _stylesheet() -> str:
     #SlotCardSelected {
         border-color: #d7b461;
         background: #303743;
+    }
+    #SlotCard[dragHover="true"], #SlotCardSelected[dragHover="true"] {
+        border-color: #7cc7ff;
+        background: #334052;
     }
     #PortraitBox, #PortraitBoxEmpty {
         border-radius: 6px;

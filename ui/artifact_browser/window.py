@@ -900,6 +900,11 @@ class ArtifactBrowserWindow(QWidget):
         if not self.embedded:
             self.setWindowFlag(Qt.Window, True)
         self.setWindowTitle(tr("artifact.browser.title"))
+        if self.embedded:
+            self.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Ignored,
+            )
         if not self.embedded:
             self.resize(1180, 760)
         self.setStyleSheet(WINDOW_STYLE)

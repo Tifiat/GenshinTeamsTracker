@@ -14,6 +14,7 @@ from .stat_types import is_crit_type, stat_badge
 CARD_SIZE = QSize(180, 136)
 GRID_SIZE = QSize(192, 148)
 ICON_SIZE = QSize(56, 56)
+OWNER_SIDE_ICON_SIZE = QSize(28, 28)
 
 CV_COLORS = [
     (0.0, 14.9, "#9b9b9b"),      # gray
@@ -189,6 +190,8 @@ class ArtifactCardDelegate(QStyledItemDelegate):
             painter.setPen(QColor("#d8c36a"))
             painter.drawText(icon_rect, Qt.AlignmentFlag.AlignCenter, "★")
 
+        self._draw_owner_icon(painter, icon_rect, artifact)
+
         cv_rect = QRect(
             card_rect.x() + 6,
             icon_rect.bottom() + 5,
@@ -215,6 +218,36 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         painter.setFont(font)
         painter.setPen(QColor("#f0d58a"))
         painter.drawText(level_rect, Qt.AlignmentFlag.AlignCenter, f"+{artifact.level}")
+
+    def _draw_owner_icon(
+        self,
+        painter: QPainter,
+        icon_rect: QRect,
+        artifact: ArtifactItem,
+    ) -> None:
+        if artifact.owner_icon_path is None:
+            return
+
+        pixmap = cached_scaled_pixmap(
+            artifact.owner_icon_path,
+            OWNER_SIDE_ICON_SIZE,
+        )
+        if pixmap is None:
+            return
+
+        owner_rect = QRect(
+            icon_rect.right() - OWNER_SIDE_ICON_SIZE.width() + 1,
+            icon_rect.top(),
+            OWNER_SIDE_ICON_SIZE.width(),
+            OWNER_SIDE_ICON_SIZE.height(),
+        )
+        target = QRect(
+            owner_rect.x() + (owner_rect.width() - pixmap.width()) // 2,
+            owner_rect.y() + (owner_rect.height() - pixmap.height()) // 2,
+            pixmap.width(),
+            pixmap.height(),
+        )
+        painter.drawPixmap(target, pixmap)
 
     def _draw_substats(
         self,

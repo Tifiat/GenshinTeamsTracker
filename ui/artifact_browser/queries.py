@@ -239,7 +239,9 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
             set_icons.icon_url AS set_icon_url,
             set_icons.local_path AS set_icon_local_path,
             set_flower_icons.local_path AS set_flower_icon_local_path,
-            equipment_character.name AS character_name
+            current_equipment.character_id AS owner_character_id,
+            equipment_character.name AS character_name,
+            equipment_character.side_icon_path AS owner_side_icon_path
         FROM artifacts
         LEFT JOIN artifact_sets
             ON artifact_sets.set_uid = artifacts.set_uid
@@ -326,6 +328,8 @@ def _fetch_artifacts(conn, *, preferred_lang: str | None = None) -> list[Artifac
                 icon_path=cached_icon_path(row["set_icon_local_path"]),
                 set_icon_path=cached_icon_path(row["set_flower_icon_local_path"]),
                 character_name=row["character_name"] or "",
+                owner_character_id=int_or_none(row["owner_character_id"]),
+                owner_icon_path=cached_icon_path(row["owner_side_icon_path"]),
                 tags=tags_by_artifact.get(artifact_id, []),
                 substats=substats_by_artifact.get(artifact_id, []),
             )

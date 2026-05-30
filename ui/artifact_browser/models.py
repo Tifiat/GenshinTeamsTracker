@@ -48,6 +48,8 @@ class ArtifactItem:
     icon_path: Path | None = None
     set_icon_path: Path | None = None
     character_name: str = ""
+    owner_character_id: int | None = None
+    owner_icon_path: Path | None = None
     tags: list[ArtifactTagRef] = field(default_factory=list)
     substats: list[ArtifactSubstat] = field(default_factory=list)
 

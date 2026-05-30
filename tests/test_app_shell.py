@@ -1172,6 +1172,31 @@ class AppShellTest(unittest.TestCase):
             self.assertIsNone(browser.selected_build_id)
             self.assertEqual(browser.current_equipment_preview_slots, {2: 2})
 
+    def test_artifact_browser_store_loads_current_owner_side_icon(self) -> None:
+        with temp_app_shell_db() as db_path:
+            icon_path = db_path.parent / "thoma-side.png"
+            pixmap = QPixmap(8, 8)
+            pixmap.fill(QColor("#00ff00"))
+            self.assertTrue(pixmap.save(str(icon_path)))
+            with closing(connect_db(db_path)) as conn:
+                conn.execute(
+                    """
+                    UPDATE account_characters
+                    SET side_icon_path = ?
+                    WHERE character_id = 10000050
+                    """,
+                    (str(icon_path),),
+                )
+                equip_artifact(conn, 10000050, 1)
+                conn.commit()
+
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+
+            artifact = browser.store.artifact(1)
+            self.assertEqual(artifact.character_name, "Thoma")
+            self.assertEqual(artifact.owner_character_id, 10000050)
+            self.assertEqual(artifact.owner_icon_path, icon_path)
+
     def test_apply_preset_refreshes_right_panel_stats(self) -> None:
         with temp_app_shell_db() as db_path:
             with closing(connect_db(db_path)) as conn:

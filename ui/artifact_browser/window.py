@@ -2405,17 +2405,34 @@ class ArtifactBrowserWindow(QWidget):
         if not artifact_ids:
             return
 
-        owner_names = self._current_equipment_owner_names(artifact_ids)
+        owners = self._current_equipment_owners(artifact_ids)
         changed_rows: list[int] = []
         for artifact_id in artifact_ids:
             try:
                 artifact = self.store.artifact(artifact_id)
             except KeyError:
                 continue
-            next_name = owner_names.get(artifact_id, "")
-            if artifact.character_name == next_name:
+            owner = owners.get(artifact_id)
+            next_owner_id = (
+                int(owner["character_id"])
+                if owner is not None and owner.get("character_id") is not None
+                else None
+            )
+            next_name = str(owner.get("character_name") or "") if owner else ""
+            next_icon_path = (
+                self._resolve_existing_path(owner.get("side_icon_path"))
+                if owner
+                else None
+            )
+            if (
+                artifact.character_name == next_name
+                and artifact.owner_character_id == next_owner_id
+                and artifact.owner_icon_path == next_icon_path
+            ):
                 continue
             artifact.character_name = next_name
+            artifact.owner_character_id = next_owner_id
+            artifact.owner_icon_path = next_icon_path
             changed_rows.extend(
                 row
                 for row, row_artifact_id in enumerate(self.model.artifact_ids)
@@ -2432,7 +2449,7 @@ class ArtifactBrowserWindow(QWidget):
         if changed_rows:
             self.list_view.viewport().update()
 
-    def _current_equipment_owner_names(self, artifact_ids: list[int]) -> dict[int, str]:
+    def _current_equipment_owners(self, artifact_ids: list[int]) -> dict[int, dict]:
         if not artifact_ids:
             return {}
         placeholders = ",".join("?" for _ in artifact_ids)
@@ -2442,7 +2459,9 @@ class ArtifactBrowserWindow(QWidget):
                     f"""
                     SELECT
                         equipped.artifact_id,
+                        equipped.character_id,
                         characters.name AS character_name
+                        , characters.side_icon_path AS side_icon_path
                     FROM account_character_equipped_artifacts AS equipped
                     JOIN account_characters AS characters
                         ON characters.character_id = equipped.character_id
@@ -2454,9 +2473,23 @@ class ArtifactBrowserWindow(QWidget):
             log_perf("artifact_owner_marker_refresh_failed", error=str(exc))
             return {}
         return {
-            int(row["artifact_id"]): str(row["character_name"] or "")
+            int(row["artifact_id"]): {
+                "character_id": int(row["character_id"]),
+                "character_name": str(row["character_name"] or ""),
+                "side_icon_path": str(row["side_icon_path"] or ""),
+            }
             for row in rows
         }
+
+    @staticmethod
+    def _resolve_existing_path(path_value) -> Path | None:
+        text = str(path_value or "").strip()
+        if not text:
+            return None
+        path = Path(text)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        return path if path.exists() and path.is_file() else None
 
     def apply_selected_build_preset_to_current_equipment(self) -> None:
         if (

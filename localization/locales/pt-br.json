@@ -210,7 +210,7 @@
   "artifact.build.presets_title": "Predefinições",
   "artifact.build.current_equipment": "Equipamento atual",
   "artifact.build.current_equipment_for_character": "Equipamento atual: {name}",
-  "artifact.build.character_not_selected": "Nenhum personagem selecionado",
+  "artifact.build.character_not_selected": "sem alvo",
   "artifact.equipment.target_none": "Selecione um personagem para equipar.",
   "artifact.equipment.target_right_panel": "Equipamento: {name}",
   "artifact.equipment.target_browser": "Equipamento: {name}",

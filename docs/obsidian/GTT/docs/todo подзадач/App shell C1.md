@@ -65,7 +65,7 @@
 - [ ] оверлей иконок
 
   1. [x] UI-polish задача в Artifact Browser: заголовок “Пресеты” не должен иметь отдельную тёмную подложку за текстом и должен быть визуально аккуратно посажен, возможно по центру. Делать style-only маленьким diff’ом, использовать ui_palette, layout не трогать без необходимости. 
-2. [ ] Проверить minimum height/resize поведение Artifact Browser/AppShell: - нельзя открыть Artifacts через сжатый Characters/Weapons workspace и получить высоту ниже нормального UI; - preview/current build block не должен уходить за нижний край; - должен быть виден хотя бы 1 preset row и весь preview/build area; - если нужен global minimum height/width, делать аккуратно и с smoke. 
+2. [x] Проверить minimum height/resize поведение Artifact Browser/AppShell: - нельзя открыть Artifacts через сжатый Characters/Weapons workspace и получить высоту ниже нормального UI; - preview/current build block не должен уходить за нижний край; - должен быть виден хотя бы 1 preset row и весь preview/build area; - если нужен global minimum height/width, делать аккуратно и с smoke. 
 3. [ ] Следующая крупная фича после polish/fixes: overlay с боковыми иконками персонажей на экипировке/артефактах, чтобы было видно, кем занята вещь. Перед кодом прочитать ARTIFACT_BROWSER_EQUIPMENT_UX.md и текущую реализацию equipment owner/markers. Сначала описать архитектуру и edge cases, потом diff.
 
 

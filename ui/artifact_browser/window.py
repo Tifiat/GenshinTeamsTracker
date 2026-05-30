@@ -62,6 +62,11 @@ from ui.character_assets import (
 )
 from ui.utils.icon_utils import auto_contrast_svg_icon, auto_contrast_svg_pixmap
 from ui.utils.drag_scroll import DragScrollArea
+from ui.utils.filter_button_style import (
+    FILTER_BUTTON_ICON_SIZE,
+    FILTER_BUTTON_SIZE,
+    filter_button_style,
+)
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.pixmap_utils import (
     count_badge_style_cache_key,
@@ -159,11 +164,8 @@ TARGET_RESET_BUTTON_RADIUS = 6
 TARGET_BODY_SPACING = 4
 TARGET_TITLE_MIN_WIDTH = 54
 
-TARGET_FILTER_BUTTON_SIZE = 30
-TARGET_FILTER_ICON_SIZE = 26
-TARGET_FILTER_PADDING = 1
-TARGET_FILTER_BORDER_WIDTH = 1
-TARGET_FILTER_RADIUS = 15
+TARGET_FILTER_BUTTON_SIZE = FILTER_BUTTON_SIZE
+TARGET_FILTER_ICON_SIZE = FILTER_BUTTON_ICON_SIZE
 TARGET_FILTER_SPACING = 4
 
 TARGET_ITEM_MIN_HEIGHT = 34
@@ -470,28 +472,7 @@ QPushButton#target_panel_title {
     border: none;
     padding: 0;
 }
-""" + f"""
-QPushButton#target_filter_button {{
-    min-width: {TARGET_FILTER_BUTTON_SIZE}px;
-    max-width: {TARGET_FILTER_BUTTON_SIZE}px;
-    min-height: {TARGET_FILTER_BUTTON_SIZE}px;
-    max-height: {TARGET_FILTER_BUTTON_SIZE}px;
-    padding: {TARGET_FILTER_PADDING}px;
-    border: {TARGET_FILTER_BORDER_WIDTH}px solid transparent;
-    border-radius: {TARGET_FILTER_RADIUS}px;
-    background: transparent;
-}}
-QPushButton#target_filter_button:hover {{
-    background: transparent;
-}}
-QPushButton#target_filter_button:checked {{
-    border-color: #7da7ff;
-    background: transparent;
-}}
-QPushButton#target_filter_button[standardOnly="true"] {{
-    border-color: #7da7ff;
-    background: transparent;
-}}
+""" + filter_button_style("target_filter_button") + f"""
 QWidget#build_target_preview_strip {{
     background: {UI_BG_APP};
     border: none;

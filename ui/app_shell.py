@@ -72,6 +72,11 @@ from ui.right_panel_prototype import (
     RightPanelPrototypeWidget,
 )
 from run_workspace.perf import log_perf, perf_ms, perf_now
+from ui.utils.filter_button_style import (
+    FILTER_BUTTON_ICON_SIZE,
+    FILTER_BUTTON_SIZE,
+    filter_button_style,
+)
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.tooltips import install_custom_tooltip
 
@@ -103,25 +108,7 @@ WEAPON_TYPE_FILTER_ALIASES = {
     "polearm": "polearm",
 }
 
-FILTER_BUTTON_STYLE = """
-QPushButton#app_shell_filter_button {
-    border: 2px solid transparent;
-    border-radius: 15px;
-    background-color: #202228;
-    padding: 1px;
-}
-QPushButton#app_shell_filter_button:hover {
-    background-color: #292c34;
-}
-QPushButton#app_shell_filter_button:checked {
-    border-color: #4e91ff;
-    background-color: #252936;
-}
-QPushButton#app_shell_filter_button[standardOnly="true"] {
-    border-color: #4e91ff;
-    background-color: #252936;
-}
-"""
+FILTER_BUTTON_STYLE = filter_button_style("app_shell_filter_button")
 
 
 @dataclass(frozen=True)
@@ -1775,8 +1762,8 @@ class CharacterWeaponWorkspace(QWidget):
         button = QPushButton("")
         button.setObjectName("app_shell_filter_button")
         button.setCheckable(True)
-        button.setFixedSize(30, 30)
-        button.setIconSize(QSize(24, 24))
+        button.setFixedSize(FILTER_BUTTON_SIZE, FILTER_BUTTON_SIZE)
+        button.setIconSize(QSize(FILTER_BUTTON_ICON_SIZE, FILTER_BUTTON_ICON_SIZE))
         button.setStyleSheet(FILTER_BUTTON_STYLE)
 
         icon_path = FILTER_ASSETS_DIR / icon_name
@@ -1829,10 +1816,10 @@ class CharacterWeaponWorkspace(QWidget):
         button = QPushButton("")
         button.setObjectName("app_shell_filter_button")
         button.setCheckable(False)
-        button.setFixedSize(30, 30)
-        button.setIconSize(QSize(24, 24))
+        button.setFixedSize(FILTER_BUTTON_SIZE, FILTER_BUTTON_SIZE)
+        button.setIconSize(QSize(FILTER_BUTTON_ICON_SIZE, FILTER_BUTTON_ICON_SIZE))
         button.setStyleSheet(FILTER_BUTTON_STYLE)
-        button.setIcon(standard_character_filter_icon(STANDARD_FILTER_ALL, size=24))
+        button.setIcon(standard_character_filter_icon(STANDARD_FILTER_ALL, size=FILTER_BUTTON_ICON_SIZE))
         button.setProperty("standardOnly", False)
 
         def cycle_standard_filter() -> None:
@@ -1850,7 +1837,10 @@ class CharacterWeaponWorkspace(QWidget):
             button.style().unpolish(button)
             button.style().polish(button)
             button.setIcon(
-                standard_character_filter_icon(self._character_standard_filter, size=24)
+                standard_character_filter_icon(
+                    self._character_standard_filter,
+                    size=FILTER_BUTTON_ICON_SIZE,
+                )
             )
             button.repaint()
             QTimer.singleShot(0, self.reload_characters)

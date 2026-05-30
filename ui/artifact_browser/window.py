@@ -63,7 +63,9 @@ from ui.character_assets import (
 from ui.utils.icon_utils import auto_contrast_svg_icon, auto_contrast_svg_pixmap
 from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.filter_button_style import (
+    FILTER_BUTTON_BORDER_WIDTH,
     FILTER_BUTTON_ICON_SIZE,
+    FILTER_BUTTON_PADDING,
     FILTER_BUTTON_SIZE,
     filter_button_style,
 )
@@ -169,7 +171,13 @@ TARGET_TITLE_MIN_WIDTH = 54
 
 TARGET_FILTER_BUTTON_SIZE = FILTER_BUTTON_SIZE
 TARGET_FILTER_ICON_SIZE = FILTER_BUTTON_ICON_SIZE
-TARGET_FILTER_BUTTON_STYLE = filter_button_style("target_filter_button")
+TARGET_FILTER_CONTENT_SIZE = TARGET_FILTER_BUTTON_SIZE - 2 * (
+    FILTER_BUTTON_BORDER_WIDTH + FILTER_BUTTON_PADDING
+)
+TARGET_FILTER_BUTTON_STYLE = filter_button_style(
+    "target_filter_button",
+    content_size=TARGET_FILTER_CONTENT_SIZE,
+)
 TARGET_FILTER_LANE_EXTRA = 5
 TARGET_FILTER_LANE_WIDTH = TARGET_FILTER_BUTTON_SIZE + TARGET_FILTER_LANE_EXTRA
 TARGET_FILTER_LANE_INSET_LEFT = TARGET_FILTER_LANE_EXTRA // 2
@@ -480,7 +488,7 @@ QPushButton#target_panel_title {
     border: none;
     padding: 0;
 }
-""" + filter_button_style("target_filter_button") + f"""
+""" + TARGET_FILTER_BUTTON_STYLE + f"""
 QWidget#build_target_preview_strip {{
     background: {UI_BG_APP};
     border: none;

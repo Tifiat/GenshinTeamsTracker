@@ -15,13 +15,17 @@ FILTER_BUTTON_RADIUS = 15
 FILTER_BUTTON_PADDING = 1
 
 
-def filter_button_style(object_name: str) -> str:
+def filter_button_style(
+    object_name: str,
+    *,
+    content_size: int = FILTER_BUTTON_SIZE,
+) -> str:
     return f"""
 QPushButton#{object_name} {{
-    min-width: {FILTER_BUTTON_SIZE}px;
-    max-width: {FILTER_BUTTON_SIZE}px;
-    min-height: {FILTER_BUTTON_SIZE}px;
-    max-height: {FILTER_BUTTON_SIZE}px;
+    min-width: {content_size}px;
+    max-width: {content_size}px;
+    min-height: {content_size}px;
+    max-height: {content_size}px;
     border: {FILTER_BUTTON_BORDER_WIDTH}px solid transparent;
     border-radius: {FILTER_BUTTON_RADIUS}px;
     background-color: {UI_BG_FILTER_IDLE};

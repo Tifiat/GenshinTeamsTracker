@@ -48,6 +48,7 @@ from ui.artifact_browser.window import (
 from run_workspace.perf import perf_enabled
 from localization import tr
 from ui.character_assets import STANDARD_FILTER_ONLY
+from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
@@ -356,6 +357,26 @@ class AppShellTest(unittest.TestCase):
             browser.artifact_grid_overlay_scrollbar._overlay.parent(),
             browser.list_view,
         )
+
+    def test_artifact_browser_target_filter_lane_does_not_clip_buttons(self) -> None:
+        browser = ArtifactBrowserWindow(embedded=True)
+        browser.resize(748, 900)
+        browser.show()
+        self._app.processEvents()
+        try:
+            filter_scroll = next(
+                scroll
+                for scroll in browser.findChildren(DragScrollArea)
+                if not scroll._is_horizontal
+            )
+
+            self.assertEqual(filter_scroll.horizontalScrollBar().maximum(), 0)
+            self.assertLessEqual(
+                filter_scroll.widget().width(),
+                filter_scroll.viewport().width(),
+            )
+        finally:
+            browser.close()
 
     def test_artifact_browser_target_title_has_room_for_localized_text(self) -> None:
         browser = ArtifactBrowserWindow(embedded=True)

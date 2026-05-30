@@ -477,18 +477,18 @@ QPushButton#target_filter_button {{
     padding: {TARGET_FILTER_PADDING}px;
     border: {TARGET_FILTER_BORDER_WIDTH}px solid transparent;
     border-radius: {TARGET_FILTER_RADIUS}px;
-    background: #202228;
+    background: transparent;
 }}
 QPushButton#target_filter_button:hover {{
-    background: #292c34;
+    background: transparent;
 }}
 QPushButton#target_filter_button:checked {{
     border-color: #7da7ff;
-    background: #303848;
+    background: transparent;
 }}
 QPushButton#target_filter_button[standardOnly="true"] {{
     border-color: #7da7ff;
-    background: #303848;
+    background: transparent;
 }}
 QPushButton#target_item {{
     min-height: {TARGET_ITEM_MIN_HEIGHT}px;

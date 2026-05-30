@@ -210,6 +210,7 @@
   "artifact.build.presets_title": "Presets",
   "artifact.build.current_equipment": "Current Equipment",
   "artifact.build.current_equipment_for_character": "Current Equipment: {name}",
+  "artifact.build.applied_preset_for_character": "{preset}: {name}",
   "artifact.build.character_not_selected": "no target",
   "artifact.equipment.target_none": "Select one character to equip.",
   "artifact.equipment.target_right_panel": "Equipment: {name}",

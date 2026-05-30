@@ -1001,6 +1001,10 @@ class AppShellTest(unittest.TestCase):
             self.assertTrue(browser.equipment_zone_label.isHidden())
             self.assertFalse(browser.equipment_zone_action_button.isHidden())
             self.assertTrue(browser.equipment_zone_action_button.isEnabled())
+            expected_thoma_current_equipment = tr(
+                "artifact.build.current_equipment_for_character",
+                name="Thoma",
+            )
 
             browser.select_build_preset(build_id)
 
@@ -1010,7 +1014,7 @@ class AppShellTest(unittest.TestCase):
             self.assertEqual(browser.delegate.edit_selection_artifact_ids, {3})
             self.assertEqual(
                 browser.equipment_zone_label.text(),
-                tr("artifact.build.current_equipment"),
+                expected_thoma_current_equipment,
             )
             self.assertFalse(browser.equipment_zone_label.isHidden())
             self.assertTrue(browser.equipment_zone_action_button.isHidden())
@@ -1053,7 +1057,16 @@ class AppShellTest(unittest.TestCase):
                 self.assertEqual(get_artifact_build_slots(conn, build_id), before_slots)
             self.assertIsNone(browser.selected_build_id)
             self.assertEqual(browser.current_equipment_preview_slots, {1: 1})
-            self.assertEqual(browser.equipment_zone_label.text(), "Flower only")
+            expected_applied_preset = tr(
+                "artifact.build.applied_preset_for_character",
+                preset="Flower only",
+                name="Thoma",
+            )
+            expected_thoma_current_equipment = tr(
+                "artifact.build.current_equipment_for_character",
+                name="Thoma",
+            )
+            self.assertEqual(browser.equipment_zone_label.text(), expected_applied_preset)
             self.assertEqual(browser.store.artifact(1).character_name, "Thoma")
             self.assertEqual(browser.store.artifact(2).character_name, "")
 
@@ -1061,7 +1074,7 @@ class AppShellTest(unittest.TestCase):
 
             self.assertEqual(
                 browser.equipment_zone_label.text(),
-                tr("artifact.build.current_equipment"),
+                expected_thoma_current_equipment,
             )
             self.assertEqual(browser.current_equipment_preview_slots, {1: 1, 2: 2})
 

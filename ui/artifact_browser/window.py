@@ -738,6 +738,7 @@ class BuildTargetPreviewStrip(QWidget):
         self._has_content = False
         self._strip_width = 0
         self.scroll_area.setWidget(self.content)
+        self.scroll_area.set_edge_hints_enabled(False)
 
         self.refresh_content_width()
 
@@ -748,6 +749,7 @@ class BuildTargetPreviewStrip(QWidget):
         self.content.clear()
         self._has_content = pixmap is not None and not pixmap.isNull()
         self._strip_width = pixmap.width() if self._has_content else 0
+        self.scroll_area.set_edge_hints_enabled(self._has_content)
         if self._has_content:
             self.content.setPixmap(pixmap)
         self.refresh_content_width()

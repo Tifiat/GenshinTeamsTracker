@@ -60,6 +60,7 @@ class DragScrollArea(QScrollArea):
         )
         self._start_hint.hide()
         self._end_hint.hide()
+        self._edge_hints_enabled = True
 
         self.viewport().installEventFilter(self)
         bar = self._scroll_bar()
@@ -147,7 +148,16 @@ class DragScrollArea(QScrollArea):
 
         return super().eventFilter(watched, event)
 
+    def set_edge_hints_enabled(self, enabled: bool) -> None:
+        self._edge_hints_enabled = bool(enabled)
+        self.update_edge_hints()
+
     def update_edge_hints(self) -> None:
+        if not self._edge_hints_enabled:
+            self._start_hint.hide()
+            self._end_hint.hide()
+            return
+
         bar = self._scroll_bar()
         can_scroll_start = bar.value() > bar.minimum()
         can_scroll_end = bar.value() < bar.maximum()

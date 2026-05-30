@@ -5,7 +5,7 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
-from PySide6.QtCore import QByteArray, QEvent, QMimeData, QSize, Qt, Signal, QTimer
+from PySide6.QtCore import QByteArray, QEvent, QMimeData, QRect, QSize, Qt, Signal, QTimer
 from PySide6.QtGui import QDrag, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -44,6 +44,11 @@ from run_workspace.perf import log_perf, perf_ms, perf_now
 from ui.utils.drag_scroll import HorizontalDragScrollArea
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.tooltips import install_custom_tooltip
+from ui.utils.owner_icon_badge import (
+    make_owner_icon_badge_background,
+    owner_badge_rect_for_icon_rect,
+    owner_badge_size_for_icon,
+)
 from ui.artifact_browser.queries import list_set_bonus_description_map
 
 
@@ -73,12 +78,13 @@ _BONUS_SOURCE_ICON_PIXMAP_CACHE: dict[
     tuple[str, int, int, int, int],
     QPixmap | None,
 ] = {}
-_BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE: dict[
-    tuple[str, int, int, int, int, int, int],
-    QPixmap | None,
-] = {}
+_BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 BONUS_MEMBER_ICON_SCALE = 125
 BONUS_MEMBER_ICON_BOTTOM_PADDING = 0
+BONUS_MEMBER_BADGE_ENABLED = True
+BONUS_MEMBER_BADGE_SIZE_RATIO = 43 / 70
+BONUS_MEMBER_BADGE_OFFSET_X_RATIO = 1 / 70
+BONUS_MEMBER_BADGE_OFFSET_Y_RATIO = 16 / 70
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -1629,6 +1635,10 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
             int(size.height()),
             BONUS_MEMBER_ICON_SCALE,
             BONUS_MEMBER_ICON_BOTTOM_PADDING,
+            BONUS_MEMBER_BADGE_ENABLED,
+            BONUS_MEMBER_BADGE_SIZE_RATIO,
+            BONUS_MEMBER_BADGE_OFFSET_X_RATIO,
+            BONUS_MEMBER_BADGE_OFFSET_Y_RATIO,
             int(stat.st_mtime_ns),
             int(stat.st_size),
         )
@@ -1639,6 +1649,10 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
             int(size.height()),
             BONUS_MEMBER_ICON_SCALE,
             BONUS_MEMBER_ICON_BOTTOM_PADDING,
+            BONUS_MEMBER_BADGE_ENABLED,
+            BONUS_MEMBER_BADGE_SIZE_RATIO,
+            BONUS_MEMBER_BADGE_OFFSET_X_RATIO,
+            BONUS_MEMBER_BADGE_OFFSET_Y_RATIO,
             0,
             0,
         )
@@ -1666,6 +1680,19 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
     painter = QPainter(canvas)
     x = (size.width() - scaled.width()) // 2
     y = size.height() - scaled.height() - BONUS_MEMBER_ICON_BOTTOM_PADDING
+    icon_rect = QRect(x, y, scaled.width(), scaled.height())
+    if BONUS_MEMBER_BADGE_ENABLED:
+        badge_size = owner_badge_size_for_icon(
+            icon_rect.size(),
+            size_ratio=BONUS_MEMBER_BADGE_SIZE_RATIO,
+        )
+        badge_rect = owner_badge_rect_for_icon_rect(
+            icon_rect,
+            badge_size,
+            offset_x_ratio=BONUS_MEMBER_BADGE_OFFSET_X_RATIO,
+            offset_y_ratio=BONUS_MEMBER_BADGE_OFFSET_Y_RATIO,
+        )
+        painter.drawPixmap(badge_rect, make_owner_icon_badge_background(badge_size))
     painter.drawPixmap(x, y, scaled)
     painter.end()
     _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key] = QPixmap(canvas)

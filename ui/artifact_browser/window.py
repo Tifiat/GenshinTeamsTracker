@@ -63,7 +63,7 @@ from ui.character_assets import (
     standard_character_filter_icon,
 )
 from ui.utils.icon_utils import auto_contrast_svg_icon, auto_contrast_svg_pixmap
-from ui.utils.horizontal_scroll import horizontal_wheel_delta
+from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.pixmap_utils import (
     count_badge_style_cache_key,
@@ -703,60 +703,22 @@ EDIT_MODE_CUSTOM_SET = "custom_set"
 EDIT_MODE_BUILD_PRESET = "build_preset"
 
 
-class BuildTargetPreviewEdgeHint(QWidget):
-    def __init__(self, icon_name: str, side: str, parent: QWidget | None = None):
-        super().__init__(parent)
-        self.side = side
-        self.setFixedWidth(BUILD_TARGET_PREVIEW_HINT_WIDTH)
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.icon = auto_contrast_svg_pixmap(
-            icon_name,
-            BUILD_TARGET_PREVIEW_HINT_ICON_SIZE,
-            BUILD_TARGET_PREVIEW_EDGE_BACKGROUND,
-        )
-        self.hide()
-
-    def paintEvent(self, event) -> None:
-        painter = QPainter(self)
-        gradient = QLinearGradient(0, 0, self.width(), 0)
-        edge_color = QColor(BUILD_TARGET_PREVIEW_EDGE_BACKGROUND)
-        edge_color.setAlpha(255)
-        clear_color = QColor(BUILD_TARGET_PREVIEW_EDGE_BACKGROUND)
-        clear_color.setAlpha(0)
-        if self.side == "left":
-            gradient.setColorAt(0.0, edge_color)
-            gradient.setColorAt(1.0, clear_color)
-        else:
-            gradient.setColorAt(0.0, clear_color)
-            gradient.setColorAt(1.0, edge_color)
-        painter.fillRect(self.rect(), gradient)
-
-        ratio = self.icon.devicePixelRatio() or 1.0
-        icon_width = self.icon.width() / ratio
-        icon_height = self.icon.height() / ratio
-        offset_x = (
-            -BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_X
-            if self.side == "left"
-            else BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_X
-        )
-        x = int((self.width() - icon_width) / 2) + offset_x
-        y = int((self.height() - icon_height) / 2) + BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_Y
-        painter.drawPixmap(x, y, self.icon)
-
-
 class BuildTargetPreviewStrip(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setFixedHeight(BUILD_TARGET_PREVIEW_ROW_HEIGHT)
-        self._dragging = False
-        self._drag_start_x = 0
-        self._drag_start_value = 0
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.scroll_area = QScrollArea()
+        self.scroll_area = DragScrollArea(
+            orientation=Qt.Orientation.Horizontal,
+            wheel_step=BUILD_TARGET_PREVIEW_ICON_SIZE,
+            edge_hint_size=BUILD_TARGET_PREVIEW_HINT_WIDTH,
+            edge_icon_size=BUILD_TARGET_PREVIEW_HINT_ICON_SIZE,
+            edge_background=BUILD_TARGET_PREVIEW_EDGE_BACKGROUND.name(),
+        )
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll_area.setWidgetResizable(False)
         self.scroll_area.setHorizontalScrollBarPolicy(
@@ -777,15 +739,6 @@ class BuildTargetPreviewStrip(QWidget):
         self._strip_width = 0
         self.scroll_area.setWidget(self.content)
 
-        for widget in (self.scroll_area.viewport(), self.content):
-            widget.installEventFilter(self)
-
-        hbar = self.scroll_area.horizontalScrollBar()
-        hbar.valueChanged.connect(self.update_hints)
-        hbar.rangeChanged.connect(lambda _min, _max: self.update_hints())
-
-        self.left_hint = BuildTargetPreviewEdgeHint("chevron-left", "left", self)
-        self.right_hint = BuildTargetPreviewEdgeHint("chevron-right", "right", self)
         self.refresh_content_width()
 
     def clear_targets(self) -> None:
@@ -801,7 +754,7 @@ class BuildTargetPreviewStrip(QWidget):
 
     def finish_update(self) -> None:
         self.refresh_content_width()
-        self.update_hints()
+        self.scroll_area.update_edge_hints()
 
     def refresh_content_width(self) -> None:
         viewport_width = max(0, self.scroll_area.viewport().width())
@@ -815,72 +768,12 @@ class BuildTargetPreviewStrip(QWidget):
         self.content.setFixedSize(width, BUILD_TARGET_PREVIEW_ROW_HEIGHT)
         self.content.updateGeometry()
         self.scroll_area.viewport().update()
-        self.update_hints()
-
-    def update_hints(self) -> None:
-        if not self._has_content:
-            self.left_hint.hide()
-            self.right_hint.hide()
-            return
-
-        hbar = self.scroll_area.horizontalScrollBar()
-        can_scroll_left = hbar.value() > hbar.minimum()
-        can_scroll_right = hbar.value() < hbar.maximum()
-        self.left_hint.setVisible(can_scroll_left)
-        self.right_hint.setVisible(can_scroll_right)
-        self.left_hint.raise_()
-        self.right_hint.raise_()
+        self.scroll_area.update_edge_hints()
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self.left_hint.setGeometry(
-            0,
-            0,
-            BUILD_TARGET_PREVIEW_HINT_WIDTH,
-            self.height(),
-        )
-        self.right_hint.setGeometry(
-            self.width() - BUILD_TARGET_PREVIEW_HINT_WIDTH,
-            0,
-            BUILD_TARGET_PREVIEW_HINT_WIDTH,
-            self.height(),
-        )
         self.refresh_content_width()
-        self.update_hints()
-
-    def _handle_wheel_scroll(self, event) -> bool:
-        hbar = self.scroll_area.horizontalScrollBar()
-        if hbar.maximum() <= hbar.minimum():
-            return False
-
-        delta = horizontal_wheel_delta(event, step=BUILD_TARGET_PREVIEW_ICON_SIZE)
-        if not delta:
-            return False
-
-        hbar.setValue(hbar.value() + delta)
-        return True
-
-    def eventFilter(self, watched, event) -> bool:
-        if event.type() == QEvent.Type.MouseButtonPress:
-            if event.button() == Qt.MouseButton.LeftButton:
-                self._dragging = True
-                self._drag_start_x = int(event.globalPosition().x())
-                self._drag_start_value = self.scroll_area.horizontalScrollBar().value()
-                return True
-        elif event.type() == QEvent.Type.MouseMove and self._dragging:
-            delta = self._drag_start_x - int(event.globalPosition().x())
-            self.scroll_area.horizontalScrollBar().setValue(
-                self._drag_start_value + delta
-            )
-            return True
-        elif event.type() == QEvent.Type.MouseButtonRelease and self._dragging:
-            self._dragging = False
-            return True
-        elif event.type() == QEvent.Type.Wheel:
-            if self._handle_wheel_scroll(event):
-                event.accept()
-                return True
-        return super().eventFilter(watched, event)
+        self.scroll_area.update_edge_hints()
 
 
 class ArtifactBrowserWindow(QWidget):

@@ -160,8 +160,8 @@ TARGET_TITLE_MIN_WIDTH = 54
 
 TARGET_FILTER_BUTTON_SIZE = 30
 TARGET_FILTER_ICON_SIZE = 26
-TARGET_FILTER_PADDING = 2
-TARGET_FILTER_BORDER_WIDTH = 0
+TARGET_FILTER_PADDING = 1
+TARGET_FILTER_BORDER_WIDTH = 1
 TARGET_FILTER_RADIUS = 15
 TARGET_FILTER_SPACING = 4
 
@@ -169,6 +169,7 @@ TARGET_ITEM_MIN_HEIGHT = 34
 TARGET_ITEM_PADDING_VERTICAL = 3
 TARGET_ITEM_PADDING_HORIZONTAL = 6
 TARGET_ITEM_ICON_SIZE = 38
+TARGET_ITEM_BUTTON_HEIGHT = TARGET_ITEM_ICON_SIZE + TARGET_ITEM_PADDING_VERTICAL * 2 + 2
 TARGET_ITEM_MIN_WIDTH = 88
 
 TARGET_ITEM_SPACING = 4
@@ -491,7 +492,8 @@ QPushButton#target_filter_button[standardOnly="true"] {{
     background: transparent;
 }}
 QPushButton#target_item {{
-    min-height: {TARGET_ITEM_MIN_HEIGHT}px;
+    min-height: {TARGET_ITEM_BUTTON_HEIGHT}px;
+    max-height: {TARGET_ITEM_BUTTON_HEIGHT}px;
     padding: {TARGET_ITEM_PADDING_VERTICAL}px {TARGET_ITEM_PADDING_HORIZONTAL}px;
     text-align: left;
 }}
@@ -2851,6 +2853,7 @@ class ArtifactBrowserWindow(QWidget):
         button.setObjectName("target_item")
         button.setCheckable(True)
         button.setMinimumWidth(TARGET_ITEM_MIN_WIDTH)
+        button.setFixedHeight(TARGET_ITEM_BUTTON_HEIGHT)
         button.setChecked(self._target_button_checked(key))
         button.setProperty("operationTarget", key == self._right_panel_operation_target_key())
         button.setProperty("targetIconSource", "")

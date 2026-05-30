@@ -35,6 +35,12 @@ This file is written for future coding agents. Keep it compact, English, and mos
 - Build preset row names must use flexible leftover space, not fixed magic widths. Fixed metadata/actions define the right side; long text should clip/marquee instead of expanding rows or reintroducing horizontal scrolling.
 - Reusable pixmap operations belong in `ui/utils`, not inside large window classes. Window classes should resolve data/paths, choose modes, and call helpers rather than owning generic trim/mask/composite/cache logic.
 - New or refactored reusable UI code must use shared colors from `ui/utils/ui_palette.py` instead of introducing new literal hex colors. Do not mass-migrate old QSS blocks just for cleanup; migrate legacy colors only when that UI area is being actively changed.
+- Reusable filter buttons must use `ui/utils/filter_button_style.py`; do not
+  create local filter-button QSS copies.
+- For Qt/PySide visual clipping bugs, diagnose geometry before layout tweaks:
+  measure widget size, scroll viewport/content size, scrollbar maximum, and QSS
+  box-model effects. In QSS, button `min-width`/`max-width` may behave like
+  content-box sizing, with border and padding increasing the real outer size.
 - If an English technical task contains inconsistencies, suspicious requirements, obvious mistakes, or unclear contradictions, point them out before starting implementation.
 - Do not invent concrete correctness-critical values in final code, patches, or task text. Filenames, paths, asset names, localization keys, IDs, function/class names, DB fields/tables, data formats, commands, and API/library versions must be explicitly provided by the user, discovered in current project files, or confirmed by the user first. If such a value is missing, stop and ask; do not insert guessed defaults/placeholders with notes like "change this later".
 

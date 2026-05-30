@@ -44,6 +44,8 @@ from ui.artifact_browser.window import (
     CONTENT_LAYOUT_SPACING,
     CONTENT_TARGET_BUILD_SPACING,
     EDIT_MODE_BUILD_PRESET,
+    TARGET_ITEM_BUTTON_HEIGHT,
+    TARGET_ITEM_ICON_SIZE,
     TARGET_PANEL_MIN_WIDTH,
     TARGET_PANEL_WIDTH,
     calculate_assignment_width_fit,
@@ -586,6 +588,10 @@ class AppShellTest(unittest.TestCase):
         text_start = icon_rect.right() + 7
 
         self.assertFalse(option.icon.isNull())
+        self.assertEqual(button.height(), TARGET_ITEM_BUTTON_HEIGHT)
+        self.assertEqual(option.iconSize.height(), TARGET_ITEM_ICON_SIZE)
+        self.assertEqual(icon_rect.top(), text_rect.top())
+        self.assertEqual(icon_rect.bottom(), text_rect.bottom())
         self.assertGreater(text_start, icon_rect.right())
         self.assertGreater(button._available_text_width(), 0)
         self.assertGreaterEqual(text_start, text_rect.left() + option.iconSize.width())

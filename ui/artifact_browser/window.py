@@ -145,7 +145,7 @@ from localization import tr
 TARGET_PANEL_WIDTH = 144
 TARGET_PANEL_MIN_WIDTH = 144
 TARGET_PANEL_MAX_WIDTH = 410
-TARGET_PANEL_MARGINS = (5, 8, 5, 8)
+TARGET_PANEL_MARGINS = (0, 8, 5, 8)
 TARGET_PANEL_SPACING = 6
 BUILD_PANEL_WIDTH = 384
 ARTIFACT_GRID_FIT_PADDING = 4
@@ -156,6 +156,7 @@ ADAPTIVE_TARGET_RESIZE_DELAY_MS = 650
 ADAPTIVE_TARGET_RESIZE_SETTLE_MS = 40
 
 TARGET_HEADER_SPACING = 4
+TARGET_HEADER_LEFT_INSET = 5
 TARGET_HEADER_BALANCE_WIDTH = 72
 TARGET_RESET_BUTTON_WIDTH = 30
 TARGET_RESET_BUTTON_MIN_HEIGHT = 24
@@ -169,6 +170,10 @@ TARGET_TITLE_MIN_WIDTH = 54
 TARGET_FILTER_BUTTON_SIZE = FILTER_BUTTON_SIZE
 TARGET_FILTER_ICON_SIZE = FILTER_BUTTON_ICON_SIZE
 TARGET_FILTER_BUTTON_STYLE = filter_button_style("target_filter_button")
+TARGET_FILTER_LANE_EXTRA = 5
+TARGET_FILTER_LANE_WIDTH = TARGET_FILTER_BUTTON_SIZE + TARGET_FILTER_LANE_EXTRA
+TARGET_FILTER_LANE_INSET_LEFT = TARGET_FILTER_LANE_EXTRA // 2
+TARGET_FILTER_LANE_INSET_RIGHT = TARGET_FILTER_LANE_EXTRA - TARGET_FILTER_LANE_INSET_LEFT
 TARGET_FILTER_SPACING = 4
 
 TARGET_ITEM_MIN_HEIGHT = 34
@@ -1216,7 +1221,7 @@ class ArtifactBrowserWindow(QWidget):
         layout.setSpacing(TARGET_PANEL_SPACING)
 
         header_row = QHBoxLayout()
-        header_row.setContentsMargins(0, 0, 0, 0)
+        header_row.setContentsMargins(TARGET_HEADER_LEFT_INSET, 0, 0, 0)
         header_row.setSpacing(TARGET_HEADER_SPACING)
 
         self.build_target_title_label = MarqueeButton(
@@ -1262,10 +1267,15 @@ class ArtifactBrowserWindow(QWidget):
         )
         filter_scroll.setFrameShape(QFrame.Shape.NoFrame)
         filter_scroll.setWidgetResizable(True)
-        filter_scroll.setFixedWidth(TARGET_FILTER_BUTTON_SIZE)
+        filter_scroll.setFixedWidth(TARGET_FILTER_LANE_WIDTH)
         filter_content = QWidget()
         filter_column = QVBoxLayout(filter_content)
-        filter_column.setContentsMargins(0, 0, 0, 0)
+        filter_column.setContentsMargins(
+            TARGET_FILTER_LANE_INSET_LEFT,
+            0,
+            TARGET_FILTER_LANE_INSET_RIGHT,
+            0,
+        )
         filter_column.setSpacing(TARGET_FILTER_SPACING)
         for filters, selected in (
             (ELEMENT_FILTERS, self.build_target_element_filters),

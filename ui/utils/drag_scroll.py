@@ -74,12 +74,12 @@ class DragScrollArea(QScrollArea):
     def setWidget(self, widget: QWidget | None) -> None:  # noqa: N802 - Qt override
         old_widget = self.widget()
         if old_widget is not None:
-            old_widget.removeEventFilter(self)
+            self._remove_drag_filters(old_widget)
 
         super().setWidget(widget)
 
         if widget is not None:
-            widget.installEventFilter(self)
+            self._install_drag_filters(widget)
         self.update_edge_hints()
 
     def resizeEvent(self, event) -> None:  # noqa: N802 - Qt override
@@ -222,6 +222,16 @@ class DragScrollArea(QScrollArea):
     def _end_drag(self) -> None:
         self._dragging = False
         self._drag_moved = False
+
+    def _install_drag_filters(self, widget: QWidget) -> None:
+        widget.installEventFilter(self)
+        for child in widget.findChildren(QWidget):
+            child.installEventFilter(self)
+
+    def _remove_drag_filters(self, widget: QWidget) -> None:
+        widget.removeEventFilter(self)
+        for child in widget.findChildren(QWidget):
+            child.removeEventFilter(self)
 
     def _sync_hint_geometry(self) -> None:
         viewport = self.viewport()

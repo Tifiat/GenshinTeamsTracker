@@ -1247,7 +1247,18 @@ class ArtifactBrowserWindow(QWidget):
         body.setContentsMargins(0, 0, 0, 0)
         body.setSpacing(TARGET_BODY_SPACING)
 
-        filter_column = QVBoxLayout()
+        filter_scroll = DragScrollArea(
+            orientation=Qt.Orientation.Vertical,
+            wheel_step=TARGET_FILTER_BUTTON_SIZE + TARGET_FILTER_SPACING,
+            edge_hint_size=TARGET_FILTER_BUTTON_SIZE,
+            edge_icon_size=TARGET_FILTER_ICON_SIZE,
+            edge_background=BUILD_TARGET_PREVIEW_EDGE_BACKGROUND.name(),
+        )
+        filter_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        filter_scroll.setWidgetResizable(True)
+        filter_scroll.setFixedWidth(TARGET_FILTER_BUTTON_SIZE)
+        filter_content = QWidget()
+        filter_column = QVBoxLayout(filter_content)
         filter_column.setContentsMargins(0, 0, 0, 0)
         filter_column.setSpacing(TARGET_FILTER_SPACING)
         for filters, selected in (
@@ -1270,7 +1281,8 @@ class ArtifactBrowserWindow(QWidget):
         self.build_target_standard_button = self._make_build_target_standard_filter_button()
         filter_column.addWidget(self.build_target_standard_button)
         filter_column.addStretch()
-        body.addLayout(filter_column)
+        filter_scroll.setWidget(filter_content)
+        body.addWidget(filter_scroll)
 
         target_scroll = OverlayVerticalScrollArea()
         self.build_target_scroll = target_scroll

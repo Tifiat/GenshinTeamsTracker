@@ -19,9 +19,9 @@ from ui.utils.ui_palette import (
 CARD_SIZE = QSize(180, 136)
 GRID_SIZE = QSize(192, 148)
 ICON_SIZE = QSize(56, 56)
-OWNER_SIDE_ICON_SIZE = QSize(56, 56)
-OWNER_SIDE_ICON_RIGHT_MARGIN = -20
-OWNER_SIDE_ICON_TOP_MARGIN = -25
+OWNER_SIDE_ICON_SIZE = QSize(70, 70)
+OWNER_SIDE_ICON_RIGHT_MARGIN = -18
+OWNER_SIDE_ICON_TOP_MARGIN = -30
 
 CV_COLORS = [
     (0.0, 14.9, "#9b9b9b"),      # gray
@@ -289,7 +289,7 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         artifact: ArtifactItem,
     ) -> None:
         x = card_rect.x() + 70
-        y = card_rect.y() + 33
+        y = card_rect.y() + 49
         width = card_rect.width() - 78
         row_height = 21
 

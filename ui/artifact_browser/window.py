@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
-    QScrollArea,
     QSizePolicy,
 )
 from PySide6.QtGui import (
@@ -30,7 +29,6 @@ from PySide6.QtGui import (
     QFont,
     QIcon,
     QImageReader,
-    QLinearGradient,
     QPainter,
     QPainterPath,
     QPen,
@@ -299,8 +297,6 @@ BUILD_TARGET_PREVIEW_UNIVERSAL_SVG_SIZE = 36
 BUILD_TARGET_PREVIEW_HINT_WIDTH = 32
 BUILD_TARGET_PREVIEW_HINT_ICON_SIZE = 20
 BUILD_TARGET_PREVIEW_EDGE_BACKGROUND = QColor(0, 0, 0)
-BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_X = 10
-BUILD_TARGET_PREVIEW_HINT_ICON_OFFSET_Y = 0
 BUILD_TARGET_PREVIEW_UNIVERSAL_BG_PATH = (
     PROJECT_ROOT / "assets" / "ui" / "bg" / "bg_4-5.png"
 )
@@ -721,12 +717,6 @@ class BuildTargetPreviewStrip(QWidget):
         )
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll_area.setWidgetResizable(False)
-        self.scroll_area.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
-        self.scroll_area.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
         self.scroll_area.setFixedHeight(BUILD_TARGET_PREVIEW_ROW_HEIGHT)
         layout.addWidget(self.scroll_area, 1)
 

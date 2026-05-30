@@ -219,8 +219,8 @@
   },
   "active": "55f12a4cd3a744d1",
   "lastOpenFiles": [
-    "data/artifacts.db-wal",
     "data/artifacts.db-shm",
+    "data/artifacts.db-wal",
     "debug_target_hit_test.log",
     "debug_artifact_target_geometry_after_lane.log",
     "debug_artifact_target_geometry.log",

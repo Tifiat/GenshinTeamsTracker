@@ -64,10 +64,14 @@
 - [ ] глобальный размер окна
 - [ ] оверлей иконок
 
+  1. [ ] UI-polish задача в Artifact Browser: заголовок “Пресеты” не должен иметь отдельную тёмную подложку за текстом и должен быть визуально аккуратно посажен, возможно по центру. Делать style-only маленьким diff’ом, использовать ui_palette, layout не трогать без необходимости. 
+2. [ ] Проверить minimum height/resize поведение Artifact Browser/AppShell: - нельзя открыть Artifacts через сжатый Characters/Weapons workspace и получить высоту ниже нормального UI; - preview/current build block не должен уходить за нижний край; - должен быть виден хотя бы 1 preset row и весь preview/build area; - если нужен global minimum height/width, делать аккуратно и с smoke. 
+3. [ ] Следующая крупная фича после polish/fixes: overlay с боковыми иконками персонажей на экипировке/артефактах, чтобы было видно, кем занята вещь. Перед кодом прочитать ARTIFACT_BROWSER_EQUIPMENT_UX.md и текущую реализацию equipment owner/markers. Сначала описать архитектуру и edge cases, потом diff.
 
 
 
-6. [ ] Artifact Browser first-launch persistent cache / “запечь”
+
+4. [ ] Artifact Browser first-launch persistent cache / “запечь”
 
 	Это продолжение пункта 3, но отдельным слоем:
 	
@@ -75,7 +79,7 @@
 	кэш target previews/icons уже частично есть;
 	кэш preset bonus pixmaps уже есть;
 	цель: первый запуск под loader, последующие — сильно быстрее.
-7. [ ] Дальнейшая интеграция Artifact Browser C2
+5. [ ] Дальнейшая интеграция Artifact Browser C2
 
 	Сейчас C1 embedded browser + operation target/current equipment scaffold есть. Осталось по продуктовой логике:
 	
@@ -88,7 +92,7 @@
 	
 	Часть уже сделана, но C2 как цель ещё не закрыта полностью.
 
-8. Большая будущая архитектура Run Workspace
+6. Большая будущая архитектура Run Workspace
 
 	Это уже не текущий perf-блок, но остаётся в плане:
 	

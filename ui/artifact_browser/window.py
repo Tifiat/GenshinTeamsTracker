@@ -80,7 +80,7 @@ from ui.utils.pixmap_utils import (
     scale_trimmed_pixmap_to_size,
 )
 from ui.utils.tooltips import install_custom_tooltip
-from ui.utils.ui_palette import UI_BG_APP
+from ui.utils.ui_palette import UI_BG_APP, UI_TEXT_PRIMARY
 from run_workspace.perf import log_perf, perf_ms, perf_now
 from ui.utils.overlay_scroll import (
     OverlayVerticalScrollArea,
@@ -334,6 +334,18 @@ BUILD_TARGET_PREVIEW_STRIP_CACHE_DIR = (
 UI_ICON_BUTTON_BACKGROUND = "#222630"
 UI_ICON_DEFAULT_SIZE = 24
 
+PANEL_TITLE_STYLE = f"""
+QLabel#panel_title {{
+    color: {UI_TEXT_PRIMARY};
+    font-weight: 700;
+    font-size: 14px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    qproperty-alignment: 'AlignCenter';
+}}
+"""
+
 WINDOW_STYLE = """
 QWidget {
     background: #17191f;
@@ -474,11 +486,7 @@ QFrame#build_target_panel {
     border-radius: 10px;
     background: #1f222a;
 }
-QLabel#panel_title {
-    color: #ffffff;
-    font-weight: 700;
-    font-size: 14px;
-}
+""" + PANEL_TITLE_STYLE + """
 QLabel#target_panel_title,
 QPushButton#target_panel_title {
     color: #ffffff;

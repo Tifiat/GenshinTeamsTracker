@@ -20,12 +20,15 @@ from ui.utils.ui_palette import (
 CARD_SIZE = QSize(180, 136)
 GRID_SIZE = QSize(192, 148)
 ICON_SIZE = QSize(56, 56)
-OWNER_SIDE_ICON_SIZE = QSize(70, 70)
-OWNER_SIDE_ICON_IN_BADGE_SIZE = QSize(66, 66)
-OWNER_SIDE_ICON_IN_BADGE_OFFSET_X = 0
-OWNER_SIDE_ICON_IN_BADGE_OFFSET_Y = 0
-OWNER_SIDE_ICON_RIGHT_MARGIN = -18
-OWNER_SIDE_ICON_TOP_MARGIN = -30
+
+OWNER_SIDE_ICON_SIZE = QSize(70, 70)      # только персонаж
+OWNER_SIDE_ICON_RIGHT_MARGIN = -18        # посадка персонажа/бейджа на карточке вправо-влево
+OWNER_SIDE_ICON_TOP_MARGIN = -30          # посадка персонажа/бейджа на карточке вверх-вниз
+
+OWNER_BADGE_ENABLED = True                # включить/выключить круг
+OWNER_BADGE_SIZE = QSize(43, 43)          # только круг, на персонажа не влияет
+OWNER_BADGE_OFFSET_X = 1                  # круг относительно персонажа вправо-влево
+OWNER_BADGE_OFFSET_Y = 16                  # круг относительно персонажа вверх-вниз
 
 CV_COLORS = [
     (0.0, 14.9, "#9b9b9b"),      # gray
@@ -37,7 +40,7 @@ CV_COLORS = [
 ]
 
 _PIXMAP_CACHE: dict[tuple[str, int, int], QPixmap] = {}
-_OWNER_BADGE_PIXMAP_CACHE: dict[tuple[str, int, int, int, int], QPixmap] = {}
+_OWNER_BADGE_BACKGROUND_CACHE: dict[tuple[int, int], QPixmap] = {}
 
 
 def cached_scaled_pixmap(icon_path: Path, size: QSize) -> QPixmap | None:
@@ -60,33 +63,14 @@ def cached_scaled_pixmap(icon_path: Path, size: QSize) -> QPixmap | None:
     return scaled
 
 
-def cached_owner_badge_pixmap(icon_path: Path) -> QPixmap | None:
-    key = (
-        str(icon_path.resolve()),
-        OWNER_SIDE_ICON_SIZE.width(),
-        OWNER_SIDE_ICON_SIZE.height(),
-        OWNER_SIDE_ICON_IN_BADGE_OFFSET_X,
-        OWNER_SIDE_ICON_IN_BADGE_OFFSET_Y,
-    )
-    cached = _OWNER_BADGE_PIXMAP_CACHE.get(key)
+def cached_owner_badge_background() -> QPixmap:
+    key = (OWNER_BADGE_SIZE.width(), OWNER_BADGE_SIZE.height())
+    cached = _OWNER_BADGE_BACKGROUND_CACHE.get(key)
     if cached is not None and not cached.isNull():
         return cached
 
-    icon = cached_scaled_pixmap(icon_path, OWNER_SIDE_ICON_IN_BADGE_SIZE)
-    if icon is None or icon.isNull():
-        return None
-
-    badge = make_owner_icon_badge_background(OWNER_SIDE_ICON_SIZE)
-    painter = QPainter(badge)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    painter.drawPixmap(
-        (badge.width() - icon.width()) // 2 + OWNER_SIDE_ICON_IN_BADGE_OFFSET_X,
-        (badge.height() - icon.height()) // 2 + OWNER_SIDE_ICON_IN_BADGE_OFFSET_Y,
-        icon,
-    )
-    painter.end()
-
-    _OWNER_BADGE_PIXMAP_CACHE[key] = badge
+    badge = make_owner_icon_badge_background(OWNER_BADGE_SIZE)
+    _OWNER_BADGE_BACKGROUND_CACHE[key] = badge
     return badge
 
 
@@ -295,8 +279,8 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         if artifact.owner_icon_path is None:
             return
 
-        pixmap = cached_owner_badge_pixmap(artifact.owner_icon_path)
-        if pixmap is None:
+        icon_pixmap = cached_scaled_pixmap(artifact.owner_icon_path, OWNER_SIDE_ICON_SIZE)
+        if icon_pixmap is None:
             return
 
         owner_rect = QRect(
@@ -305,13 +289,24 @@ class ArtifactCardDelegate(QStyledItemDelegate):
             OWNER_SIDE_ICON_SIZE.width(),
             OWNER_SIDE_ICON_SIZE.height(),
         )
-        target = QRect(
-            owner_rect.x() + (owner_rect.width() - pixmap.width()) // 2,
-            owner_rect.y() + (owner_rect.height() - pixmap.height()) // 2,
-            pixmap.width(),
-            pixmap.height(),
+
+        if OWNER_BADGE_ENABLED:
+            badge = cached_owner_badge_background()
+            badge_rect = QRect(
+                owner_rect.center().x() - badge.width() // 2 + OWNER_BADGE_OFFSET_X,
+                owner_rect.center().y() - badge.height() // 2 + OWNER_BADGE_OFFSET_Y,
+                badge.width(),
+                badge.height(),
+            )
+            painter.drawPixmap(badge_rect, badge)
+
+        icon_target = QRect(
+            owner_rect.x() + (owner_rect.width() - icon_pixmap.width()) // 2,
+            owner_rect.y() + (owner_rect.height() - icon_pixmap.height()) // 2,
+            icon_pixmap.width(),
+            icon_pixmap.height(),
         )
-        painter.drawPixmap(target, pixmap)
+        painter.drawPixmap(icon_target, icon_pixmap)
 
     def _draw_substats(
         self,

@@ -401,6 +401,7 @@ QLabel#equipment_zone_label {
     color: #ffffff;
     font-weight: 700;
     background: transparent;
+    qproperty-alignment: 'AlignCenter';
 }
 QPushButton#equipment_zone_action_button {
     min-height: 30px;

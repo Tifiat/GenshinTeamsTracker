@@ -149,6 +149,7 @@ TARGET_PANEL_MARGINS = (5, 8, 5, 8)
 TARGET_PANEL_SPACING = 6
 BUILD_PANEL_WIDTH = 384
 ARTIFACT_GRID_FIT_PADDING = 4
+ARTIFACT_LIST_MIN_WIDTH = GRID_SIZE.width() + ARTIFACT_GRID_FIT_PADDING
 CONTENT_LAYOUT_SPACING = 0
 CONTENT_TARGET_BUILD_SPACING = 4
 ADAPTIVE_TARGET_RESIZE_DELAY_MS = 650
@@ -1119,7 +1120,7 @@ class ArtifactBrowserWindow(QWidget):
 
     def _build_list_view(self, root: QVBoxLayout) -> None:
         panel = QWidget()
-        panel.setMinimumWidth(GRID_SIZE.width())
+        panel.setMinimumWidth(ARTIFACT_LIST_MIN_WIDTH)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
@@ -1138,7 +1139,7 @@ class ArtifactBrowserWindow(QWidget):
         self.list_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.list_view.setGridSize(QSize(GRID_SIZE.width(), GRID_SIZE.height()))
         self.list_view.setSpacing(0)
-        self.list_view.setMinimumWidth(0)
+        self.list_view.setMinimumWidth(ARTIFACT_LIST_MIN_WIDTH)
         self.list_view.verticalScrollBar().setSingleStep(20)
         self.artifact_grid_overlay_scrollbar = install_overlay_vertical_scrollbar(
             self.list_view

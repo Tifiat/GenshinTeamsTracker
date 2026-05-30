@@ -41,7 +41,7 @@ from ui.utils.pixmap_utils import (
     scale_trimmed_pixmap_to_size,
 )
 from run_workspace.perf import log_perf, perf_ms, perf_now
-from ui.utils.horizontal_scroll import HorizontalDragScrollArea
+from ui.utils.drag_scroll import HorizontalDragScrollArea
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.tooltips import install_custom_tooltip
 from ui.artifact_browser.queries import list_set_bonus_description_map

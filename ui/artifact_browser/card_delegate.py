@@ -9,7 +9,11 @@ from PySide6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem,
 from .list_model import ArtifactRoles
 from .models import ArtifactItem
 from .stat_types import is_crit_type, stat_badge
-from ui.utils.owner_icon_badge import make_owner_icon_badge_background
+from ui.utils.owner_icon_badge import (
+    make_owner_icon_badge_background,
+    owner_badge_rect_for_icon_rect,
+    owner_badge_size_for_icon,
+)
 from ui.utils.ui_palette import (
     UI_BG_FOREIGN_EQUIPPED,
     UI_BG_FOREIGN_EQUIPPED_HOVER,
@@ -29,6 +33,9 @@ OWNER_BADGE_ENABLED = True                # включить/выключить 
 OWNER_BADGE_SIZE = QSize(43, 43)          # только круг, на персонажа не влияет
 OWNER_BADGE_OFFSET_X = 1                  # круг относительно персонажа вправо-влево
 OWNER_BADGE_OFFSET_Y = 16                  # круг относительно персонажа вверх-вниз
+OWNER_BADGE_SIZE_RATIO = 43 / 70          # круг относительно фактической side-icon
+OWNER_BADGE_OFFSET_X_RATIO = 1 / 70       # круг относительно side-icon вправо-влево
+OWNER_BADGE_OFFSET_Y_RATIO = 16 / 70      # круг относительно side-icon вверх-вниз
 
 CV_COLORS = [
     (0.0, 14.9, "#9b9b9b"),      # gray
@@ -63,13 +70,14 @@ def cached_scaled_pixmap(icon_path: Path, size: QSize) -> QPixmap | None:
     return scaled
 
 
-def cached_owner_badge_background() -> QPixmap:
-    key = (OWNER_BADGE_SIZE.width(), OWNER_BADGE_SIZE.height())
+def cached_owner_badge_background(size: QSize | None = None) -> QPixmap:
+    badge_size = size or OWNER_BADGE_SIZE
+    key = (badge_size.width(), badge_size.height())
     cached = _OWNER_BADGE_BACKGROUND_CACHE.get(key)
     if cached is not None and not cached.isNull():
         return cached
 
-    badge = make_owner_icon_badge_background(OWNER_BADGE_SIZE)
+    badge = make_owner_icon_badge_background(badge_size)
     _OWNER_BADGE_BACKGROUND_CACHE[key] = badge
     return badge
 
@@ -290,22 +298,26 @@ class ArtifactCardDelegate(QStyledItemDelegate):
             OWNER_SIDE_ICON_SIZE.height(),
         )
 
-        if OWNER_BADGE_ENABLED:
-            badge = cached_owner_badge_background()
-            badge_rect = QRect(
-                owner_rect.center().x() - badge.width() // 2 + OWNER_BADGE_OFFSET_X,
-                owner_rect.center().y() - badge.height() // 2 + OWNER_BADGE_OFFSET_Y,
-                badge.width(),
-                badge.height(),
-            )
-            painter.drawPixmap(badge_rect, badge)
-
         icon_target = QRect(
             owner_rect.x() + (owner_rect.width() - icon_pixmap.width()) // 2,
             owner_rect.y() + (owner_rect.height() - icon_pixmap.height()) // 2,
             icon_pixmap.width(),
             icon_pixmap.height(),
         )
+
+        if OWNER_BADGE_ENABLED:
+            badge_size = owner_badge_size_for_icon(
+                icon_target.size(),
+                size_ratio=OWNER_BADGE_SIZE_RATIO,
+            )
+            badge_rect = owner_badge_rect_for_icon_rect(
+                icon_target,
+                badge_size,
+                offset_x_ratio=OWNER_BADGE_OFFSET_X_RATIO,
+                offset_y_ratio=OWNER_BADGE_OFFSET_Y_RATIO,
+            )
+            painter.drawPixmap(badge_rect, cached_owner_badge_background(badge_size))
+
         painter.drawPixmap(icon_target, icon_pixmap)
 
     def _draw_substats(

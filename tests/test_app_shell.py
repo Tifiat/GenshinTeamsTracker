@@ -26,6 +26,8 @@ from hoyolab_export.artifact_db import (
 from ui.app_shell import (
     AppShell,
     AppShellController,
+    APP_SHELL_MIN_HEIGHT,
+    APP_SHELL_MIN_WIDTH,
     AssetIconLabel,
     CharacterWeaponWorkspace,
     RIGHT_OPERATIONS_DOCK_WIDTH,
@@ -81,6 +83,45 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.minimumWidth(), shell.right_dock.maximumWidth())
         self.assertEqual(shell.right_dock.minimumWidth(), RIGHT_OPERATIONS_DOCK_WIDTH)
         self.assertEqual(shell.right_dock.sizePolicy().horizontalPolicy().name, "Fixed")
+
+    def test_app_shell_uses_calibrated_artifact_browser_minimum_size(self) -> None:
+        shell = AppShell()
+
+        self.assertEqual(shell.minimumWidth(), APP_SHELL_MIN_WIDTH)
+        self.assertEqual(shell.minimumHeight(), APP_SHELL_MIN_HEIGHT)
+
+    def test_app_shell_minimum_height_is_independent_from_artifact_target_state(self) -> None:
+        shell = AppShell()
+        shell.move(0, 0)
+        shell.resize(APP_SHELL_MIN_WIDTH, APP_SHELL_MIN_HEIGHT)
+        shell.show()
+        self._app.processEvents()
+        shell.left_host.show_artifact_browser_workspace()
+        self._app.processEvents()
+        browser = shell.left_host.artifact_browser_workspace
+        assert browser is not None
+
+        no_target_minimum = shell.minimumHeight()
+
+        browser.build_target_items_by_key["character:10000050"] = {
+            "key": "character:10000050",
+            "target_type": "character",
+            "character_id": 10000050,
+            "character_name": "Thoma",
+        }
+        browser.refresh_build_target_list()
+        browser.set_right_panel_operation_target(
+            {"character_id": 10000050, "character_name": "Thoma"}
+        )
+        self._app.processEvents()
+
+        self.assertEqual(shell.minimumHeight(), no_target_minimum)
+        shell.resize(shell.width(), 100)
+        self._app.processEvents()
+        self.assertGreaterEqual(shell.height(), APP_SHELL_MIN_HEIGHT)
+
+        shell.close()
+        self._app.processEvents()
 
     def test_assignment_width_fit_minimum_one_column(self) -> None:
         fixed_gaps = CONTENT_LAYOUT_SPACING + CONTENT_TARGET_BUILD_SPACING + 4

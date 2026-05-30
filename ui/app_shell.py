@@ -82,6 +82,16 @@ from ui.utils.tooltips import install_custom_tooltip
 
 
 RIGHT_OPERATIONS_DOCK_WIDTH = RIGHT_PANEL_PROTOTYPE_MIN_WIDTH
+
+# Calibrated global shell minimum for the embedded Artifact Browser footprint.
+# This is intentionally a top-level contract, not a dynamic maximum of current
+# QStackedWidget/minimumSizeHint states. It should fit the Artifact Browser with
+# one artifact grid cell, Assignment, preset/current-equipment panel, at least
+# one fully visible preset row / readable no-target hint, and the full build
+# preview block without vertical squeezing.
+APP_SHELL_MIN_WIDTH = 1408
+APP_SHELL_MIN_HEIGHT = 640
+APP_SHELL_INITIAL_SIZE = QSize(APP_SHELL_MIN_WIDTH, APP_SHELL_MIN_HEIGHT)
 RIGHT_PANEL_REFRESH_DEBOUNCE_MS = 30
 RIGHT_PANEL_FAST_REFRESH_MS = 1
 WEAPON_FILTER_SYNC_DEBOUNCE_MS = 80
@@ -862,7 +872,8 @@ class AppShell(QWidget):
         super().__init__(parent)
         self.controller = controller or AppShellController.empty()
         self.setWindowTitle(tr("app_shell.title"))
-        self.resize(1408, 820)
+        self.setMinimumSize(APP_SHELL_MIN_WIDTH, APP_SHELL_MIN_HEIGHT)
+        self.resize(APP_SHELL_INITIAL_SIZE)
 
         root = QHBoxLayout(self)
         root.setContentsMargins(6, 6, 6, 6)

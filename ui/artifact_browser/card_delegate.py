@@ -9,13 +9,19 @@ from PySide6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem,
 from .list_model import ArtifactRoles
 from .models import ArtifactItem
 from .stat_types import is_crit_type, stat_badge
+from ui.utils.ui_palette import (
+    UI_BG_FOREIGN_EQUIPPED,
+    UI_BG_FOREIGN_EQUIPPED_HOVER,
+    UI_BORDER_FOREIGN_EQUIPPED,
+)
 
 
 CARD_SIZE = QSize(180, 136)
 GRID_SIZE = QSize(192, 148)
 ICON_SIZE = QSize(56, 56)
 OWNER_SIDE_ICON_SIZE = QSize(56, 56)
-OWNER_SIDE_ICON_MARGIN = 8
+OWNER_SIDE_ICON_RIGHT_MARGIN = 2
+OWNER_SIDE_ICON_TOP_MARGIN = 2
 
 CV_COLORS = [
     (0.0, 14.9, "#9b9b9b"),      # gray
@@ -71,9 +77,27 @@ class ArtifactCardDelegate(QStyledItemDelegate):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.edit_selection_artifact_ids: set[int] = set()
+        self.current_owner_character_id: int | None = None
 
     def set_edit_selection_artifact_ids(self, artifact_ids: set[int]) -> None:
         self.edit_selection_artifact_ids = set(artifact_ids)
+
+    def set_current_owner_character_id(self, character_id: int | None) -> bool:
+        next_id = int(character_id) if character_id is not None else None
+        if self.current_owner_character_id == next_id:
+            return False
+        self.current_owner_character_id = next_id
+        return True
+
+    def _is_foreign_owner(self, owner_character_id: int | None) -> bool:
+        if owner_character_id is None:
+            return False
+        if self.current_owner_character_id is None:
+            return False
+        try:
+            return int(owner_character_id) != int(self.current_owner_character_id)
+        except (TypeError, ValueError):
+            return False
 
     def sizeHint(
         self,
@@ -100,15 +124,23 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         selected = bool(option.state & QStyle.StateFlag.State_Selected)
 
         edit_selected = artifact.id in self.edit_selection_artifact_ids
+        foreign_equipped = self._is_foreign_owner(artifact.owner_character_id)
 
         if edit_selected:
             background = QColor("#2d2b1f") if not hovered else QColor("#383526")
             border = QColor("#d6b15d")
+        elif foreign_equipped:
+            background = (
+                QColor(UI_BG_FOREIGN_EQUIPPED_HOVER)
+                if hovered
+                else QColor(UI_BG_FOREIGN_EQUIPPED)
+            )
+            border = QColor(UI_BORDER_FOREIGN_EQUIPPED)
         else:
             background = QColor("#252a33") if hovered else QColor("#20232a")
             border = QColor("#7da7ff") if selected else QColor("#6f86b8" if hovered else "#3a3f4b")
 
-        highlighted = selected or edit_selected
+        highlighted = selected or edit_selected or foreign_equipped
         painter.setPen(QPen(border, 2 if highlighted else 1))
         painter.setBrush(background)
         painter.drawRoundedRect(QRectF(card_rect), 10, 10)
@@ -236,8 +268,8 @@ class ArtifactCardDelegate(QStyledItemDelegate):
             return
 
         owner_rect = QRect(
-            card_rect.right() - OWNER_SIDE_ICON_SIZE.width() - OWNER_SIDE_ICON_MARGIN,
-            card_rect.top() + OWNER_SIDE_ICON_MARGIN,
+            card_rect.right() - OWNER_SIDE_ICON_SIZE.width() + 1 - OWNER_SIDE_ICON_RIGHT_MARGIN,
+            card_rect.top() + OWNER_SIDE_ICON_TOP_MARGIN,
             OWNER_SIDE_ICON_SIZE.width(),
             OWNER_SIDE_ICON_SIZE.height(),
         )

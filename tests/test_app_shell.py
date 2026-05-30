@@ -34,7 +34,7 @@ from ui.app_shell import (
     RosterSelectionMarker,
     _SCALED_ICON_PIXMAP_CACHE,
 )
-from ui.artifact_browser.card_delegate import GRID_SIZE
+from ui.artifact_browser.card_delegate import ArtifactCardDelegate, GRID_SIZE
 from ui.artifact_browser.window import (
     ARTIFACT_GRID_FIT_PADDING,
     ARTIFACT_LIST_MIN_WIDTH,
@@ -1171,6 +1171,18 @@ class AppShellTest(unittest.TestCase):
                 self.assertEqual(get_equipped_artifact_owner(conn, 2), 10000050)
             self.assertIsNone(browser.selected_build_id)
             self.assertEqual(browser.current_equipment_preview_slots, {2: 2})
+
+    def test_artifact_card_delegate_marks_foreign_owner_relative_to_target(self) -> None:
+        delegate = ArtifactCardDelegate()
+
+        self.assertFalse(delegate._is_foreign_owner(None))
+        self.assertFalse(delegate._is_foreign_owner(10000050))
+
+        self.assertTrue(delegate.set_current_owner_character_id(10000050))
+        self.assertFalse(delegate._is_foreign_owner(None))
+        self.assertFalse(delegate._is_foreign_owner(10000050))
+        self.assertTrue(delegate._is_foreign_owner(10000051))
+        self.assertFalse(delegate.set_current_owner_character_id(10000050))
 
     def test_artifact_browser_store_loads_current_owner_side_icon(self) -> None:
         with temp_app_shell_db() as db_path:

@@ -4012,6 +4012,10 @@ class ArtifactBrowserWindow(QWidget):
 
     def update_build_panel(self) -> None:
         self.refresh_equipment_target_state()
+        if self.delegate.set_current_owner_character_id(
+            self.operation_target_character_id
+        ):
+            self.list_view.viewport().update()
         editing = self.edit_selection_mode == EDIT_MODE_BUILD_PRESET
         slots = self._preview_slots()
         has_selection = editing or bool(self.selected_build_id) or bool(slots)

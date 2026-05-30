@@ -131,6 +131,15 @@ Future current/preset zone presentation:
   to current equipment;
 - after manual artifact changes, the zone returns to current equipment/current
   preset text.
+- Current implementation note: the applied preset label is only
+  `ArtifactBrowserWindow.applied_current_equipment_label`, an in-memory browser
+  field. It is not persisted per character and is cleared by target changes or
+  manual artifact equipment changes.
+- Future durable behavior: store the last applied preset marker per character
+  (`character_id`, preset id/name, and enough slot snapshot/fingerprint data to
+  validate it). Show `{preset}: {character}` across app restarts and character
+  switches only while that character's live artifact equipment still matches the
+  applied preset; clear the marker on any manual/current-equipment slot change.
 
 ## Applying A Preset
 

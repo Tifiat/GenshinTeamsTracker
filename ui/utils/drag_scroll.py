@@ -32,6 +32,11 @@ class DragScrollArea(QScrollArea):
 
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setAutoFillBackground(False)
+        self.viewport().setAutoFillBackground(False)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.viewport().setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setStyleSheet("background: transparent; border: none;")
 
         if self._is_horizontal:
             start_icon = "chevron-left"
@@ -79,6 +84,9 @@ class DragScrollArea(QScrollArea):
         super().setWidget(widget)
 
         if widget is not None:
+            widget.setAutoFillBackground(False)
+            widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+            widget.setStyleSheet("background: transparent;")
             self._install_drag_filters(widget)
         self.update_edge_hints()
 

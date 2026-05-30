@@ -491,6 +491,14 @@ QPushButton#target_filter_button[standardOnly="true"] {{
     border-color: #7da7ff;
     background: transparent;
 }}
+QWidget#build_target_preview_strip {{
+    background: #000000;
+    border: none;
+}}
+QLabel#build_target_preview_content {{
+    background: transparent;
+    border: none;
+}}
 QPushButton#target_item {{
     min-height: {TARGET_ITEM_BUTTON_HEIGHT}px;
     max-height: {TARGET_ITEM_BUTTON_HEIGHT}px;
@@ -704,6 +712,8 @@ EDIT_MODE_BUILD_PRESET = "build_preset"
 class BuildTargetPreviewStrip(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
+        self.setObjectName("build_target_preview_strip")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setFixedHeight(BUILD_TARGET_PREVIEW_ROW_HEIGHT)
 
         layout = QHBoxLayout(self)
@@ -723,6 +733,7 @@ class BuildTargetPreviewStrip(QWidget):
         layout.addWidget(self.scroll_area, 1)
 
         self.content = QLabel()
+        self.content.setObjectName("build_target_preview_content")
         self.content.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )

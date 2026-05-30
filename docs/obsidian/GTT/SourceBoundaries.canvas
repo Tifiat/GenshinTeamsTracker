@@ -1,0 +1,437 @@
+{
+  "nodes": [
+    {
+      "id": "sb_details_group",
+      "type": "group",
+      "x": -520,
+      "y": 700,
+      "width": 1160,
+      "height": 560,
+      "color": "6",
+      "label": "CharacterDetails / UI display"
+    },
+    {
+      "id": "sb_hoyolab_group",
+      "type": "group",
+      "x": -1450,
+      "y": -80,
+      "width": 700,
+      "height": 610,
+      "color": "3",
+      "label": "HoYoLAB account source/cache"
+    },
+    {
+      "id": "sb_static_group",
+      "type": "group",
+      "x": 170,
+      "y": -80,
+      "width": 700,
+      "height": 610,
+      "color": "5",
+      "label": "Static / reference catalogs"
+    },
+    {
+      "id": "sb_runtime_group",
+      "type": "group",
+      "x": -610,
+      "y": -80,
+      "width": 660,
+      "height": 610,
+      "color": "4",
+      "label": "Account SQLite runtime"
+    },
+    {
+      "id": "sb_artifacts_group",
+      "type": "group",
+      "x": 1010,
+      "y": -80,
+      "width": 620,
+      "height": 610,
+      "color": "2",
+      "label": "Artifact/build layer"
+    },
+    {
+      "id": "sb_title",
+      "type": "text",
+      "text": "SourceBoundaries: кто владеет данными\n\nЭта карта нужна для ситуаций вроде “почему в tooltip оружия показался лор вместо пассивки?”.\nСмотри не только файл, а слой: source/cache, runtime DB, static catalog или UI.",
+      "x": -520,
+      "y": -360,
+      "width": 1040,
+      "height": 180,
+      "color": "6"
+    },
+    {
+      "id": "sb_hoyolab_contains",
+      "type": "text",
+      "text": "[РАБОТАЕТ]\nЧто там есть\n\naccount_character_details.json содержит текущую экипировку, stat-sheet rows, skills[], weapon.desc и raw relics.",
+      "x": -1060,
+      "y": 0,
+      "width": 260,
+      "height": 210,
+      "color": "3"
+    },
+    {
+      "id": "sb_weapon_desc",
+      "type": "text",
+      "text": "Ловушка: weapon.desc = лор\n\nЭто текст из account detail payload. Он не является пассивкой оружия и не должен показываться как effect tooltip.",
+      "x": -1400,
+      "y": 200,
+      "width": 300,
+      "height": 180,
+      "color": "1"
+    },
+    {
+      "id": "sb_final_stats",
+      "type": "text",
+      "text": "Ловушка: final stats\n\nHoYoLAB final описывает текущую экипировку в игре. Это reference/debug, не финальные статы выбранного virtual build.",
+      "x": -1060,
+      "y": 220,
+      "width": 300,
+      "height": 175,
+      "color": "1"
+    },
+    {
+      "id": "sb_runtime_contains",
+      "type": "text",
+      "text": "[АКТИВНО]\nЧто тут должно быть\n\nCurated персонажи, talents и observed weapon stacks. Это runtime-слой для нового UI.",
+      "x": -220,
+      "y": 0,
+      "width": 230,
+      "height": 180,
+      "color": "4"
+    },
+    {
+      "id": "sb_flow_account_to_runtime",
+      "type": "text",
+      "text": "sync выбирает\ncurated facts",
+      "x": -730,
+      "y": 430,
+      "width": 180,
+      "height": 80,
+      "color": "4"
+    },
+    {
+      "id": "sb_question",
+      "type": "text",
+      "text": "Быстрая проверка\n\n1. Это пришло из аккаунта?\n2. Это справочник/вики?\n3. Это рассчитано из выбранного build?\n4. Или UI случайно показывает не тот слой?",
+      "x": 620,
+      "y": -340,
+      "width": 420,
+      "height": 170,
+      "color": "1"
+    },
+    {
+      "id": "sb_runtime_not",
+      "type": "text",
+      "text": "Чего тут не должно быть\n\nНе хранить HoYoLAB artifact-influenced final stats как canonical. Не выдумывать unique weapon instance id.",
+      "x": -560,
+      "y": 210,
+      "width": 300,
+      "height": 180,
+      "color": "4"
+    },
+    {
+      "id": "sb_static_contains",
+      "type": "text",
+      "text": "[РАБОТАЕТ]\nЧто приходит из справочников\n\nHoYoWiki stats, traits, weapon passive tooltip text, direct static display-stat effects.",
+      "x": 560,
+      "y": 0,
+      "width": 260,
+      "height": 185,
+      "color": "5"
+    },
+    {
+      "id": "sb_passive_source",
+      "type": "text",
+      "text": "Пассивка оружия\n\nweapon_passive_tooltips — текст пассивки.\nweapon_display_stat_effects — только прямые статовые эффекты, которые можно применить.",
+      "x": 220,
+      "y": 210,
+      "width": 300,
+      "height": 185,
+      "color": "5"
+    },
+    {
+      "id": "sb_traits_source",
+      "type": "text",
+      "text": "Traits / team bonuses\n\nMoonsign, Hexerei, standard_5_star и region живут как static/reference данные, потом joined в runtime identity.",
+      "x": 560,
+      "y": 230,
+      "width": 270,
+      "height": 165,
+      "color": "5"
+    },
+    {
+      "id": "sb_flow_catalog_to_details",
+      "type": "text",
+      "text": "reference/effects\nдля tooltip и статов",
+      "x": 690,
+      "y": 570,
+      "width": 210,
+      "height": 90,
+      "color": "5"
+    },
+    {
+      "id": "sb_flow_artifacts_to_details",
+      "type": "text",
+      "text": "selected build\nдаёт artifact totals",
+      "x": 910,
+      "y": 650,
+      "width": 210,
+      "height": 90,
+      "color": "2"
+    },
+    {
+      "id": "sb_warning_box",
+      "type": "text",
+      "text": "Правило на будущее\n\nЕсли в UI появился неправильный текст/стат — сначала найти слой-владельца данных, потом чинить отображение. Не “брать соседнее поле” вслепую.",
+      "x": 760,
+      "y": 780,
+      "width": 420,
+      "height": 160,
+      "color": "1"
+    },
+    {
+      "id": "sb_runtime_adapter",
+      "type": "text",
+      "text": "UI читает adapter\n\nhoyolab_export/account_storage.py\nui/character_assets.py\nНе читать raw JSON напрямую в новом runtime UI.",
+      "x": -220,
+      "y": 220,
+      "width": 250,
+      "height": 165,
+      "color": "4"
+    },
+    {
+      "id": "sb_artifact_db",
+      "type": "file",
+      "file": "hoyolab_export/artifact_db.py",
+      "x": 1060,
+      "y": 20,
+      "width": 270,
+      "height": 110,
+      "color": "2"
+    },
+    {
+      "id": "sb_artifact_contains",
+      "type": "text",
+      "text": "[РАБОТАЕТ]\nАртефакты и builds\n\nArtifacts, substats, set metadata, custom sets, build presets и selected build summary.\n\nCurrent equipment tables живут рядом, но не являются preset definitions.",
+      "x": 1360,
+      "y": 0,
+      "width": 230,
+      "height": 180,
+      "color": "2"
+    },
+    {
+      "id": "sb_dedup",
+      "type": "text",
+      "text": "Дедупликация\n\nОпирается на structured stat ids/types/values/times. Не на локализованные названия.",
+      "x": 1060,
+      "y": 220,
+      "width": 270,
+      "height": 150,
+      "color": "2"
+    },
+    {
+      "id": "sb_set_effects",
+      "type": "text",
+      "text": "Set bonuses\n\nОписание сетов и прямые статовые эффекты хранятся отдельно. Условные/formula эффекты пока не считаются.",
+      "x": 1360,
+      "y": 230,
+      "width": 240,
+      "height": 200,
+      "color": "2"
+    },
+    {
+      "id": "sb_team_card_data",
+      "type": "file",
+      "file": "hoyolab_export/team_card_data.py",
+      "x": -470,
+      "y": 800,
+      "width": 300,
+      "height": 110,
+      "color": "6"
+    },
+    {
+      "id": "sb_snapshot",
+      "type": "file",
+      "file": "hoyolab_export/character_stat_snapshot.py",
+      "x": -120,
+      "y": 800,
+      "width": 320,
+      "height": 110,
+      "color": "6"
+    },
+    {
+      "id": "sb_display_stats",
+      "type": "text",
+      "text": "Display stats\n\n????????? ?? explicit selected character + selected weapon + selected artifact build ??? live current equipment snapshot + ??????????? static effects.",
+      "x": 250,
+      "y": 780,
+      "width": 330,
+      "height": 175,
+      "color": "6"
+    },
+    {
+      "id": "sb_ui_not_source",
+      "type": "text",
+      "text": "UI не источник правды\n\nRight panel должен показывать prepared data и объяснять source chips/tooltips, а не сам решать, откуда брать поле.",
+      "x": -470,
+      "y": 950,
+      "width": 500,
+      "height": 125,
+      "color": "6"
+    },
+    {
+      "id": "sb_flow_runtime_to_details",
+      "type": "text",
+      "text": "character/weapon\nbase runtime data",
+      "x": -470,
+      "y": 570,
+      "width": 210,
+      "height": 90,
+      "color": "4"
+    },
+    {
+      "id": "sb_hoyolab_detail",
+      "type": "file",
+      "file": "docs/handoff/ACCOUNT_CHARACTER_DETAIL_FIELDS.md",
+      "x": -1400,
+      "y": -15,
+      "width": 300,
+      "height": 200,
+      "color": "3"
+    },
+    {
+      "id": "sb_account_sqlite",
+      "type": "file",
+      "file": "docs/handoff/ACCOUNT_SQLITE_STORAGE.md",
+      "x": -620,
+      "y": -35,
+      "width": 300,
+      "height": 165,
+      "color": "4"
+    },
+    {
+      "id": "sb_data_boundaries",
+      "type": "file",
+      "file": "docs/handoff/DATA_RUNTIME_BOUNDARIES.md",
+      "x": 200,
+      "y": -32,
+      "width": 300,
+      "height": 215,
+      "color": "5"
+    },
+    {
+      "id": "sb_session_equipment",
+      "type": "text",
+      "text": "[РАБОТАЕТ]\nAppShell team state vs equipment\n\nКоманды/слоты остаются UI state по режимам.\n\nCurrent weapon хранится persistent per character через account_equipment, не session memory.",
+      "x": 250,
+      "y": 980,
+      "width": 330,
+      "height": 170,
+      "color": "4"
+    },
+    {
+      "id": "sb_future_equipped_state",
+      "type": "text",
+      "text": "[???????]\nPersistent equipped state\n\nhoyolab_export/account_equipment.py\ndocs/handoff/ACCOUNT_EQUIPMENT_STATE_DESIGN.md\ndocs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md\n\nCanonical current weapon/artifact slots: schema + helpers ??? ????. AppShell weapon/artifact restore ????????.\n\nArtifact Browser C1 ?????????? target/current-equipment scaffold; writes ????? ?????.",
+      "x": -560,
+      "y": 410,
+      "width": 300,
+      "height": 195,
+      "color": "4"
+    }
+  ],
+  "edges": [
+    {
+      "id": "sb_e_hoyo_runtime_a",
+      "fromNode": "sb_hoyolab_contains",
+      "fromSide": "right",
+      "toNode": "sb_flow_account_to_runtime",
+      "toSide": "left"
+    },
+    {
+      "id": "sb_e_hoyo_runtime_b",
+      "fromNode": "sb_flow_account_to_runtime",
+      "fromSide": "right",
+      "toNode": "sb_runtime_contains",
+      "toSide": "left"
+    },
+    {
+      "id": "sb_e_runtime_details_a",
+      "fromNode": "sb_runtime_contains",
+      "fromSide": "bottom",
+      "toNode": "sb_flow_runtime_to_details",
+      "toSide": "top"
+    },
+    {
+      "id": "sb_e_runtime_details_b",
+      "fromNode": "sb_flow_runtime_to_details",
+      "fromSide": "bottom",
+      "toNode": "sb_team_card_data",
+      "toSide": "top"
+    },
+    {
+      "id": "sb_e_static_details_a",
+      "fromNode": "sb_static_contains",
+      "fromSide": "bottom",
+      "toNode": "sb_flow_catalog_to_details",
+      "toSide": "top"
+    },
+    {
+      "id": "sb_e_static_details_b",
+      "fromNode": "sb_flow_catalog_to_details",
+      "fromSide": "bottom",
+      "toNode": "sb_display_stats",
+      "toSide": "top"
+    },
+    {
+      "id": "sb_e_artifacts_details_a",
+      "fromNode": "sb_artifact_contains",
+      "fromSide": "bottom",
+      "toNode": "sb_flow_artifacts_to_details",
+      "toSide": "top"
+    },
+    {
+      "id": "sb_e_artifacts_details_b",
+      "fromNode": "sb_flow_artifacts_to_details",
+      "fromSide": "bottom",
+      "toNode": "sb_display_stats",
+      "toSide": "top"
+    },
+    {
+      "id": "sb_e_lore_warning",
+      "fromNode": "sb_weapon_desc",
+      "fromSide": "right",
+      "toNode": "sb_passive_source",
+      "toSide": "left"
+    },
+    {
+      "id": "sb_e_final_warning",
+      "fromNode": "sb_final_stats",
+      "fromSide": "bottom",
+      "toNode": "sb_display_stats",
+      "toSide": "top"
+    },
+    {
+      "id": "sb_e_warning_ui",
+      "fromNode": "sb_display_stats",
+      "fromSide": "right",
+      "toNode": "sb_warning_box",
+      "toSide": "left"
+    },
+    {
+      "id": "sb_e_runtime_future_equipment",
+      "fromNode": "sb_runtime_contains",
+      "fromSide": "bottom",
+      "toNode": "sb_future_equipped_state",
+      "toSide": "top"
+    },
+    {
+      "id": "sb_e_session_to_ui_boundary",
+      "fromNode": "sb_session_equipment",
+      "fromSide": "left",
+      "toNode": "sb_ui_not_source",
+      "toSide": "right"
+    }
+  ]
+}

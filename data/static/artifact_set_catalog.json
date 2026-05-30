@@ -1,0 +1,3096 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-05-09T14:03:25+00:00",
+  "sets": [
+    {
+      "set_uid": "ADayCarvedFromRisingWinds",
+      "hoyowiki_entry_id": "9152",
+      "artiscan_set_key": "ADayCarvedFromRisingWinds",
+      "fallback_name": "A Day Carved From Rising Winds",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "A Day Carved From Rising Winds",
+          "normalized_name": "a day carved from rising winds",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "День восходящих ветров",
+          "normalized_name": "день восходящих ветров",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2026/01/12/7c4a7aca9f8325c6663239bbfa452ded_4271064323680356779.png",
+          "local_path": "assets/artifact_sets/ADayCarvedFromRisingWinds_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2026/01/17/237301566/1a94746531a931ca6745c9fa4f011aed_5846296446123627778.png",
+          "local_path": "assets/artifact_sets/ADayCarvedFromRisingWinds_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2026/01/17/237301566/8683a419d705e1fa6afe561017471bb7_3061162349719059973.png",
+          "local_path": "assets/artifact_sets/ADayCarvedFromRisingWinds_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2026/01/17/237301566/1aae7ed000fa89733c1e87117664f999_2436576184041337834.png",
+          "local_path": "assets/artifact_sets/ADayCarvedFromRisingWinds_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2026/01/17/237301566/0a7dc60bbf7ab92f1ca0e5b9f9243d1c_5407106439765251156.png",
+          "local_path": "assets/artifact_sets/ADayCarvedFromRisingWinds_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "Adventurer",
+      "hoyowiki_entry_id": "2061",
+      "artiscan_set_key": "Adventurer",
+      "fallback_name": "Adventurer",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Adventurer",
+          "normalized_name": "adventurer",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Искатель приключений",
+          "normalized_name": "искатель приключений",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Adventurer/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/Adventurer_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Adventurer/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/Adventurer_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Adventurer/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/Adventurer_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Adventurer/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/Adventurer_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Adventurer/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/Adventurer_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "ArchaicPetra",
+      "hoyowiki_entry_id": "2072",
+      "artiscan_set_key": "ArchaicPetra",
+      "fallback_name": "Archaic Petra",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Archaic Petra",
+          "normalized_name": "archaic petra",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Архаичный камень",
+          "normalized_name": "архаичный камень",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Archaic Petra/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/ArchaicPetra_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Archaic Petra/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/ArchaicPetra_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Archaic Petra/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/ArchaicPetra_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Archaic Petra/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/ArchaicPetra_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Archaic Petra/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/ArchaicPetra_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "AubadeOfMorningstarAndMoon",
+      "hoyowiki_entry_id": "9151",
+      "artiscan_set_key": "AubadeOfMorningstarAndMoon",
+      "fallback_name": "Aubade of Morningstar and Moon",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Aubade of Morningstar and Moon",
+          "normalized_name": "aubade of morningstar and moon",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Рассветная песнь звезды и луны",
+          "normalized_name": "рассветная песнь звезды и луны",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2026/01/12/ef58ecfcb8906792c3a9b07c92586934_3343384077195352394.png",
+          "local_path": "assets/artifact_sets/AubadeOfMorningstarAndMoon_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2026/01/17/237301566/64b42ee6b041482f631a62b2f209d0dd_6330169144717155788.png",
+          "local_path": "assets/artifact_sets/AubadeOfMorningstarAndMoon_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2026/01/17/237301566/a5234f105846c8169e8eed65a1d96043_7456084356363360675.png",
+          "local_path": "assets/artifact_sets/AubadeOfMorningstarAndMoon_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2026/01/17/237301566/c7d1810c3806c2b48610e279dece177f_5216665289854896824.png",
+          "local_path": "assets/artifact_sets/AubadeOfMorningstarAndMoon_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2026/01/17/237301566/38f65c1a90f86c32fd7aae63e71a28f3_3601012444390265455.png",
+          "local_path": "assets/artifact_sets/AubadeOfMorningstarAndMoon_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "Berserker",
+      "hoyowiki_entry_id": "2073",
+      "artiscan_set_key": "Berserker",
+      "fallback_name": "Berserker",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Berserker",
+          "normalized_name": "berserker",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Берсерк",
+          "normalized_name": "берсерк",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Berserker/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/Berserker_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Berserker/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/Berserker_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Berserker/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/Berserker_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Berserker/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/Berserker_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Berserker/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/Berserker_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "BlizzardStrayer",
+      "hoyowiki_entry_id": "2062",
+      "artiscan_set_key": "BlizzardStrayer",
+      "fallback_name": "Blizzard Strayer",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Blizzard Strayer",
+          "normalized_name": "blizzard strayer",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Заблудший в метели",
+          "normalized_name": "заблудший в метели",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Blizzard Strayer/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/BlizzardStrayer_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Blizzard Strayer/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/BlizzardStrayer_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Blizzard Strayer/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/BlizzardStrayer_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Blizzard Strayer/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/BlizzardStrayer_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Blizzard Strayer/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/BlizzardStrayer_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "BloodstainedChivalry",
+      "hoyowiki_entry_id": "2077",
+      "artiscan_set_key": "BloodstainedChivalry",
+      "fallback_name": "Bloodstained Chivalry",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Bloodstained Chivalry",
+          "normalized_name": "bloodstained chivalry",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Рыцарь крови",
+          "normalized_name": "рыцарь крови",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Bloodstained Chivalry/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/BloodstainedChivalry_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Bloodstained Chivalry/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/BloodstainedChivalry_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Bloodstained Chivalry/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/BloodstainedChivalry_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Bloodstained Chivalry/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/BloodstainedChivalry_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Bloodstained Chivalry/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/BloodstainedChivalry_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "BraveHeart",
+      "hoyowiki_entry_id": "2063",
+      "artiscan_set_key": "BraveHeart",
+      "fallback_name": "Brave Heart",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Brave Heart",
+          "normalized_name": "brave heart",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Душа храбреца",
+          "normalized_name": "душа храбреца",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Brave Heart/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/BraveHeart_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Brave Heart/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/BraveHeart_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Brave Heart/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/BraveHeart_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Brave Heart/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/BraveHeart_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Brave Heart/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/BraveHeart_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "CrimsonWitchOfFlames",
+      "hoyowiki_entry_id": "2085",
+      "artiscan_set_key": "CrimsonWitchOfFlames",
+      "fallback_name": "Crimson Witch of Flames",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Crimson Witch of Flames",
+          "normalized_name": "crimson witch of flames",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Горящая алая ведьма",
+          "normalized_name": "горящая алая ведьма",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Crimson Witch of Flames/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/CrimsonWitchOfFlames_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Crimson Witch of Flames/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/CrimsonWitchOfFlames_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Crimson Witch of Flames/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/CrimsonWitchOfFlames_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Crimson Witch of Flames/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/CrimsonWitchOfFlames_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Crimson Witch of Flames/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/CrimsonWitchOfFlames_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "DeepwoodMemories",
+      "hoyowiki_entry_id": "2672",
+      "artiscan_set_key": "DeepwoodMemories",
+      "fallback_name": "Deepwood Memories",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Deepwood Memories",
+          "normalized_name": "deepwood memories",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Воспоминания дремучего леса",
+          "normalized_name": "воспоминания дремучего леса",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2022/08/23/194600931/f526e111c9c7dcbaed0d7fd8c8d58ef2_1582614701349912537.png",
+          "local_path": "assets/artifact_sets/DeepwoodMemories_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2022/08/23/194600931/9339ebbf175d61844f0b4fafddf7c601_1824368975462472801.png",
+          "local_path": "assets/artifact_sets/DeepwoodMemories_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/05d12e842479ba0a1427baba124c4929_2281672052167498514.png",
+          "local_path": "assets/artifact_sets/DeepwoodMemories_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/80ddb6398975e6b891e383a30079b873_1574237354652198201.png",
+          "local_path": "assets/artifact_sets/DeepwoodMemories_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/11abc6739dff1cf50b95b394a3462162_997061626784825254.png",
+          "local_path": "assets/artifact_sets/DeepwoodMemories_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "DefendersWill",
+      "hoyowiki_entry_id": "2069",
+      "artiscan_set_key": "DefendersWill",
+      "fallback_name": "Defender's Will",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Defender's Will",
+          "normalized_name": "defenders will",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Воля защитника",
+          "normalized_name": "воля защитника",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Defender's Will/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/DefendersWill_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Defender's Will/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/DefendersWill_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Defender's Will/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/DefendersWill_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Defender's Will/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/DefendersWill_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Defender's Will/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/DefendersWill_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "DesertPavilionChronicle",
+      "hoyowiki_entry_id": "3322",
+      "artiscan_set_key": "DesertPavilionChronicle",
+      "fallback_name": "Desert Pavilion Chronicle",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Desert Pavilion Chronicle",
+          "normalized_name": "desert pavilion chronicle",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Хроники Чертогов в пустыне",
+          "normalized_name": "хроники чертогов в пустыне",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2022/12/05/35428890/b86d9fd7cf57937a021c9c68c9b185ed_5545735814779163159.png",
+          "local_path": "assets/artifact_sets/DesertPavilionChronicle_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2022/12/05/35428890/6fdd4f75d233d1690e845a2db65ba433_9102938830269168654.png",
+          "local_path": "assets/artifact_sets/DesertPavilionChronicle_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/88ca09ebc7ed0069e8e8de5516bea8c7_2945071514772610576.png",
+          "local_path": "assets/artifact_sets/DesertPavilionChronicle_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/0c319d4054751adc08be47eee0ebad53_481661491293293767.png",
+          "local_path": "assets/artifact_sets/DesertPavilionChronicle_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/999a78b73235c08ca4a0664a23e7079f_4766555235191331611.png",
+          "local_path": "assets/artifact_sets/DesertPavilionChronicle_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "EchoesOfAnOffering",
+      "hoyowiki_entry_id": "2076",
+      "artiscan_set_key": "EchoesOfAnOffering",
+      "fallback_name": "Echoes of an Offering",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Echoes of an Offering",
+          "normalized_name": "echoes of an offering",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Отголоски подношения",
+          "normalized_name": "отголоски подношения",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Echoes of an Offering/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/EchoesOfAnOffering_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Echoes of an Offering/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/EchoesOfAnOffering_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Echoes of an Offering/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/EchoesOfAnOffering_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Echoes of an Offering/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/EchoesOfAnOffering_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Echoes of an Offering/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/EchoesOfAnOffering_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "EmblemOfSeveredFate",
+      "hoyowiki_entry_id": "2090",
+      "artiscan_set_key": "EmblemOfSeveredFate",
+      "fallback_name": "Emblem of Severed Fate",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Emblem of Severed Fate",
+          "normalized_name": "emblem of severed fate",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Эмблема рассечённой судьбы",
+          "normalized_name": "эмблема рассечённой судьбы",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Emblem of Severed Fate/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/EmblemOfSeveredFate_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Emblem of Severed Fate/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/EmblemOfSeveredFate_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Emblem of Severed Fate/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/EmblemOfSeveredFate_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Emblem of Severed Fate/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/EmblemOfSeveredFate_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Emblem of Severed Fate/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/EmblemOfSeveredFate_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "FinaleOfTheDeepGalleries",
+      "hoyowiki_entry_id": "7572",
+      "artiscan_set_key": "FinaleOfTheDeepGalleries",
+      "fallback_name": "Finale of the Deep Galleries",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Finale of the Deep Galleries",
+          "normalized_name": "finale of the deep galleries",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Финал галерей глубин",
+          "normalized_name": "финал галерей глубин",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/03/17/bf39402f87db1168263c7c0898c8ab0c_4434336707917443666.png",
+          "local_path": "assets/artifact_sets/FinaleOfTheDeepGalleries_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/03/17/c498b33d2359b12603471fd65bd22261_7001131486318823058.png",
+          "local_path": "assets/artifact_sets/FinaleOfTheDeepGalleries_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/24/151578876/2a6efc1386ae931f69a7283451487697_7688610052366754683.png",
+          "local_path": "assets/artifact_sets/FinaleOfTheDeepGalleries_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/24/151578876/968c157b2ae92b17e2e12f346ed306d3_5547965292070070624.png",
+          "local_path": "assets/artifact_sets/FinaleOfTheDeepGalleries_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/59540be78775f63b6de642740d4d841e_3284162231945702248.png",
+          "local_path": "assets/artifact_sets/FinaleOfTheDeepGalleries_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "FlowerOfParadiseLost",
+      "hoyowiki_entry_id": "3321",
+      "artiscan_set_key": "FlowerOfParadiseLost",
+      "fallback_name": "Flower of Paradise Lost",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Flower of Paradise Lost",
+          "normalized_name": "flower of paradise lost",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Цветок потерянного рая",
+          "normalized_name": "цветок потерянного рая",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2022/12/05/35428890/50ce09dfa5a91a33aa9cedfb15bcf2d1_3721149201626085815.png",
+          "local_path": "assets/artifact_sets/FlowerOfParadiseLost_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2022/12/05/35428890/30b5885215b1c09b6033b5cafe437d2c_2909096586032947967.png",
+          "local_path": "assets/artifact_sets/FlowerOfParadiseLost_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/baf7c8bd6eba7afe0c71c9bf8cc6f96b_487022835078112625.png",
+          "local_path": "assets/artifact_sets/FlowerOfParadiseLost_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/f4e5dde048f278e01371e56637a7bd1f_6656472953604112002.png",
+          "local_path": "assets/artifact_sets/FlowerOfParadiseLost_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/d0dac0543a776782f0496bf908870291_2419000362864869695.png",
+          "local_path": "assets/artifact_sets/FlowerOfParadiseLost_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "FragmentOfHarmonicWhimsy",
+      "hoyowiki_entry_id": "5578",
+      "artiscan_set_key": "FragmentOfHarmonicWhimsy",
+      "fallback_name": "Fragment of Harmonic Whimsy",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Fragment of Harmonic Whimsy",
+          "normalized_name": "fragment of harmonic whimsy",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Фрагмент гармонической фантазии",
+          "normalized_name": "фрагмент гармонической фантазии",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2024/04/22/35428890/7557f4558ab243d82e8b6b9994fc97ee_4487332453175531251.png",
+          "local_path": "assets/artifact_sets/FragmentOfHarmonicWhimsy_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2024/04/22/35428890/7df24b7057d7243b568a5a1eafa8ca1a_3349815864433769008.png",
+          "local_path": "assets/artifact_sets/FragmentOfHarmonicWhimsy_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/e68d2442bdc24bbbb13e6a22e4b38693_6684692387418005095.png",
+          "local_path": "assets/artifact_sets/FragmentOfHarmonicWhimsy_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/8a60b825d5c4ea6a98ca21ae0d1ccc72_4431786682700728736.png",
+          "local_path": "assets/artifact_sets/FragmentOfHarmonicWhimsy_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/6821618a8429049eb3ccee4e07d2711f_7073238227708789618.png",
+          "local_path": "assets/artifact_sets/FragmentOfHarmonicWhimsy_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "Gambler",
+      "hoyowiki_entry_id": "2096",
+      "artiscan_set_key": "Gambler",
+      "fallback_name": "Gambler",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Gambler",
+          "normalized_name": "gambler",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Азартный игрок",
+          "normalized_name": "азартный игрок",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Gambler/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/Gambler_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Gambler/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/Gambler_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/04/25/151578876/aa64c912fb5351623d8cb2ca56611d90_4989696205611662381.png",
+          "local_path": "assets/artifact_sets/Gambler_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/04/25/151578876/c5f30f1b0fc798035021750f9361b071_5859135888115900773.png",
+          "local_path": "assets/artifact_sets/Gambler_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/04/25/151578876/705b4f8ea4b76e15da6f5d6a7a61bcc2_5897298058113117754.png",
+          "local_path": "assets/artifact_sets/Gambler_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "GildedDreams",
+      "hoyowiki_entry_id": "2673",
+      "artiscan_set_key": "GildedDreams",
+      "fallback_name": "Gilded Dreams",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Gilded Dreams",
+          "normalized_name": "gilded dreams",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Позолоченные сны",
+          "normalized_name": "позолоченные сны",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2022/08/23/194600931/ae8a2c6f24df66e1bd7cc2dbd83d330d_9176911893609858619.png",
+          "local_path": "assets/artifact_sets/GildedDreams_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2022/08/23/194600931/b195ea9ea3c908859ea4e09e409305a2_7989292675371443357.png",
+          "local_path": "assets/artifact_sets/GildedDreams_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/8842156fb124596d6a0d7aa56f8483e0_5470864437485294807.png",
+          "local_path": "assets/artifact_sets/GildedDreams_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/3668bbfcc8d7242aa295b7e073e71d9f_7073112547863600765.png",
+          "local_path": "assets/artifact_sets/GildedDreams_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/892e17a4a5d0b9438bf3581d88bf209e_3455825961111195436.png",
+          "local_path": "assets/artifact_sets/GildedDreams_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "GladiatorsFinale",
+      "hoyowiki_entry_id": "2095",
+      "artiscan_set_key": "GladiatorsFinale",
+      "fallback_name": "Gladiator's Finale",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Gladiator's Finale",
+          "normalized_name": "gladiators finale",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Конец гладиатора",
+          "normalized_name": "конец гладиатора",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Gladiator's Finale/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/GladiatorsFinale_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Gladiator's Finale/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/GladiatorsFinale_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/04/25/151578876/b9cd8419f668caa0edd932e18bcef0df_24432145891227730.png",
+          "local_path": "assets/artifact_sets/GladiatorsFinale_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/04/25/151578876/3d820f458f208c8077a8554c597f522e_8815444177227496351.png",
+          "local_path": "assets/artifact_sets/GladiatorsFinale_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/04/25/151578876/469a5102b913568f014cffd3d618cf23_5979934664994549652.png",
+          "local_path": "assets/artifact_sets/GladiatorsFinale_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "GoldenTroupe",
+      "hoyowiki_entry_id": "3991",
+      "artiscan_set_key": "GoldenTroupe",
+      "fallback_name": "Golden Troupe",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Golden Troupe",
+          "normalized_name": "golden troupe",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Золотая труппа",
+          "normalized_name": "золотая труппа",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2023/08/06/35428890/4fda3f028a5acd6e23e99e70f21118cc_5229469833478915194.png",
+          "local_path": "assets/artifact_sets/GoldenTroupe_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2023/08/06/35428890/ef3e819bd1cede5e20c5d443d19f9dd4_3643049364213742083.png",
+          "local_path": "assets/artifact_sets/GoldenTroupe_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/a8668d27d97594684bb7ff73aad22cdd_5892388250254200804.png",
+          "local_path": "assets/artifact_sets/GoldenTroupe_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/10c41dd09f04615c3ff216fda90bff72_116742202602541255.png",
+          "local_path": "assets/artifact_sets/GoldenTroupe_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/6d62d7a59b21810f30a7e74f21998494_590383121169474119.png",
+          "local_path": "assets/artifact_sets/GoldenTroupe_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "HeartOfDepth",
+      "hoyowiki_entry_id": "2079",
+      "artiscan_set_key": "HeartOfDepth",
+      "fallback_name": "Heart of Depth",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Heart of Depth",
+          "normalized_name": "heart of depth",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Сердце глубин",
+          "normalized_name": "сердце глубин",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Heart of Depth/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/HeartOfDepth_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Heart of Depth/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/HeartOfDepth_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Heart of Depth/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/HeartOfDepth_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Heart of Depth/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/HeartOfDepth_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Heart of Depth/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/HeartOfDepth_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "HuskOfOpulentDreams",
+      "hoyowiki_entry_id": "2065",
+      "artiscan_set_key": "HuskOfOpulentDreams",
+      "fallback_name": "Husk of Opulent Dreams",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Husk of Opulent Dreams",
+          "normalized_name": "husk of opulent dreams",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Кокон сладких грёз",
+          "normalized_name": "кокон сладких грёз",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Husk of Opulent Dreams/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/HuskOfOpulentDreams_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Husk of Opulent Dreams/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/HuskOfOpulentDreams_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Husk of Opulent Dreams/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/HuskOfOpulentDreams_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Husk of Opulent Dreams/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/HuskOfOpulentDreams_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Husk of Opulent Dreams/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/HuskOfOpulentDreams_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "Instructor",
+      "hoyowiki_entry_id": "2074",
+      "artiscan_set_key": "Instructor",
+      "fallback_name": "Instructor",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Instructor",
+          "normalized_name": "instructor",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Инструктор",
+          "normalized_name": "инструктор",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Instructor/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/Instructor_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Instructor/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/Instructor_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Instructor/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/Instructor_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Instructor/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/Instructor_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Instructor/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/Instructor_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "Lavawalker",
+      "hoyowiki_entry_id": "2083",
+      "artiscan_set_key": "Lavawalker",
+      "fallback_name": "Lavawalker",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Lavawalker",
+          "normalized_name": "lavawalker",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Ступающий по лаве",
+          "normalized_name": "ступающий по лаве",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Lavawalker/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/Lavawalker_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Lavawalker/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/Lavawalker_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Lavawalker/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/Lavawalker_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Lavawalker/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/Lavawalker_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Lavawalker/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/Lavawalker_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "LongNightsOath",
+      "hoyowiki_entry_id": "7571",
+      "artiscan_set_key": "LongNightsOath",
+      "fallback_name": "Long Night's Oath",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Long Night's Oath",
+          "normalized_name": "long nights oath",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Клятва долгой ночи",
+          "normalized_name": "клятва долгой ночи",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/03/17/3cf2511dfb1f91696a0ee986e5f1fb22_3371878648281977517.png",
+          "local_path": "assets/artifact_sets/LongNightsOath_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/24/151578876/16b85e568d3142cb76a402c1f2a2ba3b_3621711691245795358.png",
+          "local_path": "assets/artifact_sets/LongNightsOath_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/24/151578876/a31853ec22fd57e5d86d57410b9f29ab_1022728541542695608.png",
+          "local_path": "assets/artifact_sets/LongNightsOath_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/24/151578876/a3e5d377be8f8a8104334ae67f6c9ad4_1713707065697136193.png",
+          "local_path": "assets/artifact_sets/LongNightsOath_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/24/151578876/05fda276bef09554c8f211f522d0af40_872800029897903125.png",
+          "local_path": "assets/artifact_sets/LongNightsOath_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "LuckyDog",
+      "hoyowiki_entry_id": "2071",
+      "artiscan_set_key": "LuckyDog",
+      "fallback_name": "Lucky Dog",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Lucky Dog",
+          "normalized_name": "lucky dog",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Везунчик",
+          "normalized_name": "везунчик",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Lucky Dog/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/LuckyDog_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Lucky Dog/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/LuckyDog_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Lucky Dog/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/LuckyDog_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Lucky Dog/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/LuckyDog_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Lucky Dog/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/LuckyDog_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "MaidenBeloved",
+      "hoyowiki_entry_id": "2094",
+      "artiscan_set_key": "MaidenBeloved",
+      "fallback_name": "Maiden Beloved",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Maiden Beloved",
+          "normalized_name": "maiden beloved",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Возлюбленная юная дева",
+          "normalized_name": "возлюбленная юная дева",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Maiden Beloved/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/MaidenBeloved_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Maiden Beloved/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/MaidenBeloved_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Maiden Beloved/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/MaidenBeloved_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Maiden Beloved/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/MaidenBeloved_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Maiden Beloved/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/MaidenBeloved_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "MarechausseeHunter",
+      "hoyowiki_entry_id": "3990",
+      "artiscan_set_key": "MarechausseeHunter",
+      "fallback_name": "Marechaussee Hunter",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Marechaussee Hunter",
+          "normalized_name": "marechaussee hunter",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Охотник Сумеречного двора",
+          "normalized_name": "охотник сумеречного двора",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2023/08/14/35428890/539b03bed1057707abd643147e18abde_8249644511854926994.png",
+          "local_path": "assets/artifact_sets/MarechausseeHunter_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2023/08/06/35428890/71bd7fb0be258a8997a75511ec222a17_6380380925043676537.png",
+          "local_path": "assets/artifact_sets/MarechausseeHunter_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/11299d1dfa8e57cf0047d2145ba4078d_6568803007966876813.png",
+          "local_path": "assets/artifact_sets/MarechausseeHunter_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/77b5fbe7f1897a203e19bdabb8b884f4_8097343465759792015.png",
+          "local_path": "assets/artifact_sets/MarechausseeHunter_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/26650d6cbdc6b6a48ca5094dfe4582ab_8049180331773563471.png",
+          "local_path": "assets/artifact_sets/MarechausseeHunter_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "MartialArtist",
+      "hoyowiki_entry_id": "2078",
+      "artiscan_set_key": "MartialArtist",
+      "fallback_name": "Martial Artist",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Martial Artist",
+          "normalized_name": "martial artist",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Воин",
+          "normalized_name": "воин",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Martial Artist/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/MartialArtist_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Martial Artist/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/MartialArtist_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Martial Artist/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/MartialArtist_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Martial Artist/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/MartialArtist_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Martial Artist/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/MartialArtist_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "NightOfTheSkysUnveiling",
+      "hoyowiki_entry_id": "8520",
+      "artiscan_set_key": "NightOfTheSkysUnveiling",
+      "fallback_name": "Night of the Sky's Unveiling",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Night of the Sky's Unveiling",
+          "normalized_name": "night of the skys unveiling",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Ночь открытия неба",
+          "normalized_name": "ночь открытия неба",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/09/01/25c4512875bad223765a5a32c82b09a4_7122872897984003318.png",
+          "local_path": "assets/artifact_sets/NightOfTheSkysUnveiling_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/09/01/f474fffae44c4e7a91864113cf5b1f8e_6731765289436648875.png",
+          "local_path": "assets/artifact_sets/NightOfTheSkysUnveiling_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/09/01/54a344dc5aca025fbb6cc60a80f7790d_1576492692040107165.png",
+          "local_path": "assets/artifact_sets/NightOfTheSkysUnveiling_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/09/01/04dfdf0deae5f0fc58529dc89ee94d6f_3380820828725566086.png",
+          "local_path": "assets/artifact_sets/NightOfTheSkysUnveiling_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/09/01/7ce20dbf2ffc87b6b942c0f42d0b43d4_6363911804608985715.png",
+          "local_path": "assets/artifact_sets/NightOfTheSkysUnveiling_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "NighttimeWhispersInTheEchoingWoods",
+      "hoyowiki_entry_id": "4716",
+      "artiscan_set_key": "NighttimeWhispersInTheEchoingWoods",
+      "fallback_name": "Nighttime Whispers in the Echoing Woods",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Nighttime Whispers in the Echoing Woods",
+          "normalized_name": "nighttime whispers in the echoing woods",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Ночной шёпот в Лесу откликающегося эха",
+          "normalized_name": "ночной шёпот в лесу откликающегося эха",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2023/12/18/35428890/d9d39d9f046d5d23c3d497574be55a82_5403734726175910170.png",
+          "local_path": "assets/artifact_sets/NighttimeWhispersInTheEchoingWoods_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2023/12/18/35428890/b14fd20a3b0aadd16b52e7ea72596745_441773961410047737.png",
+          "local_path": "assets/artifact_sets/NighttimeWhispersInTheEchoingWoods_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/81147a28166df7fec906ce279a2a5c7f_8426536138347114920.png",
+          "local_path": "assets/artifact_sets/NighttimeWhispersInTheEchoingWoods_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/f319dfcbe0c561fc66f06def271298ed_5133126160834291570.png",
+          "local_path": "assets/artifact_sets/NighttimeWhispersInTheEchoingWoods_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/55b397257c1f688f6ab611cf1b6567e1_2947834354241488794.png",
+          "local_path": "assets/artifact_sets/NighttimeWhispersInTheEchoingWoods_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "NoblesseOblige",
+      "hoyowiki_entry_id": "2075",
+      "artiscan_set_key": "NoblesseOblige",
+      "fallback_name": "Noblesse Oblige",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Noblesse Oblige",
+          "normalized_name": "noblesse oblige",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Церемония древней знати",
+          "normalized_name": "церемония древней знати",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Noblesse Oblige/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/NoblesseOblige_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Noblesse Oblige/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/NoblesseOblige_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Noblesse Oblige/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/NoblesseOblige_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Noblesse Oblige/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/NoblesseOblige_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Noblesse Oblige/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/NoblesseOblige_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "NymphsDream",
+      "hoyowiki_entry_id": "3693",
+      "artiscan_set_key": "NymphsDream",
+      "fallback_name": "Nymph's Dream",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Nymph's Dream",
+          "normalized_name": "nymphs dream",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Сон нимфы",
+          "normalized_name": "сон нимфы",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2023/04/10/35428890/1bde348ad550ef356ff197b93caed6c8_4807982142633085431.png",
+          "local_path": "assets/artifact_sets/NymphsDream_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2023/04/10/35428890/78ca65a64de4a2f6f25d7a537928c620_8772324483987616800.png",
+          "local_path": "assets/artifact_sets/NymphsDream_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/42d75466608199483d74bf1704d4d50f_5140288281397939917.png",
+          "local_path": "assets/artifact_sets/NymphsDream_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/dbbea8a478949256621433ea777a438d_4395550340854681645.png",
+          "local_path": "assets/artifact_sets/NymphsDream_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/8dec1cd42cd80eda05b913fade0f5422_2606324493411420637.png",
+          "local_path": "assets/artifact_sets/NymphsDream_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "ObsidianCodex",
+      "hoyowiki_entry_id": "6554",
+      "artiscan_set_key": "ObsidianCodex",
+      "fallback_name": "Obsidian Codex",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Obsidian Codex",
+          "normalized_name": "obsidian codex",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Обсидиановый фолиант",
+          "normalized_name": "обсидиановый фолиант",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2024/08/25/35428890/cd11df3be5420d2c53c2da0d3298eb92_763344799368209312.png",
+          "local_path": "assets/artifact_sets/ObsidianCodex_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2024/08/25/35428890/7d671f861ea037febc1e4d2a15cbfb73_2799443548031535640.png",
+          "local_path": "assets/artifact_sets/ObsidianCodex_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/30/151578876/7f54914c919ac28a4d45fa1649bf02e2_2082143357011194596.png",
+          "local_path": "assets/artifact_sets/ObsidianCodex_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/30/151578876/c8beccbbaad367c54a75b4967ad97b0e_8462159106445226064.png",
+          "local_path": "assets/artifact_sets/ObsidianCodex_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/30/151578876/f1c9b10136958bf2133db02dfa6b688f_4830557215588846295.png",
+          "local_path": "assets/artifact_sets/ObsidianCodex_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "OceanHuedClam",
+      "hoyowiki_entry_id": "2082",
+      "artiscan_set_key": "OceanHuedClam",
+      "fallback_name": "Ocean-Hued Clam",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Ocean-Hued Clam",
+          "normalized_name": "ocean hued clam",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Моллюск морских красок",
+          "normalized_name": "моллюск морских красок",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Ocean-Hued Clam/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/OceanHuedClam_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Ocean-Hued Clam/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/OceanHuedClam_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Ocean-Hued Clam/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/OceanHuedClam_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Ocean-Hued Clam/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/OceanHuedClam_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Ocean-Hued Clam/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/OceanHuedClam_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "PaleFlame",
+      "hoyowiki_entry_id": "2092",
+      "artiscan_set_key": "PaleFlame",
+      "fallback_name": "Pale Flame",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Pale Flame",
+          "normalized_name": "pale flame",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Бледный огонь",
+          "normalized_name": "бледный огонь",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Pale Flame/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/PaleFlame_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Pale Flame/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/PaleFlame_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Pale Flame/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/PaleFlame_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Pale Flame/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/PaleFlame_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Pale Flame/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/PaleFlame_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "PrayersForDestiny",
+      "hoyowiki_entry_id": "2087",
+      "artiscan_set_key": "PrayersForDestiny",
+      "fallback_name": "Prayers for Destiny",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Prayers for Destiny",
+          "normalized_name": "prayers for destiny",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Шаман воды",
+          "normalized_name": "шаман воды",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Prayers for Destiny/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/PrayersForDestiny_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "PrayersForIllumination",
+      "hoyowiki_entry_id": "2088",
+      "artiscan_set_key": "PrayersForIllumination",
+      "fallback_name": "Prayers for Illumination",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Prayers for Illumination",
+          "normalized_name": "prayers for illumination",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Шаман огня",
+          "normalized_name": "шаман огня",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Prayers for Illumination/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/PrayersForIllumination_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "PrayersForWisdom",
+      "hoyowiki_entry_id": "2089",
+      "artiscan_set_key": "PrayersForWisdom",
+      "fallback_name": "Prayers for Wisdom",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Prayers for Wisdom",
+          "normalized_name": "prayers for wisdom",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Шаман молнии",
+          "normalized_name": "шаман молнии",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Prayers for Wisdom/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/PrayersForWisdom_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "PrayersToSpringtime",
+      "hoyowiki_entry_id": "2086",
+      "artiscan_set_key": "PrayersToSpringtime",
+      "fallback_name": "Prayers to Springtime",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Prayers to Springtime",
+          "normalized_name": "prayers to springtime",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Шаман льда",
+          "normalized_name": "шаман льда",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Prayers to Springtime/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/PrayersToSpringtime_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "ResolutionOfSojourner",
+      "hoyowiki_entry_id": "2093",
+      "artiscan_set_key": "ResolutionOfSojourner",
+      "fallback_name": "Resolution of Sojourner",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Resolution of Sojourner",
+          "normalized_name": "resolution of sojourner",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Решимость временщика",
+          "normalized_name": "решимость временщика",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Resolution of Sojourner/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/ResolutionOfSojourner_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Resolution of Sojourner/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/ResolutionOfSojourner_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Resolution of Sojourner/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/ResolutionOfSojourner_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Resolution of Sojourner/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/ResolutionOfSojourner_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Resolution of Sojourner/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/ResolutionOfSojourner_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "RetracingBolide",
+      "hoyowiki_entry_id": "2099",
+      "artiscan_set_key": "RetracingBolide",
+      "fallback_name": "Retracing Bolide",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Retracing Bolide",
+          "normalized_name": "retracing bolide",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Встречная комета",
+          "normalized_name": "встречная комета",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Retracing Bolide/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/RetracingBolide_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Retracing Bolide/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/RetracingBolide_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/9954072a1d420032b7f9dd3c92959acb_8631649422916134662.png",
+          "local_path": "assets/artifact_sets/RetracingBolide_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/3eec7a89b989aee4cbd9b96253145a5f_8668003902498558239.png",
+          "local_path": "assets/artifact_sets/RetracingBolide_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/94ab300f88114e951c370184ecc7c171_1803960374337994922.png",
+          "local_path": "assets/artifact_sets/RetracingBolide_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "Scholar",
+      "hoyowiki_entry_id": "2068",
+      "artiscan_set_key": "Scholar",
+      "fallback_name": "Scholar",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Scholar",
+          "normalized_name": "scholar",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Учёный",
+          "normalized_name": "учёный",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Scholar/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/Scholar_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Scholar/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/Scholar_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Scholar/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/Scholar_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Scholar/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/Scholar_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Scholar/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/Scholar_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "ScrollOfTheHeroOfCinderCity",
+      "hoyowiki_entry_id": "6553",
+      "artiscan_set_key": "ScrollOfTheHeroOfCinderCity",
+      "fallback_name": "Scroll of the Hero of Cinder City",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Scroll of the Hero of Cinder City",
+          "normalized_name": "scroll of the hero of cinder city",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Свиток героя сожжённого города",
+          "normalized_name": "свиток героя сожжённого города",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2024/08/25/35428890/6ad5095f324c2da829ecaa5e2ed13af9_8914409440111681461.png",
+          "local_path": "assets/artifact_sets/ScrollOfTheHeroOfCinderCity_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2024/08/25/35428890/4d6b0bc9d58b7422f9a526a07db0121e_1347790255582554788.png",
+          "local_path": "assets/artifact_sets/ScrollOfTheHeroOfCinderCity_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/30/151578876/8dd572d52a191ab5eb1be208f13ae321_3382948699947295986.png",
+          "local_path": "assets/artifact_sets/ScrollOfTheHeroOfCinderCity_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/30/151578876/a2ae1599bf777b2faaa24dc4e629cf4c_4307469013967320946.png",
+          "local_path": "assets/artifact_sets/ScrollOfTheHeroOfCinderCity_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/30/151578876/6055f18fb691b61cef38b7e67460b60d_5406521367220571294.png",
+          "local_path": "assets/artifact_sets/ScrollOfTheHeroOfCinderCity_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "ShimenawasReminiscence",
+      "hoyowiki_entry_id": "2098",
+      "artiscan_set_key": "ShimenawasReminiscence",
+      "fallback_name": "Shimenawa's Reminiscence",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Shimenawa's Reminiscence",
+          "normalized_name": "shimenawas reminiscence",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Воспоминания Симэнавы",
+          "normalized_name": "воспоминания симэнавы",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Shimenawa's Reminiscence/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/ShimenawasReminiscence_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Shimenawa's Reminiscence/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/ShimenawasReminiscence_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/f5678b7102154e4ab2a62220f655189e_8858637375486890404.png",
+          "local_path": "assets/artifact_sets/ShimenawasReminiscence_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/5c37eaa86b33545f7fc33229c41651f3_3918649554999791949.png",
+          "local_path": "assets/artifact_sets/ShimenawasReminiscence_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/f54d9386aa289880ed087f4f86efe0de_5459603102352623482.png",
+          "local_path": "assets/artifact_sets/ShimenawasReminiscence_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "SilkenMoonsSerenade",
+      "hoyowiki_entry_id": "8521",
+      "artiscan_set_key": "SilkenMoonsSerenade",
+      "fallback_name": "Silken Moon's Serenade",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Silken Moon's Serenade",
+          "normalized_name": "silken moons serenade",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Серенада шёлковой луны",
+          "normalized_name": "серенада шёлковой луны",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/09/01/b8350998129a66e67c1a7691153da68d_6559589601591776539.png",
+          "local_path": "assets/artifact_sets/SilkenMoonsSerenade_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/09/01/ee26872f032ed3afb25a542cbd3c93a2_8273369387328992297.png",
+          "local_path": "assets/artifact_sets/SilkenMoonsSerenade_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/09/01/a07cddd983ad4528ef4e92c399fa4117_1942671869509903838.png",
+          "local_path": "assets/artifact_sets/SilkenMoonsSerenade_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/09/01/520482a32f80b5538d6d2e6dc8cc194a_3357590716156202832.png",
+          "local_path": "assets/artifact_sets/SilkenMoonsSerenade_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-webstatic.hoyoverse.com/event-static-hoyowiki-admin/2025/09/01/cf017c10098946f6d3d19a6b2c49bd53_7064122714444153592.png",
+          "local_path": "assets/artifact_sets/SilkenMoonsSerenade_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "SongOfDaysPast",
+      "hoyowiki_entry_id": "4717",
+      "artiscan_set_key": "SongOfDaysPast",
+      "fallback_name": "Song of Days Past",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Song of Days Past",
+          "normalized_name": "song of days past",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Песнь былых времён",
+          "normalized_name": "песнь былых времён",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2023/12/18/35428890/7789fb5e684cf95a7011657d0fa8a971_4916799814445482045.png",
+          "local_path": "assets/artifact_sets/SongOfDaysPast_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2023/12/18/35428890/cbc1ed71c7c29bdf0c32a1c4eee4ff70_2620842943363853359.png",
+          "local_path": "assets/artifact_sets/SongOfDaysPast_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/6e9a0be1b44bfdc612da88a1c187148d_7840940012412864121.png",
+          "local_path": "assets/artifact_sets/SongOfDaysPast_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/cb19bd226823287c1019b7734aa59dfd_5278050931884263716.png",
+          "local_path": "assets/artifact_sets/SongOfDaysPast_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/111d739805a42b2d74bf4bb677939b70_3371402679894727905.png",
+          "local_path": "assets/artifact_sets/SongOfDaysPast_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "TenacityOfTheMillelith",
+      "hoyowiki_entry_id": "2064",
+      "artiscan_set_key": "TenacityOfTheMillelith",
+      "fallback_name": "Tenacity of the Millelith",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Tenacity of the Millelith",
+          "normalized_name": "tenacity of the millelith",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Стойкость Миллелита",
+          "normalized_name": "стойкость миллелита",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Tenacity of the Millelith/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/TenacityOfTheMillelith_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Tenacity of the Millelith/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/TenacityOfTheMillelith_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Tenacity of the Millelith/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/TenacityOfTheMillelith_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Tenacity of the Millelith/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/TenacityOfTheMillelith_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Tenacity of the Millelith/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/TenacityOfTheMillelith_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "TheExile",
+      "hoyowiki_entry_id": "2080",
+      "artiscan_set_key": "TheExile",
+      "fallback_name": "The Exile",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "The Exile",
+          "normalized_name": "the exile",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Изгнанник",
+          "normalized_name": "изгнанник",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/The Exile/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/TheExile_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/The Exile/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/TheExile_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/The Exile/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/TheExile_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/The Exile/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/TheExile_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/The Exile/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/TheExile_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "ThunderingFury",
+      "hoyowiki_entry_id": "2067",
+      "artiscan_set_key": "ThunderingFury",
+      "fallback_name": "Thundering Fury",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Thundering Fury",
+          "normalized_name": "thundering fury",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Громогласный рёв ярости",
+          "normalized_name": "громогласный рёв ярости",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Thundering Fury/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/ThunderingFury_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Thundering Fury/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/ThunderingFury_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Thundering Fury/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/ThunderingFury_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Thundering Fury/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/ThunderingFury_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Thundering Fury/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/ThunderingFury_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "Thundersoother",
+      "hoyowiki_entry_id": "2070",
+      "artiscan_set_key": "Thundersoother",
+      "fallback_name": "Thundersoother",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Thundersoother",
+          "normalized_name": "thundersoother",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Усмиряющий гром",
+          "normalized_name": "усмиряющий гром",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Thundersoother/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/Thundersoother_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Thundersoother/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/Thundersoother_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Thundersoother/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/Thundersoother_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Thundersoother/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/Thundersoother_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Thundersoother/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/Thundersoother_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "TinyMiracle",
+      "hoyowiki_entry_id": "2066",
+      "artiscan_set_key": "TinyMiracle",
+      "fallback_name": "Tiny Miracle",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Tiny Miracle",
+          "normalized_name": "tiny miracle",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Маленькое чудо",
+          "normalized_name": "маленькое чудо",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Tiny Miracle/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/TinyMiracle_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Tiny Miracle/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/TinyMiracle_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Tiny Miracle/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/TinyMiracle_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Tiny Miracle/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/TinyMiracle_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Tiny Miracle/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/TinyMiracle_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "TravelingDoctor",
+      "hoyowiki_entry_id": "2084",
+      "artiscan_set_key": "TravelingDoctor",
+      "fallback_name": "Traveling Doctor",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Traveling Doctor",
+          "normalized_name": "traveling doctor",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Целитель",
+          "normalized_name": "целитель",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Traveling Doctor/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/TravelingDoctor_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Traveling Doctor/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/TravelingDoctor_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Traveling Doctor/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/TravelingDoctor_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Traveling Doctor/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/TravelingDoctor_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Traveling Doctor/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/TravelingDoctor_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "UnfinishedReverie",
+      "hoyowiki_entry_id": "5579",
+      "artiscan_set_key": "UnfinishedReverie",
+      "fallback_name": "Unfinished Reverie",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Unfinished Reverie",
+          "normalized_name": "unfinished reverie",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Незаконченные грёзы",
+          "normalized_name": "незаконченные грёзы",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2024/04/22/35428890/356c6b0e1be129282f759d8844872c7d_8835103084516203071.png",
+          "local_path": "assets/artifact_sets/UnfinishedReverie_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2024/04/22/35428890/2715fda27d0c7648a18d86e63c0acde6_4549122519303067745.png",
+          "local_path": "assets/artifact_sets/UnfinishedReverie_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/925dc4dabaecad2b23d09b55aab1ddfa_2737730088816477355.png",
+          "local_path": "assets/artifact_sets/UnfinishedReverie_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/961efd0280cfadc4952d4c6712779ae0_3166557469640304531.png",
+          "local_path": "assets/artifact_sets/UnfinishedReverie_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/be0eae1774ad7d59a3eeeb5c6620ff04_7588822060618811897.png",
+          "local_path": "assets/artifact_sets/UnfinishedReverie_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "VermillionHereafter",
+      "hoyowiki_entry_id": "2097",
+      "artiscan_set_key": "VermillionHereafter",
+      "fallback_name": "Vermillion Hereafter",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Vermillion Hereafter",
+          "normalized_name": "vermillion hereafter",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Киноварное загробье",
+          "normalized_name": "киноварное загробье",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Vermillion Hereafter/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/VermillionHereafter_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Vermillion Hereafter/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/VermillionHereafter_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/04/01/151578876/f01a18333834d6d2f0fc6b16e5c66315_202703666826259154.png",
+          "local_path": "assets/artifact_sets/VermillionHereafter_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/04/01/151578876/2f1950fd9c5358084e73576118addd0c_5672916408829551409.png",
+          "local_path": "assets/artifact_sets/VermillionHereafter_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/04/01/151578876/ddb025344caee881c363687b84e35d22_5974462003918551856.png",
+          "local_path": "assets/artifact_sets/VermillionHereafter_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "ViridescentVenerer",
+      "hoyowiki_entry_id": "2091",
+      "artiscan_set_key": "ViridescentVenerer",
+      "fallback_name": "Viridescent Venerer",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Viridescent Venerer",
+          "normalized_name": "viridescent venerer",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Изумрудная тень",
+          "normalized_name": "изумрудная тень",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Viridescent Venerer/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/ViridescentVenerer_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Viridescent Venerer/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/ViridescentVenerer_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Viridescent Venerer/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/ViridescentVenerer_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Viridescent Venerer/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/ViridescentVenerer_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Viridescent Venerer/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/ViridescentVenerer_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "VourukashasGlow",
+      "hoyowiki_entry_id": "3694",
+      "artiscan_set_key": "VourukashasGlow",
+      "fallback_name": "Vourukasha's Glow",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Vourukasha's Glow",
+          "normalized_name": "vourukashas glow",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Сияние Вурукаши",
+          "normalized_name": "сияние вурукаши",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2023/04/10/35428890/bc9329baf36935b2fb094f783a7695f2_7474535067193858925.png",
+          "local_path": "assets/artifact_sets/VourukashasGlow_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://upload-static.hoyoverse.com/hoyolab-wiki/2023/04/10/35428890/70bb0ce74b0823c06d4228861df7aebe_5370503358955512635.png",
+          "local_path": "assets/artifact_sets/VourukashasGlow_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/ba10e34aa87726117ebad3dee1a40e4c_8584573290292038262.png",
+          "local_path": "assets/artifact_sets/VourukashasGlow_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/65916b37803325834f0f5f8dac66ad9a_6113201315889957762.png",
+          "local_path": "assets/artifact_sets/VourukashasGlow_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://act-upload.hoyoverse.com/event-ugc-hoyowiki/2025/03/31/151578876/fce888d514d4c5115035d43514d7065d_671358220269187676.png",
+          "local_path": "assets/artifact_sets/VourukashasGlow_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    },
+    {
+      "set_uid": "WanderersTroupe",
+      "hoyowiki_entry_id": "2081",
+      "artiscan_set_key": "WanderersTroupe",
+      "fallback_name": "Wanderer's Troupe",
+      "source": "hoyowiki",
+      "updated_at": "2026-05-09T14:02:35+00:00",
+      "names": [
+        {
+          "lang": "en-us",
+          "name": "Wanderer's Troupe",
+          "normalized_name": "wanderers troupe",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "lang": "ru-ru",
+          "name": "Странствующий ансамбль",
+          "normalized_name": "странствующий ансамбль",
+          "updated_at": "2026-05-08T23:57:45+00:00"
+        }
+      ],
+      "icons": [
+        {
+          "pos": 1,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Wanderer's Troupe/flower_of_life_icon.png",
+          "local_path": "assets/artifact_sets/WanderersTroupe_1.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 2,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Wanderer's Troupe/plume_of_death_icon.png",
+          "local_path": "assets/artifact_sets/WanderersTroupe_2.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 3,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Wanderer's Troupe/sands_of_eon_icon.png",
+          "local_path": "assets/artifact_sets/WanderersTroupe_3.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 4,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Wanderer's Troupe/goblet_of_eonothem_icon.png",
+          "local_path": "assets/artifact_sets/WanderersTroupe_4.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        },
+        {
+          "pos": 5,
+          "icon_url": "https://bbs.hoyolab.com/hoyowiki/picture/reliquary/Wanderer's Troupe/circlet_of_logos_icon.png",
+          "local_path": "assets/artifact_sets/WanderersTroupe_5.png",
+          "updated_at": "2026-05-09T14:02:35+00:00"
+        }
+      ]
+    }
+  ]
+}

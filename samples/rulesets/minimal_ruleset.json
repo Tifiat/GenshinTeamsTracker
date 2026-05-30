@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "name": "Minimal Local Ruleset Sample",
+  "source": "manual_sample",
+  "source_url": "",
+  "language": "en-us",
+  "characters": [
+    {
+      "name": "Amber",
+      "element": "PYRO",
+      "rarity": 4,
+      "weapon_type": "BOW",
+      "costs_by_constellation": {
+        "0": 1,
+        "1": 1,
+        "2": 1,
+        "3": 2,
+        "4": 2,
+        "5": 2,
+        "6": 3
+      },
+      "level_95_extra_cost": 1,
+      "level_100_extra_cost": 2
+    }
+  ],
+  "weapons": [
+    {
+      "name": "Favonius Warbow",
+      "weapon_type": "BOW",
+      "rarity": 4,
+      "costs_by_refinement": {
+        "1": 1,
+        "2": 1,
+        "3": 1,
+        "4": 1,
+        "5": 1
+      }
+    }
+  ],
+  "tiers": [
+    {
+      "name": "Tier 0",
+      "points_start": 0,
+      "points_end": 14,
+      "restrictions": []
+    }
+  ],
+  "draft_config": {
+    "challenge_type": "ABISMO",
+    "deck_point_limit": 70,
+    "initial_bans": 3,
+    "extra_ban_interval": 60,
+    "joker_interval": 20,
+    "joker_limit": 1,
+    "weapon_ban_location": "SEM_BAN",
+    "weapon_ban_count": 0
+  }
+}

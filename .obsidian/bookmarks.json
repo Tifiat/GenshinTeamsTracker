@@ -1,0 +1,41 @@
+{
+  "items": [
+    {
+      "type": "file",
+      "ctime": 1779697672309,
+      "path": "docs/obsidian/GTT/DataFlow.canvas"
+    },
+    {
+      "type": "file",
+      "ctime": 1779697681548,
+      "path": "docs/obsidian/GTT/GenshinTeamsTracker.canvas"
+    },
+    {
+      "type": "file",
+      "ctime": 1779731766896,
+      "path": "docs/obsidian/GTT/SourceBoundaries.canvas"
+    },
+    {
+      "type": "group",
+      "ctime": 1779732266720,
+      "items": [
+        {
+          "type": "file",
+          "ctime": 1779732248043,
+          "path": "docs/obsidian/GTT/DataFlow.canvas"
+        },
+        {
+          "type": "file",
+          "ctime": 1779732248043,
+          "path": "docs/obsidian/GTT/GenshinTeamsTracker.canvas"
+        },
+        {
+          "type": "file",
+          "ctime": 1779732248043,
+          "path": "docs/obsidian/GTT/SourceBoundaries.canvas"
+        }
+      ],
+      "title": "проект"
+    }
+  ]
+}

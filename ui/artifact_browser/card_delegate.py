@@ -20,8 +20,8 @@ CARD_SIZE = QSize(180, 136)
 GRID_SIZE = QSize(192, 148)
 ICON_SIZE = QSize(56, 56)
 OWNER_SIDE_ICON_SIZE = QSize(56, 56)
-OWNER_SIDE_ICON_RIGHT_MARGIN = 2
-OWNER_SIDE_ICON_TOP_MARGIN = 2
+OWNER_SIDE_ICON_RIGHT_MARGIN = -4
+OWNER_SIDE_ICON_TOP_MARGIN = -4
 
 CV_COLORS = [
     (0.0, 14.9, "#9b9b9b"),      # gray
@@ -93,7 +93,7 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         if owner_character_id is None:
             return False
         if self.current_owner_character_id is None:
-            return False
+            return True
         try:
             return int(owner_character_id) != int(self.current_owner_character_id)
         except (TypeError, ValueError):
@@ -126,16 +126,16 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         edit_selected = artifact.id in self.edit_selection_artifact_ids
         foreign_equipped = self._is_foreign_owner(artifact.owner_character_id)
 
-        if edit_selected:
-            background = QColor("#2d2b1f") if not hovered else QColor("#383526")
-            border = QColor("#d6b15d")
-        elif foreign_equipped:
+        if foreign_equipped:
             background = (
                 QColor(UI_BG_FOREIGN_EQUIPPED_HOVER)
                 if hovered
                 else QColor(UI_BG_FOREIGN_EQUIPPED)
             )
             border = QColor(UI_BORDER_FOREIGN_EQUIPPED)
+        elif edit_selected:
+            background = QColor("#2d2b1f") if not hovered else QColor("#383526")
+            border = QColor("#d6b15d")
         else:
             background = QColor("#252a33") if hovered else QColor("#20232a")
             border = QColor("#7da7ff") if selected else QColor("#6f86b8" if hovered else "#3a3f4b")

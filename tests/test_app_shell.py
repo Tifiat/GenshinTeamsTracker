@@ -1176,7 +1176,7 @@ class AppShellTest(unittest.TestCase):
         delegate = ArtifactCardDelegate()
 
         self.assertFalse(delegate._is_foreign_owner(None))
-        self.assertFalse(delegate._is_foreign_owner(10000050))
+        self.assertTrue(delegate._is_foreign_owner(10000050))
 
         self.assertTrue(delegate.set_current_owner_character_id(10000050))
         self.assertFalse(delegate._is_foreign_owner(None))

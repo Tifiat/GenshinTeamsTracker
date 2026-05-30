@@ -9,6 +9,7 @@ from PySide6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem,
 from .list_model import ArtifactRoles
 from .models import ArtifactItem
 from .stat_types import is_crit_type, stat_badge
+from ui.utils.owner_icon_badge import make_owner_icon_badge_background
 from ui.utils.ui_palette import (
     UI_BG_FOREIGN_EQUIPPED,
     UI_BG_FOREIGN_EQUIPPED_HOVER,
@@ -20,6 +21,9 @@ CARD_SIZE = QSize(180, 136)
 GRID_SIZE = QSize(192, 148)
 ICON_SIZE = QSize(56, 56)
 OWNER_SIDE_ICON_SIZE = QSize(70, 70)
+OWNER_SIDE_ICON_IN_BADGE_SIZE = QSize(66, 66)
+OWNER_SIDE_ICON_IN_BADGE_OFFSET_X = 0
+OWNER_SIDE_ICON_IN_BADGE_OFFSET_Y = 0
 OWNER_SIDE_ICON_RIGHT_MARGIN = -18
 OWNER_SIDE_ICON_TOP_MARGIN = -30
 
@@ -33,6 +37,7 @@ CV_COLORS = [
 ]
 
 _PIXMAP_CACHE: dict[tuple[str, int, int], QPixmap] = {}
+_OWNER_BADGE_PIXMAP_CACHE: dict[tuple[str, int, int, int, int], QPixmap] = {}
 
 
 def cached_scaled_pixmap(icon_path: Path, size: QSize) -> QPixmap | None:
@@ -53,6 +58,36 @@ def cached_scaled_pixmap(icon_path: Path, size: QSize) -> QPixmap | None:
     )
     _PIXMAP_CACHE[key] = scaled
     return scaled
+
+
+def cached_owner_badge_pixmap(icon_path: Path) -> QPixmap | None:
+    key = (
+        str(icon_path.resolve()),
+        OWNER_SIDE_ICON_SIZE.width(),
+        OWNER_SIDE_ICON_SIZE.height(),
+        OWNER_SIDE_ICON_IN_BADGE_OFFSET_X,
+        OWNER_SIDE_ICON_IN_BADGE_OFFSET_Y,
+    )
+    cached = _OWNER_BADGE_PIXMAP_CACHE.get(key)
+    if cached is not None and not cached.isNull():
+        return cached
+
+    icon = cached_scaled_pixmap(icon_path, OWNER_SIDE_ICON_IN_BADGE_SIZE)
+    if icon is None or icon.isNull():
+        return None
+
+    badge = make_owner_icon_badge_background(OWNER_SIDE_ICON_SIZE)
+    painter = QPainter(badge)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    painter.drawPixmap(
+        (badge.width() - icon.width()) // 2 + OWNER_SIDE_ICON_IN_BADGE_OFFSET_X,
+        (badge.height() - icon.height()) // 2 + OWNER_SIDE_ICON_IN_BADGE_OFFSET_Y,
+        icon,
+    )
+    painter.end()
+
+    _OWNER_BADGE_PIXMAP_CACHE[key] = badge
+    return badge
 
 
 def cv_color(artifact: ArtifactItem) -> QColor:
@@ -260,10 +295,7 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         if artifact.owner_icon_path is None:
             return
 
-        pixmap = cached_scaled_pixmap(
-            artifact.owner_icon_path,
-            OWNER_SIDE_ICON_SIZE,
-        )
+        pixmap = cached_owner_badge_pixmap(artifact.owner_icon_path)
         if pixmap is None:
             return
 

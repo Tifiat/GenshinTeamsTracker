@@ -73,6 +73,7 @@ from ui.utils.pixmap_utils import (
     scale_trimmed_pixmap_to_size,
 )
 from ui.utils.tooltips import install_custom_tooltip
+from ui.utils.ui_palette import UI_BG_APP
 from run_workspace.perf import log_perf, perf_ms, perf_now
 from ui.utils.overlay_scroll import (
     OverlayVerticalScrollArea,
@@ -492,7 +493,7 @@ QPushButton#target_filter_button[standardOnly="true"] {{
     background: transparent;
 }}
 QWidget#build_target_preview_strip {{
-    background: #000000;
+    background: {UI_BG_APP};
     border: none;
 }}
 QLabel#build_target_preview_content {{

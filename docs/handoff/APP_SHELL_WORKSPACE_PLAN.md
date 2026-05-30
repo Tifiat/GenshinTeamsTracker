@@ -54,6 +54,10 @@ right column patched in place.
 - Artifact/target/preset lists use overlay scrollbars. Artifact grid overlay
   scrollbar right-offset polish remains future work; keep it overlay-style so
   it does not consume layout width.
+- New/reworked reusable UI pieces should take colors from `ui/utils/ui_palette.py`
+  rather than adding local literal hex colors. Legacy QSS can be migrated later
+  when touched; do not do broad style churn during functional fixes.
+- `DragScrollArea` is reusable scroll mechanics plus edge chevrons/gradient only; the concrete caller owns the normal area background.
 - Known geometry follow-up: horizontal resize can still show top-level
   AppShell window movement/crawl from propagated minimum-size constraints. This
   is not Assignment-panel jitter. Future fix should inspect top-level geometry,

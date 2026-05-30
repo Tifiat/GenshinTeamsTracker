@@ -166,6 +166,7 @@ TARGET_TITLE_MIN_WIDTH = 54
 
 TARGET_FILTER_BUTTON_SIZE = FILTER_BUTTON_SIZE
 TARGET_FILTER_ICON_SIZE = FILTER_BUTTON_ICON_SIZE
+TARGET_FILTER_BUTTON_STYLE = filter_button_style("target_filter_button")
 TARGET_FILTER_SPACING = 4
 
 TARGET_ITEM_MIN_HEIGHT = 34
@@ -1304,6 +1305,7 @@ class ArtifactBrowserWindow(QWidget):
         button = QPushButton()
         button.setObjectName("target_filter_button")
         button.setCheckable(True)
+        button.setStyleSheet(TARGET_FILTER_BUTTON_STYLE)
         button.setIcon(QIcon(str(FILTER_ASSETS_DIR / icon_name)))
         button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
         button.clicked.connect(
@@ -1319,6 +1321,7 @@ class ArtifactBrowserWindow(QWidget):
     def _make_build_target_filter_reset_button(self) -> QPushButton:
         button = QPushButton()
         button.setObjectName("target_filter_button")
+        button.setStyleSheet(TARGET_FILTER_BUTTON_STYLE)
         button.setIcon(QIcon(str(FILTER_ASSETS_DIR / "Icon_Back.png")))
         button.setIconSize(QSize(TARGET_FILTER_ICON_SIZE, TARGET_FILTER_ICON_SIZE))
         button.clicked.connect(self.reset_build_target_filters)
@@ -1327,6 +1330,7 @@ class ArtifactBrowserWindow(QWidget):
     def _make_build_target_region_filter_button(self) -> QPushButton:
         button = QPushButton()
         button.setObjectName("target_filter_button")
+        button.setStyleSheet(TARGET_FILTER_BUTTON_STYLE)
         button.setCheckable(True)
         button.setChecked(bool(self.build_target_region_filters))
         button.setIcon(QIcon(str(FILTER_ASSETS_DIR / "Statue.png")))
@@ -1338,6 +1342,7 @@ class ArtifactBrowserWindow(QWidget):
     def _make_build_target_standard_filter_button(self) -> QPushButton:
         button = QPushButton()
         button.setObjectName("target_filter_button")
+        button.setStyleSheet(TARGET_FILTER_BUTTON_STYLE)
         button.setCheckable(False)
         button.setIcon(
             standard_character_filter_icon(

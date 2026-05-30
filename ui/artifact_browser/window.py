@@ -149,7 +149,8 @@ TARGET_PANEL_MARGINS = (5, 8, 5, 8)
 TARGET_PANEL_SPACING = 6
 BUILD_PANEL_WIDTH = 384
 ARTIFACT_GRID_FIT_PADDING = 4
-CONTENT_LAYOUT_SPACING = 4
+CONTENT_LAYOUT_SPACING = 0
+CONTENT_TARGET_BUILD_SPACING = 4
 ADAPTIVE_TARGET_RESIZE_DELAY_MS = 650
 ADAPTIVE_TARGET_RESIZE_SETTLE_MS = 40
 
@@ -903,6 +904,13 @@ class ArtifactBrowserWindow(QWidget):
         self.content_layout = content
         self._build_list_view(content)
         self._build_build_target_selector(content)
+        self.target_build_gap_widget = QWidget()
+        self.target_build_gap_widget.setFixedWidth(CONTENT_TARGET_BUILD_SPACING)
+        self.target_build_gap_widget.setSizePolicy(
+            QSizePolicy.Policy.Fixed,
+            QSizePolicy.Policy.Expanding,
+        )
+        content.addWidget(self.target_build_gap_widget)
         self._build_build_panel(content)
         root.addLayout(content, 1)
         self.empty_label = QLabel("")
@@ -990,7 +998,8 @@ class ArtifactBrowserWindow(QWidget):
             self.list_view.width() - self.list_view.viewport().width(),
         )
         fixed_internal_gaps = (
-            spacing * 2
+            spacing
+            + CONTENT_TARGET_BUILD_SPACING
             + viewport_chrome_width
             + ARTIFACT_GRID_FIT_PADDING
         )

@@ -39,6 +39,7 @@ from ui.artifact_browser.window import (
     BUILD_PANEL_WIDTH,
     BUILD_TARGET_UNIVERSAL_KEY,
     CONTENT_LAYOUT_SPACING,
+    CONTENT_TARGET_BUILD_SPACING,
     EDIT_MODE_BUILD_PRESET,
     TARGET_PANEL_MIN_WIDTH,
     TARGET_PANEL_WIDTH,
@@ -80,7 +81,7 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.sizePolicy().horizontalPolicy().name, "Fixed")
 
     def test_assignment_width_fit_minimum_one_column(self) -> None:
-        fixed_gaps = CONTENT_LAYOUT_SPACING * 2 + 4
+        fixed_gaps = CONTENT_LAYOUT_SPACING + CONTENT_TARGET_BUILD_SPACING + 4
         content_width = (
             BUILD_PANEL_WIDTH
             + fixed_gaps
@@ -103,7 +104,7 @@ class AppShellTest(unittest.TestCase):
         self.assertLessEqual(fit.total_used_width, content_width)
 
     def test_assignment_width_fit_sends_1440_like_extra_to_assignment(self) -> None:
-        fixed_gaps = CONTENT_LAYOUT_SPACING * 2 + 4
+        fixed_gaps = CONTENT_LAYOUT_SPACING + CONTENT_TARGET_BUILD_SPACING + 4
         extra_width = 32
         content_width = (
             BUILD_PANEL_WIDTH
@@ -128,7 +129,7 @@ class AppShellTest(unittest.TestCase):
         self.assertLessEqual(fit.total_used_width, content_width)
 
     def test_assignment_width_fit_transitions_to_two_and_three_columns(self) -> None:
-        fixed_gaps = CONTENT_LAYOUT_SPACING * 2 + 4
+        fixed_gaps = CONTENT_LAYOUT_SPACING + CONTENT_TARGET_BUILD_SPACING + 4
         for columns in (2, 3):
             with self.subTest(columns=columns):
                 content_width = (
@@ -206,7 +207,8 @@ class AppShellTest(unittest.TestCase):
             content_width=browser.content_layout.geometry().width(),
             preset_panel_width=browser.build_panel.width(),
             fixed_internal_gaps=(
-                spacing * 2
+                spacing
+                + CONTENT_TARGET_BUILD_SPACING
                 + viewport_chrome_width
                 + ARTIFACT_GRID_FIT_PADDING
             ),

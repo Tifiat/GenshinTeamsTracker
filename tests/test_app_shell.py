@@ -35,6 +35,7 @@ from ui.app_shell import (
 from ui.artifact_browser.card_delegate import GRID_SIZE
 from ui.artifact_browser.window import (
     ARTIFACT_GRID_FIT_PADDING,
+    ARTIFACT_LIST_MIN_WIDTH,
     ArtifactBrowserWindow,
     BUILD_PANEL_WIDTH,
     BUILD_TARGET_UNIVERSAL_KEY,
@@ -453,7 +454,10 @@ class AppShellTest(unittest.TestCase):
         self._app.processEvents()
 
         self.assertEqual(browser._artifact_column_count, 1)
-        self.assertEqual(browser.json_action_row_widget.width(), GRID_SIZE.width())
+        self.assertEqual(
+            browser.json_action_row_widget.width(),
+            ARTIFACT_LIST_MIN_WIDTH,
+        )
         self.assertLessEqual(browser.import_json_button.width(), GRID_SIZE.width() // 2)
         self.assertLessEqual(browser.clear_json_button.width(), GRID_SIZE.width() // 2)
         self.assertEqual(browser.build_panel.width(), BUILD_PANEL_WIDTH)

@@ -1,7 +1,38 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QRectF, QSize, Qt
+from PySide6.QtCore import QRect, QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
+
+
+DEFAULT_OWNER_BADGE_SIZE_RATIO = 43 / 70
+DEFAULT_OWNER_BADGE_OFFSET_X_RATIO = 1 / 70
+DEFAULT_OWNER_BADGE_OFFSET_Y_RATIO = 16 / 70
+
+
+def owner_badge_size_for_icon(
+    icon_size: QSize,
+    *,
+    size_ratio: float = DEFAULT_OWNER_BADGE_SIZE_RATIO,
+) -> QSize:
+    return QSize(
+        max(1, round(icon_size.width() * size_ratio)),
+        max(1, round(icon_size.height() * size_ratio)),
+    )
+
+
+def owner_badge_rect_for_icon_rect(
+    icon_rect: QRect,
+    badge_size: QSize,
+    *,
+    offset_x_ratio: float = DEFAULT_OWNER_BADGE_OFFSET_X_RATIO,
+    offset_y_ratio: float = DEFAULT_OWNER_BADGE_OFFSET_Y_RATIO,
+) -> QRect:
+    return QRect(
+        icon_rect.center().x() - badge_size.width() // 2 + round(icon_rect.width() * offset_x_ratio),
+        icon_rect.center().y() - badge_size.height() // 2 + round(icon_rect.height() * offset_y_ratio),
+        badge_size.width(),
+        badge_size.height(),
+    )
 
 
 def make_owner_icon_badge_background(

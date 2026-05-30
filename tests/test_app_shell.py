@@ -798,16 +798,24 @@ class AppShellTest(unittest.TestCase):
     def test_artifact_browser_current_equipment_zone_scaffold(self) -> None:
         browser = ArtifactBrowserWindow(embedded=True)
 
+        expected_no_target = tr(
+            "artifact.build.current_equipment_for_character",
+            name=tr("artifact.build.character_not_selected"),
+        )
         self.assertEqual(
             browser.equipment_zone_label.text(),
-            tr("artifact.build.current_equipment"),
+            expected_no_target,
         )
         browser.set_right_panel_operation_target(
             {"character_id": 10000050, "character_name": "Thoma"}
         )
+        expected_thoma_target = tr(
+            "artifact.build.current_equipment_for_character",
+            name="Thoma",
+        )
         self.assertEqual(
             browser.equipment_zone_label.text(),
-            tr("artifact.build.current_equipment"),
+            expected_thoma_target,
         )
 
         browser.selected_build_id = 123

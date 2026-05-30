@@ -1886,10 +1886,17 @@ class ArtifactBrowserWindow(QWidget):
         self.equipment_zone_label.setVisible(not preset_preview_active)
         if preset_preview_active:
             self.equipment_zone_label.setText("")
-        else:
+        elif self.operation_target_character_id is None:
             self.equipment_zone_label.setText(
-                self.applied_current_equipment_label
-                or tr("artifact.build.current_equipment")
+                tr("artifact.build.character_not_selected")
+            )
+        else:
+            target_name = (
+                self.operation_target_character_name
+                or str(self.operation_target_character_id)
+            )
+            self.equipment_zone_label.setText(
+                tr("artifact.build.current_equipment_for_character", name=target_name)
             )
 
     def _target_button_checked(self, key: str) -> bool:

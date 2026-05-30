@@ -209,6 +209,8 @@
   "artifact.custom.unsaved_cancel": "Cancel",
   "artifact.build.presets_title": "Presets",
   "artifact.build.current_equipment": "Current Equipment",
+  "artifact.build.current_equipment_for_character": "Current Equipment: {name}",
+  "artifact.build.character_not_selected": "No character selected",
   "artifact.equipment.target_none": "Select one character to equip.",
   "artifact.equipment.target_right_panel": "Equipment: {name}",
   "artifact.equipment.target_browser": "Equipment: {name}",

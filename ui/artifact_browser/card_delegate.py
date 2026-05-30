@@ -14,7 +14,8 @@ from .stat_types import is_crit_type, stat_badge
 CARD_SIZE = QSize(180, 136)
 GRID_SIZE = QSize(192, 148)
 ICON_SIZE = QSize(56, 56)
-OWNER_SIDE_ICON_SIZE = QSize(28, 28)
+OWNER_SIDE_ICON_SIZE = QSize(56, 56)
+OWNER_SIDE_ICON_MARGIN = 8
 
 CV_COLORS = [
     (0.0, 14.9, "#9b9b9b"),      # gray
@@ -115,6 +116,7 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         self._draw_main_stat(painter, option, card_rect, artifact)
         self._draw_icon_block(painter, option, card_rect, artifact)
         self._draw_substats(painter, option, card_rect, artifact)
+        self._draw_owner_icon(painter, card_rect, artifact)
 
         painter.restore()
 
@@ -190,8 +192,6 @@ class ArtifactCardDelegate(QStyledItemDelegate):
             painter.setPen(QColor("#d8c36a"))
             painter.drawText(icon_rect, Qt.AlignmentFlag.AlignCenter, "★")
 
-        self._draw_owner_icon(painter, icon_rect, artifact)
-
         cv_rect = QRect(
             card_rect.x() + 6,
             icon_rect.bottom() + 5,
@@ -222,7 +222,7 @@ class ArtifactCardDelegate(QStyledItemDelegate):
     def _draw_owner_icon(
         self,
         painter: QPainter,
-        icon_rect: QRect,
+        card_rect: QRect,
         artifact: ArtifactItem,
     ) -> None:
         if artifact.owner_icon_path is None:
@@ -236,8 +236,8 @@ class ArtifactCardDelegate(QStyledItemDelegate):
             return
 
         owner_rect = QRect(
-            icon_rect.right() - OWNER_SIDE_ICON_SIZE.width() + 1,
-            icon_rect.top(),
+            card_rect.right() - OWNER_SIDE_ICON_SIZE.width() - OWNER_SIDE_ICON_MARGIN,
+            card_rect.top() + OWNER_SIDE_ICON_MARGIN,
             OWNER_SIDE_ICON_SIZE.width(),
             OWNER_SIDE_ICON_SIZE.height(),
         )

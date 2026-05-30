@@ -31,6 +31,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 - Artifact Browser is stable enough to stop treating it as a pure prototype. C1 embeds it as an AppShell left workspace, but artifact equip/apply and owner side icons are still future work.
 - Future equipment UX task: persist the last applied build-preset marker per character so the current-equipment zone can show `{preset}: {character}` after app restart and after switching characters, until that character's artifact equipment actually changes. Current implementation only has an in-memory `ArtifactBrowserWindow.applied_current_equipment_label`.
+- AppShell uses the embedded Artifact Browser footprint as a global top-level minimum, not the current page/current target `minimumSizeHint()`. Keep the minimum state-independent so Characters/Weapons and Artifacts cannot shrink below the fixed current-equipment/build-preview area.
 - Completed manual smoke passes: Build Target Selector, target persistence, build/target preview, JSON import/clear, build preset lifecycle, and custom sets.
 - Compact preset rows show set-bonus metadata, sands/goblet main-stat badge, and cached set-bonus icons.
 - Build preset inline rename focus is fixed: entering edit mode focuses the name field and selects text so typing/backspace works immediately without an extra click.

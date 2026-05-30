@@ -51,6 +51,12 @@ right column patched in place.
   138px, target row button about 94px, and AppShell minimum about 1408px. The
   future divmod/remainder fit should build on this calibrated minimum, not on
   the old wider one-column viewport.
+- AppShell minimum height/width must be top-level and state-independent, not
+  derived from the currently visible `QStackedWidget` page. Artifact Browser
+  target/no-target state hides different widgets and changes `minimumSizeHint()`;
+  right-panel target sync can therefore make the window shrink below the fixed
+  current-equipment/build-preview area unless AppShell owns a global minimum.
+  Keep this as an explicit shell contract when adding new workspaces.
 - Artifact/target/preset lists use overlay scrollbars. Artifact grid overlay
   scrollbar right-offset polish remains future work; keep it overlay-style so
   it does not consume layout width.

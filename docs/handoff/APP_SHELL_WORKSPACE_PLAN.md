@@ -58,6 +58,29 @@ right column patched in place.
   rather than adding local literal hex colors. Legacy QSS can be migrated later
   when touched; do not do broad style churn during functional fixes.
 - `DragScrollArea` is reusable scroll mechanics plus edge chevrons/gradient only; the concrete caller owns the normal area background.
+- Shared filter buttons use `ui/utils/filter_button_style.py`. Do not duplicate
+  local QSS for filter button size, border, padding, hover, or checked states.
+  AppShell character/weapon filters and Artifact Browser target filters should
+  stay visually aligned through this helper.
+- Qt QSS button sizing rule: `min-width`/`max-width` can act like content-box
+  sizing. Border and padding may add to the real outer widget/content width. If
+  a filter button must occupy an exact outer size, compute/pass a content size
+  such as `outer - 2 * (border + padding)` and keep a test for hidden overflow.
+- If a hover/checked ring, border, or icon is clipped on one side inside a
+  scroll/layout strip, do not first change neighboring margins, z-order,
+  spacing, or unrelated button padding. First measure the actual widget/content
+  geometry: scroll `viewport()` size, `widget()` size, horizontal/vertical
+  scrollbar maximum, and the button's real outer size. For `DragScrollArea`,
+  `scroll.widget().width() <= scroll.viewport().width()` and scrollbar maximum
+  zero are the key no-hidden-overflow checks.
+- Hidden overflow in a scroll viewport can visually look like an unrelated
+  neighbor overlaying the control. Prove overflow is zero before changing target
+  rows, Assignment panel width, or AppShell minimum-size calibration.
+- Assignment/target geometry changes must be narrow and measured. The artifact
+  list minimum includes `GRID_SIZE.width() + ARTIFACT_GRID_FIT_PADDING`, the
+  artifact-to-target gap is intentionally zero, and the target-to-build gap is
+  the explicit `CONTENT_TARGET_BUILD_SPACING`. Do not reintroduce global content
+  spacing that consumes the artifact list's padding/remainder.
 - Known geometry follow-up: horizontal resize can still show top-level
   AppShell window movement/crawl from propagated minimum-size constraints. This
   is not Assignment-panel jitter. Future fix should inspect top-level geometry,

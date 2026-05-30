@@ -13,12 +13,15 @@ FILTER_BUTTON_ICON_SIZE = 24
 FILTER_BUTTON_BORDER_WIDTH = 2
 FILTER_BUTTON_RADIUS = 15
 FILTER_BUTTON_PADDING = 1
+FILTER_BUTTON_CONTENT_SIZE = FILTER_BUTTON_SIZE - 2 * (
+    FILTER_BUTTON_BORDER_WIDTH + FILTER_BUTTON_PADDING
+)
 
 
 def filter_button_style(
     object_name: str,
     *,
-    content_size: int = FILTER_BUTTON_SIZE,
+    content_size: int = FILTER_BUTTON_CONTENT_SIZE,
 ) -> str:
     return f"""
 QPushButton#{object_name} {{

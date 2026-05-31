@@ -9,7 +9,7 @@ from unittest.mock import patch
 from ui.utils.app_scaling import configure_startup_ui_scale
 
 configure_startup_ui_scale()
-from PySide6.QtCore import QRect, Qt
+from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import QApplication, QStyleOptionButton, QWidget
 
@@ -35,7 +35,10 @@ from ui.app_shell import (
     CharacterWeaponWorkspace,
     RIGHT_OPERATIONS_DOCK_WIDTH,
     RosterSelectionMarker,
+    WEAPON_PICKER_SAFE_MARGIN,
     _SCALED_ICON_PIXMAP_CACHE,
+    _weapon_owner_side_icon_size,
+    _weapon_owner_target_rect,
 )
 from ui.artifact_browser.card_delegate import ArtifactCardDelegate, CARD_SIZE, GRID_SIZE
 from ui.artifact_browser.window import (
@@ -2442,6 +2445,58 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(len(label.owner_badges), 1)
         self.assertIs(label.selection_marker, marker)
+
+    def test_weapon_grid_safe_margin_does_not_change_item_spacing(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+        with patch(
+            "ui.app_shell.load_account_weapon_stack_asset_items",
+            return_value=[_weapon_asset("13407", "Favonius Lance", weapon_type=13)],
+        ):
+            workspace.reload_weapons()
+
+        margins = workspace.weapon_grid.contentsMargins()
+        self.assertEqual(margins.top(), WEAPON_PICKER_SAFE_MARGIN)
+        self.assertEqual(margins.bottom(), WEAPON_PICKER_SAFE_MARGIN)
+        self.assertEqual(workspace.weapon_grid.horizontalSpacing(), 6)
+        self.assertEqual(workspace.weapon_grid.verticalSpacing(), 6)
+
+    def test_weapon_owner_target_rect_moves_predictably_with_overhang(self) -> None:
+        weapon_rect = QRect(100, 50, 48, 48)
+        side_icon_size = QSize(49, 49)
+        baseline = _weapon_owner_target_rect(
+            weapon_rect,
+            side_icon_size,
+            right_overhang=0,
+            top_overhang=0,
+        )
+        moved = _weapon_owner_target_rect(
+            weapon_rect,
+            side_icon_size,
+            right_overhang=3,
+            top_overhang=4,
+        )
+
+        self.assertEqual(moved.x(), baseline.x() + 3)
+        self.assertEqual(moved.y(), baseline.y() - 4)
+        self.assertEqual(moved.size(), baseline.size())
+
+    def test_weapon_owner_geometry_scales_from_logical_weapon_rect(self) -> None:
+        small_weapon_rect = QRect(100, 50, 48, 48)
+        large_weapon_rect = QRect(100, 50, 96, 96)
+        small_side_icon_size = _weapon_owner_side_icon_size(small_weapon_rect)
+        large_side_icon_size = _weapon_owner_side_icon_size(large_weapon_rect)
+        small_target = _weapon_owner_target_rect(small_weapon_rect, small_side_icon_size)
+        large_target = _weapon_owner_target_rect(large_weapon_rect, large_side_icon_size)
+
+        self.assertEqual(small_side_icon_size, QSize(49, 49))
+        self.assertEqual(large_side_icon_size, QSize(98, 98))
+        self.assertEqual(large_target.width(), small_target.width() * 2)
+        self.assertEqual(large_target.height(), small_target.height() * 2)
+
+    def test_weapon_owner_overlay_uses_workspace_host_above_viewport(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+
+        self.assertIs(workspace._weapon_owner_badge_overlay.parentWidget(), workspace)
 
     def test_marker_registry_survives_filter_rebuilds(self) -> None:
         workspace = CharacterWeaponWorkspace()

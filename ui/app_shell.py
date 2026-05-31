@@ -117,9 +117,19 @@ OWNER_BADGE_TRACE = os.environ.get("GTT_OWNER_BADGE_TRACE", "").strip().casefold
     "yes",
     "on",
 }
-WEAPON_PICKER_OWNER_SIDE_ICON_SIZE = QSize(49, 49)
-WEAPON_PICKER_OWNER_ICON_RIGHT_OVERHANG = 20
-WEAPON_PICKER_OWNER_ICON_TOP_OVERHANG = 22
+WEAPON_OWNER_OVERLAY_TRACE = os.environ.get(
+    "GTT_WEAPON_OWNER_OVERLAY_TRACE",
+    "",
+).strip().casefold() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+WEAPON_PICKER_OWNER_SIDE_ICON_RATIO = 49 / 48
+WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO = 18 / 70
+WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = 30 / 70
+WEAPON_PICKER_SAFE_MARGIN = 6
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
     10: "catalyst",
@@ -1555,10 +1565,6 @@ class CharacterWeaponWorkspace(QWidget):
             )
         )
         self.weapon_area, self.weapon_widget, self.weapon_grid = self._make_grid_area()
-        self._weapon_owner_badge_overlay = WeaponOwnerBadgeOverlay(
-            self.weapon_area,
-            lambda: self._weapon_cards_by_key.values(),
-        )
         root.addWidget(self.weapon_area, 1)
 
         root.addWidget(QLabel(tr("asset_panel.characters")))
@@ -1583,15 +1589,26 @@ class CharacterWeaponWorkspace(QWidget):
         )
         self.char_area, self.char_widget, self.char_grid = self._make_grid_area()
         root.addWidget(self.char_area, 3)
+        self._weapon_owner_badge_overlay = WeaponOwnerBadgeOverlay(
+            self,
+            self.weapon_area,
+            self.weapon_widget,
+            self.weapon_grid,
+            lambda: self._weapon_cards_by_key.values(),
+        )
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        self._weapon_owner_badge_overlay.sync_geometry()
+        self._weapon_owner_badge_overlay.update()
         if not self._initial_grid_built:
             self._initial_grid_built = True
             QTimer.singleShot(0, self.update_grids)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
+        self._weapon_owner_badge_overlay.sync_geometry()
+        self._weapon_owner_badge_overlay.update()
         if self._initial_grid_built:
             self.update_grids_delayed()
 
@@ -1742,6 +1759,7 @@ class CharacterWeaponWorkspace(QWidget):
             clicked=self.weapon_clicked.emit,
             grid_name="weapons",
             card_registry=self._weapon_cards_by_key,
+            vertical_safe_margin=WEAPON_PICKER_SAFE_MARGIN,
         )
         self._weapon_owner_badge_overlay.sync_geometry()
         self._weapon_owner_badge_overlay.update()
@@ -1927,6 +1945,7 @@ class CharacterWeaponWorkspace(QWidget):
         selection_markers: dict[str, RosterSelectionMarker] | None = None,
         grid_name: str = "icons",
         card_registry: dict[str, "AssetIconLabel"] | None = None,
+        vertical_safe_margin: int = 0,
     ) -> float:
         total_start = perf_now()
         _clear_grid(grid)
@@ -1953,7 +1972,8 @@ class CharacterWeaponWorkspace(QWidget):
         total_grid_width = cols * icon_size + max(0, cols - 1) * spacing
         left_margin = max(0, (available_width - total_grid_width) // 2)
         right_margin = max(0, available_width - total_grid_width - left_margin)
-        grid.setContentsMargins(left_margin, 0, right_margin, 0)
+        safe_margin = max(0, int(vertical_safe_margin))
+        grid.setContentsMargins(left_margin, safe_margin, right_margin, safe_margin)
         grid.setHorizontalSpacing(spacing)
         grid.setVerticalSpacing(spacing)
         for column in range(cols):
@@ -2092,6 +2112,36 @@ def _trace_rect(rect: QRect) -> str:
     return f"{rect.x()},{rect.y()},{rect.width()}x{rect.height()}"
 
 
+def _weapon_owner_side_icon_size(weapon_rect: QRect) -> QSize:
+    return QSize(
+        max(1, int(round(weapon_rect.width() * WEAPON_PICKER_OWNER_SIDE_ICON_RATIO))),
+        max(1, int(round(weapon_rect.height() * WEAPON_PICKER_OWNER_SIDE_ICON_RATIO))),
+    )
+
+
+def _weapon_owner_target_rect(
+    weapon_rect: QRect,
+    side_icon_size: QSize,
+    *,
+    right_overhang: int | None = None,
+    top_overhang: int | None = None,
+) -> QRect:
+    if right_overhang is None:
+        right_overhang = int(
+            round(side_icon_size.width() * WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO)
+        )
+    if top_overhang is None:
+        top_overhang = int(
+            round(side_icon_size.height() * WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO)
+        )
+    return QRect(
+        weapon_rect.right() - side_icon_size.width() + 1 + int(right_overhang),
+        weapon_rect.top() - int(top_overhang),
+        side_icon_size.width(),
+        side_icon_size.height(),
+    )
+
+
 class AssetIconLabel(QLabel):
     clicked = Signal(dict)
 
@@ -2202,33 +2252,29 @@ class WeaponOwnerBadgeOverlay(QWidget):
 
     def __init__(
         self,
+        overlay_host: QWidget,
         scroll_area: QScrollArea,
+        container: QWidget,
+        grid: QGridLayout,
         cards: Callable[[], Iterable[AssetIconLabel]],
     ) -> None:
-        super().__init__(scroll_area.viewport())
+        super().__init__(overlay_host)
+        self._overlay_host = overlay_host
         self._scroll_area = scroll_area
+        self._container = container
+        self._grid = grid
         self._cards = cards
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self._scroll_area.viewport().installEventFilter(self)
         self._scroll_area.verticalScrollBar().valueChanged.connect(self.update)
         self._scroll_area.horizontalScrollBar().valueChanged.connect(self.update)
         self.sync_geometry()
         self.show()
 
     def sync_geometry(self) -> None:
-        self.setGeometry(self._scroll_area.viewport().rect())
+        self.setGeometry(self._overlay_host.rect())
         self.raise_()
-
-    def eventFilter(self, watched, event) -> bool:
-        if watched is self._scroll_area.viewport() and event.type() in (
-            QEvent.Type.Resize,
-            QEvent.Type.Show,
-        ):
-            self.sync_geometry()
-            self.update()
-        return super().eventFilter(watched, event)
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
@@ -2251,7 +2297,15 @@ class WeaponOwnerBadgeOverlay(QWidget):
             self.mapFromGlobal(card.mapToGlobal(icon_rect.topLeft())),
             icon_rect.size(),
         )
-        if not weapon_rect.intersects(self.rect()):
+        viewport_rect = QRect(
+            self.mapFromGlobal(
+                self._scroll_area.viewport().mapToGlobal(
+                    self._scroll_area.viewport().rect().topLeft()
+                )
+            ),
+            self._scroll_area.viewport().size(),
+        )
+        if not weapon_rect.intersects(viewport_rect):
             return
 
         badge = card.owner_badges[0]
@@ -2261,20 +2315,14 @@ class WeaponOwnerBadgeOverlay(QWidget):
 
         owner_pixmap = _owner_badge_icon_pixmap(
             side_icon_path,
-            WEAPON_PICKER_OWNER_SIDE_ICON_SIZE,
+            _weapon_owner_side_icon_size(weapon_rect),
         )
         if owner_pixmap is None:
             return
 
-        owner_target = QRect(
-            weapon_rect.right()
-            - owner_pixmap.width()
-            + 1
-            + WEAPON_PICKER_OWNER_ICON_RIGHT_OVERHANG,
-            weapon_rect.y()
-            - WEAPON_PICKER_OWNER_ICON_TOP_OVERHANG,
-            owner_pixmap.width(),
-            owner_pixmap.height(),
+        owner_target = _weapon_owner_target_rect(
+            weapon_rect,
+            owner_pixmap.size(),
         )
         if not owner_target.intersects(self.rect()):
             return
@@ -2284,17 +2332,28 @@ class WeaponOwnerBadgeOverlay(QWidget):
         if badge_rect.isNull() or not badge_rect.isValid():
             return
 
-        if OWNER_BADGE_TRACE:
+        if OWNER_BADGE_TRACE or WEAPON_OWNER_OVERLAY_TRACE:
+            container_rect = QRect(
+                self.mapFromGlobal(self._container.mapToGlobal(self._container.rect().topLeft())),
+                self._container.size(),
+            )
+            margins = self._grid.contentsMargins()
             print(
                 "[OWNER_BADGE_TRACE] "
                 "surface=weapon_picker_owner_overlay "
-                f"viewport={self.width()}x{self.height()} "
+                f"overlay={_trace_rect(self.rect())} "
+                f"viewport={_trace_rect(viewport_rect)} "
+                f"container={_trace_rect(container_rect)} "
+                f"grid_margins={margins.left()},{margins.top()},{margins.right()},{margins.bottom()} "
+                f"grid_spacing={self._grid.horizontalSpacing()},{self._grid.verticalSpacing()} "
                 f"weapon_rect={_trace_rect(weapon_rect)} "
                 f"source={side_icon_path!r} "
                 f"owner_scaled={owner_pixmap.width()}x{owner_pixmap.height()} "
                 f"owner_target={_trace_rect(owner_target)} "
                 f"badge_size={badge_size.width()}x{badge_size.height()} "
                 f"badge_rect={_trace_rect(badge_rect)} "
+                f"owner_crosses_viewport={not viewport_rect.contains(owner_target)} "
+                f"badge_crosses_viewport={not viewport_rect.contains(badge_rect)} "
                 "computed_from=owner_icon_rect"
             )
 

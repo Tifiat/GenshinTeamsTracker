@@ -7,6 +7,14 @@ This file is written for future coding agents. Keep it compact, English, and mos
 - The user usually writes in Russian, but project handoff files should stay in English.
 - Be frugal with context and tool output.
 - Prefer narrow `rg` queries and small file slices.
+- When the user is asking to discuss, clarify, reason about, decide on rules, or validate an approach, treat the turn as discussion-only. Do not edit files or apply changes until the user explicitly asks to implement, apply, save, or write them. This rule applies by intent in any language, not by exact words.
+- Do not treat an acknowledgement of understanding as permission to implement. Phrases in any language that mean "I understand", "got it", "yes, that is the idea", or similar are not approval to edit files.
+- If a user term can reasonably refer to multiple UI, data, or architecture entities, do not silently choose one when the interpretations would materially change the implementation or the answer. State the plausible meanings briefly, ask which one is intended, and wait for clarification before proceeding. Apply the same rule to technical questions, not only file edits. Do not ask unnecessary questions when the ambiguity does not affect the result.
+- If the user asks to make UI "like" an existing project surface, inspect and reuse that working implementation pattern before inventing a new one. First identify the working class/function, coordinate system, parent or viewport used for painting, constants controlling size/offsets, and whether layout size is affected.
+- For visual placement bugs, do not repeatedly tweak offsets after failed screenshots. After one failed visual attempt, stop and inspect coordinate systems and actual rects. After two failed attempts, ask for confirmation or more data before further changes.
+- Before changing Qt overlay or painting coordinates, identify the source and target coordinate spaces. Do not use `mapTo(other_widget, ...)` for sibling overlays unless the widget relationship is verified; use a known common ancestor or global mapping when needed.
+- Do not anchor normalized icon assets by alpha bounds unless the user explicitly asks for content-aware placement. If assets share a calibrated canvas, position the full canvas with one formula and treat silhouette differences as intentional content inside that canvas.
+- Do not claim understanding and start implementing if the requested visual or coordinate model is not concrete. Restate what stays unchanged, what layer changes, what coordinate anchor is used, and what existing implementation is being copied; ask a question if any of those are unclear.
 - Final AppShell startup must support adaptive downscale on screens narrower
   than the 1920px reference width. Keep the calibrated design/layout constants;
   scale the rendered UI down instead of compressing layouts or lowering minimums.

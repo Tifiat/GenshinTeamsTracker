@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 
-from ui.app_shell import launch_app_shell
+from ui.utils.app_scaling import configure_startup_ui_scale
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -27,6 +27,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.perf_log:
         os.environ["GTT_PERF_LOG"] = "1"
+    configure_startup_ui_scale()
+
+    from ui.app_shell import launch_app_shell
+
     return launch_app_shell()
 
 

@@ -20,15 +20,15 @@
 		{"id":"df_session_ui_state","type":"text","text":"[РАБОТАЕТ]\nAppShell UI state\n\nВыборы Abyss/DPS Dummy остаются UI state по режимам.\n\nЭкипировка персонажа читается из persistent account equipment DB, а не из session memory.","x":3240,"y":420,"width":390,"height":175,"color":"4"}
 	],
 	"edges":[
-		{"id":"df_e_1","fromNode":"df_source","fromSide":"right","toNode":"df_capture","toSide":"left","toEnd":"arrow"},
-		{"id":"df_e_2","fromNode":"df_capture","fromSide":"right","toNode":"df_crop","toSide":"left","toEnd":"arrow"},
-		{"id":"df_e_3","fromNode":"df_crop","fromSide":"right","toNode":"df_assets","toSide":"left","toEnd":"arrow"},
-		{"id":"df_e_4","fromNode":"df_assets","fromSide":"right","toNode":"df_json","toSide":"left","toEnd":"arrow"},
-		{"id":"df_e_5","fromNode":"df_json","fromSide":"right","toNode":"df_account_db","toSide":"left","toEnd":"arrow"},
-		{"id":"df_e_6","fromNode":"df_account_db","fromSide":"right","toNode":"df_artifacts","toSide":"left","toEnd":"arrow"},
-		{"id":"df_e_7","fromNode":"df_artifacts","fromSide":"right","toNode":"df_details","toSide":"left","toEnd":"arrow"},
-		{"id":"df_e_8","fromNode":"df_details","fromSide":"right","toNode":"df_ui","toSide":"left","toEnd":"arrow"},
-		{"id":"df_e_9","fromNode":"df_ui","fromSide":"right","toNode":"df_run","toSide":"left","toEnd":"arrow"},
-		{"id":"df_e_ui_session_state","fromNode":"df_ui","fromSide":"bottom","toNode":"df_session_ui_state","toSide":"top","toEnd":"arrow"}
+		{"id":"df_e_1","fromNode":"df_source","fromSide":"right","toNode":"df_capture","toSide":"left"},
+		{"id":"df_e_2","fromNode":"df_capture","fromSide":"right","toNode":"df_crop","toSide":"left"},
+		{"id":"df_e_3","fromNode":"df_crop","fromSide":"right","toNode":"df_assets","toSide":"left"},
+		{"id":"df_e_4","fromNode":"df_assets","fromSide":"right","toNode":"df_json","toSide":"left"},
+		{"id":"df_e_5","fromNode":"df_json","fromSide":"right","toNode":"df_account_db","toSide":"left"},
+		{"id":"df_e_6","fromNode":"df_account_db","fromSide":"right","toNode":"df_artifacts","toSide":"left"},
+		{"id":"df_e_7","fromNode":"df_artifacts","fromSide":"right","toNode":"df_details","toSide":"left"},
+		{"id":"df_e_8","fromNode":"df_details","fromSide":"right","toNode":"df_ui","toSide":"left"},
+		{"id":"df_e_9","fromNode":"df_ui","fromSide":"right","toNode":"df_run","toSide":"left"},
+		{"id":"df_e_ui_session_state","fromNode":"df_ui","fromSide":"bottom","toNode":"df_session_ui_state","toSide":"top"}
 	]
 }

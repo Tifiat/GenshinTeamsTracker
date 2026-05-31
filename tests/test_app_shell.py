@@ -56,7 +56,7 @@ from ui.artifact_browser.window import (
 )
 from run_workspace.perf import perf_enabled
 from localization import tr
-from ui.character_assets import STANDARD_FILTER_ONLY
+from ui.character_assets import STANDARD_FILTER_ONLY, load_account_weapon_stack_asset_items
 from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
@@ -2337,6 +2337,111 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(load_items.call_count, 1)
         self.assertEqual(workspace.weapon_grid.count(), 1)
+
+    def test_weapon_asset_items_include_owner_badge_metadata_for_equipped_weapon(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                weapon_icon = Path(temp_dir) / "weapon.png"
+                side_icon = Path(temp_dir) / "side.png"
+                for path, color in ((weapon_icon, "#ffcc00"), (side_icon, "#00ccff")):
+                    pixmap = QPixmap(8, 8)
+                    pixmap.fill(QColor(color))
+                    self.assertTrue(pixmap.save(str(path)))
+                with closing(connect_db(db_path)) as conn:
+                    conn.execute(
+                        """
+                        UPDATE account_weapon_observed_stacks
+                        SET icon_path = ?
+                        WHERE weapon_fingerprint = 'fingerprint-13407'
+                        """,
+                        (str(weapon_icon),),
+                    )
+                    conn.execute(
+                        """
+                        UPDATE account_characters
+                        SET side_icon_path = ?
+                        WHERE character_id = 10000050
+                        """,
+                        (str(side_icon),),
+                    )
+                    equip_weapon(conn, 10000050, "fingerprint-13407")
+                    conn.commit()
+
+                assets = load_account_weapon_stack_asset_items(db_path=db_path)
+
+        owned = next(
+            asset
+            for asset in assets
+            if asset["metadata"]["weapon"]["source_key"] == "fingerprint-13407"
+        )
+        badges = owned["metadata"].get("owner_badges") or []
+        self.assertEqual(len(badges), 1)
+        self.assertEqual(badges[0]["character_id"], "10000050")
+        self.assertEqual(badges[0]["side_icon_path"], str(side_icon))
+        self.assertEqual(owned["metadata"]["extra_owner_count"], 0)
+
+    def test_weapon_asset_items_omit_owner_badge_metadata_for_unequipped_weapon(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                weapon_icon = Path(temp_dir) / "weapon.png"
+                pixmap = QPixmap(8, 8)
+                pixmap.fill(QColor("#ffcc00"))
+                self.assertTrue(pixmap.save(str(weapon_icon)))
+                with closing(connect_db(db_path)) as conn:
+                    conn.execute(
+                        """
+                        UPDATE account_weapon_observed_stacks
+                        SET icon_path = ?
+                        WHERE weapon_fingerprint = 'fingerprint-13407'
+                        """,
+                        (str(weapon_icon),),
+                    )
+                    conn.commit()
+
+                assets = load_account_weapon_stack_asset_items(db_path=db_path)
+
+        unowned = next(
+            asset
+            for asset in assets
+            if asset["metadata"]["weapon"]["source_key"] == "fingerprint-13407"
+        )
+        self.assertNotIn("owner_badges", unowned["metadata"])
+
+    def test_asset_icon_label_accepts_owner_badge_metadata_with_selection_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            icon = Path(temp_dir) / "weapon.png"
+            side_icon = Path(temp_dir) / "side.png"
+            for path, color in ((icon, "#ffcc00"), (side_icon, "#00ccff")):
+                pixmap = QPixmap(8, 8)
+                pixmap.fill(QColor(color))
+                self.assertTrue(pixmap.save(str(path)))
+
+            marker = RosterSelectionMarker(
+                team_index=0,
+                slot_index=0,
+                slot_number=1,
+                color="#3ed47b",
+            )
+            label = AssetIconLabel(
+                str(icon),
+                48,
+                asset={
+                    "path": str(icon),
+                    "metadata": {
+                        "owner_badges": [
+                            {
+                                "character_id": "10000050",
+                                "name": "Thoma",
+                                "side_icon_path": str(side_icon),
+                            }
+                        ]
+                    },
+                },
+                selection_marker=marker,
+            )
+
+        self.assertEqual(len(label.owner_badges), 1)
+        self.assertIs(label.selection_marker, marker)
 
     def test_marker_registry_survives_filter_rebuilds(self) -> None:
         workspace = CharacterWeaponWorkspace()

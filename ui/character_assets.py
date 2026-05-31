@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,7 @@ from hoyolab_export.account_storage import (
     list_account_characters,
     list_account_weapon_observed_stacks,
 )
+from hoyolab_export.account_equipment import list_equipped_weapon_owners
 from hoyolab_export.artifact_stats import (
     ATK_PERCENT,
     CRIT_DAMAGE,
@@ -192,7 +194,7 @@ def load_account_character_asset_items(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
 ) -> list[dict]:
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
         return [
             item
             for item in (
@@ -207,11 +209,21 @@ def load_account_weapon_stack_asset_items(
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
 ) -> list[dict]:
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn:
+        characters_by_id = {
+            str(record.character_id): record
+            for record in list_account_characters(conn)
+        }
         return [
             item
             for item in (
-                account_weapon_stack_asset_item(record)
+                account_weapon_stack_asset_item(
+                    record,
+                    owner_badges=_weapon_owner_badges(
+                        characters_by_id,
+                        list_equipped_weapon_owners(conn, record.weapon_fingerprint),
+                    ),
+                )
                 for record in list_account_weapon_observed_stacks(conn)
             )
             if item is not None
@@ -251,6 +263,8 @@ def account_character_asset_item(
 
 def account_weapon_stack_asset_item(
     record: AccountWeaponObservedStack,
+    *,
+    owner_badges: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     if record.rarity in IGNORED_WEAPON_RARITIES:
         return None
@@ -268,12 +282,37 @@ def account_weapon_stack_asset_item(
         "source_metadata": dict(record.source_metadata or {}),
         "warnings": list(record.warnings),
     }
+    if owner_badges:
+        metadata["owner_badges"] = list(owner_badges)
+        metadata["extra_owner_count"] = max(0, len(owner_badges) - 1)
     return {
         "path": path,
         "filename": path.name,
         "tooltip": _weapon_tooltip(record),
         "metadata": metadata,
     }
+
+
+def _weapon_owner_badges(
+    characters_by_id: dict[str, AccountCharacterRuntimeRecord],
+    owner_character_ids: tuple[int, ...],
+) -> list[dict[str, Any]]:
+    badges: list[dict[str, Any]] = []
+    for character_id in owner_character_ids:
+        record = characters_by_id.get(str(character_id))
+        if record is None:
+            continue
+        side_icon_path = _existing_project_path(record.side_icon_path)
+        if side_icon_path is None:
+            continue
+        badges.append(
+            {
+                "character_id": str(record.character_id),
+                "name": record.name,
+                "side_icon_path": str(side_icon_path),
+            }
+        )
+    return badges
 
 
 def _existing_project_path(value: str | Path | None) -> Path | None:

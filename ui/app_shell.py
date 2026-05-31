@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from contextlib import closing
 from dataclasses import dataclass, field
@@ -78,6 +79,11 @@ from ui.utils.filter_button_style import (
     filter_button_style,
 )
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
+from ui.utils.owner_icon_badge import (
+    make_owner_icon_badge_background,
+    owner_badge_rect_for_icon_rect,
+    owner_badge_size_for_icon,
+)
 from ui.utils.tooltips import install_custom_tooltip
 
 
@@ -102,6 +108,16 @@ MODE_TEAM_COUNTS = {
 }
 TEAM_MARKER_COLORS = ("#3ed47b", "#4e91ff")
 _SCALED_ICON_PIXMAP_CACHE: dict[tuple[str, int, int, int, int], QPixmap] = {}
+_OWNER_BADGE_ICON_PIXMAP_CACHE: dict[tuple[str, int, int, int, int], QPixmap | None] = {}
+_OWNER_BADGE_BACKGROUND_CACHE: dict[tuple[int, int], QPixmap] = {}
+OWNER_BADGE_TRACE = os.environ.get("GTT_OWNER_BADGE_TRACE", "").strip().casefold() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+WEAPON_PICKER_OWNER_ICON_SCALE = 0.88
+WEAPON_PICKER_OWNER_ICON_OVERHANG = 0
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
     10: "catalyst",
@@ -2014,6 +2030,53 @@ def _scaled_icon_pixmap(image_path: str, size: int, dpr: float) -> tuple[QPixmap
     return pixmap, False
 
 
+def _owner_badge_icon_pixmap(image_path: str, size: QSize) -> QPixmap | None:
+    path = Path(image_path)
+    try:
+        stat = path.stat()
+        key = (
+            str(path),
+            int(size.width()),
+            int(size.height()),
+            int(stat.st_mtime_ns),
+            int(stat.st_size),
+        )
+    except OSError:
+        key = (str(path), int(size.width()), int(size.height()), 0, 0)
+
+    if key in _OWNER_BADGE_ICON_PIXMAP_CACHE:
+        cached = _OWNER_BADGE_ICON_PIXMAP_CACHE[key]
+        return QPixmap(cached) if cached is not None else None
+
+    source = QPixmap(str(path))
+    if source.isNull():
+        _OWNER_BADGE_ICON_PIXMAP_CACHE[key] = None
+        return None
+
+    pixmap = source.scaled(
+        size,
+        Qt.AspectRatioMode.KeepAspectRatio,
+        Qt.TransformationMode.SmoothTransformation,
+    )
+    _OWNER_BADGE_ICON_PIXMAP_CACHE[key] = QPixmap(pixmap)
+    return pixmap
+
+
+def _owner_badge_background(size: QSize) -> QPixmap:
+    key = (size.width(), size.height())
+    cached = _OWNER_BADGE_BACKGROUND_CACHE.get(key)
+    if cached is not None and not cached.isNull():
+        return cached
+
+    pixmap = make_owner_icon_badge_background(size)
+    _OWNER_BADGE_BACKGROUND_CACHE[key] = pixmap
+    return pixmap
+
+
+def _trace_rect(rect: QRect) -> str:
+    return f"{rect.x()},{rect.y()},{rect.width()}x{rect.height()}"
+
+
 class AssetIconLabel(QLabel):
     clicked = Signal(dict)
 
@@ -2031,6 +2094,7 @@ class AssetIconLabel(QLabel):
         self.asset = asset or {}
         self.base_size = int(size)
         self.selection_marker = selection_marker
+        self.owner_badges = _asset_owner_badges(self.asset)
         self._last_pixmap_cache_hit = False
         self._tooltip_controller = install_custom_tooltip(self)
         self.setFixedSize(size, size)
@@ -2067,6 +2131,7 @@ class AssetIconLabel(QLabel):
 
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
+        self._draw_owner_badges()
         marker = self.selection_marker
         if marker is None:
             return
@@ -2096,6 +2161,81 @@ class AssetIconLabel(QLabel):
             str(marker.slot_number),
         )
 
+    def _draw_owner_badges(self) -> None:
+        if not self.owner_badges:
+            return
+        icon_rect = self._displayed_icon_rect()
+        if icon_rect.isNull() or not icon_rect.isValid():
+            return
+
+        # 48px weapon-picker cells use a deterministic MVP: draw the first
+        # owner badge and keep any additional owners in asset metadata.
+        badge = self.owner_badges[0]
+        side_icon_path = _text(badge.get("side_icon_path"))
+        if not side_icon_path:
+            return
+
+        owner_icon_size = max(
+            1,
+            int(round(min(icon_rect.width(), icon_rect.height()) * WEAPON_PICKER_OWNER_ICON_SCALE)),
+        )
+        owner_bounds = QRect(
+            icon_rect.right() - owner_icon_size + 1,
+            icon_rect.y(),
+            owner_icon_size,
+            owner_icon_size,
+        )
+        owner_pixmap = _owner_badge_icon_pixmap(side_icon_path, owner_bounds.size())
+        if owner_pixmap is None:
+            return
+
+        owner_target = QRect(
+            icon_rect.right() - owner_pixmap.width() + 1 + WEAPON_PICKER_OWNER_ICON_OVERHANG,
+            icon_rect.y() - WEAPON_PICKER_OWNER_ICON_OVERHANG,
+            owner_pixmap.width(),
+            owner_pixmap.height(),
+        )
+        if owner_target.isNull() or not owner_target.isValid():
+            return
+
+        badge_size = owner_badge_size_for_icon(owner_target.size())
+        badge_rect = owner_badge_rect_for_icon_rect(owner_target, badge_size)
+        if badge_rect.isNull() or not badge_rect.isValid():
+            return
+
+        if OWNER_BADGE_TRACE:
+            print(
+                "[OWNER_BADGE_TRACE] "
+                "surface=weapon_picker_owner "
+                f"widget={self.width()}x{self.height()} "
+                f"weapon_rect={_trace_rect(icon_rect)} "
+                f"source={side_icon_path!r} "
+                f"owner_scaled={owner_pixmap.width()}x{owner_pixmap.height()} "
+                f"owner_target={_trace_rect(owner_target)} "
+                f"badge_size={badge_size.width()}x{badge_size.height()} "
+                f"badge_rect={_trace_rect(badge_rect)} "
+                "computed_from=owner_icon_rect"
+            )
+
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.drawPixmap(badge_rect, _owner_badge_background(badge_rect.size()))
+        painter.drawPixmap(owner_target, owner_pixmap)
+
+    def _displayed_icon_rect(self) -> QRect:
+        pixmap = self.pixmap()
+        if pixmap is None or pixmap.isNull():
+            return QRect()
+        ratio = pixmap.devicePixelRatio() or 1.0
+        width = max(1, round(pixmap.width() / ratio))
+        height = max(1, round(pixmap.height() / ratio))
+        return QRect(
+            (self.width() - width) // 2,
+            (self.height() - height) // 2,
+            width,
+            height,
+        )
+
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self.clicked.emit(dict(self.asset))
@@ -2121,6 +2261,14 @@ def _reset_grid_columns(grid: QGridLayout) -> None:
 def _asset_metadata_mapping(asset: dict[str, Any], key: str) -> dict[str, Any]:
     metadata = _mapping(asset.get("metadata"))
     return _mapping(metadata.get(key))
+
+
+def _asset_owner_badges(asset: dict[str, Any]) -> list[dict[str, Any]]:
+    metadata = _mapping(asset.get("metadata"))
+    badges = metadata.get("owner_badges")
+    if not isinstance(badges, list):
+        return []
+    return [dict(badge) for badge in badges if isinstance(badge, dict)]
 
 
 def _asset_character_id(asset: dict[str, Any]) -> str:

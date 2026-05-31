@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import os
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -81,6 +82,12 @@ _BONUS_SOURCE_ICON_PIXMAP_CACHE: dict[
 _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 BONUS_MEMBER_ICON_SCALE = 125
 BONUS_MEMBER_ICON_BOTTOM_PADDING = 0
+OWNER_BADGE_TRACE = os.environ.get("GTT_OWNER_BADGE_TRACE", "").strip().casefold() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -1619,6 +1626,10 @@ def _resolve_pixmap_path(path: str) -> Path:
     return resolved
 
 
+def _trace_rect(rect: QRect) -> str:
+    return f"{rect.x()},{rect.y()},{rect.width()}x{rect.height()}"
+
+
 def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
     if not path:
         return None
@@ -1671,6 +1682,18 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
     icon_rect = QRect(x, y, scaled.width(), scaled.height())
     badge_size = owner_badge_size_for_icon(icon_rect.size())
     badge_rect = owner_badge_rect_for_icon_rect(icon_rect, badge_size)
+    if OWNER_BADGE_TRACE:
+        print(
+            "[OWNER_BADGE_TRACE] "
+            "surface=right_panel_bonus_member "
+            f"canvas={size.width()}x{size.height()} "
+            f"source={str(resolved)!r} "
+            f"owner_scaled={scaled.width()}x{scaled.height()} "
+            f"owner_target={_trace_rect(icon_rect)} "
+            f"badge_size={badge_size.width()}x{badge_size.height()} "
+            f"badge_rect={_trace_rect(badge_rect)} "
+            "computed_from=owner_icon_rect"
+        )
     painter.drawPixmap(badge_rect, make_owner_icon_badge_background(badge_size))
     painter.drawPixmap(x, y, scaled)
     painter.end()

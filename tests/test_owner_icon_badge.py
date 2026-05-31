@@ -33,6 +33,24 @@ class OwnerIconBadgeTest(unittest.TestCase):
         self.assertEqual(large_rect.x() - large_icon.x(), (small_rect.x() - small_icon.x()) * 2)
         self.assertEqual(large_rect.y() - large_icon.y(), (small_rect.y() - small_icon.y()) * 2)
 
+    def test_badge_geometry_depends_only_on_owner_icon_rect(self) -> None:
+        owner_icon_rect = QRect(12, 20, 20, 20)
+        first_badge_size = owner_badge_size_for_icon(owner_icon_rect.size())
+        first_badge_rect = owner_badge_rect_for_icon_rect(
+            owner_icon_rect,
+            first_badge_size,
+        )
+
+        # Container/canvas size is intentionally not an input to the helper.
+        second_badge_size = owner_badge_size_for_icon(QSize(20, 20))
+        second_badge_rect = owner_badge_rect_for_icon_rect(
+            QRect(12, 20, 20, 20),
+            second_badge_size,
+        )
+
+        self.assertEqual(first_badge_size, second_badge_size)
+        self.assertEqual(first_badge_rect, second_badge_rect)
+
 
 if __name__ == "__main__":
     unittest.main()

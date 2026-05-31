@@ -221,6 +221,9 @@
   "lastOpenFiles": [
     "data/artifacts.db-shm",
     "data/artifacts.db-wal",
+    "ui/__pycache__/right_panel_prototype.cpython-314.pyc",
+    "ui/__pycache__/app_shell.cpython-314.pyc",
+    "tests/__pycache__/test_owner_icon_badge.cpython-314.pyc",
     "tests/__pycache__/test_owner_icon_badge.cpython-311.pyc",
     "tests/test_owner_icon_badge.py",
     "data/cache/ui/target_preview_strips/3da12f6fa9b27b5f8fdf98c95cdd704033f580c646d8af3ef220afd53dd49a5a.png",
@@ -240,9 +243,6 @@
     "docs/obsidian/GTT/DataFlow.canvas",
     "docs/obsidian/GTT/GenshinTeamsTracker.canvas",
     "docs/obsidian/GTT/docs/todo подзадач/App shell C1.md",
-    "ui/utils/__pycache__/owner_icon_badge.cpython-311.pyc",
-    "ui/utils/owner_icon_badge.py",
-    "debug_target_hit_test.log",
     "docs/obsidian/GTT/SourceBoundaries.canvas",
     "docs/obsidian/GTT/docs/handoff/STAT_NORMALIZATION.md",
     "2026-05-25.md"

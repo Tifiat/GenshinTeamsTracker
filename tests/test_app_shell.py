@@ -6,6 +6,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+from ui.utils.app_scaling import configure_startup_ui_scale
+
+configure_startup_ui_scale()
 from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import QApplication, QStyleOptionButton, QWidget

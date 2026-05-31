@@ -137,12 +137,11 @@ WEAPON_PICKER_ICON_SIZE = 48
 WEAPON_PICKER_SAFE_MARGIN = 6
 WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 6
 WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = "#56c779"
-WEAPON_PICKER_OCCUPIED_OUTLINE_ALPHA = 255
+WEAPON_PICKER_OCCUPIED_OUTLINE_ALPHA = 150
 WEAPON_PICKER_OCCUPIED_FILL_ALPHA = 38
 WEAPON_PICKER_OCCUPIED_OUTLINE_WIDTH = 4
 WEAPON_PICKER_OCCUPIED_OUTLINE_INSET = 1
 WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS = 3
-WEAPON_PICKER_OCCUPIED_BRACKET_LENGTH = 10
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
     10: "catalyst",
@@ -2428,7 +2427,15 @@ class WeaponOwnerBadgeOverlay(QWidget):
         outline_color.setAlpha(WEAPON_PICKER_OCCUPIED_OUTLINE_ALPHA)
         fill_color = QColor(WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR)
         fill_color.setAlpha(WEAPON_PICKER_OCCUPIED_FILL_ALPHA)
-        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setPen(
+            QPen(
+                outline_color,
+                WEAPON_PICKER_OCCUPIED_OUTLINE_WIDTH,
+                Qt.PenStyle.SolidLine,
+                Qt.PenCapStyle.SquareCap,
+                Qt.PenJoinStyle.RoundJoin,
+            )
+        )
         painter.setBrush(fill_color)
         outline_rect = weapon_rect.adjusted(
             WEAPON_PICKER_OCCUPIED_OUTLINE_INSET,
@@ -2441,29 +2448,6 @@ class WeaponOwnerBadgeOverlay(QWidget):
             WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS,
             WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS,
         )
-        painter.setPen(
-            QPen(
-                outline_color,
-                WEAPON_PICKER_OCCUPIED_OUTLINE_WIDTH,
-                Qt.PenStyle.SolidLine,
-                Qt.PenCapStyle.SquareCap,
-                Qt.PenJoinStyle.RoundJoin,
-            )
-        )
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        length = WEAPON_PICKER_OCCUPIED_BRACKET_LENGTH
-        left = outline_rect.left()
-        top = outline_rect.top()
-        right = outline_rect.right()
-        bottom = outline_rect.bottom()
-        painter.drawLine(left, top, left + length, top)
-        painter.drawLine(left, top, left, top + length)
-        painter.drawLine(right - length, top, right, top)
-        painter.drawLine(right, top, right, top + length)
-        painter.drawLine(left, bottom - length, left, bottom)
-        painter.drawLine(left, bottom, left + length, bottom)
-        painter.drawLine(right - length, bottom, right, bottom)
-        painter.drawLine(right, bottom - length, right, bottom)
 
     def _draw_card_owner_badge(
         self,

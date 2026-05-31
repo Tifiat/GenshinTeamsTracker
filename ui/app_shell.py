@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 from hoyolab_export.account_equipment import (
+    EquipmentChangeResult,
     EquipmentError,
     equip_weapon,
     get_equipped_weapon_for_character,
@@ -188,6 +189,7 @@ class AppShellController:
     external_bonuses_enabled: bool = True
     mode_states: dict[str, TeamBuilderState] = field(default_factory=dict)
     last_equipment_error: str = ""
+    last_weapon_equipment_change_result: EquipmentChangeResult | None = None
     _persistent_equipment_cache: dict[str, PersistentEquipmentHydration] = field(
         default_factory=dict
     )
@@ -345,6 +347,7 @@ class AppShellController:
         return result.changed
 
     def assign_weapon_to_selected_slot(self, asset: dict[str, Any]) -> bool:
+        self.last_weapon_equipment_change_result = None
         if self.selected_team_index < 0 or self.selected_slot_index < 0:
             return False
 
@@ -376,7 +379,7 @@ class AppShellController:
             return False
         try:
             with self._equipment_connection() as conn:
-                equip_weapon(conn, character_id, weapon_fingerprint)
+                equipment_result = equip_weapon(conn, character_id, weapon_fingerprint)
                 persisted_weapon = self._persistent_weapon_for_character(
                     conn,
                     character_id,
@@ -391,7 +394,14 @@ class AppShellController:
             self.last_equipment_error = str(exc)
             return False
 
-        self.invalidate_persistent_equipment_cache({character_id})
+        self.last_weapon_equipment_change_result = equipment_result
+        affected_character_ids = {
+            _text(affected_character_id)
+            for affected_character_id in equipment_result.affected_character_ids
+            if _text(affected_character_id)
+        }
+        affected_character_ids.add(character_id)
+        self.invalidate_persistent_equipment_cache(affected_character_ids)
         weapon = persisted_weapon or weapon
         self.state = self.state.set_weapon(
             self.selected_team_index,
@@ -409,6 +419,8 @@ class AppShellController:
         )
         self.last_equipment_error = ""
         self._store_current_mode_state()
+        for affected_character_id in sorted(affected_character_ids - {character_id}):
+            self.refresh_persistent_equipment_for_character(affected_character_id)
         return True
 
     def selected_character_weapon_filter_key(self) -> str:
@@ -1391,6 +1403,11 @@ class AppShell(QWidget):
         state_ms = perf_ms(state_start)
         timings: dict[str, float] = {}
         if changed:
+            workspace_start = perf_now()
+            workspace = self.left_host.character_weapon_workspace
+            workspace.refresh_weapon_asset_cache()
+            workspace.reload_weapons()
+            timings["weapon_workspace_refresh"] = perf_ms(workspace_start)
             self.schedule_right_panel_refresh()
         log_perf(
             "weapon_click",
@@ -1427,7 +1444,9 @@ class LeftWorkspaceHost(QWidget):
         self.stack = QStackedWidget()
         layout.addWidget(self.stack, 1)
 
-        self.character_weapon_workspace = CharacterWeaponWorkspace()
+        self.character_weapon_workspace = CharacterWeaponWorkspace(
+            db_path=self.artifact_db_path
+        )
         self.add_workspace(
             tr("app_shell.workspace.characters_weapons"),
             self.character_weapon_workspace,
@@ -1530,8 +1549,14 @@ class CharacterWeaponWorkspace(QWidget):
     character_clicked = Signal(dict)
     weapon_clicked = Signal(dict)
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        db_path: str | Path = ARTIFACT_DB_PATH,
+    ) -> None:
         super().__init__(parent)
+        self.db_path = db_path
         self._resize_timer: QTimer | None = None
         self._initial_grid_built = False
         self._character_element_filters: set[str] = set()
@@ -1630,12 +1655,18 @@ class CharacterWeaponWorkspace(QWidget):
         self._last_character_grid_keys = ()
         self._last_weapon_grid_keys = ()
 
+    def refresh_weapon_asset_cache(self) -> None:
+        self._all_weapon_items = None
+        self._last_weapon_grid_keys = ()
+
     def _character_asset_items(self) -> tuple[list[dict], float, str]:
         load_start = perf_now()
         source = "cache"
         if self._all_character_items is None:
             source = "sqlite"
-            self._all_character_items = list(load_account_character_asset_items())
+            self._all_character_items = list(
+                load_account_character_asset_items(db_path=self.db_path)
+            )
         return list(self._all_character_items), perf_ms(load_start), source
 
     def character_asset_items_snapshot(self) -> list[dict]:
@@ -1647,7 +1678,9 @@ class CharacterWeaponWorkspace(QWidget):
         source = "cache"
         if self._all_weapon_items is None:
             source = "sqlite"
-            self._all_weapon_items = list(load_account_weapon_stack_asset_items())
+            self._all_weapon_items = list(
+                load_account_weapon_stack_asset_items(db_path=self.db_path)
+            )
         return list(self._all_weapon_items), perf_ms(load_start), source
 
     def set_character_selection_markers(

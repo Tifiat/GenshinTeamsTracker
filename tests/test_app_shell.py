@@ -1522,6 +1522,69 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(target_weapon.weapon_fingerprint, "fingerprint-13407")
         self.assertIsNone(previous_owner_weapon)
 
+    def test_app_shell_assignment_refreshes_visible_previous_owner_after_weapon_swap(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_weapon(conn, 10000050, "fingerprint-13408")
+                equip_weapon(conn, 10000051, "fingerprint-13407")
+                conn.commit()
+            controller = AppShellController.empty(equipment_db_path=db_path)
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            controller.add_or_replace_character(
+                _character_asset("10000051", "Polearm Friend", weapon_type=13)
+            )
+            controller.toggle_slot_selection(0, 0)
+
+            changed = controller.assign_weapon_to_selected_slot(
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+            )
+            with closing(connect_db(db_path)) as conn:
+                thoma_weapon = get_equipped_weapon_for_character(conn, 10000050)
+                friend_weapon = get_equipped_weapon_for_character(conn, 10000051)
+
+        self.assertTrue(changed)
+        self.assertEqual(controller.state.team(0).slot(0).weapon.id, "13407")
+        self.assertEqual(controller.state.team(0).slot(1).weapon.id, "13408")
+        self.assertIsNotNone(thoma_weapon)
+        self.assertIsNotNone(friend_weapon)
+        assert thoma_weapon is not None
+        assert friend_weapon is not None
+        self.assertEqual(thoma_weapon.weapon_fingerprint, "fingerprint-13407")
+        self.assertEqual(friend_weapon.weapon_fingerprint, "fingerprint-13408")
+        self.assertIsNotNone(controller.last_weapon_equipment_change_result)
+        assert controller.last_weapon_equipment_change_result is not None
+        self.assertEqual(
+            set(controller.last_weapon_equipment_change_result.affected_character_ids),
+            {10000050, 10000051},
+        )
+
+    def test_app_shell_assignment_clears_visible_previous_owner_after_weapon_move(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                equip_weapon(conn, 10000051, "fingerprint-13407")
+                conn.commit()
+            controller = AppShellController.empty(equipment_db_path=db_path)
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            controller.add_or_replace_character(
+                _character_asset("10000051", "Polearm Friend", weapon_type=13)
+            )
+            controller.toggle_slot_selection(0, 0)
+
+            changed = controller.assign_weapon_to_selected_slot(
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+            )
+
+        self.assertTrue(changed)
+        self.assertEqual(controller.state.team(0).slot(0).weapon.id, "13407")
+        previous_owner_slot = controller.state.team(0).slot(1)
+        self.assertIsNone(previous_owner_slot.weapon)
+        self.assertNotIn("account_weapon", previous_owner_slot.character_details_data)
+        self.assertNotIn("weapon_image_path", previous_owner_slot.character_details_data)
+
     def test_app_shell_has_no_session_weapon_memory_source_of_truth(self) -> None:
         controller = AppShellController.empty()
 
@@ -2409,6 +2472,77 @@ class AppShellTest(unittest.TestCase):
             if asset["metadata"]["weapon"]["source_key"] == "fingerprint-13407"
         )
         self.assertNotIn("owner_badges", unowned["metadata"])
+
+    def test_weapon_click_refreshes_owner_badge_asset_cache_after_swap(self) -> None:
+        with temp_app_shell_db() as db_path:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                paths = {
+                    "fav": Path(temp_dir) / "fav.png",
+                    "kitain": Path(temp_dir) / "kitain.png",
+                    "thoma": Path(temp_dir) / "thoma.png",
+                    "friend": Path(temp_dir) / "friend.png",
+                }
+                for path, color in (
+                    (paths["fav"], "#ffcc00"),
+                    (paths["kitain"], "#00ccff"),
+                    (paths["thoma"], "#ff6600"),
+                    (paths["friend"], "#66ff00"),
+                ):
+                    pixmap = QPixmap(8, 8)
+                    pixmap.fill(QColor(color))
+                    self.assertTrue(pixmap.save(str(path)))
+                with closing(connect_db(db_path)) as conn:
+                    conn.executemany(
+                        """
+                        UPDATE account_weapon_observed_stacks
+                        SET icon_path = ?
+                        WHERE weapon_fingerprint = ?
+                        """,
+                        [
+                            (str(paths["fav"]), "fingerprint-13407"),
+                            (str(paths["kitain"]), "fingerprint-13408"),
+                        ],
+                    )
+                    conn.executemany(
+                        """
+                        UPDATE account_characters
+                        SET side_icon_path = ?
+                        WHERE character_id = ?
+                        """,
+                        [
+                            (str(paths["thoma"]), 10000050),
+                            (str(paths["friend"]), 10000051),
+                        ],
+                    )
+                    equip_weapon(conn, 10000050, "fingerprint-13408")
+                    equip_weapon(conn, 10000051, "fingerprint-13407")
+                    conn.commit()
+
+                controller = AppShellController.empty(equipment_db_path=db_path)
+                controller.add_or_replace_character(
+                    _character_asset("10000050", "Thoma", weapon_type=13)
+                )
+                controller.add_or_replace_character(
+                    _character_asset("10000051", "Polearm Friend", weapon_type=13)
+                )
+                controller.toggle_slot_selection(0, 0)
+                shell = AppShell(controller=controller)
+                workspace = shell.left_host.character_weapon_workspace
+                workspace.reload_weapons()
+
+                shell._on_weapon_clicked(
+                    _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+                )
+
+                assets_by_key = {
+                    asset["metadata"]["weapon"]["source_key"]: asset
+                    for asset in workspace._all_weapon_items or []
+                }
+
+        fav_badges = assets_by_key["fingerprint-13407"]["metadata"]["owner_badges"]
+        kitain_badges = assets_by_key["fingerprint-13408"]["metadata"]["owner_badges"]
+        self.assertEqual(fav_badges[0]["character_id"], "10000050")
+        self.assertEqual(kitain_badges[0]["character_id"], "10000051")
 
     def test_asset_icon_label_accepts_owner_badge_metadata_with_selection_marker(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

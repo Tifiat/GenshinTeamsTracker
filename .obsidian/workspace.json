@@ -219,8 +219,8 @@
   },
   "active": "55f12a4cd3a744d1",
   "lastOpenFiles": [
-    "data/artifacts.db-shm",
     "data/artifacts.db-wal",
+    "data/artifacts.db-shm",
     "ui/__pycache__/right_panel_prototype.cpython-314.pyc",
     "ui/__pycache__/app_shell.cpython-314.pyc",
     "tests/__pycache__/test_owner_icon_badge.cpython-314.pyc",

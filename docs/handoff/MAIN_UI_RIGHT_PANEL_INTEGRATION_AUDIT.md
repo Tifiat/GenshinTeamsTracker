@@ -172,6 +172,13 @@ Useful resize/grid behavior:
   clean grid columns when possible;
 - native Windows size-move throttling avoids recalculating during live drag.
 
+Paint-order rule:
+
+- visuals that intentionally extend outside `QListView` item cells, such as
+  Artifact Browser owner side-icons, must be painted in a viewport overlay-pass
+  after normal delegate painting. Painting them inside the item delegate lets
+  neighboring item hover/repaint updates erase the overlapping portion.
+
 Embedding risks:
 
 - `Qt.Window` flag must be optional or avoided in embedded mode;

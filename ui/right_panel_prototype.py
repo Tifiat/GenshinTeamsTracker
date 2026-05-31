@@ -81,10 +81,6 @@ _BONUS_SOURCE_ICON_PIXMAP_CACHE: dict[
 _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 BONUS_MEMBER_ICON_SCALE = 125
 BONUS_MEMBER_ICON_BOTTOM_PADDING = 0
-BONUS_MEMBER_BADGE_ENABLED = True
-BONUS_MEMBER_BADGE_SIZE_RATIO = 43 / 70
-BONUS_MEMBER_BADGE_OFFSET_X_RATIO = 1 / 70
-BONUS_MEMBER_BADGE_OFFSET_Y_RATIO = 16 / 70
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -1635,10 +1631,6 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
             int(size.height()),
             BONUS_MEMBER_ICON_SCALE,
             BONUS_MEMBER_ICON_BOTTOM_PADDING,
-            BONUS_MEMBER_BADGE_ENABLED,
-            BONUS_MEMBER_BADGE_SIZE_RATIO,
-            BONUS_MEMBER_BADGE_OFFSET_X_RATIO,
-            BONUS_MEMBER_BADGE_OFFSET_Y_RATIO,
             int(stat.st_mtime_ns),
             int(stat.st_size),
         )
@@ -1649,10 +1641,6 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
             int(size.height()),
             BONUS_MEMBER_ICON_SCALE,
             BONUS_MEMBER_ICON_BOTTOM_PADDING,
-            BONUS_MEMBER_BADGE_ENABLED,
-            BONUS_MEMBER_BADGE_SIZE_RATIO,
-            BONUS_MEMBER_BADGE_OFFSET_X_RATIO,
-            BONUS_MEMBER_BADGE_OFFSET_Y_RATIO,
             0,
             0,
         )
@@ -1681,18 +1669,9 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
     x = (size.width() - scaled.width()) // 2
     y = size.height() - scaled.height() - BONUS_MEMBER_ICON_BOTTOM_PADDING
     icon_rect = QRect(x, y, scaled.width(), scaled.height())
-    if BONUS_MEMBER_BADGE_ENABLED:
-        badge_size = owner_badge_size_for_icon(
-            icon_rect.size(),
-            size_ratio=BONUS_MEMBER_BADGE_SIZE_RATIO,
-        )
-        badge_rect = owner_badge_rect_for_icon_rect(
-            icon_rect,
-            badge_size,
-            offset_x_ratio=BONUS_MEMBER_BADGE_OFFSET_X_RATIO,
-            offset_y_ratio=BONUS_MEMBER_BADGE_OFFSET_Y_RATIO,
-        )
-        painter.drawPixmap(badge_rect, make_owner_icon_badge_background(badge_size))
+    badge_size = owner_badge_size_for_icon(icon_rect.size())
+    badge_rect = owner_badge_rect_for_icon_rect(icon_rect, badge_size)
+    painter.drawPixmap(badge_rect, make_owner_icon_badge_background(badge_size))
     painter.drawPixmap(x, y, scaled)
     painter.end()
     _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key] = QPixmap(canvas)

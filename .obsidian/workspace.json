@@ -221,6 +221,8 @@
   "lastOpenFiles": [
     "data/artifacts.db-shm",
     "data/artifacts.db-wal",
+    "tests/__pycache__/test_owner_icon_badge.cpython-311.pyc",
+    "tests/test_owner_icon_badge.py",
     "data/cache/ui/target_preview_strips/3da12f6fa9b27b5f8fdf98c95cdd704033f580c646d8af3ef220afd53dd49a5a.png",
     "data/cache/ui/target_preview_strips/6e032368ba75a7169402d89dff9aa95658622c70c152a48824756af7794af4d7.png",
     "data/cache/ui/target_preview_strips/d2c5f3745cd5a668ee81452c87358f85f10df5bb5b6bd661efe915e02d449d70.png",
@@ -241,7 +243,6 @@
     "ui/utils/__pycache__/owner_icon_badge.cpython-311.pyc",
     "ui/utils/owner_icon_badge.py",
     "debug_target_hit_test.log",
-    "debug_artifact_target_geometry_after_lane.log",
     "docs/obsidian/GTT/SourceBoundaries.canvas",
     "docs/obsidian/GTT/docs/handoff/STAT_NORMALIZATION.md",
     "2026-05-25.md"

@@ -29,14 +29,6 @@ OWNER_SIDE_ICON_SIZE = QSize(70, 70)      # только персонаж
 OWNER_SIDE_ICON_RIGHT_MARGIN = -18        # посадка персонажа/бейджа на карточке вправо-влево
 OWNER_SIDE_ICON_TOP_MARGIN = -30          # посадка персонажа/бейджа на карточке вверх-вниз
 
-OWNER_BADGE_ENABLED = True                # включить/выключить круг
-OWNER_BADGE_SIZE = QSize(43, 43)          # только круг, на персонажа не влияет
-OWNER_BADGE_OFFSET_X = 1                  # круг относительно персонажа вправо-влево
-OWNER_BADGE_OFFSET_Y = 16                  # круг относительно персонажа вверх-вниз
-OWNER_BADGE_SIZE_RATIO = 43 / 70          # круг относительно фактической side-icon
-OWNER_BADGE_OFFSET_X_RATIO = 1 / 70       # круг относительно side-icon вправо-влево
-OWNER_BADGE_OFFSET_Y_RATIO = 16 / 70      # круг относительно side-icon вверх-вниз
-
 CV_COLORS = [
     (0.0, 14.9, "#9b9b9b"),      # gray
     (15.0, 24.9, "#3f8cff"),     # blue
@@ -70,14 +62,13 @@ def cached_scaled_pixmap(icon_path: Path, size: QSize) -> QPixmap | None:
     return scaled
 
 
-def cached_owner_badge_background(size: QSize | None = None) -> QPixmap:
-    badge_size = size or OWNER_BADGE_SIZE
-    key = (badge_size.width(), badge_size.height())
+def cached_owner_badge_background(size: QSize) -> QPixmap:
+    key = (size.width(), size.height())
     cached = _OWNER_BADGE_BACKGROUND_CACHE.get(key)
     if cached is not None and not cached.isNull():
         return cached
 
-    badge = make_owner_icon_badge_background(badge_size)
+    badge = make_owner_icon_badge_background(size)
     _OWNER_BADGE_BACKGROUND_CACHE[key] = badge
     return badge
 
@@ -315,18 +306,9 @@ class ArtifactCardDelegate(QStyledItemDelegate):
             icon_pixmap.height(),
         )
 
-        if OWNER_BADGE_ENABLED:
-            badge_size = owner_badge_size_for_icon(
-                icon_target.size(),
-                size_ratio=OWNER_BADGE_SIZE_RATIO,
-            )
-            badge_rect = owner_badge_rect_for_icon_rect(
-                icon_target,
-                badge_size,
-                offset_x_ratio=OWNER_BADGE_OFFSET_X_RATIO,
-                offset_y_ratio=OWNER_BADGE_OFFSET_Y_RATIO,
-            )
-            painter.drawPixmap(badge_rect, cached_owner_badge_background(badge_size))
+        badge_size = owner_badge_size_for_icon(icon_target.size())
+        badge_rect = owner_badge_rect_for_icon_rect(icon_target, badge_size)
+        painter.drawPixmap(badge_rect, cached_owner_badge_background(badge_size))
 
         painter.drawPixmap(icon_target, icon_pixmap)
 

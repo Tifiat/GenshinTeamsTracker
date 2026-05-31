@@ -135,9 +135,10 @@ WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO = 14 / 45
 WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = 22 / 45
 WEAPON_PICKER_ICON_SIZE = 48
 WEAPON_PICKER_SAFE_MARGIN = 6
-WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 10
+WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 6
 WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = "#ee5555"
 WEAPON_PICKER_OCCUPIED_OUTLINE_ALPHA = 150
+WEAPON_PICKER_OCCUPIED_FILL_ALPHA = 38
 WEAPON_PICKER_OCCUPIED_OUTLINE_WIDTH = 4
 WEAPON_PICKER_OCCUPIED_OUTLINE_INSET = 1
 WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS = 3
@@ -1612,7 +1613,7 @@ class CharacterWeaponWorkspace(QWidget):
         root.setSpacing(0)
 
         root.addWidget(QLabel(tr("asset_panel.weapons")))
-        root.addSpacing(2)
+        root.addSpacing(6)
         root.addLayout(
             self._build_filter_row(
                 (
@@ -2424,6 +2425,8 @@ class WeaponOwnerBadgeOverlay(QWidget):
 
         outline_color = QColor(WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR)
         outline_color.setAlpha(WEAPON_PICKER_OCCUPIED_OUTLINE_ALPHA)
+        fill_color = QColor(WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR)
+        fill_color.setAlpha(WEAPON_PICKER_OCCUPIED_FILL_ALPHA)
         painter.setPen(
             QPen(
                 outline_color,
@@ -2433,7 +2436,7 @@ class WeaponOwnerBadgeOverlay(QWidget):
                 Qt.PenJoinStyle.RoundJoin,
             )
         )
-        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setBrush(fill_color)
         outline_rect = weapon_rect.adjusted(
             WEAPON_PICKER_OCCUPIED_OUTLINE_INSET,
             WEAPON_PICKER_OCCUPIED_OUTLINE_INSET,

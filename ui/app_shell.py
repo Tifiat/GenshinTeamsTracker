@@ -6,6 +6,7 @@ import sys
 from contextlib import closing
 from dataclasses import dataclass, field
 from pathlib import Path
+from collections.abc import Callable, Iterable
 from typing import Any
 
 from PySide6.QtCore import QEvent, QRect, QSize, QTimer, Qt, Signal
@@ -116,8 +117,9 @@ OWNER_BADGE_TRACE = os.environ.get("GTT_OWNER_BADGE_TRACE", "").strip().casefold
     "yes",
     "on",
 }
-WEAPON_PICKER_OWNER_ICON_SCALE = 0.88
-WEAPON_PICKER_OWNER_ICON_OVERHANG = 0
+WEAPON_PICKER_OWNER_SIDE_ICON_SIZE = QSize(49, 49)
+WEAPON_PICKER_OWNER_ICON_RIGHT_OVERHANG = 20
+WEAPON_PICKER_OWNER_ICON_TOP_OVERHANG = 22
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
     10: "catalyst",
@@ -1535,6 +1537,7 @@ class CharacterWeaponWorkspace(QWidget):
         self._all_weapon_items: list[dict] | None = None
         self._last_character_grid_keys: tuple[str, ...] = ()
         self._last_weapon_grid_keys: tuple[str, ...] = ()
+        self._weapon_cards_by_key: dict[str, AssetIconLabel] = {}
         self._weapon_type_buttons: dict[str, QPushButton] = {}
         self._auto_weapon_type_filter: str = ""
 
@@ -1552,6 +1555,10 @@ class CharacterWeaponWorkspace(QWidget):
             )
         )
         self.weapon_area, self.weapon_widget, self.weapon_grid = self._make_grid_area()
+        self._weapon_owner_badge_overlay = WeaponOwnerBadgeOverlay(
+            self.weapon_area,
+            lambda: self._weapon_cards_by_key.values(),
+        )
         root.addWidget(self.weapon_area, 1)
 
         root.addWidget(QLabel(tr("asset_panel.characters")))
@@ -1716,6 +1723,7 @@ class CharacterWeaponWorkspace(QWidget):
 
     def reload_weapons(self) -> None:
         total_start = perf_now()
+        self._weapon_cards_by_key = {}
         assets, load_ms, load_source = self._weapon_asset_items()
         predicate_start = perf_now()
         assets = [asset for asset in assets if self._weapon_matches_filters(asset)]
@@ -1733,7 +1741,10 @@ class CharacterWeaponWorkspace(QWidget):
             spacing=6,
             clicked=self.weapon_clicked.emit,
             grid_name="weapons",
+            card_registry=self._weapon_cards_by_key,
         )
+        self._weapon_owner_badge_overlay.sync_geometry()
+        self._weapon_owner_badge_overlay.update()
         log_perf(
             "filter_weapons",
             total=perf_ms(total_start),
@@ -1975,9 +1986,13 @@ class CharacterWeaponWorkspace(QWidget):
                     icon.setToolTip(tooltip)
                 grid.addWidget(icon, index // cols, index % cols)
                 if card_registry is not None:
-                    character_id = _asset_character_id(asset)
-                    if character_id:
-                        card_registry[character_id] = icon
+                    card_key = (
+                        _asset_character_id(asset)
+                        if grid_name == "characters"
+                        else _asset_grid_key(asset)
+                    )
+                    if card_key:
+                        card_registry[card_key] = icon
             except Exception as exc:
                 print(f"Failed to load {asset.get('filename')}: {exc}")
 
@@ -2131,7 +2146,6 @@ class AssetIconLabel(QLabel):
 
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
-        self._draw_owner_badges()
         marker = self.selection_marker
         if marker is None:
             return
@@ -2161,67 +2175,6 @@ class AssetIconLabel(QLabel):
             str(marker.slot_number),
         )
 
-    def _draw_owner_badges(self) -> None:
-        if not self.owner_badges:
-            return
-        icon_rect = self._displayed_icon_rect()
-        if icon_rect.isNull() or not icon_rect.isValid():
-            return
-
-        # 48px weapon-picker cells use a deterministic MVP: draw the first
-        # owner badge and keep any additional owners in asset metadata.
-        badge = self.owner_badges[0]
-        side_icon_path = _text(badge.get("side_icon_path"))
-        if not side_icon_path:
-            return
-
-        owner_icon_size = max(
-            1,
-            int(round(min(icon_rect.width(), icon_rect.height()) * WEAPON_PICKER_OWNER_ICON_SCALE)),
-        )
-        owner_bounds = QRect(
-            icon_rect.right() - owner_icon_size + 1,
-            icon_rect.y(),
-            owner_icon_size,
-            owner_icon_size,
-        )
-        owner_pixmap = _owner_badge_icon_pixmap(side_icon_path, owner_bounds.size())
-        if owner_pixmap is None:
-            return
-
-        owner_target = QRect(
-            icon_rect.right() - owner_pixmap.width() + 1 + WEAPON_PICKER_OWNER_ICON_OVERHANG,
-            icon_rect.y() - WEAPON_PICKER_OWNER_ICON_OVERHANG,
-            owner_pixmap.width(),
-            owner_pixmap.height(),
-        )
-        if owner_target.isNull() or not owner_target.isValid():
-            return
-
-        badge_size = owner_badge_size_for_icon(owner_target.size())
-        badge_rect = owner_badge_rect_for_icon_rect(owner_target, badge_size)
-        if badge_rect.isNull() or not badge_rect.isValid():
-            return
-
-        if OWNER_BADGE_TRACE:
-            print(
-                "[OWNER_BADGE_TRACE] "
-                "surface=weapon_picker_owner "
-                f"widget={self.width()}x{self.height()} "
-                f"weapon_rect={_trace_rect(icon_rect)} "
-                f"source={side_icon_path!r} "
-                f"owner_scaled={owner_pixmap.width()}x{owner_pixmap.height()} "
-                f"owner_target={_trace_rect(owner_target)} "
-                f"badge_size={badge_size.width()}x{badge_size.height()} "
-                f"badge_rect={_trace_rect(badge_rect)} "
-                "computed_from=owner_icon_rect"
-            )
-
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.drawPixmap(badge_rect, _owner_badge_background(badge_rect.size()))
-        painter.drawPixmap(owner_target, owner_pixmap)
-
     def _displayed_icon_rect(self) -> QRect:
         pixmap = self.pixmap()
         if pixmap is None or pixmap.isNull():
@@ -2242,6 +2195,111 @@ class AssetIconLabel(QLabel):
             event.accept()
             return
         super().mousePressEvent(event)
+
+
+class WeaponOwnerBadgeOverlay(QWidget):
+    """Paint weapon owner side-icons above the weapon grid without affecting layout."""
+
+    def __init__(
+        self,
+        scroll_area: QScrollArea,
+        cards: Callable[[], Iterable[AssetIconLabel]],
+    ) -> None:
+        super().__init__(scroll_area.viewport())
+        self._scroll_area = scroll_area
+        self._cards = cards
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self._scroll_area.viewport().installEventFilter(self)
+        self._scroll_area.verticalScrollBar().valueChanged.connect(self.update)
+        self._scroll_area.horizontalScrollBar().valueChanged.connect(self.update)
+        self.sync_geometry()
+        self.show()
+
+    def sync_geometry(self) -> None:
+        self.setGeometry(self._scroll_area.viewport().rect())
+        self.raise_()
+
+    def eventFilter(self, watched, event) -> bool:
+        if watched is self._scroll_area.viewport() and event.type() in (
+            QEvent.Type.Resize,
+            QEvent.Type.Show,
+        ):
+            self.sync_geometry()
+            self.update()
+        return super().eventFilter(watched, event)
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        try:
+            for card in self._cards():
+                self._draw_card_owner_badge(painter, card)
+        finally:
+            painter.end()
+
+    def _draw_card_owner_badge(self, painter: QPainter, card: AssetIconLabel) -> None:
+        if not card.isVisible() or not card.owner_badges:
+            return
+
+        icon_rect = card._displayed_icon_rect()
+        if icon_rect.isNull() or not icon_rect.isValid():
+            return
+
+        weapon_rect = QRect(
+            self.mapFromGlobal(card.mapToGlobal(icon_rect.topLeft())),
+            icon_rect.size(),
+        )
+        if not weapon_rect.intersects(self.rect()):
+            return
+
+        badge = card.owner_badges[0]
+        side_icon_path = _text(badge.get("side_icon_path"))
+        if not side_icon_path:
+            return
+
+        owner_pixmap = _owner_badge_icon_pixmap(
+            side_icon_path,
+            WEAPON_PICKER_OWNER_SIDE_ICON_SIZE,
+        )
+        if owner_pixmap is None:
+            return
+
+        owner_target = QRect(
+            weapon_rect.right()
+            - owner_pixmap.width()
+            + 1
+            + WEAPON_PICKER_OWNER_ICON_RIGHT_OVERHANG,
+            weapon_rect.y()
+            - WEAPON_PICKER_OWNER_ICON_TOP_OVERHANG,
+            owner_pixmap.width(),
+            owner_pixmap.height(),
+        )
+        if not owner_target.intersects(self.rect()):
+            return
+
+        badge_size = owner_badge_size_for_icon(owner_target.size())
+        badge_rect = owner_badge_rect_for_icon_rect(owner_target, badge_size)
+        if badge_rect.isNull() or not badge_rect.isValid():
+            return
+
+        if OWNER_BADGE_TRACE:
+            print(
+                "[OWNER_BADGE_TRACE] "
+                "surface=weapon_picker_owner_overlay "
+                f"viewport={self.width()}x{self.height()} "
+                f"weapon_rect={_trace_rect(weapon_rect)} "
+                f"source={side_icon_path!r} "
+                f"owner_scaled={owner_pixmap.width()}x{owner_pixmap.height()} "
+                f"owner_target={_trace_rect(owner_target)} "
+                f"badge_size={badge_size.width()}x{badge_size.height()} "
+                f"badge_rect={_trace_rect(badge_rect)} "
+                "computed_from=owner_icon_rect"
+            )
+
+        painter.drawPixmap(badge_rect, _owner_badge_background(badge_size))
+        painter.drawPixmap(owner_target, owner_pixmap)
 
 
 def _clear_grid(grid: QGridLayout) -> None:

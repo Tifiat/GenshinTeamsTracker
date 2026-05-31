@@ -1494,7 +1494,7 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(slot.weapon.id, "11401")
         self.assertEqual(slot.character_details_data["account_weapon"]["name"], "Sword")
 
-    def test_app_shell_assignment_respects_known_count_without_stale_slot(self) -> None:
+    def test_app_shell_assignment_moves_occupied_single_copy_weapon(self) -> None:
         with temp_app_shell_db() as db_path:
             with closing(connect_db(db_path)) as conn:
                 equip_weapon(conn, 10000051, "fingerprint-13407")
@@ -1507,10 +1507,17 @@ class AppShellTest(unittest.TestCase):
             changed = controller.assign_weapon_to_selected_slot(
                 _weapon_asset("13407", "Favonius Lance", weapon_type=13)
             )
+            with closing(connect_db(db_path)) as conn:
+                target_weapon = get_equipped_weapon_for_character(conn, 10000050)
+                previous_owner_weapon = get_equipped_weapon_for_character(conn, 10000051)
 
-        self.assertFalse(changed)
-        self.assertIsNone(controller.state.team(0).slot(0).weapon)
-        self.assertIn("No available copy", controller.last_equipment_error)
+        self.assertTrue(changed)
+        self.assertEqual(controller.state.team(0).slot(0).weapon.id, "13407")
+        self.assertEqual(controller.last_equipment_error, "")
+        self.assertIsNotNone(target_weapon)
+        assert target_weapon is not None
+        self.assertEqual(target_weapon.weapon_fingerprint, "fingerprint-13407")
+        self.assertIsNone(previous_owner_weapon)
 
     def test_app_shell_has_no_session_weapon_memory_source_of_truth(self) -> None:
         controller = AppShellController.empty()

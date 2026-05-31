@@ -190,12 +190,67 @@ class AccountWeaponEquipmentTest(unittest.TestCase):
         self.assertEqual(owners, (1001, 1002))
         self.assertEqual(count, 2)
 
-    def test_assignment_beyond_known_count_fails_without_fake_instance_ids(self) -> None:
+    def test_equip_weapon_moves_occupied_single_copy_to_empty_target(self) -> None:
         with seeded_equipment_db() as conn:
             equip_weapon(conn, 1001, "polearm-a")
+            result = equip_weapon(conn, 1002, "polearm-a")
+
+            first = get_equipped_weapon_for_character(conn, 1001)
+            second = get_equipped_weapon_for_character(conn, 1002)
+            owners = list_equipped_weapon_owners(conn, "polearm-a")
+
+        self.assertTrue(result.changed)
+        self.assertEqual(result.affected_character_ids, (1001, 1002))
+        self.assertEqual(result.affected_weapon_fingerprints, ("polearm-a",))
+        self.assertIsNone(first)
+        self.assertIsNotNone(second)
+        assert second is not None
+        self.assertEqual(second.weapon_fingerprint, "polearm-a")
+        self.assertEqual(owners, (1002,))
+
+    def test_equip_weapon_swaps_occupied_single_copy_with_target_current_weapon(self) -> None:
+        with seeded_equipment_db() as conn:
+            equip_weapon(conn, 1001, "polearm-a")
+            equip_weapon(conn, 1002, "polearm-b")
+
+            result = equip_weapon(
+                conn,
+                1002,
+                "polearm-a",
+                source="preset_equip",
+                source_import_batch_id="batch-1",
+                observed_at="2026-05-26T10:00:00+00:00",
+            )
+
+            first = get_equipped_weapon_for_character(conn, 1001)
+            second = get_equipped_weapon_for_character(conn, 1002)
+            owners_a = list_equipped_weapon_owners(conn, "polearm-a")
+            owners_b = list_equipped_weapon_owners(conn, "polearm-b")
+
+        self.assertTrue(result.changed)
+        self.assertEqual(result.affected_character_ids, (1001, 1002))
+        self.assertEqual(result.affected_weapon_fingerprints, ("polearm-a", "polearm-b"))
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+        assert first is not None and second is not None
+        self.assertEqual(first.weapon_fingerprint, "polearm-b")
+        self.assertEqual(first.source, "preset_equip")
+        self.assertEqual(first.source_import_batch_id, "batch-1")
+        self.assertEqual(first.observed_at, "2026-05-26T10:00:00+00:00")
+        self.assertEqual(second.weapon_fingerprint, "polearm-a")
+        self.assertEqual(second.source, "preset_equip")
+        self.assertEqual(second.source_import_batch_id, "batch-1")
+        self.assertEqual(second.observed_at, "2026-05-26T10:00:00+00:00")
+        self.assertEqual(owners_a, (1002,))
+        self.assertEqual(owners_b, (1001,))
+
+    def test_assignment_beyond_multi_owner_known_count_fails_without_fake_instance_ids(self) -> None:
+        with seeded_equipment_db() as conn:
+            equip_weapon(conn, 1001, "polearm-stack")
+            equip_weapon(conn, 1002, "polearm-stack")
 
             with self.assertRaises(EquipmentCapacityError):
-                equip_weapon(conn, 1002, "polearm-a")
+                equip_weapon(conn, 1004, "polearm-stack")
 
             columns = {
                 row["name"]
@@ -206,6 +261,39 @@ class AccountWeaponEquipmentTest(unittest.TestCase):
 
         self.assertNotIn("weapon_instance_id", columns)
         self.assertNotIn("weapon_copy_id", columns)
+
+    def test_equip_weapon_incompatible_reverse_swap_leaves_db_unchanged(self) -> None:
+        with seeded_equipment_db() as conn:
+            conn.execute(
+                """
+                INSERT INTO account_character_equipped_weapons (
+                    character_id,
+                    weapon_fingerprint,
+                    source,
+                    observed_at,
+                    updated_at
+                )
+                VALUES (?, ?, 'manual', NULL, '2026-05-26T00:00:00+00:00')
+                """,
+                (1001, "sword-a"),
+            )
+            equip_weapon(conn, 1002, "polearm-a")
+
+            with self.assertRaises(EquipmentCompatibilityError):
+                equip_weapon(conn, 1001, "polearm-a")
+
+            first = get_equipped_weapon_for_character(conn, 1001)
+            second = get_equipped_weapon_for_character(conn, 1002)
+            owners_polearm = list_equipped_weapon_owners(conn, "polearm-a")
+            owners_sword = list_equipped_weapon_owners(conn, "sword-a")
+
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+        assert first is not None and second is not None
+        self.assertEqual(first.weapon_fingerprint, "sword-a")
+        self.assertEqual(second.weapon_fingerprint, "polearm-a")
+        self.assertEqual(owners_polearm, (1002,))
+        self.assertEqual(owners_sword, (1001,))
 
     def test_unequip_weapon_frees_assignment(self) -> None:
         with seeded_equipment_db() as conn:
@@ -252,18 +340,29 @@ class AccountEquipmentImportObservationTest(unittest.TestCase):
         self.assertEqual(records[0].source_import_batch_id, "batch-1")
         self.assertEqual(records[0].observed_at, "2026-05-26T10:00:00+00:00")
 
-    def test_weapon_observation_uses_normal_semantics_and_known_count(self) -> None:
+    def test_weapon_observation_uses_normal_move_semantics_and_source_metadata(self) -> None:
         with seeded_equipment_db() as conn:
             apply_hoyolab_weapon_equipment_observation(conn, 1001, "polearm-a")
+            apply_hoyolab_weapon_equipment_observation(
+                conn,
+                1002,
+                "polearm-a",
+                import_batch_id="batch-2",
+                observed_at="2026-05-26T10:00:00+00:00",
+            )
 
-            with self.assertRaises(EquipmentCapacityError):
-                apply_hoyolab_weapon_equipment_observation(conn, 1002, "polearm-a")
+            first = get_equipped_weapon_for_character(conn, 1001)
+            second = get_equipped_weapon_for_character(conn, 1002)
+            owners = list_equipped_weapon_owners(conn, "polearm-a")
 
-            record = get_equipped_weapon_for_character(conn, 1001)
-
-        self.assertIsNotNone(record)
-        assert record is not None
-        self.assertEqual(record.source, "hoyolab_import")
+        self.assertIsNone(first)
+        self.assertIsNotNone(second)
+        assert second is not None
+        self.assertEqual(second.weapon_fingerprint, "polearm-a")
+        self.assertEqual(second.source, "hoyolab_import")
+        self.assertEqual(second.source_import_batch_id, "batch-2")
+        self.assertEqual(second.observed_at, "2026-05-26T10:00:00+00:00")
+        self.assertEqual(owners, (1002,))
 
     def test_missing_observation_does_not_clear_local_equipment(self) -> None:
         self.assertTrue(AUTO_APPLY_HOYOLAB_EQUIPMENT_ON_IMPORT_DEFAULT)
@@ -310,6 +409,7 @@ def seed_characters(conn) -> None:
         (1001, "Polearm Hero A", 13, "polearm"),
         (1002, "Polearm Hero B", 13, "polearm"),
         (1003, "Sword Hero", 1, "sword"),
+        (1004, "Polearm Hero C", 13, "polearm"),
     ]
     conn.executemany(
         """

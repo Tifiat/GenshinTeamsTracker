@@ -355,8 +355,15 @@ def equip_weapon(
     assigned_count = get_weapon_assignment_count(conn, str(weapon_fingerprint))
     known_count = max(1, int(weapon["known_count"] or 1))
     if assigned_count >= known_count:
-        raise EquipmentCapacityError(
-            f"No available copy for observed weapon stack {weapon_fingerprint!r}"
+        return _equip_occupied_weapon_stack(
+            conn,
+            character,
+            weapon,
+            current,
+            source=source,
+            source_import_batch_id=source_import_batch_id,
+            observed_at=observed_at,
+            updated_at=now,
         )
 
     affected_fingerprints = {str(weapon_fingerprint)}
@@ -375,6 +382,79 @@ def equip_weapon(
         operation="equip_weapon",
         changed=True,
         affected_character_ids=(character_id_int,),
+        affected_weapon_fingerprints=tuple(sorted(affected_fingerprints)),
+    )
+
+
+def _equip_occupied_weapon_stack(
+    conn: sqlite3.Connection,
+    target_character,
+    selected_weapon,
+    target_current: EquippedWeaponRecord | None,
+    *,
+    source: str,
+    source_import_batch_id: str | None,
+    observed_at: str | None,
+    updated_at: str,
+) -> EquipmentChangeResult:
+    target_id = int(target_character["character_id"])
+    selected_fingerprint = str(selected_weapon["weapon_fingerprint"])
+    owners = tuple(
+        owner_id
+        for owner_id in list_equipped_weapon_owners(conn, selected_fingerprint)
+        if int(owner_id) != target_id
+    )
+    if len(owners) != 1:
+        raise EquipmentCapacityError(
+            f"No available copy for observed weapon stack {selected_fingerprint!r}"
+        )
+
+    previous_owner_id = int(owners[0])
+    previous_owner = _character_row(conn, previous_owner_id)
+    if previous_owner is None:
+        raise EquipmentNotFoundError(f"Unknown previous owner character: {previous_owner_id!r}")
+
+    affected_fingerprints = {selected_fingerprint}
+    if target_current is not None:
+        target_current_weapon = _weapon_stack_row(conn, target_current.weapon_fingerprint)
+        if target_current_weapon is None:
+            raise EquipmentNotFoundError(
+                f"Unknown observed weapon stack: {target_current.weapon_fingerprint!r}"
+            )
+        _validate_weapon_compatibility(previous_owner, target_current_weapon)
+        affected_fingerprints.add(target_current.weapon_fingerprint)
+
+    conn.execute(
+        """
+        DELETE FROM account_character_equipped_weapons
+        WHERE character_id IN (?, ?)
+        """,
+        (target_id, previous_owner_id),
+    )
+    _upsert_equipped_weapon(
+        conn,
+        target_id,
+        selected_fingerprint,
+        source=source,
+        source_import_batch_id=source_import_batch_id,
+        observed_at=observed_at,
+        updated_at=updated_at,
+    )
+    if target_current is not None:
+        _upsert_equipped_weapon(
+            conn,
+            previous_owner_id,
+            target_current.weapon_fingerprint,
+            source=source,
+            source_import_batch_id=source_import_batch_id,
+            observed_at=observed_at,
+            updated_at=updated_at,
+        )
+
+    return EquipmentChangeResult(
+        operation="equip_weapon",
+        changed=True,
+        affected_character_ids=tuple(sorted((target_id, previous_owner_id))),
         affected_weapon_fingerprints=tuple(sorted(affected_fingerprints)),
     )
 

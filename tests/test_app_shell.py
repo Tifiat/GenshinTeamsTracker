@@ -1022,6 +1022,23 @@ class AppShellTest(unittest.TestCase):
             self.assertEqual(browser.store.artifact(1).character_name, "")
             self.assertEqual(browser.store.artifact(3).character_name, "Thoma")
 
+    def test_repeated_artifact_click_unequips_current_target_artifact(self) -> None:
+        with temp_app_shell_db() as db_path:
+            browser = ArtifactBrowserWindow(embedded=True, db_path=db_path)
+            browser.set_right_panel_operation_target(
+                {"character_id": 10000050, "character_name": "Thoma"}
+            )
+            index = browser.model.index(0, 0)
+
+            browser.on_artifact_clicked(index)
+            browser.on_artifact_clicked(index)
+
+            with closing(connect_db(db_path)) as conn:
+                self.assertIsNone(get_equipped_artifact_owner(conn, 1))
+            self.assertEqual(browser.current_equipment_preview_slots, {})
+            self.assertEqual(browser.delegate.edit_selection_artifact_ids, set())
+            self.assertEqual(browser.store.artifact(1).character_name, "")
+
     def test_preset_click_toggles_between_preset_and_current_equipment_preview(self) -> None:
         with temp_app_shell_db() as db_path:
             with closing(connect_db(db_path)) as conn:
@@ -1379,6 +1396,34 @@ class AppShellTest(unittest.TestCase):
         self.assertIsNotNone(persisted)
         assert persisted is not None
         self.assertEqual(persisted.weapon_fingerprint, "fingerprint-13407")
+
+    def test_repeated_weapon_click_unequips_selected_character_weapon(self) -> None:
+        with temp_app_shell_db() as db_path:
+            controller = AppShellController.empty(equipment_db_path=db_path)
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
+            asset = _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+
+            controller.assign_weapon_to_selected_slot(asset)
+            changed = controller.assign_weapon_to_selected_slot(asset)
+            with closing(connect_db(db_path)) as conn:
+                persisted = get_equipped_weapon_for_character(conn, 10000050)
+
+        self.assertTrue(changed)
+        slot = controller.state.team(0).slot(0)
+        self.assertIsNone(slot.weapon)
+        self.assertIsNone(persisted)
+        self.assertNotIn("account_weapon", slot.character_details_data)
+        self.assertNotIn("weapon_image_path", slot.character_details_data)
+        self.assertEqual(slot.character_details_data["weapon_passive_reference"], {})
+        self.assertEqual(slot.character_details_data["weapon_display_stat_effects"], [])
+        self.assertIsNotNone(controller.last_weapon_equipment_change_result)
+        assert controller.last_weapon_equipment_change_result is not None
+        self.assertEqual(
+            controller.last_weapon_equipment_change_result.operation,
+            "unequip_weapon",
+        )
 
     def test_incompatible_weapon_fails_soft(self) -> None:
         controller = AppShellController.empty()

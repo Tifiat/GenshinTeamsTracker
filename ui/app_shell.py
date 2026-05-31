@@ -32,6 +32,7 @@ from hoyolab_export.account_equipment import (
     equip_weapon,
     get_equipped_weapon_for_character,
     list_equipped_artifacts_for_character,
+    unequip_weapon,
 )
 from hoyolab_export.account_storage import get_account_weapon_observed_stack
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
@@ -379,7 +380,14 @@ class AppShellController:
             return False
         try:
             with self._equipment_connection() as conn:
-                equipment_result = equip_weapon(conn, character_id, weapon_fingerprint)
+                current_weapon = get_equipped_weapon_for_character(conn, character_id)
+                if (
+                    current_weapon is not None
+                    and current_weapon.weapon_fingerprint == weapon_fingerprint
+                ):
+                    equipment_result = unequip_weapon(conn, character_id)
+                else:
+                    equipment_result = equip_weapon(conn, character_id, weapon_fingerprint)
                 persisted_weapon = self._persistent_weapon_for_character(
                     conn,
                     character_id,
@@ -402,16 +410,30 @@ class AppShellController:
         }
         affected_character_ids.add(character_id)
         self.invalidate_persistent_equipment_cache(affected_character_ids)
-        weapon = persisted_weapon or weapon
-        self.state = self.state.set_weapon(
-            self.selected_team_index,
-            self.selected_slot_index,
-            weapon,
-        )
         details["account_character"] = dict(character)
-        details["account_weapon"] = dict(weapon)
-        details["weapon_image_path"] = _text(weapon.get("icon_path"))
-        details.update(_weapon_bonus_context(weapon, db_path=self.equipment_db_path))
+        if persisted_weapon:
+            weapon = persisted_weapon
+            self.state = self.state.set_weapon(
+                self.selected_team_index,
+                self.selected_slot_index,
+                weapon,
+            )
+            details["account_weapon"] = dict(weapon)
+            details["weapon_image_path"] = _text(weapon.get("icon_path"))
+            details.update(_weapon_bonus_context(weapon, db_path=self.equipment_db_path))
+        else:
+            self.state = self.state.clear_weapon(
+                self.selected_team_index,
+                self.selected_slot_index,
+            )
+            details.pop("account_weapon", None)
+            details.pop("weapon_image_path", None)
+            details.update(
+                {
+                    "weapon_passive_reference": {},
+                    "weapon_display_stat_effects": [],
+                }
+            )
         self.state = self.state.attach_character_details_data(
             self.selected_team_index,
             self.selected_slot_index,

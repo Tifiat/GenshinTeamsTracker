@@ -94,6 +94,7 @@ from hoyolab_export.account_equipment import (
     equip_artifact,
     get_equipped_artifact_owner,
     list_equipped_artifacts_for_character,
+    unequip_artifact,
     unequip_artifact_slot,
 )
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH, connect_db
@@ -2470,11 +2471,15 @@ class ArtifactBrowserWindow(QWidget):
             return
         try:
             with closing(connect_db(self.db_path)) as conn:
-                result = equip_artifact(
-                    conn,
-                    self.operation_target_character_id,
-                    artifact_id,
-                )
+                owner_character_id = get_equipped_artifact_owner(conn, artifact_id)
+                if owner_character_id == int(self.operation_target_character_id):
+                    result = unequip_artifact(conn, artifact_id)
+                else:
+                    result = equip_artifact(
+                        conn,
+                        self.operation_target_character_id,
+                        artifact_id,
+                    )
                 conn.commit()
         except EquipmentError as exc:
             self.status_label.setText(str(exc))

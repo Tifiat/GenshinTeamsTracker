@@ -176,6 +176,8 @@ After applying:
 In equip mode:
 
 - single click on an artifact equips that artifact to the operation target;
+- repeated click on an artifact already equipped by the operation target
+  unequips it;
 - this mirrors the in-game equipment page behavior;
 - the artifact card already contains enough information, so click is not needed
   for a separate "view details" action.
@@ -189,6 +191,8 @@ Outside equip mode:
 Manual artifact equip:
 
 - uses `hoyolab_export.account_equipment.equip_artifact(...)`;
+- uses `hoyolab_export.account_equipment.unequip_artifact(...)` for the repeated
+  current-target click toggle;
 - does not mutate presets;
 - updates current equipment;
 - clears the temporary applied-preset label back to `Текущая сборка`.
@@ -245,13 +249,14 @@ these artifacts."
 
 ## Weapon Owner Icons
 
-The AppShell weapon panel should later show equivalent owner side icons for
-weapons.
+The AppShell weapon panel shows equivalent owner side icons for weapons.
 
 Rules:
 
 - weapon cards/list entries show side icon(s) for characters currently equipped
   with that weapon;
+- repeated click on the selected character's currently equipped weapon unequips
+  it through `hoyolab_export.account_equipment.unequip_weapon(...)`;
 - source of truth: `account_character_equipped_weapons`;
 - use read helpers from `hoyolab_export.account_equipment`;
 - owner side icons are UI/read-model presentation only.

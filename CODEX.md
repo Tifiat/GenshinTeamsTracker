@@ -7,6 +7,9 @@ This file is written for future coding agents. Keep it compact, English, and mos
 - The user usually writes in Russian, but project handoff files should stay in English.
 - Be frugal with context and tool output.
 - Prefer narrow `rg` queries and small file slices.
+- Final AppShell startup must support adaptive downscale on screens narrower
+  than the 1920px reference width. Keep the calibrated design/layout constants;
+  scale the rendered UI down instead of compressing layouts or lowering minimums.
 - Do not recursively list or read generated/private state unless explicitly needed:
   - `hoyolab_export/profile`
   - `data/`
@@ -30,6 +33,9 @@ This file is written for future coding agents. Keep it compact, English, and mos
 - Avoid intermediate visible placeholder states during deferred load/hydration. If fast UI state is followed by async/deferred hydration, cancel stale pending refresh timers and show only the final hydrated panel state unless the placeholder is an intentional loading design.
 - Keep panel geometry stable across selected/empty/hydrated modes. Do not let details/side panels collapse or expand in ways that move unrelated content; use stable skeletons, persistent child widgets, and reserved/minimum height where needed.
 - AppShell top-level minimum size is a global state-independent contract. Do not rely on the current `QStackedWidget` page or Artifact Browser selected-target/no-target state to define the window minimum; those visibility changes alter `minimumSizeHint()` and can clip the fixed current-equipment/build-preview area.
+- AppShell adaptive downscale is a final-app requirement, not only an
+  `app_shell_smoke` convenience. When AppShell becomes the production entrypoint,
+  run the same startup scaling bootstrap before `QApplication` is created.
 - If a layout trace shows different `after` and `settled` geometry, do not trust synchronous `layout.activate()` alone. Prevent the intermediate frame from painting by disabling updates during the model/layout mutation and re-enabling updates on the next event-loop tick after a final layout settle.
 - Avoid many child widgets for non-interactive repeated visual strips. Use baked pixmaps when appropriate, while preserving drag, wheel, and edge-hint behavior for scroll strips.
 - For dense card/grid panels with vertical overflow, prefer `ui/utils/overlay_scroll.py::OverlayVerticalScrollArea` over native vertical scrollbars when scrollbar appearance would change content width. The overlay scrollbar should not reserve layout width, should appear on scroll/edge hover/drag, and should auto-hide when idle.

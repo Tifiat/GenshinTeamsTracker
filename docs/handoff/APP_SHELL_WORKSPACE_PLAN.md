@@ -24,6 +24,18 @@ Terms:
 - Custom overlay scrollbars remain relevant where native scrollbars would shift
   right-panel content or create asymmetric empty space.
 
+Display scale contract:
+
+- The AppShell design is calibrated against a 1920x1080 reference desktop.
+  Calibrated AppShell/Artifact Browser design constants, including minimum
+  width/height and panel/grid widths, remain design-pixel layout contracts.
+- Screens narrower than the 1920px reference width must use startup-only adaptive
+  downscale so the rendered UI keeps the same proportions instead of compressing
+  columns. Do not upscale above 1.0 on 1920px+ screens.
+- This is a final application requirement. `app_shell_smoke` may be the first
+  wired entrypoint, but the production AppShell launcher must run the same
+  scaling bootstrap before `QApplication` is created.
+
 This should be a new application shell, not the old main window with the old
 right column patched in place.
 

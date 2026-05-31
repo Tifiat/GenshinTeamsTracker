@@ -36,6 +36,7 @@ from ui.app_shell import (
     RIGHT_OPERATIONS_DOCK_WIDTH,
     RosterSelectionMarker,
     WEAPON_PICKER_SAFE_MARGIN,
+    WEAPON_PICKER_VIEWPORT_TOP_EXTENSION,
     _SCALED_ICON_PIXMAP_CACHE,
     _scaled_icon_pixmap,
     _weapon_owner_side_icon_size,
@@ -2635,7 +2636,10 @@ class AppShellTest(unittest.TestCase):
             workspace.reload_weapons()
 
         margins = workspace.weapon_grid.contentsMargins()
-        self.assertEqual(margins.top(), WEAPON_PICKER_SAFE_MARGIN)
+        self.assertEqual(
+            margins.top(),
+            WEAPON_PICKER_SAFE_MARGIN + WEAPON_PICKER_VIEWPORT_TOP_EXTENSION,
+        )
         self.assertEqual(margins.bottom(), WEAPON_PICKER_SAFE_MARGIN)
         self.assertEqual(workspace.weapon_grid.horizontalSpacing(), 6)
         self.assertEqual(workspace.weapon_grid.verticalSpacing(), 6)

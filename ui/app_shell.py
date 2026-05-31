@@ -133,7 +133,9 @@ WEAPON_OWNER_OVERLAY_TRACE = os.environ.get(
 WEAPON_PICKER_OWNER_SIDE_ICON_RATIO = 45 / 48
 WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO = 14 / 45
 WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = 22 / 45
+WEAPON_PICKER_ICON_SIZE = 48
 WEAPON_PICKER_SAFE_MARGIN = 6
+WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 10
 WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = "#ee5555"
 WEAPON_PICKER_OCCUPIED_OUTLINE_ALPHA = 150
 WEAPON_PICKER_OCCUPIED_OUTLINE_WIDTH = 4
@@ -1607,9 +1609,10 @@ class CharacterWeaponWorkspace(QWidget):
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(6)
+        root.setSpacing(0)
 
         root.addWidget(QLabel(tr("asset_panel.weapons")))
+        root.addSpacing(2)
         root.addLayout(
             self._build_filter_row(
                 (
@@ -1621,7 +1624,9 @@ class CharacterWeaponWorkspace(QWidget):
         self.weapon_area, self.weapon_widget, self.weapon_grid = self._make_grid_area()
         root.addWidget(self.weapon_area, 1)
 
+        root.addSpacing(6)
         root.addWidget(QLabel(tr("asset_panel.characters")))
+        root.addSpacing(6)
         root.addLayout(
             self._build_filter_row(
                 (
@@ -1641,6 +1646,7 @@ class CharacterWeaponWorkspace(QWidget):
                 trailing_widgets=(self._make_standard_filter_button(),),
             )
         )
+        root.addSpacing(6)
         self.char_area, self.char_widget, self.char_grid = self._make_grid_area()
         root.addWidget(self.char_area, 3)
         self._weapon_owner_badge_overlay = WeaponOwnerBadgeOverlay(
@@ -1817,12 +1823,15 @@ class CharacterWeaponWorkspace(QWidget):
             self.weapon_grid,
             self.weapon_widget,
             self.weapon_area,
-            icon_size=48,
+            icon_size=WEAPON_PICKER_ICON_SIZE,
             spacing=6,
             clicked=self.weapon_clicked.emit,
             grid_name="weapons",
             card_registry=self._weapon_cards_by_key,
             vertical_safe_margin=WEAPON_PICKER_SAFE_MARGIN,
+            vertical_safe_top_margin=(
+                WEAPON_PICKER_SAFE_MARGIN + WEAPON_PICKER_VIEWPORT_TOP_EXTENSION
+            ),
         )
         self._weapon_owner_badge_overlay.sync_geometry()
         self._weapon_owner_badge_overlay.update()
@@ -2010,6 +2019,7 @@ class CharacterWeaponWorkspace(QWidget):
         grid_name: str = "icons",
         card_registry: dict[str, "AssetIconLabel"] | None = None,
         vertical_safe_margin: int = 0,
+        vertical_safe_top_margin: int | None = None,
     ) -> float:
         total_start = perf_now()
         _clear_grid(grid)
@@ -2037,7 +2047,12 @@ class CharacterWeaponWorkspace(QWidget):
         left_margin = max(0, (available_width - total_grid_width) // 2)
         right_margin = max(0, available_width - total_grid_width - left_margin)
         safe_margin = max(0, int(vertical_safe_margin))
-        grid.setContentsMargins(left_margin, safe_margin, right_margin, safe_margin)
+        safe_top_margin = (
+            safe_margin
+            if vertical_safe_top_margin is None
+            else max(0, int(vertical_safe_top_margin))
+        )
+        grid.setContentsMargins(left_margin, safe_top_margin, right_margin, safe_margin)
         grid.setHorizontalSpacing(spacing)
         grid.setVerticalSpacing(spacing)
         for column in range(cols):
@@ -2362,8 +2377,11 @@ class WeaponOwnerBadgeOverlay(QWidget):
             for card in cards:
                 self._draw_card_occupied_outline(painter, card, viewport_rect)
             painter.restore()
+            painter.save()
+            painter.setClipRect(viewport_rect)
             for card in cards:
                 self._draw_card_owner_badge(painter, card, viewport_rect)
+            painter.restore()
         finally:
             painter.end()
 

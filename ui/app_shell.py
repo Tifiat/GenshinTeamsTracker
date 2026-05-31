@@ -2355,32 +2355,53 @@ class WeaponOwnerBadgeOverlay(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         try:
-            for card in self._cards():
-                self._draw_card_owner_badge(painter, card)
+            cards = tuple(self._cards())
+            viewport_rect = self._viewport_rect()
+            painter.save()
+            painter.setClipRect(viewport_rect)
+            for card in cards:
+                self._draw_card_occupied_outline(painter, card, viewport_rect)
+            painter.restore()
+            for card in cards:
+                self._draw_card_owner_badge(painter, card, viewport_rect)
         finally:
             painter.end()
 
-    def _draw_card_owner_badge(self, painter: QPainter, card: AssetIconLabel) -> None:
+    def _viewport_rect(self) -> QRect:
+        viewport = self._scroll_area.viewport()
+        return QRect(
+            self.mapFromGlobal(viewport.mapToGlobal(viewport.rect().topLeft())),
+            viewport.size(),
+        )
+
+    def _weapon_rect_for_card(
+        self,
+        card: AssetIconLabel,
+        viewport_rect: QRect,
+    ) -> QRect:
         if not card.isVisible() or not card.owner_badges:
-            return
+            return QRect()
 
         icon_rect = card._displayed_icon_rect()
         if icon_rect.isNull() or not icon_rect.isValid():
-            return
+            return QRect()
 
         weapon_rect = QRect(
             self.mapFromGlobal(card.mapToGlobal(icon_rect.topLeft())),
             icon_rect.size(),
         )
-        viewport_rect = QRect(
-            self.mapFromGlobal(
-                self._scroll_area.viewport().mapToGlobal(
-                    self._scroll_area.viewport().rect().topLeft()
-                )
-            ),
-            self._scroll_area.viewport().size(),
-        )
         if not weapon_rect.intersects(viewport_rect):
+            return QRect()
+        return weapon_rect
+
+    def _draw_card_occupied_outline(
+        self,
+        painter: QPainter,
+        card: AssetIconLabel,
+        viewport_rect: QRect,
+    ) -> None:
+        weapon_rect = self._weapon_rect_for_card(card, viewport_rect)
+        if weapon_rect.isNull() or not weapon_rect.isValid():
             return
 
         outline_color = QColor(WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR)
@@ -2406,6 +2427,16 @@ class WeaponOwnerBadgeOverlay(QWidget):
             WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS,
             WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS,
         )
+
+    def _draw_card_owner_badge(
+        self,
+        painter: QPainter,
+        card: AssetIconLabel,
+        viewport_rect: QRect,
+    ) -> None:
+        weapon_rect = self._weapon_rect_for_card(card, viewport_rect)
+        if weapon_rect.isNull() or not weapon_rect.isValid():
+            return
 
         badge = card.owner_badges[0]
         side_icon_path = _text(badge.get("side_icon_path"))

@@ -1601,6 +1601,7 @@ class CharacterWeaponWorkspace(QWidget):
         super().showEvent(event)
         self._weapon_owner_badge_overlay.sync_geometry()
         self._weapon_owner_badge_overlay.update()
+        self._weapon_owner_badge_overlay.schedule_settle()
         if not self._initial_grid_built:
             self._initial_grid_built = True
             QTimer.singleShot(0, self.update_grids)
@@ -1763,6 +1764,7 @@ class CharacterWeaponWorkspace(QWidget):
         )
         self._weapon_owner_badge_overlay.sync_geometry()
         self._weapon_owner_badge_overlay.update()
+        self._weapon_owner_badge_overlay.schedule_settle()
         log_perf(
             "filter_weapons",
             total=perf_ms(total_start),
@@ -2267,6 +2269,9 @@ class WeaponOwnerBadgeOverlay(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self._settle_timer = QTimer(self)
+        self._settle_timer.setSingleShot(True)
+        self._settle_timer.timeout.connect(self._settle_geometry)
         self._scroll_area.verticalScrollBar().valueChanged.connect(self.update)
         self._scroll_area.horizontalScrollBar().valueChanged.connect(self.update)
         self.sync_geometry()
@@ -2275,6 +2280,13 @@ class WeaponOwnerBadgeOverlay(QWidget):
     def sync_geometry(self) -> None:
         self.setGeometry(self._overlay_host.rect())
         self.raise_()
+
+    def schedule_settle(self) -> None:
+        self._settle_timer.start(0)
+
+    def _settle_geometry(self) -> None:
+        self.sync_geometry()
+        self.update()
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)

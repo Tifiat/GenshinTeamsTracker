@@ -2498,6 +2498,16 @@ class AppShellTest(unittest.TestCase):
 
         self.assertIs(workspace._weapon_owner_badge_overlay.parentWidget(), workspace)
 
+    def test_weapon_owner_overlay_can_defer_startup_stack_settle(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+        overlay = workspace._weapon_owner_badge_overlay
+
+        overlay.schedule_settle()
+
+        self.assertTrue(overlay._settle_timer.isActive())
+        self._app.processEvents()
+        self.assertFalse(overlay._settle_timer.isActive())
+
     def test_marker_registry_survives_filter_rebuilds(self) -> None:
         workspace = CharacterWeaponWorkspace()
         workspace._initial_grid_built = True

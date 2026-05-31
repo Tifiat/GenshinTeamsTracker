@@ -128,10 +128,17 @@ WEAPON_OWNER_OVERLAY_TRACE = os.environ.get(
     "yes",
     "on",
 }
-WEAPON_PICKER_OWNER_SIDE_ICON_RATIO = 64 / 48
-WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO = 30 / 64
-WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = 41 / 64
+# Calibrated after fixing the previous double-downscale bug: the accepted visual
+# placed a 45px side-icon at x=17/y=-22 relative to a 48px weapon card.
+WEAPON_PICKER_OWNER_SIDE_ICON_RATIO = 45 / 48
+WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO = 14 / 45
+WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = 22 / 45
 WEAPON_PICKER_SAFE_MARGIN = 6
+WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = "#ee5555"
+WEAPON_PICKER_OCCUPIED_OUTLINE_ALPHA = 150
+WEAPON_PICKER_OCCUPIED_OUTLINE_WIDTH = 4
+WEAPON_PICKER_OCCUPIED_OUTLINE_INSET = 1
+WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS = 3
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
     10: "catalyst",
@@ -2092,8 +2099,9 @@ class CharacterWeaponWorkspace(QWidget):
 
 def _scaled_icon_pixmap(image_path: str, size: int, dpr: float) -> tuple[QPixmap, bool]:
     path = Path(image_path)
-    target_px = max(1, int(size * dpr))
-    dpr_key = int(round(dpr * 1000))
+    render_dpr = max(1.0, float(dpr or 1.0))
+    target_px = max(1, int(round(size * render_dpr)))
+    dpr_key = int(round(render_dpr * 1000))
     try:
         stat = path.stat()
         mtime_ns = stat.st_mtime_ns
@@ -2117,7 +2125,7 @@ def _scaled_icon_pixmap(image_path: str, size: int, dpr: float) -> tuple[QPixmap
         Qt.AspectRatioMode.KeepAspectRatio,
         Qt.TransformationMode.SmoothTransformation,
     )
-    pixmap.setDevicePixelRatio(dpr)
+    pixmap.setDevicePixelRatio(render_dpr)
     _SCALED_ICON_PIXMAP_CACHE[key] = pixmap
     return pixmap, False
 
@@ -2374,6 +2382,30 @@ class WeaponOwnerBadgeOverlay(QWidget):
         )
         if not weapon_rect.intersects(viewport_rect):
             return
+
+        outline_color = QColor(WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR)
+        outline_color.setAlpha(WEAPON_PICKER_OCCUPIED_OUTLINE_ALPHA)
+        painter.setPen(
+            QPen(
+                outline_color,
+                WEAPON_PICKER_OCCUPIED_OUTLINE_WIDTH,
+                Qt.PenStyle.SolidLine,
+                Qt.PenCapStyle.SquareCap,
+                Qt.PenJoinStyle.RoundJoin,
+            )
+        )
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        outline_rect = weapon_rect.adjusted(
+            WEAPON_PICKER_OCCUPIED_OUTLINE_INSET,
+            WEAPON_PICKER_OCCUPIED_OUTLINE_INSET,
+            -WEAPON_PICKER_OCCUPIED_OUTLINE_INSET,
+            -WEAPON_PICKER_OCCUPIED_OUTLINE_INSET,
+        )
+        painter.drawRoundedRect(
+            outline_rect,
+            WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS,
+            WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS,
+        )
 
         badge = card.owner_badges[0]
         side_icon_path = _text(badge.get("side_icon_path"))

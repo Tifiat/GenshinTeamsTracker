@@ -37,6 +37,7 @@ from ui.app_shell import (
     RosterSelectionMarker,
     WEAPON_PICKER_SAFE_MARGIN,
     _SCALED_ICON_PIXMAP_CACHE,
+    _scaled_icon_pixmap,
     _weapon_owner_side_icon_size,
     _weapon_owner_target_rect,
 )
@@ -2667,8 +2668,9 @@ class AppShellTest(unittest.TestCase):
         small_target = _weapon_owner_target_rect(small_weapon_rect, small_side_icon_size)
         large_target = _weapon_owner_target_rect(large_weapon_rect, large_side_icon_size)
 
-        self.assertEqual(small_side_icon_size, QSize(64, 64))
-        self.assertEqual(large_side_icon_size, QSize(128, 128))
+        self.assertEqual(small_side_icon_size, QSize(45, 45))
+        self.assertEqual(small_target, QRect(117, 28, 45, 45))
+        self.assertEqual(large_side_icon_size, QSize(90, 90))
         self.assertEqual(large_target.width(), small_target.width() * 2)
         self.assertEqual(large_target.height(), small_target.height() * 2)
 
@@ -2729,6 +2731,20 @@ class AppShellTest(unittest.TestCase):
 
         self.assertFalse(first_hit)
         self.assertTrue(second_hit)
+
+    def test_scaled_icon_pixmap_does_not_double_downscale_global_ui_scale(self) -> None:
+        _SCALED_ICON_PIXMAP_CACHE.clear()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "icon.png"
+            pixmap = QPixmap(126, 125)
+            pixmap.fill(QColor("#ff0000"))
+            self.assertTrue(pixmap.save(str(path)))
+
+            scaled, _cache_hit = _scaled_icon_pixmap(str(path), 48, 0.711458)
+
+        self.assertEqual(scaled.width(), 48)
+        self.assertEqual(scaled.height(), 48)
+        self.assertEqual(scaled.devicePixelRatio(), 1.0)
 
     def test_workspace_character_signal_updates_app_shell_state(self) -> None:
         shell = AppShell()

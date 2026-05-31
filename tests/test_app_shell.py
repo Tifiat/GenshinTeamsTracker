@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import QApplication, QStyleOptionButton, QWidget
 
@@ -34,10 +34,11 @@ from ui.app_shell import (
     RosterSelectionMarker,
     _SCALED_ICON_PIXMAP_CACHE,
 )
-from ui.artifact_browser.card_delegate import ArtifactCardDelegate, GRID_SIZE
+from ui.artifact_browser.card_delegate import ArtifactCardDelegate, CARD_SIZE, GRID_SIZE
 from ui.artifact_browser.window import (
     ARTIFACT_GRID_FIT_PADDING,
     ARTIFACT_LIST_MIN_WIDTH,
+    ArtifactGridListView,
     ArtifactBrowserWindow,
     BUILD_PANEL_WIDTH,
     BUILD_TARGET_UNIVERSAL_KEY,
@@ -387,6 +388,8 @@ class AppShellTest(unittest.TestCase):
     def test_embedded_artifact_browser_uses_non_shifting_scrollbars(self) -> None:
         browser = ArtifactBrowserWindow(embedded=True)
 
+        self.assertIsInstance(browser.list_view, ArtifactGridListView)
+        self.assertFalse(browser.delegate.draw_owner_icons_in_delegate)
         self.assertIsInstance(browser.build_target_scroll, OverlayVerticalScrollArea)
         self.assertIsInstance(browser.build_preset_list_scroll, OverlayVerticalScrollArea)
         self.assertIsInstance(
@@ -1183,6 +1186,16 @@ class AppShellTest(unittest.TestCase):
         self.assertFalse(delegate._is_foreign_owner(10000050))
         self.assertTrue(delegate._is_foreign_owner(10000051))
         self.assertFalse(delegate.set_current_owner_character_id(10000050))
+
+    def test_artifact_card_delegate_owner_icon_geometry_extends_outside_item_cell(self) -> None:
+        item_rect = QRect(0, 0, GRID_SIZE.width(), GRID_SIZE.height())
+
+        card_rect = ArtifactCardDelegate.card_rect_for_item_rect(item_rect)
+        owner_rect = ArtifactCardDelegate.owner_icon_rect_for_card_rect(card_rect)
+
+        self.assertEqual(card_rect.size(), CARD_SIZE)
+        self.assertLess(owner_rect.top(), item_rect.top())
+        self.assertGreater(owner_rect.right(), item_rect.right())
 
     def test_artifact_browser_store_loads_current_owner_side_icon(self) -> None:
         with temp_app_shell_db() as db_path:

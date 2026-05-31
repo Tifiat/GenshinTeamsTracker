@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import os
 import re
 from contextlib import closing
 from dataclasses import dataclass
@@ -257,6 +258,17 @@ def calculate_assignment_width_fit(
     )
 
 
+OWNER_ICON_OVERLAY_DEBUG = os.environ.get(
+    "GTT_OWNER_ICON_OVERLAY_DEBUG",
+    "",
+).strip().casefold() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+
 class AdaptiveAssignmentPanel(QFrame):
     def __init__(self, minimum_width: int, preferred_width: int, parent=None):
         super().__init__(parent)
@@ -311,6 +323,85 @@ class AdaptiveJsonActionRow(QWidget):
         hint = super().minimumSizeHint()
         hint.setWidth(self.minimumWidth())
         return hint
+
+
+class ArtifactGridListView(QListView):
+    """List view that paints owner side-icons after all item delegates.
+
+    Owner side-icons intentionally extend outside a card/item cell. Drawing them
+    in the normal delegate pass lets neighboring item repaints cover the overlap,
+    so this view draws that one layer last over the viewport.
+    """
+
+    def paintEvent(self, event) -> None:  # noqa: N802 - Qt override
+        super().paintEvent(event)
+        self._paint_owner_icon_overlay()
+
+    def _paint_owner_icon_overlay(self) -> None:
+        model = self.model()
+        delegate = self.itemDelegate()
+        if model is None or not isinstance(delegate, ArtifactCardDelegate):
+            return
+
+        viewport_rect = self.viewport().rect()
+        painter = QPainter(self.viewport())
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        try:
+            for row in range(model.rowCount()):
+                index = model.index(row, 0)
+                if not index.isValid():
+                    continue
+                artifact = index.data(ArtifactRoles.ArtifactRole)
+                if artifact is None or artifact.owner_icon_path is None:
+                    continue
+
+                item_rect = self.visualRect(index)
+                if item_rect.isNull() or not item_rect.isValid():
+                    continue
+                card_rect = delegate.card_rect_for_item_rect(item_rect)
+                owner_rect = delegate.owner_icon_rect_for_card_rect(card_rect)
+                if not owner_rect.intersects(viewport_rect):
+                    continue
+
+                if OWNER_ICON_OVERLAY_DEBUG:
+                    self._log_owner_overlay_geometry(
+                        row,
+                        artifact,
+                        item_rect,
+                        card_rect,
+                        owner_rect,
+                    )
+                delegate.draw_owner_icon(painter, card_rect, artifact)
+        finally:
+            painter.end()
+
+    def _log_owner_overlay_geometry(
+        self,
+        row: int,
+        artifact,
+        item_rect: QRect,
+        card_rect: QRect,
+        owner_rect: QRect,
+    ) -> None:
+        model = self.model()
+        intersections: list[int] = []
+        if model is not None:
+            for other_row in range(model.rowCount()):
+                if other_row == row:
+                    continue
+                other_rect = self.visualRect(model.index(other_row, 0))
+                if other_rect.isValid() and owner_rect.intersects(other_rect):
+                    intersections.append(other_row)
+        print(
+            "[OWNER_ICON_OVERLAY]"
+            f" row={row}"
+            f" artifact_id={getattr(artifact, 'id', '-')}"
+            f" item={item_rect.x()},{item_rect.y()},{item_rect.width()}x{item_rect.height()}"
+            f" card={card_rect.x()},{card_rect.y()},{card_rect.width()}x{card_rect.height()}"
+            f" owner={owner_rect.x()},{owner_rect.y()},{owner_rect.width()}x{owner_rect.height()}"
+            f" intersects={','.join(str(value) for value in intersections[:8]) or '-'}",
+            flush=True,
+        )
 
 BUILD_TARGET_PREVIEW_ROW_HEIGHT = 40
 BUILD_TARGET_PREVIEW_SPACING = 0
@@ -1149,7 +1240,8 @@ class ArtifactBrowserWindow(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
-        self.list_view = QListView()
+        self.delegate.draw_owner_icons_in_delegate = False
+        self.list_view = ArtifactGridListView()
         self.list_view.setModel(self.model)
         self.list_view.setItemDelegate(self.delegate)
         self.list_view.setViewMode(QListView.ViewMode.IconMode)

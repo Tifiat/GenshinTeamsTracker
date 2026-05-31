@@ -105,6 +105,7 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         super().__init__(parent)
         self.edit_selection_artifact_ids: set[int] = set()
         self.current_owner_character_id: int | None = None
+        self.draw_owner_icons_in_delegate = True
 
     def set_edit_selection_artifact_ids(self, artifact_ids: set[int]) -> None:
         self.edit_selection_artifact_ids = set(artifact_ids)
@@ -175,15 +176,29 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         self._draw_main_stat(painter, option, card_rect, artifact)
         self._draw_icon_block(painter, option, card_rect, artifact)
         self._draw_substats(painter, option, card_rect, artifact)
-        self._draw_owner_icon(painter, card_rect, artifact)
+        if self.draw_owner_icons_in_delegate:
+            self.draw_owner_icon(painter, card_rect, artifact)
 
         painter.restore()
 
     @staticmethod
     def _card_rect(option: QStyleOptionViewItem) -> QRect:
-        x = option.rect.x() + (option.rect.width() - CARD_SIZE.width()) // 2
-        y = option.rect.y() + (option.rect.height() - CARD_SIZE.height()) // 2
+        return ArtifactCardDelegate.card_rect_for_item_rect(option.rect)
+
+    @staticmethod
+    def card_rect_for_item_rect(item_rect: QRect) -> QRect:
+        x = item_rect.x() + (item_rect.width() - CARD_SIZE.width()) // 2
+        y = item_rect.y() + (item_rect.height() - CARD_SIZE.height()) // 2
         return QRect(x, y, CARD_SIZE.width(), CARD_SIZE.height())
+
+    @staticmethod
+    def owner_icon_rect_for_card_rect(card_rect: QRect) -> QRect:
+        return QRect(
+            card_rect.right() - OWNER_SIDE_ICON_SIZE.width() + 1 - OWNER_SIDE_ICON_RIGHT_MARGIN,
+            card_rect.top() + OWNER_SIDE_ICON_TOP_MARGIN,
+            OWNER_SIDE_ICON_SIZE.width(),
+            OWNER_SIDE_ICON_SIZE.height(),
+        )
 
     def _draw_main_stat(
         self,
@@ -278,7 +293,7 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         painter.setPen(QColor("#f0d58a"))
         painter.drawText(level_rect, Qt.AlignmentFlag.AlignCenter, f"+{artifact.level}")
 
-    def _draw_owner_icon(
+    def draw_owner_icon(
         self,
         painter: QPainter,
         card_rect: QRect,
@@ -291,12 +306,7 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         if icon_pixmap is None:
             return
 
-        owner_rect = QRect(
-            card_rect.right() - OWNER_SIDE_ICON_SIZE.width() + 1 - OWNER_SIDE_ICON_RIGHT_MARGIN,
-            card_rect.top() + OWNER_SIDE_ICON_TOP_MARGIN,
-            OWNER_SIDE_ICON_SIZE.width(),
-            OWNER_SIDE_ICON_SIZE.height(),
-        )
+        owner_rect = self.owner_icon_rect_for_card_rect(card_rect)
 
         icon_target = QRect(
             owner_rect.x() + (owner_rect.width() - icon_pixmap.width()) // 2,

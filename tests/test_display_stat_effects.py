@@ -94,6 +94,44 @@ class DisplayStatEffectsTest(unittest.TestCase):
             ],
         )
 
+    def test_artifact_bonus_description_prefers_requested_language_with_english_fallback(self) -> None:
+        with temp_artifact_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                init_db(conn)
+                conn.execute(
+                    """
+                    INSERT INTO artifact_sets (set_uid, hoyowiki_entry_id, fallback_name, updated_at)
+                    VALUES ('TestSet', '9001', 'Test Set', 'now')
+                    """
+                )
+                upsert_artifact_set_bonus_description(
+                    conn,
+                    set_uid="TestSet",
+                    lang="en-us",
+                    piece_count=2,
+                    description="ATK +18%.",
+                )
+                upsert_artifact_set_bonus_description(
+                    conn,
+                    set_uid="TestSet",
+                    lang="ru",
+                    piece_count=2,
+                    description="Сила атаки +18%.",
+                )
+                preferred = list_artifact_set_display_stat_effects_for_active_sets(
+                    conn,
+                    [{"set_uid": "TestSet", "piece_count": 2}],
+                    preferred_lang="ru",
+                )
+                fallback = list_artifact_set_display_stat_effects_for_active_sets(
+                    conn,
+                    [{"set_uid": "TestSet", "piece_count": 2}],
+                    preferred_lang="pt-br",
+                )
+
+        self.assertEqual(preferred[0]["description"], "Сила атаки +18%.")
+        self.assertEqual(fallback[0]["description"], "ATK +18%.")
+
     def test_rebuild_skips_conditional_rows(self) -> None:
         with temp_artifact_db() as db_path:
             with closing(connect_db(db_path)) as conn:

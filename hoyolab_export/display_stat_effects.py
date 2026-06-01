@@ -555,7 +555,12 @@ def _passive_tooltip_from_entry(entry: WeaponStatsEntry) -> dict[str, str]:
 def list_artifact_set_display_stat_effects_for_active_sets(
     conn: sqlite3.Connection,
     active_sets: Iterable[Mapping[str, Any]],
+    *,
+    preferred_lang: str | None = None,
+    fallback_lang: str = DEFAULT_HOYOWIKI_LANGUAGE,
 ) -> list[dict[str, Any]]:
+    preferred = normalize_hoyowiki_language(preferred_lang)
+    fallback = normalize_hoyowiki_language(fallback_lang)
     result: list[dict[str, Any]] = []
     for active in active_sets:
         set_uid = str(active.get("set_uid") or "").strip()
@@ -570,16 +575,21 @@ def list_artifact_set_display_stat_effects_for_active_sets(
                 effects.stat_key,
                 effects.value,
                 effects.value_type,
-                descriptions.description
+                COALESCE(preferred_descriptions.description, fallback_descriptions.description)
+                    AS description
             FROM artifact_set_display_stat_effects AS effects
-            LEFT JOIN artifact_set_bonus_descriptions AS descriptions
-                ON descriptions.set_uid = effects.set_uid
-                AND descriptions.piece_count = effects.pieces_required
-                AND descriptions.lang = 'en-us'
+            LEFT JOIN artifact_set_bonus_descriptions AS preferred_descriptions
+                ON preferred_descriptions.set_uid = effects.set_uid
+                AND preferred_descriptions.piece_count = effects.pieces_required
+                AND preferred_descriptions.lang = ?
+            LEFT JOIN artifact_set_bonus_descriptions AS fallback_descriptions
+                ON fallback_descriptions.set_uid = effects.set_uid
+                AND fallback_descriptions.piece_count = effects.pieces_required
+                AND fallback_descriptions.lang = ?
             WHERE effects.set_uid = ? AND effects.pieces_required <= ?
             ORDER BY effects.pieces_required, effects.stat_key
             """,
-            (set_uid, int(piece_count)),
+            (preferred, fallback, set_uid, int(piece_count)),
         ).fetchall()
         result.extend(dict(row) for row in rows)
     return result

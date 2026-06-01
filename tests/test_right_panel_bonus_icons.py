@@ -16,9 +16,11 @@ from run_workspace.right_panel_prototype_view_model import (
 )
 from run_workspace.team_builder import create_empty_team_builder_state
 from ui.right_panel_prototype import (
+    BONUS_MEMBER_ICON_SIZE,
     _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE,
     _BONUS_SOURCE_ICON_PIXMAP_CACHE,
     BonusSourceChipWidget,
+    BonusSourceStripWidget,
     RightPanelPrototypeWidget,
     _bonus_member_side_icon_pixmap,
     _bonus_source_tooltip_html,
@@ -65,11 +67,35 @@ class RightPanelBonusIconTest(unittest.TestCase):
             applied=True,
         )
 
-        html = _bonus_source_tooltip_html(item)
+        with patch("ui.right_panel_prototype.tr", return_value="Effects"):
+            html = _bonus_source_tooltip_html(item)
 
         self.assertEqual(html.count("ATK +25%"), 1)
         self.assertIn("<b>Effects:</b>", html)
         self.assertIn("Direct display-stat elemental resonance bonus.", html)
+
+    def test_bonus_tooltip_uses_full_effect_label_and_cleans_description_html(self) -> None:
+        item = RightPanelBonusSourceDisplayItem(
+            source_kind="artifact_set_static",
+            source_id="DeepwoodMemories:2",
+            label="2p",
+            short_effects=("Dendro +15%",),
+            tooltip_effects=("Бонус Дендро урона +15%",),
+            tooltip_title="Deepwood Memories 2p",
+            tooltip_body="<p>Эффекты:</p><p>Бонус Дендро урона +15%.</p>",
+            applied=True,
+        )
+
+        with patch("ui.right_panel_prototype.tr", return_value="Эффекты"):
+            tooltip = _bonus_source_tooltip_html(item)
+
+        self.assertIn("<b>Эффекты:</b>", tooltip)
+        self.assertEqual(tooltip.count("Эффекты:"), 1)
+        self.assertIn("Бонус Дендро урона +15%", tooltip)
+        self.assertEqual(tooltip.count("Бонус Дендро урона +15%"), 1)
+        self.assertNotIn("Dendro +15%", tooltip)
+        self.assertNotIn("&lt;p&gt;", tooltip)
+        self.assertNotIn("&lt;/p&gt;", tooltip)
 
     def test_moonsign_tooltip_keeps_effect_and_breakdown_non_duplicated(self) -> None:
         item = RightPanelBonusSourceDisplayItem(
@@ -111,6 +137,18 @@ class RightPanelBonusIconTest(unittest.TestCase):
 
         self.assertEqual(len(icon_labels), 1)
         self.assertEqual([badge.text() for badge in effect_badges], ["ATK +25%", "CR +15%"])
+
+    def test_bonus_strip_drag_scroll_keeps_transparency_styles_scoped(self) -> None:
+        strip = BonusSourceStripWidget()
+
+        self.assertTrue(strip._scroll.property("dragScrollArea"))
+        self.assertTrue(strip._scroll.viewport().property("dragScrollViewport"))
+        self.assertTrue(strip._content.property("dragScrollContent"))
+        self.assertEqual(strip._content.styleSheet(), "")
+        self.assertIn(
+            'QWidget[dragScrollContent="true"]',
+            strip._scroll.styleSheet(),
+        )
 
     def test_member_side_icon_bottom_align_renderer_uses_cache(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -169,8 +207,31 @@ class RightPanelBonusIconTest(unittest.TestCase):
 
         self.assertEqual(effect_badges, [])
         self.assertEqual(len(member_icons), 1)
+        self.assertEqual(
+            member_icons[0].size(),
+            QSize(BONUS_MEMBER_ICON_SIZE, BONUS_MEMBER_ICON_SIZE),
+        )
         self.assertEqual(len(_BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE), 1)
         self.assertIsNotNone(member_icons[0].pixmap())
+
+    def test_member_side_icon_composite_keeps_badge_background_visible(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            icon_path = Path(tmp) / "member_icon.png"
+            image = QImage(32, 32, QImage.Format.Format_ARGB32)
+            image.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(image)
+            painter.fillRect(QRect(14, 12, 4, 8), QColor(120, 220, 255, 255))
+            painter.end()
+            self.assertTrue(image.save(str(icon_path), "PNG"))
+
+            _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE.clear()
+            pixmap = _bonus_member_side_icon_pixmap(
+                str(icon_path),
+                QSize(BONUS_MEMBER_ICON_SIZE, BONUS_MEMBER_ICON_SIZE),
+            )
+
+        self.assertIsNotNone(pixmap)
+        self.assertGreater(pixmap.toImage().pixelColor(4, 16).alpha(), 0)
 
 
 if __name__ == "__main__":

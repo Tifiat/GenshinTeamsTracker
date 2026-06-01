@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from localization import tr
 from run_workspace.right_panel_prototype_view_model import (
     MODE_ABYSS,
     MODE_DPS_DUMMY,
@@ -82,6 +83,8 @@ _BONUS_SOURCE_ICON_PIXMAP_CACHE: dict[
 _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 BONUS_MEMBER_ICON_SCALE = 125
 BONUS_MEMBER_ICON_BOTTOM_PADDING = 0
+BONUS_SOURCE_CHIP_HEIGHT = 26
+BONUS_MEMBER_ICON_SIZE = 26
 OWNER_BADGE_TRACE = os.environ.get("GTT_OWNER_BADGE_TRACE", "").strip().casefold() in {
     "1",
     "true",
@@ -1112,7 +1115,7 @@ class BonusSourceStripWidget(QFrame):
         _clear_layout(self._layout)
         self._set_external_bonuses_enabled(external_bonuses_enabled)
         if not items:
-            empty = QLabel("No external bonuses")
+            empty = QLabel(tr("right_panel.bonus_tooltip.no_external_bonuses"))
             empty.setObjectName("BonusStripEmpty")
             empty.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
             self._layout.addWidget(empty)
@@ -1160,6 +1163,7 @@ def _bonus_source_strip_key(
                 item.label,
                 item.icon_path,
                 tuple(item.short_effects),
+                tuple(item.tooltip_effects),
                 item.tooltip_title,
                 item.tooltip_body,
                 bool(item.applied),
@@ -1181,11 +1185,11 @@ class BonusSourceChipWidget(QFrame):
         super().__init__(parent)
         self.setObjectName("BonusSourceChip")
         self.setProperty("disabled", not item.applied)
-        self.setFixedHeight(24)
+        self.setFixedHeight(BONUS_SOURCE_CHIP_HEIGHT)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(2, 1, 4, 1)
+        layout.setContentsMargins(2, 0, 4, 0)
         layout.setSpacing(3)
 
         icon = QLabel(item.label[:3].upper() if item.label else "BON")
@@ -1209,8 +1213,15 @@ class BonusSourceChipWidget(QFrame):
         for index, path in enumerate(item.character_icons[:4]):
             member_icon = QLabel("")
             member_icon.setObjectName("BonusSourceMemberIcon")
-            member_icon.setFixedSize(22, 22)
-            member_pixmap = _bonus_member_side_icon_pixmap(path, QSize(22, 22)) if path else None
+            member_icon.setFixedSize(BONUS_MEMBER_ICON_SIZE, BONUS_MEMBER_ICON_SIZE)
+            member_pixmap = (
+                _bonus_member_side_icon_pixmap(
+                    path,
+                    QSize(BONUS_MEMBER_ICON_SIZE, BONUS_MEMBER_ICON_SIZE),
+                )
+                if path
+                else None
+            )
             if member_pixmap is not None:
                 member_icon.setPixmap(member_pixmap)
                 if index < len(item.character_tooltips) and item.character_tooltips[index]:
@@ -1244,10 +1255,10 @@ def _bonus_source_tooltip_html(item: RightPanelBonusSourceDisplayItem) -> str:
     title = html.escape(item.tooltip_title or item.label)
     if title:
         rows.append(f"<b>{title}</b>")
-    effect_lines = _unique_text_lines(tuple(item.short_effects))
+    effect_lines = _unique_text_lines(tuple(item.tooltip_effects or item.short_effects))
     if effect_lines:
         rows.append(
-            "<b>Effects:</b><br>"
+            f"<b>{html.escape(tr('right_panel.bonus_tooltip.effects'))}:</b><br>"
             + "<br>".join(f"- {html.escape(line)}" for line in effect_lines)
         )
     if not item.applied and item.not_applied_reason:
@@ -1256,7 +1267,7 @@ def _bonus_source_tooltip_html(item: RightPanelBonusSourceDisplayItem) -> str:
         )
     if item.tooltip_body:
         body_lines = _filtered_bonus_tooltip_body_lines(
-            item.tooltip_body,
+            _clean_set_bonus_description(item.tooltip_body),
             title=item.tooltip_title or item.label,
             effects=effect_lines,
         )
@@ -1284,22 +1295,30 @@ def _filtered_bonus_tooltip_body_lines(
     title: str,
     effects: tuple[str, ...],
 ) -> tuple[str, ...]:
-    title_key = str(title or "").strip().casefold()
-    effect_keys = {effect.casefold() for effect in effects}
+    title_key = _tooltip_compare_key(title)
+    effect_keys = {_tooltip_compare_key(effect) for effect in effects}
+    effects_heading_keys = {
+        "effects",
+        _tooltip_compare_key(tr("right_panel.bonus_tooltip.effects")),
+    }
     result: list[str] = []
     seen: set[str] = set()
     for raw_line in str(body or "").splitlines():
         line = raw_line.strip()
         if not line:
             continue
-        key = line.casefold()
+        key = _tooltip_compare_key(line)
         if key == title_key or key in effect_keys or key in seen:
             continue
-        if key.startswith("effects:"):
+        if key in effects_heading_keys:
             continue
         result.append(line)
         seen.add(key)
     return tuple(result)
+
+
+def _tooltip_compare_key(value: str) -> str:
+    return str(value or "").strip().rstrip(".;:").strip().casefold()
 
 
 class ActionBarPrototypeWidget(QFrame):

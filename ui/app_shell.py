@@ -88,6 +88,12 @@ from ui.utils.owner_icon_badge import (
     owner_badge_size_for_icon,
 )
 from ui.utils.tooltips import install_custom_tooltip
+from ui.utils.ui_palette import (
+    UI_ACCENT_TEAM_1,
+    UI_ACCENT_TEAM_2,
+    UI_EQUIPPED_WEAPON_ACCENT,
+    UI_TEXT_ON_ACCENT,
+)
 
 
 RIGHT_OPERATIONS_DOCK_WIDTH = RIGHT_PANEL_PROTOTYPE_MIN_WIDTH
@@ -109,7 +115,7 @@ MODE_TEAM_COUNTS = {
     MODE_ABYSS: 2,
     MODE_DPS_DUMMY: 1,
 }
-TEAM_MARKER_COLORS = ("#3ed47b", "#4e91ff")
+TEAM_MARKER_COLORS = (UI_ACCENT_TEAM_1, UI_ACCENT_TEAM_2)
 _SCALED_ICON_PIXMAP_CACHE: dict[tuple[str, int, int, int, int], QPixmap] = {}
 _OWNER_BADGE_ICON_PIXMAP_CACHE: dict[tuple[str, int, int, int, int], QPixmap | None] = {}
 _OWNER_BADGE_BACKGROUND_CACHE: dict[tuple[int, int], QPixmap] = {}
@@ -136,7 +142,7 @@ WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO = 22 / 45
 WEAPON_PICKER_ICON_SIZE = 48
 WEAPON_PICKER_SAFE_MARGIN = 6
 WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 6
-WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = "#56c779"
+WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = UI_EQUIPPED_WEAPON_ACCENT
 WEAPON_PICKER_OCCUPIED_OUTLINE_ALPHA = 150
 WEAPON_PICKER_OCCUPIED_FILL_ALPHA = 38
 WEAPON_PICKER_OCCUPIED_OUTLINE_WIDTH = 4
@@ -808,6 +814,7 @@ class AppShellController:
                     list_artifact_set_display_stat_effects_for_active_sets(
                         conn,
                         artifact_snapshot.to_dict().get("active_set_bonuses") or [],
+                        preferred_lang=_account_content_language(),
                     )
                     if artifact_snapshot is not None
                     else []
@@ -2295,7 +2302,7 @@ class AssetIconLabel(QLabel):
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(badge_fill)
         painter.drawRoundedRect(badge_rect, 5, 5)
-        painter.setPen(QColor("#ffffff"))
+        painter.setPen(QColor(UI_TEXT_ON_ACCENT))
         font = painter.font()
         font.setBold(True)
         font.setPointSize(max(8, min(11, self.base_size // 7)))

@@ -7,7 +7,7 @@ from pathlib import Path
 import sqlite3
 from typing import Any, Mapping
 
-from localization import tr_for_language
+from localization import tr, tr_for_language
 
 from .display_stats import build_character_display_stats
 from .team_builder import (
@@ -154,6 +154,7 @@ class RightPanelBonusSourceDisplayItem:
     label: str
     icon_path: str = ""
     short_effects: tuple[str, ...] = ()
+    tooltip_effects: tuple[str, ...] = ()
     tooltip_title: str = ""
     tooltip_body: str = ""
     applied: bool = True
@@ -168,6 +169,7 @@ class RightPanelBonusSourceDisplayItem:
             "label": self.label,
             "icon_path": self.icon_path,
             "short_effects": list(self.short_effects),
+            "tooltip_effects": list(self.tooltip_effects),
             "tooltip_title": self.tooltip_title,
             "tooltip_body": self.tooltip_body,
             "applied": self.applied,
@@ -1321,6 +1323,10 @@ def _bonus_source_items(
         set_name = _text(context.get("set_name")) or set_uid
         effect_labels = tuple(_static_effect_short_label(effect) for effect in effects)
         effect_labels = tuple(label for label in effect_labels if label)
+        tooltip_effect_labels = tuple(
+            _localized_static_effect_label(effect) for effect in effects
+        )
+        tooltip_effect_labels = tuple(label for label in tooltip_effect_labels if label)
         if not effect_labels:
             continue
         description = _text(effects[0].get("description"))
@@ -1331,11 +1337,12 @@ def _bonus_source_items(
                 label=f"{pieces_required}p",
                 icon_path=_text(context.get("icon_path")),
                 short_effects=effect_labels,
+                tooltip_effects=tooltip_effect_labels,
                 tooltip_title=f"{set_name} {pieces_required}p",
                 tooltip_body=description,
                 applied=bool(external_bonuses_enabled),
                 not_applied_reason=(
-                    "" if external_bonuses_enabled else "Внешние бонусы отключены"
+                    "" if external_bonuses_enabled else _external_bonuses_disabled_text()
                 ),
             )
         )
@@ -1350,6 +1357,10 @@ def _bonus_source_items(
         weapon_name = _text(account_weapon.get("name")) or "Weapon passive"
         effect_labels = tuple(_static_effect_short_label(effect) for effect in weapon_effects)
         effect_labels = tuple(label for label in effect_labels if label)
+        tooltip_effect_labels = tuple(
+            _localized_static_effect_label(effect) for effect in weapon_effects
+        )
+        tooltip_effect_labels = tuple(label for label in tooltip_effect_labels if label)
         if effect_labels:
             refinement = _optional_int(account_weapon.get("refinement"))
             tooltip_title, tooltip_body = _weapon_tooltip_title_body(details)
@@ -1362,11 +1373,12 @@ def _bonus_source_items(
                     label=f"R{refinement}" if refinement is not None else "WPN",
                     icon_path=_text(account_weapon.get("icon_path")),
                     short_effects=effect_labels,
+                    tooltip_effects=tooltip_effect_labels,
                     tooltip_title=tooltip_title,
                     tooltip_body=tooltip_body,
                     applied=bool(external_bonuses_enabled),
                     not_applied_reason=(
-                        "" if external_bonuses_enabled else "Внешние бонусы отключены"
+                        "" if external_bonuses_enabled else _external_bonuses_disabled_text()
                     ),
                 )
             )
@@ -1404,6 +1416,25 @@ def _static_effect_short_label(effect: Mapping[str, Any]) -> str:
     label = _STATIC_EFFECT_LABELS.get(stat_key, _short_stat_label(stat_key))
     suffix = "%" if value_type == "percent_points" else ""
     return f"{label} +{value:g}{suffix}"
+
+
+def _localized_static_effect_label(effect: Mapping[str, Any]) -> str:
+    stat_key = _text(effect.get("stat_key")).upper()
+    value = _optional_float(effect.get("value"))
+    value_type = _text(effect.get("value_type"))
+    if not stat_key or value is None:
+        return ""
+    locale_key = _STATIC_EFFECT_LOCALE_KEYS.get(stat_key)
+    label = tr(locale_key) if locale_key else _STATIC_EFFECT_LABELS.get(
+        stat_key,
+        _short_stat_label(stat_key),
+    )
+    suffix = "%" if value_type == "percent_points" else ""
+    return f"{label} +{value:g}{suffix}"
+
+
+def _external_bonuses_disabled_text() -> str:
+    return tr("right_panel.bonus_tooltip.external_bonuses_disabled")
 
 
 def _team_bonus_members(team: Any) -> tuple[_TeamBonusMember, ...]:
@@ -1527,7 +1558,7 @@ def _team_bonus_source_items(
                 tooltip_body=_elemental_resonance_tooltip(effect, selected_member),
                 applied=bool(external_bonuses_enabled),
                 not_applied_reason=(
-                    "" if external_bonuses_enabled else "Внешние бонусы отключены"
+                    "" if external_bonuses_enabled else _external_bonuses_disabled_text()
                 ),
             )
         )
@@ -1597,7 +1628,7 @@ def _moonsign_bonus_item(
     applied = bool(external_bonuses_enabled)
     reason = ""
     if not external_bonuses_enabled:
-        reason = "Внешние бонусы отключены"
+        reason = _external_bonuses_disabled_text()
     body_lines = [
         (
             "Считается после прямых внешних бонусов."
@@ -1965,6 +1996,29 @@ _STATIC_EFFECT_LABELS = {
     "PHYSICAL_DMG_BONUS": "Physical",
     "ALL_ELEMENTAL_DMG_BONUS": "All Elem",
     "HEALING_BONUS": "Healing",
+}
+
+_STATIC_EFFECT_LOCALE_KEYS = {
+    "HP_FLAT": "artifact.stat.hp_flat",
+    "HP_PERCENT": "artifact.stat.hp_percent",
+    "ATK_FLAT": "artifact.stat.atk_flat",
+    "ATK_PERCENT": "artifact.stat.atk_percent",
+    "DEF_FLAT": "artifact.stat.def_flat",
+    "DEF_PERCENT": "artifact.stat.def_percent",
+    "ELEMENTAL_MASTERY": "artifact.stat.elemental_mastery",
+    "ENERGY_RECHARGE": "artifact.stat.energy_recharge",
+    "CRIT_RATE": "artifact.stat.crit_rate",
+    "CRIT_DMG": "artifact.stat.crit_damage",
+    "PYRO_DMG_BONUS": "artifact.stat.pyro_damage",
+    "HYDRO_DMG_BONUS": "artifact.stat.hydro_damage",
+    "ELECTRO_DMG_BONUS": "artifact.stat.electro_damage",
+    "CRYO_DMG_BONUS": "artifact.stat.cryo_damage",
+    "ANEMO_DMG_BONUS": "artifact.stat.anemo_damage",
+    "GEO_DMG_BONUS": "artifact.stat.geo_damage",
+    "DENDRO_DMG_BONUS": "artifact.stat.dendro_damage",
+    "PHYSICAL_DMG_BONUS": "artifact.stat.physical_damage",
+    "ALL_ELEMENTAL_DMG_BONUS": "artifact.stat.all_elemental_damage",
+    "HEALING_BONUS": "artifact.stat.healing_bonus",
 }
 
 

@@ -388,6 +388,7 @@ def build_character_details_data_with_build_id(
         artifact_set_effects = list_artifact_set_display_stat_effects_for_active_sets(
             conn,
             artifact_snapshot.to_dict().get("active_set_bonuses") or [],
+            preferred_lang=_content_language_from_source_notes(source_notes),
         )
         weapon_effects = list_weapon_display_stat_effects(
             conn,
@@ -658,10 +659,7 @@ def _weapon_passive_reference_from_db(
     weapon_id = _text(weapon.get("id") or weapon.get("weapon_id"))
     if not weapon_id:
         return {}
-    language = _text(
-        _mapping(source_notes).get("content_language")
-        or _mapping(source_notes).get("account_content_language")
-    ) or _account_content_language()
+    language = _content_language_from_source_notes(source_notes)
     try:
         with closing(_connect_readonly_db(db_path)) as conn:
             return get_weapon_passive_tooltip(
@@ -671,6 +669,15 @@ def _weapon_passive_reference_from_db(
             )
     except sqlite3.Error:
         return {}
+
+
+def _content_language_from_source_notes(
+    source_notes: Mapping[str, Any] | None,
+) -> str:
+    return _text(
+        _mapping(source_notes).get("content_language")
+        or _mapping(source_notes).get("account_content_language")
+    ) or _account_content_language()
 
 
 def _account_content_language() -> str:

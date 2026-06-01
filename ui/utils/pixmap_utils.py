@@ -5,8 +5,15 @@ import json
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QRect, Qt
+from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPen, QPixmap
+
+from ui.utils.hidpi_pixmap import (
+    effective_pixmap_dpr,
+    logical_pixmap_size,
+    make_hidpi_canvas,
+    physical_size_for_logical,
+)
 
 COUNT_BADGE_BORDER_COLOR = "#8f7440"
 COUNT_BADGE_BACKGROUND_COLOR = "#4a3b22"
@@ -51,6 +58,7 @@ def scale_trimmed_pixmap(
     *,
     padding: int = 0,
     alpha_threshold: int = 0,
+    dpr: float = 1.0,
 ) -> QPixmap:
     return scale_trimmed_pixmap_to_size(
         pixmap,
@@ -58,6 +66,7 @@ def scale_trimmed_pixmap(
         size,
         padding=padding,
         alpha_threshold=alpha_threshold,
+        dpr=dpr,
     )
 
 
@@ -68,13 +77,14 @@ def scale_trimmed_pixmap_to_size(
     *,
     padding: int = 0,
     alpha_threshold: int = 0,
+    dpr: float = 1.0,
 ) -> QPixmap:
     width = max(1, int(width))
     height = max(1, int(height))
     padding = max(0, int(padding))
+    effective_dpr = effective_pixmap_dpr(dpr)
 
-    canvas = QPixmap(width, height)
-    canvas.fill(Qt.GlobalColor.transparent)
+    canvas = make_hidpi_canvas(QSize(width, height), effective_dpr)
 
     trimmed = trim_transparent_pixmap(pixmap, alpha_threshold=alpha_threshold)
     if trimmed.isNull():
@@ -82,18 +92,23 @@ def scale_trimmed_pixmap_to_size(
 
     content_width = max(1, width - padding * 2)
     content_height = max(1, height - padding * 2)
+    physical_content_size = physical_size_for_logical(
+        QSize(content_width, content_height),
+        effective_dpr,
+    )
     scaled = trimmed.scaled(
-        content_width,
-        content_height,
+        physical_content_size,
         Qt.AspectRatioMode.KeepAspectRatio,
         Qt.TransformationMode.SmoothTransformation,
     )
+    scaled.setDevicePixelRatio(effective_dpr)
+    scaled_size = logical_pixmap_size(scaled)
 
     painter = QPainter(canvas)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.drawPixmap(
-        (width - scaled.width()) // 2,
-        (height - scaled.height()) // 2,
+        (width - scaled_size.width()) // 2,
+        (height - scaled_size.height()) // 2,
         scaled,
     )
     painter.end()
@@ -146,7 +161,9 @@ def apply_diagonal_alpha_mask(
             color.setAlpha(int(color.alpha() * alpha_factor))
             image.setPixelColor(x, y, color)
 
-    return QPixmap.fromImage(image)
+    result = QPixmap.fromImage(image)
+    result.setDevicePixelRatio(pixmap.devicePixelRatio())
+    return result
 
 
 def make_diagonal_split_pixmap(
@@ -164,6 +181,10 @@ def make_diagonal_split_pixmap(
         height = size
     width = max(1, int(width or 1))
     height = max(1, int(height or 1))
+    dpr = max(
+        effective_pixmap_dpr(bottom_left_pixmap.devicePixelRatio()),
+        effective_pixmap_dpr(top_right_pixmap.devicePixelRatio()),
+    )
 
     bottom_left_pixmap = apply_diagonal_alpha_mask(
         bottom_left_pixmap,
@@ -176,12 +197,11 @@ def make_diagonal_split_pixmap(
         feather=feather,
     )
 
-    canvas = QPixmap(width, height)
-    canvas.fill(Qt.GlobalColor.transparent)
+    canvas = make_hidpi_canvas(QSize(width, height), dpr)
     painter = QPainter(canvas)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-    painter.drawPixmap(0, 0, bottom_left_pixmap)
-    painter.drawPixmap(0, 0, top_right_pixmap)
+    painter.drawPixmap(QRect(0, 0, width, height), bottom_left_pixmap)
+    painter.drawPixmap(QRect(0, 0, width, height), top_right_pixmap)
     painter.end()
     return canvas
 
@@ -206,11 +226,12 @@ def draw_count_badge(
         return pixmap
 
     canvas = QPixmap(pixmap)
-    shortest_side = min(canvas.width(), canvas.height())
+    logical_size = logical_pixmap_size(canvas)
+    shortest_side = min(logical_size.width(), logical_size.height())
     badge_size = min(13, max(8, round(shortest_side * 0.38)))
     badge_rect = QRect(
-        canvas.width() - badge_size - margin,
-        canvas.height() - badge_size - margin,
+        logical_size.width() - badge_size - margin,
+        logical_size.height() - badge_size - margin,
         badge_size,
         badge_size,
     )
@@ -246,7 +267,12 @@ def persistent_pixmap_cache_path(cache_dir: Path, cache_key: Any) -> Path:
     return cache_dir / f"{pixmap_cache_key_digest(cache_key)}.png"
 
 
-def load_persistent_pixmap(cache_dir: Path, cache_key: Any) -> QPixmap | None:
+def load_persistent_pixmap(
+    cache_dir: Path,
+    cache_key: Any,
+    *,
+    dpr: float = 1.0,
+) -> QPixmap | None:
     try:
         cache_path = persistent_pixmap_cache_path(cache_dir, cache_key)
         if not cache_path.is_file():
@@ -254,6 +280,7 @@ def load_persistent_pixmap(cache_dir: Path, cache_key: Any) -> QPixmap | None:
         pixmap = QPixmap(str(cache_path))
     except OSError:
         return None
+    pixmap.setDevicePixelRatio(effective_pixmap_dpr(dpr))
     return pixmap if not pixmap.isNull() else None
 
 

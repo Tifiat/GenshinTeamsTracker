@@ -49,6 +49,13 @@ This file is written for future coding agents. Keep it compact, English, and mos
 - For dense card/grid panels with vertical overflow, prefer `ui/utils/overlay_scroll.py::OverlayVerticalScrollArea` over native vertical scrollbars when scrollbar appearance would change content width. The overlay scrollbar should not reserve layout width, should appear on scroll/edge hover/drag, and should auto-hide when idle.
 - Build preset row names must use flexible leftover space, not fixed magic widths. Fixed metadata/actions define the right side; long text should clip/marquee instead of expanding rows or reintroducing horizontal scrolling.
 - Reusable pixmap operations belong in `ui/utils`, not inside large window classes. Window classes should resolve data/paths, choose modes, and call helpers rather than owning generic trim/mask/composite/cache logic.
+- New PNG/raster UI assets must use the shared high-DPI pixmap path in
+  `ui/utils/hidpi_pixmap.py` or an existing helper built on it. Do not add raw
+  `QPixmap.scaled(...)` in UI code unless that local code also handles logical
+  size, effective DPR, cache keys including DPR/source identity, and
+  `DevicePixelRatioChange` / screen-change refresh. Startup `QT_SCALE_FACTOR`
+  downscale for small monitors is separate from image DPR; raster assets must
+  clamp effective pixmap DPR to at least `1.0` so they are not double-shrunk.
 - New or refactored reusable UI code must use shared colors from `ui/utils/ui_palette.py` instead of introducing new literal hex colors. Do not mass-migrate old QSS blocks just for cleanup; migrate legacy colors only when that UI area is being actively changed.
 - Reusable filter buttons must use `ui/utils/filter_button_style.py`; do not
   create local filter-button QSS copies.

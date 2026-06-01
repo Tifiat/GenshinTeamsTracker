@@ -2750,6 +2750,20 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(scaled.height(), 48)
         self.assertEqual(scaled.devicePixelRatio(), 1.0)
 
+    def test_scaled_icon_pixmap_uses_physical_pixels_for_high_dpi(self) -> None:
+        _SCALED_ICON_PIXMAP_CACHE.clear()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "icon.png"
+            pixmap = QPixmap(126, 126)
+            pixmap.fill(QColor("#00ff00"))
+            self.assertTrue(pixmap.save(str(path)))
+
+            scaled, _cache_hit = _scaled_icon_pixmap(str(path), 48, 1.25)
+
+        self.assertEqual(scaled.width(), 60)
+        self.assertEqual(scaled.height(), 60)
+        self.assertEqual(scaled.devicePixelRatio(), 1.25)
+
     def test_workspace_character_signal_updates_app_shell_state(self) -> None:
         shell = AppShell()
 

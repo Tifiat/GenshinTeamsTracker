@@ -14,6 +14,11 @@ from ui.utils.owner_icon_badge import (
     owner_badge_rect_for_icon_rect,
     owner_badge_size_for_icon,
 )
+from ui.utils.hidpi_pixmap import (
+    effective_pixmap_dpr,
+    load_hidpi_pixmap,
+    logical_pixmap_size,
+)
 from ui.utils.ui_palette import (
     UI_BG_FOREIGN_EQUIPPED,
     UI_BG_FOREIGN_EQUIPPED_HOVER,
@@ -38,37 +43,36 @@ CV_COLORS = [
     (50.0, 9999.0, "#62d0ff"),   # cyan
 ]
 
-_PIXMAP_CACHE: dict[tuple[str, int, int], QPixmap] = {}
-_OWNER_BADGE_BACKGROUND_CACHE: dict[tuple[int, int], QPixmap] = {}
+_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
+_OWNER_BADGE_BACKGROUND_CACHE: dict[tuple[int, int, int], QPixmap] = {}
 
 
-def cached_scaled_pixmap(icon_path: Path, size: QSize) -> QPixmap | None:
-    key = (str(icon_path.resolve()), size.width(), size.height())
-
-    cached = _PIXMAP_CACHE.get(key)
-    if cached is not None and not cached.isNull():
-        return cached
-
-    pixmap = QPixmap(str(icon_path))
-    if pixmap.isNull():
-        return None
-
-    scaled = pixmap.scaled(
+def cached_scaled_pixmap(
+    icon_path: Path,
+    size: QSize,
+    *,
+    dpr: float = 1.0,
+) -> QPixmap | None:
+    result = load_hidpi_pixmap(
+        icon_path,
         size,
-        Qt.AspectRatioMode.KeepAspectRatio,
-        Qt.TransformationMode.SmoothTransformation,
+        dpr=dpr,
+        aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+        transform_mode=Qt.TransformationMode.SmoothTransformation,
+        cache=_PIXMAP_CACHE,
+        surface="artifact_card_delegate",
     )
-    _PIXMAP_CACHE[key] = scaled
-    return scaled
+    return None if result.pixmap.isNull() else result.pixmap
 
 
-def cached_owner_badge_background(size: QSize) -> QPixmap:
-    key = (size.width(), size.height())
+def cached_owner_badge_background(size: QSize, *, dpr: float = 1.0) -> QPixmap:
+    effective_dpr = effective_pixmap_dpr(dpr)
+    key = (size.width(), size.height(), int(round(effective_dpr * 1000)))
     cached = _OWNER_BADGE_BACKGROUND_CACHE.get(key)
     if cached is not None and not cached.isNull():
         return cached
 
-    badge = make_owner_icon_badge_background(size)
+    badge = make_owner_icon_badge_background(size, dpr=effective_dpr)
     _OWNER_BADGE_BACKGROUND_CACHE[key] = badge
     return badge
 
@@ -233,16 +237,21 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         )
 
         if artifact.icon_path:
-            pixmap = cached_scaled_pixmap(artifact.icon_path, ICON_SIZE)
+            pixmap = cached_scaled_pixmap(
+                artifact.icon_path,
+                ICON_SIZE,
+                dpr=option.widget.devicePixelRatioF() if option.widget else 1.0,
+            )
         else:
             pixmap = None
 
         if pixmap is not None:
+            pixmap_size = logical_pixmap_size(pixmap)
             target = QRect(
-                icon_rect.x() + (icon_rect.width() - pixmap.width()) // 2,
-                icon_rect.y() + (icon_rect.height() - pixmap.height()) // 2,
-                pixmap.width(),
-                pixmap.height(),
+                icon_rect.x() + (icon_rect.width() - pixmap_size.width()) // 2,
+                icon_rect.y() + (icon_rect.height() - pixmap_size.height()) // 2,
+                pixmap_size.width(),
+                pixmap_size.height(),
             )
             painter.drawPixmap(target, pixmap)
         else:
@@ -293,22 +302,31 @@ class ArtifactCardDelegate(QStyledItemDelegate):
         if artifact.owner_icon_path is None:
             return
 
-        icon_pixmap = cached_scaled_pixmap(artifact.owner_icon_path, OWNER_SIDE_ICON_SIZE)
+        dpr = painter.device().devicePixelRatioF()
+        icon_pixmap = cached_scaled_pixmap(
+            artifact.owner_icon_path,
+            OWNER_SIDE_ICON_SIZE,
+            dpr=dpr,
+        )
         if icon_pixmap is None:
             return
 
         owner_rect = self.owner_icon_rect_for_card_rect(card_rect)
+        icon_size = logical_pixmap_size(icon_pixmap)
 
         icon_target = QRect(
-            owner_rect.x() + (owner_rect.width() - icon_pixmap.width()) // 2,
-            owner_rect.y() + (owner_rect.height() - icon_pixmap.height()) // 2,
-            icon_pixmap.width(),
-            icon_pixmap.height(),
+            owner_rect.x() + (owner_rect.width() - icon_size.width()) // 2,
+            owner_rect.y() + (owner_rect.height() - icon_size.height()) // 2,
+            icon_size.width(),
+            icon_size.height(),
         )
 
         badge_size = owner_badge_size_for_icon(icon_target.size())
         badge_rect = owner_badge_rect_for_icon_rect(icon_target, badge_size)
-        painter.drawPixmap(badge_rect, cached_owner_badge_background(badge_size))
+        painter.drawPixmap(
+            badge_rect,
+            cached_owner_badge_background(badge_size, dpr=dpr),
+        )
 
         painter.drawPixmap(icon_target, icon_pixmap)
 

@@ -80,6 +80,12 @@ from ui.utils.pixmap_utils import (
     save_persistent_pixmap,
     scale_trimmed_pixmap_to_size,
 )
+from ui.utils.hidpi_pixmap import (
+    effective_pixmap_dpr,
+    load_hidpi_pixmap,
+    logical_pixmap_size,
+    make_hidpi_canvas,
+)
 from ui.utils.tooltips import install_custom_tooltip
 from ui.utils.ui_palette import UI_BG_APP, UI_TEXT_PRIMARY
 from run_workspace.perf import log_perf, perf_ms, perf_now
@@ -1061,6 +1067,20 @@ class ArtifactBrowserWindow(QWidget):
             resize_events=self._resize_event_count,
         )
 
+    def event(self, event) -> bool:
+        if event.type() in (
+            QEvent.Type.DevicePixelRatioChange,
+            QEvent.Type.ScreenChangeInternal,
+        ):
+            self._build_row_source_icon_cache.clear()
+            self._build_row_bonus_pixmap_cache.clear()
+            self._target_preview_icon_cache.clear()
+            self._target_preview_strip_cache.clear()
+            self.update_build_panel()
+            if hasattr(self, "list_view"):
+                self.list_view.viewport().update()
+        return super().event(event)
+
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._resize_event_count += 1
@@ -1724,7 +1744,15 @@ class ArtifactBrowserWindow(QWidget):
     def _prepare_row_action_button(self, button: QPushButton) -> None:
         self._prepare_button_for_first_show(button)
 
-    def _load_scaled_center_crop_pixmap(self, path, size: int) -> QPixmap:
+    def _load_scaled_center_crop_pixmap(
+        self,
+        path,
+        size: int,
+        *,
+        dpr: float = 1.0,
+    ) -> QPixmap:
+        effective_dpr = effective_pixmap_dpr(dpr)
+        physical_size = max(1, int(round(size * effective_dpr)))
         reader = QImageReader(str(path))
         reader.setAutoTransform(True)
 
@@ -1734,31 +1762,38 @@ class ArtifactBrowserWindow(QWidget):
             and source_size.width() > 0
             and source_size.height() > 0
         ):
-            scale = max(size / source_size.width(), size / source_size.height())
+            scale = max(
+                physical_size / source_size.width(),
+                physical_size / source_size.height(),
+            )
             reader.setScaledSize(
                 QSize(
-                    max(size, int(source_size.width() * scale + 0.5)),
-                    max(size, int(source_size.height() * scale + 0.5)),
+                    max(physical_size, int(source_size.width() * scale + 0.5)),
+                    max(physical_size, int(source_size.height() * scale + 0.5)),
                 )
             )
             image = reader.read()
             if not image.isNull():
-                return QPixmap.fromImage(image)
+                pixmap = QPixmap.fromImage(image)
+                pixmap.setDevicePixelRatio(effective_dpr)
+                return pixmap
 
         pixmap = QPixmap(str(path))
         if pixmap.isNull():
             return QPixmap()
-        return pixmap.scaled(
+        return load_hidpi_pixmap(
+            path,
             size,
-            size,
-            Qt.AspectRatioMode.KeepAspectRatioByExpanding,
-            Qt.TransformationMode.SmoothTransformation,
-        )
+            dpr=effective_dpr,
+            aspect_mode=Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+            transform_mode=Qt.TransformationMode.SmoothTransformation,
+            surface="artifact_target_crop",
+        ).pixmap
 
-    def _make_universal_target_preview_pixmap(self) -> QPixmap:
+    def _make_universal_target_preview_pixmap(self, *, dpr: float = 1.0) -> QPixmap:
         size = BUILD_TARGET_PREVIEW_ICON_SIZE
-        canvas = QPixmap(size, size)
-        canvas.fill(Qt.GlobalColor.transparent)
+        effective_dpr = effective_pixmap_dpr(dpr)
+        canvas = make_hidpi_canvas(QSize(size, size), effective_dpr)
 
         painter = QPainter(canvas)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -1774,6 +1809,7 @@ class ArtifactBrowserWindow(QWidget):
         background = self._load_scaled_center_crop_pixmap(
             BUILD_TARGET_PREVIEW_UNIVERSAL_BG_PATH,
             size,
+            dpr=effective_dpr,
         )
         if background.isNull():
             painter.fillRect(
@@ -1781,9 +1817,10 @@ class ArtifactBrowserWindow(QWidget):
                 QColor(BUILD_TARGET_PREVIEW_UNIVERSAL_CARD_BACKGROUND),
             )
         else:
+            background_size = logical_pixmap_size(background)
             painter.drawPixmap(
-                (size - background.width()) // 2,
-                (size - background.height()) // 2,
+                (size - background_size.width()) // 2,
+                (size - background_size.height()) // 2,
                 background,
             )
 
@@ -3692,7 +3729,11 @@ class ArtifactBrowserWindow(QWidget):
         if cached is not None:
             return cached
 
-        cached = load_persistent_pixmap(BUILD_ROW_BONUS_CACHE_DIR, cache_key)
+        cached = load_persistent_pixmap(
+            BUILD_ROW_BONUS_CACHE_DIR,
+            cache_key,
+            dpr=float(cache_key.get("dpr") or 1.0),
+        )
         if cached is not None:
             self._build_row_bonus_pixmap_cache[memory_key] = cached
             return cached
@@ -3724,6 +3765,7 @@ class ArtifactBrowserWindow(QWidget):
             "sources": [source],
             "width": BUILD_ROW_BONUS_STACK_WIDTH,
             "height": BUILD_ROW_BONUS_STACK_HEIGHT,
+            "dpr": effective_pixmap_dpr(self.devicePixelRatioF()),
             "padding": BUILD_ROW_BONUS_ICON_PADDING,
             "alpha_threshold": BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
             "badge_text": badge_text,
@@ -3746,6 +3788,7 @@ class ArtifactBrowserWindow(QWidget):
             "sources": [bottom_left_source, top_right_source],
             "width": BUILD_ROW_BONUS_STACK_WIDTH,
             "height": BUILD_ROW_BONUS_STACK_HEIGHT,
+            "dpr": effective_pixmap_dpr(self.devicePixelRatioF()),
             "padding": BUILD_ROW_BONUS_ICON_PADDING,
             "alpha_threshold": BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
             "diagonal": {
@@ -3764,12 +3807,14 @@ class ArtifactBrowserWindow(QWidget):
         source = self._build_row_icon_file_identity(icon_path)
         if source is None:
             return None
+        dpr = effective_pixmap_dpr(self.devicePixelRatioF())
         cache_key = (
             source["path"],
             source["mtime_ns"],
             source["size"],
             BUILD_ROW_BONUS_STACK_WIDTH,
             BUILD_ROW_BONUS_STACK_HEIGHT,
+            int(round(dpr * 1000)),
             BUILD_ROW_BONUS_ICON_PADDING,
             BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
         )
@@ -3787,6 +3832,7 @@ class ArtifactBrowserWindow(QWidget):
             BUILD_ROW_BONUS_STACK_HEIGHT,
             padding=BUILD_ROW_BONUS_ICON_PADDING,
             alpha_threshold=BUILD_ROW_BONUS_TRIM_ALPHA_THRESHOLD,
+            dpr=dpr,
         )
         self._build_row_source_icon_cache[cache_key] = scaled
         return scaled
@@ -4202,6 +4248,7 @@ class ArtifactBrowserWindow(QWidget):
                 "target_type": "universal",
                 "target_key": BUILD_TARGET_UNIVERSAL_KEY,
                 "icon_size": BUILD_TARGET_PREVIEW_ICON_SIZE,
+                "dpr": effective_pixmap_dpr(self.devicePixelRatioF()),
                 "background": self._target_preview_file_identity(
                     BUILD_TARGET_PREVIEW_UNIVERSAL_BG_PATH
                 ),
@@ -4236,6 +4283,7 @@ class ArtifactBrowserWindow(QWidget):
                 "character_id": character_id_value,
                 "source": self._target_preview_file_identity(path_value),
                 "icon_size": BUILD_TARGET_PREVIEW_ICON_SIZE,
+                "dpr": effective_pixmap_dpr(self.devicePixelRatioF()),
                 "scaling": "keep_aspect_ratio_centered",
                 "fallback_text": character_name_value[:2],
             }
@@ -4247,6 +4295,7 @@ class ArtifactBrowserWindow(QWidget):
             "target_key": key,
             "character_id": character_id_value,
             "icon_size": BUILD_TARGET_PREVIEW_ICON_SIZE,
+            "dpr": effective_pixmap_dpr(self.devicePixelRatioF()),
             "fallback_text": character_name_value[:2],
         }
 
@@ -4254,26 +4303,30 @@ class ArtifactBrowserWindow(QWidget):
         self,
         source_path: str | None,
         fallback_text: str,
+        *,
+        dpr: float = 1.0,
     ) -> QPixmap:
         size = BUILD_TARGET_PREVIEW_ICON_SIZE
-        canvas = QPixmap(size, size)
-        canvas.fill(Qt.GlobalColor.transparent)
+        effective_dpr = effective_pixmap_dpr(dpr)
+        canvas = make_hidpi_canvas(QSize(size, size), effective_dpr)
 
         if source_path:
-            pixmap = QPixmap(source_path)
-            if not pixmap.isNull():
-                scaled = pixmap.scaled(
-                    size,
-                    size,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
+            result = load_hidpi_pixmap(
+                source_path,
+                size,
+                dpr=effective_dpr,
+                aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+                transform_mode=Qt.TransformationMode.SmoothTransformation,
+                surface="artifact_target_preview_icon",
+            )
+            if not result.pixmap.isNull():
+                pixmap_size = logical_pixmap_size(result.pixmap)
                 painter = QPainter(canvas)
                 painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
                 painter.drawPixmap(
-                    (size - scaled.width()) // 2,
-                    (size - scaled.height()) // 2,
-                    scaled,
+                    (size - pixmap_size.width()) // 2,
+                    (size - pixmap_size.height()) // 2,
+                    result.pixmap,
                 )
                 painter.end()
                 return canvas
@@ -4294,14 +4347,16 @@ class ArtifactBrowserWindow(QWidget):
         return canvas
 
     def _generate_target_preview_icon(self, target: dict, cache_key: dict) -> QPixmap:
+        dpr = float(cache_key.get("dpr") or 1.0)
         if cache_key.get("target_type") == "universal":
-            return self._make_universal_target_preview_pixmap()
+            return self._make_universal_target_preview_pixmap(dpr=dpr)
 
         source = cache_key.get("source") or {}
         source_path = None if source.get("missing") else source.get("path")
         return self._make_character_target_preview_pixmap(
             source_path,
             str(cache_key.get("fallback_text") or "?"),
+            dpr=dpr,
         )
 
     def _cached_target_preview_icon(
@@ -4314,7 +4369,11 @@ class ArtifactBrowserWindow(QWidget):
         if cached is not None:
             return cached
 
-        cached = load_persistent_pixmap(BUILD_TARGET_PREVIEW_ICON_CACHE_DIR, cache_key)
+        cached = load_persistent_pixmap(
+            BUILD_TARGET_PREVIEW_ICON_CACHE_DIR,
+            cache_key,
+            dpr=float(cache_key.get("dpr") or 1.0),
+        )
         if cached is not None:
             self._target_preview_icon_cache[memory_key] = cached
             return cached
@@ -4351,6 +4410,7 @@ class ArtifactBrowserWindow(QWidget):
             "entries": entries,
             "row_height": BUILD_TARGET_PREVIEW_ROW_HEIGHT,
             "icon_size": BUILD_TARGET_PREVIEW_ICON_SIZE,
+            "dpr": effective_pixmap_dpr(self.devicePixelRatioF()),
             "spacing": BUILD_TARGET_PREVIEW_SPACING,
             "background": "transparent",
         }, icon_items
@@ -4367,8 +4427,8 @@ class ArtifactBrowserWindow(QWidget):
             count * BUILD_TARGET_PREVIEW_ICON_SIZE
             + max(0, count - 1) * BUILD_TARGET_PREVIEW_SPACING
         )
-        canvas = QPixmap(width, BUILD_TARGET_PREVIEW_ROW_HEIGHT)
-        canvas.fill(Qt.GlobalColor.transparent)
+        dpr = effective_pixmap_dpr(self.devicePixelRatioF())
+        canvas = make_hidpi_canvas(QSize(width, BUILD_TARGET_PREVIEW_ROW_HEIGHT), dpr)
 
         painter = QPainter(canvas)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -4376,9 +4436,10 @@ class ArtifactBrowserWindow(QWidget):
         for target, icon_key, _target_key in icon_items:
             icon = self._cached_target_preview_icon(target, icon_key)
             if icon is not None and not icon.isNull():
+                icon_size = logical_pixmap_size(icon)
                 painter.drawPixmap(
                     x,
-                    (BUILD_TARGET_PREVIEW_ROW_HEIGHT - icon.height()) // 2,
+                    (BUILD_TARGET_PREVIEW_ROW_HEIGHT - icon_size.height()) // 2,
                     icon,
                 )
             x += BUILD_TARGET_PREVIEW_ICON_SIZE + BUILD_TARGET_PREVIEW_SPACING
@@ -4395,7 +4456,11 @@ class ArtifactBrowserWindow(QWidget):
         if cached is not None:
             return cached
 
-        cached = load_persistent_pixmap(BUILD_TARGET_PREVIEW_STRIP_CACHE_DIR, cache_key)
+        cached = load_persistent_pixmap(
+            BUILD_TARGET_PREVIEW_STRIP_CACHE_DIR,
+            cache_key,
+            dpr=float(cache_key.get("dpr") or 1.0),
+        )
         if cached is not None:
             self._target_preview_strip_cache[memory_key] = cached
             return cached
@@ -4474,15 +4539,17 @@ class ArtifactBrowserWindow(QWidget):
         self.build_slot_icon_labels[pos].setText("")
         self.build_slot_icon_labels[pos].clear()
         if artifact.icon_path:
-            pixmap = QPixmap(str(artifact.icon_path))
-            if not pixmap.isNull():
+            result = load_hidpi_pixmap(
+                artifact.icon_path,
+                BUILD_PREVIEW_SLOT_ICON_SIZE,
+                dpr=self.build_slot_icon_labels[pos].devicePixelRatioF(),
+                aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+                transform_mode=Qt.TransformationMode.SmoothTransformation,
+                surface="artifact_build_preview_slot",
+            )
+            if not result.pixmap.isNull():
                 self.build_slot_icon_labels[pos].setPixmap(
-                    pixmap.scaled(
-                        BUILD_PREVIEW_SLOT_ICON_SIZE,
-                        BUILD_PREVIEW_SLOT_ICON_SIZE,
-                        Qt.AspectRatioMode.KeepAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation,
-                    )
+                    result.pixmap
                 )
 
         self.build_slot_icon_labels[pos].setToolTip(
@@ -4500,18 +4567,18 @@ class ArtifactBrowserWindow(QWidget):
             / "art_placeholder"
             / ARTIFACT_PLACEHOLDER_ICON_NAMES[pos]
         )
-        pixmap = QPixmap(str(icon_path))
-        if pixmap.isNull():
+        result = load_hidpi_pixmap(
+            icon_path,
+            BUILD_PREVIEW_SLOT_ICON_SIZE,
+            dpr=icon_label.devicePixelRatioF(),
+            aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+            transform_mode=Qt.TransformationMode.SmoothTransformation,
+            surface="artifact_build_preview_placeholder",
+        )
+        if result.pixmap.isNull():
             icon_label.setText("-")
             return
-        icon_label.setPixmap(
-            pixmap.scaled(
-                BUILD_PREVIEW_SLOT_ICON_SIZE,
-                BUILD_PREVIEW_SLOT_ICON_SIZE,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-        )
+        icon_label.setPixmap(result.pixmap)
 
     def current_build_artifact_ids(self) -> set[int]:
         return set(self._preview_slots().values())
@@ -4703,24 +4770,26 @@ class ArtifactBrowserWindow(QWidget):
         if not icon_path:
             return None
 
-        pixmap = QPixmap(str(icon_path))
-        if pixmap.isNull():
+        dpr = effective_pixmap_dpr(self.devicePixelRatioF())
+        result = load_hidpi_pixmap(
+            icon_path,
+            icon_size,
+            dpr=dpr,
+            aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+            transform_mode=Qt.TransformationMode.SmoothTransformation,
+            surface="artifact_build_bonus_cell",
+        )
+        if result.pixmap.isNull():
             return None
 
-        canvas = QPixmap(icon_size, icon_size)
-        canvas.fill(Qt.GlobalColor.transparent)
+        canvas = make_hidpi_canvas(QSize(icon_size, icon_size), dpr)
         painter = QPainter(canvas)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        scaled = pixmap.scaled(
-            icon_size,
-            icon_size,
-            Qt.AspectRatioMode.KeepAspectRatio,
-            Qt.TransformationMode.SmoothTransformation,
-        )
+        pixmap_size = logical_pixmap_size(result.pixmap)
         painter.drawPixmap(
-            (icon_size - scaled.width()) // 2,
-            (icon_size - scaled.height()) // 2,
-            scaled,
+            (icon_size - pixmap_size.width()) // 2,
+            (icon_size - pixmap_size.height()) // 2,
+            result.pixmap,
         )
         badge_size = min(13, max(8, round(icon_size * 0.38)))
         badge_rect = QRect(

@@ -81,6 +81,11 @@ from ui.utils.filter_button_style import (
     FILTER_BUTTON_SIZE,
     filter_button_style,
 )
+from ui.utils.hidpi_pixmap import (
+    effective_pixmap_dpr,
+    load_hidpi_pixmap,
+    logical_pixmap_size,
+)
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.owner_icon_badge import (
     make_owner_icon_badge_background,
@@ -116,9 +121,9 @@ MODE_TEAM_COUNTS = {
     MODE_DPS_DUMMY: 1,
 }
 TEAM_MARKER_COLORS = (UI_ACCENT_TEAM_1, UI_ACCENT_TEAM_2)
-_SCALED_ICON_PIXMAP_CACHE: dict[tuple[str, int, int, int, int], QPixmap] = {}
-_OWNER_BADGE_ICON_PIXMAP_CACHE: dict[tuple[str, int, int, int, int], QPixmap | None] = {}
-_OWNER_BADGE_BACKGROUND_CACHE: dict[tuple[int, int], QPixmap] = {}
+_SCALED_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
+_OWNER_BADGE_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
+_OWNER_BADGE_BACKGROUND_CACHE: dict[tuple[int, int, int], QPixmap] = {}
 OWNER_BADGE_TRACE = os.environ.get("GTT_OWNER_BADGE_TRACE", "").strip().casefold() in {
     "1",
     "true",
@@ -2121,77 +2126,44 @@ class CharacterWeaponWorkspace(QWidget):
 
 
 def _scaled_icon_pixmap(image_path: str, size: int, dpr: float) -> tuple[QPixmap, bool]:
-    path = Path(image_path)
-    render_dpr = max(1.0, float(dpr or 1.0))
-    target_px = max(1, int(round(size * render_dpr)))
-    dpr_key = int(round(render_dpr * 1000))
-    try:
-        stat = path.stat()
-        mtime_ns = stat.st_mtime_ns
-        file_size = stat.st_size
-    except OSError:
-        mtime_ns = 0
-        file_size = 0
-    key = (str(path), target_px, dpr_key, mtime_ns, file_size)
-    cached = _SCALED_ICON_PIXMAP_CACHE.get(key)
-    if cached is not None:
-        return cached, True
-
-    source = QPixmap(str(path))
-    if source.isNull():
-        _SCALED_ICON_PIXMAP_CACHE[key] = source
-        return source, False
-
-    pixmap = source.scaled(
-        target_px,
-        target_px,
-        Qt.AspectRatioMode.KeepAspectRatio,
-        Qt.TransformationMode.SmoothTransformation,
-    )
-    pixmap.setDevicePixelRatio(render_dpr)
-    _SCALED_ICON_PIXMAP_CACHE[key] = pixmap
-    return pixmap, False
-
-
-def _owner_badge_icon_pixmap(image_path: str, size: QSize) -> QPixmap | None:
-    path = Path(image_path)
-    try:
-        stat = path.stat()
-        key = (
-            str(path),
-            int(size.width()),
-            int(size.height()),
-            int(stat.st_mtime_ns),
-            int(stat.st_size),
-        )
-    except OSError:
-        key = (str(path), int(size.width()), int(size.height()), 0, 0)
-
-    if key in _OWNER_BADGE_ICON_PIXMAP_CACHE:
-        cached = _OWNER_BADGE_ICON_PIXMAP_CACHE[key]
-        return QPixmap(cached) if cached is not None else None
-
-    source = QPixmap(str(path))
-    if source.isNull():
-        _OWNER_BADGE_ICON_PIXMAP_CACHE[key] = None
-        return None
-
-    pixmap = source.scaled(
+    result = load_hidpi_pixmap(
+        image_path,
         size,
-        Qt.AspectRatioMode.KeepAspectRatio,
-        Qt.TransformationMode.SmoothTransformation,
+        dpr=dpr,
+        aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+        transform_mode=Qt.TransformationMode.SmoothTransformation,
+        cache=_SCALED_ICON_PIXMAP_CACHE,
+        surface="app_shell_asset_icon",
     )
-    _OWNER_BADGE_ICON_PIXMAP_CACHE[key] = QPixmap(pixmap)
-    return pixmap
+    return result.pixmap, result.cache_hit
 
 
-def _owner_badge_background(size: QSize) -> QPixmap:
-    key = (size.width(), size.height())
+def _owner_badge_icon_pixmap(
+    image_path: str,
+    size: QSize,
+    *,
+    dpr: float = 1.0,
+) -> QPixmap | None:
+    result = load_hidpi_pixmap(
+        image_path,
+        size,
+        dpr=dpr,
+        aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+        transform_mode=Qt.TransformationMode.SmoothTransformation,
+        cache=_OWNER_BADGE_ICON_PIXMAP_CACHE,
+        surface="weapon_owner_side_icon",
+    )
+    return None if result.pixmap.isNull() else result.pixmap
+
+
+def _owner_badge_background(size: QSize, *, dpr: float = 1.0) -> QPixmap:
+    effective_dpr = effective_pixmap_dpr(dpr)
+    key = (size.width(), size.height(), int(round(effective_dpr * 1000)))
     cached = _OWNER_BADGE_BACKGROUND_CACHE.get(key)
     if cached is not None and not cached.isNull():
         return cached
 
-    pixmap = make_owner_icon_badge_background(size)
+    pixmap = make_owner_icon_badge_background(size, dpr=effective_dpr)
     _OWNER_BADGE_BACKGROUND_CACHE[key] = pixmap
     return pixmap
 
@@ -2267,6 +2239,7 @@ class AssetIconLabel(QLabel):
     def event(self, event) -> bool:
         if event.type() in (
             QEvent.Type.DevicePixelRatioChange,
+            QEvent.Type.ScreenChangeInternal,
             QEvent.Type.Resize,
             QEvent.Type.Show,
         ):
@@ -2317,9 +2290,9 @@ class AssetIconLabel(QLabel):
         pixmap = self.pixmap()
         if pixmap is None or pixmap.isNull():
             return QRect()
-        ratio = pixmap.devicePixelRatio() or 1.0
-        width = max(1, round(pixmap.width() / ratio))
-        height = max(1, round(pixmap.height() / ratio))
+        pixmap_size = logical_pixmap_size(pixmap)
+        width = pixmap_size.width()
+        height = pixmap_size.height()
         return QRect(
             (self.width() - width) // 2,
             (self.height() - height) // 2,
@@ -2474,13 +2447,15 @@ class WeaponOwnerBadgeOverlay(QWidget):
         owner_pixmap = _owner_badge_icon_pixmap(
             side_icon_path,
             _weapon_owner_side_icon_size(weapon_rect),
+            dpr=self.devicePixelRatioF(),
         )
         if owner_pixmap is None:
             return
 
+        owner_size = logical_pixmap_size(owner_pixmap)
         owner_target = _weapon_owner_target_rect(
             weapon_rect,
-            owner_pixmap.size(),
+            owner_size,
         )
         if not owner_target.intersects(self.rect()):
             return
@@ -2507,6 +2482,7 @@ class WeaponOwnerBadgeOverlay(QWidget):
                 f"weapon_rect={_trace_rect(weapon_rect)} "
                 f"source={side_icon_path!r} "
                 f"owner_scaled={owner_pixmap.width()}x{owner_pixmap.height()} "
+                f"owner_dpr={owner_pixmap.devicePixelRatio():.3f} "
                 f"owner_target={_trace_rect(owner_target)} "
                 f"badge_size={badge_size.width()}x{badge_size.height()} "
                 f"badge_rect={_trace_rect(badge_rect)} "
@@ -2515,7 +2491,10 @@ class WeaponOwnerBadgeOverlay(QWidget):
                 "computed_from=owner_icon_rect"
             )
 
-        painter.drawPixmap(badge_rect, _owner_badge_background(badge_size))
+        painter.drawPixmap(
+            badge_rect,
+            _owner_badge_background(badge_size, dpr=self.devicePixelRatioF()),
+        )
         painter.drawPixmap(owner_target, owner_pixmap)
 
 

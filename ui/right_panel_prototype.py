@@ -42,6 +42,12 @@ from ui.utils.pixmap_utils import (
     make_diagonal_split_pixmap,
     scale_trimmed_pixmap_to_size,
 )
+from ui.utils.hidpi_pixmap import (
+    effective_pixmap_dpr,
+    load_hidpi_pixmap,
+    logical_pixmap_size,
+    make_hidpi_canvas,
+)
 from run_workspace.perf import log_perf, perf_ms, perf_now
 from ui.utils.drag_scroll import HorizontalDragScrollArea
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
@@ -71,13 +77,13 @@ SLOT_CARD_FIXED_HEIGHT = 154
 SLOT_NAME_HEIGHT = 18
 SLOT_DRAG_MIME_TYPE = "application/x-gtt-right-panel-slot"
 
-_FIT_PIXMAP_CACHE: dict[tuple[str, int, int], QPixmap | None] = {}
+_FIT_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 _BUILD_MINI_SET_ICON_PIXMAP_CACHE: dict[
-    tuple[str, int, int, int, int],
+    tuple[object, ...],
     QPixmap | None,
 ] = {}
 _BONUS_SOURCE_ICON_PIXMAP_CACHE: dict[
-    tuple[str, int, int, int, int],
+    tuple[object, ...],
     QPixmap | None,
 ] = {}
 _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
@@ -294,6 +300,16 @@ class RightPanelPrototypeWidget(QWidget):
         self.setUpdatesEnabled(True)
         self.update()
 
+    def event(self, event) -> bool:
+        if event.type() in (
+            QEvent.Type.DevicePixelRatioChange,
+            QEvent.Type.ScreenChangeInternal,
+        ):
+            for slot_widget in self._slot_widgets:
+                slot_widget.refresh_hidpi_pixmaps()
+            self._details_frame.refresh_hidpi_pixmaps()
+        return super().event(event)
+
 class RightPanelTeamPrototypeWidget(QFrame):
     slot_selected = Signal(int, int)
     slot_dropped = Signal(int, int, int, int)
@@ -479,6 +495,7 @@ class RightPanelSlotPrototypeWidget(QFrame):
         portrait_pixmap = _fit_pixmap(
             model.portrait_path,
             QSize(SLOT_PORTRAIT_SIZE, SLOT_PORTRAIT_SIZE),
+            dpr=self._portrait.devicePixelRatioF(),
         )
         if portrait_pixmap is not None:
             self._portrait.setPixmap(portrait_pixmap)
@@ -490,6 +507,7 @@ class RightPanelSlotPrototypeWidget(QFrame):
         weapon_pixmap = _fit_pixmap(
             model.weapon_image_path,
             QSize(SLOT_WEAPON_ICON_SIZE, SLOT_WEAPON_ICON_SIZE),
+            dpr=self._weapon.devicePixelRatioF(),
         )
         if weapon_pixmap is not None:
             self._weapon.setPixmap(weapon_pixmap)
@@ -520,6 +538,11 @@ class RightPanelSlotPrototypeWidget(QFrame):
             )
 
         self._name.setText(model.character_title)
+
+    def refresh_hidpi_pixmaps(self) -> None:
+        self._model_key = None
+        self.set_model(self._model)
+        self._artifact.refresh_hidpi_pixmap()
 
     def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt override
         if event.button() == Qt.MouseButton.LeftButton:
@@ -634,15 +657,18 @@ class BuildMiniSetStackWidget(QLabel):
         super().__init__("", parent)
         self._tooltip_controller = None
         self._model_key: tuple[object, ...] | None = None
+        self._model = model
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setFixedSize(SLOT_EQUIP_BOX_SIZE, SLOT_EQUIP_BOX_SIZE)
         self.set_model(model)
 
     def set_model(self, model: RightPanelSlotPrototypeViewModel) -> None:
+        self._model = model
         model_key = (
             model.artifact_square_label,
             model.artifact_image_path,
             tuple(model.build_mini_sets),
+            int(round(effective_pixmap_dpr(self.devicePixelRatioF()) * 1000)),
         )
         if model_key == self._model_key:
             return
@@ -653,11 +679,15 @@ class BuildMiniSetStackWidget(QLabel):
         self.clear()
         self.setText(model.artifact_square_label)
 
-        pixmap = _build_mini_set_stack_pixmap(model.build_mini_sets)
+        pixmap = _build_mini_set_stack_pixmap(
+            model.build_mini_sets,
+            dpr=self.devicePixelRatioF(),
+        )
         if pixmap is None and model.artifact_image_path:
             pixmap = _fit_pixmap(
                 model.artifact_image_path,
                 QSize(SLOT_EQUIP_ICON_SIZE, SLOT_EQUIP_ICON_SIZE),
+                dpr=self.devicePixelRatioF(),
             )
         if pixmap is not None:
             self.setText("")
@@ -671,6 +701,10 @@ class BuildMiniSetStackWidget(QLabel):
             self._tooltip_controller,
             tooltip,
         )
+
+    def refresh_hidpi_pixmap(self) -> None:
+        self._model_key = None
+        self.set_model(self._model)
 
 
 class ChamberTableBlockWidget(QFrame):
@@ -819,9 +853,11 @@ class SelectedCharacterDetailsWidget(QFrame):
         self._weapon_name_tooltip_controller = None
         self._weapon_meta_tooltip_controller = None
         self._stable_selected_height = 0
+        self._details: RightPanelSelectedDetailsViewModel | None = None
         self._build_stable_skeleton()
 
     def set_details(self, details: RightPanelSelectedDetailsViewModel) -> None:
+        self._details = details
         total_start = perf_now()
         height_before = self.height()
         hint_before = self.sizeHint().height()
@@ -1040,7 +1076,11 @@ class SelectedCharacterDetailsWidget(QFrame):
 
         self._weapon_icon.clear()
         self._weapon_icon.setText("WPN" if has_weapon else "")
-        pixmap = _fit_pixmap(details.weapon_icon_path, QSize(50, 50))
+        pixmap = _fit_pixmap(
+            details.weapon_icon_path,
+            QSize(50, 50),
+            dpr=self._weapon_icon.devicePixelRatioF(),
+        )
         if pixmap is not None:
             self._weapon_icon.setText("")
             self._weapon_icon.setPixmap(pixmap)
@@ -1065,6 +1105,12 @@ class SelectedCharacterDetailsWidget(QFrame):
     def _set_cv_summary(self, crit_value: float | None) -> None:
         self._cv_value.setText(f"{crit_value:g}" if crit_value is not None else "")
 
+    def refresh_hidpi_pixmaps(self) -> None:
+        if self._details is None or not self._details.has_selection:
+            return
+        self._set_weapon_summary(self._details)
+        self._bonus_strip.refresh_hidpi_pixmaps()
+
 
 class BonusSourceStripWidget(QFrame):
     external_bonuses_toggled = Signal(bool)
@@ -1073,6 +1119,7 @@ class BonusSourceStripWidget(QFrame):
         super().__init__(parent)
         self.setObjectName("BonusSourceStrip")
         self._items_key: tuple[object, ...] | None = None
+        self._items: tuple[RightPanelBonusSourceDisplayItem, ...] = ()
         self._external_bonuses_enabled = True
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFixedHeight(30)
@@ -1103,6 +1150,7 @@ class BonusSourceStripWidget(QFrame):
         external_bonuses_enabled: bool,
     ) -> str:
         items_key = _bonus_source_strip_key(items)
+        self._items = tuple(items)
         if items_key == self._items_key:
             external_bonuses_enabled = bool(external_bonuses_enabled)
             if external_bonuses_enabled == self._external_bonuses_enabled:
@@ -1127,6 +1175,13 @@ class BonusSourceStripWidget(QFrame):
             self._layout.addWidget(chip)
         self._layout.addStretch(1)
         return "rebuild_chips"
+
+    def refresh_hidpi_pixmaps(self) -> None:
+        self._items_key = None
+        self.set_items(
+            self._items,
+            external_bonuses_enabled=self._external_bonuses_enabled,
+        )
 
     def mouseReleaseEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
@@ -1183,6 +1238,7 @@ class BonusSourceChipWidget(QFrame):
         parent: QWidget | None = None,
     ):
         super().__init__(parent)
+        self._item = item
         self.setObjectName("BonusSourceChip")
         self.setProperty("disabled", not item.applied)
         self.setFixedHeight(BONUS_SOURCE_CHIP_HEIGHT)
@@ -1201,7 +1257,11 @@ class BonusSourceChipWidget(QFrame):
             not bool(item.character_tooltips),
         )
         pixmap = (
-            _bonus_source_icon_pixmap(item.icon_path, QSize(22, 22))
+            _bonus_source_icon_pixmap(
+                item.icon_path,
+                QSize(22, 22),
+                dpr=self.devicePixelRatioF(),
+            )
             if item.icon_path
             else None
         )
@@ -1218,6 +1278,7 @@ class BonusSourceChipWidget(QFrame):
                 _bonus_member_side_icon_pixmap(
                     path,
                     QSize(BONUS_MEMBER_ICON_SIZE, BONUS_MEMBER_ICON_SIZE),
+                    dpr=self.devicePixelRatioF(),
                 )
                 if path
                 else None
@@ -1389,6 +1450,8 @@ def _character_chips(details: RightPanelSelectedDetailsViewModel) -> list[str]:
 
 def _build_mini_set_stack_pixmap(
     active_sets: tuple[RightPanelBuildMiniSetViewModel, ...],
+    *,
+    dpr: float = 1.0,
 ) -> QPixmap | None:
     active_sets = tuple(active_sets[:2])
     if not active_sets:
@@ -1398,7 +1461,7 @@ def _build_mini_set_stack_pixmap(
     for item in active_sets:
         if not item.icon_path:
             continue
-        icon = _build_mini_set_icon_pixmap(item.icon_path)
+        icon = _build_mini_set_icon_pixmap(item.icon_path, dpr=dpr)
         if icon is not None and not icon.isNull():
             icons.append(icon)
 
@@ -1420,7 +1483,7 @@ def _build_mini_set_stack_pixmap(
     return None
 
 
-def _build_mini_set_icon_pixmap(path: str) -> QPixmap | None:
+def _build_mini_set_icon_pixmap(path: str, *, dpr: float = 1.0) -> QPixmap | None:
     if not path:
         return None
     resolved = _resolve_pixmap_path(path)
@@ -1430,6 +1493,7 @@ def _build_mini_set_icon_pixmap(path: str) -> QPixmap | None:
             str(resolved),
             SLOT_EQUIP_ICON_SIZE,
             SLOT_EQUIP_ICON_SIZE,
+            int(round(effective_pixmap_dpr(dpr) * 1000)),
             int(stat.st_mtime_ns),
             int(stat.st_size),
         )
@@ -1438,6 +1502,7 @@ def _build_mini_set_icon_pixmap(path: str) -> QPixmap | None:
             str(path),
             SLOT_EQUIP_ICON_SIZE,
             SLOT_EQUIP_ICON_SIZE,
+            int(round(effective_pixmap_dpr(dpr) * 1000)),
             0,
             0,
         )
@@ -1460,6 +1525,7 @@ def _build_mini_set_icon_pixmap(path: str) -> QPixmap | None:
         SLOT_EQUIP_ICON_SIZE,
         padding=1,
         alpha_threshold=16,
+        dpr=dpr,
     )
     _BUILD_MINI_SET_ICON_PIXMAP_CACHE[key] = QPixmap(result)
     return result
@@ -1560,42 +1626,47 @@ def _clean_set_bonus_description(description: str) -> str:
     return text.strip()
 
 
-def _fit_pixmap(path: str, size: QSize) -> QPixmap | None:
+def _fit_pixmap(path: str, size: QSize, *, dpr: float = 1.0) -> QPixmap | None:
     if not path:
         return None
     resolved = _resolve_pixmap_path(path)
     if not resolved.is_file():
-        key = (str(path), int(size.width()), int(size.height()))
+        key = (
+            str(path),
+            int(size.width()),
+            int(size.height()),
+            int(round(effective_pixmap_dpr(dpr) * 1000)),
+        )
         _FIT_PIXMAP_CACHE[key] = None
         return None
-    key = (str(resolved), int(size.width()), int(size.height()))
-    if key in _FIT_PIXMAP_CACHE:
-        cached = _FIT_PIXMAP_CACHE[key]
-        return QPixmap(cached) if cached is not None else None
-
-    source = QPixmap(str(resolved))
-    if source.isNull():
-        _FIT_PIXMAP_CACHE[key] = None
-        return None
-
-    scaled = source.scaled(
+    result = load_hidpi_pixmap(
+        resolved,
         size,
-        Qt.AspectRatioMode.KeepAspectRatio,
-        Qt.TransformationMode.SmoothTransformation,
+        dpr=dpr,
+        aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+        transform_mode=Qt.TransformationMode.SmoothTransformation,
+        cache=_FIT_PIXMAP_CACHE,
+        surface="right_panel_fit",
     )
+    if result.pixmap.isNull():
+        return None
 
-    canvas = QPixmap(size)
-    canvas.fill(Qt.GlobalColor.transparent)
+    canvas = make_hidpi_canvas(size, result.effective_dpr)
     painter = QPainter(canvas)
-    x = max(0, (size.width() - scaled.width()) // 2)
-    y = max(0, (size.height() - scaled.height()) // 2)
-    painter.drawPixmap(x, y, scaled)
+    scaled_size = logical_pixmap_size(result.pixmap)
+    x = max(0, (size.width() - scaled_size.width()) // 2)
+    y = max(0, (size.height() - scaled_size.height()) // 2)
+    painter.drawPixmap(x, y, result.pixmap)
     painter.end()
-    _FIT_PIXMAP_CACHE[key] = QPixmap(canvas)
     return canvas
 
 
-def _bonus_source_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
+def _bonus_source_icon_pixmap(
+    path: str,
+    size: QSize,
+    *,
+    dpr: float = 1.0,
+) -> QPixmap | None:
     if not path:
         return None
     resolved = _resolve_pixmap_path(path)
@@ -1605,11 +1676,19 @@ def _bonus_source_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
             str(resolved),
             int(size.width()),
             int(size.height()),
+            int(round(effective_pixmap_dpr(dpr) * 1000)),
             int(stat.st_mtime_ns),
             int(stat.st_size),
         )
     except OSError:
-        key = (str(path), int(size.width()), int(size.height()), 0, 0)
+        key = (
+            str(path),
+            int(size.width()),
+            int(size.height()),
+            int(round(effective_pixmap_dpr(dpr) * 1000)),
+            0,
+            0,
+        )
 
     if key in _BONUS_SOURCE_ICON_PIXMAP_CACHE:
         cached = _BONUS_SOURCE_ICON_PIXMAP_CACHE[key]
@@ -1630,6 +1709,7 @@ def _bonus_source_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
         int(size.height()),
         padding=1,
         alpha_threshold=4,
+        dpr=dpr,
     )
     _BONUS_SOURCE_ICON_PIXMAP_CACHE[key] = QPixmap(pixmap)
     return pixmap
@@ -1649,7 +1729,12 @@ def _trace_rect(rect: QRect) -> str:
     return f"{rect.x()},{rect.y()},{rect.width()}x{rect.height()}"
 
 
-def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
+def _bonus_member_side_icon_pixmap(
+    path: str,
+    size: QSize,
+    *,
+    dpr: float = 1.0,
+) -> QPixmap | None:
     if not path:
         return None
     resolved = _resolve_pixmap_path(path)
@@ -1659,6 +1744,7 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
             str(resolved),
             int(size.width()),
             int(size.height()),
+            int(round(effective_pixmap_dpr(dpr) * 1000)),
             BONUS_MEMBER_ICON_SCALE,
             BONUS_MEMBER_ICON_BOTTOM_PADDING,
             int(stat.st_mtime_ns),
@@ -1669,6 +1755,7 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
             str(path),
             int(size.width()),
             int(size.height()),
+            int(round(effective_pixmap_dpr(dpr) * 1000)),
             BONUS_MEMBER_ICON_SCALE,
             BONUS_MEMBER_ICON_BOTTOM_PADDING,
             0,
@@ -1688,17 +1775,20 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
         _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key] = None
         return None
 
+    effective_dpr = effective_pixmap_dpr(dpr)
     target_height = max(1, int(round(size.height() * BONUS_MEMBER_ICON_SCALE / 100)))
+    physical_target_height = max(1, int(round(target_height * effective_dpr)))
     scaled = source.scaledToHeight(
-        target_height,
+        physical_target_height,
         Qt.TransformationMode.SmoothTransformation,
     )
-    canvas = QPixmap(size)
-    canvas.fill(Qt.GlobalColor.transparent)
+    scaled.setDevicePixelRatio(effective_dpr)
+    scaled_size = logical_pixmap_size(scaled)
+    canvas = make_hidpi_canvas(size, effective_dpr)
     painter = QPainter(canvas)
-    x = (size.width() - scaled.width()) // 2
-    y = size.height() - scaled.height() - BONUS_MEMBER_ICON_BOTTOM_PADDING
-    icon_rect = QRect(x, y, scaled.width(), scaled.height())
+    x = (size.width() - scaled_size.width()) // 2
+    y = size.height() - scaled_size.height() - BONUS_MEMBER_ICON_BOTTOM_PADDING
+    icon_rect = QRect(x, y, scaled_size.width(), scaled_size.height())
     badge_size = owner_badge_size_for_icon(icon_rect.size())
     badge_rect = owner_badge_rect_for_icon_rect(icon_rect, badge_size)
     if OWNER_BADGE_TRACE:
@@ -1713,7 +1803,10 @@ def _bonus_member_side_icon_pixmap(path: str, size: QSize) -> QPixmap | None:
             f"badge_rect={_trace_rect(badge_rect)} "
             "computed_from=owner_icon_rect"
         )
-    painter.drawPixmap(badge_rect, make_owner_icon_badge_background(badge_size))
+    painter.drawPixmap(
+        badge_rect,
+        make_owner_icon_badge_background(badge_size, dpr=effective_dpr),
+    )
     painter.drawPixmap(x, y, scaled)
     painter.end()
     _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE[key] = QPixmap(canvas)
@@ -1747,9 +1840,11 @@ def _scale_trimmed_icon_for_chip(
     *,
     padding: int,
     alpha_threshold: int,
+    dpr: float = 1.0,
 ) -> QPixmap:
-    prescale_width = max(1, int(width) * 2)
-    prescale_height = max(1, int(height) * 2)
+    effective_dpr = effective_pixmap_dpr(dpr)
+    prescale_width = max(1, int(round(width * effective_dpr)) * 2)
+    prescale_height = max(1, int(round(height * effective_dpr)) * 2)
     prescaled = source.scaled(
         prescale_width,
         prescale_height,
@@ -1762,6 +1857,7 @@ def _scale_trimmed_icon_for_chip(
         height,
         padding=padding,
         alpha_threshold=alpha_threshold,
+        dpr=effective_dpr,
     )
 
 

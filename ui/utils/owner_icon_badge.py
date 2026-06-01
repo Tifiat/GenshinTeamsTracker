@@ -3,6 +3,8 @@ from __future__ import annotations
 from PySide6.QtCore import QRect, QRectF, QSize, Qt
 from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
 
+from ui.utils.hidpi_pixmap import effective_pixmap_dpr, make_hidpi_canvas
+
 
 DEFAULT_OWNER_BADGE_SIZE_RATIO = 43 / 70
 DEFAULT_OWNER_BADGE_OFFSET_X_RATIO = 1 / 70
@@ -38,6 +40,7 @@ def owner_badge_rect_for_icon_rect(
 def make_owner_icon_badge_background(
     size: QSize,
     *,
+    dpr: float = 1.0,
     fill_color: str = "#6f7684",
     fill_alpha: int = 150,
     border_color: str = "#ffffff",
@@ -54,9 +57,9 @@ def make_owner_icon_badge_background(
     width = max(1, int(size.width()))
     height = max(1, int(size.height()))
     diameter = min(width, height)
+    effective_dpr = effective_pixmap_dpr(dpr)
 
-    pixmap = QPixmap(width, height)
-    pixmap.fill(Qt.GlobalColor.transparent)
+    pixmap = make_hidpi_canvas(QSize(width, height), effective_dpr)
 
     painter = QPainter(pixmap)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)

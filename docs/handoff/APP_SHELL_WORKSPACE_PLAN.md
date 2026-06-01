@@ -395,6 +395,16 @@ Performance fix status:
 - `AssetIconLabel` uses a shared scaled pixmap cache keyed by icon path, target
   size, device pixel ratio, mtime, and file size. Marker-only updates do not
   reload or rescale pixmaps.
+- High-DPI PNG rendering is an AppShell/current UI contract, not a layout
+  contract. Keep widget sizes in logical/design pixels and render raster assets
+  at physical `logical_size * effective_dpr`, then set the pixmap DPR. The
+  startup small-monitor `QT_SCALE_FACTOR` downscale remains startup-only and
+  must not double-shrink PNGs; effective pixmap DPR is clamped to at least
+  `1.0`. New visible raster UI work should go through
+  `ui/utils/hidpi_pixmap.py` or helpers built on it, and generated/persistent
+  visible pixmap cache keys must include DPR/physical size plus source identity
+  and visual parameters. Legacy `main.py` remains outside this first migration
+  unless a later task explicitly includes it.
 - After this pass, local programmatic smoke measured character add handler
   `~0.7 ms` plus deferred right-panel flush `~56 ms`; remove/fill-gap handlers
   `~0.3-0.4 ms` plus deferred flush `~49 ms`; 8 rapid character clicks

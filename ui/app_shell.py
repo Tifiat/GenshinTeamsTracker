@@ -2226,7 +2226,6 @@ class AssetIconLabel(QLabel):
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self._update_pixmap()
-        QTimer.singleShot(0, self._update_pixmap)
 
     def set_selection_marker(self, marker: RosterSelectionMarker | None) -> None:
         self.selection_marker = marker

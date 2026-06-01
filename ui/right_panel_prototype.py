@@ -461,11 +461,13 @@ class RightPanelSlotPrototypeWidget(QFrame):
         self.set_model(model)
 
     def set_model(self, model: RightPanelSlotPrototypeViewModel) -> None:
+        self._model = model
+        _set_object_name(self, "SlotCardSelected" if model.is_selected else "SlotCard")
+
         model_key = (
             model.team_index,
             model.slot_index,
             model.is_empty,
-            model.is_selected,
             model.character_title,
             model.portrait_label,
             model.portrait_path,
@@ -480,12 +482,9 @@ class RightPanelSlotPrototypeWidget(QFrame):
             model.warning_tooltip,
         )
         if model_key == self._model_key:
-            self._model = model
             return
 
         self._model_key = model_key
-        self._model = model
-        _set_object_name(self, "SlotCardSelected" if model.is_selected else "SlotCard")
 
         _set_object_name(
             self._portrait,
@@ -542,7 +541,6 @@ class RightPanelSlotPrototypeWidget(QFrame):
     def refresh_hidpi_pixmaps(self) -> None:
         self._model_key = None
         self.set_model(self._model)
-        self._artifact.refresh_hidpi_pixmap()
 
     def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt override
         if event.button() == Qt.MouseButton.LeftButton:
@@ -1630,25 +1628,51 @@ def _fit_pixmap(path: str, size: QSize, *, dpr: float = 1.0) -> QPixmap | None:
     if not path:
         return None
     resolved = _resolve_pixmap_path(path)
+    effective_dpr = effective_pixmap_dpr(dpr)
+    dpr_key = int(round(effective_dpr * 1000))
     if not resolved.is_file():
         key = (
+            "fit_canvas",
             str(path),
             int(size.width()),
             int(size.height()),
-            int(round(effective_pixmap_dpr(dpr) * 1000)),
+            dpr_key,
+            0,
+            0,
         )
         _FIT_PIXMAP_CACHE[key] = None
         return None
+    try:
+        stat = resolved.stat()
+        mtime_ns = int(stat.st_mtime_ns)
+        file_size = int(stat.st_size)
+    except OSError:
+        mtime_ns = 0
+        file_size = 0
+    key = (
+        "fit_canvas",
+        str(resolved),
+        int(size.width()),
+        int(size.height()),
+        dpr_key,
+        mtime_ns,
+        file_size,
+    )
+    if key in _FIT_PIXMAP_CACHE:
+        cached = _FIT_PIXMAP_CACHE[key]
+        return QPixmap(cached) if cached is not None else None
+
     result = load_hidpi_pixmap(
         resolved,
         size,
-        dpr=dpr,
+        dpr=effective_dpr,
         aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
         transform_mode=Qt.TransformationMode.SmoothTransformation,
-        cache=_FIT_PIXMAP_CACHE,
+        cache_key_parts=("fit_source",),
         surface="right_panel_fit",
     )
     if result.pixmap.isNull():
+        _FIT_PIXMAP_CACHE[key] = None
         return None
 
     canvas = make_hidpi_canvas(size, result.effective_dpr)
@@ -1658,6 +1682,7 @@ def _fit_pixmap(path: str, size: QSize, *, dpr: float = 1.0) -> QPixmap | None:
     y = max(0, (size.height() - scaled_size.height()) // 2)
     painter.drawPixmap(x, y, result.pixmap)
     painter.end()
+    _FIT_PIXMAP_CACHE[key] = QPixmap(canvas)
     return canvas
 
 

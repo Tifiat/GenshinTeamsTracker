@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QApplication, QLabel
 from run_workspace.right_panel_prototype_view_model import (
     RightPanelBonusSourceDisplayItem,
     RightPanelBuildMiniSetViewModel,
+    RightPanelSlotPrototypeViewModel,
     build_right_panel_prototype_view_model,
 )
 from run_workspace.team_builder import create_empty_team_builder_state
@@ -19,13 +20,16 @@ from ui.right_panel_prototype import (
     BONUS_MEMBER_ICON_SIZE,
     _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE,
     _BONUS_SOURCE_ICON_PIXMAP_CACHE,
+    _FIT_PIXMAP_CACHE,
     BonusSourceChipWidget,
     BonusSourceStripWidget,
     RightPanelPrototypeWidget,
+    RightPanelSlotPrototypeWidget,
     _bonus_member_side_icon_pixmap,
     _bonus_source_tooltip_html,
     _bonus_source_icon_pixmap,
     _build_mini_set_stack_pixmap,
+    _fit_pixmap,
 )
 
 
@@ -232,6 +236,68 @@ class RightPanelBonusIconTest(unittest.TestCase):
 
         self.assertIsNotNone(pixmap)
         self.assertGreater(pixmap.toImage().pixelColor(4, 16).alpha(), 0)
+
+    def test_fit_pixmap_reuses_composited_hidpi_canvas(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            icon_path = Path(tmp) / "fit_icon.png"
+            image = QImage(30, 20, QImage.Format.Format_ARGB32)
+            image.fill(QColor("#aa66ff"))
+            self.assertTrue(image.save(str(icon_path), "PNG"))
+
+            _FIT_PIXMAP_CACHE.clear()
+            first = _fit_pixmap(str(icon_path), QSize(48, 48), dpr=1.5)
+            cache_size = len(_FIT_PIXMAP_CACHE)
+            second = _fit_pixmap(str(icon_path), QSize(48, 48), dpr=1.5)
+
+        self.assertIsNotNone(first)
+        self.assertIsNotNone(second)
+        self.assertEqual(first.size(), QSize(72, 72))
+        self.assertEqual(first.devicePixelRatio(), 1.5)
+        self.assertEqual(cache_size, 1)
+        self.assertEqual(len(_FIT_PIXMAP_CACHE), cache_size)
+
+    def test_slot_selected_state_does_not_reload_slot_pixmaps(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            portrait_path = Path(tmp) / "portrait.png"
+            weapon_path = Path(tmp) / "weapon.png"
+            for path, color in ((portrait_path, "#55aaff"), (weapon_path, "#ffaa55")):
+                image = QImage(16, 16, QImage.Format.Format_ARGB32)
+                image.fill(QColor(color))
+                self.assertTrue(image.save(str(path), "PNG"))
+
+            base_model = RightPanelSlotPrototypeViewModel(
+                team_index=0,
+                slot_index=0,
+                is_empty=False,
+                is_selected=False,
+                character_title="Thoma",
+                character_meta="",
+                portrait_label="T",
+                portrait_path=str(portrait_path),
+                weapon_label="Favonius Lance",
+                weapon_square_label="WPN",
+                weapon_image_path=str(weapon_path),
+                weapon_tooltip="",
+                build_label="",
+                artifact_square_label="ART",
+                artifact_image_path="",
+                build_mini_sets=(),
+                stat_badge="100",
+                warning_count=0,
+                warning_tooltip="",
+            )
+            selected_model = RightPanelSlotPrototypeViewModel(
+                **{**base_model.to_dict(), "is_selected": True, "build_mini_sets": ()}
+            )
+            widget = RightPanelSlotPrototypeWidget(base_model)
+
+            with patch(
+                "ui.right_panel_prototype._fit_pixmap",
+                side_effect=AssertionError("selected state should not reload pixmaps"),
+            ):
+                widget.set_model(selected_model)
+
+        self.assertEqual(widget.objectName(), "SlotCardSelected")
 
 
 if __name__ == "__main__":

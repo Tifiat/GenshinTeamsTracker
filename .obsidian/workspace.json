@@ -221,6 +221,8 @@
   "lastOpenFiles": [
     "data/artifacts.db-shm",
     "data/artifacts.db-wal",
+    "docs/obsidian/GTT/docs/todo подзадач/App shell C1.md",
+    "docs/obsidian/GTT/docs/todo подзадач/1. 06 пн.md",
     "data/cache/ui/target_preview_strips/e86b82ee6fc085e99ff8ac00eb796d9692acb89b4275654b416baff5d3421a38.png",
     "data/cache/ui/target_preview_icons/4153f1b3ff35472120648ec3b6abfe4b7ca90243b2f47b7c1a58e0e19c0b680c.png",
     "data/cache/ui/target_preview_strips/412cb84a1ae259f34ad50604ac9df7e6d2742c9dbc057337c22361733de5fa3b.png",
@@ -234,8 +236,6 @@
     "tests/__pycache__/test_hidpi_pixmap.cpython-311.pyc",
     "tests/test_hidpi_pixmap.py",
     "ui/utils/__pycache__/hidpi_pixmap.cpython-311.pyc",
-    "docs/obsidian/GTT/docs/todo подзадач/App shell C1.md",
-    "docs/obsidian/GTT/docs/todo подзадач/1. 06 пн.md",
     "ui/utils/hidpi_pixmap.py",
     "ui/__pycache__/right_panel_prototype.cpython-314.pyc",
     "ui/__pycache__/app_shell.cpython-314.pyc",

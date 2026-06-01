@@ -32,12 +32,15 @@ from ui.app_shell import (
     APP_SHELL_MIN_HEIGHT,
     APP_SHELL_MIN_WIDTH,
     AssetIconLabel,
+    CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN,
     CharacterWeaponWorkspace,
     RIGHT_OPERATIONS_DOCK_WIDTH,
     RosterSelectionMarker,
+    WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR,
     WEAPON_PICKER_SAFE_MARGIN,
     WEAPON_PICKER_VIEWPORT_TOP_EXTENSION,
     _SCALED_ICON_PIXMAP_CACHE,
+    _selection_frame_rect,
     _scaled_icon_pixmap,
     _weapon_owner_side_icon_size,
     _weapon_owner_target_rect,
@@ -66,6 +69,7 @@ from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
+from ui.utils.ui_palette import UI_ACCENT_TEAM_1
 
 
 class AppShellTest(unittest.TestCase):
@@ -2643,6 +2647,34 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(margins.bottom(), WEAPON_PICKER_SAFE_MARGIN)
         self.assertEqual(workspace.weapon_grid.horizontalSpacing(), 6)
         self.assertEqual(workspace.weapon_grid.verticalSpacing(), 6)
+
+    def test_character_grid_selection_safe_margin_does_not_change_item_spacing(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+        with patch(
+            "ui.app_shell.load_account_character_asset_items",
+            return_value=[_character_asset("10000050", "Thoma")],
+        ):
+            workspace.reload_characters()
+
+        margins = workspace.char_grid.contentsMargins()
+        self.assertEqual(margins.top(), CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN)
+        self.assertEqual(margins.bottom(), 0)
+        self.assertEqual(workspace.char_grid.horizontalSpacing(), 3)
+        self.assertEqual(workspace.char_grid.verticalSpacing(), 3)
+
+    def test_selection_frame_rect_extends_one_pixel_into_grid_gap(self) -> None:
+        self.assertEqual(
+            _selection_frame_rect(QRect(100, 50, 48, 48)),
+            QRect(99, 49, 50, 50),
+        )
+
+    def test_weapon_occupied_outline_uses_team_one_selection_color(self) -> None:
+        self.assertEqual(WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR, UI_ACCENT_TEAM_1)
+
+    def test_character_selection_overlay_uses_workspace_host_above_viewport(self) -> None:
+        workspace = CharacterWeaponWorkspace()
+
+        self.assertIs(workspace._character_selection_overlay.parentWidget(), workspace)
 
     def test_weapon_owner_target_rect_moves_predictably_with_overhang(self) -> None:
         weapon_rect = QRect(100, 50, 48, 48)

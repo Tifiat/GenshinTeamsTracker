@@ -97,6 +97,10 @@ from ui.utils.ui_palette import (
     UI_ACCENT_TEAM_1,
     UI_ACCENT_TEAM_2,
     UI_EQUIPPED_WEAPON_ACCENT,
+    UI_SELECTION_BADGE_FILL_ALPHA,
+    UI_SELECTION_NEUTRAL_FILL,
+    UI_SELECTION_NEUTRAL_FILL_ALPHA,
+    UI_SELECTION_OUTLINE_ALPHA,
     UI_TEXT_ON_ACCENT,
 )
 
@@ -148,11 +152,17 @@ WEAPON_PICKER_ICON_SIZE = 48
 WEAPON_PICKER_SAFE_MARGIN = 6
 WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 6
 WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR = UI_EQUIPPED_WEAPON_ACCENT
-WEAPON_PICKER_OCCUPIED_OUTLINE_ALPHA = 150
-WEAPON_PICKER_OCCUPIED_FILL_ALPHA = 38
-WEAPON_PICKER_OCCUPIED_OUTLINE_WIDTH = 4
-WEAPON_PICKER_OCCUPIED_OUTLINE_INSET = 1
-WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS = 3
+GRID_SELECTION_OUTLINE_ALPHA = UI_SELECTION_OUTLINE_ALPHA
+GRID_SELECTION_BADGE_FILL_ALPHA = UI_SELECTION_BADGE_FILL_ALPHA
+GRID_SELECTION_OUTLINE_WIDTH = 4
+GRID_SELECTION_OUTLINE_OVERHANG = 1
+GRID_SELECTION_OUTLINE_RADIUS = 3
+CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN = 4
+GRID_SELECTION_BADGE_WIDTH = 24
+GRID_SELECTION_BADGE_HEIGHT = 20
+GRID_SELECTION_BADGE_MARGIN = 4
+WEAPON_PICKER_OCCUPIED_FILL_COLOR = UI_SELECTION_NEUTRAL_FILL
+WEAPON_PICKER_OCCUPIED_FILL_ALPHA = UI_SELECTION_NEUTRAL_FILL_ALPHA
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
     10: "catalyst",
@@ -1662,6 +1672,11 @@ class CharacterWeaponWorkspace(QWidget):
         root.addSpacing(6)
         self.char_area, self.char_widget, self.char_grid = self._make_grid_area()
         root.addWidget(self.char_area, 3)
+        self._character_selection_overlay = CharacterSelectionOverlay(
+            self,
+            self.char_area,
+            lambda: self._character_cards_by_id.values(),
+        )
         self._weapon_owner_badge_overlay = WeaponOwnerBadgeOverlay(
             self,
             self.weapon_area,
@@ -1672,6 +1687,8 @@ class CharacterWeaponWorkspace(QWidget):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
+        self._character_selection_overlay.sync_geometry()
+        self._character_selection_overlay.update()
         self._weapon_owner_badge_overlay.sync_geometry()
         self._weapon_owner_badge_overlay.update()
         self._weapon_owner_badge_overlay.schedule_settle()
@@ -1681,6 +1698,8 @@ class CharacterWeaponWorkspace(QWidget):
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
+        self._character_selection_overlay.sync_geometry()
+        self._character_selection_overlay.update()
         self._weapon_owner_badge_overlay.sync_geometry()
         self._weapon_owner_badge_overlay.update()
         if self._initial_grid_built:
@@ -1766,6 +1785,7 @@ class CharacterWeaponWorkspace(QWidget):
                 continue
             card.set_selection_marker(markers.get(character_id))
             updated_count += 1
+        self._character_selection_overlay.update()
         log_perf(
             "marker_incremental",
             total=perf_ms(total_start),
@@ -1807,7 +1827,10 @@ class CharacterWeaponWorkspace(QWidget):
             selection_markers=self._character_selection_markers,
             grid_name="characters",
             card_registry=self._character_cards_by_id,
+            vertical_safe_top_margin=CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN,
         )
+        self._character_selection_overlay.sync_geometry()
+        self._character_selection_overlay.update()
         log_perf(
             "filter_characters",
             total=perf_ms(total_start),
@@ -2086,6 +2109,7 @@ class CharacterWeaponWorkspace(QWidget):
                     icon_size,
                     asset=asset,
                     selection_marker=marker,
+                    paint_selection_marker=(grid_name != "characters"),
                 )
                 if icon._last_pixmap_cache_hit:
                     pixmap_hits += 1
@@ -2212,6 +2236,7 @@ class AssetIconLabel(QLabel):
         *,
         asset: dict[str, Any] | None = None,
         selection_marker: RosterSelectionMarker | None = None,
+        paint_selection_marker: bool = True,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -2219,6 +2244,7 @@ class AssetIconLabel(QLabel):
         self.asset = asset or {}
         self.base_size = int(size)
         self.selection_marker = selection_marker
+        self.paint_selection_marker = bool(paint_selection_marker)
         self.owner_badges = _asset_owner_badges(self.asset)
         self._last_pixmap_cache_hit = False
         self._tooltip_controller = install_custom_tooltip(self)
@@ -2257,33 +2283,20 @@ class AssetIconLabel(QLabel):
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
         marker = self.selection_marker
-        if marker is None:
+        if marker is None or not self.paint_selection_marker:
             return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        color = QColor(marker.color)
-        border = QColor(color)
-        border.setAlpha(230)
-        painter.setPen(QPen(border, 3))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(2, 2, self.width() - 4, self.height() - 4, 7, 7)
-
-        badge_rect = QRect(4, max(4, self.height() - 24), 24, 20)
-        badge_fill = QColor(color)
-        badge_fill.setAlpha(235)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(badge_fill)
-        painter.drawRoundedRect(badge_rect, 5, 5)
-        painter.setPen(QColor(UI_TEXT_ON_ACCENT))
-        font = painter.font()
-        font.setBold(True)
-        font.setPointSize(max(8, min(11, self.base_size // 7)))
-        painter.setFont(font)
-        painter.drawText(
-            badge_rect,
-            Qt.AlignmentFlag.AlignCenter,
-            str(marker.slot_number),
-        )
+        try:
+            _draw_selection_frame(
+                painter,
+                _selection_frame_rect(QRect(0, 0, self.width(), self.height())),
+                marker.color,
+                badge_text=str(marker.slot_number),
+                font_size=max(8, min(11, self.base_size // 7)),
+            )
+        finally:
+            painter.end()
 
     def _displayed_icon_rect(self) -> QRect:
         pixmap = self.pixmap()
@@ -2305,6 +2318,135 @@ class AssetIconLabel(QLabel):
             event.accept()
             return
         super().mousePressEvent(event)
+
+
+def _selection_frame_rect(card_rect: QRect) -> QRect:
+    return card_rect.adjusted(
+        -GRID_SELECTION_OUTLINE_OVERHANG,
+        -GRID_SELECTION_OUTLINE_OVERHANG,
+        GRID_SELECTION_OUTLINE_OVERHANG,
+        GRID_SELECTION_OUTLINE_OVERHANG,
+    )
+
+
+def _draw_selection_frame(
+    painter: QPainter,
+    frame_rect: QRect,
+    color: str,
+    *,
+    badge_text: str = "",
+    font_size: int = 10,
+    fill_color: str = "",
+    fill_alpha: int = 0,
+) -> None:
+    outline = QColor(color)
+    outline.setAlpha(GRID_SELECTION_OUTLINE_ALPHA)
+    painter.setPen(
+        QPen(
+            outline,
+            GRID_SELECTION_OUTLINE_WIDTH,
+            Qt.PenStyle.SolidLine,
+            Qt.PenCapStyle.SquareCap,
+            Qt.PenJoinStyle.RoundJoin,
+        )
+    )
+    if fill_color and fill_alpha > 0:
+        fill = QColor(fill_color)
+        fill.setAlpha(max(0, min(255, int(fill_alpha))))
+        painter.setBrush(fill)
+    else:
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+    painter.drawRoundedRect(
+        frame_rect,
+        GRID_SELECTION_OUTLINE_RADIUS,
+        GRID_SELECTION_OUTLINE_RADIUS,
+    )
+
+    if not badge_text:
+        return
+    badge_rect = QRect(
+        frame_rect.left() + GRID_SELECTION_BADGE_MARGIN,
+        frame_rect.bottom() - GRID_SELECTION_BADGE_HEIGHT - GRID_SELECTION_BADGE_MARGIN + 1,
+        GRID_SELECTION_BADGE_WIDTH,
+        GRID_SELECTION_BADGE_HEIGHT,
+    )
+    badge_fill = QColor(color)
+    badge_fill.setAlpha(GRID_SELECTION_BADGE_FILL_ALPHA)
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(badge_fill)
+    painter.drawRoundedRect(badge_rect, 5, 5)
+    painter.setPen(QColor(UI_TEXT_ON_ACCENT))
+    font = painter.font()
+    font.setBold(True)
+    font.setPointSize(font_size)
+    painter.setFont(font)
+    painter.drawText(
+        badge_rect,
+        Qt.AlignmentFlag.AlignCenter,
+        badge_text,
+    )
+
+
+class CharacterSelectionOverlay(QWidget):
+    """Paint roster selection frames above the character grid spacing."""
+
+    def __init__(
+        self,
+        overlay_host: QWidget,
+        scroll_area: QScrollArea,
+        cards: Callable[[], Iterable[AssetIconLabel]],
+    ) -> None:
+        super().__init__(overlay_host)
+        self._overlay_host = overlay_host
+        self._scroll_area = scroll_area
+        self._cards = cards
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self._scroll_area.verticalScrollBar().valueChanged.connect(self.update)
+        self._scroll_area.horizontalScrollBar().valueChanged.connect(self.update)
+        self.sync_geometry()
+        self.show()
+
+    def sync_geometry(self) -> None:
+        self.setGeometry(self._overlay_host.rect())
+        self.raise_()
+
+    def paintEvent(self, event) -> None:
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        try:
+            viewport_rect = self._viewport_rect()
+            painter.setClipRect(viewport_rect)
+            for card in tuple(self._cards()):
+                marker = card.selection_marker
+                if marker is None or not card.isVisible():
+                    continue
+                icon_rect = card._displayed_icon_rect()
+                if icon_rect.isNull() or not icon_rect.isValid():
+                    continue
+                card_rect = QRect(
+                    self.mapFromGlobal(card.mapToGlobal(icon_rect.topLeft())),
+                    icon_rect.size(),
+                )
+                if not card_rect.intersects(viewport_rect):
+                    continue
+                _draw_selection_frame(
+                    painter,
+                    _selection_frame_rect(card_rect),
+                    marker.color,
+                    badge_text=str(marker.slot_number),
+                    font_size=max(8, min(11, card.base_size // 7)),
+                )
+        finally:
+            painter.end()
+
+    def _viewport_rect(self) -> QRect:
+        viewport = self._scroll_area.viewport()
+        return QRect(
+            self.mapFromGlobal(viewport.mapToGlobal(viewport.rect().topLeft())),
+            viewport.size(),
+        )
 
 
 class WeaponOwnerBadgeOverlay(QWidget):
@@ -2402,30 +2544,12 @@ class WeaponOwnerBadgeOverlay(QWidget):
         if weapon_rect.isNull() or not weapon_rect.isValid():
             return
 
-        outline_color = QColor(WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR)
-        outline_color.setAlpha(WEAPON_PICKER_OCCUPIED_OUTLINE_ALPHA)
-        fill_color = QColor(WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR)
-        fill_color.setAlpha(WEAPON_PICKER_OCCUPIED_FILL_ALPHA)
-        painter.setPen(
-            QPen(
-                outline_color,
-                WEAPON_PICKER_OCCUPIED_OUTLINE_WIDTH,
-                Qt.PenStyle.SolidLine,
-                Qt.PenCapStyle.SquareCap,
-                Qt.PenJoinStyle.RoundJoin,
-            )
-        )
-        painter.setBrush(fill_color)
-        outline_rect = weapon_rect.adjusted(
-            WEAPON_PICKER_OCCUPIED_OUTLINE_INSET,
-            WEAPON_PICKER_OCCUPIED_OUTLINE_INSET,
-            -WEAPON_PICKER_OCCUPIED_OUTLINE_INSET,
-            -WEAPON_PICKER_OCCUPIED_OUTLINE_INSET,
-        )
-        painter.drawRoundedRect(
-            outline_rect,
-            WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS,
-            WEAPON_PICKER_OCCUPIED_OUTLINE_RADIUS,
+        _draw_selection_frame(
+            painter,
+            _selection_frame_rect(weapon_rect),
+            WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR,
+            fill_color=WEAPON_PICKER_OCCUPIED_FILL_COLOR,
+            fill_alpha=WEAPON_PICKER_OCCUPIED_FILL_ALPHA,
         )
 
     def _draw_card_owner_badge(

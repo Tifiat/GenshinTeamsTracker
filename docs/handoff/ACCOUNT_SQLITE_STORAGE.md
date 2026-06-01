@@ -435,9 +435,10 @@ Rules:
 - missing HoYoLAB equipment data means "no data" and does not clear local
   equipment.
 
-Important boundary: AppShell uses this state for current weapon restore/write.
-It reads current artifact ids as metadata only; live artifact stat/set display
-is not wired yet. Artifact Browser equip/apply is also not wired yet.
+Important boundary: AppShell uses this state for current weapon restore/write
+and current weapon unequip. It reads current artifact ids into a runtime current
+equipment snapshot for right-panel stats/set display, and embedded Artifact
+Browser equip/apply writes through the same account equipment service helpers.
 
 ## Read Adapter Boundary
 
@@ -459,9 +460,9 @@ these runtime records into the legacy grid asset-item shape without reading
 
 For current equipment, use `hoyolab_export/account_equipment.py` helpers such as
 `equip_artifact`, `equip_weapon`, `list_equipped_artifacts_for_character`,
-`get_equipped_weapon_for_character`, and owner read models. AppShell Stage B
-uses these helpers for weapon restore/write; future Stage B2 should convert
-current artifact ids into a live artifact snapshot/display path.
+`get_equipped_weapon_for_character`, and owner read models. AppShell uses these
+helpers for weapon restore/write/unequip and current artifact snapshot/display
+paths.
 
 ## Canonical Vs Non-Canonical
 

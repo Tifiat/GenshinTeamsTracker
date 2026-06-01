@@ -1,9 +1,10 @@
 # Artifact Browser Equipment UX
 
 Purpose: durable UX contract for Artifact Browser equip/apply behavior and
-ownership side-icon display. C1 embeds the browser in AppShell and adds
-operation-target/current-equipment UI scaffolding only; artifact equip, preset
-apply, conflict confirmation, and owner side icons are still future work.
+ownership side-icon display. AppShell embeds the browser as a left workspace;
+operation target sync, current-equipment preview, manual artifact equip/unequip,
+preset apply, conflict confirmation, selected-card highlights, and owner
+side-icons are wired through persistent current-equipment state.
 
 Related handoffs:
 
@@ -31,7 +32,7 @@ Equip mode is active only when exactly one character is the operation target:
   selected character so its presets are visible immediately;
 - if the user deselects that same character inside Artifact Browser, browser
   selection becomes empty for preset browsing, but the right-panel character
-  remains as a secondary/background operation target for future free artifact
+  remains as a secondary/background operation target for free artifact
   clicks;
 - if the user selects another character in Artifact Browser while the
   right-panel target still exists, the browser shows the other character's
@@ -62,7 +63,7 @@ operation target.
 
 Suggested visible label:
 
-- `Текущая сборка`
+- the default current-equipment label
 
 Rules:
 
@@ -75,7 +76,7 @@ Rules:
 
 When a saved preset is selected:
 
-- the top zone switches to an action state, for example `Надеть пресет`;
+- the top zone switches to an apply-preset action state;
 - the preview area shows the selected preset;
 - clicking the preset only previews/selects it, it does not equip immediately.
 
@@ -84,7 +85,7 @@ When the selected preset is deselected:
 - if a single target exists, the preview returns to current equipment;
 - otherwise it returns to an empty/placeholder state.
 
-C1 implementation status:
+Implementation status:
 
 - `ArtifactBrowserWindow(embedded=True)` runs inside AppShell's left workspace
   without standalone close/window controls;
@@ -96,10 +97,12 @@ C1 implementation status:
   first; if the user deselects it in the browser, it remains visible only as a
   secondary operation-target marker and presets are hidden until browser
   selection is restored;
-- when no right-panel target exists, the browser scaffolds fallback equip mode
+- when no right-panel target exists, the browser derives fallback equip mode
   from exactly one selected character target;
-- the current-equipment zone and disabled preset-apply action are visible
-  scaffolding only and do not write equipment;
+- the current-equipment zone shows live current equipment when a target exists;
+- selecting a preset previews it and turns the zone into one large apply action;
+- manual artifact equip/unequip and preset apply write through
+  `hoyolab_export.account_equipment`;
 - the embedded browser is calibrated for a compact minimum-width layout: one
   artifact `GRID_SIZE.width()` cell, narrower Assignment/target rows with
   a reserved portrait/icon zone plus marquee overflow text only in the name
@@ -107,27 +110,25 @@ C1 implementation status:
   that do not force the artifact viewport wider than one grid cell. Current
   calibration is Assignment 144px, target row about 94px, and AppShell minimum
   about 1408px;
-- divmod/remainder adaptive fit is not implemented yet and should build from
-  the calibrated minimum layout. It must consume existing horizontal space and
-  must not resize the top-level AppShell window;
-- remaining geometry polish: JSON import/clear controls need cleaner later
-  placement/scaling, artifact grid overlay scrollbar needs a small rightward
-  visual offset while staying overlay-style, and horizontal resize twitch is a
-  top-level AppShell geometry/minimum-size propagation issue rather than
-  Assignment-panel jitter.
+- divmod/remainder adaptive fit is implemented from the calibrated minimum
+  layout. It consumes existing horizontal remainder into Assignment width as a
+  preferred/current width and must not resize the top-level AppShell window;
+- remaining geometry polish: artifact grid overlay scrollbar needs a small
+  rightward visual offset while staying overlay-style. Horizontal resize twitch
+  is considered system/environment live-resize behavior after the isolated probe.
 
-Future current/preset zone presentation:
+Current/preset zone presentation:
 
-- the current-equipment zone should visually behave like a compact preset row,
+- the current-equipment zone visually behaves like a compact preset row,
   not like a two-label form;
-- when no preset is selected, show plain text such as `Текущий пресет` /
-  `Текущая сборка` without a dark button background, followed by current set
+- when no preset is selected, show plain current-equipment text without a dark
+  button background, followed by current set
   bonuses and the main-stat badge;
 - there are no edit/delete buttons for the current-equipment zone because live
   equipment is always the edit target, not a saved preset definition;
 - when a saved preset is selected, replace the non-clickable current label with
-  an actionable `Надеть пресет` / equip-preset control;
-- repeated click on the selected preset should deselect it and return the zone
+  an actionable equip-preset control;
+- repeated click on the selected preset deselects it and returns the zone
   to current equipment;
 - after manual artifact changes, the zone returns to current equipment/current
   preset text.
@@ -147,7 +148,7 @@ Preset apply is explicit.
 
 Action:
 
-- button/action label: `Надеть пресет`;
+- button/action label: use the localized apply-preset action text;
 - target: exactly one operation target;
 - implementation: call account equipment service operations for the preset's
   artifact slots;
@@ -169,7 +170,7 @@ After applying:
 - that name is UI-buffer text only and is not persisted;
 - do not add `last_applied_build_id` now;
 - if the user manually changes any artifact after applying, reset the label back
-  to `Текущая сборка`.
+  to the default current-equipment label.
 
 ## Manual Artifact Equip
 
@@ -195,7 +196,8 @@ Manual artifact equip:
   current-target click toggle;
 - does not mutate presets;
 - updates current equipment;
-- clears the temporary applied-preset label back to `Текущая сборка`.
+- clears the temporary applied-preset label back to the default
+  current-equipment label.
 
 ## Conflict Confirmation
 
@@ -204,12 +206,9 @@ block automatically. Show a compact confirmation.
 
 Suggested text:
 
-```text
-Это изменит экипировку следующих персонажей:
-[character icon] [character icon] [character icon]
-
-Да / Нет
-```
+A concise localized confirmation should say that the apply action will change
+the equipment of the following characters, then show owner side icons and
+yes/no actions.
 
 Rules:
 
@@ -293,32 +292,30 @@ Stage B2 is implemented:
 - do not create fake build presets for current equipment.
 
 The implementation lives in `hoyolab_export.team_card_data` and AppShell uses it
-only as selected-details runtime data. It does not change Artifact Browser
-equip/apply behavior yet.
+as selected-details runtime data for both right-panel display and embedded
+Artifact Browser current-equipment preview/refresh.
 
-## Stage C1 AppShell Embedding
+## AppShell Embedding And Equipment Flow
 
-Stage C1 is implemented:
+Implemented behavior:
 
 - AppShell has an `Artifacts` left workspace next to `Characters / Weapons`;
 - the browser is created lazily on first workspace switch, so AppShell startup
   stays on the fast character/weapon path;
 - right-panel target selection updates the embedded browser's target-selector
-  highlight/current-equipment scaffold;
+  highlight/current-equipment preview;
 - clearing the right-panel target returns the browser to no-target or
   browser-selected-target state;
-- artifact clicks still do not call `equip_artifact(...)`;
-- preset apply remains disabled/not wired;
+- artifact clicks in equip mode call `equip_artifact(...)` or
+  `unequip_artifact(...)` for a repeated current-target click;
+- preset apply writes through account equipment helpers, clears missing preset
+  slots, and does not mutate preset tables;
+- current equipment preview, selected-card highlights, owner markers, and the
+  right panel refresh immediately after equipment changes;
 - no fake `artifact_builds` rows are created.
 
-Later stages:
+Remaining/future stages:
 
-- Stage C2: wire manual artifact click equip and/or preset apply through
-  `hoyolab_export.account_equipment`, keeping writes explicit and target-aware;
-- conflict confirmation;
-- artifact owner side icons;
-- preset owner side icons;
-- weapon owner side icons.
 - future weapon panel move/swap UI: if a weapon fingerprint has no available
   copy under `known_count`, the UI must require an explicit source owner/copy
   choice before moving or swapping; do not silently steal an exhausted assigned
@@ -328,10 +325,7 @@ Later stages:
 
 This handoff does not implement:
 
-- Artifact Browser equip/apply wiring;
-- side icons in UI;
 - equipment SQLite schema changes;
 - build preset schema changes;
-- AppShell equipment-write behavior changes;
 - live HoYoLAB import auto-apply behavior;
 - `last_applied_build_id` persistence.

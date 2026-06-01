@@ -1,23 +1,24 @@
 # Account Equipment State Design
 
-Purpose: design the future persistent account equipment state for AppShell,
+Purpose: document the persistent account equipment state for AppShell,
 Artifact Browser equip/apply, right-panel selected details, and owner side-icon
 display.
 
-Implementation status, 2026-05-26: Stage A is implemented in
+Implementation status: Stage A is implemented in
 `hoyolab_export/account_equipment.py` and initialized through
 `hoyolab_export/artifact_db.py::init_db`. The schema and focused service helpers
 exist, with tests in `tests/test_account_equipment.py`. Stage B wires AppShell
 weapon restore/assignment to this persistent state. Stage B2 builds a
 runtime-only current-equipment artifact snapshot for right-panel stats/set
-bonuses without creating saved build rows. Stage C1 embeds Artifact Browser in
-AppShell and adds target/current-equipment UI scaffolding, but does not write
-artifact equipment yet. Artifact Browser equipment UX and ownership side-icon
+bonuses without creating saved build rows. Stage C embeds Artifact Browser in
+AppShell and wires target/current-equipment preview, artifact equip/unequip,
+preset apply, conflict confirmation, and owner side-icon read models through
+the same service path. Artifact Browser equipment UX and ownership side-icon
 rules are documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`.
 
 ## Scope
 
-The future model should persist:
+The model persists:
 
 - current equipped weapon per account character;
 - current equipped artifact per account character and artifact slot;
@@ -451,11 +452,12 @@ Detailed UX contract:
 - if there is no right-panel target, the browser may use exactly one selected
   browser character target;
 - 0 or 2+ browser-selected characters means equip mode is off;
-- the top `Текущая сборка` zone is UI presentation over current equipment, not
+- the top current-equipment zone is UI presentation over current equipment, not
   an `artifact_build` preset;
-- selecting a preset changes the top zone to `Надеть пресет` / preview state;
-- applied preset name is temporary UI-buffer text only and should reset to
-  `Текущая сборка` after manual artifact equip;
+- selecting a preset changes the top zone to the apply-preset preview/action
+  state;
+- applied preset name is temporary UI-buffer text only and should reset to the
+  default current-equipment label after manual artifact equip;
 - artifact/preset/weapon owner side icons must be derived from current
   equipment tables, not from preset target metadata.
 
@@ -518,9 +520,10 @@ Stage B2: current artifact live snapshot - implemented 2026-05-26
 - missing artifact rows are skipped softly with a warning instead of crashing
   the shell;
 - saved build/preset tables are not created or mutated;
-- Artifact Browser equip/apply remains separate.
+- Artifact Browser equip/apply is wired separately through the same service
+  helpers and must keep preset definitions immutable.
 
-Stage C1: Artifact Browser embedded target UI - implemented 2026-05-26
+Stage C: Artifact Browser embedded target UI and equipment writes - implemented
 
 - AppShell has an `Artifacts` left workspace that lazy-creates embedded
   `ArtifactBrowserWindow(embedded=True)`;
@@ -528,30 +531,16 @@ Stage C1: Artifact Browser embedded target UI - implemented 2026-05-26
   operation target;
 - when the right panel has no target, exactly one browser-selected character
   can become the scaffolded operation target;
-- the current equipment top zone and disabled preset-apply action are visible
-  scaffolding only;
-- artifact clicks and preset apply do not write equipment yet.
-
-Stage C2+: Artifact Browser equipment writes
-
-- add explicit preset preview and equip-preset action;
-- apply incomplete presets as exact contents, clearing missing target slots;
-- add compact conflict confirmation when preset artifacts are worn by other
-  characters.
-
-Stage D: side-icon owner display
-
-- artifact card owner icon;
-- weapon stack owner icons;
-- preset row owner icons derived from equipped artifacts;
-- per-artifact owner icons inside preset details.
-
-Stage E: Artifact Browser equip/apply
-
-- browse-only when no target is selected;
-- explicit equip artifact;
-- explicit unequip;
-- explicit equip preset for one target character;
+- the current equipment top zone previews live current equipment;
+- explicit preset preview and equip-preset action are wired;
+- incomplete presets apply as exact contents, clearing missing target slots;
+- compact conflict confirmation appears when preset artifacts are worn by other
+  characters;
+- artifact card owner icons, weapon stack owner icons, preset row owner icons,
+  and preset-preview owner icons are derived from current equipment;
+- browse-only/no-target mode does not write equipment;
+- manual artifact click equips in equip mode and repeated current-target click
+  unequips.
 
 Stage F: HoYoLAB seed/sync
 

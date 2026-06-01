@@ -50,7 +50,7 @@ right column patched in place.
 
 ### Artifact Browser Workspace
 
-- C1 embedded mode for the existing Artifact Browser is implemented as an
+- Embedded mode for the existing Artifact Browser is implemented as an
   AppShell left workspace.
 - The workspace is lazy-created on first switch so the default Character/Weapon
   workspace stays fast.
@@ -60,9 +60,10 @@ right column patched in place.
   one `GRID_SIZE.width()` artifact cell, compact Assignment/target rows with
   marquee text, and the fixed preset/current-equipment panel visible. Current
   calibration: Assignment panel width 144px, Assignment minimum hint about
-  138px, target row button about 94px, and AppShell minimum about 1408px. The
-  future divmod/remainder fit should build on this calibrated minimum, not on
-  the old wider one-column viewport.
+  138px, target row button about 94px, and AppShell minimum about 1408px.
+  Divmod/remainder adaptive fit is implemented from this calibrated minimum:
+  the artifact viewport gets whole `GRID_SIZE.width()` columns and leftover
+  remainder goes to Assignment width as a preferred/current width.
 - AppShell minimum height/width must be top-level and state-independent, not
   derived from the currently visible `QStackedWidget` page. Artifact Browser
   target/no-target state hides different widgets and changes `minimumSizeHint()`;
@@ -99,13 +100,12 @@ right column patched in place.
   artifact-to-target gap is intentionally zero, and the target-to-build gap is
   the explicit `CONTENT_TARGET_BUILD_SPACING`. Do not reintroduce global content
   spacing that consumes the artifact list's padding/remainder.
-- Known geometry follow-up: horizontal resize can still show top-level
-  AppShell window movement/crawl from propagated minimum-size constraints. This
-  is not Assignment-panel jitter. Future fix should inspect top-level geometry,
-  minimumSizeHint propagation, `QStackedWidget`/`LeftWorkspaceHost` constraints,
-  and resize-settle behavior.
+- Resize twitch note: an isolated PySide probe reproduced the live-resize twitch
+  outside the app, and the effect varies by monitor/system refresh behavior.
+  Treat it as system/environment behavior for now; no active AppShell workaround
+  is planned.
 - Behavior depends on selected build target:
-  - selected target exists: later equip/apply actions can target that
+  - selected target exists: equip/apply actions can target that
     character/slot;
   - no selected target: browse-only mode; it must not implicitly equip or apply
     artifacts/builds to anyone.
@@ -145,20 +145,20 @@ mode switching in the first shell patch unless the task explicitly asks for it.
 - Artifact Browser must check selected build target through shared
   controller/state:
   - if target is `None`, it must not equip/apply anything;
-  - if target is set, later equip/apply actions can target that character/slot.
+  - if target is set, equip/apply actions can target that character/slot.
 - Do not couple Artifact Browser directly to right-panel widgets. Use shared
   state/controller signals or a narrow adapter.
-- Detailed future Artifact Browser equipment UX lives in
+- Detailed Artifact Browser equipment UX lives in
   `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`.
 
-Future target/equip-mode contract:
+Target/equip-mode contract:
 
 - if the right panel has a selected character, that character is the Artifact
   Browser operation target and is first synced as the browser's single selected
   character so presets appear immediately;
 - if the user deselects that character in Artifact Browser, browser selection
   clears for preset browsing, while the right-panel target remains as a
-  secondary operation-target marker for future free artifact clicks;
+  secondary operation-target marker for free artifact clicks;
 - if the user selects another browser character while the right-panel target
   still exists, presets follow the browser selection and equipment writes still
   target the right-panel character until it is cleared;
@@ -170,10 +170,10 @@ Future target/equip-mode contract:
 - the operation target should be shown as a visual selected/highlighted
   character target in the browser, not as a long "target from right panel" text
   banner;
-- current equipment is shown as a `Текущая сборка` top zone, not as an
+- current equipment is shown as a top current-equipment zone, not as an
   `artifact_build` preset;
-- clicking a preset previews/selects it only, while `Надеть пресет` is the
-  explicit write action.
+- clicking a preset previews/selects it only, while the apply-preset action is
+  the explicit write action.
 
 Future weapon move/swap rule:
 
@@ -292,18 +292,18 @@ Stage 2 interaction status:
 - The right panel is refreshed through `RightPanelPrototypeWidget.set_model(...)`
   after controller state changes.
 
-Future equipment-state note:
+Equipment-state note:
 
 - Persistent equipment-state design lives in
-  `docs/handoff/ACCOUNT_EQUIPMENT_STATE_DESIGN.md`. Stage A schema/service
-  helpers are implemented in `hoyolab_export/account_equipment.py`, and Stage B
-  AppShell weapon persistence is wired. Equipment is per character, not per
-  right-panel mode.
-- Future persistent account equipment work should add side icons showing who
-  currently wears each artifact/weapon and in-game-like explicit move/swap UI.
-  Live current-equipment artifact snapshot support is implemented for the
-  right panel; if character A equips an item worn by B, the service layer
-  supports move/swap resolution when the source owner is explicit.
+  `docs/handoff/ACCOUNT_EQUIPMENT_STATE_DESIGN.md`. Schema/service helpers are
+  implemented in `hoyolab_export/account_equipment.py`; AppShell weapon
+  persistence, current artifact snapshots, Artifact Browser equip/apply, and
+  owner side icons are wired. Equipment is per character, not per right-panel
+  mode.
+- Future equipment UI work should focus on richer explicit move/swap source
+  choice when a weapon fingerprint has no free copies. If character A equips an
+  item worn by B, the service layer supports move/swap resolution when the
+  source owner is explicit.
 - Build presets are definitions, not current equipped state. Equipping a preset
   should be an explicit action for exactly one character, copying that preset's
   artifacts into that character's current equipped state; if the preset has
@@ -311,23 +311,26 @@ Future equipment-state note:
   exactly what the preset shows. Later manual equipment changes must not mutate
   the preset itself.
 - Artifact Browser remains browse-only when no build target is selected. With a
-  selected target, future explicit equip/apply actions may modify current
-  equipped state.
-- AppShell C1 embeds Artifact Browser as the `Artifacts` left workspace. The
+  selected target, explicit equip/apply actions may modify current equipped
+  state through `account_equipment`.
+- AppShell embeds Artifact Browser as the `Artifacts` left workspace. The
   browser is created lazily on first switch, reflects the right-panel selected
   operation target through browser target selection/highlight plus the
   current-equipment zone, and falls back to exactly one browser-selected
-  character target when the right panel has no target. Artifact clicks and
-  preset apply are still no-op/not wired for equipment writes.
+  character target when the right panel has no target. Artifact clicks can
+  equip/unequip the operation target, and preset apply writes the selected
+  preset into current equipment without mutating the preset definition.
 - Embedded Artifact Browser keeps standalone window-resize behavior disabled
   and is calibrated for a compact one-artifact-cell minimum layout: target rows
   use `MarqueeButton` with a reserved portrait/icon zone and marquee text only
   in the name area, Assignment is narrower than the previous 180/238px
   calibrations, JSON import/clear buttons do not force the artifact viewport
   wider than one `GRID_SIZE.width()` cell, and the fixed preset panel remains
-  visible. Divmod/remainder adaptive fit is still future work.
-- JSON import/clear controls need a later clean placement/scaling pass; they
-  must not reintroduce an artifact viewport minimum wider than one grid cell.
+  visible. Divmod/remainder adaptive fit is implemented and must keep Assignment
+  expansion as a preferred/current width, not a propagated minimum.
+- JSON import/clear controls are compact at one artifact column and expand only
+  at 2+ columns. They must not reintroduce an artifact viewport minimum wider
+  than one grid cell.
 - Artifact grid overlay scrollbar needs later visual right-offset tuning
   (roughly one scrollbar width plus a small 1-5px margin), without consuming
   layout width.
@@ -538,14 +541,14 @@ Sizing note:
 
 ### Stage 4: Embedded Artifact Browser
 
-- C1 implemented: add Artifact Browser embedded/content mode as an `Artifacts`
+- Artifact Browser embedded/content mode exists as an `Artifacts`
   left workspace while preserving standalone browser construction.
 - Preserve grid resize recalculation.
 - Respect selected target / no-target browse-only rule through visible
-  target-selection/current-equipment UI scaffolding.
-- Later C2+: wire artifact click equip, preset apply, conflict confirmation,
-  owner side icons, and selected build/preset handoff into typed TeamBuilder
-  state/equipment service.
+  target-selection/current-equipment UI.
+- Artifact click equip/unequip, preset apply, conflict confirmation, owner side
+  icons, current-equipment preview, and selected-card highlights are wired
+  through typed state plus the `account_equipment` service.
 
 ### Stage 5: GCSIM And History
 

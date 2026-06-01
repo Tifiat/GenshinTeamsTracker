@@ -9,8 +9,8 @@ Current maps:
 - `DATA_RUNTIME_BOUNDARIES.md` - compact source/cache vs runtime SQLite vs asset/static catalog boundary map.
 - `ACCOUNT_CHARACTER_DETAIL_FIELDS.md` - HoYoLAB account character detail payload field reference.
 - `ACCOUNT_SQLITE_STORAGE.md` - clean local SQLite account characters, talents, and observed weapon stacks.
-- `ACCOUNT_EQUIPMENT_STATE_DESIGN.md` - design and Stage A status for persistent current weapon/artifact equipment state, separate from build presets and HoYoLAB observations.
-- `ARTIFACT_BROWSER_EQUIPMENT_UX.md` - future Artifact Browser equip-mode UX, current equipment zone, preset apply behavior, and artifact/preset/weapon owner side-icon model.
+- `ACCOUNT_EQUIPMENT_STATE_DESIGN.md` - design and implemented service/UI status for persistent current weapon/artifact equipment state, separate from build presets and HoYoLAB observations.
+- `ARTIFACT_BROWSER_EQUIPMENT_UX.md` - Artifact Browser equip-mode UX, current equipment zone, preset apply behavior, and artifact/preset/weapon owner side-icon model.
 - `ABYSS_ENEMY_DATA.md` - Abyss enemy data source research.
 - `ABYSS_ENEMY_DATA_AUDIT_TASK.md` - original prompt for the Abyss enemy data audit.
 - `ABYSS_HP_FIXTURE.md` - concrete current Floor 12 HP fixture and source-join notes.

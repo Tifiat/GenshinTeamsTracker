@@ -95,8 +95,8 @@ Rules:
 
 - portrait/crop paths are local visual assets;
 - side icons are cached from already-known HoYoLAB side-icon URLs and reused;
-- `side_icon_path` is intended for compact overlays such as future occupied
-  artifact/preset owner markers;
+- `side_icon_path` is used for compact overlays such as occupied
+  artifact/preset/weapon owner markers and team-bonus member icons;
 - side-icon failure is non-fatal and should preserve `side_icon_url`.
 
 Dummy/mannequin placeholders:
@@ -204,17 +204,18 @@ Boundaries:
 
 - Stage A schema/service helpers are implemented in
   `hoyolab_export/account_equipment.py` and initialized by `init_db`;
-- AppShell Stage B reads/writes current weapons through
-  `hoyolab_export/account_equipment.py`;
-- AppShell Stage B2 reads current artifact ids through
+- AppShell reads/writes current weapons through
+  `hoyolab_export/account_equipment.py`, including repeated-click unequip;
+- AppShell reads current artifact ids through
   `account_character_equipped_artifacts` and converts them into a runtime-only
   current-equipment artifact snapshot for right-panel stats/set bonuses;
 - the current-equipment snapshot is not persisted as `artifact_builds` and does
   not mutate saved preset rows;
-- AppShell C1 embeds Artifact Browser as a left workspace and reflects the
+- AppShell embeds Artifact Browser as a left workspace and reflects the
   operation target/current-equipment UI state through target selection
-  highlight and the current-equipment zone, but Artifact Browser still does not
-  write persistent equipment. Right-panel target sync initially becomes real
+  highlight and the current-equipment zone. Artifact Browser manual equip,
+  repeated-click unequip, and preset apply write persistent equipment through
+  the same service helpers. Right-panel target sync initially becomes real
   browser selection for preset browsing; if deselected in the browser, the
   right-panel target remains only as a secondary operation target;
 - separate from build preset definitions;
@@ -226,7 +227,7 @@ Boundaries:
 
 Artifact Browser / owner-icon boundary:
 
-- the `Текущая сборка` top zone is UI presentation over current equipment, not
+- the top current-equipment zone is UI presentation over current equipment, not
   an `artifact_build` preset;
 - applying a preset copies preset artifacts into current equipment for exactly
   one target character and does not mutate the preset;

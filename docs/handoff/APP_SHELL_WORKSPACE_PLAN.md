@@ -238,8 +238,9 @@ Future weapon move/swap rule:
 - The right panel should display and command timer state, not own persistence or
   durable run/session logic.
 - Current AppShell status: Abyss T1/T2 cells in the compact chamber table are
-  editable in memory. They use compact minute/second spin boxes, legacy-style
-  second wheel wrap/clamp, `AbyssTimerState`, and
+  editable in memory. They use one compact `MM:SS` field with keyboard entry
+  (`09:50`/`950`) and mouse-wheel/arrow-key one-second stepping, plus
+  `AbyssTimerState` and
   `calculate_abyss_chamber_result(...)` to derive elapsed seconds and Total.
   T2 follows the same chamber's T1 until T2 is manually edited; if T1 is edited
   below the current T2 value, T2 clamps down to T1 and returns to follow mode.

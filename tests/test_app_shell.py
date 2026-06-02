@@ -9,8 +9,8 @@ from unittest.mock import patch
 from ui.utils.app_scaling import configure_startup_ui_scale
 
 configure_startup_ui_scale()
-from PySide6.QtCore import QRect, QSize, Qt
-from PySide6.QtGui import QColor, QPixmap
+from PySide6.QtCore import QEvent, QRect, QSize, Qt
+from PySide6.QtGui import QColor, QKeyEvent, QPixmap
 from PySide6.QtWidgets import QApplication, QStyleOptionButton, QWidget
 
 from hoyolab_export.account_equipment import (
@@ -365,8 +365,50 @@ class AppShellTest(unittest.TestCase):
 
         timer.set_seconds(9 * 60 + 1)
 
-        self.assertEqual(timer.min_spin.text(), "09")
-        self.assertEqual(timer.sec_spin.text(), "01")
+        self.assertEqual(timer.timer_edit.text(), "09:01")
+
+    def test_compact_abyss_timer_accepts_keyboard_text_entry(self) -> None:
+        timer = CompactAbyssTimerWidget()
+        changed: list[int] = []
+        timer.seconds_changed.connect(changed.append)
+
+        timer.timer_edit.setText("9:45")
+        timer._commit_edit_text()
+
+        self.assertEqual(timer.seconds_left, 585)
+        self.assertEqual(timer.timer_edit.text(), "09:45")
+        self.assertEqual(changed, [585])
+
+        timer.timer_edit.setText("950")
+        timer._commit_edit_text()
+
+        self.assertEqual(timer.seconds_left, 590)
+        self.assertEqual(timer.timer_edit.text(), "09:50")
+        self.assertEqual(changed[-1], 590)
+
+    def test_compact_abyss_timer_arrow_keys_step_by_one_second(self) -> None:
+        timer = CompactAbyssTimerWidget()
+        timer.set_seconds(590)
+
+        QApplication.sendEvent(
+            timer.timer_edit,
+            QKeyEvent(
+                QEvent.Type.KeyPress,
+                Qt.Key.Key_Up,
+                Qt.KeyboardModifier.NoModifier,
+            ),
+        )
+        self.assertEqual(timer.seconds_left, 591)
+
+        QApplication.sendEvent(
+            timer.timer_edit,
+            QKeyEvent(
+                QEvent.Type.KeyPress,
+                Qt.Key.Key_Down,
+                Qt.KeyboardModifier.NoModifier,
+            ),
+        )
+        self.assertEqual(timer.seconds_left, 590)
 
     def test_abyss_t2_follows_t1_until_manually_edited(self) -> None:
         shell = AppShell()

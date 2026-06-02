@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from PySide6.QtCore import QByteArray, QEvent, QMimeData, QRect, QSize, Qt, Signal, QTimer
-from PySide6.QtGui import QDrag, QPainter, QPixmap
+from PySide6.QtGui import QDrag, QKeyEvent, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -15,9 +15,9 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QSizePolicy,
-    QSpinBox,
     QStyle,
     QToolTip,
     QVBoxLayout,
@@ -81,9 +81,9 @@ SLOT_CARD_WIDTH = SLOT_CLUSTER_WIDTH + SLOT_CARD_MARGIN * 2
 SLOT_CARD_FIXED_HEIGHT = 154
 SLOT_NAME_HEIGHT = 18
 SLOT_DRAG_MIME_TYPE = "application/x-gtt-right-panel-slot"
-ABYSS_TIMER_SPIN_WIDTH = 24
-ABYSS_TIMER_SEPARATOR_WIDTH = 5
-ABYSS_TIMER_ELAPSED_WIDTH = 34
+ABYSS_TIMER_BRACKET_WIDTH = 4
+ABYSS_TIMER_EDIT_WIDTH = 37
+ABYSS_TIMER_ELAPSED_WIDTH = 31
 
 _FIT_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 _BUILD_MINI_SET_ICON_PIXMAP_CACHE: dict[
@@ -758,13 +758,17 @@ class BuildMiniSetStackWidget(QLabel):
         self.set_model(self._model)
 
 
-class AbyssSecondSpinBox(QSpinBox):
+class AbyssTimerLineEdit(QLineEdit):
     def __init__(self, timer: "CompactAbyssTimerWidget", parent: QWidget | None = None):
         super().__init__(parent)
         self._timer = timer
 
-    def textFromValue(self, value: int) -> str:
-        return f"{int(value):02d}"
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down):
+            self._timer.adjust_seconds(1 if event.key() == Qt.Key.Key_Up else -1)
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def wheelEvent(self, event) -> None:
         delta_steps = event.angleDelta().y() // 120
@@ -775,60 +779,65 @@ class AbyssSecondSpinBox(QSpinBox):
         super().wheelEvent(event)
 
 
-class TwoDigitSpinBox(QSpinBox):
-    def textFromValue(self, value: int) -> str:
-        return f"{int(value):02d}"
+def _format_abyss_timer_seconds(seconds_left: int) -> str:
+    minutes, remainder = divmod(int(seconds_left), 60)
+    return f"{minutes:02d}:{remainder:02d}"
 
 
-class CompactAbyssTimerWidget(QWidget):
+def _parse_abyss_timer_text(text: str) -> int | None:
+    value = str(text).strip()
+    if not value:
+        return None
+    if ":" in value:
+        parts = value.split(":", 1)
+        if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
+            return None
+        return int(parts[0]) * 60 + int(parts[1])
+    digits = "".join(ch for ch in value if ch.isdigit())
+    if digits != value or not digits:
+        return None
+    if len(digits) <= 2:
+        return int(digits) * 60
+    return int(digits[:-2]) * 60 + int(digits[-2:])
+
+
+class CompactAbyssTimerWidget(QFrame):
     seconds_changed = Signal(int)
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
+        self.setObjectName("TimerEditorFrame")
         self._seconds_left = 600
         self._max_seconds = 600
         self._updating = False
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(2, 0, 2, 0)
         layout.setSpacing(0)
 
         self.open_bracket = QLabel("[")
         self.open_bracket.setObjectName("TimerSeparator")
         self.open_bracket.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.open_bracket.setFixedWidth(5)
+        self.open_bracket.setFixedWidth(ABYSS_TIMER_BRACKET_WIDTH)
 
-        self.min_spin = TwoDigitSpinBox()
-        self.min_spin.setObjectName("TimerSpinBox")
-        self.min_spin.setRange(5, 10)
-        self.min_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
-        self.min_spin.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.min_spin.setFixedWidth(ABYSS_TIMER_SPIN_WIDTH)
-
-        colon = QLabel(":")
-        colon.setObjectName("TimerSeparator")
-        colon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        colon.setFixedWidth(ABYSS_TIMER_SEPARATOR_WIDTH)
-
-        self.sec_spin = AbyssSecondSpinBox(self)
-        self.sec_spin.setObjectName("TimerSpinBox")
-        self.sec_spin.setRange(0, 59)
-        self.sec_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
-        self.sec_spin.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.sec_spin.setFixedWidth(ABYSS_TIMER_SPIN_WIDTH)
+        self.timer_edit = AbyssTimerLineEdit(self)
+        self.timer_edit.setObjectName("TimerLineEdit")
+        self.timer_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.timer_edit.setFixedWidth(ABYSS_TIMER_EDIT_WIDTH)
+        self.timer_edit.setMaxLength(5)
 
         self.close_bracket = QLabel("]")
         self.close_bracket.setObjectName("TimerSeparator")
         self.close_bracket.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.close_bracket.setFixedWidth(5)
+        self.close_bracket.setFixedWidth(ABYSS_TIMER_BRACKET_WIDTH)
 
         layout.addWidget(self.open_bracket)
-        layout.addWidget(self.min_spin)
-        layout.addWidget(colon)
-        layout.addWidget(self.sec_spin)
+        layout.addWidget(self.timer_edit)
         layout.addWidget(self.close_bracket)
+        self.setFixedWidth(
+            ABYSS_TIMER_BRACKET_WIDTH * 2 + ABYSS_TIMER_EDIT_WIDTH + 4
+        )
 
-        self.min_spin.valueChanged.connect(self._on_spin_changed)
-        self.sec_spin.valueChanged.connect(self._on_spin_changed)
+        self.timer_edit.editingFinished.connect(self._commit_edit_text)
         self.set_seconds(600)
 
     @property
@@ -840,12 +849,6 @@ class CompactAbyssTimerWidget(QWidget):
 
     def set_max_seconds(self, max_seconds: int) -> None:
         self._max_seconds = clamp_abyss_timer_edit_seconds(max_seconds)
-        max_minutes = max(5, self._max_seconds // 60)
-        self._updating = True
-        try:
-            self.min_spin.setRange(5, max_minutes)
-        finally:
-            self._updating = False
         self._set_seconds(self._seconds_left, emit=False)
 
     def adjust_seconds(self, delta_steps: int) -> None:
@@ -858,13 +861,14 @@ class CompactAbyssTimerWidget(QWidget):
             emit=True,
         )
 
-    def _on_spin_changed(self) -> None:
+    def _commit_edit_text(self) -> None:
         if self._updating:
             return
-        self._set_seconds(
-            self.min_spin.value() * 60 + self.sec_spin.value(),
-            emit=True,
-        )
+        seconds = _parse_abyss_timer_text(self.timer_edit.text())
+        if seconds is None:
+            self._sync_edit_text()
+            return
+        self._set_seconds(seconds, emit=True)
 
     def _set_seconds(self, seconds_left: int, *, emit: bool) -> None:
         seconds = clamp_abyss_timer_edit_seconds(
@@ -876,14 +880,18 @@ class CompactAbyssTimerWidget(QWidget):
         minutes, remainder = divmod(seconds, 60)
         self._updating = True
         try:
-            if self.min_spin.value() != minutes:
-                self.min_spin.setValue(minutes)
-            if self.sec_spin.value() != remainder:
-                self.sec_spin.setValue(remainder)
+            self.timer_edit.setText(f"{minutes:02d}:{remainder:02d}")
         finally:
             self._updating = False
         if emit and changed:
             self.seconds_changed.emit(seconds)
+
+    def _sync_edit_text(self) -> None:
+        self._updating = True
+        try:
+            self.timer_edit.setText(_format_abyss_timer_seconds(self._seconds_left))
+        finally:
+            self._updating = False
 
 
 class ChamberTimerCellWidget(QWidget):
@@ -893,8 +901,8 @@ class ChamberTimerCellWidget(QWidget):
         super().__init__(parent)
         self.setObjectName("TableCell")
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(2, 1, 2, 1)
-        layout.setSpacing(4)
+        layout.setContentsMargins(1, 0, 1, 0)
+        layout.setSpacing(3)
         self.timer = CompactAbyssTimerWidget()
         self.elapsed_label = QLabel("0s")
         self.elapsed_label.setObjectName("TimerElapsed")
@@ -930,8 +938,8 @@ class ChamberTableBlockWidget(QFrame):
         self._total_label: QLabel | None = None
         self._status_label: QLabel | None = None
         self._gcsim_button: QPushButton | None = None
-        self._layout.setContentsMargins(10, 10, 10, 10)
-        self._layout.setSpacing(7)
+        self._layout.setContentsMargins(8, 7, 8, 7)
+        self._layout.setSpacing(5)
 
     def set_rows(
         self,
@@ -981,8 +989,8 @@ class ChamberTableBlockWidget(QFrame):
         grid_container = QWidget()
         grid = QGridLayout(grid_container)
         grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(5)
-        grid.setVerticalSpacing(5)
+        grid.setHorizontalSpacing(4)
+        grid.setVerticalSpacing(4)
         grid.setColumnMinimumWidth(0, 34)
         grid.setColumnStretch(0, 0)
         for column in range(1, 7):
@@ -2294,11 +2302,11 @@ def right_panel_stylesheet() -> str:
         font-weight: 800;
     }
     #TableCell, #TableCellPrimary {
-        min-height: 23px;
+        min-height: 22px;
         border-radius: 4px;
         background: #15181d;
         color: #dce3e7;
-        padding: 2px 5px;
+        padding: 1px 3px;
         font-family: Consolas, "Courier New", monospace;
     }
     #TableCellPrimary {
@@ -2306,7 +2314,13 @@ def right_panel_stylesheet() -> str:
         font-weight: 800;
         font-family: Arial, sans-serif;
     }
-    #TimerSpinBox {
+    #TimerEditorFrame {
+        min-height: 18px;
+        border-radius: 3px;
+        border: 1px solid #303741;
+        background: #101318;
+    }
+    #TimerLineEdit {
         min-height: 18px;
         border: 0px;
         background: transparent;
@@ -2314,6 +2328,9 @@ def right_panel_stylesheet() -> str:
         font-family: Consolas, "Courier New", monospace;
         font-size: 11px;
         padding: 0px;
+    }
+    #TimerLineEdit:focus {
+        color: #ffffff;
     }
     #TimerSeparator, #TimerElapsed {
         color: #dce3e7;

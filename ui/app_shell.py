@@ -116,6 +116,8 @@ RIGHT_OPERATIONS_DOCK_WIDTH = RIGHT_PANEL_PROTOTYPE_MIN_WIDTH
 RIGHT_DOCK_PAGE_RUN = "run"
 RIGHT_DOCK_PAGE_ACCOUNT = "account"
 RIGHT_DOCK_ACCOUNT_ICON_SIZE = 18
+LEFT_WORKSPACE_CHARACTERS_WEAPONS = "characters_weapons"
+LEFT_WORKSPACE_ARTIFACTS = "artifacts"
 
 # Calibrated global shell minimum for the embedded Artifact Browser footprint.
 # This is intentionally a top-level contract, not a dynamic maximum of current
@@ -1041,6 +1043,9 @@ class AppShell(QWidget):
         self.left_host.character_weapon_workspace.weapon_clicked.connect(
             self._on_weapon_clicked
         )
+        self.left_host.workspace_requested.connect(self._on_workspace_requested)
+        self.left_host.workspace_activated.connect(self._on_workspace_activated)
+        self.active_left_workspace_id = self.left_host.active_workspace_id()
         self._refresh_character_selection_markers()
         self._sync_artifact_browser_operation_target()
 
@@ -1403,6 +1408,17 @@ class AppShell(QWidget):
         self.schedule_right_panel_refresh()
         log_perf("mode_switch", mode=mode, **marker_timings)
 
+    def _on_workspace_requested(self, workspace_id: str) -> None:
+        self.left_host.activate_workspace(workspace_id)
+
+    def _on_workspace_activated(self, workspace_id: str) -> None:
+        self.active_left_workspace_id = workspace_id
+        log_perf(
+            "left_workspace_activate",
+            workspace=workspace_id,
+            right_page=self.right_dock.current_page(),
+        )
+
     def _on_slot_selected(self, team_index: int, slot_index: int) -> None:
         total_start = perf_now()
         self.controller.toggle_slot_selection(team_index, slot_index)
@@ -1527,6 +1543,9 @@ class AppShell(QWidget):
 
 
 class LeftWorkspaceHost(QWidget):
+    workspace_requested = Signal(str)
+    workspace_activated = Signal(str)
+
     def __init__(
         self,
         parent: QWidget | None = None,
@@ -1550,11 +1569,15 @@ class LeftWorkspaceHost(QWidget):
 
         self.stack = QStackedWidget()
         layout.addWidget(self.stack, 1)
+        self._workspace_indices_by_id: dict[str, int] = {}
+        self._workspace_ids_by_index: dict[int, str] = {}
+        self._workspace_buttons_by_id: dict[str, QPushButton] = {}
 
         self.character_weapon_workspace = CharacterWeaponWorkspace(
             db_path=self.artifact_db_path
         )
         self.character_weapon_button = self.add_workspace(
+            LEFT_WORKSPACE_CHARACTERS_WEAPONS,
             tr("app_shell.workspace.characters_weapons"),
             self.character_weapon_workspace,
         )
@@ -1564,13 +1587,21 @@ class LeftWorkspaceHost(QWidget):
         self.artifact_browser_index = self.stack.addWidget(
             self.artifact_browser_placeholder
         )
+        self._register_workspace_index(
+            LEFT_WORKSPACE_ARTIFACTS,
+            self.artifact_browser_index,
+        )
         self.artifact_browser_button = QPushButton(tr("app_shell.workspace.artifacts"))
         self.artifact_browser_button.setCheckable(True)
         self.artifact_browser_button.clicked.connect(
-            lambda _checked=False: self.show_artifact_browser_workspace()
+            lambda _checked=False: self.request_workspace(LEFT_WORKSPACE_ARTIFACTS)
         )
         self.nav_group.addButton(self.artifact_browser_button)
         self.nav_layout.addWidget(self.artifact_browser_button)
+        self._workspace_buttons_by_id[
+            LEFT_WORKSPACE_ARTIFACTS
+        ] = self.artifact_browser_button
+        self.stack.currentChanged.connect(self._on_stack_current_changed)
 
     def _make_artifact_browser_placeholder(self) -> QWidget:
         placeholder = QFrame()
@@ -1581,22 +1612,60 @@ class LeftWorkspaceHost(QWidget):
         layout.addWidget(self.artifact_browser_placeholder_label, 1)
         return placeholder
 
-    def add_workspace(self, label: str, widget: QWidget) -> QPushButton:
+    def add_workspace(
+        self,
+        workspace_id: str,
+        label: str,
+        widget: QWidget,
+    ) -> QPushButton:
         index = self.stack.addWidget(widget)
+        self._register_workspace_index(workspace_id, index)
         button = QPushButton(label)
         button.setCheckable(True)
-        button.clicked.connect(lambda _checked=False, page=index: self.stack.setCurrentIndex(page))
+        button.clicked.connect(
+            lambda _checked=False, value=workspace_id: self.request_workspace(value)
+        )
         self.nav_group.addButton(button)
         self.nav_layout.addWidget(button)
+        self._workspace_buttons_by_id[workspace_id] = button
         if index == 0:
             button.setChecked(True)
             self.stack.setCurrentIndex(0)
         return button
 
+    def _register_workspace_index(self, workspace_id: str, index: int) -> None:
+        self._workspace_indices_by_id[workspace_id] = int(index)
+        self._workspace_ids_by_index[int(index)] = workspace_id
+
+    def request_workspace(self, workspace_id: str) -> None:
+        if workspace_id not in self._workspace_indices_by_id:
+            return
+        self.workspace_requested.emit(workspace_id)
+
+    def activate_workspace(self, workspace_id: str) -> None:
+        if workspace_id == LEFT_WORKSPACE_ARTIFACTS:
+            self.ensure_artifact_browser_workspace()
+        index = self._workspace_indices_by_id.get(workspace_id)
+        if index is None:
+            return
+        self.stack.setCurrentIndex(index)
+        button = self._workspace_buttons_by_id.get(workspace_id)
+        if button is not None:
+            button.setChecked(True)
+
+    def active_workspace_id(self) -> str:
+        return self._workspace_ids_by_index.get(self.stack.currentIndex(), "")
+
+    def _on_stack_current_changed(self, index: int) -> None:
+        workspace_id = self._workspace_ids_by_index.get(int(index))
+        if workspace_id:
+            self.workspace_activated.emit(workspace_id)
+
     def show_artifact_browser_workspace(self) -> None:
-        self.ensure_artifact_browser_workspace()
-        self.stack.setCurrentIndex(self.artifact_browser_index)
-        self.artifact_browser_button.setChecked(True)
+        self.activate_workspace(LEFT_WORKSPACE_ARTIFACTS)
+
+    def show_character_weapon_workspace(self) -> None:
+        self.activate_workspace(LEFT_WORKSPACE_CHARACTERS_WEAPONS)
 
     def ensure_artifact_browser_workspace(self):
         if self.artifact_browser_workspace is not None:
@@ -3087,6 +3156,8 @@ __all__ = [
     "AppShellController",
     "AssetIconLabel",
     "CharacterWeaponWorkspace",
+    "LEFT_WORKSPACE_ARTIFACTS",
+    "LEFT_WORKSPACE_CHARACTERS_WEAPONS",
     "LeftWorkspaceHost",
     "RosterSelectionMarker",
     "RightOperationsDock",

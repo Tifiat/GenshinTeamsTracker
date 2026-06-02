@@ -34,6 +34,8 @@ from ui.app_shell import (
     AssetIconLabel,
     CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN,
     CharacterWeaponWorkspace,
+    LEFT_WORKSPACE_ARTIFACTS,
+    LEFT_WORKSPACE_CHARACTERS_WEAPONS,
     RIGHT_OPERATIONS_DOCK_WIDTH,
     RIGHT_DOCK_PAGE_ACCOUNT,
     RIGHT_DOCK_PAGE_RUN,
@@ -91,6 +93,39 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.left_host.stack.currentIndex(), 0)
         self.assertEqual(shell.left_host.stack.count(), 2)
         self.assertIsNone(shell.left_host.artifact_browser_workspace)
+        self.assertEqual(
+            shell.active_left_workspace_id,
+            LEFT_WORKSPACE_CHARACTERS_WEAPONS,
+        )
+
+    def test_left_workspace_nav_requests_route_through_app_shell(self) -> None:
+        shell = AppShell()
+
+        with patch.object(
+            shell.left_host,
+            "activate_workspace",
+            wraps=shell.left_host.activate_workspace,
+        ) as activate:
+            shell.left_host.artifact_browser_button.click()
+
+        activate.assert_called_once_with(LEFT_WORKSPACE_ARTIFACTS)
+        self.assertEqual(
+            shell.active_left_workspace_id,
+            LEFT_WORKSPACE_ARTIFACTS,
+        )
+        self.assertIsNotNone(shell.left_host.artifact_browser_workspace)
+
+    def test_left_workspace_switch_preserves_global_account_page(self) -> None:
+        shell = AppShell()
+        shell.right_dock.show_account_page()
+
+        shell.left_host.artifact_browser_button.click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
+        self.assertEqual(
+            shell.active_left_workspace_id,
+            LEFT_WORKSPACE_ARTIFACTS,
+        )
 
     def test_perf_logging_is_disabled_by_default(self) -> None:
         with patch.dict("os.environ", {"GTT_PERF_LOG": ""}):

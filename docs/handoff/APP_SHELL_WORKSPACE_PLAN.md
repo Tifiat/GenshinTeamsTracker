@@ -39,6 +39,11 @@ Terms:
   import and clears only its runtime team state when an offline profile is
   loaded or signed out. Only the currently open dock page is visually active.
   Run-mode routing uses stable ids, never localized button text.
+- `LeftWorkspaceHost` owns left pages and lazy construction. Left-nav buttons
+  request stable workspace ids through root `AppShell`; root AppShell performs
+  activation and remains the coordination point for future workspace-driven
+  right-dock page/control policies. Do not let future workspaces become
+  independent UI islands that directly rewrite the right dock.
 - Future right-dock pages such as PvP may replace the page-specific control host
   while the global action host stays present. Future empty-database startup
   should auto-open Account / Data setup, and later onboarding may highlight the
@@ -71,6 +76,9 @@ right column patched in place.
 - Should be the first/default workspace.
 - The old main window's right half is not migrated into this workspace.
 - It should update typed TeamBuilder/run state, not legacy image-path slots.
+- Current left workspace ids are stable internal ids:
+  `characters_weapons` and `artifacts`. They are routing ids, not localized
+  display labels.
 
 ### Artifact Browser Workspace
 
@@ -160,8 +168,9 @@ Future operation modes:
 - PvP draft/deck/opponent controls.
 - Build panel after PvP draft when a buildable pool/team exists.
 
-The right side is an operations dock, not only a build widget. Do not implement
-mode switching in the first shell patch unless the task explicitly asks for it.
+The right side is an operations dock, not only a build widget. Future
+workspace-specific right pages and controls should be selected through root
+AppShell coordination, while global actions such as Account remain present.
 
 ## Selection And Artifact Browser Rule
 
@@ -264,6 +273,19 @@ This command launches the separate `ui.app_shell.AppShell` prototype only.
 `main.py` still launches the legacy app. The prototype uses a real empty
 `TeamBuilderState` and does not copy `ui/right_panel_prototype_smoke.py` fake
 team builders into the production shell path.
+
+Production-switch blockers:
+
+- `RightPanelPrototypeWidget` still has display-only chamber rows and action
+  labels. Typed run/session reset, timer editing, save snapshot, and history
+  opening behavior are not yet wired into the new AppShell/controller path.
+- New run/session persistence and immutable history snapshot flow need a narrow
+  production adapter decision before replacing legacy startup.
+- When the switch is explicitly approved, `main.py` must run the same startup
+  adaptive scaling bootstrap as `ui.app_shell_smoke` before constructing
+  `QApplication`.
+- Empty-account startup auto-open for Account/Data remains a setup UX follow-up,
+  not a reason to copy legacy window ownership back into AppShell.
 
 Stage 2 interaction status:
 
@@ -546,28 +568,29 @@ Sizing note:
   character and weapon grids so native vertical scrollbars do not reserve layout
   width or shift grid content.
 
-### Stage 2: Real Controller / Adapter
+### Stage 2: Real Controller / Adapter (In Progress)
 
-- Add a real controller/adapter between left character/weapon selection and the
-  right panel view-model.
-- Maintain typed `TeamBuilderState` / selected team / selected slot.
-- Remove smoke-only dependencies from production path.
+- `AppShellController` maintains typed `TeamBuilderState`, selected team/slot,
+  independent Abyss/DPS Dummy state, persistent equipment hydration, and the
+  right-panel view-model boundary.
 - Keep smoke presets as debug harness only.
-- Initial click wiring exists in `ui/app_shell.py`; remaining work is richer
-  `CharacterDetailsData` preparation, artifact build selection, and later
-  Artifact Browser equip/browse integration.
+- Next production-switch adapter work is typed run/session behavior for timer
+  editing, reset, immutable save snapshot, and history opening. Continue richer
+  `CharacterDetailsData` preparation incrementally where selected-details UI
+  still needs it.
 
-### Stage 3: LeftWorkspaceHost
+### Stage 3: LeftWorkspaceHost (Implemented)
 
-- Add `LeftWorkspaceHost` using a `QStackedWidget` and small workspace nav.
-- First workspace: Character/Weapon.
-- Add disabled/TODO entries for Artifact Browser, GCSIM, and History only if
-  useful for navigation planning.
+- `LeftWorkspaceHost` uses a `QStackedWidget` and small workspace nav.
+- Current workspaces: default Character/Weapon and lazy-created Artifacts.
+- Navigation uses stable workspace ids requested through root AppShell so later
+  GCSIM, History, or PvP workspaces can coordinate right-dock policies without
+  directly mutating the dock.
 
-### Stage 4: Embedded Artifact Browser
+### Stage 4: Embedded Artifact Browser (Implemented)
 
-- Artifact Browser embedded/content mode exists as an `Artifacts`
-  left workspace while preserving standalone browser construction.
+- Artifact Browser embedded/content mode exists as an `Artifacts` left
+  workspace while preserving standalone browser construction.
 - Preserve grid resize recalculation.
 - Respect selected target / no-target browse-only rule through visible
   target-selection/current-equipment UI.
@@ -593,5 +616,5 @@ Sizing note:
 - Do not save future runs from live widgets or image paths.
 - Do not make Artifact Browser equip/apply anything without an explicit selected
   build target.
-- Do not implement PvP, GCSIM, Artifact Browser embedding, or legacy cleanup in
-  the first AppShell patch unless the user explicitly asks for that stage.
+- Do not expand a narrow AppShell patch into PvP, GCSIM, History, or legacy
+  cleanup unless the user explicitly asks for that stage.

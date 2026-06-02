@@ -34,9 +34,10 @@ Confirmed:
 - Source-like game data from `DimbreathBot/AnimeGameData` exposes current schedule
   and monster stat tables, but recent Spiral Abyss chamber monster lists are no
   longer fully present in simple `TowerLevelExcelConfigData` rows.
-- GCSIM exposes a clean monster stat model and confirms how it calculates enemy HP:
-  `base_hp * level_curve * hp_multiplier`; its default named-target multiplier is
-  `2.5` for old Spiral Abyss Floor 12 behavior.
+- GCSIM exposes a clean monster stat model and enemy key/id/resistance data, which
+  is useful for Sim DPS target setup. It must not be trusted as the Fact DPS HP
+  source: its base-HP/curve path is known to disagree with direct current tower HP
+  for some current Abyss enemies.
 - The Genshin Impact Wiki/Fandom MediaWiki API exposes current and historical
   Abyss pages as parseable wikitext. It is useful for current human-readable
   lineups and sometimes wave notes, but it is community-edited and name-based.
@@ -44,6 +45,15 @@ Confirmed:
   not only lineups: the `Past` table includes the current period, the enemy level
   scaling page documents general Abyss HP multipliers by floor range, and some
   enemy pages expose level HP tables plus Abyss-specific resist/state data.
+- Direct current tower-period sources such as Nanoka can expose already-resolved
+  Abyss enemy waves with names, levels, and HP in one place. `gi.nanoka.cc/tower/119/`
+  was manually inspected for the 2026-05-16 live period and its HP values match an
+  independent HoYoLAB guide sanity-check with the current `3.75x` multiplier.
+  Treat this shape as the preferred candidate for Fact DPS HP if a stable JSON/API
+  route can be found.
+- The old 2026-05-16 HP fixture proved that the UI can consume HP and calculate
+  `HP / elapsed_seconds`, but its GCSIM/AnimeGameData-derived HP values are known
+  invalid for at least some enemies. Do not use that fixture as factual HP.
 - Yatta/Ambr API exposes an excellent JSON shape for Abyss schedules and monster
   ids, but the inspected `tower` endpoint was stale compared with current 2026
   Abyss data.
@@ -68,6 +78,8 @@ MVP recommendation:
     monster stat catalogs. If the period/floor config matches the HoYoLAB period,
     non-obfuscated multiplier/config fields should be treated as stronger
     evidence than generic wiki floor-scaling fallback.
+    Do not treat AnimeGameData/GCSIM base HP plus curve as final factual Abyss HP
+    until it matches a direct tower-period HP source.
   - Treat obfuscated AnimeGameData fields as parser/research targets, not runtime
     contracts until decoded.
   - AnimeGameData currently provides a global monster catalog with ids, base HP,
@@ -80,6 +92,15 @@ MVP recommendation:
     stat/cache key after the match; do not use display names as durable identity.
   - Fandom enemy pages may enrich or cross-check mechanics, state-specific RES,
     icons, and HP tables, but they are not the primary stat source.
+  - For factual DPS, prefer direct current Abyss/tower HP data when available.
+    Nanoka is the current primary parser candidate for direct HP; Fandom/HoYoWiki
+    and guide pages are cross-checks/fallbacks. If Nanoka becomes unavailable, the
+    app should degrade to "update Abyss data" or a clearly lower-confidence
+    fallback rather than silently using known-bad HP.
+  - For Sim DPS, GCSIM enemy keys/ids/resists remain useful. Fact DPS HP source
+    and Sim DPS target source are separate concerns; comparing the two only makes
+    sense when the simulated enemy/resistance/state setup matches the real Abyss
+    enemy setup.
   - Keep Fandom's general Floor 12 multiplier as fallback/cross-check, not the
     primary source when a current source-like multiplier exists.
   - User guide pages or HoYoLAB guide cards may be used as manual sanity-checks
@@ -121,13 +142,25 @@ MVP recommendation:
 - Do not block the first Abyss season page on perfect source-like spawn/position
   data.
 - Start with a resilient source-join pipeline:
-  - Fandom MediaWiki API for current lineup names, wave notes, and period pages.
-  - Dimbreath/AnimeGameData or GCSIM/Yatta monster data for ids, icons, base HP,
-    growth curves, and resistances.
+  - HoYoLAB period as the current-period authority.
+  - Nanoka/direct tower-period data as the primary candidate for current enemy
+    waves, levels, and factual HP.
+  - Fandom MediaWiki API for current lineup names, wave notes, and period pages as
+    discovery/cross-check.
+  - Dimbreath/AnimeGameData or GCSIM/Yatta monster data for ids, icons, names, and
+    resistances, but not as unverified final factual HP.
   - Fandom enemy/level-scaling pages as a practical fallback/cross-check for
     floor HP multipliers, enemy level HP tables, Abyss-specific resist states, and
     mechanics notes when source-like data is incomplete.
   - A small manual/derived alias table to join display names to `monster_id`.
+- GCSIM follow-up:
+  - Investigate whether vanilla GCSIM can simulate sequential enemies/waves with
+    real HP. If it cannot, consider a local extension that runs enemies in
+    sequence.
+  - Keep any custom GCSIM extension isolated from the vanilla engine so engine
+    updates or unmerged upstream pull requests do not overwrite it.
+- Next parser/debug task should live under an experiments/debug area first, not
+  production UI. It should print JSON for active/live tower and indexed historical
 - Mark HP totals as `estimated_from_sources` until a current source gives chamber
   lineups by monster id/count/wave with clear HP multipliers.
 - Prefer source-like or period-specific HP multipliers when available. If not,

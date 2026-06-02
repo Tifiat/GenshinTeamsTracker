@@ -243,7 +243,9 @@ Future weapon move/swap rule:
   moves between segments, while wheel and Up/Down step the active segment.
   The chamber table keeps fixed compact T1/T2 widths and groups future Fact/Sim
   DPS columns under two-level headers so long labels do not widen the fixed
-  right dock. `AbyssTimerState` and
+  right dock. Keep the current Fact DPS left boundary stable: future timer
+  polish must fit inside the `Ch + T1 + T2` budget, while Fact/Sim columns keep
+  enough width for readable six-digit values. `AbyssTimerState` and
   `calculate_abyss_chamber_result(...)` to derive elapsed seconds and Total.
   T2 follows the same chamber's T1 until T2 is manually edited; if T1 is edited
   below the current T2 value, T2 clamps down to T1 and returns to follow mode.

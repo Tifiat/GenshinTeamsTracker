@@ -81,10 +81,12 @@ SLOT_CARD_WIDTH = SLOT_CLUSTER_WIDTH + SLOT_CARD_MARGIN * 2
 SLOT_CARD_FIXED_HEIGHT = 154
 SLOT_NAME_HEIGHT = 18
 SLOT_DRAG_MIME_TYPE = "application/x-gtt-right-panel-slot"
+ABYSS_CHAMBER_BADGE_WIDTH = 26
+ABYSS_CHAMBER_GRID_SPACING = 3
 ABYSS_TIMER_BRACKET_WIDTH = 4
-ABYSS_TIMER_SEGMENT_WIDTH = 19
+ABYSS_TIMER_SEGMENT_WIDTH = 22
 ABYSS_TIMER_SEPARATOR_WIDTH = 5
-ABYSS_TIMER_ELAPSED_WIDTH = 29
+ABYSS_TIMER_ELAPSED_WIDTH = 27
 ABYSS_TIMER_FRAME_WIDTH = (
     ABYSS_TIMER_BRACKET_WIDTH * 2
     + ABYSS_TIMER_SEGMENT_WIDTH * 2
@@ -92,6 +94,8 @@ ABYSS_TIMER_FRAME_WIDTH = (
     + 4
 )
 ABYSS_TIMER_CELL_WIDTH = ABYSS_TIMER_FRAME_WIDTH + ABYSS_TIMER_ELAPSED_WIDTH + 5
+ABYSS_FACT_DPS_LEFT_BUDGET_MAX = 224
+ABYSS_DPS_COLUMN_MIN_WIDTH = 62
 
 _FIT_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 _BUILD_MINI_SET_ICON_PIXMAP_CACHE: dict[
@@ -1027,7 +1031,7 @@ class ChamberTableBlockWidget(QFrame):
         self._status_label: QLabel | None = None
         self._gcsim_button: QPushButton | None = None
         self._layout.setContentsMargins(8, 7, 8, 7)
-        self._layout.setSpacing(5)
+        self._layout.setSpacing(4)
 
     def set_rows(
         self,
@@ -1077,15 +1081,16 @@ class ChamberTableBlockWidget(QFrame):
         grid_container = QWidget()
         grid = QGridLayout(grid_container)
         grid.setContentsMargins(0, 0, 0, 0)
-        grid.setHorizontalSpacing(4)
+        grid.setHorizontalSpacing(ABYSS_CHAMBER_GRID_SPACING)
         grid.setVerticalSpacing(4)
-        grid.setColumnMinimumWidth(0, 34)
+        grid.setColumnMinimumWidth(0, ABYSS_CHAMBER_BADGE_WIDTH)
         grid.setColumnStretch(0, 0)
         grid.setColumnMinimumWidth(1, ABYSS_TIMER_CELL_WIDTH)
         grid.setColumnMinimumWidth(2, ABYSS_TIMER_CELL_WIDTH)
         grid.setColumnStretch(1, 0)
         grid.setColumnStretch(2, 0)
         for column in range(3, 7):
+            grid.setColumnMinimumWidth(column, ABYSS_DPS_COLUMN_MIN_WIDTH)
             grid.setColumnStretch(column, 1)
         self._layout.addWidget(grid_container)
 
@@ -1106,19 +1111,17 @@ class ChamberTableBlockWidget(QFrame):
                     grid.addWidget(cell, view_row_index, column)
                     continue
                 label = QLabel("")
-                label.setObjectName("TableCellPrimary" if column == 0 else "TableCell")
+                label.setObjectName("ChamberBadge" if column == 0 else "TableCell")
                 label.setAlignment(
-                    Qt.AlignmentFlag.AlignLeft
-                    if column == 0
-                    else Qt.AlignmentFlag.AlignCenter
+                    Qt.AlignmentFlag.AlignCenter
                 )
                 if column == 0:
-                    label.setFixedWidth(34)
+                    label.setFixedWidth(ABYSS_CHAMBER_BADGE_WIDTH)
                 self._row_labels[(model_row_index, column)] = label
                 grid.addWidget(label, view_row_index, column)
 
         bottom = QHBoxLayout()
-        bottom.setSpacing(8)
+        bottom.setSpacing(6)
         self._layout.addLayout(bottom)
 
         self._total_label = QLabel("")
@@ -1142,7 +1145,7 @@ class ChamberTableBlockWidget(QFrame):
                 label.setObjectName("TableHeader")
                 label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 if column == 0:
-                    label.setFixedWidth(34)
+                    label.setFixedWidth(ABYSS_CHAMBER_BADGE_WIDTH)
                 grid.addWidget(label, 0, column)
             return 1
 
@@ -1151,7 +1154,7 @@ class ChamberTableBlockWidget(QFrame):
             label.setObjectName("TableHeader")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             if column == 0:
-                label.setFixedWidth(34)
+                label.setFixedWidth(ABYSS_CHAMBER_BADGE_WIDTH)
             grid.addWidget(label, 0, column, 2, 1)
 
         for column, text in ((3, "Fact DPS"), (5, "Sim DPS")):
@@ -2423,7 +2426,7 @@ def right_panel_stylesheet() -> str:
         color: #7ea99f;
         font-size: 9px;
     }
-    #TableCell, #TableCellPrimary, #TimerTableCell {
+    #TableCell, #TableCellPrimary, #ChamberBadge, #TimerTableCell {
         min-height: 22px;
         border-radius: 4px;
         background: #15181d;
@@ -2435,10 +2438,15 @@ def right_panel_stylesheet() -> str:
         border: 1px solid #252c34;
         padding: 0px;
     }
-    #TableCellPrimary {
+    #TableCellPrimary, #ChamberBadge {
         color: #f1d486;
         font-weight: 800;
         font-family: Arial, sans-serif;
+    }
+    #ChamberBadge {
+        border: 1px solid #343b44;
+        background: #111419;
+        padding: 0px;
     }
     #TimerEditorFrame {
         min-height: 18px;
@@ -2447,12 +2455,13 @@ def right_panel_stylesheet() -> str:
         background: #101318;
     }
     #TimerSegmentEdit {
-        min-height: 18px;
+        min-height: 19px;
         border: 0px;
         background: transparent;
         color: #dce3e7;
         font-family: Consolas, "Courier New", monospace;
-        font-size: 11px;
+        font-size: 13px;
+        font-weight: 700;
         padding: 0px;
     }
     #TimerSegmentEdit:focus {
@@ -2462,10 +2471,14 @@ def right_panel_stylesheet() -> str:
     #TimerSeparator, #TimerElapsed {
         color: #dce3e7;
         font-family: Consolas, "Courier New", monospace;
-        font-size: 11px;
+        font-size: 10px;
+    }
+    #TimerSeparator {
+        font-size: 12px;
     }
     #TimerElapsed {
-        font-weight: 800;
+        color: #b9c4ca;
+        font-weight: 700;
     }
     #SummaryLine, #DetailsName {
         color: #ffffff;

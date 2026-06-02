@@ -76,7 +76,15 @@ from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalSc
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
 from run_workspace.models import AbyssTimerState
 from ui.utils.ui_palette import UI_ACCENT_TEAM_1
-from ui.right_panel_prototype import CompactAbyssTimerWidget, RunModeTabsWidget
+from ui.right_panel_prototype import (
+    ABYSS_CHAMBER_BADGE_WIDTH,
+    ABYSS_CHAMBER_GRID_SPACING,
+    ABYSS_DPS_COLUMN_MIN_WIDTH,
+    ABYSS_FACT_DPS_LEFT_BUDGET_MAX,
+    ABYSS_TIMER_CELL_WIDTH,
+    CompactAbyssTimerWidget,
+    RunModeTabsWidget,
+)
 
 
 class AppShellTest(unittest.TestCase):
@@ -367,6 +375,16 @@ class AppShellTest(unittest.TestCase):
             shell.right_panel._chamber_table.sizeHint().width(),
             RIGHT_OPERATIONS_DOCK_WIDTH,
         )
+
+    def test_abyss_chamber_timer_polish_preserves_fact_dps_budget(self) -> None:
+        left_budget = (
+            ABYSS_CHAMBER_BADGE_WIDTH
+            + ABYSS_TIMER_CELL_WIDTH * 2
+            + ABYSS_CHAMBER_GRID_SPACING * 3
+        )
+
+        self.assertLessEqual(left_budget, ABYSS_FACT_DPS_LEFT_BUDGET_MAX)
+        self.assertGreaterEqual(ABYSS_DPS_COLUMN_MIN_WIDTH, 60)
 
     def test_compact_abyss_timer_uses_two_digit_seconds_display(self) -> None:
         timer = CompactAbyssTimerWidget()

@@ -44,6 +44,13 @@ Terms:
   activation and remains the coordination point for future workspace-driven
   right-dock page/control policies. Do not let future workspaces become
   independent UI islands that directly rewrite the right dock.
+- Root `AppShell` also routes left-workspace mutations according to the active
+  right-dock page. Character/Weapon roster and weapon clicks may mutate run
+  state only while the RUN page is active. Account / Data is a global page, not
+  a team-building operation page. Opening Account must preserve the current
+  operation target. Returning from a non-RUN page must update the requested
+  controller mode and right-panel model before exposing RUN content so the
+  previous run-mode model cannot paint as a stale intermediate frame.
 - Future right-dock pages such as PvP may replace the page-specific control host
   while the global action host stays present. Future empty-database startup
   should auto-open Account / Data setup, and later onboarding may highlight the

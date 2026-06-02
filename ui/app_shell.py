@@ -1398,15 +1398,29 @@ class AppShell(QWidget):
         return timings
 
     def _on_mode_requested(self, mode: str) -> None:
+        mode = _normalize_mode(mode)
+        previous_mode = self.controller.mode
+        mode_changed = mode != previous_mode
+        self.cancel_pending_right_panel_refresh(reason="mode_switch")
+        marker_timings: dict[str, float] = {}
+        if mode_changed:
+            self.cancel_pending_equipment_hydration()
+            self.controller.set_mode(mode)
+            marker_timings = self._refresh_character_selection_markers(
+                affected_character_ids=None
+            )
+            self._sync_artifact_browser_operation_target()
+            self.schedule_weapon_filter_sync()
+        refresh_timings = self._refresh_right_panel()
         self.right_dock.show_run_page(mode)
-        self.controller.set_mode(mode)
-        marker_timings = self._refresh_character_selection_markers(
-            affected_character_ids=None
+        log_perf(
+            "mode_switch",
+            mode=mode,
+            previous_mode=previous_mode,
+            changed=mode_changed,
+            **marker_timings,
+            **refresh_timings,
         )
-        self._sync_artifact_browser_operation_target()
-        self.schedule_weapon_filter_sync()
-        self.schedule_right_panel_refresh()
-        log_perf("mode_switch", mode=mode, **marker_timings)
 
     def _on_workspace_requested(self, workspace_id: str) -> None:
         self.left_host.activate_workspace(workspace_id)
@@ -1482,6 +1496,15 @@ class AppShell(QWidget):
 
     def _on_character_clicked(self, asset: dict) -> None:
         total_start = perf_now()
+        if self.right_dock.current_page() != RIGHT_DOCK_PAGE_RUN:
+            log_perf(
+                "character_click",
+                total=perf_ms(total_start),
+                changed=False,
+                scheduled=False,
+                ignored_page=self.right_dock.current_page(),
+            )
+            return
         before_markers = self.controller.roster_selection_markers()
         state_start = perf_now()
         result = self.controller.add_or_replace_character_fast(asset)
@@ -1521,6 +1544,15 @@ class AppShell(QWidget):
 
     def _on_weapon_clicked(self, asset: dict) -> None:
         total_start = perf_now()
+        if self.right_dock.current_page() != RIGHT_DOCK_PAGE_RUN:
+            log_perf(
+                "weapon_click",
+                total=perf_ms(total_start),
+                changed=False,
+                scheduled=False,
+                ignored_page=self.right_dock.current_page(),
+            )
+            return
         state_start = perf_now()
         changed = self.controller.assign_weapon_to_selected_slot(asset)
         state_ms = perf_ms(state_start)
@@ -1824,7 +1856,6 @@ class RightOperationsDock(QFrame):
         self.header.show_account()
 
     def _on_mode_requested(self, mode: str) -> None:
-        self.show_run_page(mode)
         self.mode_requested.emit(mode)
 
     def retranslate_ui(self) -> None:

@@ -173,6 +173,153 @@ class AppShellTest(unittest.TestCase):
             ).isChecked()
         )
 
+    def test_account_page_blocks_roster_character_mutations_for_each_run_mode(self) -> None:
+        asset = _character_asset("10000050", "Thoma")
+        for mode in (MODE_ABYSS, MODE_DPS_DUMMY):
+            for existing_character in (False, True):
+                with self.subTest(mode=mode, existing_character=existing_character):
+                    shell = AppShell()
+                    if mode != MODE_ABYSS:
+                        shell._on_mode_requested(mode)
+                    if existing_character:
+                        shell.controller.add_or_replace_character_fast(asset)
+                    selected_before = (
+                        shell.controller.selected_team_index,
+                        shell.controller.selected_slot_index,
+                    )
+                    shell.right_dock.show_account_page()
+
+                    with (
+                        patch.object(
+                            shell.controller,
+                            "add_or_replace_character_fast",
+                            side_effect=AssertionError,
+                        ),
+                        patch.object(
+                            shell,
+                            "_refresh_character_selection_markers",
+                            side_effect=AssertionError,
+                        ),
+                        patch.object(
+                            shell,
+                            "schedule_persistent_equipment_hydration",
+                            side_effect=AssertionError,
+                        ),
+                        patch.object(
+                            shell,
+                            "schedule_right_panel_refresh",
+                            side_effect=AssertionError,
+                        ),
+                    ):
+                        shell._on_character_clicked(asset)
+
+                    slot = shell.controller.state.team(0).slot(0)
+                    self.assertEqual(slot.is_empty, not existing_character)
+                    self.assertEqual(
+                        (
+                            shell.controller.selected_team_index,
+                            shell.controller.selected_slot_index,
+                        ),
+                        selected_before,
+                    )
+
+    def test_account_page_blocks_weapon_mutation(self) -> None:
+        shell = AppShell()
+        shell.controller.add_or_replace_character_fast(
+            _character_asset("10000050", "Thoma", weapon_type=13)
+        )
+        shell.right_dock.show_account_page()
+
+        with (
+            patch.object(
+                shell.controller,
+                "assign_weapon_to_selected_slot",
+                side_effect=AssertionError,
+            ),
+            patch.object(
+                shell.left_host.character_weapon_workspace,
+                "reload_weapons",
+                side_effect=AssertionError,
+            ),
+            patch.object(
+                shell,
+                "schedule_right_panel_refresh",
+                side_effect=AssertionError,
+            ),
+        ):
+            shell._on_weapon_clicked(
+                _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+            )
+
+        self.assertIsNone(shell.controller.state.team(0).slot(0).weapon)
+
+    def test_account_to_run_switch_updates_model_before_showing_run_page(self) -> None:
+        for initial_mode, requested_mode in (
+            (MODE_ABYSS, MODE_DPS_DUMMY),
+            (MODE_DPS_DUMMY, MODE_ABYSS),
+        ):
+            with self.subTest(initial_mode=initial_mode, requested_mode=requested_mode):
+                shell = AppShell()
+                if initial_mode != MODE_ABYSS:
+                    shell._on_mode_requested(initial_mode)
+                shell.right_dock.show_account_page()
+                events: list[tuple] = []
+                refresh_right_panel = shell._refresh_right_panel
+                show_run_page = shell.right_dock.show_run_page
+
+                def refresh() -> dict[str, float]:
+                    events.append(("refresh", shell.controller.mode))
+                    return refresh_right_panel()
+
+                def show(mode: str) -> None:
+                    events.append(
+                        (
+                            "show",
+                            mode,
+                            shell.controller.mode,
+                            shell.right_panel._model.mode,
+                        )
+                    )
+                    show_run_page(mode)
+
+                with (
+                    patch.object(shell, "_refresh_right_panel", side_effect=refresh),
+                    patch.object(shell.right_dock, "show_run_page", side_effect=show),
+                ):
+                    shell.right_dock.header.run_mode_tabs.button_for_mode(
+                        requested_mode
+                    ).click()
+
+                self.assertEqual(
+                    events,
+                    [
+                        ("refresh", requested_mode),
+                        ("show", requested_mode, requested_mode, requested_mode),
+                    ],
+                )
+
+    def test_account_return_to_same_run_mode_preserves_operation_target(self) -> None:
+        shell = AppShell()
+        shell._on_character_clicked(_character_asset("10000050", "Thoma"))
+        target_before = shell.controller.selected_operation_target()
+
+        shell.right_dock.show_account_page()
+        shell.right_dock.header.run_mode_tabs.button_for_mode(MODE_ABYSS).click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
+        self.assertEqual(shell.controller.selected_operation_target(), target_before)
+
+    def test_returning_from_account_restores_normal_roster_clicks(self) -> None:
+        shell = AppShell()
+        asset = _character_asset("10000050", "Thoma")
+        shell.right_dock.show_account_page()
+        shell.right_dock.header.run_mode_tabs.button_for_mode(MODE_ABYSS).click()
+
+        shell._on_character_clicked(asset)
+        self.assertEqual(shell.controller.state.team(0).slot(0).character.id, "10000050")
+        shell._on_character_clicked(asset)
+        self.assertTrue(shell.controller.state.team(0).slot(0).is_empty)
+
     def test_account_page_exposes_hoyolab_profile_and_language_controls(self) -> None:
         shell = AppShell()
         page = shell.right_dock.account_page
@@ -2535,10 +2682,9 @@ class AppShellTest(unittest.TestCase):
             shell._on_mode_requested(MODE_DPS_DUMMY)
 
         self.assertIsNone(card.selection_marker)
-        self.assertTrue(shell._right_panel_refresh_pending)
-        shell.flush_pending_right_panel_refresh()
+        self.assertFalse(shell._right_panel_refresh_pending)
 
-    def test_mode_switch_schedules_refresh_without_immediate_set_model(self) -> None:
+    def test_mode_switch_refreshes_model_before_showing_requested_run_page(self) -> None:
         shell = AppShell()
         shell._on_character_clicked(_character_asset("10000050", "Thoma"))
         shell.flush_pending_right_panel_refresh()
@@ -2546,12 +2692,9 @@ class AppShellTest(unittest.TestCase):
         with patch.object(shell.right_panel, "set_model", wraps=shell.right_panel.set_model) as set_model:
             shell._on_mode_requested(MODE_DPS_DUMMY)
 
-            self.assertEqual(set_model.call_count, 0)
-            self.assertTrue(shell._right_panel_refresh_pending)
-
-            shell.flush_pending_right_panel_refresh()
-
         self.assertEqual(set_model.call_count, 1)
+        self.assertFalse(shell._right_panel_refresh_pending)
+        self.assertEqual(shell.right_panel._model.mode, MODE_DPS_DUMMY)
 
     def test_character_filters_use_session_cached_items(self) -> None:
         workspace = CharacterWeaponWorkspace()

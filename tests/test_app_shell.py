@@ -82,6 +82,7 @@ from ui.right_panel_prototype import (
     ABYSS_DPS_COLUMN_MIN_WIDTH,
     ABYSS_FACT_DPS_LEFT_BUDGET_MAX,
     ABYSS_TIMER_CELL_WIDTH,
+    ABYSS_TIMER_FRAME_WIDTH,
     CompactAbyssTimerWidget,
     RunModeTabsWidget,
 )
@@ -384,6 +385,9 @@ class AppShellTest(unittest.TestCase):
         )
 
         self.assertLessEqual(left_budget, ABYSS_FACT_DPS_LEFT_BUDGET_MAX)
+        self.assertEqual(left_budget, 221)
+        self.assertEqual(ABYSS_TIMER_FRAME_WIDTH, 61)
+        self.assertEqual(ABYSS_TIMER_CELL_WIDTH, 93)
         self.assertGreaterEqual(ABYSS_DPS_COLUMN_MIN_WIDTH, 60)
 
     def test_compact_abyss_timer_uses_two_digit_seconds_display(self) -> None:

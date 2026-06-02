@@ -83,17 +83,15 @@ SLOT_NAME_HEIGHT = 18
 SLOT_DRAG_MIME_TYPE = "application/x-gtt-right-panel-slot"
 ABYSS_CHAMBER_BADGE_WIDTH = 26
 ABYSS_CHAMBER_GRID_SPACING = 3
-ABYSS_TIMER_BRACKET_WIDTH = 4
-ABYSS_TIMER_SEGMENT_WIDTH = 22
+ABYSS_TIMER_SEGMENT_WIDTH = 26
 ABYSS_TIMER_SEPARATOR_WIDTH = 5
-ABYSS_TIMER_ELAPSED_WIDTH = 27
+ABYSS_TIMER_ELAPSED_WIDTH = 30
 ABYSS_TIMER_FRAME_WIDTH = (
-    ABYSS_TIMER_BRACKET_WIDTH * 2
-    + ABYSS_TIMER_SEGMENT_WIDTH * 2
+    ABYSS_TIMER_SEGMENT_WIDTH * 2
     + ABYSS_TIMER_SEPARATOR_WIDTH
     + 4
 )
-ABYSS_TIMER_CELL_WIDTH = ABYSS_TIMER_FRAME_WIDTH + ABYSS_TIMER_ELAPSED_WIDTH + 5
+ABYSS_TIMER_CELL_WIDTH = ABYSS_TIMER_FRAME_WIDTH + ABYSS_TIMER_ELAPSED_WIDTH + 2
 ABYSS_FACT_DPS_LEFT_BUDGET_MAX = 224
 ABYSS_DPS_COLUMN_MIN_WIDTH = 62
 
@@ -848,11 +846,6 @@ class CompactAbyssTimerWidget(QFrame):
         layout.setContentsMargins(2, 0, 2, 0)
         layout.setSpacing(0)
 
-        self.open_bracket = QLabel("[")
-        self.open_bracket.setObjectName("TimerSeparator")
-        self.open_bracket.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.open_bracket.setFixedWidth(ABYSS_TIMER_BRACKET_WIDTH)
-
         self.min_edit = AbyssTimerSegmentEdit(self, "minutes")
         self.min_edit.setObjectName("TimerSegmentEdit")
         self.min_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -868,16 +861,9 @@ class CompactAbyssTimerWidget(QFrame):
         self.sec_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.sec_edit.setFixedWidth(ABYSS_TIMER_SEGMENT_WIDTH)
 
-        self.close_bracket = QLabel("]")
-        self.close_bracket.setObjectName("TimerSeparator")
-        self.close_bracket.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.close_bracket.setFixedWidth(ABYSS_TIMER_BRACKET_WIDTH)
-
-        layout.addWidget(self.open_bracket)
         layout.addWidget(self.min_edit)
         layout.addWidget(colon)
         layout.addWidget(self.sec_edit)
-        layout.addWidget(self.close_bracket)
         self.setFixedWidth(ABYSS_TIMER_FRAME_WIDTH)
 
         self.min_edit.textEdited.connect(
@@ -993,8 +979,8 @@ class ChamberTimerCellWidget(QWidget):
         self.setObjectName("TimerTableCell")
         self.setFixedWidth(ABYSS_TIMER_CELL_WIDTH)
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(1, 0, 1, 0)
-        layout.setSpacing(3)
+        layout.setContentsMargins(1, 0, 0, 0)
+        layout.setSpacing(1)
         self.timer = CompactAbyssTimerWidget()
         self.elapsed_label = QLabel("0s")
         self.elapsed_label.setObjectName("TimerElapsed")
@@ -2460,7 +2446,7 @@ def right_panel_stylesheet() -> str:
         background: transparent;
         color: #dce3e7;
         font-family: Consolas, "Courier New", monospace;
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 700;
         padding: 0px;
     }
@@ -2478,7 +2464,8 @@ def right_panel_stylesheet() -> str:
     }
     #TimerElapsed {
         color: #b9c4ca;
-        font-weight: 700;
+        font-size: 12px;
+        font-weight: 800;
     }
     #SummaryLine, #DetailsName {
         color: #ffffff;

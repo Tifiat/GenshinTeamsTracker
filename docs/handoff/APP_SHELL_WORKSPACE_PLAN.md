@@ -159,6 +159,10 @@ right column patched in place.
 - Future replacement for legacy history.
 - Legacy `runs_history.json` / image-path history UI is obsolete and should not
   become the long-term design.
+- History browsing belongs on the left as a workspace/tab once immutable run
+  snapshots exist. The right dock may expose a compact History command, but it
+  should route to the left workspace and active run type, not open the old
+  floating history window as the final behavior.
 
 ## Right Operations Dock
 
@@ -228,16 +232,25 @@ Future weapon move/swap rule:
 ## Timer / Run Logic
 
 - Timer remains visually in the right operations dock/build panel.
-- Durable timer/run/session logic should move toward a `RunTimerModel`,
-  `RunSessionController`, or equivalent model/controller layer.
+- Durable timer/run/session logic should move toward typed `RunSessionState`,
+  `AbyssRunState`, `DpsDummyRunState`, and a `RunSessionController` or
+  equivalent model/controller layer.
 - The right panel should display and command timer state, not own persistence or
   durable run/session logic.
+- Detailed next-stage contract lives in
+  `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. Follow it before coding
+  History or GCSIM.
 - Later implementation should inspect and reuse useful parts of:
   - `ui/widgets/timers.py`
   - `run_workspace/models.py`
 
 Preserve useful behavior such as wheel-friendly timer editing and validation,
 but do not preserve the old right panel as the final owner of run state.
+Saved runs must be immutable structured snapshots for Abyss and DPS Dummy, not
+live references to account/build state and not image-only legacy records.
+Factual DPS belongs in pure run/session result code near `run_workspace.models`
+or a future `run_workspace.results` module. GCSIM sim DPS remains a separate
+result kind and plugs in later through explicit snapshots/config data.
 
 ## Legacy Plan
 
@@ -286,8 +299,9 @@ Production-switch blockers:
 - `RightPanelPrototypeWidget` still has display-only chamber rows and action
   labels. Typed run/session reset, timer editing, save snapshot, and history
   opening behavior are not yet wired into the new AppShell/controller path.
-- New run/session persistence and immutable history snapshot flow need a narrow
-  production adapter decision before replacing legacy startup.
+- New run/session persistence and immutable history snapshot flow need the
+  typed contract in `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` before
+  replacing legacy startup.
 - When the switch is explicitly approved, `main.py` must run the same startup
   adaptive scaling bootstrap as `ui.app_shell_smoke` before constructing
   `QApplication`.
@@ -607,8 +621,13 @@ Sizing note:
 
 ### Stage 5: GCSIM And History
 
-- Add GCSIM workspace after the shell and state model are stable.
-- Add new History workspace based on immutable saved run snapshots.
+- Add typed run/session state and immutable snapshot persistence before coding
+  History or GCSIM.
+- Add new History workspace based on immutable saved run snapshots, routed from
+  the right-dock History command according to active run type.
+- Add GCSIM after the shell, session model, and snapshot contracts are stable.
+  DPS Dummy is the first consumer; Abyss GCSIM starts later with simplified or
+  manual target assumptions.
 - Do not migrate legacy history UI as the final design.
 
 ### Stage 6: Legacy Cleanup

@@ -55,7 +55,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - keep the reduced fixed-width right operations dock around `RightPanelPrototypeWidget`; it must not be user-resizable or expand with the window;
   - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
   - AppShell left workspace navigation exists with Character/Weapon and lazy-created Artifacts workspaces. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; keep future workspace-driven right-dock policies at that root coordination boundary;
-  - continue the production adapter: next production-switch step is typed run/session behavior for the right dock (timer editing, reset, immutable save snapshot, history opening) without reviving legacy widget ownership. Richer `CharacterDetailsData` preparation can continue incrementally where the selected-details UI still needs it;
+  - continue the production adapter: next production-switch step is typed run/session behavior for the right dock (timer editing, reset, immutable save snapshot, history opening) without reviving legacy widget ownership. The concrete session/snapshot contract is in `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`: add `RunSessionState`/controller-style ownership, derive right-panel chamber rows from model state, save immutable Abyss/DPS Dummy snapshots, and open History as a left workspace before switching `main.py`. Richer `CharacterDetailsData` preparation can continue incrementally where the selected-details UI still needs it;
   - keep roster clicks as quick-pick add/remove and right-panel slot clicks as selected build/details target toggle;
   - AppShell quick-pick marker latency is fixed with incremental visible-card marker updates; roster clicks now update markers immediately and defer/coalesce right-panel refreshes through a short scheduler;
   - AppShell filters now use session-cached character/weapon asset lists plus shared high-DPI roster/weapon pixmap caching. Right-panel slot selection does not reload portrait/weapon PNGs, fitted right-panel PNG canvases are cached per DPR/source, and `AssetIconLabel` no longer does a duplicate queued pixmap update after construction. Remaining performance work is to avoid recreating visible card widgets on filter changes, likely with hide/show or a virtualized/lazy grid if profiling still warrants it, and to reduce first bonus-strip chip rebuild cost on high-DPI screens;
@@ -88,6 +88,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 2. Main Run Workspace
 
+- Detailed next-stage session/snapshot contract: `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`.
 - Replace the legacy right panel with a Run Workspace that has at least two modes/tabs: Abyss and DPS Dummy.
 - Active mode controls team layout, visible inputs, which history tab opens from "open history", and which run type is saved.
 - If the panel is on DPS Dummy, history opens DPS Dummy history. If it is on Abyss, history opens Abyss history.
@@ -105,6 +106,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - saved into DPS Dummy history;
   - later connected to simulator UI.
 - Prefer UI wording "DPS" or "factual DPS" for HP/time calculation. Keep simulator output separate as "sim DPS" with explicit GCSIM label/logo where applicable.
+- Before implementing History or GCSIM, create typed run/session state and immutable snapshot persistence. The right-panel widget must display/command this state; it must not be the source of truth for timers or saved runs.
 
 ## 3. Shared TeamCard / RunCard
 
@@ -148,6 +150,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 ## 6. Abyss History / Seasons
 
 - Redesign history around shared RunCard/TeamCard components. The old history grid is not final and will not scale once weapons, set bonuses, simulator values, filters, and metadata are added.
+- History should become a left workspace/tab after typed immutable snapshots exist. The right dock may keep a compact History command, but browsing and filtering saved runs belongs on the left.
 - Future visual direction: use Akasha-like compact saved-run rows. Abyss rows can be paired/double team rows with character icons, weapon icons, set/build icons, room times, factual DPS, and sim DPS; hover over a character should show a rich build tooltip, and expanding the row should show full RunCard/export-ready detail.
 - Abyss history structure:
   - top-level tab: Abyss;

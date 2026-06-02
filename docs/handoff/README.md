@@ -20,6 +20,7 @@ Current maps:
 - `STAT_NORMALIZATION.md` - stat normalization and GCSIM stat-key mapping handoff.
 - `MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md` - audit and staged plan for replacing the legacy main-window right panel with fixed Right Panel Prototype v6 plus left workspaces.
 - `APP_SHELL_WORKSPACE_PLAN.md` - target AppShell architecture: left workspace host plus fixed right operations dock, with staged migration notes.
+- `RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` - next Run Workspace session/snapshot contract before history, GCSIM, and the `main.py` switch.
 
 Rules:
 

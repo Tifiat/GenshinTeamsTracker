@@ -226,18 +226,42 @@ Implementation direction:
 
 History should become a left workspace/tab after typed snapshots exist.
 
+History owns its own browsing state. Current run mode and history browsing mode
+are separate states:
+
+- the right-dock run mode may provide the default history section when History is
+  opened from a run context;
+- opening History from Abyss should default to Abyss history;
+- opening History from DPS Dummy should default to DPS Dummy history;
+- once inside History, the user can switch between Abyss, DPS Dummy, and later
+  PvP history through explicit controls inside the History workspace;
+- switching History's internal type/filter must not mutate the current right-dock
+  run mode, team selection, or active run/session state.
+
 Recommended order:
 
 1. Define snapshot write/read service and tests.
 2. Wire right-dock Save to snapshot creation for the active run type.
 3. Add a minimal History left workspace that reads immutable snapshots.
 4. Route the right-dock History action to activate/select that left workspace
-   and the relevant run type tab/filter.
+   and the relevant default run type section.
 5. Retire the floating legacy `RunHistoryWindow` only after the new workspace
    can show saved runs.
 
 History is not a global right-dock page. The right dock may contain a command
 button, but the browsing surface belongs on the left.
+
+Future History filters/sorts belong inside the History workspace, not in the
+right-dock run-mode tabs. Expected filter/sort dimensions include:
+
+- Abyss season/period, floor, chamber, side, enemy/wave/target metadata, clear
+  time, factual DPS, team, characters, elements, resonances, artifact sets, and
+  warnings;
+- DPS Dummy target/setup, duration, factual DPS, optional sim DPS metadata when
+  GCSIM exists, team, characters, elements, resonances, artifact sets, and
+  warnings;
+- later PvP mode/deck/opponent/rules/result dimensions using the same internal
+  History navigation model.
 
 ## Factual DPS Boundary
 

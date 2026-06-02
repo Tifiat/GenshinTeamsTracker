@@ -81,6 +81,9 @@ SLOT_CARD_WIDTH = SLOT_CLUSTER_WIDTH + SLOT_CARD_MARGIN * 2
 SLOT_CARD_FIXED_HEIGHT = 154
 SLOT_NAME_HEIGHT = 18
 SLOT_DRAG_MIME_TYPE = "application/x-gtt-right-panel-slot"
+ABYSS_TIMER_SPIN_WIDTH = 24
+ABYSS_TIMER_SEPARATOR_WIDTH = 5
+ABYSS_TIMER_ELAPSED_WIDTH = 34
 
 _FIT_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 _BUILD_MINI_SET_ICON_PIXMAP_CACHE: dict[
@@ -760,6 +763,9 @@ class AbyssSecondSpinBox(QSpinBox):
         super().__init__(parent)
         self._timer = timer
 
+    def textFromValue(self, value: int) -> str:
+        return f"{int(value):02d}"
+
     def wheelEvent(self, event) -> None:
         delta_steps = event.angleDelta().y() // 120
         if delta_steps:
@@ -769,39 +775,57 @@ class AbyssSecondSpinBox(QSpinBox):
         super().wheelEvent(event)
 
 
+class TwoDigitSpinBox(QSpinBox):
+    def textFromValue(self, value: int) -> str:
+        return f"{int(value):02d}"
+
+
 class CompactAbyssTimerWidget(QWidget):
     seconds_changed = Signal(int)
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self._seconds_left = 600
+        self._max_seconds = 600
         self._updating = False
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(1)
+        layout.setSpacing(0)
 
-        self.min_spin = QSpinBox()
+        self.open_bracket = QLabel("[")
+        self.open_bracket.setObjectName("TimerSeparator")
+        self.open_bracket.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.open_bracket.setFixedWidth(5)
+
+        self.min_spin = TwoDigitSpinBox()
         self.min_spin.setObjectName("TimerSpinBox")
         self.min_spin.setRange(5, 10)
         self.min_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
         self.min_spin.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.min_spin.setFixedWidth(22)
+        self.min_spin.setFixedWidth(ABYSS_TIMER_SPIN_WIDTH)
 
         colon = QLabel(":")
         colon.setObjectName("TimerSeparator")
         colon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        colon.setFixedWidth(4)
+        colon.setFixedWidth(ABYSS_TIMER_SEPARATOR_WIDTH)
 
         self.sec_spin = AbyssSecondSpinBox(self)
         self.sec_spin.setObjectName("TimerSpinBox")
         self.sec_spin.setRange(0, 59)
         self.sec_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
         self.sec_spin.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.sec_spin.setFixedWidth(22)
+        self.sec_spin.setFixedWidth(ABYSS_TIMER_SPIN_WIDTH)
 
+        self.close_bracket = QLabel("]")
+        self.close_bracket.setObjectName("TimerSeparator")
+        self.close_bracket.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.close_bracket.setFixedWidth(5)
+
+        layout.addWidget(self.open_bracket)
         layout.addWidget(self.min_spin)
         layout.addWidget(colon)
         layout.addWidget(self.sec_spin)
+        layout.addWidget(self.close_bracket)
 
         self.min_spin.valueChanged.connect(self._on_spin_changed)
         self.sec_spin.valueChanged.connect(self._on_spin_changed)
@@ -814,11 +838,22 @@ class CompactAbyssTimerWidget(QWidget):
     def set_seconds(self, seconds_left: int) -> None:
         self._set_seconds(seconds_left, emit=False)
 
+    def set_max_seconds(self, max_seconds: int) -> None:
+        self._max_seconds = clamp_abyss_timer_edit_seconds(max_seconds)
+        max_minutes = max(5, self._max_seconds // 60)
+        self._updating = True
+        try:
+            self.min_spin.setRange(5, max_minutes)
+        finally:
+            self._updating = False
+        self._set_seconds(self._seconds_left, emit=False)
+
     def adjust_seconds(self, delta_steps: int) -> None:
         self._set_seconds(
             adjust_abyss_timer_seconds_with_second_wheel(
                 self._seconds_left,
                 delta_steps,
+                start_seconds=self._max_seconds,
             ),
             emit=True,
         )
@@ -832,7 +867,10 @@ class CompactAbyssTimerWidget(QWidget):
         )
 
     def _set_seconds(self, seconds_left: int, *, emit: bool) -> None:
-        seconds = clamp_abyss_timer_edit_seconds(seconds_left)
+        seconds = clamp_abyss_timer_edit_seconds(
+            seconds_left,
+            start_seconds=self._max_seconds,
+        )
         changed = seconds != self._seconds_left
         self._seconds_left = seconds
         minutes, remainder = divmod(seconds, 60)
@@ -855,17 +893,25 @@ class ChamberTimerCellWidget(QWidget):
         super().__init__(parent)
         self.setObjectName("TableCell")
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(3, 2, 3, 2)
-        layout.setSpacing(3)
+        layout.setContentsMargins(2, 1, 2, 1)
+        layout.setSpacing(4)
         self.timer = CompactAbyssTimerWidget()
         self.elapsed_label = QLabel("0s")
         self.elapsed_label.setObjectName("TimerElapsed")
         self.elapsed_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.elapsed_label.setFixedWidth(ABYSS_TIMER_ELAPSED_WIDTH)
         layout.addWidget(self.timer)
-        layout.addWidget(self.elapsed_label, 1)
+        layout.addWidget(self.elapsed_label)
         self.timer.seconds_changed.connect(self.seconds_changed.emit)
 
-    def set_model(self, time_text: str, elapsed_seconds: int) -> None:
+    def set_model(
+        self,
+        time_text: str,
+        elapsed_seconds: int,
+        *,
+        max_seconds: int = 600,
+    ) -> None:
+        self.timer.set_max_seconds(max_seconds)
         self.timer.set_seconds(_remaining_seconds_from_time_text(time_text))
         self.elapsed_label.setText(f"{int(elapsed_seconds)}s")
 
@@ -1016,9 +1062,19 @@ class ChamberTableBlockWidget(QFrame):
                     cell = self._timer_cells.get((row_index, column))
                     if cell is not None:
                         if column == 1:
-                            cell.set_model(row.team1_time, row.team1_seconds)
+                            cell.set_model(
+                                row.team1_time,
+                                row.team1_seconds,
+                                max_seconds=600,
+                            )
                         else:
-                            cell.set_model(row.team2_time, row.team2_seconds)
+                            cell.set_model(
+                                row.team2_time,
+                                row.team2_seconds,
+                                max_seconds=_remaining_seconds_from_time_text(
+                                    row.team1_time
+                                ),
+                            )
                     continue
                 label = self._row_labels.get((row_index, column))
                 if label is not None:

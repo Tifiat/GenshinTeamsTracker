@@ -240,6 +240,9 @@ class AppShellController:
     abyss_timer_states: tuple[AbyssTimerState, ...] = field(
         default_factory=default_abyss_timer_states
     )
+    abyss_t2_manual_by_chamber: tuple[bool, ...] = field(
+        default_factory=lambda: (False, False, False)
+    )
     mode_states: dict[str, TeamBuilderState] = field(default_factory=dict)
     last_equipment_error: str = ""
     last_weapon_equipment_change_result: EquipmentChangeResult | None = None
@@ -274,6 +277,10 @@ class AppShellController:
             self.mode_states[self.mode] = self.state
         for mode in MODE_TEAM_COUNTS:
             self.mode_states.setdefault(mode, _empty_state_for_mode(mode))
+        if len(self.abyss_t2_manual_by_chamber) != len(self.abyss_timer_states):
+            self.abyss_t2_manual_by_chamber = tuple(
+                False for _ in self.abyss_timer_states
+            )
 
     def right_panel_model(self):
         chamber_rows = (
@@ -325,19 +332,36 @@ class AppShellController:
         team = int(team_number)
         if team not in (1, 2):
             return False
-        seconds = clamp_abyss_timer_edit_seconds(seconds_left)
         current = self.abyss_timer_states[index]
+        t2_manual = list(self.abyss_t2_manual_by_chamber)
         if team == 1:
-            if current.team1_left_seconds == seconds:
+            seconds = clamp_abyss_timer_edit_seconds(seconds_left)
+            team2_left_seconds = current.team2_left_seconds
+            if t2_manual[index]:
+                if seconds < team2_left_seconds:
+                    team2_left_seconds = seconds
+                    t2_manual[index] = False
+            else:
+                team2_left_seconds = seconds
+            if (
+                current.team1_left_seconds == seconds
+                and current.team2_left_seconds == team2_left_seconds
+                and tuple(t2_manual) == self.abyss_t2_manual_by_chamber
+            ):
                 return False
             updated = AbyssTimerState(
                 team1_left_seconds=seconds,
-                team2_left_seconds=current.team2_left_seconds,
+                team2_left_seconds=team2_left_seconds,
                 start_seconds=current.start_seconds,
             )
         else:
-            if current.team2_left_seconds == seconds:
+            seconds = clamp_abyss_timer_edit_seconds(
+                seconds_left,
+                start_seconds=current.team1_left_seconds,
+            )
+            if current.team2_left_seconds == seconds and t2_manual[index]:
                 return False
+            t2_manual[index] = True
             updated = AbyssTimerState(
                 team1_left_seconds=current.team1_left_seconds,
                 team2_left_seconds=seconds,
@@ -346,6 +370,7 @@ class AppShellController:
         states = list(self.abyss_timer_states)
         states[index] = updated
         self.abyss_timer_states = tuple(states)
+        self.abyss_t2_manual_by_chamber = tuple(t2_manual)
         return True
 
     def swap_slots(

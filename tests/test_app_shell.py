@@ -76,7 +76,7 @@ from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalSc
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
 from run_workspace.models import AbyssTimerState
 from ui.utils.ui_palette import UI_ACCENT_TEAM_1
-from ui.right_panel_prototype import RunModeTabsWidget
+from ui.right_panel_prototype import CompactAbyssTimerWidget, RunModeTabsWidget
 
 
 class AppShellTest(unittest.TestCase):
@@ -359,6 +359,57 @@ class AppShellTest(unittest.TestCase):
         )
         self.assertEqual(shell.right_panel._model.chamber_rows[0].team1_seconds, 50)
         self.assertEqual(shell.right_panel._model.total_seconds, 50)
+
+    def test_compact_abyss_timer_uses_two_digit_seconds_display(self) -> None:
+        timer = CompactAbyssTimerWidget()
+
+        timer.set_seconds(9 * 60 + 1)
+
+        self.assertEqual(timer.min_spin.text(), "09")
+        self.assertEqual(timer.sec_spin.text(), "01")
+
+    def test_abyss_t2_follows_t1_until_manually_edited(self) -> None:
+        shell = AppShell()
+
+        self.assertTrue(shell.controller.set_abyss_timer_seconds(0, 1, 590))
+        self.assertEqual(shell.controller.abyss_timer_states[0].team1_left_seconds, 590)
+        self.assertEqual(shell.controller.abyss_timer_states[0].team2_left_seconds, 590)
+        self.assertFalse(shell.controller.abyss_t2_manual_by_chamber[0])
+
+        self.assertTrue(shell.controller.set_abyss_timer_seconds(0, 1, 595))
+        self.assertEqual(shell.controller.abyss_timer_states[0].team2_left_seconds, 595)
+        self.assertEqual(shell.controller.right_panel_model().chamber_rows[0].team2_seconds, 0)
+
+    def test_abyss_manual_t2_stays_fixed_while_valid(self) -> None:
+        shell = AppShell()
+
+        shell.controller.set_abyss_timer_seconds(0, 1, 595)
+        shell.controller.set_abyss_timer_seconds(0, 2, 585)
+        self.assertTrue(shell.controller.abyss_t2_manual_by_chamber[0])
+
+        shell.controller.set_abyss_timer_seconds(0, 1, 586)
+        row = shell.controller.right_panel_model().chamber_rows[0]
+
+        self.assertEqual(shell.controller.abyss_timer_states[0].team1_left_seconds, 586)
+        self.assertEqual(shell.controller.abyss_timer_states[0].team2_left_seconds, 585)
+        self.assertEqual(row.team2_seconds, 1)
+        self.assertTrue(shell.controller.abyss_t2_manual_by_chamber[0])
+
+    def test_abyss_t1_crossing_below_t2_clamps_and_restores_follow_mode(self) -> None:
+        shell = AppShell()
+
+        shell.controller.set_abyss_timer_seconds(0, 1, 586)
+        shell.controller.set_abyss_timer_seconds(0, 2, 585)
+        shell.controller.set_abyss_timer_seconds(0, 1, 580)
+
+        row = shell.controller.right_panel_model().chamber_rows[0]
+        self.assertEqual(shell.controller.abyss_timer_states[0].team2_left_seconds, 580)
+        self.assertEqual(row.team2_seconds, 0)
+        self.assertFalse(shell.controller.abyss_t2_manual_by_chamber[0])
+
+        shell.controller.set_abyss_timer_seconds(0, 1, 590)
+        self.assertEqual(shell.controller.abyss_timer_states[0].team2_left_seconds, 590)
+        self.assertEqual(shell.controller.right_panel_model().chamber_rows[0].team2_seconds, 0)
 
     def test_app_shell_abyss_timer_change_is_ignored_outside_abyss_mode(self) -> None:
         shell = AppShell()

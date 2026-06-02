@@ -19,7 +19,9 @@ legacy cleanup, and it does not switch `main.py`.
   and `build_legacy_abyss_run_snapshot(...)`.
 - AppShell now uses live in-memory Abyss timer state for the compact right-dock
   chamber table. T1/T2 timer edits update controller state and the right-panel
-  view model immediately, but reset/save/history persistence is still future.
+  view model immediately. T2 follows T1 until manually edited; if T1 is edited
+  below current T2, T2 clamps to T1 and returns to follow mode. Reset/save/history
+  persistence is still future.
 - The next implementation step is current in-memory run/session state and result
   calculation. Saved snapshot models are intentionally later.
 - `ui/widgets/timers.py` contains useful timer editing behavior but must not

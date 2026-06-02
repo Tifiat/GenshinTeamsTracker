@@ -241,6 +241,8 @@ Future weapon move/swap rule:
   editable in memory. They use compact minute/second spin boxes, legacy-style
   second wheel wrap/clamp, `AbyssTimerState`, and
   `calculate_abyss_chamber_result(...)` to derive elapsed seconds and Total.
+  T2 follows the same chamber's T1 until T2 is manually edited; if T1 is edited
+  below the current T2 value, T2 clamps down to T1 and returns to follow mode.
   Reset, persistence, immutable snapshots, History, factual DPS, and GCSIM
   remain future work.
 - Detailed next-stage contract lives in

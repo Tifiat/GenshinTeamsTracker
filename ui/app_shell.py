@@ -71,6 +71,7 @@ from ui.character_assets import (
     metadata_int,
     standard_character_filter_icon,
 )
+from ui.account_data_page import AccountDataPage
 from ui.right_panel_prototype import (
     RIGHT_PANEL_PROTOTYPE_MIN_WIDTH,
     RunModeTabsWidget,
@@ -997,6 +998,10 @@ class AppShell(QWidget):
             active_mode=self.controller.mode,
         )
         root.addWidget(self.right_dock, 0)
+        self.right_dock.account_page.account_data_changed.connect(
+            self._on_account_data_changed
+        )
+        self.right_dock.account_page.language_changed.connect(self.retranslate_ui)
 
         self._right_panel_refresh_pending = False
         self._right_panel_refresh_timer = QTimer(self)
@@ -1038,6 +1043,12 @@ class AppShell(QWidget):
         )
         self._refresh_character_selection_markers()
         self._sync_artifact_browser_operation_target()
+
+    def retranslate_ui(self) -> None:
+        self.setWindowTitle(tr("app_shell.title"))
+        self.left_host.retranslate_ui()
+        self.right_dock.retranslate_ui()
+        self._refresh_right_panel()
 
     def resizeEvent(self, event) -> None:
         if not hasattr(self, "left_host") or not hasattr(self, "_resize_settle_timer"):
@@ -1288,6 +1299,32 @@ class AppShell(QWidget):
         if refreshed:
             self.schedule_right_panel_refresh()
 
+    def _on_account_data_changed(self, reset_runtime_state: bool) -> None:
+        self.cancel_pending_equipment_hydration()
+        self.cancel_pending_right_panel_refresh(reason="account_data_changed")
+        if self._weapon_filter_sync_timer.isActive():
+            self._weapon_filter_sync_timer.stop()
+        self._weapon_filter_sync_pending = False
+
+        if reset_runtime_state:
+            previous_mode = self.controller.mode
+            external_bonuses_enabled = self.controller.external_bonuses_enabled
+            controller = AppShellController.empty(
+                equipment_db_path=self.controller.equipment_db_path
+            )
+            controller.external_bonuses_enabled = external_bonuses_enabled
+            if previous_mode != MODE_ABYSS:
+                controller.set_mode(previous_mode)
+            self.controller = controller
+        else:
+            self.controller.invalidate_persistent_equipment_cache()
+
+        self.left_host.refresh_account_data()
+        self._refresh_character_selection_markers()
+        self._sync_artifact_browser_operation_target()
+        self.schedule_weapon_filter_sync(delay_ms=0)
+        self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+
     def _refresh_right_panel(self) -> dict[str, float]:
         total_start = perf_now()
         vm_start = perf_now()
@@ -1517,7 +1554,7 @@ class LeftWorkspaceHost(QWidget):
         self.character_weapon_workspace = CharacterWeaponWorkspace(
             db_path=self.artifact_db_path
         )
-        self.add_workspace(
+        self.character_weapon_button = self.add_workspace(
             tr("app_shell.workspace.characters_weapons"),
             self.character_weapon_workspace,
         )
@@ -1539,9 +1576,9 @@ class LeftWorkspaceHost(QWidget):
         placeholder = QFrame()
         layout = QVBoxLayout(placeholder)
         layout.setContentsMargins(0, 0, 0, 0)
-        label = QLabel(tr("artifact.browser.title"))
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(label, 1)
+        self.artifact_browser_placeholder_label = QLabel(tr("artifact.browser.title"))
+        self.artifact_browser_placeholder_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.artifact_browser_placeholder_label, 1)
         return placeholder
 
     def add_workspace(self, label: str, widget: QWidget) -> QPushButton:
@@ -1600,6 +1637,29 @@ class LeftWorkspaceHost(QWidget):
         if self.artifact_browser_workspace is not None:
             self.artifact_browser_workspace.set_right_panel_operation_target(target)
 
+    def refresh_account_data(self) -> None:
+        workspace = self.character_weapon_workspace
+        workspace.refresh_asset_cache()
+        if workspace._initial_grid_built:
+            workspace.update_grids()
+        if self.artifact_browser_workspace is not None:
+            self.artifact_browser_workspace.refresh_account_data(
+                workspace.character_asset_items_snapshot()
+            )
+
+    def retranslate_ui(self) -> None:
+        self.character_weapon_button.setText(
+            tr("app_shell.workspace.characters_weapons")
+        )
+        self.artifact_browser_button.setText(tr("app_shell.workspace.artifacts"))
+        self.character_weapon_workspace.retranslate_ui()
+        if self.artifact_browser_workspace is None:
+            self.artifact_browser_placeholder_label.setText(
+                tr("artifact.browser.title")
+            )
+        else:
+            self.artifact_browser_workspace.retranslate_ui()
+
 
 class RightDockHeader(QWidget):
     mode_requested = Signal(str)
@@ -1641,24 +1701,9 @@ class RightDockHeader(QWidget):
         self.run_mode_tabs.set_active_mode(None)
         self.account_button.setChecked(True)
 
-
-class AccountDataSettingsPlaceholder(QWidget):
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setObjectName("RightPanelPrototypeContent")
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(7)
-
-        title = QLabel(tr("app_shell.account.title"))
-        title.setObjectName("SectionTitle")
-        layout.addWidget(title)
-
-        description = QLabel(tr("app_shell.account.placeholder"))
-        description.setWordWrap(True)
-        layout.addWidget(description)
-        layout.addStretch(1)
+    def retranslate_ui(self) -> None:
+        self.run_mode_tabs.retranslate_ui()
+        self.account_button.setText(tr("app_shell.right_dock.account"))
 
 
 class RightOperationsDock(QFrame):
@@ -1675,7 +1720,7 @@ class RightOperationsDock(QFrame):
         self.setObjectName("RightOperationsDock")
         self.operation_widget = operation_widget
         self.header = RightDockHeader(active_mode)
-        self.account_page = AccountDataSettingsPlaceholder()
+        self.account_page = AccountDataPage()
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -1712,6 +1757,10 @@ class RightOperationsDock(QFrame):
     def _on_mode_requested(self, mode: str) -> None:
         self.show_run_page(mode)
         self.mode_requested.emit(mode)
+
+    def retranslate_ui(self) -> None:
+        self.header.retranslate_ui()
+        self.account_page.retranslate_ui()
 
 
 def _account_tab_icon() -> QIcon:
@@ -1765,7 +1814,8 @@ class CharacterWeaponWorkspace(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        root.addWidget(QLabel(tr("asset_panel.weapons")))
+        self.weapon_title_label = QLabel(tr("asset_panel.weapons"))
+        root.addWidget(self.weapon_title_label)
         root.addSpacing(6)
         root.addLayout(
             self._build_filter_row(
@@ -1779,7 +1829,8 @@ class CharacterWeaponWorkspace(QWidget):
         root.addWidget(self.weapon_area, 1)
 
         root.addSpacing(6)
-        root.addWidget(QLabel(tr("asset_panel.characters")))
+        self.character_title_label = QLabel(tr("asset_panel.characters"))
+        root.addWidget(self.character_title_label)
         root.addSpacing(6)
         root.addLayout(
             self._build_filter_row(
@@ -1815,6 +1866,10 @@ class CharacterWeaponWorkspace(QWidget):
             self.weapon_grid,
             lambda: self._weapon_cards_by_key.values(),
         )
+
+    def retranslate_ui(self) -> None:
+        self.weapon_title_label.setText(tr("asset_panel.weapons"))
+        self.character_title_label.setText(tr("asset_panel.characters"))
 
     def showEvent(self, event) -> None:
         super().showEvent(event)

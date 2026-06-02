@@ -17,7 +17,7 @@ AppShell
     |   `-- global actions
     `-- ContentStack
         |-- current operation widget
-        `-- Account / Data placeholder
+        `-- Account / Data page
 ```
 
 Terms:
@@ -32,10 +32,13 @@ Terms:
   inter-button spacing only. Do not add a visual divider, stretch gap, or
   page-specific duplicate of a global action.
 - Current page-specific controls are Abyss / DPS Dummy. The current global
-  action is Account. Account opens a localized Account / Data placeholder in the
-  same fixed dock without changing the left workspace. Only the currently open
-  dock page is visually active. Run-mode routing uses stable ids, never
-  localized button text.
+  action is Account. Account opens a compact localized Account / Data page in
+  the same fixed dock without changing the left workspace. The page reuses the
+  existing HoYoLAB import/update behavior, offline profile save/load/sign-out
+  actions, and language selector. AppShell refreshes account asset caches after
+  import and clears only its runtime team state when an offline profile is
+  loaded or signed out. Only the currently open dock page is visually active.
+  Run-mode routing uses stable ids, never localized button text.
 - Future right-dock pages such as PvP may replace the page-specific control host
   while the global action host stays present. Future empty-database startup
   should auto-open Account / Data setup, and later onboarding may highlight the
@@ -152,7 +155,8 @@ Near-term default:
 
 Future operation modes:
 
-- Import/settings/language controls.
+- Account/Data owns HoYoLAB import/update, offline profile actions, and language
+  selection. Broader settings remain future work.
 - PvP draft/deck/opponent controls.
 - Build panel after PvP draft when a buildable pool/team exists.
 

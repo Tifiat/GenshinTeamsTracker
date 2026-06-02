@@ -147,6 +147,12 @@ class RunModeTabsWidget(QWidget):
         if mode is None:
             self._tab_group.setExclusive(True)
 
+    def retranslate_ui(self) -> None:
+        self._buttons_by_mode[MODE_ABYSS].setText(tr("right_panel.mode.abyss"))
+        self._buttons_by_mode[MODE_DPS_DUMMY].setText(
+            tr("right_panel.mode.dps_dummy")
+        )
+
 
 def make_mode_tab_button(text: str) -> QPushButton:
     button = QPushButton(text)

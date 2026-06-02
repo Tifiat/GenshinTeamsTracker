@@ -47,6 +47,7 @@ from ui.app_shell import (
     _weapon_owner_side_icon_size,
     _weapon_owner_target_rect,
 )
+from ui.account_data_page import AccountDataPage
 from ui.artifact_browser.card_delegate import ArtifactCardDelegate, CARD_SIZE, GRID_SIZE
 from ui.artifact_browser.window import (
     ARTIFACT_GRID_FIT_PADDING,
@@ -136,6 +137,50 @@ class AppShellTest(unittest.TestCase):
                 MODE_DPS_DUMMY
             ).isChecked()
         )
+
+    def test_account_page_exposes_hoyolab_profile_and_language_controls(self) -> None:
+        shell = AppShell()
+        page = shell.right_dock.account_page
+
+        self.assertIsInstance(page, AccountDataPage)
+        self.assertTrue(page.btn_hoyolab_export.text())
+        self.assertEqual(page.btn_profile_menu.text(), tr("profile.menu_button"))
+        self.assertEqual(
+            [action.text() for action in page.profile_menu.actions() if not action.isSeparator()],
+            [
+                tr("profile.export"),
+                tr("profile.import"),
+                tr("profile.switch"),
+            ],
+        )
+        self.assertGreater(page.language_combo.count(), 0)
+
+    def test_account_data_refresh_can_reset_app_shell_runtime_team_state(self) -> None:
+        shell = AppShell()
+        shell.controller.add_or_replace_character_fast(
+            _character_asset("10000050", "Thoma")
+        )
+
+        with patch.object(shell.left_host, "refresh_account_data") as refresh:
+            shell.right_dock.account_page.account_data_changed.emit(True)
+
+        self.assertTrue(shell.controller.state.team(0).slot(0).is_empty)
+        refresh.assert_called_once_with()
+
+    def test_hoyolab_update_refresh_preserves_app_shell_runtime_team_state(self) -> None:
+        shell = AppShell()
+        shell.controller.add_or_replace_character_fast(
+            _character_asset("10000050", "Thoma")
+        )
+
+        with patch.object(shell.left_host, "refresh_account_data") as refresh:
+            shell.right_dock.account_page.account_data_changed.emit(False)
+
+        self.assertEqual(
+            shell.controller.state.team(0).slot(0).character.id,
+            "10000050",
+        )
+        refresh.assert_called_once_with()
 
     def test_run_mode_tabs_route_by_stable_id_not_localized_text(self) -> None:
         with patch(

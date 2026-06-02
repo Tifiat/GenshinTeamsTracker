@@ -2483,6 +2483,10 @@ class ArtifactBrowserWindow(QWidget):
         self.update_custom_edit_bar()
         self.update_build_panel()
 
+    def refresh_account_data(self, character_asset_items: list[dict]) -> None:
+        self._preloaded_character_asset_items = list(character_asset_items)
+        self.reload_from_database()
+
     def on_artifact_clicked(self, index) -> None:
         artifact = index.data(ArtifactRoles.ArtifactRole)
         if artifact is None:

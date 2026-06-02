@@ -16,6 +16,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - large JSON/image folders
 - Expensive repeatable UI work should use both in-memory cache and persistent cache under `data/cache/...`; do not leave image processing/parsing in hot UI paths.
 - Update this file only with active tasks and useful follow-ups.
+- Before implementing a task specification, briefly inspect the relevant current code and handoff contract. Clarify only ambiguities that materially change architecture, behavior, or visible UI; use engineering judgment for narrow local implementation details after the contract is clear.
 - In this repo, handoff context means `CODEX.md`, `TODO.md`, and `docs/handoff/*.md`. When the user asks to update or clean handoffs, include all three entrypoints unless they narrow the scope.
 - After each completed task, update handoff docs before final response when the task changes roadmap, state, or reusable context: mark completed subitems compactly, add durable new knowledge to `CODEX.md`/`TODO.md` or a dedicated handoff file, and remove stale active-task/development-log leftovers.
 - After each completed pushable task, final responses should include one short Russian past-tense commit message.
@@ -70,7 +71,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - future import equipment auto-apply setting: HoYoLAB import should optionally apply observed current artifacts/weapons into the new `account_equipment` runtime tables after import. When enabled, apply through account equipment service helpers so artifacts/weapons follow the same move/swap semantics as manual equip; current import/storage paths still need an audit before wiring this behind a user-toggleable setting;
   - Artifact Browser equipment UX is documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`: right-panel selected character can drive the browser operation target, the top current-equipment zone is current equipment rather than a preset, preset apply is explicit, incomplete preset apply clears missing target slots, and owner side icons come from current equipment tables;
   - separate timer/run logic into a model/controller while keeping timer UI visually in the right operations dock;
-  - reserve right operations dock future modes for import/settings/language controls and PvP draft/deck/opponent controls;
+  - RightOperationsDock now owns a persistent same-style header row with page-specific Abyss / DPS Dummy controls plus an always-visible global Account action. Account opens a localized placeholder page inside the same dock without changing the left workspace. Header routing uses stable ids rather than localized text. Future PvP can replace its page-specific controls while Account stays present;
+  - next Account/Data setup tasks: move existing HoYoLAB import/update, profile, language, and settings actions into the Account dock page; auto-open that page when the account database is empty; later onboarding may highlight the Account action. A compact Support/Donate header action and fuller Account-page support area remain optional future directions, not current UI;
   - keep PvP as a separate mode/window direction initially, reusing the build panel only after a buildable pool/team exists;
   - clean legacy main-window right panel and legacy history only after the new shell is stable.
 - Do not keep developing the current main-window right panel as the final structure. It is legacy/prototype UI and should be replaced by a shared Run Workspace.

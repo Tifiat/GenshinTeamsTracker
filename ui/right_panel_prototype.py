@@ -100,6 +100,61 @@ OWNER_BADGE_TRACE = os.environ.get("GTT_OWNER_BADGE_TRACE", "").strip().casefold
 _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+class RunModeTabsWidget(QWidget):
+    """Reusable run-page tabs with stable ids independent from display text."""
+
+    mode_requested = Signal(str)
+
+    def __init__(
+        self,
+        active_mode: str | None = MODE_ABYSS,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._tab_group = QButtonGroup(self)
+        self._tab_group.setExclusive(True)
+        self._buttons_by_mode: dict[str, QPushButton] = {}
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        for mode, label_key in (
+            (MODE_ABYSS, "right_panel.mode.abyss"),
+            (MODE_DPS_DUMMY, "right_panel.mode.dps_dummy"),
+        ):
+            button = make_mode_tab_button(tr(label_key))
+            button.clicked.connect(
+                lambda _checked=False, value=mode: self.mode_requested.emit(value)
+            )
+            self._tab_group.addButton(button)
+            self._buttons_by_mode[mode] = button
+            layout.addWidget(button, 1)
+
+        self.set_active_mode(active_mode)
+
+    def button_for_mode(self, mode: str) -> QPushButton:
+        return self._buttons_by_mode[mode]
+
+    def buttons(self) -> tuple[QPushButton, ...]:
+        return tuple(self._buttons_by_mode.values())
+
+    def set_active_mode(self, mode: str | None) -> None:
+        if mode is None:
+            self._tab_group.setExclusive(False)
+        for button_mode, button in self._buttons_by_mode.items():
+            button.setChecked(button_mode == mode)
+        if mode is None:
+            self._tab_group.setExclusive(True)
+
+
+def make_mode_tab_button(text: str) -> QPushButton:
+    button = QPushButton(text)
+    button.setCheckable(True)
+    button.setObjectName("ModeTabButton")
+    return button
+
+
 class RightPanelPrototypeWidget(QWidget):
     """Standalone visual prototype for the future right panel."""
 
@@ -112,6 +167,8 @@ class RightPanelPrototypeWidget(QWidget):
         self,
         model: RightPanelPrototypeViewModel,
         parent: QWidget | None = None,
+        *,
+        show_mode_tabs: bool = True,
     ):
         super().__init__(parent)
         self.setObjectName("RightPanelPrototypeWidget")
@@ -138,14 +195,11 @@ class RightPanelPrototypeWidget(QWidget):
         self._layout.setSpacing(7)
         self._scroll.setWidget(self._content)
 
-        self._tab_group = QButtonGroup(self)
-        self._tab_group.setExclusive(True)
-        self._tabs_container = QWidget()
-        self._tabs_layout = QHBoxLayout(self._tabs_container)
-        self._tabs_layout.setContentsMargins(0, 0, 0, 0)
-        self._tabs_layout.setSpacing(6)
-        self._layout.addWidget(self._tabs_container)
-        self._create_tabs(model)
+        self._mode_tabs: RunModeTabsWidget | None = None
+        if show_mode_tabs:
+            self._mode_tabs = RunModeTabsWidget(model.mode)
+            self._mode_tabs.mode_requested.connect(self.mode_requested.emit)
+            self._layout.addWidget(self._mode_tabs)
 
         self._teams_container = QWidget()
         self._teams_layout = QVBoxLayout(self._teams_container)
@@ -166,7 +220,7 @@ class RightPanelPrototypeWidget(QWidget):
         self._layout.addWidget(self._actions)
         self._layout.addStretch(1)
 
-        self.setStyleSheet(_stylesheet())
+        self.setStyleSheet(right_panel_stylesheet())
         self.set_model(model)
 
     def set_model(self, model: RightPanelPrototypeViewModel) -> None:
@@ -177,7 +231,8 @@ class RightPanelPrototypeWidget(QWidget):
         QToolTip.hideText()
         self._model = model
         tabs_start = perf_now()
-        self._sync_tabs(model.mode)
+        if self._mode_tabs is not None:
+            self._mode_tabs.set_active_mode(model.mode)
         tabs_ms = perf_ms(tabs_start)
         teams_start = perf_now()
         teams_mode = "in_place"
@@ -230,26 +285,6 @@ class RightPanelPrototypeWidget(QWidget):
             max(RIGHT_PANEL_PROTOTYPE_MIN_WIDTH, hint.width()),
             max(1, hint.height() + self._scroll.frameWidth() * 2),
         )
-
-    def _create_tabs(self, model: RightPanelPrototypeViewModel) -> None:
-        for label in model.mode_tabs:
-            button = QPushButton(label)
-            button.setCheckable(True)
-            button.setObjectName("ModeTabButton")
-            mode = MODE_DPS_DUMMY if "DPS" in label else MODE_ABYSS
-            button.clicked.connect(
-                lambda _checked=False, value=mode: self.mode_requested.emit(value)
-            )
-            self._tab_group.addButton(button)
-            self._tabs_layout.addWidget(button)
-
-    def _sync_tabs(self, mode: str) -> None:
-        for button in self._tab_group.buttons():
-            should_check = (
-                (mode == MODE_DPS_DUMMY and "DPS" in button.text())
-                or (mode == MODE_ABYSS and "Abyss" in button.text())
-            )
-            button.setChecked(should_check)
 
     def _clear_layout(self, layout: QVBoxLayout) -> None:
         while layout.count():
@@ -1897,7 +1932,7 @@ def _clear_layout(layout) -> None:
             _clear_layout(child_layout)
 
 
-def _stylesheet() -> str:
+def right_panel_stylesheet() -> str:
     return """
     #RightPanelPrototypeContent {
         background: #17191d;

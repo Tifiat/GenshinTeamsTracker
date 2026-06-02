@@ -35,6 +35,8 @@ from ui.app_shell import (
     CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN,
     CharacterWeaponWorkspace,
     RIGHT_OPERATIONS_DOCK_WIDTH,
+    RIGHT_DOCK_PAGE_ACCOUNT,
+    RIGHT_DOCK_PAGE_RUN,
     RosterSelectionMarker,
     WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR,
     WEAPON_PICKER_SAFE_MARGIN,
@@ -70,6 +72,7 @@ from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
 from ui.utils.ui_palette import UI_ACCENT_TEAM_1
+from ui.right_panel_prototype import RunModeTabsWidget
 
 
 class AppShellTest(unittest.TestCase):
@@ -98,6 +101,57 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.minimumWidth(), shell.right_dock.maximumWidth())
         self.assertEqual(shell.right_dock.minimumWidth(), RIGHT_OPERATIONS_DOCK_WIDTH)
         self.assertEqual(shell.right_dock.sizePolicy().horizontalPolicy().name, "Fixed")
+
+    def test_right_dock_has_persistent_account_action_without_internal_tab_duplicate(self) -> None:
+        shell = AppShell()
+
+        self.assertIsNone(shell.right_panel._mode_tabs)
+        self.assertEqual(len(shell.right_dock.header.run_mode_tabs.buttons()), 2)
+        self.assertFalse(shell.right_dock.header.account_button.icon().isNull())
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
+
+    def test_account_page_keeps_left_workspace_and_run_tab_returns_to_panel(self) -> None:
+        shell = AppShell()
+        left_workspace_index = shell.left_host.stack.currentIndex()
+
+        shell.right_dock.header.account_button.click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
+        self.assertEqual(shell.left_host.stack.currentIndex(), left_workspace_index)
+        self.assertTrue(shell.right_dock.header.account_button.isChecked())
+        self.assertFalse(
+            any(
+                button.isChecked()
+                for button in shell.right_dock.header.run_mode_tabs.buttons()
+            )
+        )
+
+        shell.right_dock.header.run_mode_tabs.button_for_mode(MODE_DPS_DUMMY).click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
+        self.assertEqual(shell.controller.mode, MODE_DPS_DUMMY)
+        self.assertFalse(shell.right_dock.header.account_button.isChecked())
+        self.assertTrue(
+            shell.right_dock.header.run_mode_tabs.button_for_mode(
+                MODE_DPS_DUMMY
+            ).isChecked()
+        )
+
+    def test_run_mode_tabs_route_by_stable_id_not_localized_text(self) -> None:
+        with patch(
+            "ui.right_panel_prototype.tr",
+            side_effect=lambda key: {
+                "right_panel.mode.abyss": "First localized tab",
+                "right_panel.mode.dps_dummy": "Second localized tab",
+            }[key],
+        ):
+            tabs = RunModeTabsWidget()
+
+        requested_modes: list[str] = []
+        tabs.mode_requested.connect(requested_modes.append)
+        tabs.button_for_mode(MODE_DPS_DUMMY).click()
+
+        self.assertEqual(requested_modes, [MODE_DPS_DUMMY])
 
     def test_app_shell_uses_calibrated_artifact_browser_minimum_size(self) -> None:
         shell = AppShell()

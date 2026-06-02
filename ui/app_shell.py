@@ -73,7 +73,10 @@ from ui.character_assets import (
 )
 from ui.right_panel_prototype import (
     RIGHT_PANEL_PROTOTYPE_MIN_WIDTH,
+    RunModeTabsWidget,
     RightPanelPrototypeWidget,
+    make_mode_tab_button,
+    right_panel_stylesheet,
 )
 from run_workspace.perf import log_perf, perf_ms, perf_now
 from ui.utils.filter_button_style import (
@@ -86,6 +89,7 @@ from ui.utils.hidpi_pixmap import (
     load_hidpi_pixmap,
     logical_pixmap_size,
 )
+from ui.utils.icon_utils import tinted_svg_pixmap
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.owner_icon_badge import (
     make_owner_icon_badge_background,
@@ -101,11 +105,16 @@ from ui.utils.ui_palette import (
     UI_SELECTION_NEUTRAL_FILL,
     UI_SELECTION_NEUTRAL_FILL_ALPHA,
     UI_SELECTION_OUTLINE_ALPHA,
+    UI_BG_APP,
+    UI_TEXT_SECONDARY,
     UI_TEXT_ON_ACCENT,
 )
 
 
 RIGHT_OPERATIONS_DOCK_WIDTH = RIGHT_PANEL_PROTOTYPE_MIN_WIDTH
+RIGHT_DOCK_PAGE_RUN = "run"
+RIGHT_DOCK_PAGE_ACCOUNT = "account"
+RIGHT_DOCK_ACCOUNT_ICON_SIZE = 18
 
 # Calibrated global shell minimum for the embedded Artifact Browser footprint.
 # This is intentionally a top-level contract, not a dynamic maximum of current
@@ -979,8 +988,14 @@ class AppShell(QWidget):
         )
         root.addWidget(self.left_host, 1)
 
-        self.right_panel = RightPanelPrototypeWidget(self.controller.right_panel_model())
-        self.right_dock = RightOperationsDock(self.right_panel)
+        self.right_panel = RightPanelPrototypeWidget(
+            self.controller.right_panel_model(),
+            show_mode_tabs=False,
+        )
+        self.right_dock = RightOperationsDock(
+            self.right_panel,
+            active_mode=self.controller.mode,
+        )
         root.addWidget(self.right_dock, 0)
 
         self._right_panel_refresh_pending = False
@@ -1009,7 +1024,7 @@ class AppShell(QWidget):
             lambda: self._log_resize_geometry("settled")
         )
 
-        self.right_panel.mode_requested.connect(self._on_mode_requested)
+        self.right_dock.mode_requested.connect(self._on_mode_requested)
         self.right_panel.slot_selected.connect(self._on_slot_selected)
         self.right_panel.slot_dropped.connect(self._on_slot_dropped)
         self.right_panel.external_bonuses_toggled.connect(
@@ -1341,6 +1356,7 @@ class AppShell(QWidget):
         return timings
 
     def _on_mode_requested(self, mode: str) -> None:
+        self.right_dock.show_run_page(mode)
         self.controller.set_mode(mode)
         marker_timings = self._refresh_character_selection_markers(
             affected_character_ids=None
@@ -1585,18 +1601,133 @@ class LeftWorkspaceHost(QWidget):
             self.artifact_browser_workspace.set_right_panel_operation_target(target)
 
 
+class RightDockHeader(QWidget):
+    mode_requested = Signal(str)
+    account_requested = Signal()
+
+    def __init__(
+        self,
+        active_mode: str = MODE_ABYSS,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("RightDockHeader")
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 8, 8, 0)
+        layout.setSpacing(6)
+
+        self.run_mode_tabs = RunModeTabsWidget(active_mode)
+        self.run_mode_tabs.mode_requested.connect(self.mode_requested.emit)
+        layout.addWidget(self.run_mode_tabs, 2)
+
+        self.account_button = make_mode_tab_button(
+            tr("app_shell.right_dock.account")
+        )
+        self.account_button.setIcon(_account_tab_icon())
+        self.account_button.setIconSize(
+            QSize(RIGHT_DOCK_ACCOUNT_ICON_SIZE, RIGHT_DOCK_ACCOUNT_ICON_SIZE)
+        )
+        self.account_button.clicked.connect(
+            lambda _checked=False: self.account_requested.emit()
+        )
+        layout.addWidget(self.account_button, 1)
+
+    def show_run_mode(self, mode: str) -> None:
+        self.account_button.setChecked(False)
+        self.run_mode_tabs.set_active_mode(mode)
+
+    def show_account(self) -> None:
+        self.run_mode_tabs.set_active_mode(None)
+        self.account_button.setChecked(True)
+
+
+class AccountDataSettingsPlaceholder(QWidget):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("RightPanelPrototypeContent")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(7)
+
+        title = QLabel(tr("app_shell.account.title"))
+        title.setObjectName("SectionTitle")
+        layout.addWidget(title)
+
+        description = QLabel(tr("app_shell.account.placeholder"))
+        description.setWordWrap(True)
+        layout.addWidget(description)
+        layout.addStretch(1)
+
+
 class RightOperationsDock(QFrame):
-    def __init__(self, operation_widget: QWidget, parent: QWidget | None = None) -> None:
+    mode_requested = Signal(str)
+
+    def __init__(
+        self,
+        operation_widget: QWidget,
+        parent: QWidget | None = None,
+        *,
+        active_mode: str = MODE_ABYSS,
+    ) -> None:
         super().__init__(parent)
         self.setObjectName("RightOperationsDock")
+        self.operation_widget = operation_widget
+        self.header = RightDockHeader(active_mode)
+        self.account_page = AccountDataSettingsPlaceholder()
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(operation_widget)
+        layout.addWidget(self.header)
+
+        self.content_stack = QStackedWidget()
+        self.content_stack.addWidget(self.operation_widget)
+        self.content_stack.addWidget(self.account_page)
+        layout.addWidget(self.content_stack, 1)
 
         operation_widget.setMinimumWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
         self.setFixedWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
+        self.setStyleSheet(right_panel_stylesheet())
+
+        self.header.mode_requested.connect(self._on_mode_requested)
+        self.header.account_requested.connect(self.show_account_page)
+        self.show_run_page(active_mode)
+
+    def current_page(self) -> str:
+        if self.content_stack.currentWidget() is self.account_page:
+            return RIGHT_DOCK_PAGE_ACCOUNT
+        return RIGHT_DOCK_PAGE_RUN
+
+    def show_run_page(self, mode: str) -> None:
+        self.content_stack.setCurrentWidget(self.operation_widget)
+        self.header.show_run_mode(mode)
+
+    def show_account_page(self) -> None:
+        self.content_stack.setCurrentWidget(self.account_page)
+        self.header.show_account()
+
+    def _on_mode_requested(self, mode: str) -> None:
+        self.show_run_page(mode)
+        self.mode_requested.emit(mode)
+
+
+def _account_tab_icon() -> QIcon:
+    icon = QIcon()
+    size = RIGHT_DOCK_ACCOUNT_ICON_SIZE
+    icon.addPixmap(
+        tinted_svg_pixmap("user-round-cog", size, UI_TEXT_SECONDARY),
+        QIcon.Mode.Normal,
+        QIcon.State.Off,
+    )
+    icon.addPixmap(
+        tinted_svg_pixmap("user-round-cog", size, UI_BG_APP),
+        QIcon.Mode.Normal,
+        QIcon.State.On,
+    )
+    return icon
 
 
 class CharacterWeaponWorkspace(QWidget):

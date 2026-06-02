@@ -12,7 +12,12 @@ AppShell
 |   |-- WorkspaceNav
 |   `-- QStackedWidget / workspace content
 `-- RightOperationsDock
-    `-- current operation widget
+    |-- PersistentHeader
+    |   |-- page-specific tabs / controls
+    |   `-- global actions
+    `-- ContentStack
+        |-- current operation widget
+        `-- Account / Data placeholder
 ```
 
 Terms:
@@ -21,6 +26,22 @@ Terms:
 - Right operations dock: fixed-width process/control/build area.
 - Fixed right panel means a stable operations width based on the Right Panel
   Prototype direction; it is not a user-resizable split-pane in the first pass.
+- `RightOperationsDock` owns a persistent header above its content stack.
+  Page-specific controls and global actions are separate ownership zones but
+  form one visually continuous row of same-style buttons with the ordinary
+  inter-button spacing only. Do not add a visual divider, stretch gap, or
+  page-specific duplicate of a global action.
+- Current page-specific controls are Abyss / DPS Dummy. The current global
+  action is Account. Account opens a localized Account / Data placeholder in the
+  same fixed dock without changing the left workspace. Only the currently open
+  dock page is visually active. Run-mode routing uses stable ids, never
+  localized button text.
+- Future right-dock pages such as PvP may replace the page-specific control host
+  while the global action host stays present. Future empty-database startup
+  should auto-open Account / Data setup, and later onboarding may highlight the
+  Account action. A compact Support/Donate action near Account and a fuller
+  support area inside Account remain optional future directions; do not add
+  them until explicitly requested.
 - Custom overlay scrollbars remain relevant where native scrollbars would shift
   right-panel content or create asymmetric empty space.
 

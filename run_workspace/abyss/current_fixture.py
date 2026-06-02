@@ -1,4 +1,4 @@
-"""Static Abyss HP fixture for the first Fact DPS vertical slice.
+"""Invalid/static Abyss HP fixture for the first Fact DPS vertical slice.
 
 This module is intentionally a temporary/manual fixture, not the final Abyss
 period parser or runtime cache.
@@ -7,9 +7,19 @@ It pins the 2026-05-16 Floor 12 data that was researched in
 docs/handoff/ABYSS_HP_FIXTURE.md so the app can build and test the first
 backend-only Fact DPS path without network, UI, persistence, history, or GCSIM.
 
+Important: the enemy HP values in this file are now known to be invalid for at
+least some current Abyss enemies. They came from the old GCSIM/AnimeGameData
+base-HP/curve inspection path, which does not match direct current tower HP
+sources such as Nanoka for every enemy.
+
+Keep this file only as an app-plumbing/sample fixture:
+- it proves that the right-panel Fact DPS calculation path can consume Abyss HP;
+- it must not be treated as a factual HP source;
+- parser/debug work must replace these HP values with direct tower-period HP.
+
 Future work should replace this fixture with the real update pipeline:
-HoYoLAB period -> matched Fandom lineup -> monster_id/gcsim_key resolver ->
-AnimeGameData/GCSIM stats -> source-backed HP totals.
+HoYoLAB period -> Nanoka/direct tower HP -> matched Fandom/guide cross-check ->
+monster_id/gcsim_key resolver -> source-backed HP totals.
 
 Do not treat this file as proof that 2026-05-16 is always the current Abyss.
 """
@@ -134,7 +144,7 @@ def _side(
     normal_total_hp: int,
     fallback_2_5_total_hp: int,
     current_3_75_total_hp: int,
-    confidence: str = "manual_fixture_from_confirmed_sources",
+    confidence: str = "invalid_static_hp_fixture_for_ui_plumbing_only",
     notes: tuple[str, ...] = (),
 ) -> AbyssSideFixture:
     return AbyssSideFixture(
@@ -160,11 +170,14 @@ CURRENT_ABYSS_FLOOR12_FIXTURE = AbyssFloorFixture(
     period_source="manual_fixture_matches_hoyolab_spiral_abyss_overview",
     lineup_source="fandom_spiral_abyss_floors_2026_05_16",
     multiplier_source="animegamedata_stage12_new2_text_hash_48688570",
-    stat_source="animegamedata_gcsim_crosscheck",
+    stat_source="invalid_old_gcsim_animegamedata_base_hp_curve_fixture",
     notes=(
-        "This is a static current-period fixture, not the final parser/cache.",
+        "This is an invalid/static fixture for UI plumbing, not the final parser/cache.",
+        "Do not use these HP values as factual current Abyss enemy HP.",
+        "Some values are known to disagree with direct tower HP data such as Nanoka.",
         "HoYoLAB period should become the runtime current-period authority.",
-        "Fandom period page supplies observable lineup names and display levels.",
+        "Nanoka/direct tower data should become the primary source for current HP.",
+        "Fandom period page supplies observable lineup names and display levels as cross-check.",
         "AnimeGameData Stage12_New2 +275% is treated as current 3.75x estimate.",
         "Fandom Floor 12 2.5x remains a fallback/cross-check.",
     ),
@@ -360,9 +373,10 @@ def current_abyss_floor12_data() -> AbyssFloorFixture:
     """Return current Floor 12 Abyss data for Fact DPS calculations.
 
     Temporary implementation: this currently returns the static 2026-05-16
-    fixture above. Keep this public API name stable; future work should replace
-    the implementation with the real HoYoLAB/Fandom/AnimeGameData parser/cache
-    pipeline without changing right-panel callers.
+    fixture above. Its HP values are intentionally marked invalid/sample-only.
+    Keep this public API name stable; future work should replace the
+    implementation with the real HoYoLAB/Nanoka/Fandom/parser/cache pipeline
+    without changing right-panel callers.
     """
     return CURRENT_ABYSS_FLOOR12_FIXTURE
 

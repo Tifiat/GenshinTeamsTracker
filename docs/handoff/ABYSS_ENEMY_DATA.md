@@ -50,6 +50,33 @@ Confirmed:
 
 MVP recommendation:
 
+- Product source-authority decision:
+  - Trust Fandom/Genshin Wiki primarily for observable period lineups and
+    human-visible enemy/wave notes: current enemies, chamber sides, display
+    levels, and notes that can be seen or verified in game or period pages.
+  - Trust AnimeGameData/source-like data for non-obfuscated, current
+    schedule/floor/chamber metadata and floor-specific config links such as
+    HP-up entities. If the period dates/floor ids match the live period,
+    non-obfuscated multiplier/config fields should be treated as stronger
+    evidence than generic wiki floor-scaling fallback.
+  - Treat obfuscated AnimeGameData fields as parser/research targets, not runtime
+    contracts until decoded.
+  - Use GCSIM/AnimeGameData monster stat rows for monster ids, base HP, curves,
+    and resistances after lineup names are matched.
+  - Keep Fandom's general Floor 12 multiplier as fallback/cross-check, not the
+    primary source when current source-like multiplier exists.
+- Offline/current-period product rule:
+  - The app must not require always-online Abyss data to remain usable.
+  - If the app is offline and the local date reaches a new Abyss period boundary,
+    it may create/select a date-based placeholder period/history section.
+  - Until public Abyss data is refreshed, enemy HP and factual DPS for that new
+    period should show unavailable/fallback text such as "update Abyss data"
+    rather than block team building or timer usage.
+  - A future manual update action should refresh cached public Abyss period/enemy
+    data; it may live near Account/Data update UX, but the public Abyss cache
+    must not depend on HoYoLAB account auth.
+  - When refreshed source data arrives, replace placeholder period metadata with
+    fetched source-backed lineup/multiplier data.
 - Do not block the first Abyss season page on perfect source-like spawn/position
   data.
 - Start with a resilient source-join pipeline:

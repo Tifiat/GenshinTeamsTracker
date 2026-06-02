@@ -10,6 +10,11 @@ from typing import Any, Mapping
 from localization import tr, tr_for_language
 
 from .models import AbyssTimerState, calculate_abyss_chamber_result
+from .abyss import (
+    CURRENT_HP_KIND,
+    calculate_side_factual_dps,
+    current_abyss_floor12_data,
+)
 from .display_stats import build_character_display_stats
 from .team_builder import (
     TeamBuilderSlotState,
@@ -1456,19 +1461,38 @@ def _abyss_chamber_row(
         chamber_index=chamber_index,
     )
     normalized = result.normalized_timer_state
+    fixture = current_abyss_floor12_data()
     return RightPanelChamberRowViewModel(
         chamber_label=f"C{chamber_index}",
         team1_time=_format_remaining_time(normalized.team1_left_seconds),
         team1_seconds=result.team1_elapsed_seconds,
         team2_time=_format_remaining_time(normalized.team2_left_seconds),
         team2_seconds=result.team2_elapsed_seconds,
-        factual_team1="-",
-        factual_team2="-",
+        factual_team1=_format_factual_dps_cell(
+            calculate_side_factual_dps(
+                fixture.side(chamber_index, 1),
+                elapsed_seconds=result.team1_elapsed_seconds,
+                hp_kind=CURRENT_HP_KIND,
+            )
+        ),
+        factual_team2=_format_factual_dps_cell(
+            calculate_side_factual_dps(
+                fixture.side(chamber_index, 2),
+                elapsed_seconds=result.team2_elapsed_seconds,
+                hp_kind=CURRENT_HP_KIND,
+            )
+        ),
         sim_team1="not run",
         sim_team2="not run",
         total_seconds=result.total_elapsed_seconds,
         timer_editable=True,
     )
+
+
+def _format_factual_dps_cell(result) -> str:
+    if not result.is_available or result.rounded_dps is None:
+        return "-"
+    return f"{result.rounded_dps:,}"
 
 
 def _format_remaining_time(seconds: int) -> str:

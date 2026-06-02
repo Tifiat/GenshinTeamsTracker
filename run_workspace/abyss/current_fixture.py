@@ -356,5 +356,16 @@ CURRENT_ABYSS_FLOOR12_FIXTURE = AbyssFloorFixture(
 )
 
 
+def current_abyss_floor12_data() -> AbyssFloorFixture:
+    """Return current Floor 12 Abyss data for Fact DPS calculations.
+
+    Temporary implementation: this currently returns the static 2026-05-16
+    fixture above. Keep this public API name stable; future work should replace
+    the implementation with the real HoYoLAB/Fandom/AnimeGameData parser/cache
+    pipeline without changing right-panel callers.
+    """
+    return CURRENT_ABYSS_FLOOR12_FIXTURE
+
+
 def current_floor12_fixture() -> AbyssFloorFixture:
     return CURRENT_ABYSS_FLOOR12_FIXTURE

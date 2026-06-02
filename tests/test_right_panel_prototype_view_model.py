@@ -9,9 +9,11 @@ from run_workspace.right_panel_prototype_view_model import (
     _format_hexerei_sections_for_tooltip,
     _hexerei_member_tooltip,
     _hexerei_source_tooltip_text,
+    build_abyss_chamber_rows,
     build_fake_right_panel_prototype_state,
     build_right_panel_prototype_view_model,
 )
+from run_workspace.models import AbyssTimerState
 from run_workspace.team_builder import create_empty_team_builder_state
 
 
@@ -310,6 +312,43 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
                 "Sim T2 DPS",
             ),
         )
+
+    def test_abyss_chamber_rows_show_fixture_factual_dps_when_elapsed_exists(self) -> None:
+        rows = build_abyss_chamber_rows(
+            (
+                AbyssTimerState(
+                    team1_left_seconds=480,
+                    team2_left_seconds=300,
+                ),
+            )
+        )
+
+        row = rows[0]
+
+        self.assertEqual(row.chamber_label, "C1")
+        self.assertEqual(row.team1_seconds, 120)
+        self.assertEqual(row.team2_seconds, 180)
+        self.assertEqual(row.factual_team1, "31,232")
+        self.assertEqual(row.factual_team2, "30,286")
+        self.assertEqual(row.sim_team1, "not run")
+        self.assertEqual(row.sim_team2, "not run")
+
+    def test_abyss_chamber_rows_keep_factual_dps_unavailable_for_zero_elapsed(self) -> None:
+        rows = build_abyss_chamber_rows(
+            (
+                AbyssTimerState(
+                    team1_left_seconds=600,
+                    team2_left_seconds=600,
+                ),
+            )
+        )
+
+        row = rows[0]
+
+        self.assertEqual(row.team1_seconds, 0)
+        self.assertEqual(row.team2_seconds, 0)
+        self.assertEqual(row.factual_team1, "-")
+        self.assertEqual(row.factual_team2, "-")
 
     def test_selected_details_are_structured_rows_not_text_dump(self) -> None:
         state = build_fake_right_panel_prototype_state()

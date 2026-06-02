@@ -6,6 +6,7 @@ from .current_fixture import (
     AbyssEnemyFixture,
     AbyssFloorFixture,
     AbyssSideFixture,
+    current_abyss_floor12_data,
     current_floor12_fixture,
 )
 from .factual_dps import (
@@ -25,5 +26,6 @@ __all__ = [
     "FactualDpsResult",
     "calculate_factual_dps",
     "calculate_side_factual_dps",
+    "current_abyss_floor12_data",
     "current_floor12_fixture",
 ]

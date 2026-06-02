@@ -17,6 +17,8 @@ legacy cleanup, and it does not switch `main.py`.
 - `run_workspace.models` contains an early legacy Abyss snapshot adapter:
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,
   and `build_legacy_abyss_run_snapshot(...)`.
+- The next implementation step is current in-memory run/session state and result
+  calculation. Saved snapshot models are intentionally later.
 - `ui/widgets/timers.py` contains useful timer editing behavior but must not
   remain the durable owner of run/session state.
 - `ui/run_history_window.py` and `runs_history.json` are legacy image/path
@@ -216,11 +218,13 @@ Reuse behavior, not widget ownership, from `ui/widgets/timers.py` and legacy
 
 Implementation direction:
 
-- move timer values and calculations into model/controller objects;
+- move current timer values and calculations into model/controller objects;
 - let timer widgets edit model values and emit commands;
 - never build save snapshots by reading `QSpinBox` or `QLabel` values directly;
 - keep `calculate_abyss_chamber_result(...)` or a compatible pure helper as the
   factual elapsed-time source.
+- do not design saved snapshot models before the current timer/DPS/GCSIM result
+  data is working enough to know what must be preserved.
 
 ## History Workspace Timing
 
@@ -297,24 +301,26 @@ Integration rules:
 ## Next Narrow Implementation Sequence
 
 1. Extend `run_workspace.models` or a sibling module with typed
-   `RunSessionState`, `AbyssRunState`, `DpsDummyRunState`, and snapshot
-   dataclasses.
-2. Add pure tests for timer/session calculations and snapshot serialization.
+   current-run/session state: `RunSessionState`, `AbyssRunState`, and
+   `DpsDummyRunState`. Do not add saved snapshot dataclasses in this step.
+2. Add pure tests for current timer/session calculations, reset/default
+   behavior, and factual DPS math.
 3. Add an AppShell-side session controller adapter while keeping current
    `AppShellController` team mutations working.
 4. Replace display-only chamber rows in
    `run_workspace.right_panel_prototype_view_model` with rows derived from the
    session model.
-5. Wire Reset and Save commands through `AppShell`/session controller.
-6. Add snapshot persistence and a minimal History left workspace.
-7. Only then consider the production `main.py` switch.
-8. Implement GCSIM DPS Dummy integration after snapshots/history boundaries are
-   stable.
+5. Wire Reset and current timer/result commands through `AppShell`/session
+   controller.
+6. Add DPS Dummy current factual-DPS inputs/results and then GCSIM DPS Dummy
+   integration as separate steps.
+7. Only after working timer/DPS/GCSIM result data exists, design immutable saved
+   snapshots and snapshot persistence.
 
 ## Non-Goals For The Next Stage
 
 - Do not delete `ui/main_window.py`.
 - Do not migrate the old `runs_history.json` UI as final design.
-- Do not implement GCSIM before snapshots exist.
+- Do not implement saved snapshots before working timer/DPS/GCSIM result data exists.
 - Do not mix factual DPS and sim DPS.
 - Do not make right-panel widgets the source of truth for timers or saved runs.

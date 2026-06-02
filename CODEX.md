@@ -69,6 +69,12 @@ This file is written for future coding agents. Keep it compact, English, and mos
   content-box sizing, with border and padding increasing the real outer size.
 - If an English technical task contains inconsistencies, suspicious requirements, obvious mistakes, or unclear contradictions, point them out before starting implementation.
 - Do not invent concrete correctness-critical values in final code, patches, or task text. Filenames, paths, asset names, localization keys, IDs, function/class names, DB fields/tables, data formats, commands, and API/library versions must be explicitly provided by the user, discovered in current project files, or confirmed by the user first. If such a value is missing, stop and ask; do not insert guessed defaults/placeholders with notes like "change this later".
+- When adding new modules or tests that contain temporary fixtures, hardcoded
+  research data, provisional adapters, sample-only values, or intentionally
+  incomplete behavior, add a short module docstring/comment explaining what is
+  temporary, what source/handoff it came from, what future implementation should
+  replace it, and which tests are pinning the temporary contract. Do not leave
+  placeholders implicit.
 
 ## Project Goal
 

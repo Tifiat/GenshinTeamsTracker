@@ -51,32 +51,73 @@ Confirmed:
 MVP recommendation:
 
 - Product source-authority decision:
-  - Trust Fandom/Genshin Wiki primarily for observable period lineups and
-    human-visible enemy/wave notes: current enemies, chamber sides, display
-    levels, and notes that can be seen or verified in game or period pages.
+  - Trust HoYoLAB Spiral Abyss Overview as the primary authority for the current
+    Abyss period when it is available. The account/update page exposes the period
+    range, for example `2026/05/16-2026/06/16`, and this should override local
+    clock guesses, Fandom discovery links, and source-like schedule guesses.
+  - Use Fandom/Genshin Wiki primarily for observable period lineups and
+    human-visible enemy/wave notes after matching the page to the HoYoLAB period:
+    current enemies, chamber sides, display levels, and notes that can be seen or
+    verified in game or period pages.
+  - Fandom current/history index can be used to discover the likely period page,
+    especially because the newest link is usually the active Abyss page, but it is
+    not the primary current-period authority. The selected Fandom page must match
+    the HoYoLAB period date before its lineup is treated as current.
   - Trust AnimeGameData/source-like data for non-obfuscated, current
-    schedule/floor/chamber metadata and floor-specific config links such as
-    HP-up entities. If the period dates/floor ids match the live period,
+    schedule/floor/chamber metadata, floor config links, HP-up entities, and
+    monster stat catalogs. If the period/floor config matches the HoYoLAB period,
     non-obfuscated multiplier/config fields should be treated as stronger
     evidence than generic wiki floor-scaling fallback.
   - Treat obfuscated AnimeGameData fields as parser/research targets, not runtime
     contracts until decoded.
-  - Use GCSIM/AnimeGameData monster stat rows for monster ids, base HP, curves,
-    and resistances after lineup names are matched.
+  - AnimeGameData currently provides a global monster catalog with ids, base HP,
+    curves, and resistance data, but it does not provide a ready decoded current
+    Abyss lineup in the simple `TowerLevelExcelConfigData` monster-list fields.
+    Current lineups still need a Fandom/page-based source or a future decoded
+    source-like parser.
+  - Map Fandom lineup names to stable `monster_id` and `gcsim_key` values through
+    GCSIM/AnimeGameData/manual aliases. Use `monster_id` as the canonical
+    stat/cache key after the match; do not use display names as durable identity.
+  - Fandom enemy pages may enrich or cross-check mechanics, state-specific RES,
+    icons, and HP tables, but they are not the primary stat source.
   - Keep Fandom's general Floor 12 multiplier as fallback/cross-check, not the
-    primary source when current source-like multiplier exists.
+    primary source when a current source-like multiplier exists.
+  - User guide pages or HoYoLAB guide cards may be used as manual sanity-checks
+    when their HP cards match derived totals, but they are not runtime sources.
 - Offline/current-period product rule:
-  - The app must not require always-online Abyss data to remain usable.
-  - If the app is offline and the local date reaches a new Abyss period boundary,
-    it may create/select a date-based placeholder period/history section.
-  - Until public Abyss data is refreshed, enemy HP and factual DPS for that new
-    period should show unavailable/fallback text such as "update Abyss data"
-    rather than block team building or timer usage.
-  - A future manual update action should refresh cached public Abyss period/enemy
-    data; it may live near Account/Data update UX, but the public Abyss cache
-    must not depend on HoYoLAB account auth.
-  - When refreshed source data arrives, replace placeholder period metadata with
-    fetched source-backed lineup/multiplier data.
+  - The app assumes the normal account/profile workflow; designing a separate
+    anonymous/no-account Abyss mode is out of scope.
+  - The app must remain usable when Abyss source refresh is unavailable because of
+    no network, blocked site access, or HoYoLAB/game maintenance.
+  - Local system date is only a provisional fallback signal, not an authoritative
+    period source. If the system date no longer falls inside the last known
+    HoYoLAB period, the release app should ask the user what to do instead of
+    silently creating a new period.
+  - The prompt should explain that the system date does not match the last known
+    Abyss period and offer an update path through Account/Data settings plus an
+    explicit option to create a temporary offline Abyss tab.
+  - If the user cancels, do nothing. If the same mismatch is still present on the
+    next startup, ask again. This also covers narrow regional/server-boundary
+    cases around the monthly Abyss transition.
+  - Temporary offline periods use the simple monthly rule: from the 16th day of
+    the current month to the 16th day of the next month, based on the local
+    system date. They are provisional UI/runtime periods only.
+  - Until source data is refreshed, enemy HP and factual DPS for a provisional or
+    newly detected period should show unavailable/fallback text such as "update
+    Abyss data" rather than block team building or timer usage.
+  - When HoYoLAB becomes available, its period overrides local-date placeholders.
+    If an offline tab has the same period, fill/update that tab with source-backed
+    lineup/multiplier data. If no matching tab exists, create/select the official
+    HoYoLAB period.
+  - Do not automatically backfill every older offline/history period during a
+    normal current-period update. Only update the period that matches the current
+    HoYoLAB period.
+  - Never silently delete user-created run data tied to a provisional period.
+    Future history may offer explicit reassignment/recalculation, but that is not
+    part of the current MVP.
+  - Historical Abyss backfill and bulk recalculation of old runs are future
+    low-priority tasks. The current Fact DPS flow should be designed around the
+    current Abyss period first.
 - Do not block the first Abyss season page on perfect source-like spawn/position
   data.
 - Start with a resilient source-join pipeline:

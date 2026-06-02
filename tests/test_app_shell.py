@@ -74,6 +74,7 @@ from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
+from run_workspace.models import AbyssTimerState
 from ui.utils.ui_palette import UI_ACCENT_TEAM_1
 from ui.right_panel_prototype import RunModeTabsWidget
 
@@ -319,6 +320,56 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.controller.state.team(0).slot(0).character.id, "10000050")
         shell._on_character_clicked(asset)
         self.assertTrue(shell.controller.state.team(0).slot(0).is_empty)
+
+    def test_app_shell_abyss_timer_defaults_show_zero_elapsed_total(self) -> None:
+        shell = AppShell()
+
+        model = shell.controller.right_panel_model()
+
+        self.assertEqual(len(model.chamber_rows), 3)
+        self.assertEqual(model.chamber_rows[0].team1_time, "10:00")
+        self.assertEqual(model.chamber_rows[0].team1_seconds, 0)
+        self.assertEqual(model.chamber_rows[0].team2_time, "10:00")
+        self.assertEqual(model.chamber_rows[0].team2_seconds, 0)
+        self.assertEqual(model.total_seconds, 0)
+
+    def test_app_shell_abyss_timer_change_updates_right_panel_total(self) -> None:
+        shell = AppShell()
+
+        shell._on_abyss_timer_changed(0, 1, 550)
+        shell._on_abyss_timer_changed(0, 2, 500)
+
+        model = shell.right_panel._model
+        self.assertEqual(model.chamber_rows[0].team1_time, "09:10")
+        self.assertEqual(model.chamber_rows[0].team1_seconds, 50)
+        self.assertEqual(model.chamber_rows[0].team2_time, "08:20")
+        self.assertEqual(model.chamber_rows[0].team2_seconds, 50)
+        self.assertEqual(model.chamber_rows[0].total_seconds, 100)
+        self.assertEqual(model.total_seconds, 100)
+
+    def test_chamber_timer_cell_signal_updates_app_shell_model(self) -> None:
+        shell = AppShell()
+        timer_cell = shell.right_panel._chamber_table._timer_cells[(0, 1)]
+
+        timer_cell.timer.adjust_seconds(-50)
+
+        self.assertEqual(
+            shell.controller.abyss_timer_states[0].team1_left_seconds,
+            550,
+        )
+        self.assertEqual(shell.right_panel._model.chamber_rows[0].team1_seconds, 50)
+        self.assertEqual(shell.right_panel._model.total_seconds, 50)
+
+    def test_app_shell_abyss_timer_change_is_ignored_outside_abyss_mode(self) -> None:
+        shell = AppShell()
+        shell._on_mode_requested(MODE_DPS_DUMMY)
+
+        shell._on_abyss_timer_changed(0, 1, 550)
+
+        self.assertEqual(
+            shell.controller.abyss_timer_states[0],
+            AbyssTimerState(team1_left_seconds=600, team2_left_seconds=600),
+        )
 
     def test_account_page_exposes_hoyolab_profile_and_language_controls(self) -> None:
         shell = AppShell()

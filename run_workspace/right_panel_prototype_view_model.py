@@ -9,6 +9,7 @@ from typing import Any, Mapping
 
 from localization import tr, tr_for_language
 
+from .models import AbyssTimerState, calculate_abyss_chamber_result
 from .display_stats import build_character_display_stats
 from .team_builder import (
     TeamBuilderSlotState,
@@ -317,6 +318,7 @@ class RightPanelChamberRowViewModel:
     sim_team1: str
     sim_team2: str
     total_seconds: int
+    timer_editable: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -330,6 +332,7 @@ class RightPanelChamberRowViewModel:
             "sim_team1": self.sim_team1,
             "sim_team2": self.sim_team2,
             "total_seconds": self.total_seconds,
+            "timer_editable": self.timer_editable,
         }
 
 
@@ -382,6 +385,7 @@ def build_right_panel_prototype_view_model(
     selected_team_index: int = 0,
     selected_slot_index: int = 0,
     external_bonuses_enabled: bool = True,
+    chamber_rows: tuple[RightPanelChamberRowViewModel, ...] | None = None,
 ) -> RightPanelPrototypeViewModel:
     total_start = perf_now()
     normalized_mode = _normalize_mode(mode)
@@ -411,7 +415,7 @@ def build_right_panel_prototype_view_model(
     )
     selected_ms = perf_ms(selected_start)
     chamber_start = perf_now()
-    chamber_rows = _chamber_rows_for_mode(normalized_mode)
+    chamber_rows = chamber_rows or _chamber_rows_for_mode(normalized_mode)
     total_seconds = sum(row.total_seconds for row in chamber_rows)
     chamber_ms = perf_ms(chamber_start)
     model = RightPanelPrototypeViewModel(
@@ -1431,6 +1435,46 @@ def _localized_static_effect_label(effect: Mapping[str, Any]) -> str:
     )
     suffix = "%" if value_type == "percent_points" else ""
     return f"{label} +{value:g}{suffix}"
+
+
+def build_abyss_chamber_rows(
+    timer_states: tuple[AbyssTimerState, ...],
+) -> tuple[RightPanelChamberRowViewModel, ...]:
+    return tuple(
+        _abyss_chamber_row(timer_state, chamber_index=index)
+        for index, timer_state in enumerate(timer_states, start=1)
+    )
+
+
+def _abyss_chamber_row(
+    timer_state: AbyssTimerState,
+    *,
+    chamber_index: int,
+) -> RightPanelChamberRowViewModel:
+    result = calculate_abyss_chamber_result(
+        timer_state,
+        chamber_index=chamber_index,
+    )
+    normalized = result.normalized_timer_state
+    return RightPanelChamberRowViewModel(
+        chamber_label=f"C{chamber_index}",
+        team1_time=_format_remaining_time(normalized.team1_left_seconds),
+        team1_seconds=result.team1_elapsed_seconds,
+        team2_time=_format_remaining_time(normalized.team2_left_seconds),
+        team2_seconds=result.team2_elapsed_seconds,
+        factual_team1="-",
+        factual_team2="-",
+        sim_team1="not run",
+        sim_team2="not run",
+        total_seconds=result.total_elapsed_seconds,
+        timer_editable=True,
+    )
+
+
+def _format_remaining_time(seconds: int) -> str:
+    seconds = max(0, int(seconds))
+    minutes, remainder = divmod(seconds, 60)
+    return f"{minutes:02d}:{remainder:02d}"
 
 
 def _external_bonuses_disabled_text() -> str:

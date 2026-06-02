@@ -8,6 +8,7 @@ SNAPSHOT_SCHEMA_VERSION = 1
 RUN_TYPE_ABYSS = "abyss"
 SNAPSHOT_SOURCE_LEGACY_RIGHT_PANEL = "legacy_right_panel"
 ABYSS_CHAMBER_START_SECONDS = 600
+ABYSS_TIMER_EDIT_MIN_SECONDS = 300
 
 WARNING_TEAM1_LEFT_CLAMPED = "team1_left_clamped"
 WARNING_TEAM2_LEFT_CLAMPED = "team2_left_clamped"
@@ -30,6 +31,50 @@ def _coerce_seconds(value: Any) -> int:
 
 def _clamp_seconds(value: int, *, start_seconds: int) -> int:
     return max(0, min(start_seconds, value))
+
+
+def clamp_abyss_timer_edit_seconds(
+    value: Any,
+    *,
+    start_seconds: int = ABYSS_CHAMBER_START_SECONDS,
+    min_seconds: int = ABYSS_TIMER_EDIT_MIN_SECONDS,
+) -> int:
+    """Clamp editable Abyss timer remaining seconds to the legacy UI range."""
+
+    start_seconds = max(0, _coerce_seconds(start_seconds))
+    min_seconds = max(0, min(_coerce_seconds(min_seconds), start_seconds))
+    return max(min_seconds, min(start_seconds, _coerce_seconds(value)))
+
+
+def adjust_abyss_timer_seconds_with_second_wheel(
+    current_seconds: Any,
+    delta_steps: int,
+    *,
+    start_seconds: int = ABYSS_CHAMBER_START_SECONDS,
+    min_seconds: int = ABYSS_TIMER_EDIT_MIN_SECONDS,
+) -> int:
+    """Apply legacy second-wheel stepping and wrap/clamp across minutes."""
+
+    current = clamp_abyss_timer_edit_seconds(
+        current_seconds,
+        start_seconds=start_seconds,
+        min_seconds=min_seconds,
+    )
+    return clamp_abyss_timer_edit_seconds(
+        current + int(delta_steps),
+        start_seconds=start_seconds,
+        min_seconds=min_seconds,
+    )
+
+
+def default_abyss_timer_states(chamber_count: int = 3) -> tuple["AbyssTimerState", ...]:
+    return tuple(
+        AbyssTimerState(
+            team1_left_seconds=ABYSS_CHAMBER_START_SECONDS,
+            team2_left_seconds=ABYSS_CHAMBER_START_SECONDS,
+        )
+        for _ in range(max(0, int(chamber_count)))
+    )
 
 
 @dataclass(frozen=True, slots=True)

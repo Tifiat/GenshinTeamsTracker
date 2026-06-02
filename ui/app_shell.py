@@ -50,7 +50,13 @@ from localization import tr
 from run_workspace.right_panel_prototype_view_model import (
     MODE_ABYSS,
     MODE_DPS_DUMMY,
+    build_abyss_chamber_rows,
     build_right_panel_prototype_view_model,
+)
+from run_workspace.models import (
+    AbyssTimerState,
+    clamp_abyss_timer_edit_seconds,
+    default_abyss_timer_states,
 )
 from run_workspace.team_builder import TeamBuilderState, create_empty_team_builder_state
 from ui.character_assets import (
@@ -231,6 +237,9 @@ class AppShellController:
     selected_team_index: int = -1
     selected_slot_index: int = -1
     external_bonuses_enabled: bool = True
+    abyss_timer_states: tuple[AbyssTimerState, ...] = field(
+        default_factory=default_abyss_timer_states
+    )
     mode_states: dict[str, TeamBuilderState] = field(default_factory=dict)
     last_equipment_error: str = ""
     last_weapon_equipment_change_result: EquipmentChangeResult | None = None
@@ -267,12 +276,18 @@ class AppShellController:
             self.mode_states.setdefault(mode, _empty_state_for_mode(mode))
 
     def right_panel_model(self):
+        chamber_rows = (
+            build_abyss_chamber_rows(self.abyss_timer_states)
+            if self.mode == MODE_ABYSS
+            else None
+        )
         return build_right_panel_prototype_view_model(
             self.state,
             mode=self.mode,
             selected_team_index=self.selected_team_index,
             selected_slot_index=self.selected_slot_index,
             external_bonuses_enabled=self.external_bonuses_enabled,
+            chamber_rows=chamber_rows,
         )
 
     def set_mode(self, mode: str) -> None:
@@ -295,6 +310,43 @@ class AppShellController:
     def clear_selection(self) -> None:
         self.selected_team_index = -1
         self.selected_slot_index = -1
+
+    def set_abyss_timer_seconds(
+        self,
+        chamber_index: int,
+        team_number: int,
+        seconds_left: int,
+    ) -> bool:
+        if self.mode != MODE_ABYSS:
+            return False
+        index = int(chamber_index)
+        if index < 0 or index >= len(self.abyss_timer_states):
+            return False
+        team = int(team_number)
+        if team not in (1, 2):
+            return False
+        seconds = clamp_abyss_timer_edit_seconds(seconds_left)
+        current = self.abyss_timer_states[index]
+        if team == 1:
+            if current.team1_left_seconds == seconds:
+                return False
+            updated = AbyssTimerState(
+                team1_left_seconds=seconds,
+                team2_left_seconds=current.team2_left_seconds,
+                start_seconds=current.start_seconds,
+            )
+        else:
+            if current.team2_left_seconds == seconds:
+                return False
+            updated = AbyssTimerState(
+                team1_left_seconds=current.team1_left_seconds,
+                team2_left_seconds=seconds,
+                start_seconds=current.start_seconds,
+            )
+        states = list(self.abyss_timer_states)
+        states[index] = updated
+        self.abyss_timer_states = tuple(states)
+        return True
 
     def swap_slots(
         self,
@@ -1037,6 +1089,7 @@ class AppShell(QWidget):
         self.right_panel.external_bonuses_toggled.connect(
             self._on_external_bonuses_toggled
         )
+        self.right_panel.abyss_timer_changed.connect(self._on_abyss_timer_changed)
         self.left_host.character_weapon_workspace.character_clicked.connect(
             self._on_character_clicked
         )
@@ -1493,6 +1546,30 @@ class AppShell(QWidget):
         self.controller.external_bonuses_enabled = bool(enabled)
         self.schedule_right_panel_refresh()
         log_perf("external_bonus_toggle", total=perf_ms(total_start), scheduled=True)
+
+    def _on_abyss_timer_changed(
+        self,
+        chamber_index: int,
+        team_number: int,
+        seconds_left: int,
+    ) -> None:
+        total_start = perf_now()
+        changed = self.controller.set_abyss_timer_seconds(
+            chamber_index,
+            team_number,
+            seconds_left,
+        )
+        if changed:
+            self.cancel_pending_right_panel_refresh(reason="abyss_timer_changed")
+            self._refresh_right_panel()
+        log_perf(
+            "abyss_timer_change",
+            total=perf_ms(total_start),
+            chamber=chamber_index,
+            team=team_number,
+            seconds_left=seconds_left,
+            changed=changed,
+        )
 
     def _on_character_clicked(self, asset: dict) -> None:
         total_start = perf_now()

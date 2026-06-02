@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSizePolicy,
+    QSpinBox,
     QStyle,
     QToolTip,
     QVBoxLayout,
@@ -24,6 +25,10 @@ from PySide6.QtWidgets import (
 )
 
 from localization import tr
+from run_workspace.models import (
+    adjust_abyss_timer_seconds_with_second_wheel,
+    clamp_abyss_timer_edit_seconds,
+)
 from run_workspace.right_panel_prototype_view_model import (
     MODE_ABYSS,
     MODE_DPS_DUMMY,
@@ -168,6 +173,7 @@ class RightPanelPrototypeWidget(QWidget):
     slot_selected = Signal(int, int)
     slot_dropped = Signal(int, int, int, int)
     external_bonuses_toggled = Signal(bool)
+    abyss_timer_changed = Signal(int, int, int)
 
     def __init__(
         self,
@@ -214,6 +220,9 @@ class RightPanelPrototypeWidget(QWidget):
         self._layout.addWidget(self._teams_container)
 
         self._chamber_table = ChamberTableBlockWidget()
+        self._chamber_table.abyss_timer_changed.connect(
+            self.abyss_timer_changed.emit
+        )
         self._layout.addWidget(self._chamber_table)
 
         self._details_frame = SelectedCharacterDetailsWidget()
@@ -746,12 +755,135 @@ class BuildMiniSetStackWidget(QLabel):
         self.set_model(self._model)
 
 
+class AbyssSecondSpinBox(QSpinBox):
+    def __init__(self, timer: "CompactAbyssTimerWidget", parent: QWidget | None = None):
+        super().__init__(parent)
+        self._timer = timer
+
+    def wheelEvent(self, event) -> None:
+        delta_steps = event.angleDelta().y() // 120
+        if delta_steps:
+            self._timer.adjust_seconds(delta_steps)
+            event.accept()
+            return
+        super().wheelEvent(event)
+
+
+class CompactAbyssTimerWidget(QWidget):
+    seconds_changed = Signal(int)
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self._seconds_left = 600
+        self._updating = False
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(1)
+
+        self.min_spin = QSpinBox()
+        self.min_spin.setObjectName("TimerSpinBox")
+        self.min_spin.setRange(5, 10)
+        self.min_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+        self.min_spin.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.min_spin.setFixedWidth(22)
+
+        colon = QLabel(":")
+        colon.setObjectName("TimerSeparator")
+        colon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        colon.setFixedWidth(4)
+
+        self.sec_spin = AbyssSecondSpinBox(self)
+        self.sec_spin.setObjectName("TimerSpinBox")
+        self.sec_spin.setRange(0, 59)
+        self.sec_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+        self.sec_spin.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.sec_spin.setFixedWidth(22)
+
+        layout.addWidget(self.min_spin)
+        layout.addWidget(colon)
+        layout.addWidget(self.sec_spin)
+
+        self.min_spin.valueChanged.connect(self._on_spin_changed)
+        self.sec_spin.valueChanged.connect(self._on_spin_changed)
+        self.set_seconds(600)
+
+    @property
+    def seconds_left(self) -> int:
+        return self._seconds_left
+
+    def set_seconds(self, seconds_left: int) -> None:
+        self._set_seconds(seconds_left, emit=False)
+
+    def adjust_seconds(self, delta_steps: int) -> None:
+        self._set_seconds(
+            adjust_abyss_timer_seconds_with_second_wheel(
+                self._seconds_left,
+                delta_steps,
+            ),
+            emit=True,
+        )
+
+    def _on_spin_changed(self) -> None:
+        if self._updating:
+            return
+        self._set_seconds(
+            self.min_spin.value() * 60 + self.sec_spin.value(),
+            emit=True,
+        )
+
+    def _set_seconds(self, seconds_left: int, *, emit: bool) -> None:
+        seconds = clamp_abyss_timer_edit_seconds(seconds_left)
+        changed = seconds != self._seconds_left
+        self._seconds_left = seconds
+        minutes, remainder = divmod(seconds, 60)
+        self._updating = True
+        try:
+            if self.min_spin.value() != minutes:
+                self.min_spin.setValue(minutes)
+            if self.sec_spin.value() != remainder:
+                self.sec_spin.setValue(remainder)
+        finally:
+            self._updating = False
+        if emit and changed:
+            self.seconds_changed.emit(seconds)
+
+
+class ChamberTimerCellWidget(QWidget):
+    seconds_changed = Signal(int)
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("TableCell")
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(3, 2, 3, 2)
+        layout.setSpacing(3)
+        self.timer = CompactAbyssTimerWidget()
+        self.elapsed_label = QLabel("0s")
+        self.elapsed_label.setObjectName("TimerElapsed")
+        self.elapsed_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.timer)
+        layout.addWidget(self.elapsed_label, 1)
+        self.timer.seconds_changed.connect(self.seconds_changed.emit)
+
+    def set_model(self, time_text: str, elapsed_seconds: int) -> None:
+        self.timer.set_seconds(_remaining_seconds_from_time_text(time_text))
+        self.elapsed_label.setText(f"{int(elapsed_seconds)}s")
+
+
 class ChamberTableBlockWidget(QFrame):
+    abyss_timer_changed = Signal(int, int, int)
+
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setObjectName("InfoBlock")
         self._layout = QVBoxLayout(self)
-        self._rows_key: tuple[object, ...] | None = None
+        self._structure_key: tuple[object, ...] | None = None
+        self._content_key: tuple[object, ...] | None = None
+        self._row_labels: dict[tuple[int, int], QLabel] = {}
+        self._timer_cells: dict[tuple[int, int], ChamberTimerCellWidget] = {}
+        self._total_label: QLabel | None = None
+        self._status_label: QLabel | None = None
+        self._gcsim_button: QPushButton | None = None
         self._layout.setContentsMargins(10, 10, 10, 10)
         self._layout.setSpacing(7)
 
@@ -763,32 +895,42 @@ class ChamberTableBlockWidget(QFrame):
         total_seconds: int,
         gcsim_status: RightPanelGcsimStatusViewModel,
     ) -> None:
-        rows_key = (
+        structure_key = (
             tuple(headers),
             tuple(
                 (
                     row.chamber_label,
-                    row.team1_time,
-                    row.team1_seconds,
-                    row.team2_time,
-                    row.team2_seconds,
-                    row.factual_team1,
-                    row.factual_team2,
-                    row.sim_team1,
-                    row.sim_team2,
-                    row.total_seconds,
+                    bool(row.timer_editable),
                 )
                 for row in rows
             ),
+            gcsim_status.button_label,
+        )
+        content_key = (
+            tuple(headers),
+            tuple(row.to_dict().items() for row in rows),
             int(total_seconds),
             gcsim_status.status,
             gcsim_status.button_label,
         )
-        if rows_key == self._rows_key:
+        if content_key == self._content_key:
             return
-        self._rows_key = rows_key
+        if structure_key != self._structure_key:
+            self._rebuild(headers, rows, gcsim_status=gcsim_status)
+            self._structure_key = structure_key
+        self._content_key = content_key
+        self._update_rows(rows, total_seconds=total_seconds, gcsim_status=gcsim_status)
 
+    def _rebuild(
+        self,
+        headers: tuple[str, ...],
+        rows: tuple[RightPanelChamberRowViewModel, ...],
+        *,
+        gcsim_status: RightPanelGcsimStatusViewModel,
+    ) -> None:
         _clear_layout(self._layout)
+        self._row_labels = {}
+        self._timer_cells = {}
 
         grid_container = QWidget()
         grid = QGridLayout(grid_container)
@@ -809,7 +951,57 @@ class ChamberTableBlockWidget(QFrame):
                 label.setFixedWidth(34)
             grid.addWidget(label, 0, column)
 
-        for row_index, row in enumerate(rows, start=1):
+        for view_row_index, row in enumerate(rows, start=1):
+            model_row_index = view_row_index - 1
+            for column in range(len(headers)):
+                if row.timer_editable and column in (1, 2):
+                    cell = ChamberTimerCellWidget()
+                    team_number = column
+                    cell.seconds_changed.connect(
+                        lambda seconds, row_index=model_row_index, team=team_number: (
+                            self.abyss_timer_changed.emit(row_index, team, seconds)
+                        )
+                    )
+                    self._timer_cells[(model_row_index, team_number)] = cell
+                    grid.addWidget(cell, view_row_index, column)
+                    continue
+                label = QLabel("")
+                label.setObjectName("TableCellPrimary" if column == 0 else "TableCell")
+                label.setAlignment(
+                    Qt.AlignmentFlag.AlignLeft
+                    if column == 0
+                    else Qt.AlignmentFlag.AlignCenter
+                )
+                if column == 0:
+                    label.setFixedWidth(34)
+                self._row_labels[(model_row_index, column)] = label
+                grid.addWidget(label, view_row_index, column)
+
+        bottom = QHBoxLayout()
+        bottom.setSpacing(8)
+        self._layout.addLayout(bottom)
+
+        self._total_label = QLabel("")
+        self._total_label.setObjectName("SummaryLine")
+        bottom.addWidget(self._total_label, 1)
+
+        self._status_label = QLabel("")
+        self._status_label.setObjectName("SubtleText")
+        bottom.addWidget(self._status_label)
+
+        self._gcsim_button = QPushButton(gcsim_status.button_label)
+        self._gcsim_button.setObjectName("GhostButton")
+        self._gcsim_button.setEnabled(False)
+        bottom.addWidget(self._gcsim_button)
+
+    def _update_rows(
+        self,
+        rows: tuple[RightPanelChamberRowViewModel, ...],
+        *,
+        total_seconds: int,
+        gcsim_status: RightPanelGcsimStatusViewModel,
+    ) -> None:
+        for row_index, row in enumerate(rows):
             values = (
                 row.chamber_label,
                 f"[{row.team1_time}] {row.team1_seconds}s",
@@ -820,33 +1012,31 @@ class ChamberTableBlockWidget(QFrame):
                 row.sim_team2,
             )
             for column, text in enumerate(values):
-                label = QLabel(text)
-                label.setObjectName("TableCellPrimary" if column == 0 else "TableCell")
-                label.setAlignment(
-                    Qt.AlignmentFlag.AlignLeft
-                    if column == 0
-                    else Qt.AlignmentFlag.AlignCenter
-                )
-                if column == 0:
-                    label.setFixedWidth(34)
-                grid.addWidget(label, row_index, column)
+                if row.timer_editable and column in (1, 2):
+                    cell = self._timer_cells.get((row_index, column))
+                    if cell is not None:
+                        if column == 1:
+                            cell.set_model(row.team1_time, row.team1_seconds)
+                        else:
+                            cell.set_model(row.team2_time, row.team2_seconds)
+                    continue
+                label = self._row_labels.get((row_index, column))
+                if label is not None:
+                    label.setText(text)
+        if self._total_label is not None:
+            self._total_label.setText(f"Total: {int(total_seconds)}s")
+        if self._status_label is not None:
+            self._status_label.setText(gcsim_status.status)
+        if self._gcsim_button is not None:
+            self._gcsim_button.setText(gcsim_status.button_label)
 
-        bottom = QHBoxLayout()
-        bottom.setSpacing(8)
-        self._layout.addLayout(bottom)
 
-        total = QLabel(f"Total: {total_seconds}s")
-        total.setObjectName("SummaryLine")
-        bottom.addWidget(total, 1)
-
-        status = QLabel(gcsim_status.status)
-        status.setObjectName("SubtleText")
-        bottom.addWidget(status)
-
-        button = QPushButton(gcsim_status.button_label)
-        button.setObjectName("GhostButton")
-        button.setEnabled(False)
-        bottom.addWidget(button)
+def _remaining_seconds_from_time_text(text: str) -> int:
+    try:
+        minutes_text, seconds_text = str(text).split(":", 1)
+        return int(minutes_text) * 60 + int(seconds_text)
+    except (TypeError, ValueError):
+        return 600
 
 
 class DetailRowWidget(QWidget):
@@ -2059,6 +2249,23 @@ def right_panel_stylesheet() -> str:
         color: #f1d486;
         font-weight: 800;
         font-family: Arial, sans-serif;
+    }
+    #TimerSpinBox {
+        min-height: 18px;
+        border: 0px;
+        background: transparent;
+        color: #dce3e7;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 11px;
+        padding: 0px;
+    }
+    #TimerSeparator, #TimerElapsed {
+        color: #dce3e7;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 11px;
+    }
+    #TimerElapsed {
+        font-weight: 800;
     }
     #SummaryLine, #DetailsName {
         color: #ffffff;

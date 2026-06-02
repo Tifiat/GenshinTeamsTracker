@@ -237,6 +237,12 @@ Future weapon move/swap rule:
   equivalent model/controller layer.
 - The right panel should display and command timer state, not own persistence or
   durable run/session logic.
+- Current AppShell status: Abyss T1/T2 cells in the compact chamber table are
+  editable in memory. They use compact minute/second spin boxes, legacy-style
+  second wheel wrap/clamp, `AbyssTimerState`, and
+  `calculate_abyss_chamber_result(...)` to derive elapsed seconds and Total.
+  Reset, persistence, immutable snapshots, History, factual DPS, and GCSIM
+  remain future work.
 - Detailed next-stage contract lives in
   `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. Follow it before coding
   History or GCSIM.
@@ -296,9 +302,10 @@ team builders into the production shell path.
 
 Production-switch blockers:
 
-- `RightPanelPrototypeWidget` still has display-only chamber rows and action
-  labels. Typed run/session reset, timer editing, save snapshot, and history
-  opening behavior are not yet wired into the new AppShell/controller path.
+- `RightPanelPrototypeWidget` has live in-memory Abyss timer editing, but action
+  labels remain display-only. Typed run/session reset, immutable save snapshot,
+  and history opening behavior are not yet wired into the new
+  AppShell/controller path.
 - New run/session persistence and immutable history snapshot flow need the
   typed contract in `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` before
   replacing legacy startup.

@@ -4,12 +4,17 @@ import unittest
 from types import SimpleNamespace
 
 from run_workspace.models import (
+    ABYSS_CHAMBER_START_SECONDS,
+    ABYSS_TIMER_EDIT_MIN_SECONDS,
     RUN_TYPE_ABYSS,
     SNAPSHOT_SOURCE_LEGACY_RIGHT_PANEL,
     WARNING_TEAM2_ELAPSED_NEGATIVE,
     AbyssTimerState,
+    adjust_abyss_timer_seconds_with_second_wheel,
     build_legacy_abyss_run_snapshot,
     calculate_abyss_chamber_result,
+    clamp_abyss_timer_edit_seconds,
+    default_abyss_timer_states,
 )
 
 
@@ -33,6 +38,42 @@ def legacy_floor(team1_left: int, team2_left: int) -> SimpleNamespace:
 
 
 class RunWorkspaceModelsTest(unittest.TestCase):
+    def test_default_abyss_timer_states_start_at_legacy_full_time(self) -> None:
+        states = default_abyss_timer_states()
+
+        self.assertEqual(len(states), 3)
+        self.assertTrue(
+            all(
+                state.team1_left_seconds == ABYSS_CHAMBER_START_SECONDS
+                and state.team2_left_seconds == ABYSS_CHAMBER_START_SECONDS
+                for state in states
+            )
+        )
+
+    def test_edit_timer_clamp_uses_legacy_visible_range(self) -> None:
+        self.assertEqual(
+            clamp_abyss_timer_edit_seconds(10),
+            ABYSS_TIMER_EDIT_MIN_SECONDS,
+        )
+        self.assertEqual(
+            clamp_abyss_timer_edit_seconds(999),
+            ABYSS_CHAMBER_START_SECONDS,
+        )
+
+    def test_second_wheel_wraps_across_minutes_and_clamps(self) -> None:
+        self.assertEqual(
+            adjust_abyss_timer_seconds_with_second_wheel(5 * 60, -1),
+            5 * 60,
+        )
+        self.assertEqual(
+            adjust_abyss_timer_seconds_with_second_wheel(5 * 60 + 59, 1),
+            6 * 60,
+        )
+        self.assertEqual(
+            adjust_abyss_timer_seconds_with_second_wheel(10 * 60, 1),
+            10 * 60,
+        )
+
     def test_calculate_abyss_chamber_result_normal_values(self) -> None:
         result = calculate_abyss_chamber_result(
             AbyssTimerState(team1_left_seconds=550, team2_left_seconds=500),

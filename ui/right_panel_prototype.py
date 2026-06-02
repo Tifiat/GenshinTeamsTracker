@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from PySide6.QtCore import QByteArray, QEvent, QMimeData, QRect, QSize, Qt, Signal, QTimer
-from PySide6.QtGui import QDrag, QKeyEvent, QPainter, QPixmap
+from PySide6.QtGui import QDrag, QIntValidator, QKeyEvent, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -82,8 +82,16 @@ SLOT_CARD_FIXED_HEIGHT = 154
 SLOT_NAME_HEIGHT = 18
 SLOT_DRAG_MIME_TYPE = "application/x-gtt-right-panel-slot"
 ABYSS_TIMER_BRACKET_WIDTH = 4
-ABYSS_TIMER_EDIT_WIDTH = 37
-ABYSS_TIMER_ELAPSED_WIDTH = 31
+ABYSS_TIMER_SEGMENT_WIDTH = 19
+ABYSS_TIMER_SEPARATOR_WIDTH = 5
+ABYSS_TIMER_ELAPSED_WIDTH = 29
+ABYSS_TIMER_FRAME_WIDTH = (
+    ABYSS_TIMER_BRACKET_WIDTH * 2
+    + ABYSS_TIMER_SEGMENT_WIDTH * 2
+    + ABYSS_TIMER_SEPARATOR_WIDTH
+    + 4
+)
+ABYSS_TIMER_CELL_WIDTH = ABYSS_TIMER_FRAME_WIDTH + ABYSS_TIMER_ELAPSED_WIDTH + 5
 
 _FIT_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 _BUILD_MINI_SET_ICON_PIXMAP_CACHE: dict[
@@ -758,47 +766,65 @@ class BuildMiniSetStackWidget(QLabel):
         self.set_model(self._model)
 
 
-class AbyssTimerLineEdit(QLineEdit):
-    def __init__(self, timer: "CompactAbyssTimerWidget", parent: QWidget | None = None):
+class AbyssTimerSegmentEdit(QLineEdit):
+    def __init__(
+        self,
+        timer: "CompactAbyssTimerWidget",
+        segment: str,
+        parent: QWidget | None = None,
+    ):
         super().__init__(parent)
         self._timer = timer
+        self.segment = segment
+        self.setMaxLength(2)
+        self.setValidator(QIntValidator(0, 99, self))
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self._timer.commit_segment(self)
+            self.selectAll()
+            event.accept()
+            return
+        if event.key() == Qt.Key.Key_Left:
+            self._timer.commit_segment(self)
+            self._timer.focus_segment("minutes")
+            event.accept()
+            return
+        if event.key() == Qt.Key.Key_Right:
+            self._timer.commit_segment(self)
+            self._timer.focus_segment("seconds")
+            event.accept()
+            return
         if event.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down):
-            self._timer.adjust_seconds(1 if event.key() == Qt.Key.Key_Up else -1)
+            self._timer.adjust_segment(
+                self.segment,
+                1 if event.key() == Qt.Key.Key_Up else -1,
+            )
+            self.selectAll()
             event.accept()
             return
         super().keyPressEvent(event)
 
+    def focusInEvent(self, event) -> None:
+        super().focusInEvent(event)
+        self.selectAll()
+
+    def focusOutEvent(self, event) -> None:
+        self._timer.commit_segment(self)
+        super().focusOutEvent(event)
+
+    def mousePressEvent(self, event) -> None:
+        super().mousePressEvent(event)
+        self.selectAll()
+
     def wheelEvent(self, event) -> None:
         delta_steps = event.angleDelta().y() // 120
         if delta_steps:
-            self._timer.adjust_seconds(delta_steps)
+            self._timer.adjust_segment(self.segment, delta_steps)
+            self.selectAll()
             event.accept()
             return
         super().wheelEvent(event)
-
-
-def _format_abyss_timer_seconds(seconds_left: int) -> str:
-    minutes, remainder = divmod(int(seconds_left), 60)
-    return f"{minutes:02d}:{remainder:02d}"
-
-
-def _parse_abyss_timer_text(text: str) -> int | None:
-    value = str(text).strip()
-    if not value:
-        return None
-    if ":" in value:
-        parts = value.split(":", 1)
-        if len(parts) != 2 or not parts[0].isdigit() or not parts[1].isdigit():
-            return None
-        return int(parts[0]) * 60 + int(parts[1])
-    digits = "".join(ch for ch in value if ch.isdigit())
-    if digits != value or not digits:
-        return None
-    if len(digits) <= 2:
-        return int(digits) * 60
-    return int(digits[:-2]) * 60 + int(digits[-2:])
 
 
 class CompactAbyssTimerWidget(QFrame):
@@ -810,6 +836,10 @@ class CompactAbyssTimerWidget(QFrame):
         self._seconds_left = 600
         self._max_seconds = 600
         self._updating = False
+        self._segment_dirty = {
+            "minutes": False,
+            "seconds": False,
+        }
         layout = QHBoxLayout(self)
         layout.setContentsMargins(2, 0, 2, 0)
         layout.setSpacing(0)
@@ -819,11 +849,20 @@ class CompactAbyssTimerWidget(QFrame):
         self.open_bracket.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.open_bracket.setFixedWidth(ABYSS_TIMER_BRACKET_WIDTH)
 
-        self.timer_edit = AbyssTimerLineEdit(self)
-        self.timer_edit.setObjectName("TimerLineEdit")
-        self.timer_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.timer_edit.setFixedWidth(ABYSS_TIMER_EDIT_WIDTH)
-        self.timer_edit.setMaxLength(5)
+        self.min_edit = AbyssTimerSegmentEdit(self, "minutes")
+        self.min_edit.setObjectName("TimerSegmentEdit")
+        self.min_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.min_edit.setFixedWidth(ABYSS_TIMER_SEGMENT_WIDTH)
+
+        colon = QLabel(":")
+        colon.setObjectName("TimerSeparator")
+        colon.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        colon.setFixedWidth(ABYSS_TIMER_SEPARATOR_WIDTH)
+
+        self.sec_edit = AbyssTimerSegmentEdit(self, "seconds")
+        self.sec_edit.setObjectName("TimerSegmentEdit")
+        self.sec_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.sec_edit.setFixedWidth(ABYSS_TIMER_SEGMENT_WIDTH)
 
         self.close_bracket = QLabel("]")
         self.close_bracket.setObjectName("TimerSeparator")
@@ -831,13 +870,18 @@ class CompactAbyssTimerWidget(QFrame):
         self.close_bracket.setFixedWidth(ABYSS_TIMER_BRACKET_WIDTH)
 
         layout.addWidget(self.open_bracket)
-        layout.addWidget(self.timer_edit)
+        layout.addWidget(self.min_edit)
+        layout.addWidget(colon)
+        layout.addWidget(self.sec_edit)
         layout.addWidget(self.close_bracket)
-        self.setFixedWidth(
-            ABYSS_TIMER_BRACKET_WIDTH * 2 + ABYSS_TIMER_EDIT_WIDTH + 4
-        )
+        self.setFixedWidth(ABYSS_TIMER_FRAME_WIDTH)
 
-        self.timer_edit.editingFinished.connect(self._commit_edit_text)
+        self.min_edit.textEdited.connect(
+            lambda _text: self._mark_segment_dirty("minutes")
+        )
+        self.sec_edit.textEdited.connect(
+            lambda _text: self._mark_segment_dirty("seconds")
+        )
         self.set_seconds(600)
 
     @property
@@ -859,37 +903,80 @@ class CompactAbyssTimerWidget(QFrame):
                 start_seconds=self._max_seconds,
             ),
             emit=True,
+            force_sync=True,
         )
 
-    def _commit_edit_text(self) -> None:
+    def adjust_segment(self, segment: str, delta_steps: int) -> None:
+        edit = self._edit_for_segment(segment)
+        self.commit_segment(edit)
+        multiplier = 60 if segment == "minutes" else 1
+        self.adjust_seconds(int(delta_steps) * multiplier)
+
+    def commit_segment(self, edit: AbyssTimerSegmentEdit) -> None:
         if self._updating:
             return
-        seconds = _parse_abyss_timer_text(self.timer_edit.text())
-        if seconds is None:
-            self._sync_edit_text()
+        segment = edit.segment
+        if not self._segment_dirty[segment]:
             return
-        self._set_seconds(seconds, emit=True)
+        value_text = edit.text().strip()
+        if not value_text.isdigit():
+            self._segment_dirty[segment] = False
+            self._sync_segment_texts()
+            return
+        value = int(value_text)
+        minutes, seconds = divmod(self._seconds_left, 60)
+        if segment == "minutes":
+            minutes = value
+        else:
+            seconds = min(value, 59)
+        self._segment_dirty[segment] = False
+        self._set_seconds(
+            minutes * 60 + seconds,
+            emit=True,
+            force_sync=True,
+        )
 
-    def _set_seconds(self, seconds_left: int, *, emit: bool) -> None:
+    def focus_segment(self, segment: str) -> None:
+        destination = self._edit_for_segment(segment)
+        focused = self.focusWidget()
+        if isinstance(focused, AbyssTimerSegmentEdit):
+            self.commit_segment(focused)
+        destination.setFocus(Qt.FocusReason.TabFocusReason)
+        destination.selectAll()
+
+    def _edit_for_segment(self, segment: str) -> AbyssTimerSegmentEdit:
+        return self.min_edit if segment == "minutes" else self.sec_edit
+
+    def _mark_segment_dirty(self, segment: str) -> None:
+        if not self._updating:
+            self._segment_dirty[segment] = True
+
+    def _set_seconds(
+        self,
+        seconds_left: int,
+        *,
+        emit: bool,
+        force_sync: bool = False,
+    ) -> None:
         seconds = clamp_abyss_timer_edit_seconds(
             seconds_left,
             start_seconds=self._max_seconds,
         )
         changed = seconds != self._seconds_left
         self._seconds_left = seconds
-        minutes, remainder = divmod(seconds, 60)
-        self._updating = True
-        try:
-            self.timer_edit.setText(f"{minutes:02d}:{remainder:02d}")
-        finally:
-            self._updating = False
+        if force_sync or changed or not any(self._segment_dirty.values()):
+            self._sync_segment_texts()
         if emit and changed:
             self.seconds_changed.emit(seconds)
 
-    def _sync_edit_text(self) -> None:
+    def _sync_segment_texts(self) -> None:
+        minutes, remainder = divmod(self._seconds_left, 60)
         self._updating = True
         try:
-            self.timer_edit.setText(_format_abyss_timer_seconds(self._seconds_left))
+            self.min_edit.setText(f"{minutes:02d}")
+            self.sec_edit.setText(f"{remainder:02d}")
+            self._segment_dirty["minutes"] = False
+            self._segment_dirty["seconds"] = False
         finally:
             self._updating = False
 
@@ -899,7 +986,8 @@ class ChamberTimerCellWidget(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setObjectName("TableCell")
+        self.setObjectName("TimerTableCell")
+        self.setFixedWidth(ABYSS_TIMER_CELL_WIDTH)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(1, 0, 1, 0)
         layout.setSpacing(3)
@@ -993,20 +1081,18 @@ class ChamberTableBlockWidget(QFrame):
         grid.setVerticalSpacing(4)
         grid.setColumnMinimumWidth(0, 34)
         grid.setColumnStretch(0, 0)
-        for column in range(1, 7):
+        grid.setColumnMinimumWidth(1, ABYSS_TIMER_CELL_WIDTH)
+        grid.setColumnMinimumWidth(2, ABYSS_TIMER_CELL_WIDTH)
+        grid.setColumnStretch(1, 0)
+        grid.setColumnStretch(2, 0)
+        for column in range(3, 7):
             grid.setColumnStretch(column, 1)
         self._layout.addWidget(grid_container)
 
-        for column, text in enumerate(headers):
-            label = QLabel(text)
-            label.setObjectName("TableHeader")
-            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            if column == 0:
-                label.setFixedWidth(34)
-            grid.addWidget(label, 0, column)
+        data_row_start = self._add_headers(grid, headers)
 
-        for view_row_index, row in enumerate(rows, start=1):
-            model_row_index = view_row_index - 1
+        for model_row_index, row in enumerate(rows):
+            view_row_index = model_row_index + data_row_start
             for column in range(len(headers)):
                 if row.timer_editable and column in (1, 2):
                     cell = ChamberTimerCellWidget()
@@ -1047,6 +1133,38 @@ class ChamberTableBlockWidget(QFrame):
         self._gcsim_button.setObjectName("GhostButton")
         self._gcsim_button.setEnabled(False)
         bottom.addWidget(self._gcsim_button)
+
+    @staticmethod
+    def _add_headers(grid: QGridLayout, headers: tuple[str, ...]) -> int:
+        if len(headers) != 7:
+            for column, text in enumerate(headers):
+                label = QLabel(text)
+                label.setObjectName("TableHeader")
+                label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                if column == 0:
+                    label.setFixedWidth(34)
+                grid.addWidget(label, 0, column)
+            return 1
+
+        for column, text in enumerate(headers[:3]):
+            label = QLabel(text)
+            label.setObjectName("TableHeader")
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            if column == 0:
+                label.setFixedWidth(34)
+            grid.addWidget(label, 0, column, 2, 1)
+
+        for column, text in ((3, "Fact DPS"), (5, "Sim DPS")):
+            label = QLabel(text)
+            label.setObjectName("TableHeader")
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            grid.addWidget(label, 0, column, 1, 2)
+            for team_offset, team_label in enumerate(("T1", "T2")):
+                sub_label = QLabel(team_label)
+                sub_label.setObjectName("TableSubHeader")
+                sub_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                grid.addWidget(sub_label, 1, column + team_offset)
+        return 2
 
     def _update_rows(
         self,
@@ -2296,18 +2414,26 @@ def right_panel_stylesheet() -> str:
         font-weight: 900;
         padding: 0px 1px;
     }
-    #TableHeader {
+    #TableHeader, #TableSubHeader {
         color: #98c9bf;
         font-size: 10px;
         font-weight: 800;
     }
-    #TableCell, #TableCellPrimary {
+    #TableSubHeader {
+        color: #7ea99f;
+        font-size: 9px;
+    }
+    #TableCell, #TableCellPrimary, #TimerTableCell {
         min-height: 22px;
         border-radius: 4px;
         background: #15181d;
         color: #dce3e7;
         padding: 1px 3px;
         font-family: Consolas, "Courier New", monospace;
+    }
+    #TimerTableCell {
+        border: 1px solid #252c34;
+        padding: 0px;
     }
     #TableCellPrimary {
         color: #f1d486;
@@ -2320,7 +2446,7 @@ def right_panel_stylesheet() -> str:
         border: 1px solid #303741;
         background: #101318;
     }
-    #TimerLineEdit {
+    #TimerSegmentEdit {
         min-height: 18px;
         border: 0px;
         background: transparent;
@@ -2329,8 +2455,9 @@ def right_panel_stylesheet() -> str:
         font-size: 11px;
         padding: 0px;
     }
-    #TimerLineEdit:focus {
+    #TimerSegmentEdit:focus {
         color: #ffffff;
+        background: #202832;
     }
     #TimerSeparator, #TimerElapsed {
         color: #dce3e7;

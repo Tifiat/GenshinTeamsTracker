@@ -22,9 +22,10 @@ legacy cleanup, and it does not switch `main.py`.
   view model immediately. T2 follows T1 until manually edited; if T1 is edited
   below current T2, T2 clamps to T1 and returns to follow mode. Reset/save/history
   persistence is still future.
-- The current compact editor is a single `MM:SS` field per T1/T2 cell. It
-  accepts keyboard entry such as `09:50` or `950`; mouse wheel and Up/Down keys
-  step the focused timer by one second.
+- The current compact editor uses separate minute/second segments inside one
+  visual `MM:SS` field per T1/T2 cell. Raw segment input normalizes only on
+  commit. Left/Right changes the active segment; mouse wheel and Up/Down step
+  the active minute or second segment.
 - The next implementation step is current in-memory run/session state and result
   calculation. Saved snapshot models are intentionally later.
 - `ui/widgets/timers.py` contains useful timer editing behavior but must not

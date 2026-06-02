@@ -9,8 +9,8 @@ from unittest.mock import patch
 from ui.utils.app_scaling import configure_startup_ui_scale
 
 configure_startup_ui_scale()
-from PySide6.QtCore import QEvent, QRect, QSize, Qt
-from PySide6.QtGui import QColor, QKeyEvent, QPixmap
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
+from PySide6.QtGui import QColor, QKeyEvent, QPixmap, QWheelEvent
 from PySide6.QtWidgets import QApplication, QStyleOptionButton, QWidget
 
 from hoyolab_export.account_equipment import (
@@ -360,38 +360,61 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_panel._model.chamber_rows[0].team1_seconds, 50)
         self.assertEqual(shell.right_panel._model.total_seconds, 50)
 
+    def test_abyss_chamber_table_size_hint_fits_fixed_right_dock(self) -> None:
+        shell = AppShell()
+
+        self.assertLessEqual(
+            shell.right_panel._chamber_table.sizeHint().width(),
+            RIGHT_OPERATIONS_DOCK_WIDTH,
+        )
+
     def test_compact_abyss_timer_uses_two_digit_seconds_display(self) -> None:
         timer = CompactAbyssTimerWidget()
 
         timer.set_seconds(9 * 60 + 1)
 
-        self.assertEqual(timer.timer_edit.text(), "09:01")
+        self.assertEqual(timer.min_edit.text(), "09")
+        self.assertEqual(timer.sec_edit.text(), "01")
 
-    def test_compact_abyss_timer_accepts_keyboard_text_entry(self) -> None:
+    def test_compact_abyss_timer_first_typed_digit_replaces_selected_segment(self) -> None:
         timer = CompactAbyssTimerWidget()
-        changed: list[int] = []
-        timer.seconds_changed.connect(changed.append)
+        timer.set_seconds(590)
+        timer.sec_edit.selectAll()
 
-        timer.timer_edit.setText("9:45")
-        timer._commit_edit_text()
+        self._send_key_text(timer.sec_edit, Qt.Key.Key_5, "5")
 
-        self.assertEqual(timer.seconds_left, 585)
-        self.assertEqual(timer.timer_edit.text(), "09:45")
-        self.assertEqual(changed, [585])
-
-        timer.timer_edit.setText("950")
-        timer._commit_edit_text()
-
+        self.assertEqual(timer.sec_edit.text(), "5")
         self.assertEqual(timer.seconds_left, 590)
-        self.assertEqual(timer.timer_edit.text(), "09:50")
-        self.assertEqual(changed[-1], 590)
 
-    def test_compact_abyss_timer_arrow_keys_step_by_one_second(self) -> None:
+        self._send_key_text(timer.sec_edit, Qt.Key.Key_5, "5")
+        self.assertEqual(timer.sec_edit.text(), "55")
+        self.assertEqual(timer.seconds_left, 590)
+
+        timer.commit_segment(timer.sec_edit)
+        self.assertEqual(timer.seconds_left, 595)
+        self.assertEqual(timer.sec_edit.text(), "55")
+
+    def test_compact_abyss_timer_normalizes_one_digit_seconds_only_on_commit(self) -> None:
+        timer = CompactAbyssTimerWidget()
+        timer.set_seconds(540)
+        timer.sec_edit.selectAll()
+
+        self._send_key_text(timer.sec_edit, Qt.Key.Key_1, "1")
+
+        self.assertEqual(timer.sec_edit.text(), "1")
+        self.assertEqual(timer.seconds_left, 540)
+
+        timer.commit_segment(timer.sec_edit)
+
+        self.assertEqual(timer.sec_edit.text(), "01")
+        self.assertEqual(timer.seconds_left, 541)
+
+    def test_compact_abyss_timer_arrow_keys_step_active_segment(self) -> None:
         timer = CompactAbyssTimerWidget()
         timer.set_seconds(590)
 
         QApplication.sendEvent(
-            timer.timer_edit,
+            timer.sec_edit,
             QKeyEvent(
                 QEvent.Type.KeyPress,
                 Qt.Key.Key_Up,
@@ -401,7 +424,7 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(timer.seconds_left, 591)
 
         QApplication.sendEvent(
-            timer.timer_edit,
+            timer.sec_edit,
             QKeyEvent(
                 QEvent.Type.KeyPress,
                 Qt.Key.Key_Down,
@@ -409,6 +432,45 @@ class AppShellTest(unittest.TestCase):
             ),
         )
         self.assertEqual(timer.seconds_left, 590)
+
+        QApplication.sendEvent(
+            timer.min_edit,
+            QKeyEvent(
+                QEvent.Type.KeyPress,
+                Qt.Key.Key_Down,
+                Qt.KeyboardModifier.NoModifier,
+            ),
+        )
+        self.assertEqual(timer.seconds_left, 530)
+
+    def test_compact_abyss_timer_wheel_steps_segment_under_cursor(self) -> None:
+        timer = CompactAbyssTimerWidget()
+        timer.set_seconds(590)
+
+        timer.sec_edit.wheelEvent(self._wheel_event(120))
+        self.assertEqual(timer.seconds_left, 591)
+
+        timer.min_edit.wheelEvent(self._wheel_event(-120))
+        self.assertEqual(timer.seconds_left, 531)
+
+    def test_compact_abyss_timer_left_right_commits_and_selects_destination(self) -> None:
+        timer = CompactAbyssTimerWidget()
+        timer.set_seconds(540)
+        timer.sec_edit.selectAll()
+        self._send_key_text(timer.sec_edit, Qt.Key.Key_1, "1")
+
+        QApplication.sendEvent(
+            timer.sec_edit,
+            QKeyEvent(
+                QEvent.Type.KeyPress,
+                Qt.Key.Key_Left,
+                Qt.KeyboardModifier.NoModifier,
+            ),
+        )
+
+        self.assertEqual(timer.seconds_left, 541)
+        self.assertEqual(timer.sec_edit.text(), "01")
+        self.assertEqual(timer.min_edit.selectedText(), "09")
 
     def test_abyss_t2_follows_t1_until_manually_edited(self) -> None:
         shell = AppShell()
@@ -462,6 +524,31 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(
             shell.controller.abyss_timer_states[0],
             AbyssTimerState(team1_left_seconds=600, team2_left_seconds=600),
+        )
+
+    @staticmethod
+    def _send_key_text(edit, key: Qt.Key, text: str) -> None:
+        QApplication.sendEvent(
+            edit,
+            QKeyEvent(
+                QEvent.Type.KeyPress,
+                key,
+                Qt.KeyboardModifier.NoModifier,
+                text,
+            ),
+        )
+
+    @staticmethod
+    def _wheel_event(delta: int) -> QWheelEvent:
+        return QWheelEvent(
+            QPointF(0, 0),
+            QPointF(0, 0),
+            QPoint(0, 0),
+            QPoint(0, delta),
+            Qt.MouseButton.NoButton,
+            Qt.KeyboardModifier.NoModifier,
+            Qt.ScrollPhase.ScrollUpdate,
+            False,
         )
 
     def test_account_page_exposes_hoyolab_profile_and_language_controls(self) -> None:

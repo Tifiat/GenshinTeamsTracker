@@ -1,8 +1,9 @@
 """Production-safe Fandom/Nanoka fetchers for Abyss source data.
 
-These helpers fetch only period composition and Nanoka tower JSON. They do not
-fetch individual Fandom enemy pages and do not depend on experiment scripts.
-Persistent caching and Account/Data integration are intentionally future work.
+These helpers fetch only period composition plus Nanoka manifest/detail JSON.
+They do not fetch individual Fandom enemy pages and do not depend on experiment
+scripts. Cache writes live in `source_data_cache.py` / `source_data_update.py`
+and Account/Data integration remains future work.
 """
 
 from __future__ import annotations
@@ -49,6 +50,14 @@ VOID_TAGS = {
 
 class AbyssSourceFetchError(RuntimeError):
     """Raised when a live Abyss source cannot be fetched or parsed."""
+
+
+class NanokaTowerPeriodNotFound(AbyssSourceFetchError):
+    """Raised when Nanoka manifest has no tower matching a period."""
+
+
+class NanokaTowerPeriodAmbiguous(AbyssSourceFetchError):
+    """Raised when Nanoka manifest has multiple towers matching a period."""
 
 
 @dataclass(slots=True)
@@ -640,6 +649,39 @@ def _parse_source_timestamp(value: Any) -> datetime | None:
         return None
 
 
+def _source_date(value: Any) -> str | None:
+    timestamp = _parse_source_timestamp(value)
+    if timestamp is not None:
+        return timestamp.date().isoformat()
+    if isinstance(value, str):
+        match = re.search(r"\d{4}-\d{2}-\d{2}", value)
+        if match:
+            return match.group(0)
+    return None
+
+
+def _summary_period_start_candidates(summary: dict[str, Any]) -> set[str]:
+    return {
+        value
+        for value in (
+            _source_date(summary.get("live_begin")),
+            _source_date(summary.get("begin")),
+        )
+        if value is not None
+    }
+
+
+def _summary_period_end_candidates(summary: dict[str, Any]) -> set[str]:
+    return {
+        value
+        for value in (
+            _source_date(summary.get("live_end")),
+            _source_date(summary.get("end")),
+        )
+        if value is not None
+    }
+
+
 def _summary_is_live(summary: dict[str, Any], reference_time: datetime) -> bool:
     begin = _parse_source_timestamp(summary.get("live_begin"))
     end = _parse_source_timestamp(summary.get("live_end"))
@@ -675,6 +717,60 @@ def _choose_tower_summary(
             "the detail JSON route will still be attempted."
         ],
     )
+
+
+def resolve_nanoka_tower_summary_for_period(
+    summaries: list[dict[str, Any]],
+    *,
+    period_start: str,
+    period_end: str | None = None,
+) -> tuple[dict[str, Any], list[str]]:
+    """Resolve one Nanoka tower summary by Abyss period dates."""
+
+    normalized_start = str(period_start)
+    normalized_end = str(period_end) if period_end else None
+    matches = [
+        summary
+        for summary in summaries
+        if normalized_start in _summary_period_start_candidates(summary)
+        and (
+            normalized_end is None
+            or normalized_end in _summary_period_end_candidates(summary)
+        )
+    ]
+    if not matches:
+        end_hint = f" and end {normalized_end}" if normalized_end else ""
+        raise NanokaTowerPeriodNotFound(
+            f"Nanoka tower manifest has no tower for period start {normalized_start}{end_hint}."
+        )
+    if len(matches) > 1:
+        tower_ids = ", ".join(str(summary.get("id")) for summary in matches)
+        raise NanokaTowerPeriodAmbiguous(
+            f"Nanoka tower manifest has multiple towers for period start {normalized_start}: {tower_ids}"
+        )
+    summary = matches[0]
+    tower_id = summary.get("id")
+    if tower_id in (None, ""):
+        raise NanokaTowerPeriodNotFound(
+            f"Nanoka tower manifest match for period start {normalized_start} has no id."
+        )
+    return summary, []
+
+
+def resolve_nanoka_tower_id_for_period(
+    manifest: dict[str, Any],
+    *,
+    period_start: str,
+    period_end: str | None = None,
+) -> str:
+    """Resolve Nanoka's internal tower id from a manifest payload."""
+
+    summary, _warnings = resolve_nanoka_tower_summary_for_period(
+        _tower_summaries(manifest),
+        period_start=period_start,
+        period_end=period_end,
+    )
+    return str(summary["id"])
 
 
 def _sorted_mapping_items(mapping: Any) -> list[tuple[str, Any]]:
@@ -906,11 +1002,67 @@ def fetch_nanoka_tower_report(
             "tower_index_page_url": NANOKA_TOWER_INDEX_URL,
             "manifest_json_url": manifest_url,
             "static_data_base_url": static_data_base_url,
-            "selection": {"mode": "explicit_tower_id", "tower_id": str(tower_id)},
+            "selection": {
+                "mode": "explicit_tower_id_override",
+                "tower_id": str(tower_id),
+            },
         },
         "towers": [
             _tower_report(
                 tower_id=str(tower_id),
+                summary=summary,
+                detail=detail,
+                manifest_url=manifest_url,
+                detail_url=detail_url,
+                selected_floor=floor,
+            )
+        ],
+    }
+
+
+def fetch_nanoka_tower_report_for_period(
+    period_start: str,
+    *,
+    period_end: str | None = None,
+    floor: int = 12,
+    locale: str = "en",
+) -> dict[str, Any]:
+    manifest_url = _discover_nanoka_manifest_url()
+    static_data_base_url = _static_data_base_url(manifest_url)
+    manifest = _fetch_json(manifest_url, timeout=20)
+    summaries = _tower_summaries(manifest)
+    summary, warnings = resolve_nanoka_tower_summary_for_period(
+        summaries,
+        period_start=period_start,
+        period_end=period_end,
+    )
+    tower_id = str(summary["id"])
+    detail_url = f"{static_data_base_url}/{locale}/tower/{tower_id}.json"
+    detail = _fetch_json(detail_url, timeout=30)
+    return {
+        "probe": {
+            "name": "nanoka_abyss_tower_source_fetch",
+            "production_safe_debug": True,
+            "warnings": [
+                "Nanoka is the primary resolved HP source.",
+                "Nanoka wave values are not used as composition authority.",
+                *warnings,
+            ],
+        },
+        "discovery": {
+            "tower_index_page_url": NANOKA_TOWER_INDEX_URL,
+            "manifest_json_url": manifest_url,
+            "static_data_base_url": static_data_base_url,
+            "selection": {
+                "mode": "period_start_lookup",
+                "period_start": str(period_start),
+                "period_end": str(period_end) if period_end else None,
+                "tower_id": tower_id,
+            },
+        },
+        "towers": [
+            _tower_report(
+                tower_id=tower_id,
                 summary=summary,
                 detail=detail,
                 manifest_url=manifest_url,

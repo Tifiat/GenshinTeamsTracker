@@ -1,9 +1,9 @@
 """Debug CLI for production-safe Abyss source-data updates.
 
-This module fetches one Fandom period page and one Nanoka tower data path, then
-builds `AbyssFloorSourceData`. Cache writes are explicit opt-in; this module
-does not touch UI and does not fetch individual Fandom enemy pages during the
-normal Nanoka path.
+This module fetches one Fandom period page, resolves Nanoka's internal tower id
+from the period when needed, and builds `AbyssFloorSourceData`. Cache writes
+are explicit opt-in; this module does not touch UI and does not fetch
+individual Fandom enemy pages during the normal Nanoka path.
 """
 
 from __future__ import annotations
@@ -23,28 +23,41 @@ from .source_data import (
 from .source_data_cache import save_abyss_floor_source_data
 from .source_data_fetchers import (
     AbyssSourceFetchError,
+    NanokaTowerPeriodAmbiguous,
     fetch_fandom_composition_report,
     fetch_nanoka_tower_report,
+    fetch_nanoka_tower_report_for_period,
 )
 
 
 def fetch_abyss_floor12_source_data(
     *,
     period_start: str,
-    tower_id: str,
+    tower_id: str | None = None,
     floor: int = 12,
     locale: str = "en",
+    period_end: str | None = None,
 ) -> AbyssFloorSourceData:
     """Fetch live source reports and build production Floor 12 source data."""
 
     period_url = period_url_for_start(period_start)
     composition_report = fetch_fandom_composition_report(period_url, floor=floor)
     try:
-        nanoka_report: dict[str, Any] | None = fetch_nanoka_tower_report(
-            tower_id,
-            floor=floor,
-            locale=locale,
-        )
+        if tower_id is not None:
+            nanoka_report: dict[str, Any] | None = fetch_nanoka_tower_report(
+                tower_id,
+                floor=floor,
+                locale=locale,
+            )
+        else:
+            nanoka_report = fetch_nanoka_tower_report_for_period(
+                period_start,
+                period_end=period_end,
+                floor=floor,
+                locale=locale,
+            )
+    except NanokaTowerPeriodAmbiguous:
+        raise
     except AbyssSourceFetchError as exc:
         nanoka_report = {
             "probe": {
@@ -54,9 +67,10 @@ def fetch_abyss_floor12_source_data(
             },
             "towers": [],
         }
+    resolved_tower_id = _resolved_nanoka_tower_id(nanoka_report) or tower_id or "unresolved"
     return load_abyss_floor12_source_data(
         period_start,
-        tower_id,
+        resolved_tower_id,
         floor=floor,
         composition_report=composition_report,
         nanoka_report=nanoka_report,
@@ -80,9 +94,10 @@ def _summary(data: AbyssFloorSourceData) -> dict[str, Any]:
 def build_update_report(
     *,
     period_start: str,
-    tower_id: str,
+    tower_id: str | None = None,
     floor: int = 12,
     locale: str = "en",
+    period_end: str | None = None,
     save_cache: bool = False,
     cache_dir: str | None = None,
 ) -> dict[str, Any]:
@@ -91,6 +106,7 @@ def build_update_report(
         tower_id=tower_id,
         floor=floor,
         locale=locale,
+        period_end=period_end,
     )
     cache_report: dict[str, Any] = {"saved": False}
     if save_cache:
@@ -107,6 +123,7 @@ def build_update_report(
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "normal_path_contract": {
                 "fandom_period_parse_requests": 1,
+                "nanoka_tower_manifest_requests": 1 if tower_id is None else 0,
                 "nanoka_tower_detail_json_requests": 1,
                 "fandom_enemy_page_requests": 0,
                 "fandom_enemy_page_fallback_enabled": False,
@@ -120,13 +137,48 @@ def build_update_report(
         },
         "inputs": {
             "period_start": period_start,
-            "tower_id": str(tower_id),
+            "period_end": period_end,
+            "tower_id": str(tower_id) if tower_id is not None else None,
+            "tower_id_input_mode": "explicit_debug_override"
+            if tower_id is not None
+            else "period_lookup",
             "floor": floor,
             "locale": locale,
         },
+        "nanoka": _nanoka_debug_metadata(data),
         "summary": _summary(data),
         "cache": cache_report,
         "source_data": asdict(data),
+    }
+
+
+def _resolved_nanoka_tower_id(nanoka_report: dict[str, Any] | None) -> str | None:
+    if not isinstance(nanoka_report, dict):
+        return None
+    towers = nanoka_report.get("towers")
+    if not isinstance(towers, list) or not towers:
+        return None
+    tower = towers[0]
+    if not isinstance(tower, dict):
+        return None
+    tower_id = tower.get("tower_id")
+    return str(tower_id) if tower_id not in (None, "") else None
+
+
+def _nanoka_debug_metadata(data: AbyssFloorSourceData) -> dict[str, Any]:
+    page_url = data.source_urls.get("nanoka_page_url")
+    resolved_tower_id = None
+    if page_url:
+        resolved_tower_id = page_url.rstrip("/").rsplit("/", 1)[-1]
+        if resolved_tower_id == "tower":
+            resolved_tower_id = None
+    return {
+        "resolved_tower_id": resolved_tower_id,
+        "source_urls": {
+            key: value
+            for key, value in data.source_urls.items()
+            if key.startswith("nanoka_")
+        },
     }
 
 
@@ -156,7 +208,14 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         )
     )
     parser.add_argument("--period-start", required=True, help="Abyss period start date YYYY-MM-DD.")
-    parser.add_argument("--tower-id", required=True, help="Nanoka tower id, for example 119.")
+    parser.add_argument(
+        "--tower-id",
+        help="Optional debug override for Nanoka's internal tower id, for example 119.",
+    )
+    parser.add_argument(
+        "--period-end",
+        help="Optional period end date YYYY-MM-DD for stricter Nanoka manifest lookup.",
+    )
     parser.add_argument("--floor", type=int, default=12, help="Floor to fetch. Default: 12.")
     parser.add_argument("--locale", default="en", help="Nanoka static JSON locale. Default: en.")
     parser.add_argument(
@@ -187,6 +246,7 @@ def main() -> int:
             tower_id=args.tower_id,
             floor=args.floor,
             locale=args.locale,
+            period_end=args.period_end,
             save_cache=args.save_cache,
             cache_dir=args.cache_dir,
         )

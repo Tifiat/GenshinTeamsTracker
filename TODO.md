@@ -176,8 +176,10 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   data with enemy rows, waves, chamber-side HP summaries, source URLs, match
   methods/confidence, and warnings. Live production-safe debug update entrypoint
   exists at `python -m run_workspace.abyss.source_data_update --period-start
-  YYYY-MM-DD --tower-id N --floor 12`; it fetches the Fandom period page and
-  Nanoka tower data only. Persistent cache boundary exists in
+  YYYY-MM-DD --floor 12`; it fetches the Fandom period page, resolves Nanoka's
+  internal tower id from the Nanoka manifest by period, then fetches Nanoka
+  tower detail data. `--tower-id N` remains an explicit debug override only.
+  Persistent cache boundary exists in
   `run_workspace/abyss/source_data_cache.py` and stores schema-v1
   `AbyssFloorSourceData` JSON under
   `data/cache/abyss/source_data/<period_start>/floor_<floor>.json`; the update

@@ -230,10 +230,14 @@ MVP recommendation:
   `run_workspace/abyss/source_data_fetchers.py` and
   `run_workspace/abyss/source_data_update.py` add the production-safe live debug
   update entrypoint:
-  `python -m run_workspace.abyss.source_data_update --period-start YYYY-MM-DD --tower-id N --floor 12`.
+  `python -m run_workspace.abyss.source_data_update --period-start YYYY-MM-DD --floor 12`.
+  Nanoka's internal tower id is resolved from the Nanoka tower manifest by
+  period start and stored only as source/debug metadata; `--tower-id N` remains
+  an explicit debug override.
   Production code does not import experiment scripts; the normal Nanoka path
-  fetches the Fandom period page and Nanoka tower data only, does not fetch
-  individual Fandom enemy pages, and does not run Fandom enemy-page fallback yet.
+  fetches the Fandom period page plus Nanoka manifest/detail data, does not
+  fetch individual Fandom enemy pages, and does not run Fandom enemy-page
+  fallback yet.
 - Persistent source-data cache boundary exists at
   `run_workspace/abyss/source_data_cache.py`. It saves/loads typed
   `AbyssFloorSourceData` as schema-v1 JSON under

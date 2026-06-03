@@ -209,6 +209,13 @@ MVP recommendation:
   `Battle-Scarred Rock Crab` selects the `Battle-Scarred` table with raw
   Lv.100 HP `1,175,752` (`4,409,070` at `3.75x`), while Nanoka reports
   `4,025,384`.
+- `tools/experiments/abyss/abyss_pipeline_batch_probe.py` is the experiment-only
+  batch review runner for explicit `DATE=TOWER_ID` cases. It runs Fandom
+  composition, the Nanoka primary join, and the Fandom enemy-page fallback
+  comparison in one process, then reports compact per-case/overall summaries,
+  known regression checks, unmatched/ambiguous rows, and notable fallback-vs-
+  Nanoka differences. It is for manual source validation only, not production
+  integration.
 - Future Fact DPS UI/settings may expose a toggle such as `count multi-target
   HP`. Default should be solo-target mode: for each wave, count only the
   highest-HP matched target once, because that is usually the more comparable

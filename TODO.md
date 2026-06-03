@@ -181,7 +181,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   tower detail data. `--tower-id N` remains an explicit debug override only.
   Persistent cache boundary exists in
   `run_workspace/abyss/source_data_cache.py` and stores schema-v1
-  `AbyssFloorSourceData` JSON under
+  `AbyssFloorSourceData` JSON under the project-root-anchored path
   `data/cache/abyss/source_data/<period_start>/floor_<floor>.json`; the update
   CLI writes it only with `--save-cache`. Monster icon asset caching is also
   backend-only there: `--save-cache` downloads icons by default into

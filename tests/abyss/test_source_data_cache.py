@@ -7,6 +7,7 @@ from pathlib import Path
 from run_workspace.abyss.source_data import load_abyss_floor12_source_data
 from run_workspace.abyss.source_data_cache import (
     AbyssSourceDataCacheError,
+    DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR,
     cache_abyss_floor_monster_icons,
     cached_abyss_floor_source_data_path,
     has_cached_abyss_floor_source_data,
@@ -28,6 +29,16 @@ def _current_style_source_data():
 
 
 class AbyssSourceDataCacheTest(unittest.TestCase):
+    def test_default_cache_path_is_project_root_anchored(self) -> None:
+        path = cached_abyss_floor_source_data_path("2026-05-16", floor=12)
+
+        self.assertTrue(DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR.is_absolute())
+        self.assertTrue(path.is_absolute())
+        self.assertEqual(
+            path,
+            DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR / "2026-05-16" / "floor_12.json",
+        )
+
     def test_save_load_roundtrip_preserves_source_data_shape(self) -> None:
         data = _current_style_source_data()
         with tempfile.TemporaryDirectory() as tmp:

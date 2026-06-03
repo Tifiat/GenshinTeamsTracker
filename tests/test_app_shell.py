@@ -74,6 +74,12 @@ from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
+from run_workspace.right_panel_prototype_view_model import (
+    RightPanelChamberRowViewModel,
+    RightPanelGcsimStatusViewModel,
+    RightPanelPrototypeViewModel,
+    RightPanelSelectedDetailsViewModel,
+)
 from run_workspace.models import AbyssTimerState
 from run_workspace.abyss.source_data import load_abyss_floor12_source_data
 from tests.abyss.test_source_data import (
@@ -91,6 +97,7 @@ from ui.right_panel_prototype import (
     ABYSS_TIMER_CELL_WIDTH,
     ABYSS_TIMER_FRAME_WIDTH,
     CompactAbyssTimerWidget,
+    RightPanelPrototypeWidget,
     RunModeTabsWidget,
 )
 
@@ -462,6 +469,45 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(first_model.chamber_rows[0].factual_team1, "-")
         self.assertEqual(second_model.chamber_rows[0].factual_team1, "10,000")
         self.assertEqual(provider.call_count, 2)
+
+    def test_right_panel_widget_renders_fact_dps_label_from_model(self) -> None:
+        model = RightPanelPrototypeViewModel(
+            mode=MODE_ABYSS,
+            mode_tabs=("Abyss", "DPS Dummy"),
+            teams=(),
+            selected_details=RightPanelSelectedDetailsViewModel(has_selection=False),
+            chamber_headers=(
+                "Ch.",
+                "T1",
+                "T2",
+                "Fact T1 DPS",
+                "Fact T2 DPS",
+                "Sim T1 DPS",
+                "Sim T2 DPS",
+            ),
+            chamber_rows=(
+                RightPanelChamberRowViewModel(
+                    chamber_label="C1",
+                    team1_time="09:00",
+                    team1_seconds=60,
+                    team2_time="09:00",
+                    team2_seconds=0,
+                    factual_team1="62,464",
+                    factual_team2="-",
+                    sim_team1="not run",
+                    sim_team2="not run",
+                    total_seconds=60,
+                    timer_editable=True,
+                ),
+            ),
+            total_seconds=60,
+            gcsim_status=RightPanelGcsimStatusViewModel(status="Idle"),
+        )
+
+        widget = RightPanelPrototypeWidget(model, show_mode_tabs=False)
+
+        self.assertEqual(widget._chamber_table._row_labels[(0, 3)].text(), "62,464")
+        self.assertEqual(widget._chamber_table._row_labels[(0, 4)].text(), "-")
 
     def test_chamber_timer_cell_signal_updates_app_shell_model(self) -> None:
         shell = AppShell()

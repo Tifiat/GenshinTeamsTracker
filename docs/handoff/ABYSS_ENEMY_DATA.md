@@ -240,7 +240,7 @@ MVP recommendation:
   fallback yet.
 - Persistent source-data cache boundary exists at
   `run_workspace/abyss/source_data_cache.py`. It saves/loads typed
-  `AbyssFloorSourceData` as schema-v1 JSON under
+  `AbyssFloorSourceData` as schema-v1 JSON under the project-root-anchored path
   `data/cache/abyss/source_data/<period_start>/floor_<floor>.json`, keyed by
   period start plus floor. The cache stores source URLs, match metadata,
   warnings, enemy rows, waves, and solo/multi HP summaries; it never fetches
@@ -270,6 +270,7 @@ MVP recommendation:
 - AppShell/right-panel Fact DPS now uses this local cache through
   `run_workspace/abyss/source_data_runtime.py`. The runtime provider reads the
   captured HoYoLAB period file, loads
+  the project-root-anchored
   `data/cache/abyss/source_data/<period_start>/floor_12.json`, and never fetches
   network data from the right panel. Displayed Fact DPS uses each side summary's
   `solo_target_hp` divided by the live Abyss timer elapsed seconds. Missing

@@ -28,7 +28,8 @@ from .source_data import (
 
 
 SCHEMA_VERSION = 1
-DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR = Path("data/cache/abyss/source_data")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR = PROJECT_ROOT / "data" / "cache" / "abyss" / "source_data"
 ICON_CACHE_USER_AGENT = "GenshinTeamsTracker-AbyssSourceDataIconCache/1.0"
 SUPPORTED_ICON_EXTENSIONS = {".avif", ".gif", ".jpg", ".jpeg", ".png", ".webp"}
 

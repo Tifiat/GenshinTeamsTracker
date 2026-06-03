@@ -427,6 +427,42 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(model.chamber_rows[0].factual_team2, "6,000")
         provider.assert_called_once_with(floor=12)
 
+    def test_app_shell_abyss_fact_dps_retries_after_initial_cache_miss(self) -> None:
+        source_data = load_abyss_floor12_source_data(
+            "2026-05-16",
+            "119",
+            composition_report=composition_report(
+                "2026-05-16",
+                [fandom_row("Enemy", chamber=1, side=1, wave=1, level=100)],
+            ),
+            nanoka_report=nanoka_report(
+                "119",
+                [
+                    nanoka_row(
+                        "Enemy",
+                        chamber=1,
+                        side=1,
+                        hp=500_000,
+                        monster_id="enemy",
+                        level=100,
+                    )
+                ],
+            ),
+        )
+        controller = AppShellController.empty()
+        controller.set_abyss_timer_seconds(0, 1, 550)
+
+        with patch(
+            "ui.app_shell.load_current_cached_abyss_floor_source_data",
+            side_effect=(None, source_data),
+        ) as provider:
+            first_model = controller.right_panel_model()
+            second_model = controller.right_panel_model()
+
+        self.assertEqual(first_model.chamber_rows[0].factual_team1, "-")
+        self.assertEqual(second_model.chamber_rows[0].factual_team1, "10,000")
+        self.assertEqual(provider.call_count, 2)
+
     def test_chamber_timer_cell_signal_updates_app_shell_model(self) -> None:
         shell = AppShell()
         timer_cell = shell.right_panel._chamber_table._timer_cells[(0, 1)]

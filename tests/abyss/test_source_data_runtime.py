@@ -75,6 +75,27 @@ class AbyssSourceDataRuntimeTest(unittest.TestCase):
         self.assertEqual(period.start_date, "2026-05-16")
         self.assertEqual(period.end_date, "2026-06-16")
 
+    def test_reads_cached_hoyolab_period_file_with_utf8_bom(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            period_path = Path(tmp) / "spiral_abyss_period.json"
+            period_path.write_text(
+                json.dumps(
+                    {
+                        "rawPeriod": "2026/05/16-2026/06/16",
+                        "startDate": "2026-05-16",
+                        "endDate": "2026-06-16",
+                    }
+                ),
+                encoding="utf-8-sig",
+            )
+
+            period = read_cached_hoyolab_abyss_period(period_path)
+
+        self.assertIsNotNone(period)
+        assert period is not None
+        self.assertEqual(period.start_date, "2026-05-16")
+        self.assertEqual(period.end_date, "2026-06-16")
+
     def test_loads_current_cached_source_data_by_period_and_floor(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

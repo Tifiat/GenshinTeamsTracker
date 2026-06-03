@@ -311,7 +311,7 @@ class AppShellController:
             self._cached_abyss_source_data = load_current_cached_abyss_floor_source_data(
                 floor=12,
             )
-            self._cached_abyss_source_data_loaded = True
+            self._cached_abyss_source_data_loaded = self._cached_abyss_source_data is not None
         return self._cached_abyss_source_data
 
     def invalidate_cached_abyss_source_data(self) -> None:

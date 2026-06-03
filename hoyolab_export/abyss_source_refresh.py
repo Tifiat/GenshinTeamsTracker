@@ -1,23 +1,45 @@
 from __future__ import annotations
 
+import argparse
+import asyncio
+import json
 import re
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Mapping
 from urllib.parse import urlencode
 
+from playwright.async_api import BrowserContext
+
+from run_workspace.abyss.source_data import AbyssFloorSourceData
+from run_workspace.abyss.source_data_cache import (
+    cached_abyss_floor_monster_icon_dir,
+    cached_abyss_floor_source_data_path,
+    load_cached_abyss_floor_source_data,
+)
 from run_workspace.abyss.source_data_update import build_update_report
 
+from .auth import AuthStatus, get_auth_status
 from .character_detail import ROLES_URL, browser_fetch_json, pick_genshin_role
+from .hoyolab_exporter import HOYOLAB_URL, HoyolabExporter, close_export_context
+from .paths import (
+    HOYOLAB_DATA_DIR,
+    HOYOLAB_DEBUG_DIR,
+    HOYOLAB_PROFILE_DIR,
+    ensure_hoyolab_dirs,
+)
 
 
 SPIRAL_ABYSS_URL = (
     "https://sg-public-api.hoyolab.com/event/game_record/genshin/api/spiralAbyss"
 )
+DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH = HOYOLAB_DATA_DIR / "spiral_abyss_period.json"
 
 _DATE_PATTERN = r"\d{4}[/-]\d{1,2}[/-]\d{1,2}"
 _NAMED_DATE_PATTERN = r"(?P<year>\d{4})[/-](?P<month>\d{1,2})[/-](?P<day>\d{1,2})"
 _PERIOD_PATTERN = re.compile(
-    rf"(?P<start>{_DATE_PATTERN})\s*(?:-|--|~|to|until|through|–|—)\s*"
+    rf"(?P<start>{_DATE_PATTERN})\s*(?:-|--|~|to|until|through)\s*"
     rf"(?P<end>{_DATE_PATTERN})",
     re.IGNORECASE,
 )
@@ -74,6 +96,8 @@ class AbyssSourceDataRefreshResult:
     ambiguous: int | None
     enemy_rows: int | None
     assets: Mapping[str, Any]
+    skipped: bool = False
+    skip_reason: str = ""
     warnings: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
@@ -82,6 +106,8 @@ class AbyssSourceDataRefreshResult:
             "floor": self.floor,
             "cacheSaved": self.cache_saved,
             "cachePath": self.cache_path,
+            "skipped": self.skipped,
+            "skipReason": self.skip_reason,
             "matched": self.matched,
             "unmatched": self.unmatched,
             "ambiguous": self.ambiguous,
@@ -164,17 +190,79 @@ async def fetch_hoyolab_spiral_abyss_period(
     return extract_hoyolab_abyss_period(payload)
 
 
+async def fetch_hoyolab_spiral_abyss_period_with_export_context(
+    *,
+    language: str | None = None,
+) -> HoYoLABAbyssPeriod:
+    """Open the normal HoYoLAB export context and fetch the official Abyss period."""
+
+    if get_auth_status(HOYOLAB_PROFILE_DIR) != AuthStatus.LOGGED_IN:
+        raise HoYoLABAbyssPeriodError(
+            "HoYoLAB profile is not logged in. Authorize in the app first."
+        )
+
+    exporter = HoyolabExporter(
+        profile_dir=HOYOLAB_PROFILE_DIR,
+        download_dir=HOYOLAB_DEBUG_DIR,
+        browser_window_width=1280,
+        browser_window_height=900,
+    )
+    context: BrowserContext | None = None
+    try:
+        context = await exporter._create_context()
+        page = await _get_export_page(context)
+        await page.goto(HOYOLAB_URL, wait_until="domcontentloaded", timeout=60_000)
+        return await fetch_hoyolab_spiral_abyss_period(page, language=language)
+    finally:
+        if context is not None:
+            await close_export_context(context)
+
+
+def write_hoyolab_abyss_period(
+    period: HoYoLABAbyssPeriod,
+    *,
+    period_path: str | Path | None = None,
+) -> Path:
+    """Write the period reference consumed by runtime cached source-data loaders."""
+
+    path = Path(period_path) if period_path is not None else DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH
+    ensure_hoyolab_dirs()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(period.to_dict(), ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    return path
+
+
 def update_cached_abyss_source_data_for_hoyolab_period(
     period: HoYoLABAbyssPeriod | str,
     *,
     floor: int = 12,
-    cache_dir: str | None = None,
+    cache_dir: str | Path | None = None,
     cache_assets: bool = True,
+    force: bool = False,
     update_report_builder: Callable[..., Mapping[str, Any]] | None = None,
 ) -> AbyssSourceDataRefreshResult:
     """Update Floor 12 source-data cache from an official HoYoLAB Abyss period."""
 
     parsed = _coerce_period(period)
+    if not force:
+        cached = _ready_cached_source_data(
+            parsed,
+            floor=floor,
+            cache_dir=cache_dir,
+            require_assets=cache_assets,
+        )
+        if cached is not None:
+            return _cached_refresh_result(
+                parsed,
+                cached,
+                floor=floor,
+                cache_dir=cache_dir,
+                cache_assets=cache_assets,
+            )
+
     builder = update_report_builder or build_update_report
     report = builder(
         period_start=parsed.start_date,
@@ -205,6 +293,8 @@ def update_cached_abyss_source_data_for_hoyolab_period(
         ambiguous=_optional_int(summary.get("ambiguous")) if isinstance(summary, Mapping) else None,
         enemy_rows=_optional_int(summary.get("enemy_rows")) if isinstance(summary, Mapping) else None,
         assets=dict(assets) if isinstance(assets, Mapping) else {},
+        skipped=False,
+        skip_reason="",
         warnings=tuple(warnings),
     )
 
@@ -213,8 +303,9 @@ def refresh_cached_abyss_source_data_for_hoyolab_period(
     period: HoYoLABAbyssPeriod | str | None,
     *,
     floor: int = 12,
-    cache_dir: str | None = None,
+    cache_dir: str | Path | None = None,
     cache_assets: bool = True,
+    force: bool = False,
     updater: RefreshUpdateCallable = update_cached_abyss_source_data_for_hoyolab_period,
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Best-effort import integration wrapper: never raises for cache refresh."""
@@ -227,16 +318,112 @@ def refresh_cached_abyss_source_data_for_hoyolab_period(
             floor=floor,
             cache_dir=cache_dir,
             cache_assets=cache_assets,
+            force=force,
         )
     except Exception as exc:
         return None, _compact_exception_summary(exc)
     return result.to_dict(), None
 
 
+async def _get_export_page(context: BrowserContext):
+    for page in context.pages:
+        if not page.is_closed():
+            return page
+    return await context.new_page()
+
+
 def _coerce_period(period: HoYoLABAbyssPeriod | str) -> HoYoLABAbyssPeriod:
     if isinstance(period, HoYoLABAbyssPeriod):
         return period
     return parse_hoyolab_abyss_period(str(period))
+
+
+def _ready_cached_source_data(
+    period: HoYoLABAbyssPeriod,
+    *,
+    floor: int,
+    cache_dir: str | Path | None,
+    require_assets: bool,
+) -> AbyssFloorSourceData | None:
+    try:
+        data = load_cached_abyss_floor_source_data(
+            period.start_date,
+            floor=floor,
+            cache_dir=cache_dir,
+        )
+    except Exception:
+        return None
+    if data is None:
+        return None
+    if require_assets and not _cached_assets_ready(data, cache_dir=cache_dir):
+        return None
+    return data
+
+
+def _cached_assets_ready(
+    data: AbyssFloorSourceData,
+    *,
+    cache_dir: str | Path | None,
+) -> bool:
+    if not data.enemy_rows:
+        return False
+    icon_dir = cached_abyss_floor_monster_icon_dir(
+        data.period.start_date,
+        data.floor,
+        cache_dir=cache_dir,
+    )
+    if not icon_dir.is_dir():
+        return False
+    for row in data.enemy_rows:
+        if not row.cached_icon_path:
+            return False
+        if not Path(row.cached_icon_path).is_file():
+            return False
+    return True
+
+
+def _cached_refresh_result(
+    period: HoYoLABAbyssPeriod,
+    data: AbyssFloorSourceData,
+    *,
+    floor: int,
+    cache_dir: str | Path | None,
+    cache_assets: bool,
+) -> AbyssSourceDataRefreshResult:
+    path = cached_abyss_floor_source_data_path(
+        period.start_date,
+        floor=floor,
+        cache_dir=cache_dir,
+    )
+    assets: dict[str, Any] = {"enabled": bool(cache_assets), "skipped": True}
+    if cache_assets:
+        assets["cache_dir"] = str(
+            cached_abyss_floor_monster_icon_dir(
+                period.start_date,
+                floor=floor,
+                cache_dir=cache_dir,
+            )
+        )
+        assets["saved"] = sum(1 for row in data.enemy_rows if row.cached_icon_path)
+        assets["failed"] = sum(1 for row in data.enemy_rows if not row.cached_icon_path)
+    return AbyssSourceDataRefreshResult(
+        period=period,
+        floor=int(floor),
+        cache_saved=False,
+        cache_path=str(path),
+        matched=data.matched_count,
+        unmatched=data.unmatched_count,
+        ambiguous=data.ambiguous_count,
+        enemy_rows=len(data.enemy_rows),
+        assets=assets,
+        skipped=True,
+        skip_reason=(
+            "same_period_cache_and_assets_ready"
+            if cache_assets
+            else "same_period_cache_ready"
+        ),
+        warnings=tuple(data.global_warnings),
+    )
 
 
 def _period_from_mapping(
@@ -311,3 +498,97 @@ def _compact_exception_summary(exc: BaseException) -> str:
     if len(text) > 600:
         text = text[:600] + "..."
     return text or type(exc).__name__
+
+
+async def _run_cli(args: argparse.Namespace) -> dict[str, Any]:
+    period = await fetch_hoyolab_spiral_abyss_period_with_export_context(
+        language=args.language,
+    )
+    report: dict[str, Any] = {
+        "period": period.to_dict(),
+        "periodPath": None,
+        "sourceData": None,
+    }
+    if args.write_period:
+        report["periodPath"] = str(write_hoyolab_abyss_period(period))
+    if args.update_cache:
+        summary, error = refresh_cached_abyss_source_data_for_hoyolab_period(
+            period,
+            floor=args.floor,
+            cache_assets=not args.skip_assets,
+            force=args.force,
+        )
+        report["sourceData"] = summary
+        report["sourceDataError"] = error
+    return report
+
+
+def _text_report(report: Mapping[str, Any]) -> str:
+    period = report.get("period") if isinstance(report, Mapping) else {}
+    if not isinstance(period, Mapping):
+        period = {}
+    lines = [
+        "HoYoLAB Abyss source refresh",
+        (
+            f"period={period.get('rawPeriod')} "
+            f"start={period.get('startDate')} end={period.get('endDate')}"
+        ),
+    ]
+    if report.get("periodPath"):
+        lines.append(f"period_path={report.get('periodPath')}")
+    source_data = report.get("sourceData")
+    if isinstance(source_data, Mapping):
+        lines.append(
+            "source_data="
+            f"rows={source_data.get('enemyRows')} "
+            f"matched={source_data.get('matched')} "
+            f"cache={source_data.get('cachePath')} "
+            f"skipped={source_data.get('skipped')}"
+        )
+    if report.get("sourceDataError"):
+        lines.append(f"source_data_warning={report.get('sourceDataError')}")
+    return "\n".join(lines)
+
+
+def _build_argument_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Fetch the official HoYoLAB Spiral Abyss period and optionally "
+            "refresh the local Floor 12 source-data cache."
+        )
+    )
+    parser.add_argument("--write-period", action="store_true", help="Write data/hoyolab/spiral_abyss_period.json.")
+    parser.add_argument("--update-cache", action="store_true", help="Refresh or reuse cached Floor 12 source data.")
+    parser.add_argument("--force", action="store_true", help="Force source-data refresh even when the same-period cache/assets are ready.")
+    parser.add_argument("--skip-assets", action="store_true", help="With --update-cache, skip monster icon asset caching.")
+    parser.add_argument("--floor", type=int, default=12, help="Abyss floor to update. Default: 12.")
+    parser.add_argument("--language", help="Optional HoYoLAB language override.")
+    parser.add_argument("--format", choices=("json", "text"), default="json")
+    parser.add_argument("--indent", type=int, default=2)
+    return parser
+
+
+def main() -> int:
+    parser = _build_argument_parser()
+    args = parser.parse_args()
+    try:
+        report = asyncio.run(_run_cli(args))
+    except Exception as exc:
+        print(
+            json.dumps(
+                {"error": _compact_exception_summary(exc)},
+                ensure_ascii=False,
+                indent=args.indent,
+            ),
+            file=sys.stderr,
+        )
+        return 1
+    if args.format == "text":
+        print(_text_report(report))
+    else:
+        print(json.dumps(report, ensure_ascii=False, indent=args.indent))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

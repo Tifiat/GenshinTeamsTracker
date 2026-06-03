@@ -4,12 +4,22 @@ import unittest
 from unittest.mock import patch
 
 from hoyolab_export.import_pipeline import (
+    DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH,
     sync_account_storage_for_import,
     sync_static_reference_catalogs_for_import,
+)
+from run_workspace.abyss.source_data_runtime import (
+    DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH as RUNTIME_HOYOLAB_ABYSS_PERIOD_PATH,
 )
 
 
 class ImportPipelineAccountStorageTest(unittest.TestCase):
+    def test_import_pipeline_uses_runtime_abyss_period_path(self) -> None:
+        self.assertEqual(
+            DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH,
+            RUNTIME_HOYOLAB_ABYSS_PERIOD_PATH,
+        )
+
     def test_account_storage_sync_downloads_side_icons_by_default(self) -> None:
         class FakeSummary:
             def to_dict(self) -> dict[str, object]:

@@ -12,9 +12,11 @@ from .artifact_db import ARTIFACT_DB_PATH, connect_db
 from .artifact_importer import import_character_details_payload
 from .account_storage import sync_account_storage_from_local_files
 from .abyss_source_refresh import (
+    DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH,
     HoYoLABAbyssPeriod,
     fetch_hoyolab_spiral_abyss_period,
     refresh_cached_abyss_source_data_for_hoyolab_period,
+    write_hoyolab_abyss_period,
 )
 from .artifact_set_catalog import (
     ensure_artifact_set_catalog,
@@ -368,7 +370,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
     weapons_path = HOYOLAB_DATA_DIR / "account_weapons.json"
     character_details_path = HOYOLAB_DATA_DIR / "account_character_details.json"
     account_language_path = HOYOLAB_DATA_DIR / "account_language.json"
-    abyss_period_path = HOYOLAB_DATA_DIR / "spiral_abyss_period.json"
+    abyss_period_path = DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH
     overlay_path = HOYOLAB_DEBUG_DIR / "crop_manifest_overlay.png"
     page_screenshot_path = HOYOLAB_DEBUG_DIR / "page_screenshot.png"
     import_log_path = HOYOLAB_DEBUG_DIR / "import_log.json"
@@ -467,7 +469,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
                 export_page,
                 language=content_language,
             )
-            write_json(abyss_period_path, abyss_period.to_dict())
+            write_hoyolab_abyss_period(abyss_period, period_path=abyss_period_path)
             print(
                 "[HoYoLAB Import] Spiral Abyss period:",
                 abyss_period.raw_period,
@@ -626,6 +628,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
                     f"rows={abyss_source_data_summary.get('enemyRows')}",
                     f"matched={abyss_source_data_summary.get('matched')}",
                     f"path={abyss_source_data_summary.get('cachePath')}",
+                    f"skipped={abyss_source_data_summary.get('skipped')}",
                 )
         elif abyss_period_error:
             abyss_source_data_error = (
@@ -719,6 +722,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
                     f"period={abyss_source_data_summary.get('period', {}).get('rawPeriod')}",
                     f"rows={abyss_source_data_summary.get('enemyRows')}",
                     f"matched={abyss_source_data_summary.get('matched')}",
+                    f"skipped={abyss_source_data_summary.get('skipped')}",
                 )
             elif abyss_source_data_error:
                 print(

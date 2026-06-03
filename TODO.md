@@ -193,13 +193,17 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   HoYoLAB overview when available, stores it at
   `data/hoyolab/spiral_abyss_period.json`, and best-effort refreshes this
   period/floor source-data cache after a successful import. This refresh is
-  non-fatal; existing caches stay untouched on source update failure. Right
-  panel Fact DPS now reads this local cache via
+  non-fatal; existing caches stay untouched on source update failure. Manual
+  backend/debug command:
+  `python -m hoyolab_export.abyss_source_refresh --write-period --update-cache`;
+  it skips same-period ready cache/assets by default and has `--force` for an
+  explicit refresh. Right panel Fact DPS now reads this local cache via
   `run_workspace/abyss/source_data_runtime.py`, never fetches network data from
   the right panel, and uses `solo_target_hp` as the default displayed HP mode.
   Missing period/cache/HP leaves Fact DPS unavailable instead of falling back to
-  the invalid static fixture. Tooltip/source breakdown and a multi-target HP
-  toggle remain future work.
+  the invalid static fixture; missing cache is not permanently memoized in
+  AppShell. Tooltip/source breakdown and a multi-target HP toggle remain future
+  work.
 - Need future AbyssSeason / room / chamber / wave / enemy model on top of this
   source-data boundary.
 - For each Abyss chamber/side, data should ideally support enemies, waves, enemy HP, total HP, resistances, immunities, special states, invulnerability/phases where available, and icons.

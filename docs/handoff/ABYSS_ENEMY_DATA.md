@@ -255,6 +255,13 @@ MVP recommendation:
   icon URL fallback. Missing/failed icons add warnings but keep source data
   usable. `--skip-assets` keeps the update as JSON-only. Future tooltip UI
   should use these local cached icons instead of live image URLs.
+- Normal HoYoLAB import now best-effort refreshes this Floor 12 source-data
+  cache when the official HoYoLAB Spiral Abyss overview exposes a period such
+  as `YYYY/MM/DD-YYYY/MM/DD`. The import stores the captured period at
+  `data/hoyolab/spiral_abyss_period.json`, then updates the period/floor cache
+  through `run_workspace.abyss.source_data_update` with icon caching enabled.
+  Missing HoYoLAB period data or Fandom/Nanoka/cache update failures are
+  non-fatal import warnings and must not delete existing source-data caches.
 - Future Fact DPS UI/settings may expose a toggle such as `count multi-target
   HP`. Default should be solo-target mode: for each wave, count only the
   highest-HP matched target once, because that is usually the more comparable

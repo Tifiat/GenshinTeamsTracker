@@ -188,8 +188,13 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `data/cache/abyss/source_data/<period_start>/floor_<floor>_assets/monster_icons/`
   using Nanoka icon URLs first and Fandom composition icon URLs as fallback,
   then stores `cached_icon_path` on rows for future tooltip UI. It does not
-  wire UI, replace the current fixture, integrate Account/Data import, or run
-  Fandom enemy-page fallback yet.
+  wire UI, replace the current fixture, or run Fandom enemy-page fallback yet.
+  Normal HoYoLAB import now captures the official Spiral Abyss period from
+  HoYoLAB overview when available, stores it at
+  `data/hoyolab/spiral_abyss_period.json`, and best-effort refreshes this
+  period/floor source-data cache after a successful import. This refresh is
+  non-fatal; existing caches stay untouched on source update failure. Right
+  panel/runtime usage remains future.
 - Need future AbyssSeason / room / chamber / wave / enemy model on top of this
   source-data boundary.
 - For each Abyss chamber/side, data should ideally support enemies, waves, enemy HP, total HP, resistances, immunities, special states, invulnerability/phases where available, and icons.

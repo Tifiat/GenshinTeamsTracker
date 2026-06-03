@@ -11,6 +11,11 @@ from .auth import AuthStatus, get_auth_status
 from .artifact_db import ARTIFACT_DB_PATH, connect_db
 from .artifact_importer import import_character_details_payload
 from .account_storage import sync_account_storage_from_local_files
+from .abyss_source_refresh import (
+    HoYoLABAbyssPeriod,
+    fetch_hoyolab_spiral_abyss_period,
+    refresh_cached_abyss_source_data_for_hoyolab_period,
+)
 from .artifact_set_catalog import (
     ensure_artifact_set_catalog,
     ensure_artifact_set_bonus_descriptions,
@@ -272,6 +277,11 @@ def build_import_log(
     account_storage_error: str | None = None,
     static_catalog_summary: dict[str, Any] | None = None,
     static_catalog_error: str | None = None,
+    abyss_period_path: Path | None = None,
+    abyss_period: dict[str, Any] | None = None,
+    abyss_period_error: str | None = None,
+    abyss_source_data_summary: dict[str, Any] | None = None,
+    abyss_source_data_error: str | None = None,
     started_at: float,
 ) -> dict[str, Any]:
     return {
@@ -303,6 +313,11 @@ def build_import_log(
         "accountStorageError": account_storage_error,
         "staticCatalogs": static_catalog_summary,
         "staticCatalogError": static_catalog_error,
+        "abyssPeriod": abyss_period,
+        "abyssPeriodPath": abyss_period_path.as_posix() if abyss_period_path else None,
+        "abyssPeriodError": abyss_period_error,
+        "abyssSourceData": abyss_source_data_summary,
+        "abyssSourceDataError": abyss_source_data_error,
     }
 
 
@@ -353,6 +368,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
     weapons_path = HOYOLAB_DATA_DIR / "account_weapons.json"
     character_details_path = HOYOLAB_DATA_DIR / "account_character_details.json"
     account_language_path = HOYOLAB_DATA_DIR / "account_language.json"
+    abyss_period_path = HOYOLAB_DATA_DIR / "spiral_abyss_period.json"
     overlay_path = HOYOLAB_DEBUG_DIR / "crop_manifest_overlay.png"
     page_screenshot_path = HOYOLAB_DEBUG_DIR / "page_screenshot.png"
     import_log_path = HOYOLAB_DEBUG_DIR / "import_log.json"
@@ -363,6 +379,10 @@ async def run_hoyolab_import() -> dict[str, Any]:
     account_storage_error: str | None = None
     static_catalog_summary: dict[str, Any] | None = None
     static_catalog_error: str | None = None
+    abyss_period: HoYoLABAbyssPeriod | None = None
+    abyss_period_error: str | None = None
+    abyss_source_data_summary: dict[str, Any] | None = None
+    abyss_source_data_error: str | None = None
 
     try:
         context = await exporter._create_context()
@@ -441,6 +461,24 @@ async def run_hoyolab_import() -> dict[str, Any]:
 
         content_language = normalize_language(character_details.get("detectedLanguage"))
         print(f"[HoYoLAB Import] HoYoLAB content language: {content_language}")
+        try:
+            print("[HoYoLAB Import] Fetching official Spiral Abyss period...")
+            abyss_period = await fetch_hoyolab_spiral_abyss_period(
+                export_page,
+                language=content_language,
+            )
+            write_json(abyss_period_path, abyss_period.to_dict())
+            print(
+                "[HoYoLAB Import] Spiral Abyss period:",
+                abyss_period.raw_period,
+                f"({abyss_period.start_date} -> {abyss_period.end_date})",
+            )
+        except Exception as exc:
+            abyss_period_error = compact_exception_summary(exc)
+            print(
+                "[HoYoLAB Import] Spiral Abyss period warning:",
+                abyss_period_error,
+            )
         print_status("updating_artifact_catalog")
         static_catalog_summary, static_catalog_error = sync_static_reference_catalogs_for_import(
             content_language,
@@ -566,6 +604,34 @@ async def run_hoyolab_import() -> dict[str, Any]:
                 f"warnings={len(warnings)}",
             )
 
+        if abyss_period is not None:
+            print(
+                "[HoYoLAB Import] Updating Abyss Floor 12 source-data cache:",
+                abyss_period.raw_period,
+            )
+            abyss_source_data_summary, abyss_source_data_error = (
+                refresh_cached_abyss_source_data_for_hoyolab_period(
+                    abyss_period,
+                    floor=12,
+                )
+            )
+            if abyss_source_data_error:
+                print(
+                    "[HoYoLAB Import] Abyss source-data cache warning:",
+                    abyss_source_data_error,
+                )
+            elif abyss_source_data_summary:
+                print(
+                    "[HoYoLAB Import] Abyss source-data cache:",
+                    f"rows={abyss_source_data_summary.get('enemyRows')}",
+                    f"matched={abyss_source_data_summary.get('matched')}",
+                    f"path={abyss_source_data_summary.get('cachePath')}",
+                )
+        elif abyss_period_error:
+            abyss_source_data_error = (
+                "official_abyss_period_unavailable: " + abyss_period_error
+            )
+
         print_status("writing_import_log")
         log = build_import_log(
             image_path=image_path,
@@ -581,6 +647,11 @@ async def run_hoyolab_import() -> dict[str, Any]:
             account_storage_error=account_storage_error,
             static_catalog_summary=static_catalog_summary,
             static_catalog_error=static_catalog_error,
+            abyss_period_path=abyss_period_path if abyss_period is not None else None,
+            abyss_period=abyss_period.to_dict() if abyss_period is not None else None,
+            abyss_period_error=abyss_period_error,
+            abyss_source_data_summary=abyss_source_data_summary,
+            abyss_source_data_error=abyss_source_data_error,
             started_at=started_at,
         )
         write_json(import_log_path, log)
@@ -597,6 +668,11 @@ async def run_hoyolab_import() -> dict[str, Any]:
             "artifactSummary": artifact_summary,
             "accountStorageSummary": account_storage_summary,
             "accountStorageError": account_storage_error,
+            "abyssPeriodPath": abyss_period_path if abyss_period is not None else None,
+            "abyssPeriod": abyss_period.to_dict() if abyss_period is not None else None,
+            "abyssPeriodError": abyss_period_error,
+            "abyssSourceDataSummary": abyss_source_data_summary,
+            "abyssSourceDataError": abyss_source_data_error,
         }
         return result
 
@@ -636,4 +712,16 @@ async def run_hoyolab_import() -> dict[str, Any]:
                 print(
                     "[HoYoLAB Import] Account SQLite warning:",
                     account_storage_error,
+                )
+            if abyss_source_data_summary:
+                print(
+                    "[HoYoLAB Import] Abyss source-data cache:",
+                    f"period={abyss_source_data_summary.get('period', {}).get('rawPeriod')}",
+                    f"rows={abyss_source_data_summary.get('enemyRows')}",
+                    f"matched={abyss_source_data_summary.get('matched')}",
+                )
+            elif abyss_source_data_error:
+                print(
+                    "[HoYoLAB Import] Abyss source-data warning:",
+                    abyss_source_data_error,
                 )

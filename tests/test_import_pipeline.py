@@ -38,10 +38,19 @@ class ImportPipelineAccountStorageTest(unittest.TestCase):
 
 class ImportPipelineStaticCatalogTest(unittest.TestCase):
     def test_static_catalog_sync_refreshes_artifact_sets_and_traits(self) -> None:
+        class FakeTraitEntry:
+            traits = ("moonsign",)
+            source_character_entry_page_id = "10000001"
+            name = "Test Character"
+            icon_url = ""
+            source_entry_page_id = "source"
+            source_language = "en-us"
+
         class FakeTraitCatalog:
             source = "hoyowiki_team_bonus_entry"
-            entries = (object(), object())
+            entries = (FakeTraitEntry(), FakeTraitEntry())
             fetched_at = "now"
+            language = "en-us"
 
         with patch(
             "hoyolab_export.import_pipeline.ensure_artifact_set_catalog",

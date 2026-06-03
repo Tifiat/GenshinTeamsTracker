@@ -56,6 +56,11 @@ Confirmed:
   and its HP values match an independent HoYoLAB guide sanity-check with the
   current `3.75x` multiplier. The experiment found stable SvelteKit/static JSON
   routes under `static.nanoka.cc`.
+- Experiment probes now live under `tools/experiments/abyss/`. The Nanoka probe
+  discovers static tower JSON for active/explicit/history ids. The Fandom
+  composition probe parses MediaWiki-rendered HTML card containers and validates
+  the 2026-02-16 Floor 12 Chamber 1 First Half regression as five sequential
+  `Fisher of Hidden Depths` waves with count `3` each.
 - The old 2026-05-16 HP fixture proved that the UI can consume HP and calculate
   `HP / elapsed_seconds`, but its GCSIM/AnimeGameData-derived HP values are known
   invalid for at least some enemies. Do not use that fixture as factual HP.
@@ -178,13 +183,10 @@ MVP recommendation:
     sequence.
   - Keep any custom GCSIM extension isolated from the vanilla engine so engine
     updates or unmerged upstream pull requests do not overwrite it.
-- Next parser/debug task should live under an experiments/debug area first, not
-  production UI. It should print JSON for:
-  - HoYoLAB/Fandom period matching;
-  - Fandom current and historical period composition;
-  - Nanoka active/live tower and explicit tower ids;
-  - joined composition+HP rows with source paths;
-  - regression checks such as 2026-02-16 Floor 12 Chamber 1 First Half.
+- Next parser/debug join step should stay experiment-only first, not production
+  UI. It should combine Fandom composition rows with Nanoka resolved HP rows for
+  the same matched period/tower, keep both source paths, and preserve warnings
+  when name/count/wave or HP matching is ambiguous.
 - Mark HP totals with explicit source/confidence: `nanoka_resolved_hp`,
   `fandom_enemy_page_fallback`, `source_estimate`, or `unavailable`.
 - Prefer Nanoka resolved HP when available. If not, allow a lower-confidence

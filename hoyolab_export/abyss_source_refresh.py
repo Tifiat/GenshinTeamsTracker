@@ -6,6 +6,7 @@ import json
 import re
 import sys
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Mapping
 from urllib.parse import urlencode
@@ -21,7 +22,7 @@ from run_workspace.abyss.source_data_cache import (
 from run_workspace.abyss.source_data_update import build_update_report
 
 from .auth import AuthStatus, get_auth_status
-from .character_detail import ROLES_URL, browser_fetch_json, pick_genshin_role
+from .character_detail import ROLES_URL, pick_genshin_role
 from .hoyolab_exporter import HOYOLAB_URL, HoyolabExporter, close_export_context
 from .paths import (
     HOYOLAB_DATA_DIR,
@@ -35,6 +36,7 @@ SPIRAL_ABYSS_URL = (
     "https://sg-public-api.hoyolab.com/event/game_record/genshin/api/spiralAbyss"
 )
 DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH = HOYOLAB_DATA_DIR / "spiral_abyss_period.json"
+DEFAULT_HOYOLAB_REQUEST_LANGUAGE = "en-us"
 
 _DATE_PATTERN = r"\d{4}[/-]\d{1,2}[/-]\d{1,2}"
 _NAMED_DATE_PATTERN = r"(?P<year>\d{4})[/-](?P<month>\d{1,2})[/-](?P<day>\d{1,2})"
@@ -166,8 +168,20 @@ async def fetch_hoyolab_spiral_abyss_period(
 ) -> HoYoLABAbyssPeriod:
     """Fetch the official Spiral Abyss period through the logged-in HoYoLAB page."""
 
-    roles_result = await browser_fetch_json(page, ROLES_URL, language=language)
-    role_id, server = pick_genshin_role(roles_result.get("json") or {})
+    roles_result = await context_request_fetch_json(page, ROLES_URL, language=language)
+    roles_payload = roles_result.get("json") or {}
+    _raise_for_hoyolab_api_error(
+        roles_payload,
+        response=roles_result,
+        label="HoYoLAB roles",
+    )
+    try:
+        role_id, server = pick_genshin_role(roles_payload)
+    except RuntimeError as exc:
+        raise HoYoLABAbyssPeriodError(
+            "Could not detect Genshin role_id/server from HoYoLAB roles response. "
+            "HoYoLAB auth may be missing or expired."
+        ) from exc
     query = urlencode(
         {
             "server": server,
@@ -175,19 +189,68 @@ async def fetch_hoyolab_spiral_abyss_period(
             "schedule_type": int(schedule_type),
         }
     )
-    response = await browser_fetch_json(
+    response = await context_request_fetch_json(
         page,
         f"{SPIRAL_ABYSS_URL}?{query}",
         language=language,
     )
     payload = response.get("json") or {}
-    retcode = payload.get("retcode")
-    if retcode not in (None, 0):
-        message = payload.get("message") or payload.get("msg") or "unknown error"
-        raise HoYoLABAbyssPeriodError(
-            f"HoYoLAB Spiral Abyss overview failed: retcode={retcode} message={message}"
-        )
+    _raise_for_hoyolab_api_error(
+        payload,
+        response=response,
+        label="HoYoLAB Spiral Abyss overview",
+    )
     return extract_hoyolab_abyss_period(payload)
+
+
+async def context_request_fetch_json(
+    page: Any,
+    url: str,
+    *,
+    method: str = "GET",
+    body: dict[str, Any] | None = None,
+    language: str | None = None,
+) -> dict[str, Any]:
+    """Fetch HoYoLAB JSON through BrowserContext.request, not page.evaluate."""
+
+    context = getattr(page, "context", None)
+    request = getattr(context, "request", None)
+    if request is None:
+        raise HoYoLABAbyssPeriodError(
+            "HoYoLAB browser context does not expose Playwright request API."
+        )
+    detected_language = await _detect_hoyolab_request_language(page, language=language)
+    headers = {
+        "content-type": "application/json",
+        "accept": "application/json, text/plain, */*",
+        "x-rpc-language": detected_language,
+        "accept-language": _accept_language_header(detected_language),
+        "origin": "https://act.hoyolab.com",
+        "referer": HOYOLAB_URL,
+    }
+    normalized_method = str(method or "GET").upper()
+    if normalized_method == "GET":
+        response = await request.get(url, headers=headers)
+    elif normalized_method == "POST":
+        response = await request.post(url, headers=headers, data=json.dumps(body or {}))
+    else:
+        raise HoYoLABAbyssPeriodError(f"Unsupported HoYoLAB request method: {method!r}")
+    text = await response.text()
+    parsed_json = None
+    try:
+        parsed_json = json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    return {
+        "ok": 200 <= int(getattr(response, "status", 0)) < 300,
+        "status": int(getattr(response, "status", 0)),
+        "statusText": str(getattr(response, "status_text", "")),
+        "url": str(getattr(response, "url", url)),
+        "detectedLanguage": detected_language,
+        "requestedLanguage": _normalize_hoyolab_language(language),
+        "json": parsed_json,
+        "textPreview": text[:1000] if parsed_json is None else None,
+    }
 
 
 async def fetch_hoyolab_spiral_abyss_period_with_export_context(
@@ -332,6 +395,67 @@ async def _get_export_page(context: BrowserContext):
     return await context.new_page()
 
 
+async def _detect_hoyolab_request_language(
+    page: Any,
+    *,
+    language: str | None,
+) -> str:
+    requested = _normalize_hoyolab_language(language)
+    if requested:
+        return requested
+    context = getattr(page, "context", None)
+    cookies = []
+    if context is not None and hasattr(context, "cookies"):
+        try:
+            cookies = await context.cookies()
+        except Exception:
+            cookies = []
+    for cookie in cookies:
+        if not isinstance(cookie, Mapping):
+            continue
+        if cookie.get("name") == "mi18nLang":
+            cookie_language = _normalize_hoyolab_language(cookie.get("value"))
+            if cookie_language:
+                return cookie_language
+    return DEFAULT_HOYOLAB_REQUEST_LANGUAGE
+
+
+def _normalize_hoyolab_language(value: Any) -> str:
+    if not value:
+        return ""
+    return str(value).strip().replace("_", "-").lower()
+
+
+def _accept_language_header(language: str) -> str:
+    normalized = _normalize_hoyolab_language(language)
+    if not normalized:
+        return "en-US,en;q=0.9"
+    parts = normalized.split("-", 1)
+    primary = parts[0] or "en"
+    region = parts[1] if len(parts) > 1 else primary
+    browser_language = f"{primary}-{region.upper()}"
+    return f"{browser_language},{primary};q=0.9,en;q=0.8"
+
+
+def _raise_for_hoyolab_api_error(
+    payload: Mapping[str, Any],
+    *,
+    response: Mapping[str, Any],
+    label: str,
+) -> None:
+    if not response.get("ok"):
+        raise HoYoLABAbyssPeriodError(
+            f"{label} request failed: HTTP {response.get('status')} "
+            f"{response.get('statusText') or ''}".strip()
+        )
+    retcode = payload.get("retcode")
+    if retcode not in (None, 0):
+        message = payload.get("message") or payload.get("msg") or "unknown error"
+        raise HoYoLABAbyssPeriodError(
+            f"{label} failed: retcode={retcode} message={message}"
+        )
+
+
 def _coerce_period(period: HoYoLABAbyssPeriod | str) -> HoYoLABAbyssPeriod:
     if isinstance(period, HoYoLABAbyssPeriod):
         return period
@@ -465,12 +589,30 @@ def _walk_payload(value: Any, path: str = "$") -> list[tuple[str, Any]]:
 
 
 def _extract_single_date(value: Any) -> str | None:
+    if isinstance(value, (int, float)):
+        return _date_from_epoch_seconds(value)
     if not isinstance(value, str):
         return None
     match = _SINGLE_DATE_PATTERN.search(value)
-    if not match:
+    if match:
+        return _normalize_date(match.group(0))
+    stripped = value.strip()
+    if re.fullmatch(r"\d{10,13}", stripped):
+        try:
+            return _date_from_epoch_seconds(float(stripped))
+        except ValueError:
+            return None
+    return None
+
+
+def _date_from_epoch_seconds(value: int | float) -> str | None:
+    timestamp = float(value)
+    if timestamp > 10_000_000_000:
+        timestamp /= 1000
+    try:
+        return datetime.fromtimestamp(timestamp).date().isoformat()
+    except (OSError, OverflowError, ValueError):
         return None
-    return _normalize_date(match.group(0))
 
 
 def _normalize_date(value: str) -> str:

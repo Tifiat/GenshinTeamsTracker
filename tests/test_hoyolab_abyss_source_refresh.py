@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -8,7 +10,9 @@ from unittest.mock import patch
 from hoyolab_export.abyss_source_refresh import (
     AbyssSourceDataRefreshResult,
     DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH,
+    HoYoLABAbyssPeriodError,
     HoYoLABAbyssPeriod,
+    fetch_hoyolab_spiral_abyss_period,
     extract_hoyolab_abyss_period,
     parse_hoyolab_abyss_period,
     refresh_cached_abyss_source_data_for_hoyolab_period,
@@ -30,6 +34,54 @@ from tests.abyss.test_source_data import (
     nanoka_report,
     nanoka_row,
 )
+
+
+class _FakeAPIResponse:
+    def __init__(self, url: str, payload: dict[str, object], *, status: int = 200) -> None:
+        self.url = url
+        self.status = status
+        self.status_text = "OK" if status == 200 else "Error"
+        self._payload = payload
+
+    async def text(self) -> str:
+        return json.dumps(self._payload)
+
+
+class _FakeRequest:
+    def __init__(self, payloads: list[dict[str, object]]) -> None:
+        self._payloads = list(payloads)
+        self.calls: list[dict[str, object]] = []
+
+    async def get(self, url: str, *, headers: dict[str, str] | None = None):
+        self.calls.append({"method": "GET", "url": url, "headers": headers or {}})
+        payload = self._payloads.pop(0)
+        return _FakeAPIResponse(url, payload)
+
+    async def post(self, url: str, *, headers: dict[str, str] | None = None, data: str = ""):
+        self.calls.append(
+            {"method": "POST", "url": url, "headers": headers or {}, "data": data}
+        )
+        payload = self._payloads.pop(0)
+        return _FakeAPIResponse(url, payload)
+
+
+class _FakeContext:
+    def __init__(self, request: _FakeRequest) -> None:
+        self.request = request
+
+    async def cookies(self):
+        return [{"name": "mi18nLang", "value": "ru-ru"}]
+
+
+class _FakePage:
+    def __init__(self, payloads: list[dict[str, object]]) -> None:
+        self.request = _FakeRequest(payloads)
+        self.context = _FakeContext(self.request)
+        self.evaluate_calls = 0
+
+    async def evaluate(self, *_args, **_kwargs):
+        self.evaluate_calls += 1
+        raise AssertionError("page.evaluate should not be used for Abyss period fetch")
 
 
 class HoYoLABAbyssPeriodParsingTest(unittest.TestCase):
@@ -73,8 +125,115 @@ class HoYoLABAbyssPeriodParsingTest(unittest.TestCase):
         self.assertEqual(period.end_date, "2026-06-16")
         self.assertEqual(period.source_path, "$.data.schedule")
 
+    def test_extracts_period_from_hoyolab_epoch_fields(self) -> None:
+        period = extract_hoyolab_abyss_period(
+            {
+                "retcode": 0,
+                "data": {
+                    "start_time": "1778900400",
+                    "end_time": "1781578799",
+                },
+            }
+        )
+
+        self.assertEqual(period.start_date, "2026-05-16")
+        self.assertEqual(period.end_date, "2026-06-16")
+        self.assertEqual(period.source_path, "$.data")
+
 
 class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
+    def test_abyss_period_fetch_uses_context_request_instead_of_page_evaluate(self) -> None:
+        page = _FakePage(
+            [
+                {
+                    "retcode": 0,
+                    "data": {
+                        "list": [
+                            {
+                                "game_biz": "hk4e_global",
+                                "game_uid": "700000001",
+                                "region": "os_euro",
+                            }
+                        ]
+                    },
+                },
+                {
+                    "retcode": 0,
+                    "data": {
+                        "schedule": {
+                            "period": "2026/05/16-2026/06/16",
+                        }
+                    },
+                },
+            ]
+        )
+
+        period = asyncio.run(fetch_hoyolab_spiral_abyss_period(page))
+
+        self.assertEqual(period.start_date, "2026-05-16")
+        self.assertEqual(period.end_date, "2026-06-16")
+        self.assertEqual(page.evaluate_calls, 0)
+        self.assertEqual(len(page.request.calls), 2)
+        self.assertIn("getUserGameRolesByCookie", str(page.request.calls[0]["url"]))
+        self.assertIn("spiralAbyss", str(page.request.calls[1]["url"]))
+        self.assertEqual(
+            page.request.calls[0]["headers"]["x-rpc-language"],
+            "ru-ru",
+        )
+
+    def test_abyss_period_fetch_reports_hoyolab_api_failure_readably(self) -> None:
+        page = _FakePage(
+            [
+                {
+                    "retcode": -100,
+                    "message": "Please login",
+                },
+            ]
+        )
+
+        with self.assertRaises(HoYoLABAbyssPeriodError) as cm:
+            asyncio.run(fetch_hoyolab_spiral_abyss_period(page))
+
+        self.assertIn("HoYoLAB roles failed", str(cm.exception))
+        self.assertIn("retcode=-100", str(cm.exception))
+
+    def test_fetched_abyss_period_can_be_written_for_runtime(self) -> None:
+        page = _FakePage(
+            [
+                {
+                    "retcode": 0,
+                    "data": {
+                        "list": [
+                            {
+                                "game_biz": "hk4e_global",
+                                "game_uid": "700000001",
+                                "region": "os_euro",
+                            }
+                        ]
+                    },
+                },
+                {
+                    "retcode": 0,
+                    "data": {
+                        "schedule": {
+                            "period": "2026/05/16-2026/06/16",
+                        }
+                    },
+                },
+            ]
+        )
+
+        period = asyncio.run(fetch_hoyolab_spiral_abyss_period(page))
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_hoyolab_abyss_period(
+                period,
+                period_path=Path(tmp) / "spiral_abyss_period.json",
+            )
+            payload = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["startDate"], "2026-05-16")
+        self.assertEqual(payload["endDate"], "2026-06-16")
+
     def test_period_writer_uses_runtime_period_path_contract(self) -> None:
         self.assertEqual(
             DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH,

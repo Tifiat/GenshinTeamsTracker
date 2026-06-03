@@ -255,6 +255,30 @@ def sync_static_reference_catalogs_for_import(
     return summary, "; ".join(errors) if errors else None
 
 
+def refresh_abyss_source_data_for_import(
+    period: HoYoLABAbyssPeriod | None,
+    *,
+    floor: int = 12,
+    status_callback=print_status,
+    refresher=refresh_cached_abyss_source_data_for_hoyolab_period,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Best-effort Abyss source refresh used by the normal HoYoLAB import."""
+
+    if period is None:
+        return None, "official_abyss_period_unavailable"
+    if status_callback is not None:
+        status_callback("updating_abyss_source_data")
+    summary, error = refresher(period, floor=floor)
+    if status_callback is not None and isinstance(summary, dict):
+        if summary.get("skipped"):
+            status_callback("skipping_abyss_source_data_refresh")
+        else:
+            assets = summary.get("assets")
+            if isinstance(assets, dict) and assets.get("enabled"):
+                status_callback("caching_abyss_monster_icons")
+    return summary, error
+
+
 def _weapon_wiki_from_character_details(character_details: dict[str, Any] | None) -> dict[str, Any]:
     payload = (character_details or {}).get("json")
     if not isinstance(payload, dict):
@@ -464,6 +488,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
         content_language = normalize_language(character_details.get("detectedLanguage"))
         print(f"[HoYoLAB Import] HoYoLAB content language: {content_language}")
         try:
+            print_status("fetching_abyss_period")
             print("[HoYoLAB Import] Fetching official Spiral Abyss period...")
             abyss_period = await fetch_hoyolab_spiral_abyss_period(
                 export_page,
@@ -612,7 +637,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
                 abyss_period.raw_period,
             )
             abyss_source_data_summary, abyss_source_data_error = (
-                refresh_cached_abyss_source_data_for_hoyolab_period(
+                refresh_abyss_source_data_for_import(
                     abyss_period,
                     floor=12,
                 )

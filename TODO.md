@@ -202,7 +202,12 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   the right panel, and uses `solo_target_hp` as the default displayed HP mode.
   Missing period/cache/HP leaves Fact DPS unavailable instead of falling back to
   the invalid static fixture; missing cache is not permanently memoized in
-  AppShell. Tooltip/source breakdown and a multi-target HP toggle remain future
+  AppShell. The source-data update report now includes lightweight timing fields
+  for Fandom, Nanoka, join/build, JSON cache save, and icon asset caching. The
+  Account/Data HoYoLAB import button already triggers the best-effort Abyss
+  source-data refresh after a successful import; same-period ready cache/assets
+  are skipped by default and `--force` refreshes explicitly. Tooltip/source
+  breakdown and a multi-target HP toggle remain future
   work.
 - Need future AbyssSeason / room / chamber / wave / enemy model on top of this
   source-data boundary.
@@ -221,9 +226,15 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Audit result: no single reliable source currently provides current Abyss lineup + monster ids + waves/positions + ready HP totals + resists. MVP should use a resilient source join: current period/lineup/wave notes from Fandom, source-like monster ids/stats/icons/resists from AnimeGameData/GCSIM/Yatta/Ambr where available, and Fandom enemy/level-scaling pages as fallback/cross-check for floor HP multipliers, enemy HP tables, Abyss-specific resist states, and mechanics notes.
 - Factual Abyss DPS should use confidence states, not a single yes/no gate. Prefer source-like/period-specific HP multipliers; if those are missing but enemy ids/counts/levels/base HP are matched, a Fandom general floor-multiplier estimate can be shown with an explicit `estimated_from_floor_multiplier` warning. If core inputs are missing/ambiguous, show enemy list/warnings and keep HP/time DPS unavailable.
 - Near the end of right-panel development, surface factual Abyss DPS source/confidence near the DPS value, for example `source_like_period_multiplier`, `fandom_period_note`, `fandom_floor_scaling_estimate`, or `unavailable`. Do not present weak/estimated enemy HP DPS as exact; detailed research lives in `docs/handoff/ABYSS_ENEMY_DATA.md`.
-- Current concrete HP fixture exists at `docs/handoff/ABYSS_HP_FIXTURE.md` for `2026-05-16` Floor 12. It confirms current lineup parsing, monster id/base HP/curve/resistance mapping for all inspected Floor 12 enemies, generic `2.5x` Floor 12 fallback totals, and likely current `3.75x` Stage12 totals from `LevelEntity_Monster_HpUp_Stage12_New2` / CHS `+275%` source text. It also records variant risks such as `Primo Geovishap (Cryo)` needing id `26050301`, Yatta 404s for newer enemies, Fandom display levels being one higher than AnimeGameData `monsterLevel`, and state-specific RES/mechanics on enemy pages.
-- Abyss mechanics audit exists at `docs/handoff/ABYSS_MECHANICS_NOTES.md`. It uses the current Floor 12 fixture as the first-pass enemy list and records Fandom structured fields/prose tags for shields, wards, invulnerability, state RES, paralyze/downed windows, true damage HP events, summons/adds, elemental/reaction requirements, and mode-specific stat blocks.
-- Backend Abyss fixture/report code exists in `hoyolab_export/abyss_sources.py` and `hoyolab_export/abyss_fixture_report.py`. Command: `python -m hoyolab_export.abyss_fixture_report --period-url https://genshin-impact.fandom.com/wiki/Spiral_Abyss/Floors/2026-05-16`. It parses Fandom period wikitext, extracts Floor 12 chamber/side/wave/enemy data, joins the confirmed current fixture aliases from `docs/handoff/ABYSS_HP_FIXTURE.md`, and emits HP estimate confidence flags such as `source_like_period_multiplier`, `fandom_floor_scaling_estimate`, and `unavailable`.
+- `docs/handoff/ABYSS_HP_FIXTURE.md`, `hoyolab_export/abyss_sources.py`, and
+  `hoyolab_export/abyss_fixture_report.py` are historical audit/fixture
+  references only. Normal displayed AppShell Fact DPS must use the production
+  source-data cache (`run_workspace/abyss/source_data*.py`) and must not fall
+  back to the old invalid/static fixture path.
+- Abyss mechanics audit exists at `docs/handoff/ABYSS_MECHANICS_NOTES.md`. It
+  records Fandom structured fields/prose tags for shields, wards,
+  invulnerability, state RES, paralyze/downed windows, true damage HP events,
+  summons/adds, elemental/reaction requirements, and mode-specific stat blocks.
 - Backend Abyss mechanics parser/report code exists in `hoyolab_export/abyss_mechanics.py`. It parses Fandom enemy-page wikitext snippets into structured fields and warning tags such as `shield_check`, `ward_or_barrier`, `phase_invulnerability`, `state_res_override`, `paralyze_window`, `true_damage_hp_event`, `summons_or_adds`, `elemental_requirement`, `reaction_requirement`, `lunar_requirement`, `high_mobility`, and `mode_specific_stats`. Next Abyss step is UI integration of factual DPS source/confidence and mechanics warnings, not another broad audit.
 
 ## 9. Stats / Resonance / Static Catalogs

@@ -56,6 +56,7 @@ HOYOLAB_IMPORT_STATUSES = {
     "building_layout": ("loader.building_layout", 0.58),
     "writing_inventory": ("loader.writing_inventory", 0.63),
     "fetching_character_details": ("loader.fetching_character_details", 0.70),
+    "fetching_abyss_period": ("loader.fetching_abyss_period", 0.735),
     "updating_artifact_catalog": ("loader.updating_artifact_catalog", 0.76),
     "mapping_artifact_sets": ("loader.mapping_artifact_sets", 0.80),
     "closing_browser": ("loader.closing_browser", 0.84),
@@ -64,6 +65,9 @@ HOYOLAB_IMPORT_STATUSES = {
     "cropping_assets": ("loader.cropping_assets", 0.95),
     "syncing_account_storage": ("loader.syncing_account_storage", 0.965),
     "account_storage_sync_warning": ("loader.account_storage_sync_warning", 0.97),
+    "updating_abyss_source_data": ("loader.updating_abyss_source_data", 0.972),
+    "caching_abyss_monster_icons": ("loader.caching_abyss_monster_icons", 0.976),
+    "skipping_abyss_source_data_refresh": ("loader.skipping_abyss_source_data_refresh", 0.976),
     "writing_import_log": ("loader.writing_import_log", 0.98),
     "done": ("loader.done", 1.0),
 }

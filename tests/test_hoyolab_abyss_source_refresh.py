@@ -15,6 +15,7 @@ from hoyolab_export.abyss_source_refresh import (
     update_cached_abyss_source_data_for_hoyolab_period,
     write_hoyolab_abyss_period,
 )
+from hoyolab_export.import_pipeline import refresh_abyss_source_data_for_import
 from run_workspace.abyss.source_data import load_abyss_floor12_source_data
 from run_workspace.abyss.source_data_cache import (
     cache_abyss_floor_monster_icons,
@@ -182,6 +183,50 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
 
         self.assertIsNone(summary)
         self.assertEqual(error, "network offline")
+
+    def test_import_refresh_helper_calls_abyss_refresh_once_and_reports_status(self) -> None:
+        period = parse_hoyolab_abyss_period("2026/05/16-2026/06/16")
+        calls: list[HoYoLABAbyssPeriod] = []
+        statuses: list[str] = []
+
+        def fake_refresher(update_period: HoYoLABAbyssPeriod, *, floor: int = 12):
+            calls.append(update_period)
+            return (
+                {
+                    "enemyRows": 10,
+                    "matched": 10,
+                    "skipped": False,
+                    "assets": {"enabled": True},
+                },
+                None,
+            )
+
+        summary, error = refresh_abyss_source_data_for_import(
+            period,
+            status_callback=statuses.append,
+            refresher=fake_refresher,
+        )
+
+        self.assertIsNone(error)
+        self.assertEqual(len(calls), 1)
+        self.assertIsNotNone(summary)
+        self.assertEqual(statuses[0], "updating_abyss_source_data")
+        self.assertIn("caching_abyss_monster_icons", statuses)
+
+    def test_import_refresh_helper_keeps_abyss_refresh_failure_nonfatal(self) -> None:
+        period = parse_hoyolab_abyss_period("2026/05/16-2026/06/16")
+
+        def fake_refresher(update_period: HoYoLABAbyssPeriod, *, floor: int = 12):
+            return None, "nanoka down"
+
+        summary, error = refresh_abyss_source_data_for_import(
+            period,
+            status_callback=None,
+            refresher=fake_refresher,
+        )
+
+        self.assertIsNone(summary)
+        self.assertEqual(error, "nanoka down")
 
     def test_failure_does_not_delete_existing_cache_file(self) -> None:
         period = parse_hoyolab_abyss_period("2026/05/16-2026/06/16")

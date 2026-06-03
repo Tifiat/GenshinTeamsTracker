@@ -3,7 +3,8 @@
 These helpers fetch only period composition plus Nanoka manifest/detail JSON.
 They do not fetch individual Fandom enemy pages and do not depend on experiment
 scripts. Cache writes live in `source_data_cache.py` / `source_data_update.py`
-and Account/Data integration remains future work.
+and Account/Data integration calls the update boundary instead of these helpers
+directly.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime
 from html.parser import HTMLParser
+from time import perf_counter
 from typing import Any, Iterable
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, unquote, urljoin, urlparse
@@ -591,10 +593,15 @@ def _all_enemy_rows(floors: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def fetch_fandom_composition_report(period_url: str, *, floor: int = 12) -> dict[str, Any]:
+    total_start = perf_counter()
     page_title = page_title_from_fandom_url(period_url)
+    fetch_start = perf_counter()
     rendered_html, parse_payload = _fetch_rendered_html(page_title)
+    fetch_ms = _elapsed_ms(fetch_start)
+    parse_start = perf_counter()
     root = _parse_fragment(rendered_html)
     floors = [_parse_floor(root, floor=floor)]
+    parse_ms = _elapsed_ms(parse_start)
     sections = parse_payload.get("sections", [])
     return {
         "source": {
@@ -613,6 +620,11 @@ def fetch_fandom_composition_report(period_url: str, *, floor: int = 12) -> dict
                 for item in sections
                 if isinstance(item, dict)
             ],
+        },
+        "timings_ms": {
+            "fandom_rendered_html_fetch": fetch_ms,
+            "fandom_composition_parse": parse_ms,
+            "fandom_composition_total": _elapsed_ms(total_start),
         },
         "floors": floors,
         "enemy_rows": _all_enemy_rows(floors),
@@ -981,13 +993,22 @@ def fetch_nanoka_tower_report(
     floor: int = 12,
     locale: str = "en",
 ) -> dict[str, Any]:
+    total_start = perf_counter()
+    discovery_start = perf_counter()
     manifest_url = _discover_nanoka_manifest_url()
+    discovery_ms = _elapsed_ms(discovery_start)
     static_data_base_url = _static_data_base_url(manifest_url)
+    manifest_start = perf_counter()
     manifest = _fetch_json(manifest_url, timeout=20)
     summaries = _tower_summaries(manifest)
+    manifest_ms = _elapsed_ms(manifest_start)
+    lookup_start = perf_counter()
     summary, warnings = _choose_tower_summary(summaries, tower_id=str(tower_id))
+    lookup_ms = _elapsed_ms(lookup_start)
     detail_url = f"{static_data_base_url}/{locale}/tower/{tower_id}.json"
+    detail_start = perf_counter()
     detail = _fetch_json(detail_url, timeout=30)
+    detail_ms = _elapsed_ms(detail_start)
     return {
         "probe": {
             "name": "nanoka_abyss_tower_source_fetch",
@@ -1006,6 +1027,13 @@ def fetch_nanoka_tower_report(
                 "mode": "explicit_tower_id_override",
                 "tower_id": str(tower_id),
             },
+        },
+        "timings_ms": {
+            "nanoka_manifest_discovery": discovery_ms,
+            "nanoka_manifest_fetch_parse": manifest_ms,
+            "nanoka_explicit_tower_lookup": lookup_ms,
+            "nanoka_detail_fetch_parse": detail_ms,
+            "nanoka_total": _elapsed_ms(total_start),
         },
         "towers": [
             _tower_report(
@@ -1027,18 +1055,27 @@ def fetch_nanoka_tower_report_for_period(
     floor: int = 12,
     locale: str = "en",
 ) -> dict[str, Any]:
+    total_start = perf_counter()
+    discovery_start = perf_counter()
     manifest_url = _discover_nanoka_manifest_url()
+    discovery_ms = _elapsed_ms(discovery_start)
     static_data_base_url = _static_data_base_url(manifest_url)
+    manifest_start = perf_counter()
     manifest = _fetch_json(manifest_url, timeout=20)
     summaries = _tower_summaries(manifest)
+    manifest_ms = _elapsed_ms(manifest_start)
+    lookup_start = perf_counter()
     summary, warnings = resolve_nanoka_tower_summary_for_period(
         summaries,
         period_start=period_start,
         period_end=period_end,
     )
+    lookup_ms = _elapsed_ms(lookup_start)
     tower_id = str(summary["id"])
     detail_url = f"{static_data_base_url}/{locale}/tower/{tower_id}.json"
+    detail_start = perf_counter()
     detail = _fetch_json(detail_url, timeout=30)
+    detail_ms = _elapsed_ms(detail_start)
     return {
         "probe": {
             "name": "nanoka_abyss_tower_source_fetch",
@@ -1060,6 +1097,13 @@ def fetch_nanoka_tower_report_for_period(
                 "tower_id": tower_id,
             },
         },
+        "timings_ms": {
+            "nanoka_manifest_discovery": discovery_ms,
+            "nanoka_manifest_fetch_parse": manifest_ms,
+            "nanoka_period_lookup": lookup_ms,
+            "nanoka_detail_fetch_parse": detail_ms,
+            "nanoka_total": _elapsed_ms(total_start),
+        },
         "towers": [
             _tower_report(
                 tower_id=tower_id,
@@ -1071,3 +1115,7 @@ def fetch_nanoka_tower_report_for_period(
             )
         ],
     }
+
+
+def _elapsed_ms(start: float) -> float:
+    return round((perf_counter() - start) * 1000, 3)

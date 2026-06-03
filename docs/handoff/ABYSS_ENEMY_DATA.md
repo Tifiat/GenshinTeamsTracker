@@ -12,6 +12,9 @@ Follow-up fixture:
   `2026-05-16` HP/mapping fixture, including Fandom lineup parsing, monster id
   mapping, base HP/curve/resistance rows, `2.5x` fallback totals, likely current
   `3.75x` Stage12 totals, and parser implementation notes.
+- That fixture is historical research/debug material only. Normal displayed
+  AppShell Fact DPS uses cached production source-data from
+  `run_workspace/abyss/source_data*.py`, not the old static fixture path.
 
 Label meanings:
 
@@ -245,7 +248,10 @@ MVP recommendation:
   period start plus floor. The cache stores source URLs, match metadata,
   warnings, enemy rows, waves, and solo/multi HP summaries; it never fetches
   network data or fabricates missing source data. The live debug updater only
-  writes it when `--save-cache` is passed.
+  writes it when `--save-cache` is passed. Its debug report includes
+  lightweight timing fields for Fandom composition fetch/parse, Nanoka
+  manifest/period/detail work, join/build, JSON cache save, and icon asset
+  cache.
 - Monster icon asset caching is backend-only in
   `run_workspace/abyss/source_data_cache.py`. When the live debug updater runs
   with `--save-cache`, it also caches monster icons by default under
@@ -277,8 +283,14 @@ MVP recommendation:
   period/cache/HP keeps the cell unavailable; the invalid static fixture is no
   longer the normal displayed Fact DPS source. Missing cache is not permanently
   memoized in AppShell, so a cache created after startup can be picked up by a
-  later right-panel refresh. Source tooltips and a multi-target HP toggle remain
-  future work.
+  later right-panel refresh. The Account/Data HoYoLAB import button already
+  triggers this best-effort source-data refresh after successful import; refresh
+  failure remains non-fatal and is reported as an import warning/status. Source
+  tooltips and a multi-target HP toggle remain future work.
+- Known fallback-only issue: `Battle-Hardened Grounded Geoshroom` can disagree
+  heavily in the Fandom enemy-page HP fallback because Fandom does not expose a
+  reliable Battle-Hardened HP table there. Nanoka remains primary whenever
+  available.
 - Future Fact DPS UI/settings may expose a toggle such as `count multi-target
   HP`. Default should be solo-target mode: for each wave, count only the
   highest-HP matched target once, because that is usually the more comparable

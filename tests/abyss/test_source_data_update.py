@@ -90,6 +90,32 @@ class AbyssSourceDataUpdateTest(unittest.TestCase):
         self.assertEqual(primo["matched_nanoka_display_name"], "Primo Geovishap")
         self.assertEqual(primo["match_method"], "variant_strip")
 
+    def test_update_report_includes_normal_path_timings(self) -> None:
+        fandom_report, tower_report = current_style_reports()
+        with patch(
+            "run_workspace.abyss.source_data_update.fetch_fandom_composition_report",
+            return_value=fandom_report,
+        ), patch(
+            "run_workspace.abyss.source_data_update.fetch_nanoka_tower_report_for_period",
+            return_value=tower_report,
+        ):
+            report = build_update_report(
+                period_start="2026-05-16",
+                floor=12,
+            )
+
+        timings = report["probe"]["timings_ms"]
+        for key in (
+            "fandom_composition_fetch_parse",
+            "nanoka_source_fetch_parse",
+            "join_build_source_data",
+            "icon_asset_cache",
+            "json_cache_save",
+            "total",
+        ):
+            self.assertIn(key, timings)
+            self.assertIsInstance(timings[key], float)
+
     def test_explicit_tower_id_still_works_without_period_resolver(self) -> None:
         fandom_report, tower_report = current_style_reports()
         with patch(

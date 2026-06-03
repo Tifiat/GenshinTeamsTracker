@@ -1097,7 +1097,12 @@ class ChamberTableBlockWidget(QFrame):
                     grid.addWidget(cell, view_row_index, column)
                     continue
                 label = QLabel("")
-                label.setObjectName("ChamberBadge" if column == 0 else "TableCell")
+                if column == 0:
+                    label.setObjectName("ChamberBadge")
+                elif column in (3, 4):
+                    label.setObjectName("FactDpsCell")
+                else:
+                    label.setObjectName("TableCell")
                 label.setAlignment(
                     Qt.AlignmentFlag.AlignCenter
                 )
@@ -2412,13 +2417,17 @@ def right_panel_stylesheet() -> str:
         color: #7ea99f;
         font-size: 9px;
     }
-    #TableCell, #TableCellPrimary, #ChamberBadge, #TimerTableCell {
+    #TableCell, #FactDpsCell, #TableCellPrimary, #ChamberBadge, #TimerTableCell {
         min-height: 22px;
         border-radius: 4px;
         background: #15181d;
         color: #dce3e7;
         padding: 1px 3px;
         font-family: Consolas, "Courier New", monospace;
+    }
+    #FactDpsCell {
+        font-size: 11px;
+        font-weight: 800;
     }
     #TimerTableCell {
         border: 1px solid #252c34;

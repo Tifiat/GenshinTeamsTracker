@@ -13,6 +13,7 @@ import json
 import sys
 from dataclasses import asdict
 from datetime import datetime
+from time import perf_counter
 from typing import Any
 
 from .source_data import (
@@ -44,9 +45,32 @@ def fetch_abyss_floor12_source_data(
 ) -> AbyssFloorSourceData:
     """Fetch live source reports and build production Floor 12 source data."""
 
+    data, _timings = _fetch_abyss_floor12_source_data_with_timings(
+        period_start=period_start,
+        tower_id=tower_id,
+        floor=floor,
+        locale=locale,
+        period_end=period_end,
+    )
+    return data
+
+
+def _fetch_abyss_floor12_source_data_with_timings(
+    *,
+    period_start: str,
+    tower_id: str | None = None,
+    floor: int = 12,
+    locale: str = "en",
+    period_end: str | None = None,
+) -> tuple[AbyssFloorSourceData, dict[str, float]]:
+    timings: dict[str, float] = {}
     period_url = period_url_for_start(period_start)
+    fandom_start = perf_counter()
     composition_report = fetch_fandom_composition_report(period_url, floor=floor)
+    timings["fandom_composition_fetch_parse"] = _elapsed_ms(fandom_start)
+    timings.update(_prefixed_timings("fandom", composition_report))
     try:
+        nanoka_start = perf_counter()
         if tower_id is not None:
             nanoka_report: dict[str, Any] | None = fetch_nanoka_tower_report(
                 tower_id,
@@ -60,9 +84,12 @@ def fetch_abyss_floor12_source_data(
                 floor=floor,
                 locale=locale,
             )
+        timings["nanoka_source_fetch_parse"] = _elapsed_ms(nanoka_start)
+        timings.update(_prefixed_timings("nanoka", nanoka_report))
     except NanokaTowerPeriodAmbiguous:
         raise
     except AbyssSourceFetchError as exc:
+        timings["nanoka_source_fetch_parse"] = _elapsed_ms(nanoka_start)
         nanoka_report = {
             "probe": {
                 "name": "nanoka_abyss_tower_source_fetch",
@@ -72,13 +99,16 @@ def fetch_abyss_floor12_source_data(
             "towers": [],
         }
     resolved_tower_id = _resolved_nanoka_tower_id(nanoka_report) or tower_id or "unresolved"
-    return load_abyss_floor12_source_data(
+    build_start = perf_counter()
+    data = load_abyss_floor12_source_data(
         period_start,
         resolved_tower_id,
         floor=floor,
         composition_report=composition_report,
         nanoka_report=nanoka_report,
     )
+    timings["join_build_source_data"] = _elapsed_ms(build_start)
+    return data, timings
 
 
 def _summary(data: AbyssFloorSourceData) -> dict[str, Any]:
@@ -106,7 +136,8 @@ def build_update_report(
     cache_dir: str | None = None,
     cache_assets: bool = True,
 ) -> dict[str, Any]:
-    data = fetch_abyss_floor12_source_data(
+    total_start = perf_counter()
+    data, timings = _fetch_abyss_floor12_source_data_with_timings(
         period_start=period_start,
         tower_id=tower_id,
         floor=floor,
@@ -118,17 +149,26 @@ def build_update_report(
     report_data = data
     if save_cache:
         if cache_assets:
+            asset_start = perf_counter()
             asset_result = cache_abyss_floor_monster_icons(data, cache_dir=cache_dir)
+            timings["icon_asset_cache"] = _elapsed_ms(asset_start)
             report_data = asset_result.data
             asset_report = _asset_cache_report(asset_result)
         else:
             asset_report = {"enabled": False, "skipped": True}
+            timings["icon_asset_cache"] = 0.0
+        cache_start = perf_counter()
         saved_path = save_abyss_floor_source_data(report_data, cache_dir=cache_dir)
+        timings["json_cache_save"] = _elapsed_ms(cache_start)
         cache_report = {
             "saved": True,
             "path": str(saved_path),
             "schema_version": 1,
         }
+    else:
+        timings["icon_asset_cache"] = 0.0
+        timings["json_cache_save"] = 0.0
+    timings["total"] = _elapsed_ms(total_start)
     return {
         "probe": {
             "name": "abyss_source_data_update",
@@ -141,6 +181,7 @@ def build_update_report(
                 "fandom_enemy_page_requests": 0,
                 "fandom_enemy_page_fallback_enabled": False,
             },
+            "timings_ms": timings,
             "warnings": [
                 "Debug/update entrypoint only; no UI, persistence, history, Account/Data import, or GCSIM wiring.",
                 "Fandom period page is the composition/wave/count source.",
@@ -209,6 +250,25 @@ def _asset_cache_report(result: IconCacheResult) -> dict[str, Any]:
     }
 
 
+def _prefixed_timings(prefix: str, report: dict[str, Any] | None) -> dict[str, float]:
+    if not isinstance(report, dict):
+        return {}
+    raw = report.get("timings_ms")
+    if not isinstance(raw, dict):
+        return {}
+    timings: dict[str, float] = {}
+    for key, value in raw.items():
+        try:
+            timings[f"{prefix}.{key}"] = float(value)
+        except (TypeError, ValueError):
+            continue
+    return timings
+
+
+def _elapsed_ms(start: float) -> float:
+    return round((perf_counter() - start) * 1000, 3)
+
+
 def _text_report(report: dict[str, Any]) -> str:
     summary = report["summary"]
     lines = [
@@ -221,6 +281,17 @@ def _text_report(report: dict[str, Any]) -> str:
     ]
     for warning in summary.get("warnings", []):
         lines.append(f"warning: {warning}")
+    timings = report.get("probe", {}).get("timings_ms", {})
+    if isinstance(timings, dict) and timings:
+        lines.append(
+            "timings_ms="
+            f"total={timings.get('total')} "
+            f"fandom={timings.get('fandom_composition_fetch_parse')} "
+            f"nanoka={timings.get('nanoka_source_fetch_parse')} "
+            f"join={timings.get('join_build_source_data')} "
+            f"assets={timings.get('icon_asset_cache')} "
+            f"cache={timings.get('json_cache_save')}"
+        )
     cache_report = report.get("cache", {})
     if cache_report.get("saved"):
         lines.append(f"cache_saved={cache_report.get('path')}")

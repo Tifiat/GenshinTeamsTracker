@@ -508,6 +508,10 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(widget._chamber_table._row_labels[(0, 3)].text(), "62,464")
         self.assertEqual(widget._chamber_table._row_labels[(0, 4)].text(), "-")
+        self.assertEqual(
+            widget._chamber_table._row_labels[(0, 3)].objectName(),
+            "FactDpsCell",
+        )
 
     def test_chamber_timer_cell_signal_updates_app_shell_model(self) -> None:
         shell = AppShell()

@@ -78,6 +78,8 @@ class AbyssEnemySourceRow:
     fandom_icon_url: str | None
     matched_nanoka_display_name: str | None
     nanoka_monster_id: str | None
+    nanoka_icon_url: str | None
+    nanoka_enemy_detail_url: str | None
     nanoka_hp: int | None
     hp_source: str
     match_method: str
@@ -298,6 +300,8 @@ def _unmatched_row(base: Mapping[str, Any]) -> dict[str, Any]:
         **base,
         "nanoka_display_name": None,
         "nanoka_monster_id": None,
+        "nanoka_icon_url": None,
+        "nanoka_enemy_detail_url": None,
         "nanoka_hp": None,
         "match_method": MATCH_METHOD_UNMATCHED,
         "match_confidence": MATCH_CONFIDENCE_NONE,
@@ -315,6 +319,8 @@ def _ambiguous_row(
         **base,
         "nanoka_display_name": None,
         "nanoka_monster_id": None,
+        "nanoka_icon_url": None,
+        "nanoka_enemy_detail_url": None,
         "nanoka_hp": None,
         "match_method": MATCH_METHOD_AMBIGUOUS,
         "attempted_match_method": method,
@@ -343,6 +349,8 @@ def _matched_row(
         **base,
         "nanoka_display_name": candidate.get("enemy_display_name"),
         "nanoka_monster_id": candidate.get("monster_id"),
+        "nanoka_icon_url": candidate.get("icon_url"),
+        "nanoka_enemy_detail_url": candidate.get("enemy_detail_url"),
         "nanoka_hp": hp,
         "nanoka_candidate_identity": _nanoka_identity(candidate),
         "match_method": method,
@@ -521,6 +529,8 @@ def _to_source_row(row: Mapping[str, Any]) -> AbyssEnemySourceRow:
         fandom_icon_url=_optional_str(row.get("fandom_icon_url")),
         matched_nanoka_display_name=_optional_str(row.get("nanoka_display_name")),
         nanoka_monster_id=_optional_str(row.get("nanoka_monster_id")),
+        nanoka_icon_url=_optional_str(row.get("nanoka_icon_url")),
+        nanoka_enemy_detail_url=_optional_str(row.get("nanoka_enemy_detail_url")),
         nanoka_hp=hp,
         hp_source=HP_SOURCE_NANOKA_RESOLVED if hp is not None else HP_SOURCE_UNAVAILABLE,
         match_method=str(row.get("match_method") or MATCH_METHOD_UNMATCHED),
@@ -671,6 +681,10 @@ def _global_warnings(
                     warnings.add(str(warning))
     if not _nanoka_tower(nanoka_report):
         warnings.add("nanoka_report_unavailable")
+    probe = nanoka_report.get("probe", {})
+    if isinstance(probe, Mapping):
+        for warning in probe.get("warnings", []):
+            warnings.add(str(warning))
     for row in rows:
         warnings.update(row.warnings)
     return tuple(sorted(warnings))

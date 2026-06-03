@@ -226,9 +226,14 @@ MVP recommendation:
   (`AbyssPeriod`, enemy rows, waves, chamber-side summaries, and whole-floor
   data) and a clean `load_abyss_floor12_source_data(...)` /
   `build_abyss_floor_source_data_from_reports(...)` pipeline over Fandom-shaped
-  composition reports plus optional Nanoka-shaped tower reports. This module
-  does not import experiment scripts, does not fetch network data by itself, and
-  does not run Fandom enemy-page fallback during the normal Nanoka path yet.
+  composition reports plus optional Nanoka-shaped tower reports.
+  `run_workspace/abyss/source_data_fetchers.py` and
+  `run_workspace/abyss/source_data_update.py` add the production-safe live debug
+  update entrypoint:
+  `python -m run_workspace.abyss.source_data_update --period-start YYYY-MM-DD --tower-id N --floor 12`.
+  Production code does not import experiment scripts; the normal Nanoka path
+  fetches the Fandom period page and Nanoka tower data only, does not fetch
+  individual Fandom enemy pages, and does not run Fandom enemy-page fallback yet.
 - Future Fact DPS UI/settings may expose a toggle such as `count multi-target
   HP`. Default should be solo-target mode: for each wave, count only the
   highest-HP matched target once, because that is usually the more comparable

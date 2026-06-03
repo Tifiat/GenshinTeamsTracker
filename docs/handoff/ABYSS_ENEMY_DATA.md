@@ -194,6 +194,14 @@ MVP recommendation:
   explicit. Existing join alias checks cover Fandom `"Statue of Marble and
   Brass"` vs Nanoka `Legatus Golem` and Fandom `Primo Geovishap (Cryo)` vs
   Nanoka `Primo Geovishap`.
+- Fandom enemy-page HP fallback probe exists under `tools/experiments/abyss/`.
+  It follows enemy-page redirects, selects Level/HP tables by Fandom composition
+  name vs enemy-page section/table heading, applies an explicit manual HP
+  multiplier, and compares against Nanoka only after selection. Nanoka remains
+  primary; Fandom enemy-page HP is fallback/cross-check. Correct heading
+  selection can still disagree with Nanoka, for example `Battle-Scarred Rock
+  Crab` selects the `Battle-Scarred` table with raw Lv.100 HP `1,175,752`
+  (`4,409,070` at `3.75x`), while Nanoka reports `4,025,384`.
 - Future Fact DPS UI/settings may expose a toggle such as `count multi-target
   HP`. Default should be solo-target mode: for each wave, count only the
   highest-HP matched target once, because that is usually the more comparable

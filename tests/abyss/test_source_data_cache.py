@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import threading
+import time
 import tempfile
 import unittest
 from pathlib import Path
@@ -299,6 +301,39 @@ class AbyssSourceDataCacheTest(unittest.TestCase):
         self.assertEqual(second.cache_hits, 10)
         self.assertEqual(fetch_count, 10)
         self.assertEqual(len(icon_files), 10)
+
+    def test_cache_monster_icons_uses_bounded_parallel_downloads(self) -> None:
+        data = _current_style_source_data()
+        lock = threading.Lock()
+        active = 0
+        max_active = 0
+
+        def fetcher(url: str) -> bytes:
+            nonlocal active, max_active
+            with lock:
+                active += 1
+                max_active = max(max_active, active)
+            time.sleep(0.02)
+            with lock:
+                active -= 1
+            return f"icon:{url}".encode("utf-8")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            result = cache_abyss_floor_monster_icons(
+                data,
+                cache_dir=tmp,
+                icon_fetcher=fetcher,
+                max_workers=4,
+            )
+
+        self.assertEqual(result.downloaded, 10)
+        self.assertEqual(result.cache_hits, 0)
+        self.assertGreater(max_active, 1)
+        self.assertLessEqual(max_active, 4)
+        self.assertEqual(
+            [entry.row_index for entry in result.entries],
+            list(range(10)),
+        )
 
 
 if __name__ == "__main__":

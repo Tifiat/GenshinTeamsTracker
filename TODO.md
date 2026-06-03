@@ -187,8 +187,11 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   backend-only there: `--save-cache` downloads icons by default into
   `data/cache/abyss/source_data/<period_start>/floor_<floor>_assets/monster_icons/`
   using Nanoka icon URLs first and Fandom composition icon URLs as fallback,
-  then stores `cached_icon_path` on rows for future tooltip UI. It does not
-  wire UI, replace the current fixture, or run Fandom enemy-page fallback yet.
+  then stores `cached_icon_path` on rows for future tooltip UI. Icon downloads
+  are bounded-parallel and reuse existing URL-hash files even during source-data
+  `--force`; force refreshes source data, not identical already-cached icons.
+  It does not wire UI, replace the current fixture, or run Fandom enemy-page
+  fallback yet.
   Normal HoYoLAB import now resolves the current Spiral Abyss period with source
   priority HoYoLAB overview -> Nanoka live tower metadata -> latest Fandom
   Spiral Abyss/Floors period page, stores it at

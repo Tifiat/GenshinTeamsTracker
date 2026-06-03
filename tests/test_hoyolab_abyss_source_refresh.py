@@ -393,6 +393,16 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
             self.assertTrue(kwargs["save_cache"])
             self.assertTrue(kwargs["cache_assets"])
             return {
+                "probe": {
+                    "timings_ms": {
+                        "fandom_composition_fetch_parse": 5.0,
+                        "nanoka_source_fetch_parse": 7.0,
+                        "join_build_source_data": 1.0,
+                        "icon_asset_cache": 2.0,
+                        "json_cache_save": 0.5,
+                        "total": 15.5,
+                    }
+                },
                 "summary": {
                     "enemy_rows": 10,
                     "matched": 10,
@@ -415,6 +425,8 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
         self.assertEqual(result.cache_path, "cache/floor_12.json")
         self.assertEqual(result.enemy_rows, 10)
         self.assertEqual(result.matched, 10)
+        self.assertEqual(result.timings_ms["icon_asset_cache"], 2.0)
+        self.assertEqual(result.to_dict()["timingsMs"]["total"], 15.5)
 
     def test_best_effort_refresh_calls_updater_once(self) -> None:
         calls: list[dict[str, object]] = []

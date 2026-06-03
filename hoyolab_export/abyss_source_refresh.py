@@ -122,6 +122,7 @@ class AbyssSourceDataRefreshResult:
     skipped: bool = False
     skip_reason: str = ""
     warnings: tuple[str, ...] = ()
+    timings_ms: Mapping[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -137,6 +138,7 @@ class AbyssSourceDataRefreshResult:
             "enemyRows": self.enemy_rows,
             "assets": dict(self.assets),
             "warnings": list(self.warnings),
+            "timingsMs": dict(self.timings_ms),
         }
 
 
@@ -475,6 +477,8 @@ def update_cached_abyss_source_data_for_hoyolab_period(
     summary = report.get("summary") if isinstance(report, Mapping) else {}
     cache = report.get("cache") if isinstance(report, Mapping) else {}
     assets = report.get("assets") if isinstance(report, Mapping) else {}
+    probe = report.get("probe") if isinstance(report, Mapping) else {}
+    timings = probe.get("timings_ms") if isinstance(probe, Mapping) else {}
     warnings = []
     for source in (summary, assets):
         if isinstance(source, Mapping):
@@ -496,6 +500,7 @@ def update_cached_abyss_source_data_for_hoyolab_period(
         skipped=False,
         skip_reason="",
         warnings=tuple(warnings),
+        timings_ms=dict(timings) if isinstance(timings, Mapping) else {},
     )
 
 
@@ -756,6 +761,7 @@ def _cached_refresh_result(
             else "same_period_cache_ready"
         ),
         warnings=tuple(data.global_warnings),
+        timings_ms={},
     )
 
 
@@ -903,6 +909,17 @@ def _text_report(report: Mapping[str, Any]) -> str:
             f"cache={source_data.get('cachePath')} "
             f"skipped={source_data.get('skipped')}"
         )
+        timings = source_data.get("timingsMs")
+        if isinstance(timings, Mapping) and timings:
+            lines.append(
+                "timings_ms="
+                f"total={timings.get('total')} "
+                f"fandom={timings.get('fandom_composition_fetch_parse')} "
+                f"nanoka={timings.get('nanoka_source_fetch_parse')} "
+                f"join={timings.get('join_build_source_data')} "
+                f"assets={timings.get('icon_asset_cache')} "
+                f"cache={timings.get('json_cache_save')}"
+            )
     if report.get("sourceDataError"):
         lines.append(f"source_data_warning={report.get('sourceDataError')}")
     return "\n".join(lines)

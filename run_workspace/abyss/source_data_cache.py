@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -32,6 +33,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR = PROJECT_ROOT / "data" / "cache" / "abyss" / "source_data"
 ICON_CACHE_USER_AGENT = "GenshinTeamsTracker-AbyssSourceDataIconCache/1.0"
 SUPPORTED_ICON_EXTENSIONS = {".avif", ".gif", ".jpg", ".jpeg", ".png", ".webp"}
+DEFAULT_ICON_CACHE_WORKERS = 6
 
 _PERIOD_START_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
 
@@ -131,6 +133,7 @@ def cache_abyss_floor_monster_icons(
     *,
     cache_dir: str | Path | None = None,
     icon_fetcher: IconBytesFetcher | None = None,
+    max_workers: int = DEFAULT_ICON_CACHE_WORKERS,
 ) -> IconCacheResult:
     """Cache local monster icons for source-data rows without fetching pages."""
 
@@ -146,14 +149,38 @@ def cache_abyss_floor_monster_icons(
     global_warnings: list[str] = []
     downloaded = 0
     cache_hits = 0
+    row_results: list[
+        tuple[AbyssMonsterIconCacheEntry, AbyssEnemySourceRow, str | None] | None
+    ] = [None] * len(data.enemy_rows)
 
-    for row_index, row in enumerate(data.enemy_rows):
-        entry, updated_row, cache_state = _cache_icon_for_row(
-            row,
-            row_index=row_index,
-            asset_dir=asset_dir,
-            fetcher=fetcher,
-        )
+    worker_count = max(1, min(int(max_workers or 1), len(data.enemy_rows) or 1))
+    if worker_count == 1 or len(data.enemy_rows) <= 1:
+        for row_index, row in enumerate(data.enemy_rows):
+            row_results[row_index] = _cache_icon_for_row(
+                row,
+                row_index=row_index,
+                asset_dir=asset_dir,
+                fetcher=fetcher,
+            )
+    else:
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            futures = {
+                executor.submit(
+                    _cache_icon_for_row,
+                    row,
+                    row_index=row_index,
+                    asset_dir=asset_dir,
+                    fetcher=fetcher,
+                ): row_index
+                for row_index, row in enumerate(data.enemy_rows)
+            }
+            for future in as_completed(futures):
+                row_results[futures[future]] = future.result()
+
+    for row_result in row_results:
+        if row_result is None:
+            continue
+        entry, updated_row, cache_state = row_result
         entries.append(entry)
         updated_rows.append(updated_row)
         if cache_state == "downloaded":

@@ -259,8 +259,11 @@ MVP recommendation:
   and stores `cached_icon_path` on each `AbyssEnemySourceRow` when available.
   Asset source priority is Nanoka monster icon URL, then Fandom composition
   icon URL fallback. Missing/failed icons add warnings but keep source data
-  usable. `--skip-assets` keeps the update as JSON-only. Future tooltip UI
-  should use these local cached icons instead of live image URLs.
+  usable. Icon downloads run with small bounded parallelism and existing
+  URL-hash cache files are reused even during source-data `--force`; force
+  refreshes the source JSON but does not blindly redownload identical icons.
+  `--skip-assets` keeps the update as JSON-only. Future tooltip UI should use
+  these local cached icons instead of live image URLs.
 - Normal HoYoLAB import now best-effort refreshes this Floor 12 source-data
   cache after resolving the current Abyss period. Period source priority is
   HoYoLAB Spiral Abyss Overview, then Nanoka live tower metadata, then the

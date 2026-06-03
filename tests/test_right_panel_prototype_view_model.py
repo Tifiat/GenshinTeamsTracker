@@ -13,8 +13,15 @@ from run_workspace.right_panel_prototype_view_model import (
     build_fake_right_panel_prototype_state,
     build_right_panel_prototype_view_model,
 )
+from run_workspace.abyss.source_data import load_abyss_floor12_source_data
 from run_workspace.models import AbyssTimerState
 from run_workspace.team_builder import create_empty_team_builder_state
+from tests.abyss.test_source_data import (
+    composition_report,
+    fandom_row,
+    nanoka_report,
+    nanoka_row,
+)
 
 
 class RightPanelPrototypeViewModelTest(unittest.TestCase):
@@ -313,14 +320,61 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
             ),
         )
 
-    def test_abyss_chamber_rows_show_fixture_factual_dps_when_elapsed_exists(self) -> None:
+    def test_abyss_chamber_rows_show_cached_source_data_factual_dps_when_elapsed_exists(self) -> None:
+        source_data = load_abyss_floor12_source_data(
+            "2026-05-16",
+            "119",
+            composition_report=composition_report(
+                "2026-05-16",
+                [
+                    fandom_row(
+                        "Team 1 Enemy",
+                        chamber=1,
+                        side=1,
+                        wave=1,
+                        count=3,
+                        level=100,
+                    ),
+                    fandom_row(
+                        "Team 2 Enemy",
+                        chamber=1,
+                        side=2,
+                        wave=1,
+                        count=4,
+                        level=100,
+                    ),
+                ],
+            ),
+            nanoka_report=nanoka_report(
+                "119",
+                [
+                    nanoka_row(
+                        "Team 1 Enemy",
+                        chamber=1,
+                        side=1,
+                        hp=1_200_000,
+                        monster_id="team1",
+                        level=100,
+                    ),
+                    nanoka_row(
+                        "Team 2 Enemy",
+                        chamber=1,
+                        side=2,
+                        hp=900_000,
+                        monster_id="team2",
+                        level=100,
+                    ),
+                ],
+            ),
+        )
         rows = build_abyss_chamber_rows(
             (
                 AbyssTimerState(
                     team1_left_seconds=480,
                     team2_left_seconds=300,
                 ),
-            )
+            ),
+            abyss_source_data=source_data,
         )
 
         row = rows[0]
@@ -328,10 +382,11 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertEqual(row.chamber_label, "C1")
         self.assertEqual(row.team1_seconds, 120)
         self.assertEqual(row.team2_seconds, 180)
-        self.assertEqual(row.factual_team1, "31,232")
-        self.assertEqual(row.factual_team2, "30,286")
+        self.assertEqual(row.factual_team1, "10,000")
+        self.assertEqual(row.factual_team2, "5,000")
         self.assertEqual(row.sim_team1, "not run")
         self.assertEqual(row.sim_team2, "not run")
+        self.assertEqual(source_data.side_summary(1, 1).multi_target_hp, 3_600_000)
 
     def test_abyss_chamber_rows_keep_factual_dps_unavailable_for_zero_elapsed(self) -> None:
         rows = build_abyss_chamber_rows(
@@ -340,13 +395,32 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
                     team1_left_seconds=600,
                     team2_left_seconds=600,
                 ),
-            )
+            ),
+            abyss_source_data=None,
         )
 
         row = rows[0]
 
         self.assertEqual(row.team1_seconds, 0)
         self.assertEqual(row.team2_seconds, 0)
+        self.assertEqual(row.factual_team1, "-")
+        self.assertEqual(row.factual_team2, "-")
+
+    def test_abyss_chamber_rows_keep_factual_dps_unavailable_without_cached_source_data(self) -> None:
+        rows = build_abyss_chamber_rows(
+            (
+                AbyssTimerState(
+                    team1_left_seconds=480,
+                    team2_left_seconds=300,
+                ),
+            ),
+            abyss_source_data=None,
+        )
+
+        row = rows[0]
+
+        self.assertEqual(row.team1_seconds, 120)
+        self.assertEqual(row.team2_seconds, 180)
         self.assertEqual(row.factual_team1, "-")
         self.assertEqual(row.factual_team2, "-")
 

@@ -75,6 +75,13 @@ from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
 from run_workspace.models import AbyssTimerState
+from run_workspace.abyss.source_data import load_abyss_floor12_source_data
+from tests.abyss.test_source_data import (
+    composition_report,
+    fandom_row,
+    nanoka_report,
+    nanoka_row,
+)
 from ui.utils.ui_palette import UI_ACCENT_TEAM_1
 from ui.right_panel_prototype import (
     ABYSS_CHAMBER_BADGE_WIDTH,
@@ -355,6 +362,70 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(model.chamber_rows[0].team2_seconds, 50)
         self.assertEqual(model.chamber_rows[0].total_seconds, 100)
         self.assertEqual(model.total_seconds, 100)
+
+    def test_app_shell_abyss_fact_dps_uses_cached_source_data_provider(self) -> None:
+        source_data = load_abyss_floor12_source_data(
+            "2026-05-16",
+            "119",
+            composition_report=composition_report(
+                "2026-05-16",
+                [
+                    fandom_row(
+                        "Team 1 Enemy",
+                        chamber=1,
+                        side=1,
+                        wave=1,
+                        count=2,
+                        level=100,
+                    ),
+                    fandom_row(
+                        "Team 2 Enemy",
+                        chamber=1,
+                        side=2,
+                        wave=1,
+                        count=2,
+                        level=100,
+                    ),
+                ],
+            ),
+            nanoka_report=nanoka_report(
+                "119",
+                [
+                    nanoka_row(
+                        "Team 1 Enemy",
+                        chamber=1,
+                        side=1,
+                        hp=500_000,
+                        monster_id="team1",
+                        level=100,
+                    ),
+                    nanoka_row(
+                        "Team 2 Enemy",
+                        chamber=1,
+                        side=2,
+                        hp=300_000,
+                        monster_id="team2",
+                        level=100,
+                    ),
+                ],
+            ),
+        )
+        controller = AppShellController.empty()
+        controller.set_abyss_timer_seconds(0, 1, 550)
+        controller.set_abyss_timer_seconds(0, 2, 500)
+
+        with patch(
+            "ui.app_shell.load_current_cached_abyss_floor_source_data",
+            return_value=source_data,
+        ) as provider:
+            model = controller.right_panel_model()
+            controller.right_panel_model()
+
+        self.assertEqual(model.chamber_rows[0].team1_seconds, 50)
+        self.assertEqual(model.chamber_rows[0].team2_seconds, 50)
+        self.assertEqual(model.chamber_rows[0].factual_team1, "10,000")
+        self.assertEqual(model.chamber_rows[0].factual_team2, "6,000")
+        provider.assert_called_once_with(floor=12)
 
     def test_chamber_timer_cell_signal_updates_app_shell_model(self) -> None:
         shell = AppShell()

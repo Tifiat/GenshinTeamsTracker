@@ -53,6 +53,10 @@ from run_workspace.right_panel_prototype_view_model import (
     build_abyss_chamber_rows,
     build_right_panel_prototype_view_model,
 )
+from run_workspace.abyss.source_data import AbyssFloorSourceData
+from run_workspace.abyss.source_data_runtime import (
+    load_current_cached_abyss_floor_source_data,
+)
 from run_workspace.models import (
     AbyssTimerState,
     clamp_abyss_timer_edit_seconds,
@@ -249,6 +253,8 @@ class AppShellController:
     _persistent_equipment_cache: dict[str, PersistentEquipmentHydration] = field(
         default_factory=dict
     )
+    _cached_abyss_source_data_loaded: bool = False
+    _cached_abyss_source_data: AbyssFloorSourceData | None = None
 
     @classmethod
     def empty(
@@ -284,7 +290,10 @@ class AppShellController:
 
     def right_panel_model(self):
         chamber_rows = (
-            build_abyss_chamber_rows(self.abyss_timer_states)
+            build_abyss_chamber_rows(
+                self.abyss_timer_states,
+                abyss_source_data=self.cached_abyss_source_data(),
+            )
             if self.mode == MODE_ABYSS
             else None
         )
@@ -296,6 +305,18 @@ class AppShellController:
             external_bonuses_enabled=self.external_bonuses_enabled,
             chamber_rows=chamber_rows,
         )
+
+    def cached_abyss_source_data(self) -> AbyssFloorSourceData | None:
+        if not self._cached_abyss_source_data_loaded:
+            self._cached_abyss_source_data = load_current_cached_abyss_floor_source_data(
+                floor=12,
+            )
+            self._cached_abyss_source_data_loaded = True
+        return self._cached_abyss_source_data
+
+    def invalidate_cached_abyss_source_data(self) -> None:
+        self._cached_abyss_source_data_loaded = False
+        self._cached_abyss_source_data = None
 
     def set_mode(self, mode: str) -> None:
         self._store_current_mode_state()
@@ -1388,6 +1409,7 @@ class AppShell(QWidget):
         if self._weapon_filter_sync_timer.isActive():
             self._weapon_filter_sync_timer.stop()
         self._weapon_filter_sync_pending = False
+        self.controller.invalidate_cached_abyss_source_data()
 
         if reset_runtime_state:
             previous_mode = self.controller.mode

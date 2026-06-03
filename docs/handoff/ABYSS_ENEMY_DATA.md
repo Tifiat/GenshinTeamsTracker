@@ -262,6 +262,15 @@ MVP recommendation:
   through `run_workspace.abyss.source_data_update` with icon caching enabled.
   Missing HoYoLAB period data or Fandom/Nanoka/cache update failures are
   non-fatal import warnings and must not delete existing source-data caches.
+- AppShell/right-panel Fact DPS now uses this local cache through
+  `run_workspace/abyss/source_data_runtime.py`. The runtime provider reads the
+  captured HoYoLAB period file, loads
+  `data/cache/abyss/source_data/<period_start>/floor_12.json`, and never fetches
+  network data from the right panel. Displayed Fact DPS uses each side summary's
+  `solo_target_hp` divided by the live Abyss timer elapsed seconds. Missing
+  period/cache/HP keeps the cell unavailable; the invalid static fixture is no
+  longer the normal displayed Fact DPS source. Source tooltips and a
+  multi-target HP toggle remain future work.
 - Future Fact DPS UI/settings may expose a toggle such as `count multi-target
   HP`. Default should be solo-target mode: for each wave, count only the
   highest-HP matched target once, because that is usually the more comparable

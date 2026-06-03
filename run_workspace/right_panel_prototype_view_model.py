@@ -10,11 +10,8 @@ from typing import Any, Mapping
 from localization import tr, tr_for_language
 
 from .models import AbyssTimerState, calculate_abyss_chamber_result
-from .abyss import (
-    CURRENT_HP_KIND,
-    calculate_side_factual_dps,
-    current_abyss_floor12_data,
-)
+from .abyss.factual_dps import calculate_factual_dps
+from .abyss.source_data import AbyssFloorSourceData
 from .display_stats import build_character_display_stats
 from .team_builder import (
     TeamBuilderSlotState,
@@ -1444,9 +1441,15 @@ def _localized_static_effect_label(effect: Mapping[str, Any]) -> str:
 
 def build_abyss_chamber_rows(
     timer_states: tuple[AbyssTimerState, ...],
+    *,
+    abyss_source_data: AbyssFloorSourceData | None = None,
 ) -> tuple[RightPanelChamberRowViewModel, ...]:
     return tuple(
-        _abyss_chamber_row(timer_state, chamber_index=index)
+        _abyss_chamber_row(
+            timer_state,
+            chamber_index=index,
+            abyss_source_data=abyss_source_data,
+        )
         for index, timer_state in enumerate(timer_states, start=1)
     )
 
@@ -1455,13 +1458,13 @@ def _abyss_chamber_row(
     timer_state: AbyssTimerState,
     *,
     chamber_index: int,
+    abyss_source_data: AbyssFloorSourceData | None = None,
 ) -> RightPanelChamberRowViewModel:
     result = calculate_abyss_chamber_result(
         timer_state,
         chamber_index=chamber_index,
     )
     normalized = result.normalized_timer_state
-    fixture = current_abyss_floor12_data()
     return RightPanelChamberRowViewModel(
         chamber_label=f"C{chamber_index}",
         team1_time=_format_remaining_time(normalized.team1_left_seconds),
@@ -1469,17 +1472,23 @@ def _abyss_chamber_row(
         team2_time=_format_remaining_time(normalized.team2_left_seconds),
         team2_seconds=result.team2_elapsed_seconds,
         factual_team1=_format_factual_dps_cell(
-            calculate_side_factual_dps(
-                fixture.side(chamber_index, 1),
+            calculate_factual_dps(
+                total_hp=_cached_side_solo_target_hp(
+                    abyss_source_data,
+                    chamber_index,
+                    1,
+                ),
                 elapsed_seconds=result.team1_elapsed_seconds,
-                hp_kind=CURRENT_HP_KIND,
             )
         ),
         factual_team2=_format_factual_dps_cell(
-            calculate_side_factual_dps(
-                fixture.side(chamber_index, 2),
+            calculate_factual_dps(
+                total_hp=_cached_side_solo_target_hp(
+                    abyss_source_data,
+                    chamber_index,
+                    2,
+                ),
                 elapsed_seconds=result.team2_elapsed_seconds,
-                hp_kind=CURRENT_HP_KIND,
             )
         ),
         sim_team1="not run",
@@ -1487,6 +1496,19 @@ def _abyss_chamber_row(
         total_seconds=result.total_elapsed_seconds,
         timer_editable=True,
     )
+
+
+def _cached_side_solo_target_hp(
+    abyss_source_data: AbyssFloorSourceData | None,
+    chamber_index: int,
+    side: int,
+) -> int | None:
+    if abyss_source_data is None:
+        return None
+    try:
+        return abyss_source_data.side_summary(chamber_index, side).solo_target_hp
+    except ValueError:
+        return None
 
 
 def _format_factual_dps_cell(result) -> str:

@@ -170,7 +170,15 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 8. Abyss Data Updater and Enemy Model
 
-- Need future AbyssSeason / room / chamber / wave / enemy model.
+- First production Abyss source-data boundary exists in
+  `run_workspace/abyss/source_data.py`. It converts Fandom-shaped composition
+  reports plus optional Nanoka-shaped tower reports into typed Floor 12 source
+  data with enemy rows, waves, chamber-side HP summaries, source URLs, match
+  methods/confidence, and warnings. It does not fetch live network data, cache
+  results, wire UI, replace the current fixture, or run Fandom enemy-page
+  fallback yet.
+- Need future AbyssSeason / room / chamber / wave / enemy model on top of this
+  source-data boundary.
 - For each Abyss chamber/side, data should ideally support enemies, waves, enemy HP, total HP, resistances, immunities, special states, invulnerability/phases where available, and icons.
 - Do not require this data for the app to function.
 - Abyss source research is done; see `docs/handoff/ABYSS_ENEMY_DATA.md`, `docs/handoff/ABYSS_HP_FIXTURE.md`, and `docs/handoff/ABYSS_MECHANICS_NOTES.md`. Keep the source join resilient so one unavailable/stale source does not break the feature.

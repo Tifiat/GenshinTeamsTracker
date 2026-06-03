@@ -209,6 +209,11 @@ MVP recommendation:
   `Battle-Scarred Rock Crab` selects the `Battle-Scarred` table with raw
   Lv.100 HP `1,175,752` (`4,409,070` at `3.75x`), while Nanoka reports
   `4,025,384`.
+  Known fallback caveat: `Battle-Hardened Grounded Geoshroom` currently lacks a
+  reliable Fandom variant HP table in the fallback probe and may fall back to
+  generic `Stats > Normal`, producing a large disagreement with Nanoka. Treat
+  that as low-confidence fallback behavior, not as a reason to override the
+  normal Nanoka primary HP path.
 - `tools/experiments/abyss/abyss_pipeline_batch_probe.py` is the experiment-only
   batch review runner for explicit `DATE=TOWER_ID` cases. It runs Fandom
   composition, the Nanoka primary join, and the Fandom enemy-page fallback
@@ -216,6 +221,14 @@ MVP recommendation:
   known regression checks, unmatched/ambiguous rows, and notable fallback-vs-
   Nanoka differences. It is for manual source validation only, not production
   integration.
+- First production source-data boundary exists at
+  `run_workspace/abyss/source_data.py`. It defines typed Floor 12 source models
+  (`AbyssPeriod`, enemy rows, waves, chamber-side summaries, and whole-floor
+  data) and a clean `load_abyss_floor12_source_data(...)` /
+  `build_abyss_floor_source_data_from_reports(...)` pipeline over Fandom-shaped
+  composition reports plus optional Nanoka-shaped tower reports. This module
+  does not import experiment scripts, does not fetch network data by itself, and
+  does not run Fandom enemy-page fallback during the normal Nanoka path yet.
 - Future Fact DPS UI/settings may expose a toggle such as `count multi-target
   HP`. Default should be solo-target mode: for each wave, count only the
   highest-HP matched target once, because that is usually the more comparable

@@ -62,7 +62,10 @@ Confirmed:
   the 2026-02-16 Floor 12 Chamber 1 First Half regression as five sequential
   `Fisher of Hidden Depths` waves with count `3` each. The join probe combines
   Fandom composition rows with Nanoka HP rows by floor/chamber/side/normalized
-  name and reports unmatched aliases/variants instead of guessing.
+  name, then applies experiment-only alias/variant matching. It keeps Fandom as
+  the primary display name and preserves Nanoka as the HP/id source; non-strict
+  matches are labeled as `manual_alias`, `variant_strip`, or
+  `context_unique_remaining`.
 - The old 2026-05-16 HP fixture proved that the UI can consume HP and calculate
   `HP / elapsed_seconds`, but its GCSIM/AnimeGameData-derived HP values are known
   invalid for at least some enemies. Do not use that fixture as factual HP.
@@ -185,11 +188,12 @@ MVP recommendation:
     sequence.
   - Keep any custom GCSIM extension isolated from the vanilla engine so engine
     updates or unmerged upstream pull requests do not overwrite it.
-- Next parser/debug join step should stay experiment-only first, not production
-  UI. It should harden alias/variant matching, for example Fandom `"Statue of
-  Marble and Brass"` vs Nanoka `Legatus Golem` and Fandom `Primo Geovishap
-  (Cryo)` vs Nanoka `Primo Geovishap`, while keeping both source paths and
-  preserving warnings when name/count/wave or HP matching is ambiguous.
+- Next parser/debug HP fallback step should stay experiment-only first, not
+  production UI. It should inspect Fandom enemy pages when Nanoka HP is missing,
+  choose matching stat table variants carefully, and keep source paths/warnings
+  explicit. Existing join alias checks cover Fandom `"Statue of Marble and
+  Brass"` vs Nanoka `Legatus Golem` and Fandom `Primo Geovishap (Cryo)` vs
+  Nanoka `Primo Geovishap`.
 - Future Fact DPS UI/settings may expose a toggle such as `count multi-target
   HP`. Default should be solo-target mode: for each wave, count only the
   highest-HP matched target once, because that is usually the more comparable

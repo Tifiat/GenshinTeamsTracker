@@ -26,10 +26,39 @@ except ImportError:
     from tools.experiments.abyss import nanoka_tower_probe as nanoka_probe
 
 
+MANUAL_ALIAS_PAIRS = {
+    ("statueofmarbleandbrass", "legatusgolem"): (
+        "Fandom period pages display the boss as Statue of Marble and Brass; "
+        "Nanoka tower JSON uses Legatus Golem."
+    ),
+}
+
+MATCH_CONFIDENCE_NONE = "none"
+MATCH_CONFIDENCE_LOW = "low"
+MATCH_CONFIDENCE_MEDIUM = "medium"
+MATCH_CONFIDENCE_HIGH = "high"
+MATCH_METHOD_AMBIGUOUS = "ambiguous"
+MATCH_METHOD_CONTEXT_UNIQUE = "context_unique_remaining"
+MATCH_METHOD_MANUAL_ALIAS = "manual_alias"
+MATCH_METHOD_STRICT = "strict_name"
+MATCH_METHOD_UNMATCHED = "unmatched"
+MATCH_METHOD_VARIANT_STRIP = "variant_strip"
+MATCHED_CONFIDENCES = {
+    MATCH_CONFIDENCE_HIGH,
+    MATCH_CONFIDENCE_MEDIUM,
+    MATCH_CONFIDENCE_LOW,
+}
+
+
 def _normalize_enemy_name(value: Any) -> str:
     decomposed = unicodedata.normalize("NFKD", str(value or ""))
     ascii_value = decomposed.encode("ascii", "ignore").decode("ascii")
     return re.sub(r"[^a-z0-9]+", "", ascii_value.casefold())
+
+
+def _variant_stripped_normalized_name(value: Any) -> str:
+    text = re.sub(r"\s*\([^)]*\)\s*$", "", str(value or ""))
+    return _normalize_enemy_name(text)
 
 
 def _as_int(value: Any) -> int | None:
@@ -86,8 +115,8 @@ def _nanoka_report(args: argparse.Namespace) -> dict[str, Any]:
 
 def _nanoka_candidates(
     nanoka_report: dict[str, Any],
-) -> dict[tuple[int, int, int, str], list[dict[str, Any]]]:
-    result: dict[tuple[int, int, int, str], list[dict[str, Any]]] = defaultdict(list)
+) -> dict[tuple[int, int, int], list[dict[str, Any]]]:
+    result: dict[tuple[int, int, int], list[dict[str, Any]]] = defaultdict(list)
     towers = nanoka_report.get("towers") or []
     if not towers:
         return result
@@ -95,32 +124,34 @@ def _nanoka_candidates(
         floor = _as_int(row.get("floor"))
         chamber = _as_int(row.get("chamber"))
         side = _as_int(row.get("side"))
-        normalized = _normalize_enemy_name(row.get("enemy_display_name"))
-        if floor is None or chamber is None or side is None or not normalized:
+        if floor is None or chamber is None or side is None:
             continue
-        result[(floor, chamber, side, normalized)].append(row)
+        result[(floor, chamber, side)].append(row)
     return result
 
 
-def _match_row(
-    row: dict[str, Any],
-    candidates_by_key: dict[tuple[int, int, int, str], list[dict[str, Any]]],
-) -> dict[str, Any]:
-    floor = _as_int(row.get("floor"))
-    chamber = _as_int(row.get("chamber"))
-    side = _as_int(row.get("side"))
+def _nanoka_identity(candidate: dict[str, Any]) -> str:
+    return "|".join(
+        str(part or "")
+        for part in (
+            candidate.get("monster_id"),
+            candidate.get("hp_source_path"),
+            candidate.get("enemy_display_name"),
+        )
+    )
+
+
+def _base_join_row(row: dict[str, Any]) -> dict[str, Any]:
     fandom_name = row.get("display_name")
     normalized = _normalize_enemy_name(fandom_name)
-    warnings: list[str] = []
-    key = (floor, chamber, side, normalized)
-    candidates = candidates_by_key.get(key, [])
-
-    base = {
-        "floor": floor,
-        "chamber": chamber,
-        "side": side,
+    return {
+        "floor": _as_int(row.get("floor")),
+        "chamber": _as_int(row.get("chamber")),
+        "side": _as_int(row.get("side")),
         "side_name": row.get("side_name"),
         "wave": _as_int(row.get("wave")),
+        "primary_display_name": fandom_name,
+        "fandom_display_name": fandom_name,
         "fandom_enemy_display_name": fandom_name,
         "fandom_normalized_enemy_name": normalized,
         "fandom_enemy_count": _as_int(row.get("count")),
@@ -130,53 +161,77 @@ def _match_row(
         "fandom_raw_source_path": row.get("raw_source_path"),
     }
 
-    if not candidates:
-        return {
-            **base,
-            "matched_nanoka_enemy_display_name": None,
-            "nanoka_monster_id": None,
-            "nanoka_level": None,
-            "nanoka_hp": None,
-            "nanoka_hp_display": None,
-            "nanoka_hp_display_formatted": None,
-            "nanoka_icon_url": None,
-            "nanoka_enemy_detail_url": None,
-            "nanoka_hp_source_path": None,
-            "match_method": "same_floor_chamber_side_normalized_name",
-            "match_confidence": "unmatched",
-            "warnings": ["nanoka_match_unavailable"],
-        }
 
-    if len(candidates) > 1:
-        return {
-            **base,
-            "matched_nanoka_enemy_display_name": None,
-            "nanoka_monster_id": None,
-            "nanoka_level": None,
-            "nanoka_hp": None,
-            "nanoka_hp_display": None,
-            "nanoka_hp_display_formatted": None,
-            "nanoka_icon_url": None,
-            "nanoka_enemy_detail_url": None,
-            "nanoka_hp_source_path": None,
-            "nanoka_candidate_count": len(candidates),
-            "nanoka_candidates": [
-                {
-                    "enemy_display_name": candidate.get("enemy_display_name"),
-                    "monster_id": candidate.get("monster_id"),
-                    "level": candidate.get("level"),
-                    "hp": candidate.get("hp_resolved"),
-                    "hp_source_path": candidate.get("hp_source_path"),
-                }
-                for candidate in candidates
-            ],
-            "match_method": "same_floor_chamber_side_normalized_name",
-            "match_confidence": "ambiguous",
-            "warnings": ["nanoka_match_ambiguous"],
-        }
+def _nanoka_candidate_summary(candidate: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "nanoka_display_name": candidate.get("enemy_display_name"),
+        "monster_id": candidate.get("monster_id"),
+        "level": candidate.get("level"),
+        "hp": candidate.get("hp_resolved"),
+        "hp_source_path": candidate.get("hp_source_path"),
+    }
 
-    candidate = candidates[0]
-    fandom_level = _as_int(row.get("level"))
+
+def _unmatched_row(base: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **base,
+        "nanoka_display_name": None,
+        "matched_nanoka_enemy_display_name": None,
+        "nanoka_monster_id": None,
+        "nanoka_level": None,
+        "nanoka_hp": None,
+        "nanoka_hp_display": None,
+        "nanoka_hp_display_formatted": None,
+        "nanoka_icon_url": None,
+        "nanoka_enemy_detail_url": None,
+        "nanoka_hp_source_path": None,
+        "nanoka_candidate_identity": None,
+        "match_method": MATCH_METHOD_UNMATCHED,
+        "match_confidence": MATCH_CONFIDENCE_NONE,
+        "warnings": ["nanoka_match_unavailable"],
+    }
+
+
+def _ambiguous_row(
+    base: dict[str, Any],
+    *,
+    candidates: list[dict[str, Any]],
+    method: str,
+) -> dict[str, Any]:
+    return {
+        **base,
+        "nanoka_display_name": None,
+        "matched_nanoka_enemy_display_name": None,
+        "nanoka_monster_id": None,
+        "nanoka_level": None,
+        "nanoka_hp": None,
+        "nanoka_hp_display": None,
+        "nanoka_hp_display_formatted": None,
+        "nanoka_icon_url": None,
+        "nanoka_enemy_detail_url": None,
+        "nanoka_hp_source_path": None,
+        "nanoka_candidate_identity": None,
+        "nanoka_candidate_count": len(candidates),
+        "nanoka_candidates": [
+            _nanoka_candidate_summary(candidate) for candidate in candidates
+        ],
+        "match_method": MATCH_METHOD_AMBIGUOUS,
+        "attempted_match_method": method,
+        "match_confidence": MATCH_CONFIDENCE_NONE,
+        "warnings": [f"nanoka_match_ambiguous:{method}"],
+    }
+
+
+def _matched_row(
+    base: dict[str, Any],
+    candidate: dict[str, Any],
+    *,
+    method: str,
+    confidence: str,
+    warnings: list[str] | None = None,
+) -> dict[str, Any]:
+    warnings = list(warnings or [])
+    fandom_level = _as_int(base.get("fandom_level"))
     nanoka_level = _as_int(candidate.get("level"))
     if (
         fandom_level is not None
@@ -190,6 +245,7 @@ def _match_row(
 
     return {
         **base,
+        "nanoka_display_name": candidate.get("enemy_display_name"),
         "matched_nanoka_enemy_display_name": candidate.get("enemy_display_name"),
         "nanoka_monster_id": candidate.get("monster_id"),
         "nanoka_level": nanoka_level,
@@ -199,23 +255,166 @@ def _match_row(
         "nanoka_icon_url": candidate.get("icon_url"),
         "nanoka_enemy_detail_url": candidate.get("enemy_detail_url"),
         "nanoka_hp_source_path": candidate.get("hp_source_path"),
-        "match_method": "same_floor_chamber_side_normalized_name",
-        "match_confidence": "matched"
-        if not warnings
-        else "matched_with_warnings",
+        "nanoka_candidate_identity": _nanoka_identity(candidate),
+        "match_method": method,
+        "match_confidence": confidence,
         "warnings": warnings,
     }
+
+
+def _candidate_normalized_name(candidate: dict[str, Any]) -> str:
+    return _normalize_enemy_name(candidate.get("enemy_display_name"))
+
+
+def _candidate_variant_stripped_name(candidate: dict[str, Any]) -> str:
+    return _variant_stripped_normalized_name(candidate.get("enemy_display_name"))
+
+
+def _match_candidates(
+    base: dict[str, Any],
+    candidates: list[dict[str, Any]],
+    *,
+    method: str,
+) -> dict[str, Any] | None:
+    fandom_normalized = str(base.get("fandom_normalized_enemy_name") or "")
+    fandom_stripped = _variant_stripped_normalized_name(base.get("fandom_display_name"))
+
+    if method == MATCH_METHOD_STRICT:
+        matches = [
+            candidate
+            for candidate in candidates
+            if _candidate_normalized_name(candidate) == fandom_normalized
+        ]
+        warnings: list[str] = []
+        confidence = MATCH_CONFIDENCE_HIGH
+    elif method == MATCH_METHOD_MANUAL_ALIAS:
+        matches = [
+            candidate
+            for candidate in candidates
+            if (fandom_normalized, _candidate_normalized_name(candidate))
+            in MANUAL_ALIAS_PAIRS
+        ]
+        warnings = [
+            "non_strict_match:manual_alias",
+            *[
+                MANUAL_ALIAS_PAIRS[(fandom_normalized, _candidate_normalized_name(candidate))]
+                for candidate in matches[:1]
+            ],
+        ]
+        confidence = MATCH_CONFIDENCE_HIGH
+    elif method == MATCH_METHOD_VARIANT_STRIP:
+        if fandom_stripped == fandom_normalized:
+            return None
+        matches = [
+            candidate
+            for candidate in candidates
+            if _candidate_variant_stripped_name(candidate) == fandom_stripped
+        ]
+        warnings = ["non_strict_match:variant_strip"]
+        confidence = MATCH_CONFIDENCE_MEDIUM
+    else:
+        raise ValueError(f"Unsupported match method: {method}")
+
+    if not matches:
+        return None
+    if len(matches) > 1:
+        return _ambiguous_row(base, candidates=matches, method=method)
+    return _matched_row(
+        base,
+        matches[0],
+        method=method,
+        confidence=confidence,
+        warnings=warnings,
+    )
+
+
+def _initial_match_row(
+    row: dict[str, Any],
+    candidates_by_side: dict[tuple[int, int, int], list[dict[str, Any]]],
+) -> dict[str, Any]:
+    base = _base_join_row(row)
+    side_key = (
+        _as_int(base.get("floor")),
+        _as_int(base.get("chamber")),
+        _as_int(base.get("side")),
+    )
+    candidates = candidates_by_side.get(side_key, [])
+    for method in (
+        MATCH_METHOD_STRICT,
+        MATCH_METHOD_MANUAL_ALIAS,
+        MATCH_METHOD_VARIANT_STRIP,
+    ):
+        matched = _match_candidates(base, candidates, method=method)
+        if matched is not None:
+            return matched
+    return _unmatched_row(base)
+
+
+def _apply_context_unique_remaining(
+    rows: list[dict[str, Any]],
+    candidates_by_side: dict[tuple[int, int, int], list[dict[str, Any]]],
+) -> list[dict[str, Any]]:
+    grouped_indexes: dict[tuple[int, int, int], list[int]] = defaultdict(list)
+    for index, row in enumerate(rows):
+        floor = _as_int(row.get("floor"))
+        chamber = _as_int(row.get("chamber"))
+        side = _as_int(row.get("side"))
+        if floor is not None and chamber is not None and side is not None:
+            grouped_indexes[(floor, chamber, side)].append(index)
+
+    for side_key, indexes in grouped_indexes.items():
+        side_rows = [rows[index] for index in indexes]
+        unmatched_indexes = [
+            index
+            for index in indexes
+            if rows[index].get("match_method") == MATCH_METHOD_UNMATCHED
+        ]
+        if len(unmatched_indexes) != 1:
+            continue
+        other_rows = [row for row in side_rows if row not in [rows[unmatched_indexes[0]]]]
+        if any(row.get("match_method") == MATCH_METHOD_AMBIGUOUS for row in other_rows):
+            continue
+        if any(row.get("match_confidence") == MATCH_CONFIDENCE_NONE for row in other_rows):
+            continue
+
+        used_candidate_identities = {
+            str(row.get("nanoka_candidate_identity"))
+            for row in side_rows
+            if row.get("nanoka_candidate_identity")
+        }
+        unused_candidates = [
+            candidate
+            for candidate in candidates_by_side.get(side_key, [])
+            if _nanoka_identity(candidate) not in used_candidate_identities
+        ]
+        if len(unused_candidates) != 1:
+            continue
+
+        index = unmatched_indexes[0]
+        rows[index] = _matched_row(
+            rows[index],
+            unused_candidates[0],
+            method=MATCH_METHOD_CONTEXT_UNIQUE,
+            confidence=MATCH_CONFIDENCE_LOW,
+            warnings=[
+                "non_strict_match:context_unique_remaining",
+                "Only one unmatched Fandom enemy and one unmatched Nanoka enemy "
+                "remained in this chamber side after other rows matched.",
+            ],
+        )
+    return rows
 
 
 def _join_rows(
     fandom_report: dict[str, Any],
     nanoka_report: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    candidates_by_key = _nanoka_candidates(nanoka_report)
-    return [
-        _match_row(row, candidates_by_key)
+    candidates_by_side = _nanoka_candidates(nanoka_report)
+    rows = [
+        _initial_match_row(row, candidates_by_side)
         for row in fandom_report.get("enemy_rows", [])
     ]
+    return _apply_context_unique_remaining(rows, candidates_by_side)
 
 
 def _group_rows(
@@ -249,7 +448,7 @@ def _wave_breakdown(wave: int, rows: list[dict[str, Any]]) -> dict[str, Any]:
         if _as_float(row.get("nanoka_hp")) is None:
             warnings.append(
                 "missing_hp:"
-                f"{row.get('fandom_enemy_display_name')}@{row.get('fandom_raw_source_path')}"
+                f"{row.get('primary_display_name')}@{row.get('fandom_raw_source_path')}"
             )
 
     wave_multi_hp = 0.0
@@ -285,9 +484,10 @@ def _wave_breakdown(wave: int, rows: list[dict[str, Any]]) -> dict[str, Any]:
         if matched_rows
         else None,
         "selected_solo_enemy": {
-            "fandom_enemy_display_name": selected_solo.get(
-                "fandom_enemy_display_name"
-            ),
+            "primary_display_name": selected_solo.get("primary_display_name"),
+            "fandom_display_name": selected_solo.get("fandom_display_name"),
+            "fandom_enemy_display_name": selected_solo.get("fandom_enemy_display_name"),
+            "nanoka_display_name": selected_solo.get("nanoka_display_name"),
             "matched_nanoka_enemy_display_name": selected_solo.get(
                 "matched_nanoka_enemy_display_name"
             ),
@@ -444,9 +644,10 @@ def _regression_checks(
                     "wave": wave.get("wave"),
                     "enemies": [
                         {
-                            "display_name": enemy.get("fandom_enemy_display_name"),
+                            "display_name": enemy.get("primary_display_name"),
                             "count": enemy.get("fandom_enemy_count"),
                             "hp": enemy.get("nanoka_hp"),
+                            "match_method": enemy.get("match_method"),
                             "match_confidence": enemy.get("match_confidence"),
                         }
                         for enemy in wave.get("joined_enemies", [])
@@ -457,7 +658,8 @@ def _regression_checks(
         len(wave.get("enemies", [])) == 1
         and wave["enemies"][0].get("display_name") == "Fisher of Hidden Depths"
         and wave["enemies"][0].get("count") == 3
-        and wave["enemies"][0].get("match_confidence") == "matched"
+        and wave["enemies"][0].get("match_method") == MATCH_METHOD_STRICT
+        and wave["enemies"][0].get("match_confidence") == MATCH_CONFIDENCE_HIGH
         for wave in observed_waves
     )
     hp_modes = side.get("fact_dps_hp_modes", {}) if side else {}
@@ -489,10 +691,10 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
     )
     tower = (nanoka_report.get("towers") or [{}])[0]
     unmatched = [
-        row for row in joined_rows if row.get("match_confidence") == "unmatched"
+        row for row in joined_rows if row.get("match_method") == MATCH_METHOD_UNMATCHED
     ]
     ambiguous = [
-        row for row in joined_rows if row.get("match_confidence") == "ambiguous"
+        row for row in joined_rows if row.get("match_method") == MATCH_METHOD_AMBIGUOUS
     ]
     return {
         "probe": {
@@ -524,12 +726,34 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
         "match_summary": {
             "joined_row_count": len(joined_rows),
             "matched_count": sum(
-                1 for row in joined_rows if row.get("match_confidence") == "matched"
-            ),
-            "matched_with_warnings_count": sum(
                 1
                 for row in joined_rows
-                if row.get("match_confidence") == "matched_with_warnings"
+                if row.get("match_confidence") in MATCHED_CONFIDENCES
+            ),
+            "high_confidence_count": sum(
+                1
+                for row in joined_rows
+                if row.get("match_confidence") == MATCH_CONFIDENCE_HIGH
+            ),
+            "medium_confidence_count": sum(
+                1
+                for row in joined_rows
+                if row.get("match_confidence") == MATCH_CONFIDENCE_MEDIUM
+            ),
+            "low_confidence_count": sum(
+                1
+                for row in joined_rows
+                if row.get("match_confidence") == MATCH_CONFIDENCE_LOW
+            ),
+            "non_strict_match_count": sum(
+                1
+                for row in joined_rows
+                if row.get("match_method")
+                in {
+                    MATCH_METHOD_MANUAL_ALIAS,
+                    MATCH_METHOD_VARIANT_STRIP,
+                    MATCH_METHOD_CONTEXT_UNIQUE,
+                }
             ),
             "unmatched_count": len(unmatched),
             "ambiguous_count": len(ambiguous),
@@ -539,9 +763,9 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
                     "chamber": row.get("chamber"),
                     "side": row.get("side"),
                     "wave": row.get("wave"),
-                    "fandom_enemy_display_name": row.get(
-                        "fandom_enemy_display_name"
-                    ),
+                    "primary_display_name": row.get("primary_display_name"),
+                    "fandom_display_name": row.get("fandom_display_name"),
+                    "fandom_enemy_display_name": row.get("fandom_enemy_display_name"),
                     "fandom_normalized_enemy_name": row.get(
                         "fandom_normalized_enemy_name"
                     ),
@@ -554,9 +778,9 @@ def build_report(args: argparse.Namespace) -> dict[str, Any]:
                     "chamber": row.get("chamber"),
                     "side": row.get("side"),
                     "wave": row.get("wave"),
-                    "fandom_enemy_display_name": row.get(
-                        "fandom_enemy_display_name"
-                    ),
+                    "primary_display_name": row.get("primary_display_name"),
+                    "fandom_display_name": row.get("fandom_display_name"),
+                    "fandom_enemy_display_name": row.get("fandom_enemy_display_name"),
                     "nanoka_candidate_count": row.get("nanoka_candidate_count"),
                 }
                 for row in ambiguous

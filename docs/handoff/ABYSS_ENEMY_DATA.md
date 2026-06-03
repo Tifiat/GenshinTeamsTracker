@@ -198,10 +198,17 @@ MVP recommendation:
   It follows enemy-page redirects, selects Level/HP tables by Fandom composition
   name vs enemy-page section/table heading, applies an explicit manual HP
   multiplier, and compares against Nanoka only after selection. Nanoka remains
-  primary; Fandom enemy-page HP is fallback/cross-check. Correct heading
-  selection can still disagree with Nanoka, for example `Battle-Scarred Rock
-  Crab` selects the `Battle-Scarred` table with raw Lv.100 HP `1,175,752`
-  (`4,409,070` at `3.75x`), while Nanoka reports `4,025,384`.
+  primary; Fandom enemy-page HP is fallback/cross-check. Specific variant
+  headings must win over generic tables; if no variant heading matches, the
+  probe may select one generic Level/HP table as
+  `generic_stats_table_fallback` with medium confidence. Generic priority is
+  `Stats`/`Stats > Normal`, then `Stats > Land`; `Stats > Underwater` is not
+  used for Abyss unless the Fandom composition name explicitly indicates an
+  underwater/waterborne variant.
+  Correct heading selection can still disagree with Nanoka, for example
+  `Battle-Scarred Rock Crab` selects the `Battle-Scarred` table with raw
+  Lv.100 HP `1,175,752` (`4,409,070` at `3.75x`), while Nanoka reports
+  `4,025,384`.
 - Future Fact DPS UI/settings may expose a toggle such as `count multi-target
   HP`. Default should be solo-target mode: for each wave, count only the
   highest-HP matched target once, because that is usually the more comparable

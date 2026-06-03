@@ -34,6 +34,21 @@ GENERIC_HEADING_TOKENS = {
     "stats",
 }
 
+GENERIC_STATS_TABLE_HEADINGS = {
+    "normal",
+    "stats",
+}
+GENERIC_STATS_LAND_HEADINGS = {
+    "land",
+}
+GENERIC_STATS_UNDERWATER_HEADINGS = {
+    "underwater",
+}
+UNDERWATER_VARIANT_TOKENS = {
+    "underwater",
+    "waterborne",
+}
+
 
 @dataclass(slots=True)
 class EnemyPage:
@@ -265,6 +280,28 @@ def _score_table(candidate: HpTableCandidate, enemy_name: str) -> tuple[float, i
     return ratio, exactish, len(heading_tokens)
 
 
+def _generic_stats_candidate_priority(
+    candidate: HpTableCandidate,
+    *,
+    enemy_name: str,
+) -> int | None:
+    normalized_path = [_normalize_name(heading) for heading in candidate.heading_path]
+    if "stats" not in normalized_path:
+        return None
+    match_heading = _normalize_name(_candidate_heading_for_match(candidate))
+    if match_heading in GENERIC_STATS_TABLE_HEADINGS:
+        return 0
+    if match_heading in GENERIC_STATS_LAND_HEADINGS:
+        return 1
+    enemy_tokens = set(_tokens(enemy_name))
+    if (
+        match_heading in GENERIC_STATS_UNDERWATER_HEADINGS
+        and enemy_tokens & UNDERWATER_VARIANT_TOKENS
+    ):
+        return 2
+    return None
+
+
 def _select_hp_table(
     candidates: list[HpTableCandidate],
     *,
@@ -284,6 +321,41 @@ def _select_hp_table(
         item for item in scored if item[0][0] > 0.0
     ]
     if not positive:
+        generic_stats = [
+            (priority, candidate)
+            for candidate in candidates
+            if (priority := _generic_stats_candidate_priority(
+                candidate,
+                enemy_name=enemy_name,
+            ))
+            is not None
+        ]
+        if generic_stats:
+            generic_stats.sort(key=lambda item: item[0])
+            best_priority = generic_stats[0][0]
+            tied = [
+                candidate
+                for priority, candidate in generic_stats
+                if priority == best_priority
+            ]
+            if len(tied) == 1:
+                return (
+                    tied[0],
+                    "generic_stats_table_fallback",
+                    "medium",
+                    ["selected_generic_stats_table_after_no_variant_heading_match"],
+                )
+            return (
+                None,
+                "multiple_generic_stats_tables_ambiguous",
+                "none",
+                [
+                    "multiple_generic_stats_tables_after_no_variant_heading_match:"
+                    + ",".join(
+                        " > ".join(candidate.heading_path) for candidate in tied
+                    )
+                ],
+            )
         return (
             None,
             "multiple_tables_no_heading_match",

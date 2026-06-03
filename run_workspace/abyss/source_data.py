@@ -85,6 +85,7 @@ class AbyssEnemySourceRow:
     match_method: str
     match_confidence: str
     warnings: tuple[str, ...] = ()
+    cached_icon_path: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,6 +206,26 @@ def build_abyss_floor_source_data_from_reports(
         enemy_rows=source_rows,
         side_summaries=side_summaries,
         global_warnings=global_warnings,
+    )
+
+
+def rebuild_abyss_floor_source_data_with_rows(
+    data: AbyssFloorSourceData,
+    enemy_rows: tuple[AbyssEnemySourceRow, ...] | list[AbyssEnemySourceRow],
+    *,
+    global_warnings: tuple[str, ...] | list[str] = (),
+) -> AbyssFloorSourceData:
+    """Return source data with replaced rows and rebuilt side summaries."""
+
+    rows = tuple(enemy_rows)
+    warnings = tuple(sorted({*data.global_warnings, *[str(item) for item in global_warnings]}))
+    return AbyssFloorSourceData(
+        floor=data.floor,
+        period=data.period,
+        source_urls=data.source_urls,
+        enemy_rows=rows,
+        side_summaries=tuple(_build_side_summaries(rows)),
+        global_warnings=warnings,
     )
 
 

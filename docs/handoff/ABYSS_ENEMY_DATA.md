@@ -246,6 +246,15 @@ MVP recommendation:
   warnings, enemy rows, waves, and solo/multi HP summaries; it never fetches
   network data or fabricates missing source data. The live debug updater only
   writes it when `--save-cache` is passed.
+- Monster icon asset caching is backend-only in
+  `run_workspace/abyss/source_data_cache.py`. When the live debug updater runs
+  with `--save-cache`, it also caches monster icons by default under
+  `data/cache/abyss/source_data/<period_start>/floor_<floor>_assets/monster_icons/`
+  and stores `cached_icon_path` on each `AbyssEnemySourceRow` when available.
+  Asset source priority is Nanoka monster icon URL, then Fandom composition
+  icon URL fallback. Missing/failed icons add warnings but keep source data
+  usable. `--skip-assets` keeps the update as JSON-only. Future tooltip UI
+  should use these local cached icons instead of live image URLs.
 - Future Fact DPS UI/settings may expose a toggle such as `count multi-target
   HP`. Default should be solo-target mode: for each wave, count only the
   highest-HP matched target once, because that is usually the more comparable

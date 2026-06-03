@@ -149,6 +149,9 @@ class AbyssSourceDataUpdateTest(unittest.TestCase):
         ), patch(
             "run_workspace.abyss.source_data_update.fetch_nanoka_tower_report_for_period",
             return_value=tower_report,
+        ), patch(
+            "run_workspace.abyss.source_data_cache._fetch_url_bytes",
+            return_value=b"icon",
         ):
             report = build_update_report(
                 period_start="2026-05-16",
@@ -164,10 +167,35 @@ class AbyssSourceDataUpdateTest(unittest.TestCase):
 
         self.assertTrue(report["cache"]["saved"])
         self.assertIn("2026-05-16", report["cache"]["path"])
+        self.assertTrue(report["assets"]["enabled"])
+        self.assertEqual(report["assets"]["saved"], 10)
+        self.assertEqual(report["assets"]["failed"], 0)
         self.assertIsNotNone(loaded)
         assert loaded is not None
         self.assertEqual(len(loaded.enemy_rows), 10)
         self.assertEqual(loaded.matched_count, 10)
+        self.assertIsNotNone(loaded.enemy_rows[0].cached_icon_path)
+
+    def test_update_without_save_cache_does_not_download_icons(self) -> None:
+        fandom_report, tower_report = current_style_reports()
+        with patch(
+            "run_workspace.abyss.source_data_update.fetch_fandom_composition_report",
+            return_value=fandom_report,
+        ), patch(
+            "run_workspace.abyss.source_data_update.fetch_nanoka_tower_report_for_period",
+            return_value=tower_report,
+        ), patch(
+            "run_workspace.abyss.source_data_cache._fetch_url_bytes",
+            side_effect=AssertionError("icon download should not run"),
+        ):
+            report = build_update_report(
+                period_start="2026-05-16",
+                floor=12,
+            )
+
+        self.assertFalse(report["cache"]["saved"])
+        self.assertFalse(report["assets"]["enabled"])
+        self.assertIsNone(report["source_data"]["enemy_rows"][0]["cached_icon_path"])
 
 
 if __name__ == "__main__":

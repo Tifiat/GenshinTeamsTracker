@@ -20,7 +20,11 @@ from .source_data import (
     load_abyss_floor12_source_data,
     period_url_for_start,
 )
-from .source_data_cache import save_abyss_floor_source_data
+from .source_data_cache import (
+    IconCacheResult,
+    cache_abyss_floor_monster_icons,
+    save_abyss_floor_source_data,
+)
 from .source_data_fetchers import (
     AbyssSourceFetchError,
     NanokaTowerPeriodAmbiguous,
@@ -100,6 +104,7 @@ def build_update_report(
     period_end: str | None = None,
     save_cache: bool = False,
     cache_dir: str | None = None,
+    cache_assets: bool = True,
 ) -> dict[str, Any]:
     data = fetch_abyss_floor12_source_data(
         period_start=period_start,
@@ -109,8 +114,16 @@ def build_update_report(
         period_end=period_end,
     )
     cache_report: dict[str, Any] = {"saved": False}
+    asset_report: dict[str, Any] = {"enabled": False}
+    report_data = data
     if save_cache:
-        saved_path = save_abyss_floor_source_data(data, cache_dir=cache_dir)
+        if cache_assets:
+            asset_result = cache_abyss_floor_monster_icons(data, cache_dir=cache_dir)
+            report_data = asset_result.data
+            asset_report = _asset_cache_report(asset_result)
+        else:
+            asset_report = {"enabled": False, "skipped": True}
+        saved_path = save_abyss_floor_source_data(report_data, cache_dir=cache_dir)
         cache_report = {
             "saved": True,
             "path": str(saved_path),
@@ -148,7 +161,8 @@ def build_update_report(
         "nanoka": _nanoka_debug_metadata(data),
         "summary": _summary(data),
         "cache": cache_report,
-        "source_data": asdict(data),
+        "assets": asset_report,
+        "source_data": asdict(report_data),
     }
 
 
@@ -182,6 +196,19 @@ def _nanoka_debug_metadata(data: AbyssFloorSourceData) -> dict[str, Any]:
     }
 
 
+def _asset_cache_report(result: IconCacheResult) -> dict[str, Any]:
+    return {
+        "enabled": True,
+        "cache_dir": str(result.cache_dir),
+        "attempted": result.attempted,
+        "saved": result.saved,
+        "failed": result.failed,
+        "downloaded": result.downloaded,
+        "cache_hits": result.cache_hits,
+        "warnings": list(result.warnings),
+    }
+
+
 def _text_report(report: dict[str, Any]) -> str:
     summary = report["summary"]
     lines = [
@@ -197,6 +224,15 @@ def _text_report(report: dict[str, Any]) -> str:
     cache_report = report.get("cache", {})
     if cache_report.get("saved"):
         lines.append(f"cache_saved={cache_report.get('path')}")
+    asset_report = report.get("assets", {})
+    if asset_report.get("enabled"):
+        lines.append(
+            "assets="
+            f"attempted={asset_report.get('attempted')} "
+            f"saved={asset_report.get('saved')} "
+            f"failed={asset_report.get('failed')} "
+            f"dir={asset_report.get('cache_dir')}"
+        )
     return "\n".join(lines)
 
 
@@ -233,6 +269,11 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         "--cache-dir",
         help="Optional cache directory override for --save-cache.",
     )
+    parser.add_argument(
+        "--skip-assets",
+        action="store_true",
+        help="With --save-cache, skip monster icon asset downloads.",
+    )
     parser.add_argument("--indent", type=int, default=2, help="JSON indentation. Default: 2.")
     return parser
 
@@ -249,6 +290,7 @@ def main() -> int:
             period_end=args.period_end,
             save_cache=args.save_cache,
             cache_dir=args.cache_dir,
+            cache_assets=not args.skip_assets,
         )
     except AbyssSourceFetchError as exc:
         print(

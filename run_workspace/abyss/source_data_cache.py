@@ -4,11 +4,18 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from collections.abc import Mapping
+from dataclasses import dataclass
 from dataclasses import asdict
+from dataclasses import replace
 from datetime import datetime
+from hashlib import sha1
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import unquote, urlparse
+from urllib.request import Request, urlopen
 
 from .source_data import (
     AbyssChamberSideSourceData,
@@ -16,17 +23,46 @@ from .source_data import (
     AbyssFloorSourceData,
     AbyssPeriod,
     AbyssWaveSourceData,
+    rebuild_abyss_floor_source_data_with_rows,
 )
 
 
 SCHEMA_VERSION = 1
 DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR = Path("data/cache/abyss/source_data")
+ICON_CACHE_USER_AGENT = "GenshinTeamsTracker-AbyssSourceDataIconCache/1.0"
+SUPPORTED_ICON_EXTENSIONS = {".avif", ".gif", ".jpg", ".jpeg", ".png", ".webp"}
 
 _PERIOD_START_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+IconBytesFetcher = Callable[[str], bytes]
 
 
 class AbyssSourceDataCacheError(ValueError):
     """Raised when a cached Abyss source-data file is malformed."""
+
+
+@dataclass(frozen=True, slots=True)
+class AbyssMonsterIconCacheEntry:
+    row_index: int
+    primary_display_name: str
+    source_kind: str | None
+    source_url: str | None
+    cached_icon_path: str | None
+    status: str
+    warning: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class IconCacheResult:
+    data: AbyssFloorSourceData
+    cache_dir: Path
+    attempted: int
+    saved: int
+    failed: int
+    downloaded: int
+    cache_hits: int
+    entries: tuple[AbyssMonsterIconCacheEntry, ...]
+    warnings: tuple[str, ...] = ()
 
 
 def cached_abyss_floor_source_data_path(
@@ -41,6 +77,22 @@ def cached_abyss_floor_source_data_path(
     normalized_floor = _normalize_floor(floor)
     base_dir = Path(cache_dir) if cache_dir is not None else DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR
     return base_dir / normalized_period / f"floor_{normalized_floor}.json"
+
+
+def cached_abyss_floor_monster_icon_dir(
+    period_start: str,
+    floor: int = 12,
+    *,
+    cache_dir: str | Path | None = None,
+) -> Path:
+    """Return the asset directory for monster icons tied to one period/floor."""
+
+    source_path = cached_abyss_floor_source_data_path(
+        period_start,
+        floor,
+        cache_dir=cache_dir,
+    )
+    return source_path.with_name(f"floor_{_normalize_floor(floor)}_assets") / "monster_icons"
 
 
 def save_abyss_floor_source_data(
@@ -71,6 +123,63 @@ def save_abyss_floor_source_data(
         encoding="utf-8",
     )
     return path
+
+
+def cache_abyss_floor_monster_icons(
+    data: AbyssFloorSourceData,
+    *,
+    cache_dir: str | Path | None = None,
+    icon_fetcher: IconBytesFetcher | None = None,
+) -> IconCacheResult:
+    """Cache local monster icons for source-data rows without fetching pages."""
+
+    asset_dir = cached_abyss_floor_monster_icon_dir(
+        data.period.start_date,
+        data.floor,
+        cache_dir=cache_dir,
+    )
+    asset_dir.mkdir(parents=True, exist_ok=True)
+    fetcher = icon_fetcher or _fetch_url_bytes
+    updated_rows: list[AbyssEnemySourceRow] = []
+    entries: list[AbyssMonsterIconCacheEntry] = []
+    global_warnings: list[str] = []
+    downloaded = 0
+    cache_hits = 0
+
+    for row_index, row in enumerate(data.enemy_rows):
+        entry, updated_row, cache_state = _cache_icon_for_row(
+            row,
+            row_index=row_index,
+            asset_dir=asset_dir,
+            fetcher=fetcher,
+        )
+        entries.append(entry)
+        updated_rows.append(updated_row)
+        if cache_state == "downloaded":
+            downloaded += 1
+        elif cache_state == "cache_hit":
+            cache_hits += 1
+        if entry.warning:
+            global_warnings.append(entry.warning)
+
+    saved = sum(1 for entry in entries if entry.cached_icon_path)
+    failed = sum(1 for entry in entries if not entry.cached_icon_path)
+    updated_data = rebuild_abyss_floor_source_data_with_rows(
+        data,
+        updated_rows,
+        global_warnings=global_warnings,
+    )
+    return IconCacheResult(
+        data=updated_data,
+        cache_dir=asset_dir,
+        attempted=len(entries),
+        saved=saved,
+        failed=failed,
+        downloaded=downloaded,
+        cache_hits=cache_hits,
+        entries=tuple(entries),
+        warnings=tuple(global_warnings),
+    )
 
 
 def load_cached_abyss_floor_source_data(
@@ -191,6 +300,11 @@ def _period_from_mapping(data: Mapping[str, Any]) -> AbyssPeriod:
 
 
 def _enemy_row_from_mapping(data: Mapping[str, Any]) -> AbyssEnemySourceRow:
+    warnings = list(_tuple_of_str(data.get("warnings", ()), "warnings"))
+    cached_icon_path = _validated_cached_icon_path(
+        data.get("cached_icon_path"),
+        warnings,
+    )
     return AbyssEnemySourceRow(
         floor=_required_int(data, "floor"),
         chamber=_required_int(data, "chamber"),
@@ -210,7 +324,8 @@ def _enemy_row_from_mapping(data: Mapping[str, Any]) -> AbyssEnemySourceRow:
         hp_source=str(data["hp_source"]),
         match_method=str(data["match_method"]),
         match_confidence=str(data["match_confidence"]),
-        warnings=_tuple_of_str(data.get("warnings", ()), "warnings"),
+        warnings=tuple(warnings),
+        cached_icon_path=cached_icon_path,
     )
 
 
@@ -287,3 +402,173 @@ def _optional_str(value: Any) -> str | None:
         return None
     text = str(value)
     return text if text else None
+
+
+def _validated_cached_icon_path(value: Any, warnings: list[str]) -> str | None:
+    text = _optional_str(value)
+    if text is None:
+        return None
+    if not Path(text).is_file():
+        warnings.append("cached_icon_file_missing")
+        return None
+    return text
+
+
+def _cache_icon_for_row(
+    row: AbyssEnemySourceRow,
+    *,
+    row_index: int,
+    asset_dir: Path,
+    fetcher: IconBytesFetcher,
+) -> tuple[AbyssMonsterIconCacheEntry, AbyssEnemySourceRow, str | None]:
+    candidates = [
+        ("nanoka", row.nanoka_icon_url),
+        ("fandom", row.fandom_icon_url),
+    ]
+    source_failures: list[str] = []
+    usable_candidates = [
+        (source_kind, source_url)
+        for source_kind, source_url in candidates
+        if source_url
+    ]
+    if not usable_candidates:
+        warning = "monster_icon_url_missing"
+        return (
+            AbyssMonsterIconCacheEntry(
+                row_index=row_index,
+                primary_display_name=row.primary_display_name,
+                source_kind=None,
+                source_url=None,
+                cached_icon_path=None,
+                status="missing_source_url",
+                warning=warning,
+            ),
+            _row_with_icon_cache_warning(row, warning),
+            None,
+        )
+
+    for source_kind, source_url in usable_candidates:
+        target_path = _monster_icon_cache_path(row, source_url, asset_dir=asset_dir)
+        if target_path.is_file():
+            warning = _fallback_warning(source_kind, source_failures)
+            return (
+                AbyssMonsterIconCacheEntry(
+                    row_index=row_index,
+                    primary_display_name=row.primary_display_name,
+                    source_kind=source_kind,
+                    source_url=source_url,
+                    cached_icon_path=str(target_path),
+                    status="cache_hit",
+                    warning=warning,
+                ),
+                _row_with_cached_icon(row, target_path, warning),
+                "cache_hit",
+            )
+        try:
+            content = fetcher(source_url)
+            if not content:
+                raise AbyssSourceDataCacheError("Downloaded icon payload is empty")
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.write_bytes(content)
+        except Exception as exc:  # noqa: BLE001 - cache failures must not break source data.
+            source_failures.append(f"{source_kind}_icon_cache_failed")
+            last_error = str(exc)
+            continue
+        warning = _fallback_warning(source_kind, source_failures)
+        return (
+            AbyssMonsterIconCacheEntry(
+                row_index=row_index,
+                primary_display_name=row.primary_display_name,
+                source_kind=source_kind,
+                source_url=source_url,
+                cached_icon_path=str(target_path),
+                status="downloaded",
+                warning=warning,
+            ),
+            _row_with_cached_icon(row, target_path, warning),
+            "downloaded",
+        )
+
+    warning = "monster_icon_cache_failed"
+    if source_failures:
+        warning = f"{warning}:{','.join(source_failures)}"
+    if "last_error" in locals() and last_error:
+        entry_warning = f"{warning}:{last_error}"
+    else:
+        entry_warning = warning
+    return (
+        AbyssMonsterIconCacheEntry(
+            row_index=row_index,
+            primary_display_name=row.primary_display_name,
+            source_kind=usable_candidates[-1][0],
+            source_url=usable_candidates[-1][1],
+            cached_icon_path=None,
+            status="failed",
+            warning=entry_warning,
+        ),
+        _row_with_icon_cache_warning(row, warning),
+        None,
+    )
+
+
+def _row_with_cached_icon(
+    row: AbyssEnemySourceRow,
+    path: Path,
+    warning: str | None,
+) -> AbyssEnemySourceRow:
+    warnings = row.warnings
+    if warning:
+        warnings = (*warnings, warning)
+    return replace(row, cached_icon_path=str(path), warnings=warnings)
+
+
+def _row_with_icon_cache_warning(
+    row: AbyssEnemySourceRow,
+    warning: str,
+) -> AbyssEnemySourceRow:
+    return replace(row, cached_icon_path=None, warnings=(*row.warnings, warning))
+
+
+def _fallback_warning(source_kind: str, failures: list[str]) -> str | None:
+    if source_kind == "fandom" and failures:
+        return "nanoka_icon_cache_failed_used_fandom_icon"
+    return None
+
+
+def _monster_icon_cache_path(
+    row: AbyssEnemySourceRow,
+    source_url: str,
+    *,
+    asset_dir: Path,
+) -> Path:
+    stable_id = _safe_filename_part(
+        row.nanoka_monster_id or row.primary_display_name or "monster"
+    )
+    digest = sha1(source_url.encode("utf-8")).hexdigest()[:12]
+    extension = _source_url_extension(source_url)
+    return asset_dir / f"{stable_id}_{digest}{extension}"
+
+
+def _safe_filename_part(value: str) -> str:
+    normalized = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value)).strip("._-")
+    return normalized[:80] or "monster"
+
+
+def _source_url_extension(source_url: str) -> str:
+    suffix = Path(unquote(urlparse(source_url).path)).suffix.lower()
+    return suffix if suffix in SUPPORTED_ICON_EXTENSIONS else ".img"
+
+
+def _fetch_url_bytes(url: str) -> bytes:
+    request = Request(
+        url,
+        headers={
+            "Accept": "image/avif,image/webp,image/png,image/jpeg,image/*,*/*;q=0.8",
+            "User-Agent": ICON_CACHE_USER_AGENT,
+        },
+    )
+    try:
+        with urlopen(request, timeout=30) as response:
+            return response.read()
+    except (HTTPError, URLError, TimeoutError) as exc:
+        raise AbyssSourceDataCacheError(f"Failed to fetch icon {url}: {exc}") from exc

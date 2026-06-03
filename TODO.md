@@ -183,9 +183,13 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `run_workspace/abyss/source_data_cache.py` and stores schema-v1
   `AbyssFloorSourceData` JSON under
   `data/cache/abyss/source_data/<period_start>/floor_<floor>.json`; the update
-  CLI writes it only with `--save-cache`. It does not wire UI, replace the
-  current fixture, integrate Account/Data import, or run Fandom enemy-page
-  fallback yet.
+  CLI writes it only with `--save-cache`. Monster icon asset caching is also
+  backend-only there: `--save-cache` downloads icons by default into
+  `data/cache/abyss/source_data/<period_start>/floor_<floor>_assets/monster_icons/`
+  using Nanoka icon URLs first and Fandom composition icon URLs as fallback,
+  then stores `cached_icon_path` on rows for future tooltip UI. It does not
+  wire UI, replace the current fixture, integrate Account/Data import, or run
+  Fandom enemy-page fallback yet.
 - Need future AbyssSeason / room / chamber / wave / enemy model on top of this
   source-data boundary.
 - For each Abyss chamber/side, data should ideally support enemies, waves, enemy HP, total HP, resistances, immunities, special states, invulnerability/phases where available, and icons.

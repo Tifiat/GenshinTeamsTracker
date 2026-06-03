@@ -1,8 +1,9 @@
 """Debug CLI for production-safe Abyss source-data updates.
 
 This module fetches one Fandom period page and one Nanoka tower data path, then
-builds `AbyssFloorSourceData`. It does not persist data, does not touch UI, and
-does not fetch individual Fandom enemy pages during the normal Nanoka path.
+builds `AbyssFloorSourceData`. Cache writes are explicit opt-in; this module
+does not touch UI and does not fetch individual Fandom enemy pages during the
+normal Nanoka path.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from .source_data import (
     load_abyss_floor12_source_data,
     period_url_for_start,
 )
+from .source_data_cache import save_abyss_floor_source_data
 from .source_data_fetchers import (
     AbyssSourceFetchError,
     fetch_fandom_composition_report,
@@ -81,6 +83,8 @@ def build_update_report(
     tower_id: str,
     floor: int = 12,
     locale: str = "en",
+    save_cache: bool = False,
+    cache_dir: str | None = None,
 ) -> dict[str, Any]:
     data = fetch_abyss_floor12_source_data(
         period_start=period_start,
@@ -88,6 +92,14 @@ def build_update_report(
         floor=floor,
         locale=locale,
     )
+    cache_report: dict[str, Any] = {"saved": False}
+    if save_cache:
+        saved_path = save_abyss_floor_source_data(data, cache_dir=cache_dir)
+        cache_report = {
+            "saved": True,
+            "path": str(saved_path),
+            "schema_version": 1,
+        }
     return {
         "probe": {
             "name": "abyss_source_data_update",
@@ -113,6 +125,7 @@ def build_update_report(
             "locale": locale,
         },
         "summary": _summary(data),
+        "cache": cache_report,
         "source_data": asdict(data),
     }
 
@@ -129,6 +142,9 @@ def _text_report(report: dict[str, Any]) -> str:
     ]
     for warning in summary.get("warnings", []):
         lines.append(f"warning: {warning}")
+    cache_report = report.get("cache", {})
+    if cache_report.get("saved"):
+        lines.append(f"cache_saved={cache_report.get('path')}")
     return "\n".join(lines)
 
 
@@ -149,6 +165,15 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         default="json",
         help="Output format. Default: json.",
     )
+    parser.add_argument(
+        "--save-cache",
+        action="store_true",
+        help="Save the fetched AbyssFloorSourceData to the local source-data cache.",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        help="Optional cache directory override for --save-cache.",
+    )
     parser.add_argument("--indent", type=int, default=2, help="JSON indentation. Default: 2.")
     return parser
 
@@ -162,6 +187,8 @@ def main() -> int:
             tower_id=args.tower_id,
             floor=args.floor,
             locale=args.locale,
+            save_cache=args.save_cache,
+            cache_dir=args.cache_dir,
         )
     except AbyssSourceFetchError as exc:
         print(

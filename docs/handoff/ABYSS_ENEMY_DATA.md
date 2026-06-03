@@ -234,6 +234,14 @@ MVP recommendation:
   Production code does not import experiment scripts; the normal Nanoka path
   fetches the Fandom period page and Nanoka tower data only, does not fetch
   individual Fandom enemy pages, and does not run Fandom enemy-page fallback yet.
+- Persistent source-data cache boundary exists at
+  `run_workspace/abyss/source_data_cache.py`. It saves/loads typed
+  `AbyssFloorSourceData` as schema-v1 JSON under
+  `data/cache/abyss/source_data/<period_start>/floor_<floor>.json`, keyed by
+  period start plus floor. The cache stores source URLs, match metadata,
+  warnings, enemy rows, waves, and solo/multi HP summaries; it never fetches
+  network data or fabricates missing source data. The live debug updater only
+  writes it when `--save-cache` is passed.
 - Future Fact DPS UI/settings may expose a toggle such as `count multi-target
   HP`. Default should be solo-target mode: for each wave, count only the
   highest-HP matched target once, because that is usually the more comparable

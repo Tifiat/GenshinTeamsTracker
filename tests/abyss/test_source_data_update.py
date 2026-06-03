@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import tempfile
 import unittest
 from unittest.mock import patch
 
+from run_workspace.abyss.source_data_cache import load_cached_abyss_floor_source_data
 from run_workspace.abyss.source_data_fetchers import AbyssSourceFetchError
 from run_workspace.abyss.source_data_update import build_update_report
 
@@ -114,6 +116,35 @@ class AbyssSourceDataUpdateTest(unittest.TestCase):
                 for warning in report["summary"]["warnings"]
             )
         )
+
+    def test_update_entrypoint_can_save_cache_when_requested(self) -> None:
+        fandom_report, tower_report = current_style_reports()
+        with tempfile.TemporaryDirectory() as tmp, patch(
+            "run_workspace.abyss.source_data_update.fetch_fandom_composition_report",
+            return_value=fandom_report,
+        ), patch(
+            "run_workspace.abyss.source_data_update.fetch_nanoka_tower_report",
+            return_value=tower_report,
+        ):
+            report = build_update_report(
+                period_start="2026-05-16",
+                tower_id="119",
+                floor=12,
+                save_cache=True,
+                cache_dir=tmp,
+            )
+            loaded = load_cached_abyss_floor_source_data(
+                "2026-05-16",
+                floor=12,
+                cache_dir=tmp,
+            )
+
+        self.assertTrue(report["cache"]["saved"])
+        self.assertIn("2026-05-16", report["cache"]["path"])
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        self.assertEqual(len(loaded.enemy_rows), 10)
+        self.assertEqual(loaded.matched_count, 10)
 
 
 if __name__ == "__main__":

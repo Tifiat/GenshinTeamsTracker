@@ -177,7 +177,11 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   methods/confidence, and warnings. Live production-safe debug update entrypoint
   exists at `python -m run_workspace.abyss.source_data_update --period-start
   YYYY-MM-DD --tower-id N --floor 12`; it fetches the Fandom period page and
-  Nanoka tower data only. It does not cache results, wire UI, replace the
+  Nanoka tower data only. Persistent cache boundary exists in
+  `run_workspace/abyss/source_data_cache.py` and stores schema-v1
+  `AbyssFloorSourceData` JSON under
+  `data/cache/abyss/source_data/<period_start>/floor_<floor>.json`; the update
+  CLI writes it only with `--save-cache`. It does not wire UI, replace the
   current fixture, integrate Account/Data import, or run Fandom enemy-page
   fallback yet.
 - Need future AbyssSeason / room / chamber / wave / enemy model on top of this

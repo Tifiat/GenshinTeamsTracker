@@ -27,6 +27,13 @@ from .source_data import (
     load_abyss_floor12_source_data,
     period_url_for_start,
 )
+from .source_data_cache import (
+    AbyssSourceDataCacheError,
+    cached_abyss_floor_source_data_path,
+    has_cached_abyss_floor_source_data,
+    load_cached_abyss_floor_source_data,
+    save_abyss_floor_source_data,
+)
 
 __all__ = [
     "CURRENT_ABYSS_FLOOR12_FIXTURE",
@@ -40,6 +47,7 @@ __all__ = [
     "AbyssFloorSourceData",
     "AbyssPeriod",
     "AbyssSideFixture",
+    "AbyssSourceDataCacheError",
     "AbyssSourceDataUnavailable",
     "AbyssWaveSourceData",
     "FactualDpsResult",
@@ -48,8 +56,12 @@ __all__ = [
     "build_abyss_floor_source_data_from_reports",
     "calculate_factual_dps",
     "calculate_side_factual_dps",
+    "cached_abyss_floor_source_data_path",
     "current_abyss_floor12_data",
     "current_floor12_fixture",
+    "has_cached_abyss_floor_source_data",
+    "load_cached_abyss_floor_source_data",
     "load_abyss_floor12_source_data",
     "period_url_for_start",
+    "save_abyss_floor_source_data",
 ]

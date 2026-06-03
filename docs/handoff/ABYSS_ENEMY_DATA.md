@@ -60,7 +60,9 @@ Confirmed:
   discovers static tower JSON for active/explicit/history ids. The Fandom
   composition probe parses MediaWiki-rendered HTML card containers and validates
   the 2026-02-16 Floor 12 Chamber 1 First Half regression as five sequential
-  `Fisher of Hidden Depths` waves with count `3` each.
+  `Fisher of Hidden Depths` waves with count `3` each. The join probe combines
+  Fandom composition rows with Nanoka HP rows by floor/chamber/side/normalized
+  name and reports unmatched aliases/variants instead of guessing.
 - The old 2026-05-16 HP fixture proved that the UI can consume HP and calculate
   `HP / elapsed_seconds`, but its GCSIM/AnimeGameData-derived HP values are known
   invalid for at least some enemies. Do not use that fixture as factual HP.
@@ -184,9 +186,16 @@ MVP recommendation:
   - Keep any custom GCSIM extension isolated from the vanilla engine so engine
     updates or unmerged upstream pull requests do not overwrite it.
 - Next parser/debug join step should stay experiment-only first, not production
-  UI. It should combine Fandom composition rows with Nanoka resolved HP rows for
-  the same matched period/tower, keep both source paths, and preserve warnings
-  when name/count/wave or HP matching is ambiguous.
+  UI. It should harden alias/variant matching, for example Fandom `"Statue of
+  Marble and Brass"` vs Nanoka `Legatus Golem` and Fandom `Primo Geovishap
+  (Cryo)` vs Nanoka `Primo Geovishap`, while keeping both source paths and
+  preserving warnings when name/count/wave or HP matching is ambiguous.
+- Future Fact DPS UI/settings may expose a toggle such as `count multi-target
+  HP`. Default should be solo-target mode: for each wave, count only the
+  highest-HP matched target once, because that is usually the more comparable
+  baseline for GCSIM-style DPS. Multi-target mode should remain available for
+  teams whose real value depends on simultaneous enemies, but it should not be
+  the default.
 - Mark HP totals with explicit source/confidence: `nanoka_resolved_hp`,
   `fandom_enemy_page_fallback`, `source_estimate`, or `unavailable`.
 - Prefer Nanoka resolved HP when available. If not, allow a lower-confidence

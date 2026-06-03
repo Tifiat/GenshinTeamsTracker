@@ -189,15 +189,18 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   using Nanoka icon URLs first and Fandom composition icon URLs as fallback,
   then stores `cached_icon_path` on rows for future tooltip UI. It does not
   wire UI, replace the current fixture, or run Fandom enemy-page fallback yet.
-  Normal HoYoLAB import now captures the official Spiral Abyss period from
-  HoYoLAB overview when available, stores it at
-  `data/hoyolab/spiral_abyss_period.json`, and best-effort refreshes this
-  period/floor source-data cache after a successful import. This refresh is
-  non-fatal; existing caches stay untouched on source update failure. Manual
-  backend/debug command:
+  Normal HoYoLAB import now resolves the current Spiral Abyss period with source
+  priority HoYoLAB overview -> Nanoka live tower metadata -> latest Fandom
+  Spiral Abyss/Floors period page, stores it at
+  `data/hoyolab/spiral_abyss_period.json` with source/warning/fallback metadata,
+  and best-effort refreshes this period/floor source-data cache after a
+  successful import. This refresh is non-fatal; existing caches stay untouched
+  on source update failure. Manual backend/debug command:
   `python -m hoyolab_export.abyss_source_refresh --write-period --update-cache`;
-  it skips same-period ready cache/assets by default and has `--force` for an
-  explicit refresh. Right panel Fact DPS now reads this local cache via
+  it skips same-period ready cache/assets by default, has `--force` for an
+  explicit refresh, and has `--period-source auto|hoyolab|nanoka|fandom` for
+  diagnostics. Local system date is not a source-data authority for this refresh
+  path. Right panel Fact DPS now reads this local cache via
   `run_workspace/abyss/source_data_runtime.py`, never fetches network data from
   the right panel, and uses `solo_target_hp` as the default displayed HP mode.
   Missing period/cache/HP leaves Fact DPS unavailable instead of falling back to
@@ -216,7 +219,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Abyss source research is done; see `docs/handoff/ABYSS_ENEMY_DATA.md`, `docs/handoff/ABYSS_HP_FIXTURE.md`, and `docs/handoff/ABYSS_MECHANICS_NOTES.md`. Keep the source join resilient so one unavailable/stale source does not break the feature.
 - Do not download a huge historical database initially. Update current Abyss info at the relevant time and create a new season/page if current Abyss data changed.
 - No network / no data fallback:
-  - still create/use an Abyss period based on the system date;
+  - future UI may create/use a provisional Abyss period based on the system
+    date only as an offline session placeholder, not as source-data authority;
   - use the 16th day of month as the split point;
   - use a localized period label such as `16.05 - 16.06.26`;
   - show "no data" / localized equivalent where enemy data/HP is needed;

@@ -15,6 +15,7 @@ from hoyolab_export.abyss_source_refresh import (
     fetch_hoyolab_spiral_abyss_period,
     extract_hoyolab_abyss_period,
     parse_hoyolab_abyss_period,
+    resolve_abyss_period_with_fallbacks,
     refresh_cached_abyss_source_data_for_hoyolab_period,
     update_cached_abyss_source_data_for_hoyolab_period,
     write_hoyolab_abyss_period,
@@ -28,6 +29,7 @@ from run_workspace.abyss.source_data_cache import (
 from run_workspace.abyss.source_data_runtime import (
     DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH as RUNTIME_HOYOLAB_ABYSS_PERIOD_PATH,
 )
+from run_workspace.abyss.source_data_fetchers import ResolvedAbyssPeriodSource
 from tests.abyss.test_source_data import (
     composition_report,
     fandom_row,
@@ -142,6 +144,138 @@ class HoYoLABAbyssPeriodParsingTest(unittest.TestCase):
 
 
 class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
+    def test_period_resolver_hoyolab_success_wins_without_fallback_calls(self) -> None:
+        calls: list[str] = []
+
+        async def fake_hoyolab_fetcher(_page: object, *, language: str | None = None):
+            calls.append(f"hoyolab:{language}")
+            return parse_hoyolab_abyss_period("2026/05/16-2026/06/16")
+
+        def fallback_should_not_run():
+            raise AssertionError("fallback resolver should not run")
+
+        period = asyncio.run(
+            resolve_abyss_period_with_fallbacks(
+                object(),
+                language="ru-ru",
+                hoyolab_fetcher=fake_hoyolab_fetcher,
+                nanoka_live_resolver=fallback_should_not_run,
+                fandom_latest_resolver=fallback_should_not_run,
+            )
+        )
+
+        self.assertEqual(period.source, "hoyolab_spiral_abyss_overview")
+        self.assertFalse(period.fallback)
+        self.assertEqual(period.warnings, ())
+        self.assertEqual(calls, ["hoyolab:ru-ru"])
+
+    def test_period_resolver_falls_back_to_nanoka_live(self) -> None:
+        async def failing_hoyolab_fetcher(_page: object, *, language: str | None = None):
+            raise RuntimeError("hoyolab navigation failed")
+
+        period = asyncio.run(
+            resolve_abyss_period_with_fallbacks(
+                object(),
+                hoyolab_fetcher=failing_hoyolab_fetcher,
+                nanoka_live_resolver=lambda: ResolvedAbyssPeriodSource(
+                    raw_period="2026-05-16/2026-06-16",
+                    start_date="2026-05-16",
+                    end_date="2026-06-16",
+                    source="nanoka_live_fallback",
+                    source_path="nanoka_manifest#tower[119]",
+                    metadata={"tower_id": "119"},
+                ),
+                fandom_latest_resolver=lambda: self.fail("fandom should not run"),
+            )
+        )
+
+        self.assertEqual(period.start_date, "2026-05-16")
+        self.assertEqual(period.source, "nanoka_live_fallback")
+        self.assertTrue(period.fallback)
+        self.assertIn("tower_id", period.source_metadata)
+        self.assertTrue(
+            any(
+                warning.startswith("hoyolab_spiral_abyss_overview_failed:")
+                for warning in period.warnings
+            )
+        )
+
+    def test_period_resolver_falls_back_to_fandom_latest_after_nanoka_failure(self) -> None:
+        async def failing_hoyolab_fetcher(_page: object, *, language: str | None = None):
+            raise RuntimeError("hoyolab down")
+
+        def failing_nanoka():
+            raise RuntimeError("nanoka down")
+
+        period = asyncio.run(
+            resolve_abyss_period_with_fallbacks(
+                object(),
+                hoyolab_fetcher=failing_hoyolab_fetcher,
+                nanoka_live_resolver=failing_nanoka,
+                fandom_latest_resolver=lambda: ResolvedAbyssPeriodSource(
+                    raw_period="2026-05-16/2026-06-16",
+                    start_date="2026-05-16",
+                    end_date="2026-06-16",
+                    source="fandom_latest_fallback",
+                    source_path="fandom_index#latest",
+                    warnings=("fandom_latest_used_as_period_fallback",),
+                ),
+            )
+        )
+
+        self.assertEqual(period.source, "fandom_latest_fallback")
+        self.assertTrue(period.fallback)
+        self.assertIn("fandom_latest_used_as_period_fallback", period.warnings)
+        self.assertTrue(
+            any(warning.startswith("nanoka_live_fallback_failed:") for warning in period.warnings)
+        )
+
+    def test_period_resolver_all_sources_fail_controlled(self) -> None:
+        async def failing_hoyolab_fetcher(_page: object, *, language: str | None = None):
+            raise RuntimeError("hoyolab down")
+
+        with self.assertRaises(HoYoLABAbyssPeriodError) as cm:
+            asyncio.run(
+                resolve_abyss_period_with_fallbacks(
+                    object(),
+                    hoyolab_fetcher=failing_hoyolab_fetcher,
+                    nanoka_live_resolver=lambda: (_ for _ in ()).throw(RuntimeError("nanoka down")),
+                    fandom_latest_resolver=lambda: (_ for _ in ()).throw(RuntimeError("fandom down")),
+                )
+            )
+
+        message = str(cm.exception)
+        self.assertIn("Could not resolve Spiral Abyss period", message)
+        self.assertIn("hoyolab_spiral_abyss_overview_failed", message)
+        self.assertIn("nanoka_live_fallback_failed", message)
+        self.assertIn("fandom_latest_fallback_failed", message)
+
+    def test_fallback_period_writer_records_source_and_warnings(self) -> None:
+        period = HoYoLABAbyssPeriod(
+            raw_period="2026-05-16/2026-06-16",
+            start_date="2026-05-16",
+            end_date="2026-06-16",
+            source_path="nanoka_manifest#tower[119]",
+            source="nanoka_live_fallback",
+            warnings=("hoyolab_spiral_abyss_overview_failed:offline",),
+            fallback=True,
+            source_metadata={"tower_id": "119"},
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_hoyolab_abyss_period(
+                period,
+                period_path=Path(tmp) / "spiral_abyss_period.json",
+            )
+            payload = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["source"], "nanoka_live_fallback")
+        self.assertTrue(payload["fallback"])
+        self.assertEqual(payload["sourceMetadata"]["tower_id"], "119")
+        self.assertEqual(
+            payload["warnings"],
+            ["hoyolab_spiral_abyss_overview_failed:offline"],
+        )
+
     def test_abyss_period_fetch_uses_context_request_instead_of_page_evaluate(self) -> None:
         page = _FakePage(
             [

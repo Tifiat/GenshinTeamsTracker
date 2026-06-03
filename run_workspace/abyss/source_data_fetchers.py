@@ -62,6 +62,19 @@ class NanokaTowerPeriodAmbiguous(AbyssSourceFetchError):
     """Raised when Nanoka manifest has multiple towers matching a period."""
 
 
+@dataclass(frozen=True, slots=True)
+class ResolvedAbyssPeriodSource:
+    """Resolved current Abyss period from a non-HoYoLAB production source."""
+
+    raw_period: str
+    start_date: str
+    end_date: str | None
+    source: str
+    source_path: str
+    warnings: tuple[str, ...] = ()
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
 @dataclass(slots=True)
 class HtmlNode:
     tag: str
@@ -631,6 +644,40 @@ def fetch_fandom_composition_report(period_url: str, *, floor: int = 12) -> dict
     }
 
 
+def resolve_fandom_latest_period() -> ResolvedAbyssPeriodSource:
+    """Resolve the latest Fandom Spiral Abyss Floors page as a fallback period."""
+
+    index_title = "Spiral_Abyss/Floors"
+    rendered_html, _parse_payload = _fetch_rendered_html(index_title)
+    matches = sorted(
+        set(re.findall(r"/wiki/Spiral_Abyss/Floors/(\d{4}-\d{2}-\d{2})", rendered_html))
+    )
+    if not matches:
+        raise AbyssSourceFetchError("Fandom Spiral Abyss/Floors page has no period links.")
+    start_date = matches[-1]
+    period_url = f"{FANDOM_BASE_URL}/wiki/Spiral_Abyss/Floors/{start_date}"
+    period_html, _period_payload = _fetch_rendered_html(page_title_from_fandom_url(period_url))
+    period_root = _parse_fragment(period_html)
+    duration_text = _duration_text(period_root) or ""
+    parsed_dates = _dates_from_fandom_duration(duration_text)
+    end_date = parsed_dates[1] if len(parsed_dates) >= 2 else None
+    warnings: list[str] = []
+    if not end_date:
+        warnings.append("fandom_latest_period_end_unavailable")
+    return ResolvedAbyssPeriodSource(
+        raw_period=f"{start_date}/{end_date}" if end_date else start_date,
+        start_date=start_date,
+        end_date=end_date,
+        source="fandom_latest_fallback",
+        source_path=f"{mediawiki_parse_api_url(index_title)}#latest_period_link",
+        warnings=tuple(warnings),
+        metadata={
+            "period_url": period_url,
+            "duration_text": duration_text,
+        },
+    )
+
+
 def _discover_nanoka_manifest_url() -> str:
     parser = _FetchedDataUrlParser()
     parser.feed(_fetch_text(NANOKA_TOWER_INDEX_URL, timeout=20))
@@ -783,6 +830,50 @@ def resolve_nanoka_tower_id_for_period(
         period_end=period_end,
     )
     return str(summary["id"])
+
+
+def resolve_nanoka_live_period(
+    *,
+    reference_time: datetime | None = None,
+) -> ResolvedAbyssPeriodSource:
+    """Resolve the currently live Nanoka tower period without fetching details."""
+
+    manifest_url = _discover_nanoka_manifest_url()
+    manifest = _fetch_json(manifest_url, timeout=20)
+    summaries = _tower_summaries(manifest)
+    now = reference_time or datetime.now()
+    matches = [summary for summary in summaries if _summary_is_live(summary, now)]
+    if not matches:
+        raise NanokaTowerPeriodNotFound("Nanoka tower manifest has no live tower entry.")
+    if len(matches) > 1:
+        tower_ids = ", ".join(str(summary.get("id")) for summary in matches)
+        raise NanokaTowerPeriodAmbiguous(
+            f"Nanoka tower manifest has multiple live tower entries: {tower_ids}"
+        )
+    summary = matches[0]
+    tower_id = summary.get("id")
+    if tower_id in (None, ""):
+        raise NanokaTowerPeriodNotFound("Nanoka live tower entry has no id.")
+    start_date = _preferred_summary_period_start(summary)
+    if not start_date:
+        raise NanokaTowerPeriodNotFound("Nanoka live tower entry has no period start.")
+    end_date = _preferred_summary_period_end(summary)
+    warnings: list[str] = []
+    if not end_date:
+        warnings.append("nanoka_live_period_end_unavailable")
+    return ResolvedAbyssPeriodSource(
+        raw_period=f"{start_date}/{end_date}" if end_date else start_date,
+        start_date=start_date,
+        end_date=end_date,
+        source="nanoka_live_fallback",
+        source_path=f"{manifest_url}#tower[{tower_id}]",
+        warnings=tuple(warnings),
+        metadata={
+            "tower_id": str(tower_id),
+            "manifest_json_url": manifest_url,
+            "tower_page_url": f"{NANOKA_SITE_BASE}/tower/{tower_id}/",
+        },
+    )
 
 
 def _sorted_mapping_items(mapping: Any) -> list[tuple[str, Any]]:
@@ -1115,6 +1206,49 @@ def fetch_nanoka_tower_report_for_period(
             )
         ],
     }
+
+
+_FANDOM_MONTHS = {
+    "january": 1,
+    "february": 2,
+    "march": 3,
+    "april": 4,
+    "may": 5,
+    "june": 6,
+    "july": 7,
+    "august": 8,
+    "september": 9,
+    "october": 10,
+    "november": 11,
+    "december": 12,
+}
+
+
+def _preferred_summary_period_start(summary: dict[str, Any]) -> str | None:
+    return _source_date(summary.get("live_begin")) or _source_date(summary.get("begin"))
+
+
+def _preferred_summary_period_end(summary: dict[str, Any]) -> str | None:
+    return _source_date(summary.get("live_end")) or _source_date(summary.get("end"))
+
+
+def _dates_from_fandom_duration(value: str) -> list[str]:
+    dates = re.findall(r"\d{4}-\d{2}-\d{2}", value or "")
+    if dates:
+        return dates
+    parsed: list[str] = []
+    for match in re.finditer(
+        r"\b("
+        r"January|February|March|April|May|June|July|August|September|October|November|December"
+        r")\s+(\d{1,2}),\s*(\d{4})\b",
+        value or "",
+        flags=re.I,
+    ):
+        month = _FANDOM_MONTHS.get(match.group(1).lower())
+        if not month:
+            continue
+        parsed.append(f"{int(match.group(3)):04d}-{month:02d}-{int(match.group(2)):02d}")
+    return parsed
 
 
 def _elapsed_ms(start: float) -> float:

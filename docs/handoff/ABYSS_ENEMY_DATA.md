@@ -262,17 +262,23 @@ MVP recommendation:
   usable. `--skip-assets` keeps the update as JSON-only. Future tooltip UI
   should use these local cached icons instead of live image URLs.
 - Normal HoYoLAB import now best-effort refreshes this Floor 12 source-data
-  cache when the official HoYoLAB Spiral Abyss overview exposes a period such
-  as `YYYY/MM/DD-YYYY/MM/DD`. The import stores the captured period at
-  `data/hoyolab/spiral_abyss_period.json`, then updates the period/floor cache
+  cache after resolving the current Abyss period. Period source priority is
+  HoYoLAB Spiral Abyss Overview, then Nanoka live tower metadata, then the
+  latest Fandom Spiral Abyss/Floors period page. HoYoLAB remains the preferred
+  official authority; Nanoka/Fandom period fallback is used only when higher
+  priority sources fail. The import stores the captured period at
+  `data/hoyolab/spiral_abyss_period.json` with `source`, `sourcePath`,
+  `warnings`, and `fallback` metadata, then updates the period/floor cache
   through `run_workspace.abyss.source_data_update` with icon caching enabled.
-  Missing HoYoLAB period data or Fandom/Nanoka/cache update failures are
-  non-fatal import warnings and must not delete existing source-data caches.
+  Missing period data or Fandom/Nanoka/cache update failures are non-fatal
+  import warnings and must not delete existing source-data caches. Local system
+  date is not a source-data authority for this refresh path.
   Manual backend/debug command:
   `python -m hoyolab_export.abyss_source_refresh --write-period --update-cache`.
   It uses the normal authenticated HoYoLAB export context, writes the same
   period file consumed by runtime, skips same-period cache/assets by default,
-  and supports `--force` for an explicit refresh.
+  supports `--force` for an explicit refresh, and supports
+  `--period-source auto|hoyolab|nanoka|fandom` for source diagnostics.
 - AppShell/right-panel Fact DPS now uses this local cache through
   `run_workspace/abyss/source_data_runtime.py`. The runtime provider reads the
   captured HoYoLAB period file, loads

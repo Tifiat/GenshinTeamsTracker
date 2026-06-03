@@ -14,7 +14,7 @@ from .account_storage import sync_account_storage_from_local_files
 from .abyss_source_refresh import (
     DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH,
     HoYoLABAbyssPeriod,
-    fetch_hoyolab_spiral_abyss_period,
+    resolve_abyss_period_with_fallbacks,
     refresh_cached_abyss_source_data_for_hoyolab_period,
     write_hoyolab_abyss_period,
 )
@@ -489,8 +489,8 @@ async def run_hoyolab_import() -> dict[str, Any]:
         print(f"[HoYoLAB Import] HoYoLAB content language: {content_language}")
         try:
             print_status("fetching_abyss_period")
-            print("[HoYoLAB Import] Fetching official Spiral Abyss period...")
-            abyss_period = await fetch_hoyolab_spiral_abyss_period(
+            print("[HoYoLAB Import] Resolving Spiral Abyss period...")
+            abyss_period = await resolve_abyss_period_with_fallbacks(
                 export_page,
                 language=content_language,
             )
@@ -499,6 +499,7 @@ async def run_hoyolab_import() -> dict[str, Any]:
                 "[HoYoLAB Import] Spiral Abyss period:",
                 abyss_period.raw_period,
                 f"({abyss_period.start_date} -> {abyss_period.end_date})",
+                f"source={abyss_period.source}",
             )
         except Exception as exc:
             abyss_period_error = compact_exception_summary(exc)

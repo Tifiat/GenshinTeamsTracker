@@ -5,7 +5,7 @@ import asyncio
 import json
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Mapping
@@ -20,6 +20,11 @@ from run_workspace.abyss.source_data_cache import (
     load_cached_abyss_floor_source_data,
 )
 from run_workspace.abyss.source_data_update import build_update_report
+from run_workspace.abyss.source_data_fetchers import (
+    ResolvedAbyssPeriodSource,
+    resolve_fandom_latest_period,
+    resolve_nanoka_live_period,
+)
 
 from .auth import AuthStatus, get_auth_status
 from .character_detail import ROLES_URL, pick_genshin_role
@@ -37,6 +42,16 @@ SPIRAL_ABYSS_URL = (
 )
 DEFAULT_HOYOLAB_ABYSS_PERIOD_PATH = HOYOLAB_DATA_DIR / "spiral_abyss_period.json"
 DEFAULT_HOYOLAB_REQUEST_LANGUAGE = "en-us"
+PERIOD_SOURCE_AUTO = "auto"
+PERIOD_SOURCE_HOYOLAB = "hoyolab"
+PERIOD_SOURCE_NANOKA = "nanoka"
+PERIOD_SOURCE_FANDOM = "fandom"
+PERIOD_SOURCE_CHOICES = (
+    PERIOD_SOURCE_AUTO,
+    PERIOD_SOURCE_HOYOLAB,
+    PERIOD_SOURCE_NANOKA,
+    PERIOD_SOURCE_FANDOM,
+)
 
 _DATE_PATTERN = r"\d{4}[/-]\d{1,2}[/-]\d{1,2}"
 _NAMED_DATE_PATTERN = r"(?P<year>\d{4})[/-](?P<month>\d{1,2})[/-](?P<day>\d{1,2})"
@@ -76,6 +91,9 @@ class HoYoLABAbyssPeriod:
     end_date: str
     source_path: str
     source: str = "hoyolab_spiral_abyss_overview"
+    warnings: tuple[str, ...] = ()
+    fallback: bool = False
+    source_metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -84,6 +102,9 @@ class HoYoLABAbyssPeriod:
             "endDate": self.end_date,
             "sourcePath": self.source_path,
             "source": self.source,
+            "warnings": list(self.warnings),
+            "fallback": self.fallback,
+            "sourceMetadata": dict(self.source_metadata),
         }
 
 
@@ -281,6 +302,122 @@ async def fetch_hoyolab_spiral_abyss_period_with_export_context(
             await close_export_context(context)
 
 
+async def resolve_abyss_period_with_fallbacks(
+    page: Any | None,
+    *,
+    language: str | None = None,
+    period_source: str = PERIOD_SOURCE_AUTO,
+    hoyolab_fetcher: Callable[..., Any] = fetch_hoyolab_spiral_abyss_period,
+    nanoka_live_resolver: Callable[[], ResolvedAbyssPeriodSource] = resolve_nanoka_live_period,
+    fandom_latest_resolver: Callable[[], ResolvedAbyssPeriodSource] = resolve_fandom_latest_period,
+) -> HoYoLABAbyssPeriod:
+    """Resolve the current Abyss period through HoYoLAB, then fallbacks."""
+
+    mode = _normalize_period_source(period_source)
+    failures: list[str] = []
+    if mode in (PERIOD_SOURCE_AUTO, PERIOD_SOURCE_HOYOLAB):
+        if page is None:
+            message = "HoYoLAB page is unavailable."
+            if mode == PERIOD_SOURCE_HOYOLAB:
+                raise HoYoLABAbyssPeriodError(message)
+            failures.append(f"hoyolab_spiral_abyss_overview_failed:{message}")
+        else:
+            try:
+                period = await hoyolab_fetcher(page, language=language)
+                return _period_with_resolution_metadata(
+                    period,
+                    source=period.source,
+                    source_path=period.source_path,
+                    warnings=period.warnings,
+                    fallback=False,
+                    source_metadata=period.source_metadata,
+                )
+            except Exception as exc:
+                if mode == PERIOD_SOURCE_HOYOLAB:
+                    raise
+                failures.append(
+                    "hoyolab_spiral_abyss_overview_failed:"
+                    + _compact_exception_summary(exc)
+                )
+
+    if mode in (PERIOD_SOURCE_AUTO, PERIOD_SOURCE_NANOKA):
+        try:
+            resolved = nanoka_live_resolver()
+            return _period_from_resolved_source(
+                resolved,
+                prior_warnings=failures,
+                fallback=(mode == PERIOD_SOURCE_AUTO),
+            )
+        except Exception as exc:
+            if mode == PERIOD_SOURCE_NANOKA:
+                raise HoYoLABAbyssPeriodError(_compact_exception_summary(exc)) from exc
+            failures.append("nanoka_live_fallback_failed:" + _compact_exception_summary(exc))
+
+    if mode in (PERIOD_SOURCE_AUTO, PERIOD_SOURCE_FANDOM):
+        try:
+            resolved = fandom_latest_resolver()
+            return _period_from_resolved_source(
+                resolved,
+                prior_warnings=failures,
+                fallback=(mode == PERIOD_SOURCE_AUTO),
+            )
+        except Exception as exc:
+            if mode == PERIOD_SOURCE_FANDOM:
+                raise HoYoLABAbyssPeriodError(_compact_exception_summary(exc)) from exc
+            failures.append("fandom_latest_fallback_failed:" + _compact_exception_summary(exc))
+
+    raise HoYoLABAbyssPeriodError(
+        "Could not resolve Spiral Abyss period from HoYoLAB, Nanoka live, or Fandom latest. "
+        + "; ".join(failures)
+    )
+
+
+async def resolve_abyss_period_with_export_context(
+    *,
+    language: str | None = None,
+    period_source: str = PERIOD_SOURCE_AUTO,
+) -> HoYoLABAbyssPeriod:
+    """Resolve Abyss period through the normal export context when needed."""
+
+    mode = _normalize_period_source(period_source)
+    if mode not in (PERIOD_SOURCE_AUTO, PERIOD_SOURCE_HOYOLAB):
+        return await resolve_abyss_period_with_fallbacks(
+            None,
+            language=language,
+            period_source=mode,
+        )
+    if get_auth_status(HOYOLAB_PROFILE_DIR) != AuthStatus.LOGGED_IN:
+        if mode == PERIOD_SOURCE_HOYOLAB:
+            raise HoYoLABAbyssPeriodError(
+                "HoYoLAB profile is not logged in. Authorize in the app first."
+            )
+        return await resolve_abyss_period_with_fallbacks(
+            None,
+            language=language,
+            period_source=PERIOD_SOURCE_AUTO,
+        )
+
+    exporter = HoyolabExporter(
+        profile_dir=HOYOLAB_PROFILE_DIR,
+        download_dir=HOYOLAB_DEBUG_DIR,
+        browser_window_width=1280,
+        browser_window_height=900,
+    )
+    context: BrowserContext | None = None
+    try:
+        context = await exporter._create_context()
+        page = await _get_export_page(context)
+        await page.goto(HOYOLAB_URL, wait_until="domcontentloaded", timeout=60_000)
+        return await resolve_abyss_period_with_fallbacks(
+            page,
+            language=language,
+            period_source=mode,
+        )
+    finally:
+        if context is not None:
+            await close_export_context(context)
+
+
 def write_hoyolab_abyss_period(
     period: HoYoLABAbyssPeriod,
     *,
@@ -386,6 +523,78 @@ def refresh_cached_abyss_source_data_for_hoyolab_period(
     except Exception as exc:
         return None, _compact_exception_summary(exc)
     return result.to_dict(), None
+
+
+def _normalize_period_source(value: str | None) -> str:
+    normalized = str(value or PERIOD_SOURCE_AUTO).strip().lower()
+    if normalized not in PERIOD_SOURCE_CHOICES:
+        choices = ", ".join(PERIOD_SOURCE_CHOICES)
+        raise HoYoLABAbyssPeriodError(
+            f"Unsupported Abyss period source: {value!r}. Expected one of: {choices}."
+        )
+    return normalized
+
+
+def _period_from_resolved_source(
+    resolved: ResolvedAbyssPeriodSource | HoYoLABAbyssPeriod | Mapping[str, Any],
+    *,
+    prior_warnings: list[str],
+    fallback: bool,
+) -> HoYoLABAbyssPeriod:
+    if isinstance(resolved, HoYoLABAbyssPeriod):
+        return _period_with_resolution_metadata(
+            resolved,
+            source=resolved.source,
+            source_path=resolved.source_path,
+            warnings=(*prior_warnings, *resolved.warnings),
+            fallback=fallback or resolved.fallback,
+            source_metadata=resolved.source_metadata,
+        )
+    if isinstance(resolved, ResolvedAbyssPeriodSource):
+        return HoYoLABAbyssPeriod(
+            raw_period=resolved.raw_period,
+            start_date=resolved.start_date,
+            end_date=resolved.end_date or "",
+            source_path=resolved.source_path,
+            source=resolved.source,
+            warnings=(*prior_warnings, *resolved.warnings),
+            fallback=fallback,
+            source_metadata=resolved.metadata,
+        )
+    return HoYoLABAbyssPeriod(
+        raw_period=str(resolved.get("raw_period") or resolved.get("rawPeriod") or ""),
+        start_date=str(resolved.get("start_date") or resolved.get("startDate") or ""),
+        end_date=str(resolved.get("end_date") or resolved.get("endDate") or ""),
+        source_path=str(resolved.get("source_path") or resolved.get("sourcePath") or ""),
+        source=str(resolved.get("source") or "unknown_period_source"),
+        warnings=(
+            *prior_warnings,
+            *[str(item) for item in resolved.get("warnings") or []],
+        ),
+        fallback=fallback,
+        source_metadata=dict(resolved.get("metadata") or resolved.get("sourceMetadata") or {}),
+    )
+
+
+def _period_with_resolution_metadata(
+    period: HoYoLABAbyssPeriod,
+    *,
+    source: str,
+    source_path: str,
+    warnings: tuple[str, ...] | list[str],
+    fallback: bool,
+    source_metadata: Mapping[str, Any],
+) -> HoYoLABAbyssPeriod:
+    return HoYoLABAbyssPeriod(
+        raw_period=period.raw_period,
+        start_date=period.start_date,
+        end_date=period.end_date,
+        source_path=source_path,
+        source=source,
+        warnings=tuple(str(item) for item in warnings),
+        fallback=fallback,
+        source_metadata=dict(source_metadata),
+    )
 
 
 async def _get_export_page(context: BrowserContext):
@@ -643,8 +852,9 @@ def _compact_exception_summary(exc: BaseException) -> str:
 
 
 async def _run_cli(args: argparse.Namespace) -> dict[str, Any]:
-    period = await fetch_hoyolab_spiral_abyss_period_with_export_context(
+    period = await resolve_abyss_period_with_export_context(
         language=args.language,
+        period_source=args.period_source,
     )
     report: dict[str, Any] = {
         "period": period.to_dict(),
@@ -675,7 +885,13 @@ def _text_report(report: Mapping[str, Any]) -> str:
             f"period={period.get('rawPeriod')} "
             f"start={period.get('startDate')} end={period.get('endDate')}"
         ),
+        (
+            f"period_source={period.get('source')} "
+            f"fallback={period.get('fallback')}"
+        ),
     ]
+    for warning in period.get("warnings") or []:
+        lines.append(f"period_warning={warning}")
     if report.get("periodPath"):
         lines.append(f"period_path={report.get('periodPath')}")
     source_data = report.get("sourceData")
@@ -705,6 +921,12 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-assets", action="store_true", help="With --update-cache, skip monster icon asset caching.")
     parser.add_argument("--floor", type=int, default=12, help="Abyss floor to update. Default: 12.")
     parser.add_argument("--language", help="Optional HoYoLAB language override.")
+    parser.add_argument(
+        "--period-source",
+        choices=PERIOD_SOURCE_CHOICES,
+        default=PERIOD_SOURCE_AUTO,
+        help="Period resolver source. Default: auto (HoYoLAB -> Nanoka live -> Fandom latest).",
+    )
     parser.add_argument("--format", choices=("json", "text"), default="json")
     parser.add_argument("--indent", type=int, default=2)
     return parser

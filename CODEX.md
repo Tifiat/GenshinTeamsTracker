@@ -131,11 +131,13 @@ Pipeline summary:
 3. Collect `character/list` and clean inventory JSON.
 4. Fetch batch `character/detail` for real character ids.
 5. Detect HoYoLAB content language from the real detail request.
-6. Save `account_language.json` and `account_character_details.json`.
-7. Ensure artifact set catalog and localized set names.
-8. Ensure HoYoLAB `relic.set.id -> set_uid` mapping via a service EN-pass when needed.
-9. Import/update artifacts into `data/artifacts.db`.
-10. Crop characters/weapons and merge current assets/manifest.
+6. Resolve the current Spiral Abyss period for source-data cache refresh:
+   HoYoLAB overview first, then Nanoka live metadata, then Fandom latest.
+7. Save `account_language.json` and `account_character_details.json`.
+8. Ensure artifact set catalog and localized set names.
+9. Ensure HoYoLAB `relic.set.id -> set_uid` mapping via a service EN-pass when needed.
+10. Import/update artifacts into `data/artifacts.db`.
+11. Crop characters/weapons and merge current assets/manifest.
 
 Critical rules:
 
@@ -146,6 +148,7 @@ Critical rules:
 - HoYoLAB/API content language and UI language are separate.
 - Ordinary HoYoLAB update must preserve existing local HoYoLAB data/assets if it fails early.
 - Ordinary HoYoLAB update must not fetch all HoYoWiki character/weapon detail pages. Character/weapon stats catalogs are refreshed only through the explicit static catalog refresh path.
+- Abyss source-data period refresh uses source priority HoYoLAB -> Nanoka live -> Fandom latest, records fallback metadata in `data/hoyolab/spiral_abyss_period.json`, and must not use local system date as source-data authority.
 - Destructive profile cleanup belongs to explicit profile sign-out or offline profile restore.
 - The export image stage drives HoYoLAB's share/save-image UI. It waits briefly for visible
   `gt-image--loading` placeholders, retries the save-image click if no browser download event

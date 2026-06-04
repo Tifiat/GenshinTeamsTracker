@@ -74,6 +74,7 @@ from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
 from ui.utils.toggle_switch import FilterActionButton, SortIconButton
+from run_workspace.app_settings import read_app_settings
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
 from run_workspace.right_panel_prototype_view_model import (
     FactDpsTooltipViewModel,
@@ -482,6 +483,57 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(second_model.chamber_rows[0].factual_team1, "10,000")
         self.assertEqual(provider.call_count, 2)
 
+    def test_app_shell_abyss_fact_dps_can_use_multi_target_hp(self) -> None:
+        source_data = load_abyss_floor12_source_data(
+            "2026-05-16",
+            "119",
+            composition_report=composition_report(
+                "2026-05-16",
+                [
+                    fandom_row(
+                        "Team 1 Enemy",
+                        chamber=1,
+                        side=1,
+                        wave=1,
+                        count=3,
+                        level=100,
+                    ),
+                ],
+            ),
+            nanoka_report=nanoka_report(
+                "119",
+                [
+                    nanoka_row(
+                        "Team 1 Enemy",
+                        chamber=1,
+                        side=1,
+                        hp=500_000,
+                        monster_id="team1",
+                        level=100,
+                    ),
+                ],
+            ),
+        )
+        controller = AppShellController.empty()
+        controller.set_abyss_timer_seconds(0, 1, 550)
+
+        with patch(
+            "ui.app_shell.load_current_cached_abyss_floor_source_data",
+            return_value=source_data,
+        ):
+            solo_model = controller.right_panel_model()
+            controller.abyss_fact_dps_multi_target_enabled = True
+            multi_model = controller.right_panel_model()
+
+        self.assertEqual(solo_model.chamber_rows[0].factual_team1, "10,000")
+        self.assertEqual(multi_model.chamber_rows[0].factual_team1, "30,000")
+        self.assertIsNotNone(multi_model.chamber_rows[0].factual_team1_tooltip)
+        assert multi_model.chamber_rows[0].factual_team1_tooltip is not None
+        self.assertEqual(
+            multi_model.chamber_rows[0].factual_team1_tooltip.hp_mode,
+            "multi_target",
+        )
+
     def test_right_panel_widget_renders_fact_dps_label_from_model(self) -> None:
         previous_language = get_language()
         set_language("en")
@@ -512,7 +564,11 @@ class AppShellTest(unittest.TestCase):
                         factual_team1_tooltip=FactDpsTooltipViewModel(
                             title="Floor 12 / C1 / Team 1",
                             formula="Fact DPS = solo target HP / elapsed time",
+                            total_hp=3_747_864,
                             total_solo_hp=3_747_864,
+                            total_multi_target_hp=3_747_864,
+                            hp_mode="solo",
+                            hp_mode_label="Multi-target off",
                             elapsed_seconds=60,
                             calculated_dps=62_464,
                             hp_source_label="Nanoka resolved HP",
@@ -541,7 +597,7 @@ class AppShellTest(unittest.TestCase):
         tooltip_controller = widget._chamber_table._fact_dps_tooltips[(0, 3)]
         tooltip_text = tooltip_controller.text()
         self.assertIn(
-            "Solo HP: 3,747,864",
+            "Multi-target off HP: 3,747,864",
             tooltip_text,
         )
         self.assertIn(
@@ -792,16 +848,37 @@ class AppShellTest(unittest.TestCase):
         )
         self.assertGreater(page.language_combo.count(), 0)
 
+    def test_account_page_persists_fact_dps_multi_target_toggle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            settings_file = Path(tmp) / "settings.json"
+            page = AccountDataPage(settings_file=settings_file)
+            changes: list[bool] = []
+            page.fact_dps_multi_target_changed.connect(changes.append)
+
+            self.assertFalse(page.fact_dps_multi_target_switch.isChecked())
+
+            page.fact_dps_multi_target_switch.setChecked(True)
+            self._app.processEvents()
+
+            self.assertEqual(changes, [True])
+            self.assertTrue(
+                read_app_settings(settings_file).get(
+                    "abyss_fact_dps_multi_target_enabled"
+                )
+            )
+
     def test_account_data_refresh_can_reset_app_shell_runtime_team_state(self) -> None:
         shell = AppShell()
         shell.controller.add_or_replace_character_fast(
             _character_asset("10000050", "Thoma")
         )
+        shell.controller.abyss_fact_dps_multi_target_enabled = True
 
         with patch.object(shell.left_host, "refresh_account_data") as refresh:
             shell.right_dock.account_page.account_data_changed.emit(True)
 
         self.assertTrue(shell.controller.state.team(0).slot(0).is_empty)
+        self.assertTrue(shell.controller.abyss_fact_dps_multi_target_enabled)
         refresh.assert_called_once_with()
 
     def test_hoyolab_update_refresh_preserves_app_shell_runtime_team_state(self) -> None:

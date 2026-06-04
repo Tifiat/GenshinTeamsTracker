@@ -1297,12 +1297,13 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
     parts.append(
         f"<b>{html.escape(tr('right_panel.fact_dps.tooltip.calculation'))}</b><br>"
     )
-    if tooltip.total_solo_hp is not None:
+    if tooltip.total_hp is not None:
         parts.append(
             html.escape(
                 tr(
-                    "right_panel.fact_dps.tooltip.solo_hp",
-                    hp=f"{tooltip.total_solo_hp:,}",
+                    "right_panel.fact_dps.tooltip.selected_hp",
+                    hp=f"{tooltip.total_hp:,}",
+                    mode=tooltip.hp_mode_label,
                 )
             )
             + "<br>"

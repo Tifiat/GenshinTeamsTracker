@@ -20,6 +20,9 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - In this repo, handoff context means `CODEX.md`, `TODO.md`, and `docs/handoff/*.md`. When the user asks to update or clean handoffs, include all three entrypoints unless they narrow the scope.
 - After each completed task, update handoff docs before final response when the task changes roadmap, state, or reusable context: mark completed subitems compactly, add durable new knowledge to `CODEX.md`/`TODO.md` or a dedicated handoff file, and remove stale active-task/development-log leftovers.
 - After each completed pushable task, final responses should include one short Russian past-tense commit message.
+- Future test-suite cleanup: split broad AppShell/right-panel checks into
+  narrower runnable groups so feature tasks can run only the tests covering the
+  touched subsystem, while preserving a cheap full-smoke option.
 - When adding/changing persistent structures, source/cache formats, domain models, raw payload discoveries, UI prototype contracts, or long-lived research, update the relevant project map in `docs/handoff/` and keep root docs as concise entrypoint pointers.
 - Obsidian map maintenance: The Obsidian vault is stored in `docs/obsidian/GTT/`. `docs/obsidian/GTT/GenshinTeamsTracker.canvas` is the human project navigation map. `docs/obsidian/GTT/DataFlow.canvas` is the human data-flow map. `docs/obsidian/GTT/SourceBoundaries.canvas` is the human source/runtime boundary map for avoiding data-owner confusion. These maps do not replace `CODEX.md`/`TODO.md` or detailed handoff files. After meaningful structural changes, update the maps together with handoff files when the change affects human understanding of the project layout: new major subsystem, renamed/moved important folder, changed data flow, changed current priority, changed architecture direction, or an important feature moving from planned to active/done. Do not update maps for tiny bugfixes, one-line styling changes, or internal refactors that do not affect the project map.
 - Do not bring Known Bugs into planning/discussion unless the user explicitly asks about bugs or the affected area.
@@ -221,8 +224,9 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   expose a compact cached-source-data tooltip payload and use the project's
   custom tooltip surface. The current content is compact HTML/text with enemies
   first, then calculation and source summary; native Qt/system tooltips are not
-  acceptable. A richer custom tooltip card and a multi-target HP toggle remain
-  future work. Manual/debug period switcher exists at
+  acceptable. Account/Data now has a persistent DPS subzone toggle for
+  multi-target HP mode, default off/solo-target. A richer custom tooltip card
+  remains future work. Manual/debug period switcher exists at
   `tools/future/abyss_period_switch.py`: it points AppShell at an already
   cached period by rewriting only `data/hoyolab/spiral_abyss_period.json`,
   refuses missing period/floor caches, preserves a `.debug_backup.json` period

@@ -393,6 +393,69 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertEqual(row.sim_team2, "not run")
         self.assertEqual(source_data.side_summary(1, 1).multi_target_hp, 3_600_000)
 
+    def test_abyss_chamber_rows_can_use_multi_target_hp_mode(self) -> None:
+        source_data = load_abyss_floor12_source_data(
+            "2026-02-16",
+            "116",
+            composition_report=composition_report(
+                "2026-02-16",
+                [
+                    fandom_row(
+                        "Fisher of Hidden Depths",
+                        chamber=1,
+                        side=1,
+                        wave=wave,
+                        count=3,
+                        level=100,
+                    )
+                    for wave in range(1, 6)
+                ],
+            ),
+            nanoka_report=nanoka_report(
+                "116",
+                [
+                    nanoka_row(
+                        "Fisher of Hidden Depths",
+                        chamber=1,
+                        side=1,
+                        hp=1_000,
+                        monster_id="fisher",
+                        level=100,
+                    ),
+                ],
+            ),
+        )
+        timer_states = (
+            AbyssTimerState(team1_left_seconds=500, team2_left_seconds=500),
+        )
+
+        solo_row = build_abyss_chamber_rows(
+            timer_states,
+            abyss_source_data=source_data,
+        )[0]
+        multi_row = build_abyss_chamber_rows(
+            timer_states,
+            abyss_source_data=source_data,
+            fact_dps_multi_target_enabled=True,
+        )[0]
+
+        self.assertEqual(source_data.side_summary(1, 1).solo_target_hp, 5_000)
+        self.assertEqual(source_data.side_summary(1, 1).multi_target_hp, 15_000)
+        self.assertEqual(solo_row.factual_team1, "50")
+        self.assertEqual(multi_row.factual_team1, "150")
+        self.assertIsNotNone(multi_row.factual_team1_tooltip)
+        assert multi_row.factual_team1_tooltip is not None
+        self.assertEqual(multi_row.factual_team1_tooltip.total_hp, 15_000)
+        self.assertEqual(multi_row.factual_team1_tooltip.total_solo_hp, 5_000)
+        self.assertEqual(
+            multi_row.factual_team1_tooltip.total_multi_target_hp,
+            15_000,
+        )
+        self.assertEqual(multi_row.factual_team1_tooltip.hp_mode, "multi_target")
+        self.assertFalse(
+            any(enemy.selected_for_solo for enemy in multi_row.factual_team1_tooltip.enemies)
+        )
+
     def test_abyss_factual_dps_tooltip_carries_formula_and_enemy_breakdown(self) -> None:
         previous_language = get_language()
         set_language("en")

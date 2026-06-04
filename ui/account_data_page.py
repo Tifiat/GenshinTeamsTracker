@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 from PySide6.QtCore import QProcess, QTimer, Signal
 from PySide6.QtWidgets import (
@@ -32,6 +33,11 @@ from hoyolab_export.paths import (
     ensure_hoyolab_dirs,
 )
 from localization import get_language, language_options, set_language, tr
+from run_workspace.abyss.fact_dps_settings import (
+    is_abyss_fact_dps_multi_target_enabled,
+    set_abyss_fact_dps_multi_target_enabled,
+)
+from ui.utils.toggle_switch import ToggleSwitch
 from ui.widgets.loader import HoYoLABLoadingDialog
 from ui.widgets.overlays.login_hint import HoYoLABLoginHintOverlay
 
@@ -78,11 +84,18 @@ class AccountDataPage(QWidget):
 
     account_data_changed = Signal(bool)
     language_changed = Signal()
+    fact_dps_multi_target_changed = Signal(bool)
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        settings_file: str | Path | None = None,
+    ) -> None:
         super().__init__(parent)
         ensure_hoyolab_dirs()
         self.setObjectName("RightPanelPrototypeContent")
+        self._settings_file = settings_file
 
         self._hoyolab_login_process = None
         self._hoyolab_login_hint: HoYoLABLoginHintOverlay | None = None
@@ -165,6 +178,36 @@ class AccountDataPage(QWidget):
         language_layout.addWidget(self.language_label)
         language_layout.addWidget(self.language_combo, 1)
         root.addWidget(language_frame)
+
+        dps_frame = QFrame()
+        dps_frame.setObjectName("InfoBlock")
+        dps_layout = QVBoxLayout(dps_frame)
+        dps_layout.setContentsMargins(8, 8, 8, 8)
+        dps_layout.setSpacing(8)
+
+        self.dps_label = QLabel(tr("settings.dps.title"))
+        self.dps_label.setObjectName("SectionTitle")
+        dps_layout.addWidget(self.dps_label)
+
+        dps_toggle_row = QHBoxLayout()
+        dps_toggle_row.setContentsMargins(0, 0, 0, 0)
+        dps_toggle_row.setSpacing(8)
+        self.fact_dps_multi_target_label = QLabel(
+            tr("settings.dps.multi_target_hp")
+        )
+        self.fact_dps_multi_target_switch = ToggleSwitch()
+        self.fact_dps_multi_target_switch.setChecked(
+            is_abyss_fact_dps_multi_target_enabled(
+                settings_file=self._settings_file
+            )
+        )
+        self.fact_dps_multi_target_switch.toggled.connect(
+            self.on_fact_dps_multi_target_changed
+        )
+        dps_toggle_row.addWidget(self.fact_dps_multi_target_label, 1)
+        dps_toggle_row.addWidget(self.fact_dps_multi_target_switch)
+        dps_layout.addLayout(dps_toggle_row)
+        root.addWidget(dps_frame)
         root.addStretch(1)
 
     def _dialog_parent(self) -> QWidget:
@@ -577,6 +620,13 @@ class AccountDataPage(QWidget):
         self.retranslate_ui()
         self.language_changed.emit()
 
+    def on_fact_dps_multi_target_changed(self, enabled: bool) -> None:
+        set_abyss_fact_dps_multi_target_enabled(
+            bool(enabled),
+            settings_file=self._settings_file,
+        )
+        self.fact_dps_multi_target_changed.emit(bool(enabled))
+
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.account.title"))
         self.hoyolab_label.setText(tr("common.hoyolab"))
@@ -585,6 +635,10 @@ class AccountDataPage(QWidget):
         self.action_import_profile.setText(tr("profile.import"))
         self.action_switch_profile.setText(tr("profile.switch"))
         self.language_label.setText(tr("language.selector"))
+        self.dps_label.setText(tr("settings.dps.title"))
+        self.fact_dps_multi_target_label.setText(
+            tr("settings.dps.multi_target_hp")
+        )
         self._sync_language_combo()
         if self._hoyolab_loader is not None:
             self._hoyolab_loader.retranslate_ui()

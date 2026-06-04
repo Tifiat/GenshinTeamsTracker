@@ -174,8 +174,9 @@ Near-term default:
 
 Future operation modes:
 
-- Account/Data owns HoYoLAB import/update, offline profile actions, and language
-  selection. Broader settings remain future work.
+- Account/Data owns HoYoLAB import/update, offline profile actions, language
+  selection, and the DPS settings subzone. Current DPS setting: persistent
+  Abyss Fact DPS multi-target HP toggle, default off/solo-target.
 - PvP draft/deck/opponent controls.
 - Build panel after PvP draft when a buildable pool/team exists.
 
@@ -249,7 +250,8 @@ Future weapon move/swap rule:
   `calculate_abyss_chamber_result(...)` to derive elapsed seconds and Total.
   T2 follows the same chamber's T1 until T2 is manually edited; if T1 is edited
   below the current T2 value, T2 clamps down to T1 and returns to follow mode.
-  Reset, persistence, immutable snapshots, History, factual DPS, and GCSIM
+  Fact DPS reads cached Abyss source-data and uses Account/Data's solo/multi
+  HP mode setting. Reset, persistence, immutable snapshots, History, and GCSIM
   remain future work.
 - Detailed next-stage contract lives in
   `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. Follow it before coding

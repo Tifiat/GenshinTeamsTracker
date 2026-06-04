@@ -524,7 +524,9 @@ Rules:
 - UI code should use `tr("key")`.
 - Default UI language is `ru`.
 - Supported UI languages: `ru`, `en`, `pt-br`.
-- Selected language is stored in local ignored `settings.json`.
+- Selected language and small UI preferences are stored in local ignored
+  `settings.json`. Current extra preference: Abyss Fact DPS multi-target HP mode
+  (`abyss_fact_dps_multi_target_enabled`), default false/solo-target.
 - `GTT_LANGUAGE` or `GTT_LANG` can override UI language for a process.
 - Character/weapon/artifact dynamic names from HoYoLAB should keep the HoYoLAB content language.
 - Keep `pt-br.json` in sync when adding keys.

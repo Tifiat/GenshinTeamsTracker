@@ -3,10 +3,11 @@ import os
 from pathlib import Path
 from typing import Any
 
+from run_workspace.app_settings import get_app_setting, set_app_setting
+
 
 LOCALES_DIR = Path(__file__).resolve().parent / "locales"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SETTINGS_FILE = PROJECT_ROOT / "settings.json"
 DEFAULT_LANGUAGE = "ru"
 LANGUAGE_OPTIONS = [
     ("ru", "🇷🇺 Русский"),
@@ -37,32 +38,12 @@ def _normalize_language(language: str | None) -> str:
 
 
 def _read_settings_language() -> str | None:
-    try:
-        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return None
-
-    if not isinstance(data, dict):
-        return None
-
-    value = data.get("ui_language")
+    value = get_app_setting("ui_language")
     return str(value) if value else None
 
 
 def _write_settings_language(language: str) -> None:
-    try:
-        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        data = {}
-
-    if not isinstance(data, dict):
-        data = {}
-
-    data["ui_language"] = _normalize_language(language)
-    SETTINGS_FILE.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
+    set_app_setting("ui_language", _normalize_language(language))
 
 
 def _initial_language() -> str:

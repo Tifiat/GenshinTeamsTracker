@@ -104,6 +104,8 @@ CHAMBER_TABLE_HEADERS = (
     "Sim T1 DPS",
     "Sim T2 DPS",
 )
+FACT_DPS_HP_MODE_SOLO = "solo"
+FACT_DPS_HP_MODE_MULTI_TARGET = "multi_target"
 ARTIFACT_SANDS_POSITION = 3
 ARTIFACT_GOBLET_POSITION = 4
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -391,7 +393,11 @@ class FactDpsEnemyTooltipViewModel:
 class FactDpsTooltipViewModel:
     title: str
     formula: str
+    total_hp: int | None
     total_solo_hp: int | None
+    total_multi_target_hp: int | None
+    hp_mode: str
+    hp_mode_label: str
     elapsed_seconds: int
     calculated_dps: int | None
     hp_source_label: str
@@ -407,7 +413,11 @@ class FactDpsTooltipViewModel:
         return {
             "title": self.title,
             "formula": self.formula,
+            "total_hp": self.total_hp,
             "total_solo_hp": self.total_solo_hp,
+            "total_multi_target_hp": self.total_multi_target_hp,
+            "hp_mode": self.hp_mode,
+            "hp_mode_label": self.hp_mode_label,
             "elapsed_seconds": self.elapsed_seconds,
             "calculated_dps": self.calculated_dps,
             "hp_source_label": self.hp_source_label,
@@ -1522,12 +1532,14 @@ def build_abyss_chamber_rows(
     timer_states: tuple[AbyssTimerState, ...],
     *,
     abyss_source_data: AbyssFloorSourceData | None = None,
+    fact_dps_multi_target_enabled: bool = False,
 ) -> tuple[RightPanelChamberRowViewModel, ...]:
     return tuple(
         _abyss_chamber_row(
             timer_state,
             chamber_index=index,
             abyss_source_data=abyss_source_data,
+            fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
         )
         for index, timer_state in enumerate(timer_states, start=1)
     )
@@ -1538,6 +1550,7 @@ def _abyss_chamber_row(
     *,
     chamber_index: int,
     abyss_source_data: AbyssFloorSourceData | None = None,
+    fact_dps_multi_target_enabled: bool = False,
 ) -> RightPanelChamberRowViewModel:
     result = calculate_abyss_chamber_result(
         timer_state,
@@ -1546,12 +1559,20 @@ def _abyss_chamber_row(
     normalized = result.normalized_timer_state
     team1_summary = _cached_side_summary(abyss_source_data, chamber_index, 1)
     team2_summary = _cached_side_summary(abyss_source_data, chamber_index, 2)
+    team1_total_hp = _fact_dps_total_hp(
+        team1_summary,
+        multi_target_enabled=fact_dps_multi_target_enabled,
+    )
+    team2_total_hp = _fact_dps_total_hp(
+        team2_summary,
+        multi_target_enabled=fact_dps_multi_target_enabled,
+    )
     team1_dps = calculate_factual_dps(
-        total_hp=None if team1_summary is None else team1_summary.solo_target_hp,
+        total_hp=team1_total_hp,
         elapsed_seconds=result.team1_elapsed_seconds,
     )
     team2_dps = calculate_factual_dps(
-        total_hp=None if team2_summary is None else team2_summary.solo_target_hp,
+        total_hp=team2_total_hp,
         elapsed_seconds=result.team2_elapsed_seconds,
     )
     return RightPanelChamberRowViewModel(
@@ -1569,6 +1590,7 @@ def _abyss_chamber_row(
             team_number=1,
             elapsed_seconds=result.team1_elapsed_seconds,
             dps_result=team1_dps,
+            fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
         ),
         factual_team2_tooltip=_build_fact_dps_tooltip(
             source_data=abyss_source_data,
@@ -1577,6 +1599,7 @@ def _abyss_chamber_row(
             team_number=2,
             elapsed_seconds=result.team2_elapsed_seconds,
             dps_result=team2_dps,
+            fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
         ),
         sim_team1="not run",
         sim_team2="not run",
@@ -1598,6 +1621,26 @@ def _cached_side_summary(
         return None
 
 
+def _fact_dps_total_hp(
+    side_summary: AbyssChamberSideSourceData | None,
+    *,
+    multi_target_enabled: bool,
+) -> int | None:
+    if side_summary is None:
+        return None
+    return (
+        side_summary.multi_target_hp
+        if multi_target_enabled
+        else side_summary.solo_target_hp
+    )
+
+
+def _fact_dps_hp_mode_label(hp_mode: str) -> str:
+    if hp_mode == FACT_DPS_HP_MODE_MULTI_TARGET:
+        return tr("right_panel.fact_dps.tooltip.mode_multi_target")
+    return tr("right_panel.fact_dps.tooltip.mode_solo_target")
+
+
 def _build_fact_dps_tooltip(
     *,
     source_data: AbyssFloorSourceData | None,
@@ -1606,8 +1649,17 @@ def _build_fact_dps_tooltip(
     team_number: int,
     elapsed_seconds: int,
     dps_result,
+    fact_dps_multi_target_enabled: bool,
 ) -> FactDpsTooltipViewModel:
-    total_hp = None if side_summary is None else side_summary.solo_target_hp
+    hp_mode = (
+        FACT_DPS_HP_MODE_MULTI_TARGET
+        if fact_dps_multi_target_enabled
+        else FACT_DPS_HP_MODE_SOLO
+    )
+    total_hp = _fact_dps_total_hp(
+        side_summary,
+        multi_target_enabled=fact_dps_multi_target_enabled,
+    )
     warnings = _fact_dps_tooltip_warnings(source_data, side_summary)
     return FactDpsTooltipViewModel(
         title=tr(
@@ -1617,7 +1669,15 @@ def _build_fact_dps_tooltip(
             team=team_number,
         ),
         formula=tr("right_panel.fact_dps.tooltip.formula"),
-        total_solo_hp=total_hp,
+        total_hp=total_hp,
+        total_solo_hp=None
+        if side_summary is None
+        else side_summary.solo_target_hp,
+        total_multi_target_hp=None
+        if side_summary is None
+        else side_summary.multi_target_hp,
+        hp_mode=hp_mode,
+        hp_mode_label=_fact_dps_hp_mode_label(hp_mode),
         elapsed_seconds=int(elapsed_seconds),
         calculated_dps=dps_result.rounded_dps,
         hp_source_label=_fact_dps_hp_source_label(side_summary),
@@ -1627,7 +1687,10 @@ def _build_fact_dps_tooltip(
             dps_unavailable_reason=dps_result.unavailable_reason,
         ),
         warnings=warnings,
-        enemies=_fact_dps_enemy_tooltip_rows(side_summary),
+        enemies=_fact_dps_enemy_tooltip_rows(
+            side_summary,
+            fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
+        ),
     )
 
 
@@ -1688,6 +1751,8 @@ def _fact_dps_tooltip_warnings(
 
 def _fact_dps_enemy_tooltip_rows(
     side_summary: AbyssChamberSideSourceData | None,
+    *,
+    fact_dps_multi_target_enabled: bool,
 ) -> tuple[FactDpsEnemyTooltipViewModel, ...]:
     if side_summary is None:
         return ()
@@ -1707,6 +1772,8 @@ def _fact_dps_enemy_tooltip_rows(
                     match_confidence=row.match_confidence,
                     cached_icon_path=row.cached_icon_path,
                     selected_for_solo=(
+                        not fact_dps_multi_target_enabled
+                        and
                         row.nanoka_hp is not None
                         and row.primary_display_name == wave.selected_solo_enemy_name
                     ),

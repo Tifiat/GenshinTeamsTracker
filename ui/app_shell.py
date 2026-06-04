@@ -54,6 +54,9 @@ from run_workspace.right_panel_prototype_view_model import (
     build_right_panel_prototype_view_model,
 )
 from run_workspace.abyss.source_data import AbyssFloorSourceData
+from run_workspace.abyss.fact_dps_settings import (
+    is_abyss_fact_dps_multi_target_enabled,
+)
 from run_workspace.abyss.source_data_runtime import (
     load_current_cached_abyss_floor_source_data,
 )
@@ -241,6 +244,7 @@ class AppShellController:
     selected_team_index: int = -1
     selected_slot_index: int = -1
     external_bonuses_enabled: bool = True
+    abyss_fact_dps_multi_target_enabled: bool = False
     abyss_timer_states: tuple[AbyssTimerState, ...] = field(
         default_factory=default_abyss_timer_states
     )
@@ -293,6 +297,9 @@ class AppShellController:
             build_abyss_chamber_rows(
                 self.abyss_timer_states,
                 abyss_source_data=self.cached_abyss_source_data(),
+                fact_dps_multi_target_enabled=(
+                    self.abyss_fact_dps_multi_target_enabled
+                ),
             )
             if self.mode == MODE_ABYSS
             else None
@@ -1075,6 +1082,10 @@ class AppShell(QWidget):
     ) -> None:
         super().__init__(parent)
         self.controller = controller or AppShellController.empty()
+        if controller is None:
+            self.controller.abyss_fact_dps_multi_target_enabled = (
+                is_abyss_fact_dps_multi_target_enabled()
+            )
         self.setWindowTitle(tr("app_shell.title"))
         self.setMinimumSize(APP_SHELL_MIN_WIDTH, APP_SHELL_MIN_HEIGHT)
         self.resize(APP_SHELL_INITIAL_SIZE)
@@ -1102,6 +1113,9 @@ class AppShell(QWidget):
             self._on_account_data_changed
         )
         self.right_dock.account_page.language_changed.connect(self.retranslate_ui)
+        self.right_dock.account_page.fact_dps_multi_target_changed.connect(
+            self._on_fact_dps_multi_target_changed
+        )
 
         self._right_panel_refresh_pending = False
         self._right_panel_refresh_timer = QTimer(self)
@@ -1414,10 +1428,16 @@ class AppShell(QWidget):
         if reset_runtime_state:
             previous_mode = self.controller.mode
             external_bonuses_enabled = self.controller.external_bonuses_enabled
+            abyss_fact_dps_multi_target_enabled = (
+                self.controller.abyss_fact_dps_multi_target_enabled
+            )
             controller = AppShellController.empty(
                 equipment_db_path=self.controller.equipment_db_path
             )
             controller.external_bonuses_enabled = external_bonuses_enabled
+            controller.abyss_fact_dps_multi_target_enabled = (
+                abyss_fact_dps_multi_target_enabled
+            )
             if previous_mode != MODE_ABYSS:
                 controller.set_mode(previous_mode)
             self.controller = controller
@@ -1428,6 +1448,10 @@ class AppShell(QWidget):
         self._refresh_character_selection_markers()
         self._sync_artifact_browser_operation_target()
         self.schedule_weapon_filter_sync(delay_ms=0)
+        self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+
+    def _on_fact_dps_multi_target_changed(self, enabled: bool) -> None:
+        self.controller.abyss_fact_dps_multi_target_enabled = bool(enabled)
         self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
 
     def _refresh_right_panel(self) -> dict[str, float]:

@@ -8,8 +8,10 @@ import zipfile
 
 from run_workspace.gcsim.engine_store import GcsimEngineStore
 from run_workspace.gcsim.engine_update import (
+    make_patch_backend,
     prepare_official_gcsim_engine_update,
 )
+from run_workspace.gcsim.patch_backends import GitApplyPatchBackend
 from run_workspace.gcsim.source_acquisition import (
     GCSIM_UPSTREAM_REPO,
     GcsimSourceAcquisitionError,
@@ -190,6 +192,49 @@ class GcsimEngineUpdateTest(unittest.TestCase):
             self.assertIn("GOMODCACHE", runner.calls[0]["env"])
             self.assertIn(str(go_work), runner.calls[0]["env"]["GOMODCACHE"])
 
+    def test_git_patch_backend_and_runtime_probe_pass_together(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_dir = root / "store"
+            archive = _write_fake_gcsim_archive(root / "gcsim.zip")
+            patch_stack = _make_git_patch_stack(root / "patch-stack")
+            go_runner = FakeGoRunner(
+                _completed(stdout="go version go1.22.0 windows/amd64\n"),
+                _completed(stdout="gcsim version test\n"),
+            )
+            git_runner = FakeGitRunner(_completed(), _completed())
+
+            report = prepare_official_gcsim_engine_update(
+                release="v-test",
+                store_dir=store_dir,
+                source_cache_dir=root / "sources",
+                patch_stack_dir=patch_stack,
+                patch_backend=GitApplyPatchBackend(runner=git_runner),
+                source_acquirer=_archive_acquirer(archive, tag="v-test"),
+                probe_runtime=True,
+                runtime_probe_runner=go_runner,
+                go_work_dir=root / ".go-test",
+            )
+
+            self.assertTrue(report.success)
+            self.assertTrue(report.activated)
+            self.assertTrue(report.runtime_ready)
+            self.assertEqual(report.patch_backend, "git")
+            self.assertEqual(report.patch_count, 1)
+            self.assertEqual(report.patch_files, ("001-marker.patch",))
+            self.assertEqual(report.patch_check_status, "passed")
+            self.assertEqual(report.patch_apply_status, "passed")
+            self.assertEqual(report.patch_git_status, "available")
+            self.assertEqual(report.runtime_check_status, "runtime_probe_passed")
+            self.assertEqual(len(git_runner.calls), 2)
+            active = GcsimEngineStore(store_dir).get_active_engine()
+            self.assertIsNotNone(active)
+            assert active is not None
+            self.assertEqual(active.manifest.patch_metadata["patch_apply_status"], "passed")
+
+    def test_patch_backend_factory_selects_git_backend(self) -> None:
+        self.assertIsInstance(make_patch_backend("git"), GitApplyPatchBackend)
+
     def test_download_failure_keeps_old_active_engine(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -348,6 +393,12 @@ def _make_patch_stack(path: Path) -> Path:
     return path
 
 
+def _make_git_patch_stack(path: Path) -> Path:
+    path.mkdir(parents=True)
+    (path / "001-marker.patch").write_text("dummy patch", encoding="utf-8")
+    return path
+
+
 def _install_old_active_engine(store: GcsimEngineStore, root: Path) -> str:
     source = root / "old-source"
     source.mkdir()
@@ -377,6 +428,21 @@ class FakeGoRunner:
         )
         if not self.results:
             raise AssertionError(f"Unexpected command: {command}")
+        result = self.results.pop(0)
+        if isinstance(result, BaseException):
+            raise result
+        return result
+
+
+class FakeGitRunner:
+    def __init__(self, *results):
+        self.results = list(results)
+        self.calls: list[tuple[str, ...]] = []
+
+    def __call__(self, command, cwd):
+        self.calls.append(tuple(str(part) for part in command))
+        if not self.results:
+            raise AssertionError(f"Unexpected git command: {command}")
         result = self.results.pop(0)
         if isinstance(result, BaseException):
             raise result

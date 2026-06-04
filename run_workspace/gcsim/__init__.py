@@ -11,6 +11,7 @@ from .engine_store import (
     PatchBackend,
 )
 from .runtime_probe import GcsimRuntimeProbeResult, run_gcsim_runtime_probe
+from .patch_backends import GitApplyPatchBackend
 
 __all__ = [
     "GCSIM_ENGINE_MANIFEST_SCHEMA_VERSION",
@@ -21,6 +22,7 @@ __all__ = [
     "GcsimPatchResult",
     "OverlayPatchBackend",
     "PatchBackend",
+    "GitApplyPatchBackend",
     "GcsimRuntimeProbeResult",
     "run_gcsim_runtime_probe",
 ]

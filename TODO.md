@@ -373,13 +373,15 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   the backend/dev update command exist in `run_workspace/gcsim/source_acquisition.py`
   and `run_workspace/gcsim/engine_update.py`. Command:
   `python -m run_workspace.gcsim.engine_update --release latest`. It downloads
-  official source, applies the current replaceable patch backend, runs a source
-  layout smoke check, writes a manifest, and activates only on success. Next
-  Use `--probe-runtime` to additionally require local Go `windows/amd64` and
+  official source, applies the selected replaceable patch backend, runs a source
+  layout smoke check, writes a manifest, and activates only on success. Use
+  `--probe-runtime` to additionally require local Go `windows/amd64` and
   `go run ./cmd/gcsim -version`; this marks `runtime_ready=true` only when the
   probe passes and keeps the old active engine on Go/probe failure. Go cache/bin
-  paths are sandboxed under ignored `.go/`. Next GCSIM engine task should add
-  the real git/apply patch backend, proper build artifact step, and stronger
+  paths are sandboxed under ignored `.go/`. `--patch-backend git` now applies
+  ordered `.patch` stacks with `git apply --check` then `git apply`; overlay
+  remains the conservative default/test backend. Next GCSIM engine task should
+  add the first real GTT patch content, proper build artifact step, and stronger
   runtime smoke checks before any UI wiring.
 - Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.
 - Do not cram detailed GCSIM into the small TeamCard. Right panel should show only compact factual/sim DPS summary and readable GCSIM button/status; detailed GCSIM/rotation editor should open as a larger overlay/drawer around the right panel. If GCSIM lacks a character/reaction implementation, show a clear unavailable status.

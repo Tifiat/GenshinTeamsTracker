@@ -44,6 +44,7 @@ class GcsimPatchResult:
     patch_count: int = 0
     warnings: tuple[str, ...] = ()
     error: str = ""
+    metadata: Mapping[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -52,6 +53,7 @@ class GcsimPatchResult:
             "patch_count": self.patch_count,
             "warnings": list(self.warnings),
             "error": self.error,
+            "metadata": dict(self.metadata),
         }
 
     @classmethod
@@ -61,12 +63,14 @@ class GcsimPatchResult:
         backend: str,
         patch_count: int = 0,
         warnings: tuple[str, ...] = (),
+        metadata: Mapping[str, str] | None = None,
     ) -> "GcsimPatchResult":
         return cls(
             applied=True,
             backend=backend,
             patch_count=int(patch_count),
             warnings=tuple(warnings),
+            metadata=dict(metadata or {}),
         )
 
     @classmethod
@@ -77,6 +81,7 @@ class GcsimPatchResult:
         error: str,
         patch_count: int = 0,
         warnings: tuple[str, ...] = (),
+        metadata: Mapping[str, str] | None = None,
     ) -> "GcsimPatchResult":
         return cls(
             applied=False,
@@ -84,6 +89,7 @@ class GcsimPatchResult:
             patch_count=int(patch_count),
             warnings=tuple(warnings),
             error=str(error),
+            metadata=dict(metadata or {}),
         )
 
 
@@ -98,6 +104,7 @@ class GcsimEngineManifest:
     patch_backend: str
     patch_count: int
     patch_warnings: tuple[str, ...] = ()
+    patch_metadata: Mapping[str, str] = field(default_factory=dict)
     capabilities: tuple[str, ...] = ()
     metadata: Mapping[str, str] = field(default_factory=dict)
     schema_version: int = GCSIM_ENGINE_MANIFEST_SCHEMA_VERSION
@@ -114,6 +121,7 @@ class GcsimEngineManifest:
             "patch_backend": self.patch_backend,
             "patch_count": self.patch_count,
             "patch_warnings": list(self.patch_warnings),
+            "patch_metadata": dict(self.patch_metadata),
             "capabilities": list(self.capabilities),
             "metadata": dict(self.metadata),
         }
@@ -135,6 +143,10 @@ class GcsimEngineManifest:
             patch_backend=str(data["patch_backend"]),
             patch_count=int(data["patch_count"]),
             patch_warnings=tuple(str(item) for item in data.get("patch_warnings", ())),
+            patch_metadata={
+                str(key): str(value)
+                for key, value in dict(data.get("patch_metadata", {})).items()
+            },
             capabilities=tuple(str(item) for item in data.get("capabilities", ())),
             metadata={
                 str(key): str(value)
@@ -296,6 +308,7 @@ class GcsimEngineStore:
                 patch_backend=patch_result.backend,
                 patch_count=patch_result.patch_count,
                 patch_warnings=patch_result.warnings,
+                patch_metadata=patch_result.metadata,
                 capabilities=tuple(capabilities),
                 metadata=dict(metadata or {}),
             )

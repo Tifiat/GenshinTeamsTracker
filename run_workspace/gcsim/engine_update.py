@@ -20,6 +20,7 @@ from .engine_store import (
     OverlayPatchBackend,
     PatchBackend,
 )
+from .patch_backends import GitApplyPatchBackend
 from .source_acquisition import (
     DEFAULT_GCSIM_SOURCE_CACHE_DIR,
     GCSIM_UPSTREAM_REPO,
@@ -61,6 +62,11 @@ class GcsimOfficialEngineUpdateReport:
     patch_count: int
     patch_stack_path: str
     patch_stack_status: str
+    patch_files: tuple[str, ...]
+    patch_check_status: str
+    patch_apply_status: str
+    patch_git_status: str
+    patch_git_executable: str
     check_status: str
     layout_check_status: str
     runtime_check_status: str
@@ -93,6 +99,11 @@ class GcsimOfficialEngineUpdateReport:
             "patch_count": self.patch_count,
             "patch_stack_path": self.patch_stack_path,
             "patch_stack_status": self.patch_stack_status,
+            "patch_files": list(self.patch_files),
+            "patch_check_status": self.patch_check_status,
+            "patch_apply_status": self.patch_apply_status,
+            "patch_git_status": self.patch_git_status,
+            "patch_git_executable": self.patch_git_executable,
             "check_status": self.check_status,
             "layout_check_status": self.layout_check_status,
             "runtime_check_status": self.runtime_check_status,
@@ -150,6 +161,11 @@ def prepare_official_gcsim_engine_update(
             patch_count=0,
             patch_stack_path="",
             patch_stack_status="not_started",
+            patch_files=(),
+            patch_check_status="not_started",
+            patch_apply_status="not_started",
+            patch_git_status="not_started",
+            patch_git_executable="",
             check_status="source_acquisition_failed",
             layout_check_status="not_started",
             runtime_check_status="not_started",
@@ -327,6 +343,7 @@ def _report_from_update_result(
     runtime_probe_result: GcsimRuntimeProbeResult | None,
 ) -> GcsimOfficialEngineUpdateReport:
     active_engine_id = store.active_engine_id()
+    patch_metadata = dict(update_result.patch_result.metadata)
     layout_status = (
         "source_layout_passed"
         if update_result.success or runtime_probe_result is not None
@@ -360,6 +377,11 @@ def _report_from_update_result(
         patch_count=update_result.patch_result.patch_count,
         patch_stack_path="" if patch_stack is None else str(patch_stack),
         patch_stack_status=patch_stack_status,
+        patch_files=_patch_files_for_report(patch_metadata),
+        patch_check_status=patch_metadata.get("patch_check_status", ""),
+        patch_apply_status=patch_metadata.get("patch_apply_status", ""),
+        patch_git_status=patch_metadata.get("patch_git_status", ""),
+        patch_git_executable=patch_metadata.get("git_executable", ""),
         check_status=check_status,
         layout_check_status=layout_status,
         runtime_check_status=runtime_status,
@@ -386,6 +408,28 @@ def _go_target_text(report: GcsimOfficialEngineUpdateReport) -> str:
     return report.go_os or report.go_arch
 
 
+def make_patch_backend(name: str) -> PatchBackend:
+    normalized = str(name).strip().lower()
+    if normalized == "overlay":
+        return OverlayPatchBackend()
+    if normalized == "git":
+        return GitApplyPatchBackend()
+    raise ValueError(f"Unsupported GCSIM patch backend: {name!r}")
+
+
+def _patch_files_for_report(metadata: dict[str, str]) -> tuple[str, ...]:
+    raw = metadata.get("patch_files", "")
+    if not raw:
+        return ()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return ()
+    if not isinstance(data, list):
+        return ()
+    return tuple(str(item) for item in data)
+
+
 def _resolve_patch_stack_dir(path: str | Path | None) -> Path | None:
     if path is not None:
         return Path(path)
@@ -408,7 +452,10 @@ def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
         (
             "patch="
             f"backend={report.patch_backend} count={report.patch_count} "
-            f"stack_status={report.patch_stack_status}"
+            f"stack_status={report.patch_stack_status} "
+            f"check={report.patch_check_status or ''} "
+            f"apply={report.patch_apply_status or ''} "
+            f"git={report.patch_git_status or ''}"
         ),
         (
             "checks="
@@ -428,6 +475,8 @@ def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
         lines.append(f"probe_stdout={report.runtime_probe_stdout}")
     if report.runtime_probe_stderr:
         lines.append(f"probe_stderr={report.runtime_probe_stderr}")
+    if report.patch_files:
+        lines.append("patch_files=" + ", ".join(report.patch_files))
     if report.error:
         lines.append(f"error={report.error}")
     return "\n".join(lines)
@@ -447,8 +496,17 @@ def main(argv: list[str] | None = None) -> int:
         "--patch-stack",
         default=None,
         help=(
-            "Optional overlay patch-stack directory. If omitted, the command uses "
+            "Optional patch-stack directory. If omitted, the command uses "
             "run_workspace/gcsim/patch_stack only when it exists."
+        ),
+    )
+    parser.add_argument(
+        "--patch-backend",
+        choices=("overlay", "git"),
+        default="overlay",
+        help=(
+            "Patch backend to use. 'overlay' copies fixture files and remains the "
+            "conservative default; 'git' applies ordered .patch files with git apply."
         ),
     )
     parser.add_argument("--engine-id", default=None, help="Optional explicit engine id.")
@@ -481,6 +539,7 @@ def main(argv: list[str] | None = None) -> int:
         source_cache_dir=args.source_cache_dir,
         patch_stack_dir=args.patch_stack,
         engine_id=args.engine_id,
+        patch_backend=make_patch_backend(args.patch_backend),
         probe_runtime=args.probe_runtime,
         go_executable=args.go_executable,
         go_work_dir=args.go_work_dir,

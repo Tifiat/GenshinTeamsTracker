@@ -392,9 +392,15 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `capabilities=["gtt_engine_marker"]`, and `sequential_waves=false`. When
   `--build-artifact` is used with a non-empty `.patch` stack, this marker is
   required; missing, nonzero, invalid, or capability-missing `-gtt-info` output
-  keeps the previous active engine. Next GCSIM engine tasks should add shipped
-  fallback support, stronger simulation smoke checks, and then the first
-  sequential-wave research patch before any UI wiring.
+  keeps the previous active engine. Minimal active-artifact runner exists in
+  `run_workspace/gcsim/artifact_runner.py`; dev smoke command:
+  `python -m run_workspace.gcsim.run_smoke --config path --format text`. It
+  runs the active built artifact with caller-provided config text and parses
+  only a tolerant result JSON summary. It does not generate account/team
+  configs, map keys, implement waves, or wire UI. Next GCSIM tasks should add
+  shipped fallback support, config/key-mapping foundations, stronger smoke
+  configs, and then the first sequential-wave research patch before any UI
+  wiring.
 - Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.
 - Do not cram detailed GCSIM into the small TeamCard. Right panel should show only compact factual/sim DPS summary and readable GCSIM button/status; detailed GCSIM/rotation editor should open as a larger overlay/drawer around the right panel. If GCSIM lacks a character/reaction implementation, show a clear unavailable status.
 - Each team/run card should eventually have simulator action, GCSIM logo/label, and result area for sim DPS.

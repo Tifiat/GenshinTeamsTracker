@@ -53,6 +53,23 @@ Guarantee target:
 
 A small local engine stack is acceptable, for example two or three known-good engine folders plus optional failed/debug folders. Engine folder size is not currently considered a blocker.
 
+### Shipped engine and dependency UX contract
+
+The app should ship with a known-good, prebuilt GTT-GCSIM engine artifact that was produced and validated by the project release process. This bundled engine is the out-of-box calculation engine and must work for normal users without requiring Go, Git, Python, or any build tool on their PC.
+
+The shipped engine must not be deleted by ordinary user-triggered GCSIM updates. It should remain available as the trusted fallback even if the local update stack keeps only a small number of downloaded/generated engines. Rationale: a locally rebuilt engine may appear to work at first but later reveal a subtle issue; the release-shipped engine should remain recoverable as the last project-validated baseline.
+
+The `Update GCSIM` UI must not assume the user's Windows installation has build dependencies. The update flow should explicitly detect dependency readiness and present choices before trying a source rebuild:
+
+- automatic dependency install path, preferably using `winget` when available;
+- manual dependency path, with links/instructions for official Go and Git downloads;
+- already-installed dependency path, where Go/Git are detected and the update proceeds;
+- cancel/keep-current-engine path.
+
+The app may later help install dependencies automatically, but it must not silently install Go/Git. Any dependency installation must be explicit, user-confirmed, and recoverable. `winget` must be treated as optional, not guaranteed. If `winget` is unavailable or dependency installation fails, the built-in shipped engine remains active and calculations remain usable.
+
+The final UX should communicate that GCSIM source updates are an advanced/local rebuild path. Normal calculations should continue through the shipped engine even when local update dependencies are missing.
+
 ## 3. Patch Stack Direction
 
 GTT features should be implemented as a minimal patch stack over GCSIM, not as broad rewrites scattered across the engine.
@@ -202,36 +219,45 @@ This is a direction, not a mandatory Codex task split. Codex may propose safer b
    - manifest creation;
    - active/rollback behavior;
    - no real wave scheduler yet.
-3. GTT engine API skeleton:
+3. Build artifact / shipped fallback preparation:
+   - build a local runtime artifact from patched source;
+   - record artifact path/hash in the manifest;
+   - keep the release-shipped known-good engine as a non-deletable trusted fallback;
+   - do not require ordinary users to have Go/Git for out-of-box calculations.
+4. Dependency-aware update UX:
+   - detect Go/Git readiness;
+   - expose automatic install/manual install/already-installed/cancel paths;
+   - treat `winget` as optional and always keep the current engine active on dependency failure.
+5. GTT engine API skeleton:
    - engine info/capabilities;
    - validate scenario;
    - run scenario;
    - result metadata.
-4. Key mapping and config/scenario generation foundation:
+6. Key mapping and config/scenario generation foundation:
    - character/weapon/artifact/enemy key mapping;
    - Traveler deferred;
    - character max-level helper;
    - talent order helper.
-5. Vanilla-compatible GCSIM run through the GTT boundary:
+7. Vanilla-compatible GCSIM run through the GTT boundary:
    - one team/scenario;
    - single target and simultaneous multi-target target models;
    - parse result into a backend object;
    - no right-panel integration yet unless explicitly scoped.
-6. Sequential wave scheduler patch:
+8. Sequential wave scheduler patch:
    - spawn queue;
    - group-clear and rolling-replacement experiments;
    - scenario metadata;
    - smoke configs.
-7. Abyss scenario integration:
+9. Abyss scenario integration:
    - consume existing Abyss cache/enemy rows;
    - generate chamber/side scenarios;
    - run batch simulations with resource budgeting;
    - produce sim DPS and sim timer objects.
-8. Right-panel/UI integration:
-   - fill prepared Sim DPS cells;
-   - show stale-result warnings;
-   - expose engine/scenario metadata compactly;
-   - keep detailed controls outside cramped TeamCard/right-dock cells.
+10. Right-panel/UI integration:
+    - fill prepared Sim DPS cells;
+    - show stale-result warnings;
+    - expose engine/scenario metadata compactly;
+    - keep detailed controls outside cramped TeamCard/right-dock cells.
 
 ## 13. First Codex Task Direction
 
@@ -257,4 +283,4 @@ Current implementation state:
 - Engine/source runtime data is local/generated and ignored under `data/gcsim/`.
 - Default check status remains source-layout only and records `runtime_ready=false` / `runtime_check_status=not_requested`. With `--probe-runtime`, a successful probe records `runtime_ready=true`, `runtime_check_status=runtime_probe_passed`, `go_version`, `go_os`, `go_arch`, and truncated probe stdout/stderr metadata.
 - Tests in `tests/test_gcsim_patch_backends.py` pin git backend ordered patch success, missing git, patch check failure, patch apply failure, empty patch stack success, and previous-active preservation. Tests in `tests/test_gcsim_engine_update.py` pin fake official-source acquisition, download failure, corrupt archive failure, layout-smoke failure, manifest metadata, old-active preservation, Go-missing, wrong-arch, nonzero probe, timeout, default no-probe behavior, successful fake runtime-ready activation, and git patch backend plus runtime probe together.
-- Next real-engine task should add the first real GTT patch content, probably a harmless engine API/capability marker before the wave scheduler, plus a proper build artifact step and stronger runtime smoke checks behind the same store boundary. Do not wire this into UI until engine preparation and result boundaries are validated.
+- Next real-engine task should add a build artifact step and shipped-engine fallback contract support before UI integration. The first real GTT patch content should follow after the app can persist a built runtime artifact and keep the bundled known-good engine available. Do not wire this into UI until engine preparation and result boundaries are validated.

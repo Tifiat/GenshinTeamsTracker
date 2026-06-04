@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import re
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, replace
 from typing import Any, Callable
 from urllib.parse import urljoin
@@ -37,6 +38,7 @@ from .source_data_fetchers import (
 
 
 DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER = 3.75
+DEFAULT_FANDOM_ENEMY_PAGE_WORKERS = 5
 HP_FALLBACK_MODE_AUTO = "auto"
 HP_FALLBACK_MODE_NANOKA_ONLY = "nanoka-only"
 HP_FALLBACK_MODE_FANDOM_ONLY = "fandom-only"
@@ -98,6 +100,7 @@ class FandomEnemyHpFallbackResult:
     page_cache_hits: int
     hp_multiplier: float
     mode: str
+    workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS
     warnings: tuple[str, ...] = ()
 
 
@@ -118,6 +121,7 @@ def apply_fandom_enemy_page_hp_fallback(
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
     mode: str = HP_FALLBACK_MODE_AUTO,
     enemy_page_fetcher: EnemyPageFetcher = None,
+    enemy_page_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
 ) -> FandomEnemyHpFallbackResult:
     """Fill missing/forced enemy HP from Fandom enemy level/HP tables.
 
@@ -126,6 +130,7 @@ def apply_fandom_enemy_page_hp_fallback(
     """
 
     normalized_mode = normalize_hp_fallback_mode(mode)
+    workers = _normalize_worker_count(enemy_page_workers)
     if normalized_mode == HP_FALLBACK_MODE_NANOKA_ONLY:
         return FandomEnemyHpFallbackResult(
             data=data,
@@ -136,17 +141,40 @@ def apply_fandom_enemy_page_hp_fallback(
             page_cache_hits=0,
             hp_multiplier=float(hp_multiplier),
             mode=normalized_mode,
+            workers=workers,
         )
 
     fetcher = enemy_page_fetcher or fetch_enemy_page
     rows: list[AbyssEnemySourceRow] = []
     page_cache: dict[str, EnemyPage] = {}
+    page_errors: dict[str, Exception] = {}
     table_cache: dict[str, tuple[HpTableCandidate, ...]] = {}
     attempted = 0
     resolved = 0
-    page_fetches = 0
     page_cache_hits = 0
     global_warnings: set[str] = set()
+    attempt_rows: list[AbyssEnemySourceRow] = []
+
+    for row in data.enemy_rows:
+        should_attempt = (
+            normalized_mode == HP_FALLBACK_MODE_FANDOM_ONLY
+            or row.nanoka_hp is None
+        )
+        if not should_attempt:
+            continue
+        attempt_rows.append(row)
+
+    page_fetches = _prefetch_enemy_pages(
+        attempt_rows,
+        page_cache=page_cache,
+        page_errors=page_errors,
+        fetcher=fetcher,
+        workers=workers,
+    )
+    page_cache_hits = max(
+        0,
+        sum(1 for row in attempt_rows if row.fandom_enemy_page_url) - page_fetches,
+    )
 
     for row in data.enemy_rows:
         should_attempt = (
@@ -162,13 +190,10 @@ def apply_fandom_enemy_page_hp_fallback(
             hp_multiplier=float(hp_multiplier),
             force=normalized_mode == HP_FALLBACK_MODE_FANDOM_ONLY,
             page_cache=page_cache,
+            page_errors=page_errors,
             table_cache=table_cache,
             fetcher=fetcher,
         )
-        if fetch_state == "fetch":
-            page_fetches += 1
-        elif fetch_state == "cache":
-            page_cache_hits += 1
         if fallback_row.nanoka_hp is not None and fallback_row.hp_source == HP_SOURCE_FANDOM_ENEMY_PAGE_FALLBACK:
             resolved += 1
         for warning in fallback_row.warnings:
@@ -197,8 +222,51 @@ def apply_fandom_enemy_page_hp_fallback(
         page_cache_hits=page_cache_hits,
         hp_multiplier=float(hp_multiplier),
         mode=normalized_mode,
+        workers=workers,
         warnings=tuple(sorted(global_warnings)),
     )
+
+
+def _prefetch_enemy_pages(
+    rows: list[AbyssEnemySourceRow],
+    *,
+    page_cache: dict[str, EnemyPage],
+    page_errors: dict[str, Exception],
+    fetcher: EnemyPageFetcher,
+    workers: int,
+) -> int:
+    urls = sorted(
+        {
+            str(row.fandom_enemy_page_url)
+            for row in rows
+            if row.fandom_enemy_page_url
+        }
+    )
+    if not urls:
+        return 0
+    if workers <= 1 or len(urls) == 1:
+        for url in urls:
+            try:
+                page_cache[url] = fetcher(url)
+            except Exception as exc:  # noqa: BLE001 - fallback reports per-row failures.
+                page_errors[url] = exc
+        return len(urls)
+    with ThreadPoolExecutor(max_workers=min(workers, len(urls))) as executor:
+        future_by_url = {executor.submit(fetcher, url): url for url in urls}
+        for future in as_completed(future_by_url):
+            url = future_by_url[future]
+            try:
+                page_cache[url] = future.result()
+            except Exception as exc:  # noqa: BLE001 - fallback reports per-row failures.
+                page_errors[url] = exc
+    return len(urls)
+
+
+def _normalize_worker_count(value: int | str | None) -> int:
+    try:
+        return max(1, int(value or DEFAULT_FANDOM_ENEMY_PAGE_WORKERS))
+    except (TypeError, ValueError):
+        return DEFAULT_FANDOM_ENEMY_PAGE_WORKERS
 
 
 def fetch_enemy_page(url: str) -> EnemyPage:
@@ -240,6 +308,7 @@ def _row_with_fallback_hp(
     hp_multiplier: float,
     force: bool,
     page_cache: dict[str, EnemyPage],
+    page_errors: dict[str, Exception],
     table_cache: dict[str, tuple[HpTableCandidate, ...]],
     fetcher: EnemyPageFetcher,
 ) -> tuple[AbyssEnemySourceRow, str]:
@@ -249,6 +318,9 @@ def _row_with_fallback_hp(
     if not page_url:
         warnings.append("fandom_enemy_page_hp_url_missing")
         return replace(row, warnings=tuple(warnings)), fetch_state
+    if page_url in page_errors:
+        warnings.append(f"fandom_enemy_page_hp_fetch_or_parse_failed:{page_errors[page_url]}")
+        return replace(row, warnings=tuple(warnings)), "error"
     try:
         page = page_cache.get(page_url)
         if page is None:

@@ -202,7 +202,9 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   explicit: `--hp-source auto` uses Nanoka as primary and Fandom enemy-page HP
   as fallback only for missing HP, `--hp-source nanoka-only` keeps the old
   no-enemy-page fallback path, and `--hp-source fandom-only` forces Fandom
-  enemy-page HP for validation.
+  enemy-page HP for validation. Fandom enemy-page HP fallback fetches unique
+  enemy pages with bounded parallelism (`--fandom-hp-workers`, default 5);
+  it does not use a persistent enemy-page HP cache.
   Normal HoYoLAB import now resolves the current Spiral Abyss period with source
   priority HoYoLAB overview -> latest Fandom Spiral Abyss/Floors period page
   -> Nanoka live tower metadata, stores it at
@@ -214,8 +216,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   it skips same-period ready cache/assets by default, has `--force` for an
   explicit refresh, has `--period-source auto|hoyolab|nanoka|fandom` for
   period diagnostics, and passes `--hp-source auto|nanoka-only|fandom-only`
-  plus `--hp-multiplier` into the source-data updater. Local system date is not
-  a source-data authority for this refresh
+  plus `--hp-multiplier` / `--fandom-hp-workers` into the source-data updater.
+  Local system date is not a source-data authority for this refresh
   path. Right panel Fact DPS now reads this local cache via
   `run_workspace/abyss/source_data_runtime.py`, never fetches network data from
   the right panel, and uses `solo_target_hp` as the default displayed HP mode.

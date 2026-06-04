@@ -8,6 +8,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Callable, Mapping
 from urllib.parse import urlencode
 
@@ -21,6 +22,7 @@ from run_workspace.abyss.source_data_cache import (
 )
 from run_workspace.abyss.fandom_enemy_hp_fallback import (
     DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
+    DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
     HP_FALLBACK_MODE_AUTO,
     HP_FALLBACK_MODE_CHOICES,
 )
@@ -451,25 +453,32 @@ def update_cached_abyss_source_data_for_hoyolab_period(
     force: bool = False,
     hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
+    fandom_hp_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
     update_report_builder: Callable[..., Mapping[str, Any]] | None = None,
 ) -> AbyssSourceDataRefreshResult:
     """Update Floor 12 source-data cache from an official HoYoLAB Abyss period."""
 
+    total_start = perf_counter()
+    timings: dict[str, float] = {}
     parsed = _coerce_period(period)
     if not force:
+        lookup_start = perf_counter()
         cached = _ready_cached_source_data(
             parsed,
             floor=floor,
             cache_dir=cache_dir,
             require_assets=cache_assets,
         )
+        timings["cache_ready_lookup"] = _elapsed_ms(lookup_start)
         if cached is not None:
+            timings["total"] = _elapsed_ms(total_start)
             return _cached_refresh_result(
                 parsed,
                 cached,
                 floor=floor,
                 cache_dir=cache_dir,
                 cache_assets=cache_assets,
+                timings_ms=timings,
             )
 
     builder = update_report_builder or build_update_report
@@ -482,6 +491,7 @@ def update_cached_abyss_source_data_for_hoyolab_period(
         cache_assets=cache_assets,
         hp_source_mode=hp_source_mode,
         hp_multiplier=hp_multiplier,
+        fandom_hp_workers=fandom_hp_workers,
     )
     summary = report.get("summary") if isinstance(report, Mapping) else {}
     cache = report.get("cache") if isinstance(report, Mapping) else {}
@@ -522,6 +532,7 @@ def refresh_cached_abyss_source_data_for_hoyolab_period(
     force: bool = False,
     hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
+    fandom_hp_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
     updater: RefreshUpdateCallable = update_cached_abyss_source_data_for_hoyolab_period,
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Best-effort import integration wrapper: never raises for cache refresh."""
@@ -537,6 +548,7 @@ def refresh_cached_abyss_source_data_for_hoyolab_period(
             force=force,
             hp_source_mode=hp_source_mode,
             hp_multiplier=hp_multiplier,
+            fandom_hp_workers=fandom_hp_workers,
         )
     except Exception as exc:
         return None, _compact_exception_summary(exc)
@@ -740,6 +752,7 @@ def _cached_refresh_result(
     floor: int,
     cache_dir: str | Path | None,
     cache_assets: bool,
+    timings_ms: Mapping[str, Any] | None = None,
 ) -> AbyssSourceDataRefreshResult:
     path = cached_abyss_floor_source_data_path(
         period.start_date,
@@ -774,7 +787,7 @@ def _cached_refresh_result(
             else "same_period_cache_ready"
         ),
         warnings=tuple(data.global_warnings),
-        timings_ms={},
+        timings_ms=dict(timings_ms or {}),
     )
 
 
@@ -863,6 +876,17 @@ def _optional_int(value: Any) -> int | None:
         return None
 
 
+def _optional_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _elapsed_ms(start: float) -> float:
+    return round((perf_counter() - start) * 1000, 3)
+
+
 def _compact_exception_summary(exc: BaseException) -> str:
     text = str(exc).split("Call log:", 1)[0].strip()
     if len(text) > 600:
@@ -890,6 +914,7 @@ async def _run_cli(args: argparse.Namespace) -> dict[str, Any]:
             force=args.force,
             hp_source_mode=args.hp_source,
             hp_multiplier=args.hp_multiplier,
+            fandom_hp_workers=args.fandom_hp_workers,
         )
         report["sourceData"] = summary
         report["sourceDataError"] = error
@@ -926,6 +951,7 @@ def _text_report(report: Mapping[str, Any]) -> str:
         )
         timings = source_data.get("timingsMs")
         if isinstance(timings, Mapping) and timings:
+            total_ms = _optional_float(timings.get("total"))
             lines.append(
                 "timings_ms="
                 f"total={timings.get('total')} "
@@ -936,6 +962,8 @@ def _text_report(report: Mapping[str, Any]) -> str:
                 f"assets={timings.get('icon_asset_cache')} "
                 f"cache={timings.get('json_cache_save')}"
             )
+            if total_ms is not None:
+                lines.append(f"elapsed_s={total_ms / 1000:.3f}")
     if report.get("sourceDataError"):
         lines.append(f"source_data_warning={report.get('sourceDataError')}")
     return "\n".join(lines)
@@ -972,6 +1000,15 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         help=(
             "Manual Abyss HP multiplier for Fandom enemy-page HP fallback. "
             f"Default: {DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER:g}."
+        ),
+    )
+    parser.add_argument(
+        "--fandom-hp-workers",
+        type=int,
+        default=DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
+        help=(
+            "Bounded parallel Fandom enemy-page HP fetch workers for --update-cache. "
+            f"Default: {DEFAULT_FANDOM_ENEMY_PAGE_WORKERS}."
         ),
     )
     parser.add_argument(

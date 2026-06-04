@@ -441,6 +441,7 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
             force: bool = False,
             hp_source_mode: str = "auto",
             hp_multiplier: float = 3.75,
+            fandom_hp_workers: int = 5,
         ) -> AbyssSourceDataRefreshResult:
             calls.append(
                 {
@@ -451,6 +452,7 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
                     "force": force,
                     "hp_source_mode": hp_source_mode,
                     "hp_multiplier": hp_multiplier,
+                    "fandom_hp_workers": fandom_hp_workers,
                 }
             )
             assert isinstance(update_period, HoYoLABAbyssPeriod)
@@ -585,6 +587,7 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
             cache_assets=True,
             hp_source_mode="auto",
             hp_multiplier=3.75,
+            fandom_hp_workers=5,
         )
         self.assertTrue(result.cache_saved)
 
@@ -632,6 +635,8 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
         self.assertEqual(result.skip_reason, "same_period_cache_and_assets_ready")
         self.assertEqual(result.enemy_rows, 1)
         self.assertEqual(result.matched, 1)
+        self.assertIn("cache_ready_lookup", result.timings_ms)
+        self.assertIn("total", result.timings_ms)
 
     def test_update_helper_force_refreshes_even_when_cache_is_ready(self) -> None:
         source_data = load_abyss_floor12_source_data(

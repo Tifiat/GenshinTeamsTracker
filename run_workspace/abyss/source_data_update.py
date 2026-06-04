@@ -23,6 +23,7 @@ from .source_data import (
 )
 from .fandom_enemy_hp_fallback import (
     DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
+    DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
     HP_FALLBACK_MODE_AUTO,
     HP_FALLBACK_MODE_CHOICES,
     HP_FALLBACK_MODE_FANDOM_ONLY,
@@ -53,6 +54,7 @@ def fetch_abyss_floor12_source_data(
     period_end: str | None = None,
     hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
+    fandom_hp_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
 ) -> AbyssFloorSourceData:
     """Fetch live source reports and build production Floor 12 source data."""
 
@@ -64,6 +66,7 @@ def fetch_abyss_floor12_source_data(
         period_end=period_end,
         hp_source_mode=hp_source_mode,
         hp_multiplier=hp_multiplier,
+        fandom_hp_workers=fandom_hp_workers,
     )
     return data
 
@@ -77,9 +80,11 @@ def _fetch_abyss_floor12_source_data_with_timings(
     period_end: str | None = None,
     hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
+    fandom_hp_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
 ) -> tuple[AbyssFloorSourceData, dict[str, float]]:
     timings: dict[str, float] = {}
     normalized_hp_mode = normalize_hp_fallback_mode(hp_source_mode)
+    normalized_workers = _normalize_worker_count(fandom_hp_workers)
     period_url = period_url_for_start(period_start)
     fandom_start = perf_counter()
     composition_report = fetch_fandom_composition_report(period_url, floor=floor)
@@ -149,6 +154,7 @@ def _fetch_abyss_floor12_source_data_with_timings(
         data,
         hp_multiplier=hp_multiplier,
         mode=normalized_hp_mode,
+        enemy_page_workers=normalized_workers,
     )
     timings["fandom_enemy_page_hp_fallback"] = _elapsed_ms(fallback_start)
     timings["fandom_enemy_page_hp_fallback_requests"] = float(fallback_result.page_fetches)
@@ -183,9 +189,11 @@ def build_update_report(
     cache_assets: bool = True,
     hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
+    fandom_hp_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
 ) -> dict[str, Any]:
     total_start = perf_counter()
     normalized_hp_mode = normalize_hp_fallback_mode(hp_source_mode)
+    normalized_workers = _normalize_worker_count(fandom_hp_workers)
     data, timings = _fetch_abyss_floor12_source_data_with_timings(
         period_start=period_start,
         tower_id=tower_id,
@@ -194,6 +202,7 @@ def build_update_report(
         period_end=period_end,
         hp_source_mode=normalized_hp_mode,
         hp_multiplier=hp_multiplier,
+        fandom_hp_workers=normalized_workers,
     )
     cache_report: dict[str, Any] = {"saved": False}
     asset_report: dict[str, Any] = {"enabled": False}
@@ -240,6 +249,7 @@ def build_update_report(
                 != HP_FALLBACK_MODE_NANOKA_ONLY,
                 "hp_source_mode": normalized_hp_mode,
                 "hp_multiplier": float(hp_multiplier),
+                "fandom_hp_workers": normalized_workers,
             },
             "timings_ms": timings,
             "warnings": [
@@ -260,6 +270,7 @@ def build_update_report(
             "locale": locale,
             "hp_source_mode": normalized_hp_mode,
             "hp_multiplier": float(hp_multiplier),
+            "fandom_hp_workers": normalized_workers,
         },
         "nanoka": _nanoka_debug_metadata(data),
         "summary": _summary(data),
@@ -331,6 +342,20 @@ def _elapsed_ms(start: float) -> float:
     return round((perf_counter() - start) * 1000, 3)
 
 
+def _normalize_worker_count(value: int | str | None) -> int:
+    try:
+        return max(1, int(value or DEFAULT_FANDOM_ENEMY_PAGE_WORKERS))
+    except (TypeError, ValueError):
+        return DEFAULT_FANDOM_ENEMY_PAGE_WORKERS
+
+
+def _optional_float(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _text_report(report: dict[str, Any]) -> str:
     summary = report["summary"]
     lines = [
@@ -345,6 +370,7 @@ def _text_report(report: dict[str, Any]) -> str:
         lines.append(f"warning: {warning}")
     timings = report.get("probe", {}).get("timings_ms", {})
     if isinstance(timings, dict) and timings:
+        total_ms = _optional_float(timings.get("total"))
         lines.append(
             "timings_ms="
             f"total={timings.get('total')} "
@@ -355,12 +381,15 @@ def _text_report(report: dict[str, Any]) -> str:
             f"assets={timings.get('icon_asset_cache')} "
             f"cache={timings.get('json_cache_save')}"
         )
+        if total_ms is not None:
+            lines.append(f"elapsed_s={total_ms / 1000:.3f}")
     contract = report.get("probe", {}).get("normal_path_contract", {})
     if isinstance(contract, dict):
         lines.append(
             "hp_source="
             f"mode={contract.get('hp_source_mode')} "
             f"multiplier={contract.get('hp_multiplier')} "
+            f"workers={contract.get('fandom_hp_workers')} "
             f"fandom_enemy_page_requests={contract.get('fandom_enemy_page_requests')}"
         )
     cache_report = report.get("cache", {})
@@ -435,6 +464,15 @@ def _build_argument_parser() -> argparse.ArgumentParser:
             f"Default: {DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER:g}."
         ),
     )
+    parser.add_argument(
+        "--fandom-hp-workers",
+        type=int,
+        default=DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
+        help=(
+            "Bounded parallel Fandom enemy-page HP fetch workers. "
+            f"Default: {DEFAULT_FANDOM_ENEMY_PAGE_WORKERS}."
+        ),
+    )
     parser.add_argument("--indent", type=int, default=2, help="JSON indentation. Default: 2.")
     return parser
 
@@ -454,6 +492,7 @@ def main() -> int:
             cache_assets=not args.skip_assets,
             hp_source_mode=args.hp_source,
             hp_multiplier=args.hp_multiplier,
+            fandom_hp_workers=args.fandom_hp_workers,
         )
     except AbyssSourceFetchError as exc:
         print(

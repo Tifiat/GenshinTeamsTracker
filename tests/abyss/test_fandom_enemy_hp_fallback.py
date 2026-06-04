@@ -148,6 +148,40 @@ class FandomEnemyHpFallbackTest(unittest.TestCase):
         self.assertIsNone(row.nanoka_hp)
         self.assertEqual(row.hp_source, HP_SOURCE_UNAVAILABLE)
 
+    def test_parallel_prefetch_fetches_unique_enemy_pages_once(self) -> None:
+        data = load_abyss_floor12_source_data(
+            "2026-05-16",
+            "119",
+            composition_report=composition_report(
+                "2026-05-16",
+                [
+                    fandom_row("Shared Enemy", chamber=1, side=1, wave=1, level=95),
+                    fandom_row("Shared Enemy", chamber=1, side=1, wave=2, level=95),
+                    fandom_row("Other Enemy", chamber=1, side=1, wave=3, level=95),
+                ],
+            ),
+        )
+        calls: list[str] = []
+
+        def fetcher(url: str) -> EnemyPage:
+            calls.append(url)
+            return _enemy_page(url, _stats_html("2,000"))
+
+        result = apply_fandom_enemy_page_hp_fallback(
+            data,
+            hp_multiplier=3.75,
+            mode=HP_FALLBACK_MODE_AUTO,
+            enemy_page_fetcher=fetcher,
+            enemy_page_workers=5,
+        )
+
+        self.assertEqual(result.attempted, 3)
+        self.assertEqual(result.resolved, 3)
+        self.assertEqual(result.page_fetches, 2)
+        self.assertEqual(result.page_cache_hits, 1)
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(all(row.nanoka_hp == 7500 for row in result.data.enemy_rows))
+
     def test_specific_heading_wins_over_generic_stats(self) -> None:
         data = load_abyss_floor12_source_data(
             "2026-05-16",

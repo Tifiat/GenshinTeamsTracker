@@ -522,6 +522,16 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   right-panel selected-details/bonus-strip rendering for equipped characters
   (`~50-66 ms` refresh spikes) as a possible loader/cache target if it becomes
   visible again.
+- Pre-release packaging/size audit: the current dev `.venv` is about `767 MB`,
+  mostly `PySide6` (`~628 MB`) plus `playwright` (`~104 MB`). PySide6 includes
+  large unused-looking pieces such as `Qt6WebEngineCore.dll`, `resources`,
+  `translations`, `qml`, Designer/tools, and extra plugins. Before public
+  release, build a clean distributable instead of shipping the dev environment:
+  exclude unused Qt WebEngine/QML/Designer/translations/plugins where safe,
+  exclude tests/docs/experiments/debug/raw profile/cache folders, keep user
+  runtime data outside the bundled app, and verify the final unpacked and
+  installer sizes. Target this as a dedicated packaging pass, not as ordinary
+  feature work.
 - Artifact Browser polish: JSON import/clear controls are compact at one
   artifact column and expand only at 2+ artifact columns. They must not force
   the one-column artifact viewport wider than one `GRID_SIZE.width()` cell.

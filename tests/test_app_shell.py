@@ -77,6 +77,7 @@ from ui.utils.toggle_switch import FilterActionButton, SortIconButton
 from run_workspace.app_settings import read_app_settings
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
 from run_workspace.right_panel_prototype_view_model import (
+    FactDpsEnemyTooltipViewModel,
     FactDpsTooltipViewModel,
     RightPanelChamberRowViewModel,
     RightPanelGcsimStatusViewModel,
@@ -576,6 +577,28 @@ class AppShellTest(unittest.TestCase):
                                 "Nanoka is the primary resolved HP source.",
                                 "non_strict_match:variant_strip",
                                 "fandom_enemy_page_hp_fallback_attempted:10",
+                                "nanoka_hp_missing_used_fandom_enemy_page_fallback",
+                                "selected_generic_stats_table_after_no_variant_heading_match",
+                                "match_fandom_enemy_page_fallback_medium",
+                            ),
+                            enemies=(
+                                FactDpsEnemyTooltipViewModel(
+                                    wave=1,
+                                    primary_display_name="Sternshield Crab",
+                                    enemy_count=1,
+                                    display_level=100,
+                                    matched_nanoka_display_name=None,
+                                    hp_used=3_747_864,
+                                    hp_source="fandom_enemy_page_fallback",
+                                    match_method="fandom_enemy_page_fallback",
+                                    match_confidence="medium",
+                                    selected_for_solo=True,
+                                    warnings=(
+                                        "nanoka_hp_missing_used_fandom_enemy_page_fallback",
+                                        "selected_generic_stats_table_after_no_variant_heading_match",
+                                        "match_fandom_enemy_page_fallback_medium",
+                                    ),
+                                ),
                             ),
                         ),
                         sim_team1="not run",
@@ -598,7 +621,7 @@ class AppShellTest(unittest.TestCase):
         tooltip_controller = widget._chamber_table._fact_dps_tooltips[(0, 3)]
         tooltip_text = tooltip_controller.text()
         self.assertIn(
-            "Multi-target: off",
+            "<b>Calculation</b>: multi-target off",
             tooltip_text,
         )
         self.assertIn(
@@ -615,6 +638,16 @@ class AppShellTest(unittest.TestCase):
         )
         self.assertNotIn("non_strict_match", tooltip_text)
         self.assertNotIn("fandom_enemy_page_hp_fallback_attempted", tooltip_text)
+        self.assertNotIn("nanoka_hp_missing_used_fandom_enemy_page_fallback", tooltip_text)
+        self.assertNotIn(
+            "selected_generic_stats_table_after_no_variant_heading_match",
+            tooltip_text,
+        )
+        self.assertNotIn("match_fandom_enemy_page_fallback_medium", tooltip_text)
+        self.assertIn("Match:", tooltip_text)
+        self.assertIn("medium confidence", tooltip_text)
+        self.assertNotIn("Info:", tooltip_text)
+        self.assertIn("Sternshield Crab: HP from generic Stats table", tooltip_text)
         self.assertEqual(
             widget._chamber_table._row_labels[(0, 3)].objectName(),
             "FactDpsCell",

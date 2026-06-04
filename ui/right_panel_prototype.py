@@ -30,6 +30,7 @@ from run_workspace.models import (
     clamp_abyss_timer_edit_seconds,
 )
 from run_workspace.right_panel_prototype_view_model import (
+    FactDpsEnemyTooltipViewModel,
     FactDpsTooltipViewModel,
     MODE_ABYSS,
     MODE_DPS_DUMMY,
@@ -1241,12 +1242,8 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
     if tooltip is None:
         return ""
 
-    small_gap = "<div style='font-size:3px; line-height:3px;'>&nbsp;</div>"
-    separator = (
-        "<table width='100%' cellspacing='0' cellpadding='0'>"
-        "<tr><td height='1' bgcolor='#b8aa86'></td></tr>"
-        "</table>"
-    )
+    small_gap = "<div style='font-size:2px; line-height:2px;'>&nbsp;</div>"
+    separator = "<span style='color:#b8aa86'>────────────────────────────</span><br>"
     parts = [
         "<qt>",
         f"<b>{html.escape(tooltip.title)}</b><br>",
@@ -1268,7 +1265,7 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
             if enemy.cached_icon_path:
                 path = Path(enemy.cached_icon_path).as_posix()
                 parts.append(
-                    f"<img src='{html.escape(path, quote=True)}' width='22' height='22'> "
+                    f"<img src='{html.escape(path, quote=True)}' width='32' height='32'> "
                 )
             name = html.escape(enemy.primary_display_name)
             level = (
@@ -1303,9 +1300,8 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
     parts.append(separator)
     parts.append(small_gap)
     parts.append(
-        f"<b>{html.escape(tr('right_panel.fact_dps.tooltip.calculation'))}</b><br>"
-    )
-    parts.append(
+        f"<b>{html.escape(tr('right_panel.fact_dps.tooltip.calculation'))}</b>: "
+        +
         html.escape(
             tr(
                 "right_panel.fact_dps.tooltip.multi_target",
@@ -1342,9 +1338,8 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
             f"</span><br>"
         )
 
-    parts.append(
-        f"<br><b>{html.escape(tr('right_panel.fact_dps.tooltip.source'))}</b><br>"
-    )
+    parts.append(small_gap)
+    parts.append(f"<b>{html.escape(tr('right_panel.fact_dps.tooltip.source'))}</b><br>")
     parts.append(
         html.escape(tr("right_panel.fact_dps.tooltip.composition_source")) + "<br>"
     )
@@ -1357,18 +1352,24 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
         )
         + "<br>"
     )
-    match_text = _fact_dps_match_summary_text(tooltip)
-    if match_text:
-        parts.append(html.escape(match_text) + "<br>")
-    warning_text = _fact_dps_compact_warning_text(tooltip)
-    if warning_text:
-        parts.append(html.escape(warning_text))
+    match_text = _fact_dps_match_confidence_text(tooltip)
+    info_lines = _fact_dps_compact_info_lines(tooltip)
+    if match_text or info_lines:
+        parts.append(small_gap)
+        parts.append(
+            f"<b>{html.escape(tr('right_panel.fact_dps.tooltip.match_label'))}</b>"
+        )
+        if match_text:
+            parts.append(" " + html.escape(match_text))
+        parts.append("<br>")
+        for info in info_lines:
+            parts.append(html.escape(info) + "<br>")
 
     parts.append("</qt>")
     return "".join(parts)
 
 
-def _fact_dps_match_summary_text(tooltip: FactDpsTooltipViewModel) -> str:
+def _fact_dps_match_confidence_text(tooltip: FactDpsTooltipViewModel) -> str:
     confidences = {
         enemy.match_confidence
         for enemy in tooltip.enemies
@@ -1378,11 +1379,8 @@ def _fact_dps_match_summary_text(tooltip: FactDpsTooltipViewModel) -> str:
         return ""
     if len(confidences) == 1:
         confidence = next(iter(confidences))
-        return tr(
-            "right_panel.fact_dps.tooltip.match",
-            confidence=_fact_dps_match_confidence_label(confidence),
-        )
-    return tr("right_panel.fact_dps.tooltip.match_mixed")
+        return _fact_dps_match_confidence_label(confidence)
+    return tr("right_panel.fact_dps.tooltip.confidence_mixed")
 
 
 def _fact_dps_match_method_label(method: str) -> str:
@@ -1407,42 +1405,68 @@ def _fact_dps_match_confidence_label(confidence: str) -> str:
     return tr(key)
 
 
-def _fact_dps_compact_warning_text(tooltip: FactDpsTooltipViewModel) -> str:
-    warnings = tuple(
-        warning
-        for warning in tooltip.warnings
-        if _fact_dps_warning_is_user_relevant(warning)
-    )
-    if not warnings:
-        return ""
-    warning = warnings[0]
-    suffix = "" if len(warnings) == 1 else f" (+{len(warnings) - 1})"
-    return tr(
-        "right_panel.fact_dps.tooltip.warning",
-        warning=f"{warning}{suffix}",
-    )
+def _fact_dps_compact_info_lines(
+    tooltip: FactDpsTooltipViewModel,
+) -> tuple[str, ...]:
+    lines: list[str] = []
+    for enemy in tooltip.enemies:
+        for warning in enemy.warnings:
+            line = _fact_dps_enemy_warning_info_line(enemy, warning)
+            if line and line not in lines:
+                lines.append(line)
+    for warning in tooltip.warnings:
+        line = _fact_dps_source_warning_info_line(warning)
+        if line and line not in lines:
+            lines.append(line)
+    if not lines:
+        return ()
+    visible = list(lines[:5])
+    hidden_count = len(lines) - len(visible)
+    if hidden_count > 0:
+        visible.append(f"(+{hidden_count})")
+    return tuple(visible)
 
 
-def _fact_dps_warning_is_user_relevant(warning: str) -> bool:
+def _fact_dps_enemy_warning_info_line(
+    enemy: FactDpsEnemyTooltipViewModel,
+    warning: str,
+) -> str:
     lowered = warning.strip().lower()
     if not lowered:
-        return False
-    hidden_fragments = (
-        "nanoka is the primary resolved hp source",
-        "nanoka wave values are not used as composition authority",
-        "non_strict_match:",
-        "wave_label_missing_defaulted_to_",
-        "fandom_enemy_page_hp_fallback_attempted",
-        "fandom_enemy_page_hp_fallback_resolved",
-        "fandom_enemy_page_hp_fallback_used",
-        "fandom_enemy_page_hp_multiplier",
-        "fandom_enemy_page_hp_table_confidence",
-        "fandom_enemy_page_hp_table_method",
-        "nanoka_match_unavailable",
-        "nanoka_report_unavailable",
-        "nanoka_skipped_for_forced_fandom_enemy_page_hp_fallback",
-    )
-    return not any(fragment in lowered for fragment in hidden_fragments)
+        return ""
+    enemy_name = enemy.primary_display_name
+    if lowered == "selected_generic_stats_table_after_no_variant_heading_match":
+        return tr(
+            "right_panel.fact_dps.tooltip.info_generic_stats_table",
+            enemy=enemy_name,
+        )
+    if lowered == "selected_from_multiple_level_hp_tables_by_heading":
+        return tr(
+            "right_panel.fact_dps.tooltip.info_matching_heading_table",
+            enemy=enemy_name,
+        )
+    if lowered.startswith("multiple_generic_stats_tables_after_no_variant_heading_match"):
+        return tr(
+            "right_panel.fact_dps.tooltip.info_table_selection_ambiguous",
+            enemy=enemy_name,
+        )
+    if lowered.startswith("multiple_level_hp_tables_ambiguous_heading_match"):
+        return tr(
+            "right_panel.fact_dps.tooltip.info_table_selection_ambiguous",
+            enemy=enemy_name,
+        )
+    return ""
+
+
+def _fact_dps_source_warning_info_line(warning: str) -> str:
+    lowered = warning.strip().lower()
+    if not lowered:
+        return ""
+    if lowered.startswith("multiple_generic_stats_tables_after_no_variant_heading_match"):
+        return tr("right_panel.fact_dps.tooltip.info_some_table_ambiguous")
+    if lowered.startswith("multiple_level_hp_tables_ambiguous_heading_match"):
+        return tr("right_panel.fact_dps.tooltip.info_some_table_ambiguous")
+    return ""
 
 
 class DetailRowWidget(QWidget):

@@ -68,7 +68,7 @@ from ui.artifact_browser.window import (
     calculate_assignment_width_fit,
 )
 from run_workspace.perf import perf_enabled
-from localization import tr
+from localization import get_language, set_language, tr
 from ui.character_assets import STANDARD_FILTER_ONLY, load_account_weapon_stack_asset_items
 from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.marquee_label import MarqueeButton
@@ -482,58 +482,66 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(provider.call_count, 2)
 
     def test_right_panel_widget_renders_fact_dps_label_from_model(self) -> None:
-        model = RightPanelPrototypeViewModel(
-            mode=MODE_ABYSS,
-            mode_tabs=("Abyss", "DPS Dummy"),
-            teams=(),
-            selected_details=RightPanelSelectedDetailsViewModel(has_selection=False),
-            chamber_headers=(
-                "Ch.",
-                "T1",
-                "T2",
-                "Fact T1 DPS",
-                "Fact T2 DPS",
-                "Sim T1 DPS",
-                "Sim T2 DPS",
-            ),
-            chamber_rows=(
-                RightPanelChamberRowViewModel(
-                    chamber_label="C1",
-                    team1_time="09:00",
-                    team1_seconds=60,
-                    team2_time="09:00",
-                    team2_seconds=0,
-                    factual_team1="62,464",
-                    factual_team2="-",
-                    factual_team1_tooltip=FactDpsTooltipViewModel(
-                        title="Floor 12 / C1 / Team 1",
-                        formula="Fact DPS = solo target HP / elapsed time",
-                        total_solo_hp=3_747_864,
-                        elapsed_seconds=60,
-                        calculated_dps=62_464,
-                        hp_source_label="Nanoka resolved HP",
-                    ),
-                    sim_team1="not run",
-                    sim_team2="not run",
-                    total_seconds=60,
-                    timer_editable=True,
+        previous_language = get_language()
+        set_language("en")
+        try:
+            model = RightPanelPrototypeViewModel(
+                mode=MODE_ABYSS,
+                mode_tabs=("Abyss", "DPS Dummy"),
+                teams=(),
+                selected_details=RightPanelSelectedDetailsViewModel(has_selection=False),
+                chamber_headers=(
+                    "Ch.",
+                    "T1",
+                    "T2",
+                    "Fact T1 DPS",
+                    "Fact T2 DPS",
+                    "Sim T1 DPS",
+                    "Sim T2 DPS",
                 ),
-            ),
-            total_seconds=60,
-            gcsim_status=RightPanelGcsimStatusViewModel(status="Idle"),
-        )
+                chamber_rows=(
+                    RightPanelChamberRowViewModel(
+                        chamber_label="C1",
+                        team1_time="09:00",
+                        team1_seconds=60,
+                        team2_time="09:00",
+                        team2_seconds=0,
+                        factual_team1="62,464",
+                        factual_team2="-",
+                        factual_team1_tooltip=FactDpsTooltipViewModel(
+                            title="Floor 12 / C1 / Team 1",
+                            formula="Fact DPS = solo target HP / elapsed time",
+                            total_solo_hp=3_747_864,
+                            elapsed_seconds=60,
+                            calculated_dps=62_464,
+                            hp_source_label="Nanoka resolved HP",
+                        ),
+                        sim_team1="not run",
+                        sim_team2="not run",
+                        total_seconds=60,
+                        timer_editable=True,
+                    ),
+                ),
+                total_seconds=60,
+                gcsim_status=RightPanelGcsimStatusViewModel(status="Idle"),
+            )
 
-        widget = RightPanelPrototypeWidget(model, show_mode_tabs=False)
+            widget = RightPanelPrototypeWidget(model, show_mode_tabs=False)
+        finally:
+            set_language(previous_language)
 
         self.assertEqual(widget._chamber_table._row_labels[(0, 3)].text(), "62,464")
         self.assertEqual(widget._chamber_table._row_labels[(0, 4)].text(), "-")
+        self.assertEqual(widget._chamber_table._row_labels[(0, 3)].toolTip(), "")
+        tooltip_controller = widget._chamber_table._fact_dps_tooltips[(0, 3)]
+        tooltip_text = tooltip_controller.text()
         self.assertIn(
-            "Solo HP: <b>3,747,864</b>",
-            widget._chamber_table._row_labels[(0, 3)].toolTip(),
+            "Solo HP: 3,747,864",
+            tooltip_text,
         )
         self.assertIn(
-            "DPS: <b>62,464</b>",
-            widget._chamber_table._row_labels[(0, 3)].toolTip(),
+            "DPS: 62,464",
+            tooltip_text,
         )
         self.assertEqual(
             widget._chamber_table._row_labels[(0, 3)].objectName(),

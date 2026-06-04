@@ -4,6 +4,7 @@ import json
 import unittest
 from dataclasses import replace
 
+from localization import get_language, set_language
 from run_workspace.right_panel_prototype_view_model import (
     MODE_ABYSS,
     MODE_DPS_DUMMY,
@@ -393,50 +394,55 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertEqual(source_data.side_summary(1, 1).multi_target_hp, 3_600_000)
 
     def test_abyss_factual_dps_tooltip_carries_formula_and_enemy_breakdown(self) -> None:
-        source_data = load_abyss_floor12_source_data(
-            "2026-05-16",
-            "119",
-            composition_report=composition_report(
+        previous_language = get_language()
+        set_language("en")
+        try:
+            source_data = load_abyss_floor12_source_data(
                 "2026-05-16",
-                [
-                    fandom_row(
-                        "Primo Geovishap (Cryo)",
-                        chamber=1,
-                        side=1,
-                        wave=1,
-                        count=2,
-                        level=100,
-                    ),
-                ],
-            ),
-            nanoka_report=nanoka_report(
                 "119",
-                [
-                    nanoka_row(
-                        "Primo Geovishap",
-                        chamber=1,
-                        side=1,
-                        hp=3_747_864,
-                        monster_id="primo",
-                        level=100,
-                    ),
-                ],
-            ),
-        )
-        source_data = rebuild_abyss_floor_source_data_with_rows(
-            source_data,
-            (
-                replace(
-                    source_data.enemy_rows[0],
-                    cached_icon_path="C:/cache/abyss/primo.png",
+                composition_report=composition_report(
+                    "2026-05-16",
+                    [
+                        fandom_row(
+                            "Primo Geovishap (Cryo)",
+                            chamber=1,
+                            side=1,
+                            wave=1,
+                            count=2,
+                            level=100,
+                        ),
+                    ],
                 ),
-            ),
-        )
+                nanoka_report=nanoka_report(
+                    "119",
+                    [
+                        nanoka_row(
+                            "Primo Geovishap",
+                            chamber=1,
+                            side=1,
+                            hp=3_747_864,
+                            monster_id="primo",
+                            level=100,
+                        ),
+                    ],
+                ),
+            )
+            source_data = rebuild_abyss_floor_source_data_with_rows(
+                source_data,
+                (
+                    replace(
+                        source_data.enemy_rows[0],
+                        cached_icon_path="C:/cache/abyss/primo.png",
+                    ),
+                ),
+            )
 
-        rows = build_abyss_chamber_rows(
-            (AbyssTimerState(team1_left_seconds=540, team2_left_seconds=540),),
-            abyss_source_data=source_data,
-        )
+            rows = build_abyss_chamber_rows(
+                (AbyssTimerState(team1_left_seconds=540, team2_left_seconds=540),),
+                abyss_source_data=source_data,
+            )
+        finally:
+            set_language(previous_language)
 
         row = rows[0]
         tooltip = row.factual_team1_tooltip
@@ -459,36 +465,41 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertTrue(enemy.selected_for_solo)
 
     def test_abyss_chamber_rows_keep_factual_dps_unavailable_for_zero_elapsed(self) -> None:
-        source_data = load_abyss_floor12_source_data(
-            "2026-05-16",
-            "119",
-            composition_report=composition_report(
+        previous_language = get_language()
+        set_language("en")
+        try:
+            source_data = load_abyss_floor12_source_data(
                 "2026-05-16",
-                [fandom_row("Enemy", chamber=1, side=1, wave=1, level=100)],
-            ),
-            nanoka_report=nanoka_report(
                 "119",
-                [
-                    nanoka_row(
-                        "Enemy",
-                        chamber=1,
-                        side=1,
-                        hp=500_000,
-                        monster_id="enemy",
-                        level=100,
-                    )
-                ],
-            ),
-        )
-        rows = build_abyss_chamber_rows(
-            (
-                AbyssTimerState(
-                    team1_left_seconds=600,
-                    team2_left_seconds=600,
+                composition_report=composition_report(
+                    "2026-05-16",
+                    [fandom_row("Enemy", chamber=1, side=1, wave=1, level=100)],
                 ),
-            ),
-            abyss_source_data=source_data,
-        )
+                nanoka_report=nanoka_report(
+                    "119",
+                    [
+                        nanoka_row(
+                            "Enemy",
+                            chamber=1,
+                            side=1,
+                            hp=500_000,
+                            monster_id="enemy",
+                            level=100,
+                        )
+                    ],
+                ),
+            )
+            rows = build_abyss_chamber_rows(
+                (
+                    AbyssTimerState(
+                        team1_left_seconds=600,
+                        team2_left_seconds=600,
+                    ),
+                ),
+                abyss_source_data=source_data,
+            )
+        finally:
+            set_language(previous_language)
 
         row = rows[0]
 
@@ -505,15 +516,20 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertEqual(row.factual_team1_tooltip.total_solo_hp, 500_000)
 
     def test_abyss_chamber_rows_keep_factual_dps_unavailable_without_cached_source_data(self) -> None:
-        rows = build_abyss_chamber_rows(
-            (
-                AbyssTimerState(
-                    team1_left_seconds=480,
-                    team2_left_seconds=300,
+        previous_language = get_language()
+        set_language("en")
+        try:
+            rows = build_abyss_chamber_rows(
+                (
+                    AbyssTimerState(
+                        team1_left_seconds=480,
+                        team2_left_seconds=300,
+                    ),
                 ),
-            ),
-            abyss_source_data=None,
-        )
+                abyss_source_data=None,
+            )
+        finally:
+            set_language(previous_language)
 
         row = rows[0]
 

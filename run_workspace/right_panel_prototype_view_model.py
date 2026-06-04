@@ -1610,8 +1610,13 @@ def _build_fact_dps_tooltip(
     total_hp = None if side_summary is None else side_summary.solo_target_hp
     warnings = _fact_dps_tooltip_warnings(source_data, side_summary)
     return FactDpsTooltipViewModel(
-        title=f"Floor 12 / C{chamber_index} / Team {team_number}",
-        formula="Fact DPS = solo target HP / elapsed time",
+        title=tr(
+            "right_panel.fact_dps.tooltip.title",
+            floor=12,
+            chamber=f"C{chamber_index}",
+            team=team_number,
+        ),
+        formula=tr("right_panel.fact_dps.tooltip.formula"),
         total_solo_hp=total_hp,
         elapsed_seconds=int(elapsed_seconds),
         calculated_dps=dps_result.rounded_dps,
@@ -1633,13 +1638,13 @@ def _fact_dps_unavailable_reason(
     dps_unavailable_reason: str,
 ) -> str:
     if source_data is None:
-        return "Abyss source-data cache is unavailable."
+        return tr("right_panel.fact_dps.tooltip.reason_cache_unavailable")
     if side_summary is None:
-        return "Abyss source-data has no cached data for this chamber side."
+        return tr("right_panel.fact_dps.tooltip.reason_side_unavailable")
     if dps_unavailable_reason == REASON_ZERO_OR_NEGATIVE_TIME:
-        return "Elapsed time is zero."
+        return tr("right_panel.fact_dps.tooltip.reason_zero_elapsed")
     if dps_unavailable_reason == REASON_MISSING_HP:
-        return "Solo target HP is unavailable."
+        return tr("right_panel.fact_dps.tooltip.reason_hp_unavailable")
     return ""
 
 
@@ -1647,7 +1652,7 @@ def _fact_dps_hp_source_label(
     side_summary: AbyssChamberSideSourceData | None,
 ) -> str:
     if side_summary is None:
-        return "Unavailable"
+        return tr("right_panel.fact_dps.tooltip.source_unavailable")
     sources = {
         row.hp_source
         for wave in side_summary.waves
@@ -1655,9 +1660,9 @@ def _fact_dps_hp_source_label(
         if row.hp_source
     }
     if HP_SOURCE_NANOKA_RESOLVED in sources:
-        return "Nanoka resolved HP"
+        return tr("right_panel.fact_dps.tooltip.source_nanoka")
     if HP_SOURCE_UNAVAILABLE in sources or not sources:
-        return "Unavailable"
+        return tr("right_panel.fact_dps.tooltip.source_unavailable")
     return ", ".join(sorted(sources))
 
 

@@ -1014,6 +1014,7 @@ class ChamberTableBlockWidget(QFrame):
         self._content_key: tuple[object, ...] | None = None
         self._row_labels: dict[tuple[int, int], QLabel] = {}
         self._timer_cells: dict[tuple[int, int], ChamberTimerCellWidget] = {}
+        self._fact_dps_tooltips: dict[tuple[int, int], object] = {}
         self._total_label: QLabel | None = None
         self._status_label: QLabel | None = None
         self._gcsim_button: QPushButton | None = None
@@ -1064,6 +1065,7 @@ class ChamberTableBlockWidget(QFrame):
         _clear_layout(self._layout)
         self._row_labels = {}
         self._timer_cells = {}
+        self._fact_dps_tooltips = {}
 
         grid_container = QWidget()
         grid = QGridLayout(grid_container)
@@ -1102,6 +1104,9 @@ class ChamberTableBlockWidget(QFrame):
                     label.setObjectName("ChamberBadge")
                 elif column in (3, 4):
                     label.setObjectName("FactDpsCell")
+                    self._fact_dps_tooltips[(model_row_index, column)] = (
+                        install_custom_tooltip(label, "")
+                    )
                 else:
                     label.setObjectName("TableCell")
                 label.setAlignment(
@@ -1201,12 +1206,20 @@ class ChamberTableBlockWidget(QFrame):
                 if label is not None:
                     label.setText(text)
                     if column == 3:
-                        label.setToolTip(
-                            _fact_dps_tooltip_html(row.factual_team1_tooltip)
+                        self._fact_dps_tooltips[(row_index, column)] = (
+                            _set_custom_tooltip_text(
+                                label,
+                                self._fact_dps_tooltips.get((row_index, column)),
+                                _fact_dps_tooltip_html(row.factual_team1_tooltip),
+                            )
                         )
                     elif column == 4:
-                        label.setToolTip(
-                            _fact_dps_tooltip_html(row.factual_team2_tooltip)
+                        self._fact_dps_tooltips[(row_index, column)] = (
+                            _set_custom_tooltip_text(
+                                label,
+                                self._fact_dps_tooltips.get((row_index, column)),
+                                _fact_dps_tooltip_html(row.factual_team2_tooltip),
+                            )
                         )
         if self._total_label is not None:
             self._total_label.setText(f"Total: {int(total_seconds)}s")
@@ -1231,35 +1244,21 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
     parts = [
         "<qt>",
         f"<b>{html.escape(tooltip.title)}</b><br>",
-        f"{html.escape(tooltip.formula)}<br>",
     ]
-    if tooltip.total_solo_hp is not None:
-        parts.append(f"Solo HP: <b>{tooltip.total_solo_hp:,}</b><br>")
-    parts.append(f"Elapsed: <b>{int(tooltip.elapsed_seconds)}s</b><br>")
-    if tooltip.calculated_dps is not None:
-        parts.append(f"DPS: <b>{tooltip.calculated_dps:,}</b><br>")
-    if tooltip.unavailable_reason:
-        parts.append(
-            f"<span style='color:#e8c474'>Reason: "
-            f"{html.escape(tooltip.unavailable_reason)}</span><br>"
-        )
-    parts.append(f"Source: {html.escape(tooltip.hp_source_label)}")
-
-    if tooltip.warnings:
-        warning_text = ", ".join(tooltip.warnings[:4])
-        if len(tooltip.warnings) > 4:
-            warning_text += ", ..."
-        parts.append(f"<br>Warnings: {html.escape(warning_text)}")
 
     if tooltip.enemies:
-        parts.append("<hr>")
+        parts.append(f"<b>{html.escape(tr('right_panel.fact_dps.tooltip.enemies'))}</b><br>")
         current_wave: int | None = None
         for enemy in tooltip.enemies:
             if enemy.wave != current_wave:
                 if current_wave is not None:
                     parts.append("<br>")
                 current_wave = enemy.wave
-                parts.append(f"<b>Wave {enemy.wave}</b><br>")
+                parts.append(
+                    f"<span style='color:#e8c474'>"
+                    f"{html.escape(tr('right_panel.fact_dps.tooltip.wave', wave=enemy.wave))}"
+                    f"</span><br>"
+                )
             if enemy.cached_icon_path:
                 path = Path(enemy.cached_icon_path).as_posix()
                 parts.append(
@@ -1271,30 +1270,152 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
                 if enemy.display_level is None
                 else f" Lv.{int(enemy.display_level)}"
             )
-            solo = " - solo target" if enemy.selected_for_solo else ""
-            parts.append(f"x{int(enemy.enemy_count)} {name}{level}{solo}")
-            if (
-                enemy.matched_nanoka_display_name
-                and enemy.matched_nanoka_display_name != enemy.primary_display_name
-            ):
-                parts.append(
-                    " - Nanoka: "
-                    f"{html.escape(enemy.matched_nanoka_display_name)}"
-                )
-            if enemy.hp_used is not None:
-                parts.append(f" - HP {enemy.hp_used:,}")
-            else:
-                parts.append(" - HP unavailable")
-            if enemy.match_method:
+            parts.append(f"x{int(enemy.enemy_count)} {name}{level}")
+            if enemy.selected_for_solo:
                 parts.append(
                     " - "
-                    f"{html.escape(enemy.match_method)}"
-                    f"/{html.escape(enemy.match_confidence)}"
+                    + html.escape(tr("right_panel.fact_dps.tooltip.solo_target"))
+                )
+            if enemy.hp_used is not None:
+                parts.append(
+                    " - "
+                    + html.escape(
+                        tr(
+                            "right_panel.fact_dps.tooltip.enemy_hp",
+                            hp=f"{enemy.hp_used:,}",
+                        )
+                    )
+                )
+            else:
+                parts.append(
+                    " - "
+                    + html.escape(tr("right_panel.fact_dps.tooltip.hp_unavailable"))
                 )
             parts.append("<br>")
 
+    parts.append("<hr>")
+    parts.append(
+        f"<b>{html.escape(tr('right_panel.fact_dps.tooltip.calculation'))}</b><br>"
+    )
+    parts.append(f"{html.escape(tooltip.formula)}<br>")
+    if tooltip.total_solo_hp is not None:
+        parts.append(
+            html.escape(
+                tr(
+                    "right_panel.fact_dps.tooltip.solo_hp",
+                    hp=f"{tooltip.total_solo_hp:,}",
+                )
+            )
+            + "<br>"
+        )
+    parts.append(
+        html.escape(
+            tr(
+                "right_panel.fact_dps.tooltip.elapsed",
+                seconds=int(tooltip.elapsed_seconds),
+            )
+        )
+        + "<br>"
+    )
+    if tooltip.calculated_dps is not None:
+        parts.append(
+            html.escape(
+                tr(
+                    "right_panel.fact_dps.tooltip.dps",
+                    dps=f"{tooltip.calculated_dps:,}",
+                )
+            )
+            + "<br>"
+        )
+    if tooltip.unavailable_reason:
+        parts.append(
+            f"<span style='color:#e8c474'>"
+            f"{html.escape(tr('right_panel.fact_dps.tooltip.reason', reason=tooltip.unavailable_reason))}"
+            f"</span><br>"
+        )
+
+    parts.append(
+        f"<br><b>{html.escape(tr('right_panel.fact_dps.tooltip.source'))}</b><br>"
+    )
+    parts.append(
+        html.escape(tr("right_panel.fact_dps.tooltip.composition_source")) + "<br>"
+    )
+    parts.append(
+        html.escape(
+            tr(
+                "right_panel.fact_dps.tooltip.hp_source",
+                source=tooltip.hp_source_label,
+            )
+        )
+        + "<br>"
+    )
+    match_text = _fact_dps_match_summary_text(tooltip)
+    if match_text:
+        parts.append(html.escape(match_text) + "<br>")
+    warning_text = _fact_dps_compact_warning_text(tooltip)
+    if warning_text:
+        parts.append(html.escape(warning_text))
+
     parts.append("</qt>")
     return "".join(parts)
+
+
+def _fact_dps_match_summary_text(tooltip: FactDpsTooltipViewModel) -> str:
+    pairs = {
+        (enemy.match_method, enemy.match_confidence)
+        for enemy in tooltip.enemies
+        if enemy.match_method
+    }
+    if not pairs:
+        return ""
+    if len(pairs) == 1:
+        method, confidence = next(iter(pairs))
+        return tr(
+            "right_panel.fact_dps.tooltip.match",
+            method=_fact_dps_match_method_label(method),
+            confidence=_fact_dps_match_confidence_label(confidence),
+        )
+    return tr("right_panel.fact_dps.tooltip.match_mixed")
+
+
+def _fact_dps_match_method_label(method: str) -> str:
+    key = {
+        "strict_name": "right_panel.fact_dps.tooltip.match_method_strict",
+        "variant_strip": "right_panel.fact_dps.tooltip.match_method_variant",
+        "manual_alias": "right_panel.fact_dps.tooltip.match_method_alias",
+        "context_unique_remaining": "right_panel.fact_dps.tooltip.match_method_context",
+        "unmatched": "right_panel.fact_dps.tooltip.match_method_unmatched",
+        "ambiguous": "right_panel.fact_dps.tooltip.match_method_ambiguous",
+    }.get(method, "right_panel.fact_dps.tooltip.match_method_other")
+    return tr(key)
+
+
+def _fact_dps_match_confidence_label(confidence: str) -> str:
+    key = {
+        "high": "right_panel.fact_dps.tooltip.confidence_high",
+        "medium": "right_panel.fact_dps.tooltip.confidence_medium",
+        "low": "right_panel.fact_dps.tooltip.confidence_low",
+        "none": "right_panel.fact_dps.tooltip.confidence_none",
+    }.get(confidence, "right_panel.fact_dps.tooltip.confidence_none")
+    return tr(key)
+
+
+def _fact_dps_compact_warning_text(tooltip: FactDpsTooltipViewModel) -> str:
+    warnings = tuple(
+        warning
+        for warning in tooltip.warnings
+        if warning not in {
+            "nanoka_wave_values_are_not_used_as_composition_authority",
+        }
+    )
+    if not warnings:
+        return ""
+    warning = warnings[0]
+    suffix = "" if len(warnings) == 1 else f" (+{len(warnings) - 1})"
+    return tr(
+        "right_panel.fact_dps.tooltip.warning",
+        warning=f"{warning}{suffix}",
+    )
 
 
 class DetailRowWidget(QWidget):

@@ -238,3 +238,12 @@ This is a direction, not a mandatory Codex task split. Codex may propose safer b
 The first Codex task after this handoff should not implement full GCSIM or UI integration. It should inspect the repo and propose/prepare the smallest safe experiment for the local engine update/patch manager boundary.
 
 The first task should verify where engine folders/settings/manifests can live, how to keep the experiment isolated from production UI, and how to test transactional active/rollback behavior without requiring network/app-wide runs.
+
+Current implementation state:
+
+- Initial isolated backend prototype exists in `run_workspace/gcsim/engine_store.py`.
+- It models a local engine store with `engines/`, `staging/`, `failed/`, an `active_engine.json` pointer, and per-engine `gtt_engine_manifest.json`.
+- `GcsimEngineStore.prepare_engine_update(...)` copies a source-like tree into staging, applies a replaceable `PatchBackend`, runs an optional smoke-check callable, writes the manifest, then activates the new engine only after all steps pass.
+- The default `OverlayPatchBackend` is test-only/prototype-friendly: it copies files from a patch-stack directory over the staged source. It proves transaction boundaries without requiring real GCSIM source, network, Go, or `git apply`.
+- Tests in `tests/test_gcsim_engine_store.py` pin success activation, patch failure rollback, smoke failure rollback, manifest metadata, and old-active availability.
+- Next real-engine task should add a production patch backend, probably git/apply based, plus official source acquisition/build/smoke integration behind the same store boundary. Do not wire this into UI until engine preparation and result boundaries are validated.

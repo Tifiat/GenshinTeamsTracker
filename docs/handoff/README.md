@@ -16,6 +16,7 @@ Current maps:
 - `ABYSS_HP_FIXTURE.md` - concrete current Floor 12 HP fixture and source-join notes.
 - `ABYSS_MECHANICS_NOTES.md` - Abyss enemy mechanics parser tags and source notes.
 - `GCSIM.md` - GCSIM research and integration notes.
+- `GCSIM_ENGINE_INTEGRATION_PLAN.md` - working implementation-direction plan for GTT-modified GCSIM engine updates, local patching, sequential Abyss waves, resource budgeting, and UI result boundaries.
 - `PVP_RULESETS_AUDIT.md` - PvP/tournament ruleset source audit.
 - `STAT_NORMALIZATION.md` - stat normalization and GCSIM stat-key mapping handoff.
 - `MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md` - audit and staged plan for replacing the legacy main-window right panel with fixed Right Panel Prototype v6 plus left workspaces.

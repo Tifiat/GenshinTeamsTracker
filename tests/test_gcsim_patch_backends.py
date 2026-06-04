@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
 
 from run_workspace.gcsim.engine_store import GcsimEngineStore
-from run_workspace.gcsim.patch_backends import GitApplyPatchBackend
+from run_workspace.gcsim.patch_backends import GitApplyPatchBackend, _git_apply_env
 
 
 class GcsimGitPatchBackendTest(unittest.TestCase):
@@ -150,6 +151,18 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
             self.assertEqual(result.patch_result.metadata["patch_check_status"], "no_patches")
             self.assertEqual(result.patch_result.metadata["patch_apply_status"], "no_patches")
             self.assertEqual(runner.calls, [])
+
+    def test_subprocess_git_apply_env_stops_parent_repo_discovery(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            engine_dir = root / "repo" / "data" / "gcsim" / "staging" / "engine"
+            engine_dir.mkdir(parents=True)
+
+            env = _git_apply_env(engine_dir)
+
+            self.assertIn("GIT_CEILING_DIRECTORIES", env)
+            ceilings = env["GIT_CEILING_DIRECTORIES"].split(os.pathsep)
+            self.assertEqual(ceilings[0], str(engine_dir.resolve().parent))
 
 
 class FakeGitPatchRunner:

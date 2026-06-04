@@ -1,0 +1,71 @@
+diff --git a/cmd/gcsim/main.go b/cmd/gcsim/main.go
+index 4101699..4ed733d 100644
+--- a/cmd/gcsim/main.go
++++ b/cmd/gcsim/main.go
+@@ -15,6 +15,7 @@ import (
+ 	"strings"
+ 
+ 	selfupdate "github.com/creativeprojects/go-selfupdate"
++	"github.com/genshinsim/gcsim/pkg/gtt"
+ 	"github.com/genshinsim/gcsim/pkg/model"
+ 	"github.com/genshinsim/gcsim/pkg/optimization"
+ 	"github.com/genshinsim/gcsim/pkg/simulator"
+@@ -61,7 +62,9 @@ func main() {
+ func mainImpl() error {
+ 	var opt opts
+ 	var version bool
++	var gttInfo bool
+ 	flag.BoolVar(&version, "version", false, "check gcsim version (git hash)")
++	flag.BoolVar(&gttInfo, "gtt-info", false, "print GTT engine metadata as JSON")
+ 	flag.StringVar(&opt.config, "c", "config.txt", "which profile to use")
+ 	flag.StringVar(&opt.out, "out", "", "output result to file? supply file path (otherwise empty string for disabled). default disabled")
+ 	flag.StringVar(&opt.sample, "sample", "", "create sample result. supply file path (otherwise empty string for disabled). default disabled")
+@@ -89,6 +92,10 @@ can be viewed in the browser via "go tool pprof -http=localhost:3000 mem.prof" (
+ 
+ 	flag.Parse()
+ 
++	if gttInfo {
++		return gtt.WriteInfo(os.Stdout, simulator.Version())
++	}
++
+ 	if opt.update {
+ 		err := update(updateVersion)
+ 		if err != nil {
+diff --git a/pkg/gtt/info.go b/pkg/gtt/info.go
+new file mode 100644
+index 0000000..c647173
+--- /dev/null
++++ b/pkg/gtt/info.go
+@@ -0,0 +1,32 @@
++package gtt
++
++import (
++	"encoding/json"
++	"io"
++)
++
++const PatchVersion = "gtt-marker-v1"
++
++type EngineInfo struct {
++	GTTEngine       bool     `json:"gtt_engine"`
++	GTTPatchVersion string   `json:"gtt_patch_version"`
++	Capabilities    []string `json:"capabilities"`
++	SequentialWaves bool     `json:"sequential_waves"`
++	UpstreamVersion string   `json:"upstream_version,omitempty"`
++}
++
++func Info(upstreamVersion string) EngineInfo {
++	return EngineInfo{
++		GTTEngine:       true,
++		GTTPatchVersion: PatchVersion,
++		Capabilities:    []string{"gtt_engine_marker"},
++		SequentialWaves: false,
++		UpstreamVersion: upstreamVersion,
++	}
++}
++
++func WriteInfo(w io.Writer, upstreamVersion string) error {
++	encoder := json.NewEncoder(w)
++	encoder.SetEscapeHTML(false)
++	return encoder.Encode(Info(upstreamVersion))
++}

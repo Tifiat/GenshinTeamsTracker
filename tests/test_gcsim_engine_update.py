@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 import subprocess
 import tempfile
@@ -203,7 +204,7 @@ class GcsimEngineUpdateTest(unittest.TestCase):
                 _completed(stdout="go version go1.22.0 windows/amd64\n"),
                 _completed(stdout="gcsim version test\n"),
             )
-            git_runner = FakeGitRunner(_completed(), _completed())
+            git_runner = FakeGitRunner(_completed(), _write_gtt_marker_source)
 
             report = prepare_official_gcsim_engine_update(
                 release="v-test",
@@ -383,6 +384,119 @@ class GcsimEngineUpdateTest(unittest.TestCase):
             self.assertEqual(report.runtime_check_status, "artifact_version_failed")
             self.assertEqual(report.artifact_sha256, hashlib.sha256(b"fake artifact").hexdigest())
             self.assertIn("version failed", report.artifact_version_stderr)
+            self.assertEqual(report.active_engine_id, old)
+
+    def test_gtt_marker_success_records_capabilities_and_activates(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_dir = root / "store"
+            archive = _write_fake_gcsim_archive(root / "gcsim.zip")
+            patch_stack = _make_git_patch_stack(root / "patch-stack")
+            git_runner = FakeGitRunner(_completed(), _write_gtt_marker_source)
+            go_runner = FakeGoRunner(
+                _completed(stdout="go version go1.22.0 windows/amd64\n"),
+                _write_fake_artifact,
+                _completed(stdout="gcsim version built\n"),
+                _completed(stdout=_gtt_info_stdout()),
+            )
+
+            report = prepare_official_gcsim_engine_update(
+                release="v-test",
+                store_dir=store_dir,
+                source_cache_dir=root / "sources",
+                patch_stack_dir=patch_stack,
+                patch_backend=GitApplyPatchBackend(runner=git_runner),
+                source_acquirer=_archive_acquirer(archive, tag="v-test"),
+                build_artifact=True,
+                artifact_build_runner=go_runner,
+                go_work_dir=root / ".go-test",
+            )
+
+            self.assertTrue(report.success)
+            self.assertTrue(report.activated)
+            self.assertTrue(report.runtime_ready)
+            self.assertEqual(report.runtime_check_status, "gtt_info_passed")
+            self.assertEqual(report.artifact_runtime_check_status, "artifact_runtime_passed")
+            self.assertTrue(report.gtt_marker_required)
+            self.assertTrue(report.gtt_marker_ready)
+            self.assertEqual(report.gtt_patch_version, "gtt-marker-v1")
+            self.assertEqual(report.gtt_capabilities, ("gtt_engine_marker",))
+            self.assertEqual(report.gtt_sequential_waves, "false")
+            self.assertIn("-gtt-info", report.gtt_info_command)
+            active = GcsimEngineStore(store_dir).get_active_engine()
+            self.assertIsNotNone(active)
+            assert active is not None
+            self.assertIn("gtt_engine_marker", active.manifest.capabilities)
+            self.assertEqual(active.manifest.metadata["gtt_marker_ready"], "true")
+            self.assertEqual(active.manifest.metadata["gtt_patch_version"], "gtt-marker-v1")
+
+    def test_gtt_marker_nonzero_keeps_old_active_engine_when_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_dir = root / "store"
+            old = _install_old_active_engine(GcsimEngineStore(store_dir), root)
+            archive = _write_fake_gcsim_archive(root / "gcsim.zip")
+            patch_stack = _make_git_patch_stack(root / "patch-stack")
+            git_runner = FakeGitRunner(_completed(), _write_gtt_marker_source)
+            go_runner = FakeGoRunner(
+                _completed(stdout="go version go1.22.0 windows/amd64\n"),
+                _write_fake_artifact,
+                _completed(stdout="gcsim version built\n"),
+                _completed(returncode=2, stderr="flag provided but not defined: -gtt-info"),
+            )
+
+            report = prepare_official_gcsim_engine_update(
+                release="v-test",
+                store_dir=store_dir,
+                source_cache_dir=root / "sources",
+                patch_stack_dir=patch_stack,
+                patch_backend=GitApplyPatchBackend(runner=git_runner),
+                source_acquirer=_archive_acquirer(archive, tag="v-test"),
+                build_artifact=True,
+                artifact_build_runner=go_runner,
+                go_work_dir=root / ".go-test",
+            )
+
+            self.assertFalse(report.success)
+            self.assertFalse(report.activated)
+            self.assertEqual(report.runtime_check_status, "gtt_info_failed")
+            self.assertTrue(report.gtt_marker_required)
+            self.assertFalse(report.gtt_marker_ready)
+            self.assertIn("flag provided", report.gtt_info_stderr)
+            self.assertEqual(report.active_engine_id, old)
+
+    def test_gtt_marker_invalid_json_keeps_old_active_engine_when_required(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_dir = root / "store"
+            old = _install_old_active_engine(GcsimEngineStore(store_dir), root)
+            archive = _write_fake_gcsim_archive(root / "gcsim.zip")
+            patch_stack = _make_git_patch_stack(root / "patch-stack")
+            git_runner = FakeGitRunner(_completed(), _write_gtt_marker_source)
+            go_runner = FakeGoRunner(
+                _completed(stdout="go version go1.22.0 windows/amd64\n"),
+                _write_fake_artifact,
+                _completed(stdout="gcsim version built\n"),
+                _completed(stdout="not json\n"),
+            )
+
+            report = prepare_official_gcsim_engine_update(
+                release="v-test",
+                store_dir=store_dir,
+                source_cache_dir=root / "sources",
+                patch_stack_dir=patch_stack,
+                patch_backend=GitApplyPatchBackend(runner=git_runner),
+                source_acquirer=_archive_acquirer(archive, tag="v-test"),
+                build_artifact=True,
+                artifact_build_runner=go_runner,
+                go_work_dir=root / ".go-test",
+            )
+
+            self.assertFalse(report.success)
+            self.assertFalse(report.activated)
+            self.assertEqual(report.runtime_check_status, "gtt_info_invalid")
+            self.assertFalse(report.gtt_marker_ready)
+            self.assertIn("invalid GTT marker JSON", report.error)
             self.assertEqual(report.active_engine_id, old)
 
     def test_download_failure_keeps_old_active_engine(self) -> None:
@@ -598,6 +712,8 @@ class FakeGitRunner:
         result = self.results.pop(0)
         if isinstance(result, BaseException):
             raise result
+        if callable(result):
+            return result(command, cwd)
         return result
 
 
@@ -616,6 +732,29 @@ def _write_fake_artifact(command, cwd, _env, _timeout):
     artifact_path.parent.mkdir(parents=True, exist_ok=True)
     artifact_path.write_bytes(b"fake artifact")
     return _completed(stdout="built fake artifact\n")
+
+
+def _write_gtt_marker_source(_command, cwd: Path):
+    main_path = cwd / "cmd" / "gcsim" / "main.go"
+    main_text = main_path.read_text(encoding="utf-8")
+    if "gtt-info" not in main_text:
+        main_path.write_text(main_text + '\n// fake test patch adds -gtt-info\n', encoding="utf-8")
+    info_path = cwd / "pkg" / "gtt" / "info.go"
+    info_path.parent.mkdir(parents=True, exist_ok=True)
+    info_path.write_text("package gtt\n", encoding="utf-8")
+    return _completed()
+
+
+def _gtt_info_stdout() -> str:
+    return json.dumps(
+        {
+            "gtt_engine": True,
+            "gtt_patch_version": "gtt-marker-v1",
+            "capabilities": ["gtt_engine_marker"],
+            "sequential_waves": False,
+            "upstream_version": "gcsim version built",
+        }
+    )
 
 
 if __name__ == "__main__":

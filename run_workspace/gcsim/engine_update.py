@@ -98,6 +98,16 @@ class GcsimOfficialEngineUpdateReport:
     artifact_version_command: str
     artifact_version_stdout: str
     artifact_version_stderr: str
+    gtt_marker_required: bool
+    gtt_marker_ready: bool
+    gtt_info_status: str
+    gtt_patch_version: str
+    gtt_capabilities: tuple[str, ...]
+    gtt_sequential_waves: str
+    gtt_upstream_version: str
+    gtt_info_command: str
+    gtt_info_stdout: str
+    gtt_info_stderr: str
     error: str = ""
 
     def to_dict(self) -> dict:
@@ -150,6 +160,16 @@ class GcsimOfficialEngineUpdateReport:
             "artifact_version_command": self.artifact_version_command,
             "artifact_version_stdout": self.artifact_version_stdout,
             "artifact_version_stderr": self.artifact_version_stderr,
+            "gtt_marker_required": self.gtt_marker_required,
+            "gtt_marker_ready": self.gtt_marker_ready,
+            "gtt_info_status": self.gtt_info_status,
+            "gtt_patch_version": self.gtt_patch_version,
+            "gtt_capabilities": list(self.gtt_capabilities),
+            "gtt_sequential_waves": self.gtt_sequential_waves,
+            "gtt_upstream_version": self.gtt_upstream_version,
+            "gtt_info_command": self.gtt_info_command,
+            "gtt_info_stdout": self.gtt_info_stdout,
+            "gtt_info_stderr": self.gtt_info_stderr,
             "error": self.error,
         }
 
@@ -230,12 +250,23 @@ def prepare_official_gcsim_engine_update(
             artifact_version_command="",
             artifact_version_stdout="",
             artifact_version_stderr="",
+            gtt_marker_required=False,
+            gtt_marker_ready=False,
+            gtt_info_status="not_started",
+            gtt_patch_version="",
+            gtt_capabilities=(),
+            gtt_sequential_waves="",
+            gtt_upstream_version="",
+            gtt_info_command="",
+            gtt_info_stdout="",
+            gtt_info_stderr="",
             error=str(exc),
         )
 
-    patch_stack = _resolve_patch_stack_dir(patch_stack_dir)
-    patch_stack_status = "present" if patch_stack is not None else "absent_no_patches"
     backend = patch_backend or OverlayPatchBackend()
+    patch_stack = _resolve_patch_stack_dir(patch_stack_dir, backend=backend)
+    patch_stack_status = "present" if patch_stack is not None else "absent_no_patches"
+    require_gtt_marker = build_artifact and _patch_stack_has_patch_files(patch_stack)
     metadata = _engine_manifest_metadata(
         acquisition=acquisition,
         requested_release=release,
@@ -244,6 +275,7 @@ def prepare_official_gcsim_engine_update(
         probe_runtime=probe_runtime,
         build_artifact=build_artifact,
         artifact_relative_path=artifact_relative_path,
+        require_gtt_marker=require_gtt_marker,
     )
     runtime_probe_state: dict[str, GcsimRuntimeProbeResult | None] = {"result": None}
     artifact_build_state: dict[str, GcsimBuildArtifactResult | None] = {"result": None}
@@ -256,6 +288,7 @@ def prepare_official_gcsim_engine_update(
         capabilities=_engine_capabilities(
             probe_runtime=probe_runtime,
             build_artifact=build_artifact,
+            require_gtt_marker=require_gtt_marker,
         ),
         metadata=metadata,
         smoke_check=_make_engine_update_smoke_check(
@@ -270,6 +303,7 @@ def prepare_official_gcsim_engine_update(
             artifact_build_runner=artifact_build_runner,
             runtime_probe_timeout_seconds=runtime_probe_timeout_seconds,
             artifact_relative_path=artifact_relative_path,
+            require_gtt_marker=require_gtt_marker,
         ),
     )
     return _report_from_update_result(
@@ -310,6 +344,7 @@ def _make_engine_update_smoke_check(
     artifact_build_runner: GoRunner | None,
     runtime_probe_timeout_seconds: int,
     artifact_relative_path: str | Path,
+    require_gtt_marker: bool,
 ):
     def smoke_check(engine_dir: Path) -> str:
         layout_error = gcsim_source_layout_smoke_check(engine_dir)
@@ -327,6 +362,7 @@ def _make_engine_update_smoke_check(
                 go_work_dir=go_work_dir,
                 timeout_seconds=runtime_probe_timeout_seconds,
                 runner=artifact_build_runner or runtime_probe_runner,
+                require_gtt_marker=require_gtt_marker,
             )
             artifact_build_state["result"] = result
             metadata.update(result.metadata())
@@ -358,10 +394,17 @@ def _make_engine_update_smoke_check(
     return smoke_check
 
 
-def _engine_capabilities(*, probe_runtime: bool, build_artifact: bool) -> tuple[str, ...]:
+def _engine_capabilities(
+    *,
+    probe_runtime: bool,
+    build_artifact: bool,
+    require_gtt_marker: bool,
+) -> tuple[str, ...]:
     capabilities = ["official_source_layout", "gtt_patch_stack_boundary"]
     if build_artifact:
         capabilities.extend(["local_build_artifact", "built_artifact_runtime_probe"])
+    if require_gtt_marker:
+        capabilities.extend(["gtt_engine_marker", "gtt_info_probe"])
     if probe_runtime and not build_artifact:
         capabilities.append("go_runtime_probe")
     return tuple(capabilities)
@@ -376,6 +419,7 @@ def _engine_manifest_metadata(
     probe_runtime: bool,
     build_artifact: bool,
     artifact_relative_path: str | Path,
+    require_gtt_marker: bool,
 ) -> dict[str, str]:
     runtime_pending = probe_runtime or build_artifact
     return {
@@ -416,6 +460,16 @@ def _engine_manifest_metadata(
         "artifact_version_command": "",
         "artifact_version_stdout": "",
         "artifact_version_stderr": "",
+        "gtt_marker_required": "true" if require_gtt_marker else "false",
+        "gtt_marker_ready": "false",
+        "gtt_info_status": "pending" if require_gtt_marker else "not_required",
+        "gtt_patch_version": "",
+        "gtt_capabilities": "[]",
+        "gtt_sequential_waves": "",
+        "gtt_upstream_version": "",
+        "gtt_info_command": "",
+        "gtt_info_stdout": "",
+        "gtt_info_stderr": "",
         "shipped_fallback_status": "planned_not_implemented",
     }
 
@@ -541,6 +595,16 @@ def _report_from_update_result(
         artifact_version_command=report_metadata.get("artifact_version_command", ""),
         artifact_version_stdout=report_metadata.get("artifact_version_stdout", ""),
         artifact_version_stderr=report_metadata.get("artifact_version_stderr", ""),
+        gtt_marker_required=report_metadata.get("gtt_marker_required", "false") == "true",
+        gtt_marker_ready=report_metadata.get("gtt_marker_ready", "false") == "true",
+        gtt_info_status=report_metadata.get("gtt_info_status", "not_required"),
+        gtt_patch_version=report_metadata.get("gtt_patch_version", ""),
+        gtt_capabilities=_gtt_capabilities_for_report(report_metadata),
+        gtt_sequential_waves=report_metadata.get("gtt_sequential_waves", ""),
+        gtt_upstream_version=report_metadata.get("gtt_upstream_version", ""),
+        gtt_info_command=report_metadata.get("gtt_info_command", ""),
+        gtt_info_stdout=report_metadata.get("gtt_info_stdout", ""),
+        gtt_info_stderr=report_metadata.get("gtt_info_stderr", ""),
         error=update_result.error,
     )
 
@@ -589,12 +653,36 @@ def _patch_files_for_report(metadata: dict[str, str]) -> tuple[str, ...]:
     return tuple(str(item) for item in data)
 
 
-def _resolve_patch_stack_dir(path: str | Path | None) -> Path | None:
+def _resolve_patch_stack_dir(path: str | Path | None, *, backend: PatchBackend) -> Path | None:
     if path is not None:
         return Path(path)
+    if backend.name != "git":
+        return None
     if DEFAULT_GCSIM_PATCH_STACK_DIR.exists():
         return DEFAULT_GCSIM_PATCH_STACK_DIR
     return None
+
+
+def _patch_stack_has_patch_files(path: Path | None) -> bool:
+    if path is None:
+        return False
+    path = Path(path)
+    if not path.is_dir():
+        return False
+    return any(item.is_file() for item in path.rglob("*.patch"))
+
+
+def _gtt_capabilities_for_report(metadata: dict[str, str]) -> tuple[str, ...]:
+    raw = metadata.get("gtt_capabilities", "")
+    if not raw:
+        return ()
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return ()
+    if not isinstance(data, list):
+        return ()
+    return tuple(str(item) for item in data)
 
 
 def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
@@ -637,6 +725,15 @@ def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
             f"target={_go_target_text(report)} "
             f"cache={report.go_env_root or ''}"
         ),
+        (
+            "gtt="
+            f"required={str(report.gtt_marker_required).lower()} "
+            f"ready={str(report.gtt_marker_ready).lower()} "
+            f"status={report.gtt_info_status or ''} "
+            f"patch_version={report.gtt_patch_version or ''} "
+            f"capabilities={','.join(report.gtt_capabilities)} "
+            f"sequential_waves={report.gtt_sequential_waves or ''}"
+        ),
     ]
     if report.runtime_probe_stdout:
         lines.append(f"probe_stdout={report.runtime_probe_stdout}")
@@ -650,6 +747,10 @@ def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
         lines.append(f"artifact_version_stdout={report.artifact_version_stdout}")
     if report.artifact_version_stderr:
         lines.append(f"artifact_version_stderr={report.artifact_version_stderr}")
+    if report.gtt_info_stdout:
+        lines.append(f"gtt_info_stdout={report.gtt_info_stdout}")
+    if report.gtt_info_stderr:
+        lines.append(f"gtt_info_stderr={report.gtt_info_stderr}")
     if report.patch_files:
         lines.append("patch_files=" + ", ".join(report.patch_files))
     if report.error:

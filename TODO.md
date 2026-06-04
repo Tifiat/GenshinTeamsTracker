@@ -379,13 +379,22 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `go run ./cmd/gcsim -version`; this marks `runtime_ready=true` only when the
   probe passes and keeps the old active engine on Go/probe failure. Go cache/bin
   paths are sandboxed under ignored `.go/`. `--patch-backend git` now applies
-  ordered `.patch` stacks with `git apply --check` then `git apply`; overlay
-  remains the conservative default/test backend. `--build-artifact` now builds
+  ordered `.patch` stacks with `git apply --check` then `git apply`; it isolates
+  patch application from the parent GTT repository so generated `data/gcsim/...`
+  engine trees are patched as plain source folders. Overlay remains the
+  conservative default/test backend. `--build-artifact` now builds
   `build/gtt-gcsim.exe` inside the prepared engine folder, verifies that
   executable with `-version`, records artifact path/hash/build metadata, and
-  marks `runtime_ready=true` only when the built artifact works. Next GCSIM
-  engine task should add shipped fallback support, the first real GTT patch
-  content, and stronger simulation smoke checks before any UI wiring.
+  marks `runtime_ready=true` only when the built artifact works. The default git
+  patch stack contains `run_workspace/gcsim/patch_stack/0001-gtt-engine-marker.patch`,
+  which adds a minimal `-gtt-info` JSON marker to the built GCSIM CLI:
+  `gtt_engine=true`, `gtt_patch_version=gtt-marker-v1`,
+  `capabilities=["gtt_engine_marker"]`, and `sequential_waves=false`. When
+  `--build-artifact` is used with a non-empty `.patch` stack, this marker is
+  required; missing, nonzero, invalid, or capability-missing `-gtt-info` output
+  keeps the previous active engine. Next GCSIM engine tasks should add shipped
+  fallback support, stronger simulation smoke checks, and then the first
+  sequential-wave research patch before any UI wiring.
 - Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.
 - Do not cram detailed GCSIM into the small TeamCard. Right panel should show only compact factual/sim DPS summary and readable GCSIM button/status; detailed GCSIM/rotation editor should open as a larger overlay/drawer around the right panel. If GCSIM lacks a character/reaction implementation, show a clear unavailable status.
 - Each team/run card should eventually have simulator action, GCSIM logo/label, and result area for sim DPS.

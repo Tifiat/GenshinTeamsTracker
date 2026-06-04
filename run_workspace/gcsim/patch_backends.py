@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import json
+import os
 import subprocess
 from typing import Callable, Mapping, Sequence
 
@@ -225,13 +226,33 @@ def _subprocess_runner(
     command: Sequence[str],
     cwd: Path,
 ) -> subprocess.CompletedProcess[str]:
+    env = _git_apply_env(cwd)
     return subprocess.run(
         list(command),
         cwd=str(cwd),
         check=False,
         capture_output=True,
         text=True,
+        env=env,
     )
+
+
+def _git_apply_env(cwd: Path) -> dict[str, str]:
+    """Keep `git apply` from discovering the parent GTT repository.
+
+    Prepared GCSIM trees live under the project's ignored `data/gcsim/...`
+    directory. Without a ceiling, Git discovers this repository's `.git` and can
+    treat ignored/generated staged-engine paths as skippable patch targets while
+    still exiting successfully.
+    """
+
+    env = dict(os.environ)
+    ceiling = str(Path(cwd).resolve().parent)
+    existing = env.get("GIT_CEILING_DIRECTORIES")
+    env["GIT_CEILING_DIRECTORIES"] = (
+        ceiling if not existing else ceiling + os.pathsep + existing
+    )
+    return env
 
 
 def _discover_patch_files(patch_stack_dir: Path) -> list[Path]:

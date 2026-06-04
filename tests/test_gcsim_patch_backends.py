@@ -19,7 +19,9 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
             patch_stack = _make_patch_stack(root / "patches", "002-second.patch", "001-first.patch")
             runner = FakeGitPatchRunner(
                 _completed(),
-                lambda command, cwd: _write_patch_order(command, cwd),
+                lambda command, cwd: _append_patch_order(command, cwd),
+                _completed(),
+                lambda command, cwd: _append_patch_order(command, cwd),
             )
             store = GcsimEngineStore(root / "store")
 
@@ -51,6 +53,22 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
                 (active.path / "patch_order.txt").read_text(encoding="utf-8"),
                 "001-first.patch\n002-second.patch",
             )
+
+    def test_default_gtt_patch_stack_orders_marker_before_wave_prototype(self) -> None:
+        patch_stack = Path(__file__).resolve().parents[1] / "run_workspace" / "gcsim" / "patch_stack"
+
+        patch_files = sorted(
+            path.name
+            for path in patch_stack.rglob("*.patch")
+            if path.is_file()
+        )
+
+        self.assertIn("0001-gtt-engine-marker.patch", patch_files)
+        self.assertIn("0002-gtt-sequential-wave-prototype.patch", patch_files)
+        self.assertLess(
+            patch_files.index("0001-gtt-engine-marker.patch"),
+            patch_files.index("0002-gtt-sequential-wave-prototype.patch"),
+        )
 
     def test_missing_git_is_controlled_failure_and_preserves_old_active(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -182,9 +200,12 @@ class FakeGitPatchRunner:
         return result
 
 
-def _write_patch_order(command, cwd: Path):
-    patch_names = [Path(part).name for part in command[2:]]
-    (cwd / "patch_order.txt").write_text("\n".join(patch_names), encoding="utf-8")
+def _append_patch_order(command, cwd: Path):
+    patch_name = Path(command[-1]).name
+    path = cwd / "patch_order.txt"
+    existing = path.read_text(encoding="utf-8") if path.exists() else ""
+    separator = "\n" if existing else ""
+    path.write_text(f"{existing}{separator}{patch_name}", encoding="utf-8")
     return _completed()
 
 

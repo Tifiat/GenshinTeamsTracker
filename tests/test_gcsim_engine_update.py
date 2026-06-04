@@ -419,16 +419,19 @@ class GcsimEngineUpdateTest(unittest.TestCase):
             self.assertEqual(report.artifact_runtime_check_status, "artifact_runtime_passed")
             self.assertTrue(report.gtt_marker_required)
             self.assertTrue(report.gtt_marker_ready)
-            self.assertEqual(report.gtt_patch_version, "gtt-marker-v1")
-            self.assertEqual(report.gtt_capabilities, ("gtt_engine_marker",))
-            self.assertEqual(report.gtt_sequential_waves, "false")
+            self.assertEqual(report.gtt_patch_version, "gtt-wave-prototype-v1")
+            self.assertEqual(
+                report.gtt_capabilities,
+                ("gtt_engine_marker", "gtt_wave_scheduler_prototype"),
+            )
+            self.assertEqual(report.gtt_sequential_waves, "true")
             self.assertIn("-gtt-info", report.gtt_info_command)
             active = GcsimEngineStore(store_dir).get_active_engine()
             self.assertIsNotNone(active)
             assert active is not None
             self.assertIn("gtt_engine_marker", active.manifest.capabilities)
             self.assertEqual(active.manifest.metadata["gtt_marker_ready"], "true")
-            self.assertEqual(active.manifest.metadata["gtt_patch_version"], "gtt-marker-v1")
+            self.assertEqual(active.manifest.metadata["gtt_patch_version"], "gtt-wave-prototype-v1")
 
     def test_gtt_marker_nonzero_keeps_old_active_engine_when_required(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -749,9 +752,10 @@ def _gtt_info_stdout() -> str:
     return json.dumps(
         {
             "gtt_engine": True,
-            "gtt_patch_version": "gtt-marker-v1",
-            "capabilities": ["gtt_engine_marker"],
-            "sequential_waves": False,
+            "gtt_patch_version": "gtt-wave-prototype-v1",
+            "capabilities": ["gtt_engine_marker", "gtt_wave_scheduler_prototype"],
+            "sequential_waves": True,
+            "wave_scheduler_stage": "prototype",
             "upstream_version": "gcsim version built",
         }
     )

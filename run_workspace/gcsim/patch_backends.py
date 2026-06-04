@@ -2,8 +2,8 @@
 
 `GitApplyPatchBackend` is the first production-oriented patch backend. It is
 still backend-only and intentionally small: discover ordered `.patch` files,
-run `git apply --check`, then run `git apply`. Unit tests inject a fake runner,
-so tests do not depend on a real git executable.
+then run `git apply --check` and `git apply` for each patch in order. Unit tests
+inject a fake runner, so tests do not depend on a real git executable.
 """
 
 from __future__ import annotations
@@ -98,81 +98,86 @@ class GitApplyPatchBackend:
                 metadata=metadata,
             )
 
-        check_command = (
-            self.git_executable,
-            "apply",
-            "--check",
-            *(str(path) for path in patch_files),
-        )
-        check_result = self._run_git_command(
-            check_command,
-            engine_dir,
-            metadata,
-            patch_count=len(patch_files),
-        )
-        if isinstance(check_result, GcsimPatchResult):
-            return check_result
-        if check_result.returncode != 0:
+        applied_count = 0
+        for patch_file in patch_files:
+            check_command = (
+                self.git_executable,
+                "apply",
+                "--check",
+                str(patch_file),
+            )
+            check_result = self._run_git_command(
+                check_command,
+                engine_dir,
+                metadata,
+                patch_count=len(patch_files),
+            )
+            if isinstance(check_result, GcsimPatchResult):
+                return check_result
+            if check_result.returncode != 0:
+                metadata.update(
+                    _command_result_metadata(
+                        check_result,
+                        patch_check_status="failed",
+                        patch_apply_status=_check_failure_apply_status(applied_count),
+                        patch_git_status="available",
+                    )
+                )
+                metadata["patch_failed_file"] = str(patch_file)
+                return GcsimPatchResult.failure(
+                    backend=self.name,
+                    error=_command_error_text("patch_check_failed", check_result),
+                    patch_count=len(patch_files),
+                    metadata=metadata,
+                )
             metadata.update(
                 _command_result_metadata(
                     check_result,
-                    patch_check_status="failed",
-                    patch_apply_status="not_started",
+                    patch_check_status="passed",
+                    patch_apply_status="pending",
                     patch_git_status="available",
                 )
             )
-            return GcsimPatchResult.failure(
-                backend=self.name,
-                error=_command_error_text("patch_check_failed", check_result),
-                patch_count=len(patch_files),
-                metadata=metadata,
-            )
-        metadata.update(
-            _command_result_metadata(
-                check_result,
-                patch_check_status="passed",
-                patch_apply_status="pending",
-                patch_git_status="available",
-            )
-        )
 
-        apply_command = (
-            self.git_executable,
-            "apply",
-            *(str(path) for path in patch_files),
-        )
-        apply_result = self._run_git_command(
-            apply_command,
-            engine_dir,
-            metadata,
-            patch_count=len(patch_files),
-        )
-        if isinstance(apply_result, GcsimPatchResult):
-            return apply_result
-        if apply_result.returncode != 0:
+            apply_command = (
+                self.git_executable,
+                "apply",
+                str(patch_file),
+            )
+            apply_result = self._run_git_command(
+                apply_command,
+                engine_dir,
+                metadata,
+                patch_count=len(patch_files),
+            )
+            if isinstance(apply_result, GcsimPatchResult):
+                return apply_result
+            if apply_result.returncode != 0:
+                metadata.update(
+                    _command_result_metadata(
+                        apply_result,
+                        patch_check_status="passed",
+                        patch_apply_status="failed",
+                        patch_git_status="available",
+                    )
+                )
+                metadata["patch_failed_file"] = str(patch_file)
+                return GcsimPatchResult.failure(
+                    backend=self.name,
+                    error=_command_error_text("patch_apply_failed", apply_result),
+                    patch_count=len(patch_files),
+                    metadata=metadata,
+                )
+            applied_count += 1
             metadata.update(
                 _command_result_metadata(
                     apply_result,
                     patch_check_status="passed",
-                    patch_apply_status="failed",
+                    patch_apply_status="passed",
                     patch_git_status="available",
                 )
             )
-            return GcsimPatchResult.failure(
-                backend=self.name,
-                error=_command_error_text("patch_apply_failed", apply_result),
-                patch_count=len(patch_files),
-                metadata=metadata,
-            )
 
-        metadata.update(
-            _command_result_metadata(
-                apply_result,
-                patch_check_status="passed",
-                patch_apply_status="passed",
-                patch_git_status="available",
-            )
-        )
         return GcsimPatchResult.success(
             backend=self.name,
             patch_count=len(patch_files),
@@ -303,6 +308,12 @@ def _command_result_metadata(
         "patch_stderr": _trim_text(result.stderr),
         "patch_returncode": str(result.returncode),
     }
+
+
+def _check_failure_apply_status(applied_count: int) -> str:
+    if applied_count == 0:
+        return "not_started"
+    return "partial_before_check_failure"
 
 
 def _command_error_text(prefix: str, result: subprocess.CompletedProcess[str]) -> str:

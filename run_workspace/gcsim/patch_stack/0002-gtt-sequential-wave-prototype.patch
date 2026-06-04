@@ -1,0 +1,303 @@
+diff --git a/pkg/core/info/actionlist.go b/pkg/core/info/actionlist.go
+index 2028e5d..0dadfe8 100644
+--- a/pkg/core/info/actionlist.go
++++ b/pkg/core/info/actionlist.go
+@@ -41,11 +41,13 @@ type HurtSettings struct {
+ }
+ 
+ type SimulatorSettings struct {
+-	Duration          float64 `json:"-"`
+-	DamageMode        bool    `json:"damage_mode"`
+-	EnableHitlag      bool    `json:"enable_hitlag"`
+-	DefHalt           bool    `json:"def_halt"` // for hitlag
+-	IgnoreBurstEnergy bool    `json:"ignore_burst_energy"`
++	Duration                            float64 `json:"-"`
++	DamageMode                          bool    `json:"damage_mode"`
++	EnableHitlag                        bool    `json:"enable_hitlag"`
++	DefHalt                             bool    `json:"def_halt"` // for hitlag
++	IgnoreBurstEnergy                   bool    `json:"ignore_burst_energy"`
++	GTTSequentialWavePrototype          bool    `json:"-"`
++	GTTSequentialWavePrototypeExtraWaves int     `json:"-"`
+ 	// other stuff
+ 	NumberOfWorkers int    `json:"-"`          // how many workers to run the simulation
+ 	Iterations      int    `json:"iterations"` // how many iterations to run
+diff --git a/pkg/agg/damage/damage.go b/pkg/agg/damage/damage.go
+index e1ce325..87dff6f 100644
+--- a/pkg/agg/damage/damage.go
++++ b/pkg/agg/damage/damage.go
+@@ -201,6 +201,8 @@ func (b *buffer) Add(result stats.Result) {
+ 		b.targetDPS[k].Add(v * time)
+ 	}
+ 
++	b.ensureTargetCount(len(result.Enemies))
++
+ 	for k, v := range elementDPS {
+ 		if _, ok := b.elementDPS[k]; !ok {
+ 			b.elementDPS[k] = &calc.StreamStats{}
+@@ -222,6 +224,12 @@ func (b *buffer) Add(result stats.Result) {
+ 	b.iters++
+ }
+ 
++func (b *buffer) ensureTargetCount(count int) {
++	for len(b.cumulativeDamage) < count {
++		b.cumulativeDamage = append(b.cumulativeDamage, make(runs, 0, b.iters+1))
++	}
++}
++
+ func (b *buffer) Flush(result *model.SimulationStatistics) {
+ 	result.ElementDps = make(map[string]*model.DescriptiveStats)
+ 	for k, v := range b.elementDPS {
+diff --git a/pkg/gtt/info.go b/pkg/gtt/info.go
+index c647173..c347d60 100644
+--- a/pkg/gtt/info.go
++++ b/pkg/gtt/info.go
+@@ -5,23 +5,25 @@ import (
+ 	"io"
+ )
+ 
+-const PatchVersion = "gtt-marker-v1"
++const PatchVersion = "gtt-wave-prototype-v1"
+ 
+ type EngineInfo struct {
+-	GTTEngine       bool     `json:"gtt_engine"`
+-	GTTPatchVersion string   `json:"gtt_patch_version"`
+-	Capabilities    []string `json:"capabilities"`
+-	SequentialWaves bool     `json:"sequential_waves"`
+-	UpstreamVersion string   `json:"upstream_version,omitempty"`
++	GTTEngine          bool     `json:"gtt_engine"`
++	GTTPatchVersion    string   `json:"gtt_patch_version"`
++	Capabilities       []string `json:"capabilities"`
++	SequentialWaves    bool     `json:"sequential_waves"`
++	WaveSchedulerStage string   `json:"wave_scheduler_stage,omitempty"`
++	UpstreamVersion    string   `json:"upstream_version,omitempty"`
+ }
+ 
+ func Info(upstreamVersion string) EngineInfo {
+ 	return EngineInfo{
+ 		GTTEngine:       true,
+ 		GTTPatchVersion: PatchVersion,
+-		Capabilities:    []string{"gtt_engine_marker"},
+-		SequentialWaves: false,
+-		UpstreamVersion: upstreamVersion,
++		Capabilities:       []string{"gtt_engine_marker", WaveSchedulerPrototypeCapability},
++		SequentialWaves:    true,
++		WaveSchedulerStage: "prototype",
++		UpstreamVersion:    upstreamVersion,
+ 	}
+ }
+ 
+diff --git a/pkg/gtt/waves.go b/pkg/gtt/waves.go
+new file mode 100644
+index 0000000..b3d5426
+--- /dev/null
++++ b/pkg/gtt/waves.go
+@@ -0,0 +1,95 @@
++package gtt
++
++import (
++	"fmt"
++	"regexp"
++	"strconv"
++
++	"github.com/genshinsim/gcsim/pkg/core"
++	"github.com/genshinsim/gcsim/pkg/core/event"
++	"github.com/genshinsim/gcsim/pkg/core/glog"
++	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/enemy"
++)
++
++const (
++	WaveSchedulerPrototypeCapability = "gtt_wave_scheduler_prototype"
++	WavePrototypeDirective           = "gtt_wave_prototype"
++)
++
++var (
++	anyWavePrototypeDirectivePattern = regexp.MustCompile(`(?m)^\s*(?:#|//)\s*gtt_wave_prototype\b.*$`)
++	wavePrototypeDirectivePattern    = regexp.MustCompile(`^\s*(?:#|//)\s*gtt_wave_prototype\s+duplicate_first_target\s*=\s*([0-9]+)\s*$`)
++)
++
++// ApplyConfigDirectives reads GTT-only comment directives from the raw config.
++// Vanilla GCSIM ignores these comments, so regular configs are unchanged unless
++// the prototype directive is explicitly present.
++func ApplyConfigDirectives(raw string, cfg *info.ActionList) error {
++	if cfg == nil {
++		return nil
++	}
++	matches := anyWavePrototypeDirectivePattern.FindAllString(raw, -1)
++	if len(matches) == 0 {
++		return nil
++	}
++	if len(matches) > 1 {
++		return fmt.Errorf("%s accepts exactly one directive, got %d", WavePrototypeDirective, len(matches))
++	}
++	parsed := wavePrototypeDirectivePattern.FindStringSubmatch(matches[0])
++	if parsed == nil {
++		return fmt.Errorf("invalid %s directive; expected '# %s duplicate_first_target=N'", WavePrototypeDirective, WavePrototypeDirective)
++	}
++	extraWaves, err := strconv.Atoi(parsed[1])
++	if err != nil || extraWaves <= 0 {
++		return fmt.Errorf("%s duplicate_first_target must be a positive integer", WavePrototypeDirective)
++	}
++	cfg.Settings.GTTSequentialWavePrototype = true
++	cfg.Settings.GTTSequentialWavePrototypeExtraWaves = extraWaves
++	return nil
++}
++
++type SequentialWavePrototypeScheduler struct {
++	core      *core.Core
++	prototype info.EnemyProfile
++	remaining int
++	spawned   int
++}
++
++func NewSequentialWavePrototypeScheduler(c *core.Core, cfg *info.ActionList) *SequentialWavePrototypeScheduler {
++	if c == nil || cfg == nil {
++		return nil
++	}
++	if !cfg.Settings.GTTSequentialWavePrototype || cfg.Settings.GTTSequentialWavePrototypeExtraWaves <= 0 {
++		return nil
++	}
++	if len(cfg.Targets) == 0 {
++		return nil
++	}
++	return &SequentialWavePrototypeScheduler{
++		core:      c,
++		prototype: cfg.Targets[0].Clone(),
++		remaining: cfg.Settings.GTTSequentialWavePrototypeExtraWaves,
++	}
++}
++
++func (s *SequentialWavePrototypeScheduler) SpawnNextWave() bool {
++	if s == nil || s.remaining <= 0 {
++		return false
++	}
++	profile := s.prototype.Clone()
++	nextEnemy := enemy.New(s.core, profile)
++	s.core.Combat.AddEnemy(nextEnemy)
++	s.core.Combat.DefaultTarget = nextEnemy.Key()
++	if player := s.core.Combat.Player(); player != nil {
++		player.SetDirection(nextEnemy.Pos())
++	}
++	s.core.Events.Emit(event.OnEnemyAdded, nextEnemy)
++	s.remaining--
++	s.spawned++
++	s.core.Log.NewEvent("gtt sequential wave prototype spawned target", glog.LogSimEvent, -1).
++		Write("spawned", s.spawned).
++		Write("remaining", s.remaining).
++		Write("target_key", nextEnemy.Key())
++	return true
++}
+diff --git a/pkg/simulation/run.go b/pkg/simulation/run.go
+index 0d4bdf5..cb48b2e 100644
+--- a/pkg/simulation/run.go
++++ b/pkg/simulation/run.go
+@@ -309,6 +309,9 @@ func (s *Simulation) stopCheck() bool {
+ 				break
+ 			}
+ 		}
++		if allDead && s.gttWaveSchedulerPrototype != nil && s.gttWaveSchedulerPrototype.SpawnNextWave() {
++			return false
++		}
+ 		return allDead
+ 	}
+ 	return s.C.F == int(s.cfg.Settings.Duration*60)
+diff --git a/pkg/simulation/simulation.go b/pkg/simulation/simulation.go
+index 3097847..adc86cb 100644
+--- a/pkg/simulation/simulation.go
++++ b/pkg/simulation/simulation.go
+@@ -7,6 +7,7 @@ import (
+ 	"github.com/genshinsim/gcsim/pkg/core"
+ 	"github.com/genshinsim/gcsim/pkg/core/action"
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gtt"
+ 	"github.com/genshinsim/gcsim/pkg/stats"
+ )
+ 
+@@ -18,8 +19,9 @@ type Simulation struct {
+ 	cfg           *info.ActionList
+ 	queue         []*action.Eval
+ 	eval          action.Evaluator
+-	noMoreActions bool
+-	collectors    []stats.Collector
++	noMoreActions             bool
++	collectors                []stats.Collector
++	gttWaveSchedulerPrototype *gtt.SequentialWavePrototypeScheduler
+ 
+ 	// track previous action, when it was used at, and the earliest
+ 	// useable frame for all other chained actions
+@@ -48,6 +50,8 @@ func New(cfg *info.ActionList, eval action.Evaluator, c *core.Core) (*Simulation
+ 		return nil, err
+ 	}
+ 
++	s.gttWaveSchedulerPrototype = gtt.NewSequentialWavePrototypeScheduler(c, cfg)
++
+ 	err = SetupCharactersInCore(c, cfg.Characters, cfg.InitialChar)
+ 	if err != nil {
+ 		return nil, err
+diff --git a/pkg/stats/status/status.go b/pkg/stats/status/status.go
+index c05551e..fc86427 100644
+--- a/pkg/stats/status/status.go
++++ b/pkg/stats/status/status.go
+@@ -92,6 +92,8 @@ func NewStat(core *core.Core) (stats.Collector, error) {
+ 	}
+ 
+ 	core.Events.Subscribe(event.OnTick, func(args ...any) {
++		out.ensureEnemyCount(core)
++
+ 		bucket := core.F / bucketSize
+ 		active := core.Player.ActiveChar()
+ 
+@@ -151,7 +153,21 @@ func NewStat(core *core.Core) (stats.Collector, error) {
+ 	return &out, nil
+ }
+ 
++func (b *buffer) ensureEnemyCount(core *core.Core) {
++	for len(b.reactionUptime) < len(core.Combat.Enemies()) {
++		idx := len(b.reactionUptime)
++		b.reactionUptime = append(b.reactionUptime, make(map[string]int))
++		b.enemyReactions = append(b.enemyReactions, nil)
++		b.activeReactions = append(b.activeReactions, make(map[info.ReactionModKey]int))
++		if enemy, ok := core.Combat.Enemies()[idx].(*enemy.Enemy); ok && enemy.Level > b.maxEnemyLvl {
++			b.maxEnemyLvl = enemy.Level
++		}
++	}
++}
++
+ func (b buffer) Flush(core *core.Core, result *stats.Result) {
++	b.ensureEnemyCount(core)
++
+ 	fill := bucketSize - (core.F % bucketSize) - 1
+ 	bucket := core.F / bucketSize
+ 
+diff --git a/pkg/simulator/simulator.go b/pkg/simulator/simulator.go
+index d7cc353..037dbb1 100644
+--- a/pkg/simulator/simulator.go
++++ b/pkg/simulator/simulator.go
+@@ -20,6 +20,7 @@ import (
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
+ 	"github.com/genshinsim/gcsim/pkg/gcs/ast"
+ 	"github.com/genshinsim/gcsim/pkg/gcs/parser"
++	"github.com/genshinsim/gcsim/pkg/gtt"
+ 	"github.com/genshinsim/gcsim/pkg/model"
+ 	"github.com/genshinsim/gcsim/pkg/result"
+ 	"github.com/genshinsim/gcsim/pkg/stats"
+@@ -103,6 +104,9 @@ func Run(ctx context.Context, opts Options) (*model.SimulationResult, error) {
+ // TODO: cfg string should be in the action list instead
+ // TODO: need to add a context here to avoid infinite looping
+ func RunWithConfig(ctx context.Context, file *ast.File, cfg string, simcfg *info.ActionList, gcsl ast.Node, opts Options, start time.Time) (*model.SimulationResult, error) {
++	if err := gtt.ApplyConfigDirectives(cfg, simcfg); err != nil {
++		return &model.SimulationResult{}, err
++	}
+ 	return run(ctx, file, cfg, simcfg, gcsl, CryptoRandSeed)
+ }
+ 
+@@ -110,6 +114,9 @@ func RunWithSeededConfig(ctx context.Context, file *ast.File, cfg string, simcfg
+ 	if len(seeds) != simcfg.Settings.Iterations {
+ 		return &model.SimulationResult{}, fmt.Errorf("number of seeds %v must match number of iterations %v", len(seeds), simcfg.Settings.Iterations)
+ 	}
++	if err := gtt.ApplyConfigDirectives(cfg, simcfg); err != nil {
++		return &model.SimulationResult{}, err
++	}
+ 	i := 0
+ 	seedFunc := func() int64 {
+ 		i++

@@ -386,21 +386,27 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `build/gtt-gcsim.exe` inside the prepared engine folder, verifies that
   executable with `-version`, records artifact path/hash/build metadata, and
   marks `runtime_ready=true` only when the built artifact works. The default git
-  patch stack contains `run_workspace/gcsim/patch_stack/0001-gtt-engine-marker.patch`,
-  which adds a minimal `-gtt-info` JSON marker to the built GCSIM CLI:
-  `gtt_engine=true`, `gtt_patch_version=gtt-marker-v1`,
-  `capabilities=["gtt_engine_marker"]`, and `sequential_waves=false`. When
-  `--build-artifact` is used with a non-empty `.patch` stack, this marker is
-  required; missing, nonzero, invalid, or capability-missing `-gtt-info` output
-  keeps the previous active engine. Minimal active-artifact runner exists in
+  patch stack contains `run_workspace/gcsim/patch_stack/0001-gtt-engine-marker.patch`
+  and `run_workspace/gcsim/patch_stack/0002-gtt-sequential-wave-prototype.patch`.
+  The marker adds `-gtt-info`; the prototype patch adds opt-in sequential-wave
+  proof via the vanilla-ignored config comment
+  `# gtt_wave_prototype duplicate_first_target=1`. Current built GTT artifacts
+  report `gtt_patch_version=gtt-wave-prototype-v1`,
+  `capabilities=["gtt_engine_marker","gtt_wave_scheduler_prototype"]`, and
+  `sequential_waves=true`. This is only a duplicate-first-target prototype: it
+  proves a finite-HP target can die and a next target can spawn inside one
+  simulation iteration, but it is not real Abyss wave/group modeling. When
+  `--build-artifact` is used with a non-empty `.patch` stack, `-gtt-info` is
+  required; missing, nonzero, invalid, or capability-missing output keeps the
+  previous active engine. Minimal active-artifact runner exists in
   `run_workspace/gcsim/artifact_runner.py`; dev smoke command:
   `python -m run_workspace.gcsim.run_smoke --config path --format text`. It
   runs the active built artifact with caller-provided config text and parses
   only a tolerant result JSON summary. It does not generate account/team
-  configs, map keys, implement waves, or wire UI. Next GCSIM tasks should add
-  shipped fallback support, config/key-mapping foundations, stronger smoke
-  configs, and then the first sequential-wave research patch before any UI
-  wiring.
+  configs, map keys, model real Abyss waves, or wire UI. Next GCSIM tasks
+  should add shipped fallback support, config/key-mapping foundations, stronger
+  smoke configs, and then replace the prototype directive with a real GTT
+  scenario/wave payload before any UI wiring.
 - Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.
 - Do not cram detailed GCSIM into the small TeamCard. Right panel should show only compact factual/sim DPS summary and readable GCSIM button/status; detailed GCSIM/rotation editor should open as a larger overlay/drawer around the right panel. If GCSIM lacks a character/reaction implementation, show a clear unavailable status.
 - Each team/run card should eventually have simulator action, GCSIM logo/label, and result area for sim DPS.

@@ -73,6 +73,7 @@ from ui.character_assets import STANDARD_FILTER_ONLY, load_account_weapon_stack_
 from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
+from ui.utils.toggle_switch import FilterActionButton, SortIconButton
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
 from run_workspace.right_panel_prototype_view_model import (
     FactDpsTooltipViewModel,
@@ -1187,6 +1188,29 @@ class AppShellTest(unittest.TestCase):
             browser.build_target_title_label.sizePolicy().horizontalPolicy().name,
             "Expanding",
         )
+
+    def test_artifact_browser_sets_button_embeds_filter_toggle(self) -> None:
+        browser = ArtifactBrowserWindow(embedded=True)
+
+        self.assertIsInstance(browser.sort_button, SortIconButton)
+        self.assertIsInstance(browser.sets_button, FilterActionButton)
+        self.assertTrue(browser.sets_filter_enabled)
+        self.assertFalse(browser.sets_button.isFilterChecked())
+
+        browser.sets_button.setFilterChecked(True, notify=True)
+
+        self.assertFalse(browser.sets_filter_enabled)
+        self.assertTrue(browser.sets_button.isFilterChecked())
+
+        browser.sets_button.setFilterChecked(False, notify=True)
+
+        self.assertTrue(browser.sets_filter_enabled)
+        self.assertFalse(browser.sets_button.isFilterChecked())
+
+        browser.selected_sort_stat_types = [1, 2]
+        browser.update_sort_button_text()
+
+        self.assertEqual(browser.sort_button.count(), 2)
 
     def test_artifact_browser_json_buttons_use_compact_marquee_text(self) -> None:
         browser = ArtifactBrowserWindow(embedded=True)

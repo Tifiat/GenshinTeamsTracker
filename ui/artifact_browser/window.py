@@ -87,6 +87,7 @@ from ui.utils.hidpi_pixmap import (
     make_hidpi_canvas,
 )
 from ui.utils.tooltips import install_custom_tooltip
+from ui.utils.toggle_switch import FilterActionButton, SortIconButton
 from ui.utils.ui_palette import UI_BG_APP, UI_TEXT_PRIMARY
 from run_workspace.perf import log_perf, perf_ms, perf_now
 from ui.utils.overlay_scroll import (
@@ -468,17 +469,6 @@ QPushButton:checked {
     background: #303848;
     color: #ffffff;
     font-weight: 600;
-}
-QPushButton#filter_switch {
-    min-width: 42px;
-    max-width: 42px;
-}
-QPushButton#filter_switch:checked {
-    border-color: #7da7ff;
-    background: #30415f;
-}
-QPushButton#sets_button {
-    min-width: 110px;
 }
 QLabel#status_label {
     color: #aab0bd;
@@ -1227,22 +1217,18 @@ class ArtifactBrowserWindow(QWidget):
 
         top.addStretch()
 
-        self.sets_filter_switch = QPushButton()
-        self.sets_filter_switch.setObjectName("filter_switch")
-        self.sets_filter_switch.setCheckable(True)
-        self.sets_filter_switch.setChecked(True)
-        self.update_sets_filter_switch_text()
-        self.sets_filter_switch.clicked.connect(self.on_sets_filter_enabled_changed)
-        top.addWidget(self.sets_filter_switch)
-
-        self.sets_button = QPushButton(tr("artifact.sets.button"))
-        self.sort_button = QPushButton(tr("artifact.sort.button"))
+        self.sort_button = SortIconButton()
         self.sort_button.pressed.connect(self.on_sort_button_pressed)
         self.sort_button.clicked.connect(self.show_sort_popup)
         top.addWidget(self.sort_button)
-        self.sets_button.setObjectName("sets_button")
-        self.sets_button.pressed.connect(self.on_sets_button_pressed)
-        self.sets_button.clicked.connect(self.show_sets_popup)
+
+        self.sets_button = FilterActionButton(tr("artifact.sets.button"))
+        self.update_sets_filter_switch_text()
+        self.sets_button.actionPressed.connect(self.on_sets_button_pressed)
+        self.sets_button.actionClicked.connect(self.show_sets_popup)
+        self.sets_button.filterToggled.connect(
+            lambda disabled: self.on_sets_filter_enabled_changed(not disabled)
+        )
         top.addWidget(self.sets_button)
 
         self.status_label = QLabel("")
@@ -2230,6 +2216,8 @@ class ArtifactBrowserWindow(QWidget):
             if count
             else tr("artifact.sort.button")
         )
+        if hasattr(self.sort_button, "setCount"):
+            self.sort_button.setCount(count)
 
     def update_sets_button_text(self) -> None:
         count = len(self.selected_game_set_ids) + len(self.selected_custom_set_ids)
@@ -2240,11 +2228,8 @@ class ArtifactBrowserWindow(QWidget):
         )
 
     def update_sets_filter_switch_text(self) -> None:
-        self.sets_filter_switch.setText(
-            tr("artifact.sets.filter_on")
-            if self.sets_filter_enabled
-            else tr("artifact.sets.filter_off")
-        )
+        if hasattr(self, "sets_button"):
+            self.sets_button.setFilterChecked(not self.sets_filter_enabled)
 
     def apply_current_filters(self) -> None:
         total_start = perf_now()

@@ -380,9 +380,12 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   probe passes and keeps the old active engine on Go/probe failure. Go cache/bin
   paths are sandboxed under ignored `.go/`. `--patch-backend git` now applies
   ordered `.patch` stacks with `git apply --check` then `git apply`; overlay
-  remains the conservative default/test backend. Next GCSIM engine task should
-  add the first real GTT patch content, proper build artifact step, and stronger
-  runtime smoke checks before any UI wiring.
+  remains the conservative default/test backend. `--build-artifact` now builds
+  `build/gtt-gcsim.exe` inside the prepared engine folder, verifies that
+  executable with `-version`, records artifact path/hash/build metadata, and
+  marks `runtime_ready=true` only when the built artifact works. Next GCSIM
+  engine task should add shipped fallback support, the first real GTT patch
+  content, and stronger simulation smoke checks before any UI wiring.
 - Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.
 - Do not cram detailed GCSIM into the small TeamCard. Right panel should show only compact factual/sim DPS summary and readable GCSIM button/status; detailed GCSIM/rotation editor should open as a larger overlay/drawer around the right panel. If GCSIM lacks a character/reaction implementation, show a clear unavailable status.
 - Each team/run card should eventually have simulator action, GCSIM logo/label, and result area for sim DPS.

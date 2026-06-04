@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 import subprocess
 import tempfile
@@ -235,6 +236,155 @@ class GcsimEngineUpdateTest(unittest.TestCase):
     def test_patch_backend_factory_selects_git_backend(self) -> None:
         self.assertIsInstance(make_patch_backend("git"), GitApplyPatchBackend)
 
+    def test_successful_fake_build_artifact_activates_runtime_ready_engine(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_dir = root / "store"
+            archive = _write_fake_gcsim_archive(root / "gcsim.zip")
+            runner = FakeGoRunner(
+                _completed(stdout="go version go1.22.0 windows/amd64\n"),
+                _write_fake_artifact,
+                _completed(stdout="gcsim version built\n"),
+            )
+
+            report = prepare_official_gcsim_engine_update(
+                release="v-test",
+                store_dir=store_dir,
+                source_cache_dir=root / "sources",
+                source_acquirer=_archive_acquirer(archive, tag="v-test"),
+                build_artifact=True,
+                artifact_build_runner=runner,
+                go_work_dir=root / ".go-test",
+            )
+
+            self.assertTrue(report.success)
+            self.assertTrue(report.activated)
+            self.assertTrue(report.runtime_ready)
+            self.assertTrue(report.artifact_ready)
+            self.assertEqual(report.runtime_check_status, "artifact_runtime_passed")
+            self.assertEqual(report.artifact_build_status, "artifact_build_passed")
+            self.assertEqual(report.artifact_filename, "gtt-gcsim.exe")
+            self.assertEqual(report.artifact_relative_path, "build/gtt-gcsim.exe")
+            self.assertEqual(report.artifact_sha256, hashlib.sha256(b"fake artifact").hexdigest())
+            active = GcsimEngineStore(store_dir).get_active_engine()
+            self.assertIsNotNone(active)
+            assert active is not None
+            self.assertTrue((active.path / "build" / "gtt-gcsim.exe").exists())
+            self.assertEqual(report.artifact_path, str(active.path / "build" / "gtt-gcsim.exe"))
+            self.assertEqual(active.manifest.metadata["runtime_ready"], "true")
+            self.assertEqual(active.manifest.metadata["artifact_ready"], "true")
+            self.assertEqual(active.manifest.metadata["artifact_relative_path"], "build/gtt-gcsim.exe")
+            self.assertEqual(active.manifest.metadata["artifact_path"], "build/gtt-gcsim.exe")
+            self.assertEqual(
+                active.manifest.metadata["artifact_sha256"],
+                hashlib.sha256(b"fake artifact").hexdigest(),
+            )
+
+    def test_build_artifact_go_missing_keeps_old_active_engine(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_dir = root / "store"
+            old = _install_old_active_engine(GcsimEngineStore(store_dir), root)
+            archive = _write_fake_gcsim_archive(root / "gcsim.zip")
+            runner = FakeGoRunner(FileNotFoundError("go"))
+
+            report = prepare_official_gcsim_engine_update(
+                release="v-test",
+                store_dir=store_dir,
+                source_cache_dir=root / "sources",
+                source_acquirer=_archive_acquirer(archive, tag="v-test"),
+                build_artifact=True,
+                artifact_build_runner=runner,
+                go_work_dir=root / ".go-test",
+            )
+
+            self.assertFalse(report.success)
+            self.assertFalse(report.activated)
+            self.assertFalse(report.runtime_ready)
+            self.assertEqual(report.runtime_check_status, "go_missing")
+            self.assertEqual(report.active_engine_id, old)
+
+    def test_build_artifact_wrong_go_arch_keeps_old_active_engine(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_dir = root / "store"
+            old = _install_old_active_engine(GcsimEngineStore(store_dir), root)
+            archive = _write_fake_gcsim_archive(root / "gcsim.zip")
+            runner = FakeGoRunner(_completed(stdout="go version go1.22.0 windows/386\n"))
+
+            report = prepare_official_gcsim_engine_update(
+                release="v-test",
+                store_dir=store_dir,
+                source_cache_dir=root / "sources",
+                source_acquirer=_archive_acquirer(archive, tag="v-test"),
+                build_artifact=True,
+                artifact_build_runner=runner,
+                go_work_dir=root / ".go-test",
+            )
+
+            self.assertFalse(report.success)
+            self.assertFalse(report.activated)
+            self.assertEqual(report.runtime_check_status, "go_wrong_arch")
+            self.assertEqual(report.go_os, "windows")
+            self.assertEqual(report.go_arch, "386")
+            self.assertEqual(report.active_engine_id, old)
+
+    def test_build_artifact_nonzero_build_keeps_old_active_engine(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_dir = root / "store"
+            old = _install_old_active_engine(GcsimEngineStore(store_dir), root)
+            archive = _write_fake_gcsim_archive(root / "gcsim.zip")
+            runner = FakeGoRunner(
+                _completed(stdout="go version go1.22.0 windows/amd64\n"),
+                _completed(returncode=1, stderr="build failed"),
+            )
+
+            report = prepare_official_gcsim_engine_update(
+                release="v-test",
+                store_dir=store_dir,
+                source_cache_dir=root / "sources",
+                source_acquirer=_archive_acquirer(archive, tag="v-test"),
+                build_artifact=True,
+                artifact_build_runner=runner,
+                go_work_dir=root / ".go-test",
+            )
+
+            self.assertFalse(report.success)
+            self.assertFalse(report.activated)
+            self.assertEqual(report.runtime_check_status, "artifact_build_failed")
+            self.assertIn("build failed", report.artifact_build_stderr)
+            self.assertEqual(report.active_engine_id, old)
+
+    def test_built_artifact_version_failure_keeps_old_active_engine(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_dir = root / "store"
+            old = _install_old_active_engine(GcsimEngineStore(store_dir), root)
+            archive = _write_fake_gcsim_archive(root / "gcsim.zip")
+            runner = FakeGoRunner(
+                _completed(stdout="go version go1.22.0 windows/amd64\n"),
+                _write_fake_artifact,
+                _completed(returncode=1, stderr="version failed"),
+            )
+
+            report = prepare_official_gcsim_engine_update(
+                release="v-test",
+                store_dir=store_dir,
+                source_cache_dir=root / "sources",
+                source_acquirer=_archive_acquirer(archive, tag="v-test"),
+                build_artifact=True,
+                artifact_build_runner=runner,
+                go_work_dir=root / ".go-test",
+            )
+
+            self.assertFalse(report.success)
+            self.assertFalse(report.activated)
+            self.assertEqual(report.runtime_check_status, "artifact_version_failed")
+            self.assertEqual(report.artifact_sha256, hashlib.sha256(b"fake artifact").hexdigest())
+            self.assertIn("version failed", report.artifact_version_stderr)
+            self.assertEqual(report.active_engine_id, old)
+
     def test_download_failure_keeps_old_active_engine(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -431,6 +581,8 @@ class FakeGoRunner:
         result = self.results.pop(0)
         if isinstance(result, BaseException):
             raise result
+        if callable(result):
+            return result(command, cwd, env, timeout)
         return result
 
 
@@ -456,6 +608,14 @@ def _completed(*, returncode: int = 0, stdout: str = "", stderr: str = ""):
         stdout=stdout,
         stderr=stderr,
     )
+
+
+def _write_fake_artifact(command, cwd, _env, _timeout):
+    output_index = list(command).index("-o") + 1
+    artifact_path = Path(command[output_index])
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    artifact_path.write_bytes(b"fake artifact")
+    return _completed(stdout="built fake artifact\n")
 
 
 if __name__ == "__main__":

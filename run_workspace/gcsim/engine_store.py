@@ -8,8 +8,8 @@ manifest, and activate the new engine only after all checks pass.
 
 The default patch backend is a simple overlay-directory copier so tests can
 exercise the transaction without requiring `git apply` or real GCSIM source.
-Future production work should add a git/apply backend and build/smoke checks
-behind the same `PatchBackend` boundary.
+Production-oriented git/apply patching and optional build-artifact checks live
+behind the same transactional store boundary.
 """
 
 from __future__ import annotations

@@ -1,5 +1,6 @@
 """Backend foundation for future GTT-managed GCSIM engine lifecycle."""
 
+from .artifact_build import GcsimBuildArtifactResult, build_gcsim_artifact
 from .engine_store import (
     GCSIM_ENGINE_MANIFEST_SCHEMA_VERSION,
     GcsimEngineInstallation,
@@ -15,6 +16,7 @@ from .patch_backends import GitApplyPatchBackend
 
 __all__ = [
     "GCSIM_ENGINE_MANIFEST_SCHEMA_VERSION",
+    "GcsimBuildArtifactResult",
     "GcsimEngineInstallation",
     "GcsimEngineManifest",
     "GcsimEngineStore",
@@ -25,4 +27,5 @@ __all__ = [
     "GitApplyPatchBackend",
     "GcsimRuntimeProbeResult",
     "run_gcsim_runtime_probe",
+    "build_gcsim_artifact",
 ]

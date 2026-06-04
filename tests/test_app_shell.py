@@ -75,6 +75,7 @@ from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
 from run_workspace.right_panel_prototype_view_model import (
+    FactDpsTooltipViewModel,
     RightPanelChamberRowViewModel,
     RightPanelGcsimStatusViewModel,
     RightPanelPrototypeViewModel,
@@ -432,6 +433,16 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(model.chamber_rows[0].team2_seconds, 50)
         self.assertEqual(model.chamber_rows[0].factual_team1, "10,000")
         self.assertEqual(model.chamber_rows[0].factual_team2, "6,000")
+        self.assertIsNotNone(model.chamber_rows[0].factual_team1_tooltip)
+        assert model.chamber_rows[0].factual_team1_tooltip is not None
+        self.assertEqual(
+            model.chamber_rows[0].factual_team1_tooltip.total_solo_hp,
+            500_000,
+        )
+        self.assertEqual(
+            model.chamber_rows[0].factual_team1_tooltip.calculated_dps,
+            10_000,
+        )
         provider.assert_called_once_with(floor=12)
 
     def test_app_shell_abyss_fact_dps_retries_after_initial_cache_miss(self) -> None:
@@ -494,6 +505,14 @@ class AppShellTest(unittest.TestCase):
                     team2_seconds=0,
                     factual_team1="62,464",
                     factual_team2="-",
+                    factual_team1_tooltip=FactDpsTooltipViewModel(
+                        title="Floor 12 / C1 / Team 1",
+                        formula="Fact DPS = solo target HP / elapsed time",
+                        total_solo_hp=3_747_864,
+                        elapsed_seconds=60,
+                        calculated_dps=62_464,
+                        hp_source_label="Nanoka resolved HP",
+                    ),
                     sim_team1="not run",
                     sim_team2="not run",
                     total_seconds=60,
@@ -508,6 +527,14 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(widget._chamber_table._row_labels[(0, 3)].text(), "62,464")
         self.assertEqual(widget._chamber_table._row_labels[(0, 4)].text(), "-")
+        self.assertIn(
+            "Solo HP: <b>3,747,864</b>",
+            widget._chamber_table._row_labels[(0, 3)].toolTip(),
+        )
+        self.assertIn(
+            "DPS: <b>62,464</b>",
+            widget._chamber_table._row_labels[(0, 3)].toolTip(),
+        )
         self.assertEqual(
             widget._chamber_table._row_labels[(0, 3)].objectName(),
             "FactDpsCell",

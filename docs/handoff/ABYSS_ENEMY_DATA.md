@@ -294,8 +294,12 @@ MVP recommendation:
   memoized in AppShell, so a cache created after startup can be picked up by a
   later right-panel refresh. The Account/Data HoYoLAB import button already
   triggers this best-effort source-data refresh after successful import; refresh
-  failure remains non-fatal and is reported as an import warning/status. Source
-  tooltips and a multi-target HP toggle remain future work.
+  failure remains non-fatal and is reported as an import warning/status. Fact
+  DPS cells now carry tooltip-ready view-model payloads and expose a first-pass
+  HTML/text tooltip with formula, solo HP, elapsed time, calculated DPS, source,
+  warnings, and per-wave enemy rows. The payload preserves cached monster icon
+  paths for a future richer custom tooltip card. A custom card implementation and
+  a multi-target HP toggle remain future work.
 - Known fallback-only issue: `Battle-Hardened Grounded Geoshroom` can disagree
   heavily in the Fandom enemy-page HP fallback because Fandom does not expose a
   reliable Battle-Hardened HP table there. Nanoka remains primary whenever

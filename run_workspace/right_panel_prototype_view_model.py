@@ -10,8 +10,17 @@ from typing import Any, Mapping
 from localization import tr, tr_for_language
 
 from .models import AbyssTimerState, calculate_abyss_chamber_result
-from .abyss.factual_dps import calculate_factual_dps
-from .abyss.source_data import AbyssFloorSourceData
+from .abyss.factual_dps import (
+    REASON_MISSING_HP,
+    REASON_ZERO_OR_NEGATIVE_TIME,
+    calculate_factual_dps,
+)
+from .abyss.source_data import (
+    HP_SOURCE_NANOKA_RESOLVED,
+    HP_SOURCE_UNAVAILABLE,
+    AbyssChamberSideSourceData,
+    AbyssFloorSourceData,
+)
 from .display_stats import build_character_display_stats
 from .team_builder import (
     TeamBuilderSlotState,
@@ -31,7 +40,7 @@ from hoyolab_export.character_trait_catalog import (
 from .perf import log_perf, perf_ms, perf_now
 
 
-RIGHT_PANEL_PROTOTYPE_SCHEMA_VERSION = 6
+RIGHT_PANEL_PROTOTYPE_SCHEMA_VERSION = 7
 
 MODE_ABYSS = "abyss"
 MODE_DPS_DUMMY = "dps_dummy"
@@ -321,6 +330,8 @@ class RightPanelChamberRowViewModel:
     sim_team2: str
     total_seconds: int
     timer_editable: bool = False
+    factual_team1_tooltip: "FactDpsTooltipViewModel | None" = None
+    factual_team2_tooltip: "FactDpsTooltipViewModel | None" = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -335,6 +346,74 @@ class RightPanelChamberRowViewModel:
             "sim_team2": self.sim_team2,
             "total_seconds": self.total_seconds,
             "timer_editable": self.timer_editable,
+            "factual_team1_tooltip": None
+            if self.factual_team1_tooltip is None
+            else self.factual_team1_tooltip.to_dict(),
+            "factual_team2_tooltip": None
+            if self.factual_team2_tooltip is None
+            else self.factual_team2_tooltip.to_dict(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class FactDpsEnemyTooltipViewModel:
+    wave: int
+    primary_display_name: str
+    enemy_count: int
+    display_level: int | None
+    matched_nanoka_display_name: str | None
+    hp_used: int | None
+    hp_source: str
+    match_method: str
+    match_confidence: str
+    cached_icon_path: str | None = None
+    selected_for_solo: bool = False
+    warnings: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "wave": self.wave,
+            "primary_display_name": self.primary_display_name,
+            "enemy_count": self.enemy_count,
+            "display_level": self.display_level,
+            "matched_nanoka_display_name": self.matched_nanoka_display_name,
+            "hp_used": self.hp_used,
+            "hp_source": self.hp_source,
+            "match_method": self.match_method,
+            "match_confidence": self.match_confidence,
+            "cached_icon_path": self.cached_icon_path,
+            "selected_for_solo": self.selected_for_solo,
+            "warnings": list(self.warnings),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class FactDpsTooltipViewModel:
+    title: str
+    formula: str
+    total_solo_hp: int | None
+    elapsed_seconds: int
+    calculated_dps: int | None
+    hp_source_label: str
+    unavailable_reason: str = ""
+    warnings: tuple[str, ...] = ()
+    enemies: tuple[FactDpsEnemyTooltipViewModel, ...] = ()
+
+    @property
+    def is_available(self) -> bool:
+        return self.calculated_dps is not None and not self.unavailable_reason
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "title": self.title,
+            "formula": self.formula,
+            "total_solo_hp": self.total_solo_hp,
+            "elapsed_seconds": self.elapsed_seconds,
+            "calculated_dps": self.calculated_dps,
+            "hp_source_label": self.hp_source_label,
+            "unavailable_reason": self.unavailable_reason,
+            "warnings": list(self.warnings),
+            "enemies": [enemy.to_dict() for enemy in self.enemies],
         }
 
 
@@ -1465,31 +1544,39 @@ def _abyss_chamber_row(
         chamber_index=chamber_index,
     )
     normalized = result.normalized_timer_state
+    team1_summary = _cached_side_summary(abyss_source_data, chamber_index, 1)
+    team2_summary = _cached_side_summary(abyss_source_data, chamber_index, 2)
+    team1_dps = calculate_factual_dps(
+        total_hp=None if team1_summary is None else team1_summary.solo_target_hp,
+        elapsed_seconds=result.team1_elapsed_seconds,
+    )
+    team2_dps = calculate_factual_dps(
+        total_hp=None if team2_summary is None else team2_summary.solo_target_hp,
+        elapsed_seconds=result.team2_elapsed_seconds,
+    )
     return RightPanelChamberRowViewModel(
         chamber_label=f"C{chamber_index}",
         team1_time=_format_remaining_time(normalized.team1_left_seconds),
         team1_seconds=result.team1_elapsed_seconds,
         team2_time=_format_remaining_time(normalized.team2_left_seconds),
         team2_seconds=result.team2_elapsed_seconds,
-        factual_team1=_format_factual_dps_cell(
-            calculate_factual_dps(
-                total_hp=_cached_side_solo_target_hp(
-                    abyss_source_data,
-                    chamber_index,
-                    1,
-                ),
-                elapsed_seconds=result.team1_elapsed_seconds,
-            )
+        factual_team1=_format_factual_dps_cell(team1_dps),
+        factual_team2=_format_factual_dps_cell(team2_dps),
+        factual_team1_tooltip=_build_fact_dps_tooltip(
+            source_data=abyss_source_data,
+            side_summary=team1_summary,
+            chamber_index=chamber_index,
+            team_number=1,
+            elapsed_seconds=result.team1_elapsed_seconds,
+            dps_result=team1_dps,
         ),
-        factual_team2=_format_factual_dps_cell(
-            calculate_factual_dps(
-                total_hp=_cached_side_solo_target_hp(
-                    abyss_source_data,
-                    chamber_index,
-                    2,
-                ),
-                elapsed_seconds=result.team2_elapsed_seconds,
-            )
+        factual_team2_tooltip=_build_fact_dps_tooltip(
+            source_data=abyss_source_data,
+            side_summary=team2_summary,
+            chamber_index=chamber_index,
+            team_number=2,
+            elapsed_seconds=result.team2_elapsed_seconds,
+            dps_result=team2_dps,
         ),
         sim_team1="not run",
         sim_team2="not run",
@@ -1498,17 +1585,130 @@ def _abyss_chamber_row(
     )
 
 
-def _cached_side_solo_target_hp(
+def _cached_side_summary(
     abyss_source_data: AbyssFloorSourceData | None,
     chamber_index: int,
     side: int,
-) -> int | None:
+) -> AbyssChamberSideSourceData | None:
     if abyss_source_data is None:
         return None
     try:
-        return abyss_source_data.side_summary(chamber_index, side).solo_target_hp
+        return abyss_source_data.side_summary(chamber_index, side)
     except ValueError:
         return None
+
+
+def _build_fact_dps_tooltip(
+    *,
+    source_data: AbyssFloorSourceData | None,
+    side_summary: AbyssChamberSideSourceData | None,
+    chamber_index: int,
+    team_number: int,
+    elapsed_seconds: int,
+    dps_result,
+) -> FactDpsTooltipViewModel:
+    total_hp = None if side_summary is None else side_summary.solo_target_hp
+    warnings = _fact_dps_tooltip_warnings(source_data, side_summary)
+    return FactDpsTooltipViewModel(
+        title=f"Floor 12 / C{chamber_index} / Team {team_number}",
+        formula="Fact DPS = solo target HP / elapsed time",
+        total_solo_hp=total_hp,
+        elapsed_seconds=int(elapsed_seconds),
+        calculated_dps=dps_result.rounded_dps,
+        hp_source_label=_fact_dps_hp_source_label(side_summary),
+        unavailable_reason=_fact_dps_unavailable_reason(
+            source_data=source_data,
+            side_summary=side_summary,
+            dps_unavailable_reason=dps_result.unavailable_reason,
+        ),
+        warnings=warnings,
+        enemies=_fact_dps_enemy_tooltip_rows(side_summary),
+    )
+
+
+def _fact_dps_unavailable_reason(
+    *,
+    source_data: AbyssFloorSourceData | None,
+    side_summary: AbyssChamberSideSourceData | None,
+    dps_unavailable_reason: str,
+) -> str:
+    if source_data is None:
+        return "Abyss source-data cache is unavailable."
+    if side_summary is None:
+        return "Abyss source-data has no cached data for this chamber side."
+    if dps_unavailable_reason == REASON_ZERO_OR_NEGATIVE_TIME:
+        return "Elapsed time is zero."
+    if dps_unavailable_reason == REASON_MISSING_HP:
+        return "Solo target HP is unavailable."
+    return ""
+
+
+def _fact_dps_hp_source_label(
+    side_summary: AbyssChamberSideSourceData | None,
+) -> str:
+    if side_summary is None:
+        return "Unavailable"
+    sources = {
+        row.hp_source
+        for wave in side_summary.waves
+        for row in wave.enemies
+        if row.hp_source
+    }
+    if HP_SOURCE_NANOKA_RESOLVED in sources:
+        return "Nanoka resolved HP"
+    if HP_SOURCE_UNAVAILABLE in sources or not sources:
+        return "Unavailable"
+    return ", ".join(sorted(sources))
+
+
+def _fact_dps_tooltip_warnings(
+    source_data: AbyssFloorSourceData | None,
+    side_summary: AbyssChamberSideSourceData | None,
+) -> tuple[str, ...]:
+    warnings: list[str] = []
+    if source_data is not None:
+        warnings.extend(source_data.global_warnings)
+    if side_summary is not None:
+        warnings.extend(side_summary.warnings)
+        for wave in side_summary.waves:
+            warnings.extend(wave.warnings)
+            for row in wave.enemies:
+                warnings.extend(row.warnings)
+                if row.match_confidence and row.match_confidence != "high":
+                    warnings.append(
+                        f"match_{row.match_method}_{row.match_confidence}"
+                    )
+    return tuple(dict.fromkeys(warnings))
+
+
+def _fact_dps_enemy_tooltip_rows(
+    side_summary: AbyssChamberSideSourceData | None,
+) -> tuple[FactDpsEnemyTooltipViewModel, ...]:
+    if side_summary is None:
+        return ()
+    rows: list[FactDpsEnemyTooltipViewModel] = []
+    for wave in side_summary.waves:
+        for row in wave.enemies:
+            rows.append(
+                FactDpsEnemyTooltipViewModel(
+                    wave=wave.wave,
+                    primary_display_name=row.primary_display_name,
+                    enemy_count=row.enemy_count,
+                    display_level=row.display_level,
+                    matched_nanoka_display_name=row.matched_nanoka_display_name,
+                    hp_used=row.nanoka_hp,
+                    hp_source=row.hp_source,
+                    match_method=row.match_method,
+                    match_confidence=row.match_confidence,
+                    cached_icon_path=row.cached_icon_path,
+                    selected_for_solo=(
+                        row.nanoka_hp is not None
+                        and row.primary_display_name == wave.selected_solo_enemy_name
+                    ),
+                    warnings=row.warnings,
+                )
+            )
+    return tuple(rows)
 
 
 def _format_factual_dps_cell(result) -> str:

@@ -30,6 +30,7 @@ from run_workspace.models import (
     clamp_abyss_timer_edit_seconds,
 )
 from run_workspace.right_panel_prototype_view_model import (
+    FactDpsTooltipViewModel,
     MODE_ABYSS,
     MODE_DPS_DUMMY,
     RightPanelBonusSourceDisplayItem,
@@ -1199,6 +1200,14 @@ class ChamberTableBlockWidget(QFrame):
                 label = self._row_labels.get((row_index, column))
                 if label is not None:
                     label.setText(text)
+                    if column == 3:
+                        label.setToolTip(
+                            _fact_dps_tooltip_html(row.factual_team1_tooltip)
+                        )
+                    elif column == 4:
+                        label.setToolTip(
+                            _fact_dps_tooltip_html(row.factual_team2_tooltip)
+                        )
         if self._total_label is not None:
             self._total_label.setText(f"Total: {int(total_seconds)}s")
         if self._status_label is not None:
@@ -1213,6 +1222,79 @@ def _remaining_seconds_from_time_text(text: str) -> int:
         return int(minutes_text) * 60 + int(seconds_text)
     except (TypeError, ValueError):
         return 600
+
+
+def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
+    if tooltip is None:
+        return ""
+
+    parts = [
+        "<qt>",
+        f"<b>{html.escape(tooltip.title)}</b><br>",
+        f"{html.escape(tooltip.formula)}<br>",
+    ]
+    if tooltip.total_solo_hp is not None:
+        parts.append(f"Solo HP: <b>{tooltip.total_solo_hp:,}</b><br>")
+    parts.append(f"Elapsed: <b>{int(tooltip.elapsed_seconds)}s</b><br>")
+    if tooltip.calculated_dps is not None:
+        parts.append(f"DPS: <b>{tooltip.calculated_dps:,}</b><br>")
+    if tooltip.unavailable_reason:
+        parts.append(
+            f"<span style='color:#e8c474'>Reason: "
+            f"{html.escape(tooltip.unavailable_reason)}</span><br>"
+        )
+    parts.append(f"Source: {html.escape(tooltip.hp_source_label)}")
+
+    if tooltip.warnings:
+        warning_text = ", ".join(tooltip.warnings[:4])
+        if len(tooltip.warnings) > 4:
+            warning_text += ", ..."
+        parts.append(f"<br>Warnings: {html.escape(warning_text)}")
+
+    if tooltip.enemies:
+        parts.append("<hr>")
+        current_wave: int | None = None
+        for enemy in tooltip.enemies:
+            if enemy.wave != current_wave:
+                if current_wave is not None:
+                    parts.append("<br>")
+                current_wave = enemy.wave
+                parts.append(f"<b>Wave {enemy.wave}</b><br>")
+            if enemy.cached_icon_path:
+                path = Path(enemy.cached_icon_path).as_posix()
+                parts.append(
+                    f"<img src='{html.escape(path, quote=True)}' width='22' height='22'> "
+                )
+            name = html.escape(enemy.primary_display_name)
+            level = (
+                ""
+                if enemy.display_level is None
+                else f" Lv.{int(enemy.display_level)}"
+            )
+            solo = " - solo target" if enemy.selected_for_solo else ""
+            parts.append(f"x{int(enemy.enemy_count)} {name}{level}{solo}")
+            if (
+                enemy.matched_nanoka_display_name
+                and enemy.matched_nanoka_display_name != enemy.primary_display_name
+            ):
+                parts.append(
+                    " - Nanoka: "
+                    f"{html.escape(enemy.matched_nanoka_display_name)}"
+                )
+            if enemy.hp_used is not None:
+                parts.append(f" - HP {enemy.hp_used:,}")
+            else:
+                parts.append(" - HP unavailable")
+            if enemy.match_method:
+                parts.append(
+                    " - "
+                    f"{html.escape(enemy.match_method)}"
+                    f"/{html.escape(enemy.match_confidence)}"
+                )
+            parts.append("<br>")
+
+    parts.append("</qt>")
+    return "".join(parts)
 
 
 class DetailRowWidget(QWidget):

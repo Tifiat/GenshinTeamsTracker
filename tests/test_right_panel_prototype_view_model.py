@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import unittest
+from dataclasses import replace
 
 from run_workspace.right_panel_prototype_view_model import (
     MODE_ABYSS,
@@ -13,7 +14,10 @@ from run_workspace.right_panel_prototype_view_model import (
     build_fake_right_panel_prototype_state,
     build_right_panel_prototype_view_model,
 )
-from run_workspace.abyss.source_data import load_abyss_floor12_source_data
+from run_workspace.abyss.source_data import (
+    load_abyss_floor12_source_data,
+    rebuild_abyss_floor_source_data_with_rows,
+)
 from run_workspace.models import AbyssTimerState
 from run_workspace.team_builder import create_empty_team_builder_state
 from tests.abyss.test_source_data import (
@@ -30,7 +34,7 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
 
         model = build_right_panel_prototype_view_model(state, mode=MODE_ABYSS)
 
-        self.assertEqual(model.schema_version, 6)
+        self.assertEqual(model.schema_version, 7)
         self.assertEqual(model.mode, MODE_ABYSS)
         self.assertEqual(len(model.teams), 2)
         self.assertEqual([len(team.slots) for team in model.teams], [4, 4])
@@ -388,7 +392,94 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertEqual(row.sim_team2, "not run")
         self.assertEqual(source_data.side_summary(1, 1).multi_target_hp, 3_600_000)
 
+    def test_abyss_factual_dps_tooltip_carries_formula_and_enemy_breakdown(self) -> None:
+        source_data = load_abyss_floor12_source_data(
+            "2026-05-16",
+            "119",
+            composition_report=composition_report(
+                "2026-05-16",
+                [
+                    fandom_row(
+                        "Primo Geovishap (Cryo)",
+                        chamber=1,
+                        side=1,
+                        wave=1,
+                        count=2,
+                        level=100,
+                    ),
+                ],
+            ),
+            nanoka_report=nanoka_report(
+                "119",
+                [
+                    nanoka_row(
+                        "Primo Geovishap",
+                        chamber=1,
+                        side=1,
+                        hp=3_747_864,
+                        monster_id="primo",
+                        level=100,
+                    ),
+                ],
+            ),
+        )
+        source_data = rebuild_abyss_floor_source_data_with_rows(
+            source_data,
+            (
+                replace(
+                    source_data.enemy_rows[0],
+                    cached_icon_path="C:/cache/abyss/primo.png",
+                ),
+            ),
+        )
+
+        rows = build_abyss_chamber_rows(
+            (AbyssTimerState(team1_left_seconds=540, team2_left_seconds=540),),
+            abyss_source_data=source_data,
+        )
+
+        row = rows[0]
+        tooltip = row.factual_team1_tooltip
+        self.assertIsNotNone(tooltip)
+        assert tooltip is not None
+        self.assertEqual(row.factual_team1, "62,464")
+        self.assertEqual(tooltip.title, "Floor 12 / C1 / Team 1")
+        self.assertEqual(tooltip.total_solo_hp, 3_747_864)
+        self.assertEqual(tooltip.elapsed_seconds, 60)
+        self.assertEqual(tooltip.calculated_dps, 62_464)
+        self.assertEqual(tooltip.unavailable_reason, "")
+        self.assertEqual(tooltip.hp_source_label, "Nanoka resolved HP")
+        self.assertEqual(len(tooltip.enemies), 1)
+        enemy = tooltip.enemies[0]
+        self.assertEqual(enemy.primary_display_name, "Primo Geovishap (Cryo)")
+        self.assertEqual(enemy.matched_nanoka_display_name, "Primo Geovishap")
+        self.assertEqual(enemy.enemy_count, 2)
+        self.assertEqual(enemy.hp_used, 3_747_864)
+        self.assertEqual(enemy.cached_icon_path, "C:/cache/abyss/primo.png")
+        self.assertTrue(enemy.selected_for_solo)
+
     def test_abyss_chamber_rows_keep_factual_dps_unavailable_for_zero_elapsed(self) -> None:
+        source_data = load_abyss_floor12_source_data(
+            "2026-05-16",
+            "119",
+            composition_report=composition_report(
+                "2026-05-16",
+                [fandom_row("Enemy", chamber=1, side=1, wave=1, level=100)],
+            ),
+            nanoka_report=nanoka_report(
+                "119",
+                [
+                    nanoka_row(
+                        "Enemy",
+                        chamber=1,
+                        side=1,
+                        hp=500_000,
+                        monster_id="enemy",
+                        level=100,
+                    )
+                ],
+            ),
+        )
         rows = build_abyss_chamber_rows(
             (
                 AbyssTimerState(
@@ -396,7 +487,7 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
                     team2_left_seconds=600,
                 ),
             ),
-            abyss_source_data=None,
+            abyss_source_data=source_data,
         )
 
         row = rows[0]
@@ -405,6 +496,13 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertEqual(row.team2_seconds, 0)
         self.assertEqual(row.factual_team1, "-")
         self.assertEqual(row.factual_team2, "-")
+        self.assertIsNotNone(row.factual_team1_tooltip)
+        assert row.factual_team1_tooltip is not None
+        self.assertEqual(
+            row.factual_team1_tooltip.unavailable_reason,
+            "Elapsed time is zero.",
+        )
+        self.assertEqual(row.factual_team1_tooltip.total_solo_hp, 500_000)
 
     def test_abyss_chamber_rows_keep_factual_dps_unavailable_without_cached_source_data(self) -> None:
         rows = build_abyss_chamber_rows(
@@ -423,6 +521,12 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertEqual(row.team2_seconds, 180)
         self.assertEqual(row.factual_team1, "-")
         self.assertEqual(row.factual_team2, "-")
+        self.assertIsNotNone(row.factual_team1_tooltip)
+        assert row.factual_team1_tooltip is not None
+        self.assertEqual(
+            row.factual_team1_tooltip.unavailable_reason,
+            "Abyss source-data cache is unavailable.",
+        )
 
     def test_selected_details_are_structured_rows_not_text_dump(self) -> None:
         state = build_fake_right_panel_prototype_state()

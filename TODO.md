@@ -212,8 +212,10 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   for Fandom, Nanoka, join/build, JSON cache save, and icon asset caching. The
   Account/Data HoYoLAB import button already triggers the best-effort Abyss
   source-data refresh after a successful import; same-period ready cache/assets
-  are skipped by default and `--force` refreshes explicitly. Tooltip/source
-  breakdown and a multi-target HP toggle remain future
+  are skipped by default and `--force` refreshes explicitly. Fact DPS cells now
+  expose a compact cached-source-data tooltip payload and a first-pass HTML/text
+  tooltip with formula, HP, elapsed time, source, warnings, and per-wave enemy
+  rows. A richer custom tooltip card and a multi-target HP toggle remain future
   work.
 - Need future AbyssSeason / room / chamber / wave / enemy model on top of this
   source-data boundary.

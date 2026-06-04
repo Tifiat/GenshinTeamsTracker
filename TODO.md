@@ -244,6 +244,15 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   temporary historical-period checks such as 2026-02-16 / tower 116; normal
   HoYoLAB import may overwrite the debug period-ref with the official current
   period.
+- Useful Abyss debug commands from the project root:
+  - update/cache normal Nanoka-backed source data:
+    `.\.venv\Scripts\python.exe -m run_workspace.abyss.source_data_update --period-start YYYY-MM-DD --floor 12 --save-cache --hp-source auto --network-workers 10 --format text`
+  - force Fandom enemy-page HP fallback for validation:
+    `.\.venv\Scripts\python.exe -m run_workspace.abyss.source_data_update --period-start YYYY-MM-DD --floor 12 --save-cache --hp-source fandom-only --network-workers 10 --format text`
+  - switch AppShell to an already cached period:
+    `.\.venv\Scripts\python.exe tools\future\abyss_period_switch.py --period-start YYYY-MM-DD --floor 12 --format text`
+  - restore the previous period ref after a debug switch:
+    `.\.venv\Scripts\python.exe tools\future\abyss_period_switch.py --restore-backup --format text`
 - Need future AbyssSeason / room / chamber / wave / enemy model on top of this
   source-data boundary.
 - For each Abyss chamber/side, data should ideally support enemies, waves, enemy HP, total HP, resistances, immunities, special states, invulnerability/phases where available, and icons.
@@ -504,6 +513,15 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   pixmap/text/marquee caches. Persistent caches should reduce loader time on
   later launches. Do not use this loader as a substitute for fixing current
   optimization or layout bugs.
+- Loader/prewarm backlog from AppShell click profiling: the visible roster marker
+  path is still instant (`~2-3 ms`), but deferred work can still feel heavy.
+  Prewarm the Character/Weapon workspace weapon asset list so the first
+  selected-character weapon auto-filter cannot reopen SQLite (`~140-150 ms` in
+  the measured cold sync), and consider prebuilding/reusing filtered weapon grid
+  card pixmaps/widgets where safe (`~15-40 ms` cached sync). Also keep an eye on
+  right-panel selected-details/bonus-strip rendering for equipped characters
+  (`~50-66 ms` refresh spikes) as a possible loader/cache target if it becomes
+  visible again.
 - Artifact Browser polish: JSON import/clear controls are compact at one
   artifact column and expand only at 2+ artifact columns. They must not force
   the one-column artifact viewport wider than one `GRID_SIZE.width()` cell.

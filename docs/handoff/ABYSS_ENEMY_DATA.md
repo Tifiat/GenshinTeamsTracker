@@ -76,6 +76,21 @@ Confirmed:
   ids, but the inspected `tower` endpoint was stale compared with current 2026
   Abyss data.
 
+Production/debug commands:
+
+- Normal production-safe cache update by period, using Fandom composition plus
+  Nanoka HP when available:
+  `.\.venv\Scripts\python.exe -m run_workspace.abyss.source_data_update --period-start YYYY-MM-DD --floor 12 --save-cache --hp-source auto --network-workers 10 --format text`
+- Forced Fandom enemy-page HP fallback validation, for cases where Nanoka is
+  intentionally skipped:
+  `.\.venv\Scripts\python.exe -m run_workspace.abyss.source_data_update --period-start YYYY-MM-DD --floor 12 --save-cache --hp-source fandom-only --network-workers 10 --format text`
+- HoYoLAB period refresh plus same-period cache/assets update:
+  `.\.venv\Scripts\python.exe -m hoyolab_export.abyss_source_refresh --write-period --update-cache --format text`
+- Debug period switcher, only for already-cached periods:
+  `.\.venv\Scripts\python.exe tools\future\abyss_period_switch.py --period-start YYYY-MM-DD --floor 12 --format text`
+- Restore the previous period ref after a debug switch:
+  `.\.venv\Scripts\python.exe tools\future\abyss_period_switch.py --restore-backup --format text`
+
 MVP recommendation:
 
 - Product source-authority decision:

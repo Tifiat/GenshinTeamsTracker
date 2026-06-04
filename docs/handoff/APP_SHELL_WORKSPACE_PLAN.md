@@ -584,12 +584,22 @@ Performance fix status:
   visible and measurable so bad synchronous paths are easy to find and fix.
   Do not add persistent caches just to hide current lag while the UI is still
   being actively optimized.
+- Recent AppShell click-path profiling with Abyss timers and Fact DPS visible
+  found that the immediate roster marker path is still fast (`~2-3 ms` per
+  click). The remaining loader/prewarm candidates are deferred work: the first
+  selected-character weapon auto-filter can still load weapon assets from SQLite
+  (`~140-150 ms` cold sync), later cached weapon-filter grid rebuilds can cost
+  `~15-40 ms`, and selected-details/bonus-strip right-panel refreshes for
+  equipped characters can spike around `~50-66 ms`. Treat these as future
+  loader/cache/prewarm candidates unless they become a visible current bug.
 - When the loader pass starts, mark every loader-covered subsystem explicitly
   and bake/cache repeatable work in the same pass. Candidates include Artifact
   Browser cold-start store/init data, target/preset UI preparation,
-  preset-edit controls, pixmap/text/marquee caches, and bulk persistent
-  equipment/negative-cache prewarm for account characters. After that point,
-  second and later openings should reuse baked/cache data where safe.
+  preset-edit controls, Character/Weapon workspace weapon asset/filter prep,
+  reusable weapon grid card pixmaps/widgets where safe, pixmap/text/marquee
+  caches, right-panel selected-details/bonus-strip pixmap prep if needed, and
+  bulk persistent equipment/negative-cache prewarm for account characters. After
+  that point, second and later openings should reuse baked/cache data where safe.
 - Future right-panel slot drag/drop is feasible because `TeamBuilderState`
   already supports whole-slot swap/move across teams. The UI should drag a full
   slot payload, not just a portrait, so weapon/artifact/details move together;

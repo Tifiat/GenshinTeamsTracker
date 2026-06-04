@@ -369,11 +369,14 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - GCSIM is a major future feature and should influence architecture now, but implementation comes later.
 - Detailed GCSIM research handoff lives in `docs/handoff/GCSIM.md`; read it before implementing any engine download/runner/config work.
 - Initial isolated engine lifecycle prototype exists in
-  `run_workspace/gcsim/engine_store.py`. It proves source-like folder ->
-  local patch backend -> manifest -> activate-on-success / keep-old-active-on
-  failure with temp-dir tests only. Next GCSIM engine task should add the real
-  official-source acquisition, git/apply patch backend, build step, and smoke
-  checks behind that boundary before any UI wiring.
+  `run_workspace/gcsim/engine_store.py`; official GitHub source acquisition and
+  the backend/dev update command exist in `run_workspace/gcsim/source_acquisition.py`
+  and `run_workspace/gcsim/engine_update.py`. Command:
+  `python -m run_workspace.gcsim.engine_update --release latest`. It downloads
+  official source, applies the current replaceable patch backend, runs a source
+  layout smoke check, writes a manifest, and activates only on success. Next
+  GCSIM engine task should add the real git/apply patch backend, build step, and
+  runtime smoke checks before any UI wiring.
 - Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.
 - Do not cram detailed GCSIM into the small TeamCard. Right panel should show only compact factual/sim DPS summary and readable GCSIM button/status; detailed GCSIM/rotation editor should open as a larger overlay/drawer around the right panel. If GCSIM lacks a character/reaction implementation, show a clear unavailable status.
 - Each team/run card should eventually have simulator action, GCSIM logo/label, and result area for sim DPS.

@@ -112,7 +112,7 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `hoyolab_export/`: HoYoLAB auth/export/import pipeline, artifact DB helpers, HoYoWiki catalog/cache helpers.
 - `localization/`: JSON-backed app localization.
 - `ui/artifact_browser/`: isolated Artifact Browser module.
-- `run_workspace/gcsim/`: isolated backend foundation for future local GCSIM engine lifecycle, currently only the transactional engine-store/update prototype.
+- `run_workspace/gcsim/`: isolated backend foundation for future local GCSIM engine lifecycle, including the transactional engine-store/update prototype and dev command `python -m run_workspace.gcsim.engine_update --release latest`.
 - `docs/handoff/`: detailed project maps and research handoffs. Root `TODO.md` and `CODEX.md` remain the entrypoints.
 - `docs/handoff/DATA_RUNTIME_BOUNDARIES.md`: compact map of raw/source caches, runtime SQLite tables, visual asset caches, static/reference catalogs, and stored-vs-hidden UI rules.
 - `docs/obsidian/GTT/GenshinTeamsTracker.canvas`: human project navigation map for major areas, subsystem status, priorities, and important paths. It is not detailed agent context.

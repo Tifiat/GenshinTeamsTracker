@@ -32,6 +32,11 @@ This file is written for future coding agents. Keep it compact, English, and mos
 - Never revert user changes. The worktree is often dirty.
 - Use `apply_patch` for file edits.
 - In this repo, handoff context means `CODEX.md`, `TODO.md`, and `docs/handoff/*.md`. When the user asks to update or clean handoffs, include all three entrypoints unless they narrow the scope.
+- `tools/future/` is reserved for narrow debug/manual utilities that are useful now
+  and may become product/admin features later. Do not put ordinary experiments
+  there. Use it only when the user explicitly asks, after clarification, or when
+  a tool is genuinely reusable and no planned product surface owns it yet.
+  Research probes still belong under `tools/experiments/`.
 - After every completed task that changes roadmap, architecture state, or reusable context, update the relevant handoff docs before final response. Mark completed subitems compactly, add durable new knowledge to `CODEX.md`/`TODO.md` or a dedicated handoff file, and remove stale active-task/development-log leftovers instead of letting old "next steps" linger.
 - After every completed pushable task, include one short Russian past-tense commit message in the final response.
 - When adding or changing any persistent project structure, source/cache format, domain model, or long-lived UI/data contract, update the relevant project map under `docs/handoff/` and keep root docs as concise pointers. Examples: backend data model -> architecture/data map; raw payload discovery -> source-field reference; UI prototype contract -> UI architecture notes; GCSIM/Abyss research -> dedicated handoff file.
@@ -141,7 +146,7 @@ Pipeline summary:
 4. Fetch batch `character/detail` for real character ids.
 5. Detect HoYoLAB content language from the real detail request.
 6. Resolve the current Spiral Abyss period for source-data cache refresh:
-   HoYoLAB overview first, then Nanoka live metadata, then Fandom latest.
+   HoYoLAB overview first, then Fandom latest, then Nanoka live metadata.
 7. Save `account_language.json` and `account_character_details.json`.
 8. Ensure artifact set catalog and localized set names.
 9. Ensure HoYoLAB `relic.set.id -> set_uid` mapping via a service EN-pass when needed.
@@ -157,7 +162,7 @@ Critical rules:
 - HoYoLAB/API content language and UI language are separate.
 - Ordinary HoYoLAB update must preserve existing local HoYoLAB data/assets if it fails early.
 - Ordinary HoYoLAB update must not fetch all HoYoWiki character/weapon detail pages. Character/weapon stats catalogs are refreshed only through the explicit static catalog refresh path.
-- Abyss source-data period refresh uses source priority HoYoLAB -> Nanoka live -> Fandom latest, records fallback metadata in `data/hoyolab/spiral_abyss_period.json`, and must not use local system date as source-data authority.
+- Abyss source-data period refresh uses source priority HoYoLAB -> Fandom latest -> Nanoka live, records fallback metadata in `data/hoyolab/spiral_abyss_period.json`, and must not use local system date as source-data authority.
 - Destructive profile cleanup belongs to explicit profile sign-out or offline profile restore.
 - The export image stage drives HoYoLAB's share/save-image UI. It waits briefly for visible
   `gt-image--loading` placeholders, retries the save-image click if no browser download event

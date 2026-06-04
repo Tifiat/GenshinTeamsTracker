@@ -60,6 +60,11 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - AppShell quick-pick marker latency is fixed with incremental visible-card marker updates; roster clicks now update markers immediately and defer/coalesce right-panel refreshes through a short scheduler;
   - AppShell filters now use session-cached character/weapon asset lists plus shared high-DPI roster/weapon pixmap caching. Right-panel slot selection does not reload portrait/weapon PNGs, fitted right-panel PNG canvases are cached per DPR/source, and `AssetIconLabel` no longer does a duplicate queued pixmap update after construction. Remaining performance work is to avoid recreating visible card widgets on filter changes, likely with hide/show or a virtualized/lazy grid if profiling still warrants it, and to reduce first bonus-strip chip rebuild cost on high-DPI screens;
   - AppShell/current prototype PNG rendering is now high-DPI aware through `ui/utils/hidpi_pixmap.py`: visible raster assets keep logical UI size, render at `logical_size * devicePixelRatio`, clamp startup downscale below 1.0 back to 1.0 for image rendering, and refresh on screen/DPR changes where converted. New AppShell/current UI PNG paths should use that helper; legacy `main.py`/old widgets remain future migration unless explicitly included later;
+  - reusable vector toggle switch exists at `ui/utils/toggle_switch.py`, with a
+    manual visual probe at `tools/experiments/toggle_switch_probe.py`. It is not
+    wired into production yet; future boolean settings such as Abyss
+    multi-target HP mode and Artifact Browser ON/OFF controls should use this
+    shared widget instead of text-only ON/OFF buttons;
   - right-panel add/select/remove smoothness is now stable enough for manual UX: quick-pick uses fast UI state plus deferred hydration, team/slot widgets update in place, selected details use a stable skeleton/persistent bonus strip and keep selected-height reserve when empty, add-character cancels stale pending right-panel refreshes and no longer performs a visible intermediate minimal-details refresh before hydration, and right-panel repaint is deferred until the next event-loop tick when layout geometry has settled;
   - Artifact Browser target-character filters now use stable in-layout target buttons with in-place visibility/state updates, so standard/all target filtering no longer rebuilds 65-73 buttons on every click. Do not reintroduce QWidget cache approaches that remove/re-add target buttons through layouts; keep buttons parented in one stable layout and update via visibility/state/content;
   - Artifact Browser cold-start is audited/optimized enough for the future loader pass: embedded size policy no longer forces AppShell resize on first open, target character assets reuse the already-loaded Character/Weapon workspace session cache instead of a second SQLite pass, and remaining cold work is mostly SQLite store load plus one-time creation of target buttons;
@@ -193,8 +198,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   It does not wire UI, replace the current fixture, or run Fandom enemy-page
   fallback yet.
   Normal HoYoLAB import now resolves the current Spiral Abyss period with source
-  priority HoYoLAB overview -> Nanoka live tower metadata -> latest Fandom
-  Spiral Abyss/Floors period page, stores it at
+  priority HoYoLAB overview -> latest Fandom Spiral Abyss/Floors period page
+  -> Nanoka live tower metadata, stores it at
   `data/hoyolab/spiral_abyss_period.json` with source/warning/fallback metadata,
   and best-effort refreshes this period/floor source-data cache after a
   successful import. This refresh is non-fatal; existing caches stay untouched
@@ -217,7 +222,14 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   custom tooltip surface. The current content is compact HTML/text with enemies
   first, then calculation and source summary; native Qt/system tooltips are not
   acceptable. A richer custom tooltip card and a multi-target HP toggle remain
-  future work.
+  future work. Manual/debug period switcher exists at
+  `tools/future/abyss_period_switch.py`: it points AppShell at an already
+  cached period by rewriting only `data/hoyolab/spiral_abyss_period.json`,
+  refuses missing period/floor caches, preserves a `.debug_backup.json` period
+  backup by default, and never fetches or mutates source-data caches. Use it for
+  temporary historical-period checks such as 2026-02-16 / tower 116; normal
+  HoYoLAB import may overwrite the debug period-ref with the official current
+  period.
 - Need future AbyssSeason / room / chamber / wave / enemy model on top of this
   source-data boundary.
 - For each Abyss chamber/side, data should ideally support enemies, waves, enemy HP, total HP, resistances, immunities, special states, invulnerability/phases where available, and icons.

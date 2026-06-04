@@ -266,9 +266,9 @@ MVP recommendation:
   these local cached icons instead of live image URLs.
 - Normal HoYoLAB import now best-effort refreshes this Floor 12 source-data
   cache after resolving the current Abyss period. Period source priority is
-  HoYoLAB Spiral Abyss Overview, then Nanoka live tower metadata, then the
-  latest Fandom Spiral Abyss/Floors period page. HoYoLAB remains the preferred
-  official authority; Nanoka/Fandom period fallback is used only when higher
+  HoYoLAB Spiral Abyss Overview, then the latest Fandom Spiral Abyss/Floors
+  period page, then Nanoka live tower metadata. HoYoLAB remains the preferred
+  official authority; Fandom/Nanoka period fallback is used only when higher
   priority sources fail. The import stores the captured period at
   `data/hoyolab/spiral_abyss_period.json` with `source`, `sourcePath`,
   `warnings`, and `fallback` metadata, then updates the period/floor cache
@@ -297,11 +297,21 @@ MVP recommendation:
   failure remains non-fatal and is reported as an import warning/status. Fact
   DPS cells now carry tooltip-ready view-model payloads and use the project's
   custom tooltip surface. The current first pass is compact HTML/text: enemies
-  and waves appear first, then formula, solo HP, elapsed time, calculated DPS,
-  and a short source/match summary. The payload preserves cached monster icon
+  and waves appear first, then solo HP, elapsed time, calculated DPS, and a short
+  source/match summary. The payload preserves cached monster icon
   paths for a future richer custom tooltip card. Native Qt/system tooltips are
   not acceptable for this user-facing surface. A richer custom card
   implementation and a multi-target HP toggle remain future work.
+- Manual/debug period switching utility exists at
+  `tools/future/abyss_period_switch.py`. It points AppShell at an existing
+  cached period by rewriting only
+  `data/hoyolab/spiral_abyss_period.json`; it never fetches sources and never
+  mutates source-data cache directories. It refuses to switch when the requested
+  period/floor cache is missing, preserves a `.debug_backup.json` copy of the
+  previous period-ref by default, and is intended for manual Fact DPS/mode
+  testing such as temporarily selecting historical 2026-02-16 / tower 116 data.
+  A normal HoYoLAB import is still allowed to overwrite this debug period-ref
+  with the official current period.
 - Known fallback-only issue: `Battle-Hardened Grounded Geoshroom` can disagree
   heavily in the Fandom enemy-page HP fallback because Fandom does not expose a
   reliable Battle-Hardened HP table there. Nanoka remains primary whenever

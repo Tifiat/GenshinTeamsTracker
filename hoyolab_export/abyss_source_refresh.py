@@ -342,19 +342,6 @@ async def resolve_abyss_period_with_fallbacks(
                     + _compact_exception_summary(exc)
                 )
 
-    if mode in (PERIOD_SOURCE_AUTO, PERIOD_SOURCE_NANOKA):
-        try:
-            resolved = nanoka_live_resolver()
-            return _period_from_resolved_source(
-                resolved,
-                prior_warnings=failures,
-                fallback=(mode == PERIOD_SOURCE_AUTO),
-            )
-        except Exception as exc:
-            if mode == PERIOD_SOURCE_NANOKA:
-                raise HoYoLABAbyssPeriodError(_compact_exception_summary(exc)) from exc
-            failures.append("nanoka_live_fallback_failed:" + _compact_exception_summary(exc))
-
     if mode in (PERIOD_SOURCE_AUTO, PERIOD_SOURCE_FANDOM):
         try:
             resolved = fandom_latest_resolver()
@@ -368,8 +355,21 @@ async def resolve_abyss_period_with_fallbacks(
                 raise HoYoLABAbyssPeriodError(_compact_exception_summary(exc)) from exc
             failures.append("fandom_latest_fallback_failed:" + _compact_exception_summary(exc))
 
+    if mode in (PERIOD_SOURCE_AUTO, PERIOD_SOURCE_NANOKA):
+        try:
+            resolved = nanoka_live_resolver()
+            return _period_from_resolved_source(
+                resolved,
+                prior_warnings=failures,
+                fallback=(mode == PERIOD_SOURCE_AUTO),
+            )
+        except Exception as exc:
+            if mode == PERIOD_SOURCE_NANOKA:
+                raise HoYoLABAbyssPeriodError(_compact_exception_summary(exc)) from exc
+            failures.append("nanoka_live_fallback_failed:" + _compact_exception_summary(exc))
+
     raise HoYoLABAbyssPeriodError(
-        "Could not resolve Spiral Abyss period from HoYoLAB, Nanoka live, or Fandom latest. "
+        "Could not resolve Spiral Abyss period from HoYoLAB, Fandom latest, or Nanoka live. "
         + "; ".join(failures)
     )
 
@@ -942,7 +942,7 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         "--period-source",
         choices=PERIOD_SOURCE_CHOICES,
         default=PERIOD_SOURCE_AUTO,
-        help="Period resolver source. Default: auto (HoYoLAB -> Nanoka live -> Fandom latest).",
+        help="Period resolver source. Default: auto (HoYoLAB -> Fandom latest -> Nanoka live).",
     )
     parser.add_argument("--format", choices=("json", "text"), default="json")
     parser.add_argument("--indent", type=int, default=2)

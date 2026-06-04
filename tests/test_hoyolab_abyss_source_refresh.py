@@ -169,9 +169,43 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
         self.assertEqual(period.warnings, ())
         self.assertEqual(calls, ["hoyolab:ru-ru"])
 
-    def test_period_resolver_falls_back_to_nanoka_live(self) -> None:
+    def test_period_resolver_falls_back_to_fandom_latest_first(self) -> None:
         async def failing_hoyolab_fetcher(_page: object, *, language: str | None = None):
             raise RuntimeError("hoyolab navigation failed")
+
+        period = asyncio.run(
+            resolve_abyss_period_with_fallbacks(
+                object(),
+                hoyolab_fetcher=failing_hoyolab_fetcher,
+                nanoka_live_resolver=lambda: self.fail("nanoka should not run"),
+                fandom_latest_resolver=lambda: ResolvedAbyssPeriodSource(
+                    raw_period="2026-05-16/2026-06-16",
+                    start_date="2026-05-16",
+                    end_date="2026-06-16",
+                    source="fandom_latest_fallback",
+                    source_path="fandom_index#latest",
+                    warnings=("fandom_latest_used_as_period_fallback",),
+                ),
+            )
+        )
+
+        self.assertEqual(period.start_date, "2026-05-16")
+        self.assertEqual(period.source, "fandom_latest_fallback")
+        self.assertTrue(period.fallback)
+        self.assertIn("fandom_latest_used_as_period_fallback", period.warnings)
+        self.assertTrue(
+            any(
+                warning.startswith("hoyolab_spiral_abyss_overview_failed:")
+                for warning in period.warnings
+            )
+        )
+
+    def test_period_resolver_falls_back_to_nanoka_live_after_fandom_failure(self) -> None:
+        async def failing_hoyolab_fetcher(_page: object, *, language: str | None = None):
+            raise RuntimeError("hoyolab down")
+
+        def failing_fandom():
+            raise RuntimeError("fandom down")
 
         period = asyncio.run(
             resolve_abyss_period_with_fallbacks(
@@ -185,49 +219,15 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
                     source_path="nanoka_manifest#tower[119]",
                     metadata={"tower_id": "119"},
                 ),
-                fandom_latest_resolver=lambda: self.fail("fandom should not run"),
+                fandom_latest_resolver=failing_fandom,
             )
         )
 
-        self.assertEqual(period.start_date, "2026-05-16")
         self.assertEqual(period.source, "nanoka_live_fallback")
         self.assertTrue(period.fallback)
         self.assertIn("tower_id", period.source_metadata)
         self.assertTrue(
-            any(
-                warning.startswith("hoyolab_spiral_abyss_overview_failed:")
-                for warning in period.warnings
-            )
-        )
-
-    def test_period_resolver_falls_back_to_fandom_latest_after_nanoka_failure(self) -> None:
-        async def failing_hoyolab_fetcher(_page: object, *, language: str | None = None):
-            raise RuntimeError("hoyolab down")
-
-        def failing_nanoka():
-            raise RuntimeError("nanoka down")
-
-        period = asyncio.run(
-            resolve_abyss_period_with_fallbacks(
-                object(),
-                hoyolab_fetcher=failing_hoyolab_fetcher,
-                nanoka_live_resolver=failing_nanoka,
-                fandom_latest_resolver=lambda: ResolvedAbyssPeriodSource(
-                    raw_period="2026-05-16/2026-06-16",
-                    start_date="2026-05-16",
-                    end_date="2026-06-16",
-                    source="fandom_latest_fallback",
-                    source_path="fandom_index#latest",
-                    warnings=("fandom_latest_used_as_period_fallback",),
-                ),
-            )
-        )
-
-        self.assertEqual(period.source, "fandom_latest_fallback")
-        self.assertTrue(period.fallback)
-        self.assertIn("fandom_latest_used_as_period_fallback", period.warnings)
-        self.assertTrue(
-            any(warning.startswith("nanoka_live_fallback_failed:") for warning in period.warnings)
+            any(warning.startswith("fandom_latest_fallback_failed:") for warning in period.warnings)
         )
 
     def test_period_resolver_all_sources_fail_controlled(self) -> None:

@@ -23,6 +23,7 @@ FANDOM_PERIOD_URL_TEMPLATE = (
 )
 
 HP_SOURCE_NANOKA_RESOLVED = "nanoka_resolved_hp"
+HP_SOURCE_FANDOM_ENEMY_PAGE_FALLBACK = "fandom_enemy_page_fallback"
 HP_SOURCE_UNAVAILABLE = "unavailable"
 
 MATCH_CONFIDENCE_NONE = "none"
@@ -31,6 +32,7 @@ MATCH_CONFIDENCE_MEDIUM = "medium"
 MATCH_CONFIDENCE_HIGH = "high"
 MATCH_METHOD_AMBIGUOUS = "ambiguous"
 MATCH_METHOD_CONTEXT_UNIQUE = "context_unique_remaining"
+MATCH_METHOD_FANDOM_ENEMY_PAGE_FALLBACK = "fandom_enemy_page_fallback"
 MATCH_METHOD_MANUAL_ALIAS = "manual_alias"
 MATCH_METHOD_STRICT = "strict_name"
 MATCH_METHOD_UNMATCHED = "unmatched"
@@ -158,9 +160,9 @@ def load_abyss_floor12_source_data(
 
     The default normal path is Fandom composition plus Nanoka resolved HP. This
     function does not import or run experiment scripts; callers can pass reports
-    directly or inject production loaders. If Nanoka data is unavailable, enemy
-    HP remains unavailable with source warnings. Fandom enemy-page HP fallback is
-    intentionally out of scope for this first production boundary.
+    directly or inject production loaders. Fandom enemy-page HP fallback is
+    applied by the update layer after this primary join when Nanoka leaves HP
+    unavailable or when debug flags force that fallback.
     """
 
     period_url = period_url_for_start(period_start)

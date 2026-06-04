@@ -19,6 +19,11 @@ from run_workspace.abyss.source_data_cache import (
     cached_abyss_floor_source_data_path,
     load_cached_abyss_floor_source_data,
 )
+from run_workspace.abyss.fandom_enemy_hp_fallback import (
+    DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
+    HP_FALLBACK_MODE_AUTO,
+    HP_FALLBACK_MODE_CHOICES,
+)
 from run_workspace.abyss.source_data_update import build_update_report
 from run_workspace.abyss.source_data_fetchers import (
     ResolvedAbyssPeriodSource,
@@ -444,6 +449,8 @@ def update_cached_abyss_source_data_for_hoyolab_period(
     cache_dir: str | Path | None = None,
     cache_assets: bool = True,
     force: bool = False,
+    hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
+    hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
     update_report_builder: Callable[..., Mapping[str, Any]] | None = None,
 ) -> AbyssSourceDataRefreshResult:
     """Update Floor 12 source-data cache from an official HoYoLAB Abyss period."""
@@ -473,6 +480,8 @@ def update_cached_abyss_source_data_for_hoyolab_period(
         save_cache=True,
         cache_dir=cache_dir,
         cache_assets=cache_assets,
+        hp_source_mode=hp_source_mode,
+        hp_multiplier=hp_multiplier,
     )
     summary = report.get("summary") if isinstance(report, Mapping) else {}
     cache = report.get("cache") if isinstance(report, Mapping) else {}
@@ -511,6 +520,8 @@ def refresh_cached_abyss_source_data_for_hoyolab_period(
     cache_dir: str | Path | None = None,
     cache_assets: bool = True,
     force: bool = False,
+    hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
+    hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
     updater: RefreshUpdateCallable = update_cached_abyss_source_data_for_hoyolab_period,
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Best-effort import integration wrapper: never raises for cache refresh."""
@@ -524,6 +535,8 @@ def refresh_cached_abyss_source_data_for_hoyolab_period(
             cache_dir=cache_dir,
             cache_assets=cache_assets,
             force=force,
+            hp_source_mode=hp_source_mode,
+            hp_multiplier=hp_multiplier,
         )
     except Exception as exc:
         return None, _compact_exception_summary(exc)
@@ -875,6 +888,8 @@ async def _run_cli(args: argparse.Namespace) -> dict[str, Any]:
             floor=args.floor,
             cache_assets=not args.skip_assets,
             force=args.force,
+            hp_source_mode=args.hp_source,
+            hp_multiplier=args.hp_multiplier,
         )
         report["sourceData"] = summary
         report["sourceDataError"] = error
@@ -917,6 +932,7 @@ def _text_report(report: Mapping[str, Any]) -> str:
                 f"fandom={timings.get('fandom_composition_fetch_parse')} "
                 f"nanoka={timings.get('nanoka_source_fetch_parse')} "
                 f"join={timings.get('join_build_source_data')} "
+                f"hp_fallback={timings.get('fandom_enemy_page_hp_fallback')} "
                 f"assets={timings.get('icon_asset_cache')} "
                 f"cache={timings.get('json_cache_save')}"
             )
@@ -938,6 +954,26 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-assets", action="store_true", help="With --update-cache, skip monster icon asset caching.")
     parser.add_argument("--floor", type=int, default=12, help="Abyss floor to update. Default: 12.")
     parser.add_argument("--language", help="Optional HoYoLAB language override.")
+    parser.add_argument(
+        "--hp-source",
+        choices=HP_FALLBACK_MODE_CHOICES,
+        default=HP_FALLBACK_MODE_AUTO,
+        help=(
+            "Fact HP source for --update-cache. auto=Nanoka primary plus Fandom "
+            "enemy-page fallback for missing HP; nanoka-only disables enemy-page "
+            "fallback; fandom-only skips Nanoka HP and forces Fandom enemy-page HP. "
+            "Default: auto."
+        ),
+    )
+    parser.add_argument(
+        "--hp-multiplier",
+        type=float,
+        default=DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
+        help=(
+            "Manual Abyss HP multiplier for Fandom enemy-page HP fallback. "
+            f"Default: {DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER:g}."
+        ),
+    )
     parser.add_argument(
         "--period-source",
         choices=PERIOD_SOURCE_CHOICES,

@@ -2,8 +2,8 @@
 
 This module fetches one Fandom period page, resolves Nanoka's internal tower id
 from the period when needed, and builds `AbyssFloorSourceData`. Cache writes
-are explicit opt-in; this module does not touch UI and does not fetch
-individual Fandom enemy pages during the normal Nanoka path.
+are explicit opt-in; this module does not touch UI. Fandom enemy-page HP
+fallback runs only when explicitly forced or when Nanoka leaves HP unavailable.
 """
 
 from __future__ import annotations
@@ -20,6 +20,15 @@ from .source_data import (
     AbyssFloorSourceData,
     load_abyss_floor12_source_data,
     period_url_for_start,
+)
+from .fandom_enemy_hp_fallback import (
+    DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
+    HP_FALLBACK_MODE_AUTO,
+    HP_FALLBACK_MODE_CHOICES,
+    HP_FALLBACK_MODE_FANDOM_ONLY,
+    HP_FALLBACK_MODE_NANOKA_ONLY,
+    apply_fandom_enemy_page_hp_fallback,
+    normalize_hp_fallback_mode,
 )
 from .source_data_cache import (
     IconCacheResult,
@@ -42,6 +51,8 @@ def fetch_abyss_floor12_source_data(
     floor: int = 12,
     locale: str = "en",
     period_end: str | None = None,
+    hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
+    hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
 ) -> AbyssFloorSourceData:
     """Fetch live source reports and build production Floor 12 source data."""
 
@@ -51,6 +62,8 @@ def fetch_abyss_floor12_source_data(
         floor=floor,
         locale=locale,
         period_end=period_end,
+        hp_source_mode=hp_source_mode,
+        hp_multiplier=hp_multiplier,
     )
     return data
 
@@ -62,16 +75,29 @@ def _fetch_abyss_floor12_source_data_with_timings(
     floor: int = 12,
     locale: str = "en",
     period_end: str | None = None,
+    hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
+    hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
 ) -> tuple[AbyssFloorSourceData, dict[str, float]]:
     timings: dict[str, float] = {}
+    normalized_hp_mode = normalize_hp_fallback_mode(hp_source_mode)
     period_url = period_url_for_start(period_start)
     fandom_start = perf_counter()
     composition_report = fetch_fandom_composition_report(period_url, floor=floor)
     timings["fandom_composition_fetch_parse"] = _elapsed_ms(fandom_start)
     timings.update(_prefixed_timings("fandom", composition_report))
+    nanoka_report: dict[str, Any] | None = None
     try:
         nanoka_start = perf_counter()
-        if tower_id is not None:
+        if normalized_hp_mode == HP_FALLBACK_MODE_FANDOM_ONLY:
+            nanoka_report = {
+                "probe": {
+                    "name": "nanoka_abyss_tower_source_fetch",
+                    "production_safe_debug": True,
+                    "warnings": ["nanoka_skipped_for_forced_fandom_enemy_page_hp_fallback"],
+                },
+                "towers": [],
+            }
+        elif tower_id is not None:
             nanoka_report: dict[str, Any] | None = fetch_nanoka_tower_report(
                 tower_id,
                 floor=floor,
@@ -86,8 +112,18 @@ def _fetch_abyss_floor12_source_data_with_timings(
             )
         timings["nanoka_source_fetch_parse"] = _elapsed_ms(nanoka_start)
         timings.update(_prefixed_timings("nanoka", nanoka_report))
-    except NanokaTowerPeriodAmbiguous:
-        raise
+    except NanokaTowerPeriodAmbiguous as exc:
+        timings["nanoka_source_fetch_parse"] = _elapsed_ms(nanoka_start)
+        if normalized_hp_mode == HP_FALLBACK_MODE_NANOKA_ONLY:
+            raise
+        nanoka_report = {
+            "probe": {
+                "name": "nanoka_abyss_tower_source_fetch",
+                "production_safe_debug": True,
+                "warnings": [f"nanoka_period_ambiguous_falling_back_to_fandom_enemy_page_hp:{exc}"],
+            },
+            "towers": [],
+        }
     except AbyssSourceFetchError as exc:
         timings["nanoka_source_fetch_parse"] = _elapsed_ms(nanoka_start)
         nanoka_report = {
@@ -108,6 +144,16 @@ def _fetch_abyss_floor12_source_data_with_timings(
         nanoka_report=nanoka_report,
     )
     timings["join_build_source_data"] = _elapsed_ms(build_start)
+    fallback_start = perf_counter()
+    fallback_result = apply_fandom_enemy_page_hp_fallback(
+        data,
+        hp_multiplier=hp_multiplier,
+        mode=normalized_hp_mode,
+    )
+    timings["fandom_enemy_page_hp_fallback"] = _elapsed_ms(fallback_start)
+    timings["fandom_enemy_page_hp_fallback_requests"] = float(fallback_result.page_fetches)
+    timings["fandom_enemy_page_hp_fallback_attempted"] = float(fallback_result.attempted)
+    data = fallback_result.data
     return data, timings
 
 
@@ -135,14 +181,19 @@ def build_update_report(
     save_cache: bool = False,
     cache_dir: str | None = None,
     cache_assets: bool = True,
+    hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
+    hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
 ) -> dict[str, Any]:
     total_start = perf_counter()
+    normalized_hp_mode = normalize_hp_fallback_mode(hp_source_mode)
     data, timings = _fetch_abyss_floor12_source_data_with_timings(
         period_start=period_start,
         tower_id=tower_id,
         floor=floor,
         locale=locale,
         period_end=period_end,
+        hp_source_mode=normalized_hp_mode,
+        hp_multiplier=hp_multiplier,
     )
     cache_report: dict[str, Any] = {"saved": False}
     asset_report: dict[str, Any] = {"enabled": False}
@@ -176,17 +227,26 @@ def build_update_report(
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "normal_path_contract": {
                 "fandom_period_parse_requests": 1,
-                "nanoka_tower_manifest_requests": 1 if tower_id is None else 0,
-                "nanoka_tower_detail_json_requests": 1,
-                "fandom_enemy_page_requests": 0,
-                "fandom_enemy_page_fallback_enabled": False,
+                "nanoka_tower_manifest_requests": 1
+                if tower_id is None and normalized_hp_mode != HP_FALLBACK_MODE_FANDOM_ONLY
+                else 0,
+                "nanoka_tower_detail_json_requests": 0
+                if normalized_hp_mode == HP_FALLBACK_MODE_FANDOM_ONLY
+                else 1,
+                "fandom_enemy_page_requests": int(
+                    timings.get("fandom_enemy_page_hp_fallback_requests", 0)
+                ),
+                "fandom_enemy_page_fallback_enabled": normalized_hp_mode
+                != HP_FALLBACK_MODE_NANOKA_ONLY,
+                "hp_source_mode": normalized_hp_mode,
+                "hp_multiplier": float(hp_multiplier),
             },
             "timings_ms": timings,
             "warnings": [
                 "Debug/update entrypoint only; no UI, persistence, history, Account/Data import, or GCSIM wiring.",
                 "Fandom period page is the composition/wave/count source.",
                 "Nanoka tower JSON is the primary resolved HP/id/icon/detail source.",
-                "Fandom enemy-page HP fallback is intentionally not run here.",
+                "Fandom enemy-page HP fallback runs only for missing HP unless forced.",
             ],
         },
         "inputs": {
@@ -198,6 +258,8 @@ def build_update_report(
             else "period_lookup",
             "floor": floor,
             "locale": locale,
+            "hp_source_mode": normalized_hp_mode,
+            "hp_multiplier": float(hp_multiplier),
         },
         "nanoka": _nanoka_debug_metadata(data),
         "summary": _summary(data),
@@ -289,8 +351,17 @@ def _text_report(report: dict[str, Any]) -> str:
             f"fandom={timings.get('fandom_composition_fetch_parse')} "
             f"nanoka={timings.get('nanoka_source_fetch_parse')} "
             f"join={timings.get('join_build_source_data')} "
+            f"hp_fallback={timings.get('fandom_enemy_page_hp_fallback')} "
             f"assets={timings.get('icon_asset_cache')} "
             f"cache={timings.get('json_cache_save')}"
+        )
+    contract = report.get("probe", {}).get("normal_path_contract", {})
+    if isinstance(contract, dict):
+        lines.append(
+            "hp_source="
+            f"mode={contract.get('hp_source_mode')} "
+            f"multiplier={contract.get('hp_multiplier')} "
+            f"fandom_enemy_page_requests={contract.get('fandom_enemy_page_requests')}"
         )
     cache_report = report.get("cache", {})
     if cache_report.get("saved"):
@@ -345,6 +416,25 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="With --save-cache, skip monster icon asset downloads.",
     )
+    parser.add_argument(
+        "--hp-source",
+        choices=HP_FALLBACK_MODE_CHOICES,
+        default=HP_FALLBACK_MODE_AUTO,
+        help=(
+            "Fact HP source mode. auto=Nanoka primary plus Fandom enemy-page fallback "
+            "for missing HP; nanoka-only disables enemy-page fallback; fandom-only "
+            "skips Nanoka HP and forces Fandom enemy-page HP. Default: auto."
+        ),
+    )
+    parser.add_argument(
+        "--hp-multiplier",
+        type=float,
+        default=DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
+        help=(
+            "Manual Abyss HP multiplier for Fandom enemy-page HP fallback. "
+            f"Default: {DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER:g}."
+        ),
+    )
     parser.add_argument("--indent", type=int, default=2, help="JSON indentation. Default: 2.")
     return parser
 
@@ -362,6 +452,8 @@ def main() -> int:
             save_cache=args.save_cache,
             cache_dir=args.cache_dir,
             cache_assets=not args.skip_assets,
+            hp_source_mode=args.hp_source,
+            hp_multiplier=args.hp_multiplier,
         )
     except AbyssSourceFetchError as exc:
         print(

@@ -237,10 +237,13 @@ MVP recommendation:
   Nanoka's internal tower id is resolved from the Nanoka tower manifest by
   period start and stored only as source/debug metadata; `--tower-id N` remains
   an explicit debug override.
-  Production code does not import experiment scripts; the normal Nanoka path
-  fetches the Fandom period page plus Nanoka manifest/detail data, does not
-  fetch individual Fandom enemy pages, and does not run Fandom enemy-page
-  fallback yet.
+  Production code does not import experiment scripts. The normal `auto` path
+  fetches the Fandom period page plus Nanoka manifest/detail data first. If
+  Nanoka leaves enemy HP unavailable, the updater can fetch Fandom enemy pages
+  as the lower-confidence HP fallback and save that result into the same source
+  cache. Debug HP modes are explicit: `--hp-source auto` for Nanoka primary plus
+  fallback, `--hp-source nanoka-only` for the old no-fallback path, and
+  `--hp-source fandom-only` to force Fandom enemy-page HP for validation.
 - Persistent source-data cache boundary exists at
   `run_workspace/abyss/source_data_cache.py`. It saves/loads typed
   `AbyssFloorSourceData` as schema-v1 JSON under the project-root-anchored path
@@ -281,7 +284,9 @@ MVP recommendation:
   It uses the normal authenticated HoYoLAB export context, writes the same
   period file consumed by runtime, skips same-period cache/assets by default,
   supports `--force` for an explicit refresh, and supports
-  `--period-source auto|hoyolab|nanoka|fandom` for source diagnostics.
+  `--period-source auto|hoyolab|nanoka|fandom` for period-source diagnostics.
+  It also passes HP-source diagnostics through to the source-data updater:
+  `--hp-source auto|nanoka-only|fandom-only` and `--hp-multiplier 3.75`.
 - AppShell/right-panel Fact DPS now uses this local cache through
   `run_workspace/abyss/source_data_runtime.py`. The runtime provider reads the
   captured HoYoLAB period file, loads

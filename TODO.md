@@ -198,8 +198,11 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   then stores `cached_icon_path` on rows for future tooltip UI. Icon downloads
   are bounded-parallel and reuse existing URL-hash files even during source-data
   `--force`; force refreshes source data, not identical already-cached icons.
-  It does not wire UI, replace the current fixture, or run Fandom enemy-page
-  fallback yet.
+  It does not wire UI or replace the current fixture. HP source modes are now
+  explicit: `--hp-source auto` uses Nanoka as primary and Fandom enemy-page HP
+  as fallback only for missing HP, `--hp-source nanoka-only` keeps the old
+  no-enemy-page fallback path, and `--hp-source fandom-only` forces Fandom
+  enemy-page HP for validation.
   Normal HoYoLAB import now resolves the current Spiral Abyss period with source
   priority HoYoLAB overview -> latest Fandom Spiral Abyss/Floors period page
   -> Nanoka live tower metadata, stores it at
@@ -209,8 +212,10 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   on source update failure. Manual backend/debug command:
   `python -m hoyolab_export.abyss_source_refresh --write-period --update-cache`;
   it skips same-period ready cache/assets by default, has `--force` for an
-  explicit refresh, and has `--period-source auto|hoyolab|nanoka|fandom` for
-  diagnostics. Local system date is not a source-data authority for this refresh
+  explicit refresh, has `--period-source auto|hoyolab|nanoka|fandom` for
+  period diagnostics, and passes `--hp-source auto|nanoka-only|fandom-only`
+  plus `--hp-multiplier` into the source-data updater. Local system date is not
+  a source-data authority for this refresh
   path. Right panel Fact DPS now reads this local cache via
   `run_workspace/abyss/source_data_runtime.py`, never fetches network data from
   the right panel, and uses `solo_target_hp` as the default displayed HP mode.

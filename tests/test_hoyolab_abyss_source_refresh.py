@@ -439,6 +439,8 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
             cache_dir: str | None = None,
             cache_assets: bool = True,
             force: bool = False,
+            hp_source_mode: str = "auto",
+            hp_multiplier: float = 3.75,
         ) -> AbyssSourceDataRefreshResult:
             calls.append(
                 {
@@ -447,6 +449,8 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
                     "cache_dir": cache_dir,
                     "cache_assets": cache_assets,
                     "force": force,
+                    "hp_source_mode": hp_source_mode,
+                    "hp_multiplier": hp_multiplier,
                 }
             )
             assert isinstance(update_period, HoYoLABAbyssPeriod)
@@ -579,6 +583,8 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
             save_cache=True,
             cache_dir=None,
             cache_assets=True,
+            hp_source_mode="auto",
+            hp_multiplier=3.75,
         )
         self.assertTrue(result.cache_saved)
 

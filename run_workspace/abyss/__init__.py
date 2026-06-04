@@ -15,6 +15,7 @@ from .factual_dps import (
     calculate_side_factual_dps,
 )
 from .source_data import (
+    HP_SOURCE_FANDOM_ENEMY_PAGE_FALLBACK,
     HP_SOURCE_NANOKA_RESOLVED,
     HP_SOURCE_UNAVAILABLE,
     AbyssChamberSideSourceData,
@@ -57,6 +58,7 @@ __all__ = [
     "AbyssSourceDataUnavailable",
     "AbyssWaveSourceData",
     "FactualDpsResult",
+    "HP_SOURCE_FANDOM_ENEMY_PAGE_FALLBACK",
     "HP_SOURCE_NANOKA_RESOLVED",
     "HP_SOURCE_UNAVAILABLE",
     "IconCacheResult",

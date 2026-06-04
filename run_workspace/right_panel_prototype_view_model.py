@@ -16,6 +16,7 @@ from .abyss.factual_dps import (
     calculate_factual_dps,
 )
 from .abyss.source_data import (
+    HP_SOURCE_FANDOM_ENEMY_PAGE_FALLBACK,
     HP_SOURCE_NANOKA_RESOLVED,
     HP_SOURCE_UNAVAILABLE,
     AbyssChamberSideSourceData,
@@ -1722,8 +1723,14 @@ def _fact_dps_hp_source_label(
         for row in wave.enemies
         if row.hp_source
     }
-    if HP_SOURCE_NANOKA_RESOLVED in sources:
+    has_nanoka = HP_SOURCE_NANOKA_RESOLVED in sources
+    has_fandom_fallback = HP_SOURCE_FANDOM_ENEMY_PAGE_FALLBACK in sources
+    if has_nanoka and has_fandom_fallback:
+        return tr("right_panel.fact_dps.tooltip.source_nanoka_plus_fandom")
+    if has_nanoka:
         return tr("right_panel.fact_dps.tooltip.source_nanoka")
+    if has_fandom_fallback:
+        return tr("right_panel.fact_dps.tooltip.source_fandom_enemy_page")
     if HP_SOURCE_UNAVAILABLE in sources or not sources:
         return tr("right_panel.fact_dps.tooltip.source_unavailable")
     return ", ".join(sorted(sources))

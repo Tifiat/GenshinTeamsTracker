@@ -65,6 +65,8 @@
   "right_panel.fact_dps.tooltip.composition_source": "Composição/nomes/quantidade: página de período Fandom",
   "right_panel.fact_dps.tooltip.hp_source": "HP: {source}",
   "right_panel.fact_dps.tooltip.source_nanoka": "HP resolvido Nanoka",
+  "right_panel.fact_dps.tooltip.source_fandom_enemy_page": "Fallback HP da pagina do inimigo Fandom",
+  "right_panel.fact_dps.tooltip.source_nanoka_plus_fandom": "HP Nanoka + fallback de pagina Fandom",
   "right_panel.fact_dps.tooltip.source_unavailable": "Indisponível",
   "right_panel.fact_dps.tooltip.match": "Correspondência: {method} / {confidence}",
   "right_panel.fact_dps.tooltip.match_mixed": "Correspondência: métodos mistos",

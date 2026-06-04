@@ -6,6 +6,10 @@ from unittest.mock import patch
 
 from run_workspace.abyss.source_data_cache import load_cached_abyss_floor_source_data
 from run_workspace.abyss.source_data_fetchers import AbyssSourceFetchError
+from run_workspace.abyss.fandom_enemy_hp_fallback import (
+    FandomEnemyHpFallbackResult,
+    HP_FALLBACK_MODE_NANOKA_ONLY,
+)
 from run_workspace.abyss.source_data_update import build_update_report
 
 from tests.abyss.test_source_data import (
@@ -69,6 +73,7 @@ class AbyssSourceDataUpdateTest(unittest.TestCase):
             report = build_update_report(
                 period_start="2026-05-16",
                 floor=12,
+                hp_source_mode=HP_FALLBACK_MODE_NANOKA_ONLY,
             )
 
         self.assertEqual(report["summary"]["enemy_rows"], 10)
@@ -165,6 +170,74 @@ class AbyssSourceDataUpdateTest(unittest.TestCase):
                 warning.startswith("nanoka_fetch_failed:")
                 for warning in report["summary"]["warnings"]
             )
+        )
+
+    def test_update_entrypoint_uses_fandom_hp_fallback_when_nanoka_missing(self) -> None:
+        fandom_report = composition_report(
+            "2026-05-16",
+            [fandom_row("Fallback Enemy", chamber=1, side=1, wave=1)],
+        )
+
+        def fake_fallback(data, **kwargs):
+            rows = []
+            for row in data.enemy_rows:
+                rows.append(
+                    row.__class__(
+                        **{
+                            **{field: getattr(row, field) for field in row.__dataclass_fields__},
+                            "nanoka_hp": 3750,
+                            "hp_source": "fandom_enemy_page_fallback",
+                            "match_method": "fandom_enemy_page_fallback",
+                            "match_confidence": "medium",
+                            "warnings": (*row.warnings, "fandom_enemy_page_hp_fallback_used"),
+                        }
+                    )
+                )
+            from run_workspace.abyss.source_data import rebuild_abyss_floor_source_data_with_rows
+
+            updated = rebuild_abyss_floor_source_data_with_rows(
+                data,
+                tuple(rows),
+                global_warnings=("fandom_enemy_page_hp_fallback_resolved:1",),
+            )
+            return FandomEnemyHpFallbackResult(
+                data=updated,
+                attempted=1,
+                resolved=1,
+                unresolved=0,
+                page_fetches=1,
+                page_cache_hits=0,
+                hp_multiplier=3.75,
+                mode="auto",
+                warnings=("fandom_enemy_page_hp_fallback_resolved:1",),
+            )
+
+        with patch(
+            "run_workspace.abyss.source_data_update.fetch_fandom_composition_report",
+            return_value=fandom_report,
+        ), patch(
+            "run_workspace.abyss.source_data_update.fetch_nanoka_tower_report_for_period",
+            side_effect=AbyssSourceFetchError("boom"),
+        ), patch(
+            "run_workspace.abyss.source_data_update.apply_fandom_enemy_page_hp_fallback",
+            side_effect=fake_fallback,
+        ) as fallback:
+            report = build_update_report(
+                period_start="2026-05-16",
+                floor=12,
+            )
+
+        fallback.assert_called_once()
+        self.assertEqual(report["summary"]["matched"], 1)
+        self.assertEqual(report["summary"]["unmatched"], 0)
+        self.assertEqual(report["source_data"]["enemy_rows"][0]["nanoka_hp"], 3750)
+        self.assertEqual(
+            report["source_data"]["enemy_rows"][0]["hp_source"],
+            "fandom_enemy_page_fallback",
+        )
+        self.assertEqual(
+            report["probe"]["normal_path_contract"]["fandom_enemy_page_requests"],
+            1,
         )
 
     def test_update_entrypoint_can_save_cache_when_requested(self) -> None:

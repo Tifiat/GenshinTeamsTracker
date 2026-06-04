@@ -65,6 +65,8 @@
   "right_panel.fact_dps.tooltip.composition_source": "\u0421\u043e\u0441\u0442\u0430\u0432/\u0438\u043c\u0435\u043d\u0430/\u043a\u043e\u043b-\u0432\u043e: \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0430 Fandom \u043f\u0435\u0440\u0438\u043e\u0434\u0430",
   "right_panel.fact_dps.tooltip.hp_source": "HP: {source}",
   "right_panel.fact_dps.tooltip.source_nanoka": "Nanoka, \u0433\u043e\u0442\u043e\u0432\u043e\u0435 HP",
+  "right_panel.fact_dps.tooltip.source_fandom_enemy_page": "Fandom, HP \u0441\u043e \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u044b \u0432\u0440\u0430\u0433\u0430",
+  "right_panel.fact_dps.tooltip.source_nanoka_plus_fandom": "Nanoka HP + Fandom fallback",
   "right_panel.fact_dps.tooltip.source_unavailable": "\u041d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e",
   "right_panel.fact_dps.tooltip.match": "\u0421\u0432\u0435\u0440\u043a\u0430: {method} / {confidence}",
   "right_panel.fact_dps.tooltip.match_mixed": "\u0421\u0432\u0435\u0440\u043a\u0430: \u0441\u043c\u0435\u0448\u0430\u043d\u043d\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b",

@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from datetime import datetime
 from time import perf_counter
@@ -23,13 +24,16 @@ from .source_data import (
 )
 from .fandom_enemy_hp_fallback import (
     DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
-    DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
     HP_FALLBACK_MODE_AUTO,
     HP_FALLBACK_MODE_CHOICES,
     HP_FALLBACK_MODE_FANDOM_ONLY,
     HP_FALLBACK_MODE_NANOKA_ONLY,
     apply_fandom_enemy_page_hp_fallback,
     normalize_hp_fallback_mode,
+)
+from .network_config import (
+    DEFAULT_ABYSS_SOURCE_NETWORK_WORKERS,
+    normalize_network_workers,
 )
 from .source_data_cache import (
     IconCacheResult,
@@ -54,7 +58,8 @@ def fetch_abyss_floor12_source_data(
     period_end: str | None = None,
     hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
-    fandom_hp_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
+    network_workers: int | None = None,
+    fandom_hp_workers: int | None = None,
 ) -> AbyssFloorSourceData:
     """Fetch live source reports and build production Floor 12 source data."""
 
@@ -66,6 +71,7 @@ def fetch_abyss_floor12_source_data(
         period_end=period_end,
         hp_source_mode=hp_source_mode,
         hp_multiplier=hp_multiplier,
+        network_workers=network_workers,
         fandom_hp_workers=fandom_hp_workers,
     )
     return data
@@ -80,65 +86,45 @@ def _fetch_abyss_floor12_source_data_with_timings(
     period_end: str | None = None,
     hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
-    fandom_hp_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
+    network_workers: int | None = None,
+    fandom_hp_workers: int | None = None,
 ) -> tuple[AbyssFloorSourceData, dict[str, float]]:
     timings: dict[str, float] = {}
     normalized_hp_mode = normalize_hp_fallback_mode(hp_source_mode)
-    normalized_workers = _normalize_worker_count(fandom_hp_workers)
+    normalized_workers = _resolve_network_workers(
+        network_workers=network_workers,
+        fandom_hp_workers=fandom_hp_workers,
+    )
     period_url = period_url_for_start(period_start)
-    fandom_start = perf_counter()
-    composition_report = fetch_fandom_composition_report(period_url, floor=floor)
-    timings["fandom_composition_fetch_parse"] = _elapsed_ms(fandom_start)
-    timings.update(_prefixed_timings("fandom", composition_report))
-    nanoka_report: dict[str, Any] | None = None
-    try:
-        nanoka_start = perf_counter()
-        if normalized_hp_mode == HP_FALLBACK_MODE_FANDOM_ONLY:
-            nanoka_report = {
-                "probe": {
-                    "name": "nanoka_abyss_tower_source_fetch",
-                    "production_safe_debug": True,
-                    "warnings": ["nanoka_skipped_for_forced_fandom_enemy_page_hp_fallback"],
-                },
-                "towers": [],
-            }
-        elif tower_id is not None:
-            nanoka_report: dict[str, Any] | None = fetch_nanoka_tower_report(
-                tower_id,
+    source_start = perf_counter()
+    if normalized_hp_mode == HP_FALLBACK_MODE_FANDOM_ONLY:
+        composition_report, source_timings = _fetch_fandom_composition_with_timings(
+            period_url,
+            floor=floor,
+        )
+        nanoka_report = _skipped_nanoka_report()
+        source_timings["nanoka_source_fetch_parse"] = 0.0
+    else:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            fandom_future = executor.submit(
+                _fetch_fandom_composition_with_timings,
+                period_url,
                 floor=floor,
-                locale=locale,
             )
-        else:
-            nanoka_report = fetch_nanoka_tower_report_for_period(
-                period_start,
+            nanoka_future = executor.submit(
+                _fetch_nanoka_source_with_timings,
+                tower_id=tower_id,
+                period_start=period_start,
                 period_end=period_end,
                 floor=floor,
                 locale=locale,
+                hp_source_mode=normalized_hp_mode,
             )
-        timings["nanoka_source_fetch_parse"] = _elapsed_ms(nanoka_start)
-        timings.update(_prefixed_timings("nanoka", nanoka_report))
-    except NanokaTowerPeriodAmbiguous as exc:
-        timings["nanoka_source_fetch_parse"] = _elapsed_ms(nanoka_start)
-        if normalized_hp_mode == HP_FALLBACK_MODE_NANOKA_ONLY:
-            raise
-        nanoka_report = {
-            "probe": {
-                "name": "nanoka_abyss_tower_source_fetch",
-                "production_safe_debug": True,
-                "warnings": [f"nanoka_period_ambiguous_falling_back_to_fandom_enemy_page_hp:{exc}"],
-            },
-            "towers": [],
-        }
-    except AbyssSourceFetchError as exc:
-        timings["nanoka_source_fetch_parse"] = _elapsed_ms(nanoka_start)
-        nanoka_report = {
-            "probe": {
-                "name": "nanoka_abyss_tower_source_fetch",
-                "production_safe_debug": True,
-                "warnings": [f"nanoka_fetch_failed:{exc}"],
-            },
-            "towers": [],
-        }
+            composition_report, fandom_timings = fandom_future.result()
+            nanoka_report, nanoka_timings = nanoka_future.result()
+        source_timings = {**fandom_timings, **nanoka_timings}
+    timings.update(source_timings)
+    timings["source_fetch_parallel"] = _elapsed_ms(source_start)
     resolved_tower_id = _resolved_nanoka_tower_id(nanoka_report) or tower_id or "unresolved"
     build_start = perf_counter()
     data = load_abyss_floor12_source_data(
@@ -189,11 +175,15 @@ def build_update_report(
     cache_assets: bool = True,
     hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
-    fandom_hp_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
+    network_workers: int | None = None,
+    fandom_hp_workers: int | None = None,
 ) -> dict[str, Any]:
     total_start = perf_counter()
     normalized_hp_mode = normalize_hp_fallback_mode(hp_source_mode)
-    normalized_workers = _normalize_worker_count(fandom_hp_workers)
+    normalized_workers = _resolve_network_workers(
+        network_workers=network_workers,
+        fandom_hp_workers=fandom_hp_workers,
+    )
     data, timings = _fetch_abyss_floor12_source_data_with_timings(
         period_start=period_start,
         tower_id=tower_id,
@@ -202,7 +192,7 @@ def build_update_report(
         period_end=period_end,
         hp_source_mode=normalized_hp_mode,
         hp_multiplier=hp_multiplier,
-        fandom_hp_workers=normalized_workers,
+        network_workers=normalized_workers,
     )
     cache_report: dict[str, Any] = {"saved": False}
     asset_report: dict[str, Any] = {"enabled": False}
@@ -210,7 +200,11 @@ def build_update_report(
     if save_cache:
         if cache_assets:
             asset_start = perf_counter()
-            asset_result = cache_abyss_floor_monster_icons(data, cache_dir=cache_dir)
+            asset_result = cache_abyss_floor_monster_icons(
+                data,
+                cache_dir=cache_dir,
+                max_workers=normalized_workers,
+            )
             timings["icon_asset_cache"] = _elapsed_ms(asset_start)
             report_data = asset_result.data
             asset_report = _asset_cache_report(asset_result)
@@ -249,6 +243,7 @@ def build_update_report(
                 != HP_FALLBACK_MODE_NANOKA_ONLY,
                 "hp_source_mode": normalized_hp_mode,
                 "hp_multiplier": float(hp_multiplier),
+                "network_workers": normalized_workers,
                 "fandom_hp_workers": normalized_workers,
             },
             "timings_ms": timings,
@@ -270,6 +265,7 @@ def build_update_report(
             "locale": locale,
             "hp_source_mode": normalized_hp_mode,
             "hp_multiplier": float(hp_multiplier),
+            "network_workers": normalized_workers,
             "fandom_hp_workers": normalized_workers,
         },
         "nanoka": _nanoka_debug_metadata(data),
@@ -319,6 +315,7 @@ def _asset_cache_report(result: IconCacheResult) -> dict[str, Any]:
         "failed": result.failed,
         "downloaded": result.downloaded,
         "cache_hits": result.cache_hits,
+        "workers": result.workers,
         "warnings": list(result.warnings),
     }
 
@@ -342,11 +339,93 @@ def _elapsed_ms(start: float) -> float:
     return round((perf_counter() - start) * 1000, 3)
 
 
-def _normalize_worker_count(value: int | str | None) -> int:
+def _resolve_network_workers(
+    *,
+    network_workers: int | str | None,
+    fandom_hp_workers: int | str | None,
+) -> int:
+    if network_workers is not None:
+        return normalize_network_workers(network_workers)
+    return normalize_network_workers(fandom_hp_workers)
+
+
+def _fetch_fandom_composition_with_timings(
+    period_url: str,
+    *,
+    floor: int,
+) -> tuple[dict[str, Any], dict[str, float]]:
+    start = perf_counter()
+    report = fetch_fandom_composition_report(period_url, floor=floor)
+    timings = {"fandom_composition_fetch_parse": _elapsed_ms(start)}
+    timings.update(_prefixed_timings("fandom", report))
+    return report, timings
+
+
+def _fetch_nanoka_source_with_timings(
+    *,
+    tower_id: str | None,
+    period_start: str,
+    period_end: str | None,
+    floor: int,
+    locale: str,
+    hp_source_mode: str,
+) -> tuple[dict[str, Any], dict[str, float]]:
+    start = perf_counter()
     try:
-        return max(1, int(value or DEFAULT_FANDOM_ENEMY_PAGE_WORKERS))
-    except (TypeError, ValueError):
-        return DEFAULT_FANDOM_ENEMY_PAGE_WORKERS
+        if tower_id is not None:
+            report = fetch_nanoka_tower_report(
+                tower_id,
+                floor=floor,
+                locale=locale,
+            )
+        else:
+            report = fetch_nanoka_tower_report_for_period(
+                period_start,
+                period_end=period_end,
+                floor=floor,
+                locale=locale,
+            )
+        timings = {"nanoka_source_fetch_parse": _elapsed_ms(start)}
+        timings.update(_prefixed_timings("nanoka", report))
+        return report, timings
+    except NanokaTowerPeriodAmbiguous as exc:
+        timings = {"nanoka_source_fetch_parse": _elapsed_ms(start)}
+        if hp_source_mode == HP_FALLBACK_MODE_NANOKA_ONLY:
+            raise
+        return (
+            {
+                "probe": {
+                    "name": "nanoka_abyss_tower_source_fetch",
+                    "production_safe_debug": True,
+                    "warnings": [f"nanoka_period_ambiguous_falling_back_to_fandom_enemy_page_hp:{exc}"],
+                },
+                "towers": [],
+            },
+            timings,
+        )
+    except AbyssSourceFetchError as exc:
+        return (
+            {
+                "probe": {
+                    "name": "nanoka_abyss_tower_source_fetch",
+                    "production_safe_debug": True,
+                    "warnings": [f"nanoka_fetch_failed:{exc}"],
+                },
+                "towers": [],
+            },
+            {"nanoka_source_fetch_parse": _elapsed_ms(start)},
+        )
+
+
+def _skipped_nanoka_report() -> dict[str, Any]:
+    return {
+        "probe": {
+            "name": "nanoka_abyss_tower_source_fetch",
+            "production_safe_debug": True,
+            "warnings": ["nanoka_skipped_for_forced_fandom_enemy_page_hp_fallback"],
+        },
+        "towers": [],
+    }
 
 
 def _optional_float(value: Any) -> float | None:
@@ -389,7 +468,7 @@ def _text_report(report: dict[str, Any]) -> str:
             "hp_source="
             f"mode={contract.get('hp_source_mode')} "
             f"multiplier={contract.get('hp_multiplier')} "
-            f"workers={contract.get('fandom_hp_workers')} "
+            f"network_workers={contract.get('network_workers')} "
             f"fandom_enemy_page_requests={contract.get('fandom_enemy_page_requests')}"
         )
     cache_report = report.get("cache", {})
@@ -402,6 +481,7 @@ def _text_report(report: dict[str, Any]) -> str:
             f"attempted={asset_report.get('attempted')} "
             f"saved={asset_report.get('saved')} "
             f"failed={asset_report.get('failed')} "
+            f"workers={asset_report.get('workers')} "
             f"dir={asset_report.get('cache_dir')}"
         )
     return "\n".join(lines)
@@ -465,12 +545,22 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--network-workers",
+        type=int,
+        default=None,
+        help=(
+            "Bounded parallel network workers for Fandom HP fallback and "
+            "monster icon caching. Default: "
+            f"{DEFAULT_ABYSS_SOURCE_NETWORK_WORKERS}."
+        ),
+    )
+    parser.add_argument(
         "--fandom-hp-workers",
         type=int,
-        default=DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
+        default=None,
         help=(
-            "Bounded parallel Fandom enemy-page HP fetch workers. "
-            f"Default: {DEFAULT_FANDOM_ENEMY_PAGE_WORKERS}."
+            "Compatibility alias for --network-workers when --network-workers "
+            "is not supplied."
         ),
     )
     parser.add_argument("--indent", type=int, default=2, help="JSON indentation. Default: 2.")
@@ -492,6 +582,7 @@ def main() -> int:
             cache_assets=not args.skip_assets,
             hp_source_mode=args.hp_source,
             hp_multiplier=args.hp_multiplier,
+            network_workers=args.network_workers,
             fandom_hp_workers=args.fandom_hp_workers,
         )
     except AbyssSourceFetchError as exc:

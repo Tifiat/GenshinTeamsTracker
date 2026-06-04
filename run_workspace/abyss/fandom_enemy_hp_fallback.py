@@ -35,10 +35,14 @@ from .source_data_fetchers import (
     _parse_fragment,
     page_title_from_fandom_url,
 )
+from .network_config import (
+    DEFAULT_ABYSS_SOURCE_NETWORK_WORKERS,
+    normalize_network_workers,
+)
 
 
 DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER = 3.75
-DEFAULT_FANDOM_ENEMY_PAGE_WORKERS = 5
+DEFAULT_FANDOM_ENEMY_PAGE_WORKERS = DEFAULT_ABYSS_SOURCE_NETWORK_WORKERS
 HP_FALLBACK_MODE_AUTO = "auto"
 HP_FALLBACK_MODE_NANOKA_ONLY = "nanoka-only"
 HP_FALLBACK_MODE_FANDOM_ONLY = "fandom-only"
@@ -130,7 +134,7 @@ def apply_fandom_enemy_page_hp_fallback(
     """
 
     normalized_mode = normalize_hp_fallback_mode(mode)
-    workers = _normalize_worker_count(enemy_page_workers)
+    workers = normalize_network_workers(enemy_page_workers)
     if normalized_mode == HP_FALLBACK_MODE_NANOKA_ONLY:
         return FandomEnemyHpFallbackResult(
             data=data,
@@ -260,13 +264,6 @@ def _prefetch_enemy_pages(
             except Exception as exc:  # noqa: BLE001 - fallback reports per-row failures.
                 page_errors[url] = exc
     return len(urls)
-
-
-def _normalize_worker_count(value: int | str | None) -> int:
-    try:
-        return max(1, int(value or DEFAULT_FANDOM_ENEMY_PAGE_WORKERS))
-    except (TypeError, ValueError):
-        return DEFAULT_FANDOM_ENEMY_PAGE_WORKERS
 
 
 def fetch_enemy_page(url: str) -> EnemyPage:

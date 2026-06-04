@@ -1,10 +1,15 @@
 from __future__ import annotations
 
 import tempfile
+import threading
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
-from run_workspace.abyss.source_data_cache import load_cached_abyss_floor_source_data
+from run_workspace.abyss.source_data_cache import (
+    IconCacheResult,
+    load_cached_abyss_floor_source_data,
+)
 from run_workspace.abyss.source_data_fetchers import AbyssSourceFetchError
 from run_workspace.abyss.fandom_enemy_hp_fallback import (
     FandomEnemyHpFallbackResult,
@@ -120,6 +125,133 @@ class AbyssSourceDataUpdateTest(unittest.TestCase):
         ):
             self.assertIn(key, timings)
             self.assertIsInstance(timings[key], float)
+
+    def test_auto_source_fetch_starts_fandom_and_nanoka_in_parallel(self) -> None:
+        fandom_report, tower_report = current_style_reports()
+        fandom_started = threading.Event()
+        nanoka_started = threading.Event()
+
+        def fetch_fandom(_url: str, *, floor: int = 12):
+            fandom_started.set()
+            self.assertTrue(nanoka_started.wait(1.0))
+            return fandom_report
+
+        def fetch_nanoka(_period_start: str, *, period_end=None, floor: int = 12, locale: str = "en"):
+            nanoka_started.set()
+            self.assertTrue(fandom_started.wait(1.0))
+            return tower_report
+
+        with patch(
+            "run_workspace.abyss.source_data_update.fetch_fandom_composition_report",
+            side_effect=fetch_fandom,
+        ), patch(
+            "run_workspace.abyss.source_data_update.fetch_nanoka_tower_report_for_period",
+            side_effect=fetch_nanoka,
+        ):
+            report = build_update_report(
+                period_start="2026-05-16",
+                floor=12,
+            )
+
+        self.assertEqual(report["summary"]["matched"], 10)
+        self.assertIn("source_fetch_parallel", report["probe"]["timings_ms"])
+
+    def test_network_workers_drive_fallback_and_icon_cache(self) -> None:
+        fandom_report, tower_report = current_style_reports()
+        fallback_workers: list[int] = []
+        icon_workers: list[int] = []
+
+        def fake_fallback(data, **kwargs):
+            fallback_workers.append(kwargs["enemy_page_workers"])
+            return FandomEnemyHpFallbackResult(
+                data=data,
+                attempted=0,
+                resolved=0,
+                unresolved=0,
+                page_fetches=0,
+                page_cache_hits=0,
+                hp_multiplier=3.75,
+                mode="auto",
+                workers=kwargs["enemy_page_workers"],
+            )
+
+        def fake_icon_cache(data, **kwargs):
+            icon_workers.append(kwargs["max_workers"])
+            return IconCacheResult(
+                data=data,
+                cache_dir=Path(tempfile.gettempdir()),
+                attempted=len(data.enemy_rows),
+                saved=0,
+                failed=len(data.enemy_rows),
+                downloaded=0,
+                cache_hits=0,
+                workers=kwargs["max_workers"],
+                entries=(),
+            )
+
+        with tempfile.TemporaryDirectory() as tmp, patch(
+            "run_workspace.abyss.source_data_update.fetch_fandom_composition_report",
+            return_value=fandom_report,
+        ), patch(
+            "run_workspace.abyss.source_data_update.fetch_nanoka_tower_report_for_period",
+            return_value=tower_report,
+        ), patch(
+            "run_workspace.abyss.source_data_update.apply_fandom_enemy_page_hp_fallback",
+            side_effect=fake_fallback,
+        ), patch(
+            "run_workspace.abyss.source_data_update.cache_abyss_floor_monster_icons",
+            side_effect=fake_icon_cache,
+        ):
+            report = build_update_report(
+                period_start="2026-05-16",
+                floor=12,
+                save_cache=True,
+                cache_dir=tmp,
+                network_workers=7,
+                fandom_hp_workers=3,
+            )
+
+        self.assertEqual(fallback_workers, [7])
+        self.assertEqual(icon_workers, [7])
+        self.assertEqual(report["probe"]["normal_path_contract"]["network_workers"], 7)
+        self.assertEqual(report["assets"]["workers"], 7)
+
+    def test_fandom_hp_workers_alias_is_used_when_network_workers_missing(self) -> None:
+        fandom_report, tower_report = current_style_reports()
+        fallback_workers: list[int] = []
+
+        def fake_fallback(data, **kwargs):
+            fallback_workers.append(kwargs["enemy_page_workers"])
+            return FandomEnemyHpFallbackResult(
+                data=data,
+                attempted=0,
+                resolved=0,
+                unresolved=0,
+                page_fetches=0,
+                page_cache_hits=0,
+                hp_multiplier=3.75,
+                mode="auto",
+                workers=kwargs["enemy_page_workers"],
+            )
+
+        with patch(
+            "run_workspace.abyss.source_data_update.fetch_fandom_composition_report",
+            return_value=fandom_report,
+        ), patch(
+            "run_workspace.abyss.source_data_update.fetch_nanoka_tower_report_for_period",
+            return_value=tower_report,
+        ), patch(
+            "run_workspace.abyss.source_data_update.apply_fandom_enemy_page_hp_fallback",
+            side_effect=fake_fallback,
+        ):
+            report = build_update_report(
+                period_start="2026-05-16",
+                floor=12,
+                fandom_hp_workers=4,
+            )
+
+        self.assertEqual(fallback_workers, [4])
+        self.assertEqual(report["probe"]["normal_path_contract"]["network_workers"], 4)
 
     def test_explicit_tower_id_still_works_without_period_resolver(self) -> None:
         fandom_report, tower_report = current_style_reports()

@@ -441,7 +441,8 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
             force: bool = False,
             hp_source_mode: str = "auto",
             hp_multiplier: float = 3.75,
-            fandom_hp_workers: int = 5,
+            network_workers: int | None = None,
+            fandom_hp_workers: int | None = None,
         ) -> AbyssSourceDataRefreshResult:
             calls.append(
                 {
@@ -452,6 +453,7 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
                     "force": force,
                     "hp_source_mode": hp_source_mode,
                     "hp_multiplier": hp_multiplier,
+                    "network_workers": network_workers,
                     "fandom_hp_workers": fandom_hp_workers,
                 }
             )
@@ -587,7 +589,7 @@ class HoYoLABAbyssSourceRefreshTest(unittest.TestCase):
             cache_assets=True,
             hp_source_mode="auto",
             hp_multiplier=3.75,
-            fandom_hp_workers=5,
+            network_workers=10,
         )
         self.assertTrue(result.cache_saved)
 

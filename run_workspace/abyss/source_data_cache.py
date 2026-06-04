@@ -26,6 +26,10 @@ from .source_data import (
     AbyssWaveSourceData,
     rebuild_abyss_floor_source_data_with_rows,
 )
+from .network_config import (
+    DEFAULT_ABYSS_SOURCE_NETWORK_WORKERS,
+    normalize_network_workers,
+)
 
 
 SCHEMA_VERSION = 1
@@ -33,7 +37,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR = PROJECT_ROOT / "data" / "cache" / "abyss" / "source_data"
 ICON_CACHE_USER_AGENT = "GenshinTeamsTracker-AbyssSourceDataIconCache/1.0"
 SUPPORTED_ICON_EXTENSIONS = {".avif", ".gif", ".jpg", ".jpeg", ".png", ".webp"}
-DEFAULT_ICON_CACHE_WORKERS = 6
+DEFAULT_ICON_CACHE_WORKERS = DEFAULT_ABYSS_SOURCE_NETWORK_WORKERS
 
 _PERIOD_START_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}")
 
@@ -64,6 +68,7 @@ class IconCacheResult:
     failed: int
     downloaded: int
     cache_hits: int
+    workers: int
     entries: tuple[AbyssMonsterIconCacheEntry, ...]
     warnings: tuple[str, ...] = ()
 
@@ -153,7 +158,10 @@ def cache_abyss_floor_monster_icons(
         tuple[AbyssMonsterIconCacheEntry, AbyssEnemySourceRow, str | None] | None
     ] = [None] * len(data.enemy_rows)
 
-    worker_count = max(1, min(int(max_workers or 1), len(data.enemy_rows) or 1))
+    worker_count = min(
+        normalize_network_workers(max_workers),
+        len(data.enemy_rows) or 1,
+    )
     if worker_count == 1 or len(data.enemy_rows) <= 1:
         for row_index, row in enumerate(data.enemy_rows):
             row_results[row_index] = _cache_icon_for_row(
@@ -205,6 +213,7 @@ def cache_abyss_floor_monster_icons(
         failed=failed,
         downloaded=downloaded,
         cache_hits=cache_hits,
+        workers=worker_count,
         entries=tuple(entries),
         warnings=tuple(global_warnings),
     )

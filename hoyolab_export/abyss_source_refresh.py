@@ -22,9 +22,12 @@ from run_workspace.abyss.source_data_cache import (
 )
 from run_workspace.abyss.fandom_enemy_hp_fallback import (
     DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
-    DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
     HP_FALLBACK_MODE_AUTO,
     HP_FALLBACK_MODE_CHOICES,
+)
+from run_workspace.abyss.network_config import (
+    DEFAULT_ABYSS_SOURCE_NETWORK_WORKERS,
+    normalize_network_workers,
 )
 from run_workspace.abyss.source_data_update import build_update_report
 from run_workspace.abyss.source_data_fetchers import (
@@ -130,6 +133,7 @@ class AbyssSourceDataRefreshResult:
     skip_reason: str = ""
     warnings: tuple[str, ...] = ()
     timings_ms: Mapping[str, Any] = field(default_factory=dict)
+    network_workers: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -146,6 +150,7 @@ class AbyssSourceDataRefreshResult:
             "assets": dict(self.assets),
             "warnings": list(self.warnings),
             "timingsMs": dict(self.timings_ms),
+            "networkWorkers": self.network_workers,
         }
 
 
@@ -453,13 +458,18 @@ def update_cached_abyss_source_data_for_hoyolab_period(
     force: bool = False,
     hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
-    fandom_hp_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
+    network_workers: int | None = None,
+    fandom_hp_workers: int | None = None,
     update_report_builder: Callable[..., Mapping[str, Any]] | None = None,
 ) -> AbyssSourceDataRefreshResult:
     """Update Floor 12 source-data cache from an official HoYoLAB Abyss period."""
 
     total_start = perf_counter()
     timings: dict[str, float] = {}
+    resolved_workers = _resolve_network_workers(
+        network_workers=network_workers,
+        fandom_hp_workers=fandom_hp_workers,
+    )
     parsed = _coerce_period(period)
     if not force:
         lookup_start = perf_counter()
@@ -479,6 +489,7 @@ def update_cached_abyss_source_data_for_hoyolab_period(
                 cache_dir=cache_dir,
                 cache_assets=cache_assets,
                 timings_ms=timings,
+                network_workers=resolved_workers,
             )
 
     builder = update_report_builder or build_update_report
@@ -491,7 +502,7 @@ def update_cached_abyss_source_data_for_hoyolab_period(
         cache_assets=cache_assets,
         hp_source_mode=hp_source_mode,
         hp_multiplier=hp_multiplier,
-        fandom_hp_workers=fandom_hp_workers,
+        network_workers=resolved_workers,
     )
     summary = report.get("summary") if isinstance(report, Mapping) else {}
     cache = report.get("cache") if isinstance(report, Mapping) else {}
@@ -520,6 +531,11 @@ def update_cached_abyss_source_data_for_hoyolab_period(
         skip_reason="",
         warnings=tuple(warnings),
         timings_ms=dict(timings) if isinstance(timings, Mapping) else {},
+        network_workers=_optional_int(
+            (probe.get("normal_path_contract") or {}).get("network_workers")
+        )
+        if isinstance(probe, Mapping) and isinstance(probe.get("normal_path_contract"), Mapping)
+        else resolved_workers,
     )
 
 
@@ -532,7 +548,8 @@ def refresh_cached_abyss_source_data_for_hoyolab_period(
     force: bool = False,
     hp_source_mode: str = HP_FALLBACK_MODE_AUTO,
     hp_multiplier: float = DEFAULT_ABYSS_FANDOM_HP_MULTIPLIER,
-    fandom_hp_workers: int = DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
+    network_workers: int | None = None,
+    fandom_hp_workers: int | None = None,
     updater: RefreshUpdateCallable = update_cached_abyss_source_data_for_hoyolab_period,
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Best-effort import integration wrapper: never raises for cache refresh."""
@@ -548,6 +565,7 @@ def refresh_cached_abyss_source_data_for_hoyolab_period(
             force=force,
             hp_source_mode=hp_source_mode,
             hp_multiplier=hp_multiplier,
+            network_workers=network_workers,
             fandom_hp_workers=fandom_hp_workers,
         )
     except Exception as exc:
@@ -753,6 +771,7 @@ def _cached_refresh_result(
     cache_dir: str | Path | None,
     cache_assets: bool,
     timings_ms: Mapping[str, Any] | None = None,
+    network_workers: int | None = None,
 ) -> AbyssSourceDataRefreshResult:
     path = cached_abyss_floor_source_data_path(
         period.start_date,
@@ -788,6 +807,7 @@ def _cached_refresh_result(
         ),
         warnings=tuple(data.global_warnings),
         timings_ms=dict(timings_ms or {}),
+        network_workers=network_workers,
     )
 
 
@@ -887,6 +907,16 @@ def _elapsed_ms(start: float) -> float:
     return round((perf_counter() - start) * 1000, 3)
 
 
+def _resolve_network_workers(
+    *,
+    network_workers: int | str | None,
+    fandom_hp_workers: int | str | None,
+) -> int:
+    if network_workers is not None:
+        return normalize_network_workers(network_workers)
+    return normalize_network_workers(fandom_hp_workers)
+
+
 def _compact_exception_summary(exc: BaseException) -> str:
     text = str(exc).split("Call log:", 1)[0].strip()
     if len(text) > 600:
@@ -914,6 +944,7 @@ async def _run_cli(args: argparse.Namespace) -> dict[str, Any]:
             force=args.force,
             hp_source_mode=args.hp_source,
             hp_multiplier=args.hp_multiplier,
+            network_workers=args.network_workers,
             fandom_hp_workers=args.fandom_hp_workers,
         )
         report["sourceData"] = summary
@@ -964,6 +995,8 @@ def _text_report(report: Mapping[str, Any]) -> str:
             )
             if total_ms is not None:
                 lines.append(f"elapsed_s={total_ms / 1000:.3f}")
+        if source_data.get("networkWorkers") is not None:
+            lines.append(f"network_workers={source_data.get('networkWorkers')}")
     if report.get("sourceDataError"):
         lines.append(f"source_data_warning={report.get('sourceDataError')}")
     return "\n".join(lines)
@@ -1003,12 +1036,21 @@ def _build_argument_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--network-workers",
+        type=int,
+        default=None,
+        help=(
+            "Bounded parallel network workers for source-data refresh. "
+            f"Default: {DEFAULT_ABYSS_SOURCE_NETWORK_WORKERS}."
+        ),
+    )
+    parser.add_argument(
         "--fandom-hp-workers",
         type=int,
-        default=DEFAULT_FANDOM_ENEMY_PAGE_WORKERS,
+        default=None,
         help=(
-            "Bounded parallel Fandom enemy-page HP fetch workers for --update-cache. "
-            f"Default: {DEFAULT_FANDOM_ENEMY_PAGE_WORKERS}."
+            "Compatibility alias for --network-workers when --network-workers "
+            "is not supplied."
         ),
     )
     parser.add_argument(

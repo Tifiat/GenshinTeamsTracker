@@ -244,9 +244,12 @@ MVP recommendation:
   cache. Debug HP modes are explicit: `--hp-source auto` for Nanoka primary plus
   fallback, `--hp-source nanoka-only` for the old no-fallback path, and
   `--hp-source fandom-only` to force Fandom enemy-page HP for validation.
-  Fandom enemy-page HP fallback fetches unique enemy pages with small bounded
-  parallelism (`--fandom-hp-workers`, default 5) to keep first-run fallback
-  representative without adding a persistent enemy-page HP cache.
+  Source-data refresh uses one bounded network worker setting
+  (`--network-workers`, default 10) for Fandom enemy-page HP fallback and
+  monster icon downloads; `--fandom-hp-workers` remains a compatibility alias.
+  The Fandom HP fallback fetches unique enemy pages without adding a persistent
+  enemy-page HP cache. In normal Nanoka-backed modes, Fandom composition and
+  Nanoka source fetch run in parallel before join/build.
 - Persistent source-data cache boundary exists at
   `run_workspace/abyss/source_data_cache.py`. It saves/loads typed
   `AbyssFloorSourceData` as schema-v1 JSON under the project-root-anchored path
@@ -290,7 +293,7 @@ MVP recommendation:
   `--period-source auto|hoyolab|nanoka|fandom` for period-source diagnostics.
   It also passes HP-source diagnostics through to the source-data updater:
   `--hp-source auto|nanoka-only|fandom-only`, `--hp-multiplier 3.75`, and
-  `--fandom-hp-workers 5`.
+  `--network-workers 10`.
 - AppShell/right-panel Fact DPS now uses this local cache through
   `run_workspace/abyss/source_data_runtime.py`. The runtime provider reads the
   captured HoYoLAB period file, loads

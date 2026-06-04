@@ -1297,7 +1297,6 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
     parts.append(
         f"<b>{html.escape(tr('right_panel.fact_dps.tooltip.calculation'))}</b><br>"
     )
-    parts.append(f"{html.escape(tooltip.formula)}<br>")
     if tooltip.total_solo_hp is not None:
         parts.append(
             html.escape(
@@ -1401,12 +1400,12 @@ def _fact_dps_match_confidence_label(confidence: str) -> str:
 
 
 def _fact_dps_compact_warning_text(tooltip: FactDpsTooltipViewModel) -> str:
+    if tooltip.is_available:
+        return ""
     warnings = tuple(
         warning
         for warning in tooltip.warnings
-        if warning not in {
-            "nanoka_wave_values_are_not_used_as_composition_authority",
-        }
+        if _fact_dps_warning_is_user_relevant(warning)
     )
     if not warnings:
         return ""
@@ -1416,6 +1415,19 @@ def _fact_dps_compact_warning_text(tooltip: FactDpsTooltipViewModel) -> str:
         "right_panel.fact_dps.tooltip.warning",
         warning=f"{warning}{suffix}",
     )
+
+
+def _fact_dps_warning_is_user_relevant(warning: str) -> bool:
+    lowered = warning.strip().lower()
+    if not lowered:
+        return False
+    hidden_fragments = (
+        "nanoka is the primary resolved hp source",
+        "nanoka wave values are not used as composition authority",
+        "non_strict_match:",
+        "wave_label_missing_defaulted_to_",
+    )
+    return not any(fragment in lowered for fragment in hidden_fragments)
 
 
 class DetailRowWidget(QWidget):

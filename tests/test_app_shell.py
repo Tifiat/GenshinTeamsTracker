@@ -515,6 +515,10 @@ class AppShellTest(unittest.TestCase):
                             elapsed_seconds=60,
                             calculated_dps=62_464,
                             hp_source_label="Nanoka resolved HP",
+                            warnings=(
+                                "Nanoka is the primary resolved HP source.",
+                                "non_strict_match:variant_strip",
+                            ),
                         ),
                         sim_team1="not run",
                         sim_team2="not run",
@@ -543,6 +547,11 @@ class AppShellTest(unittest.TestCase):
             "DPS: 62,464",
             tooltip_text,
         )
+        self.assertNotIn(
+            "Fact DPS = solo target HP / elapsed time",
+            tooltip_text,
+        )
+        self.assertNotIn("non_strict_match", tooltip_text)
         self.assertEqual(
             widget._chamber_table._row_labels[(0, 3)].objectName(),
             "FactDpsCell",

@@ -26,6 +26,12 @@ from .source_acquisition import (
     OfficialGcsimSourceAcquisition,
     acquire_official_gcsim_source,
 )
+from .runtime_probe import (
+    DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
+    GcsimRuntimeProbeResult,
+    GoRunner,
+    run_gcsim_runtime_probe,
+)
 
 
 DEFAULT_GCSIM_PATCH_STACK_DIR = Path(__file__).resolve().parent / "patch_stack"
@@ -56,7 +62,17 @@ class GcsimOfficialEngineUpdateReport:
     patch_stack_path: str
     patch_stack_status: str
     check_status: str
+    layout_check_status: str
+    runtime_check_status: str
     runtime_ready: bool
+    go_available: bool
+    go_version: str
+    go_os: str
+    go_arch: str
+    go_env_root: str
+    runtime_probe_command: str
+    runtime_probe_stdout: str
+    runtime_probe_stderr: str
     error: str = ""
 
     def to_dict(self) -> dict:
@@ -78,7 +94,17 @@ class GcsimOfficialEngineUpdateReport:
             "patch_stack_path": self.patch_stack_path,
             "patch_stack_status": self.patch_stack_status,
             "check_status": self.check_status,
+            "layout_check_status": self.layout_check_status,
+            "runtime_check_status": self.runtime_check_status,
             "runtime_ready": self.runtime_ready,
+            "go_available": self.go_available,
+            "go_version": self.go_version,
+            "go_os": self.go_os,
+            "go_arch": self.go_arch,
+            "go_env_root": self.go_env_root,
+            "runtime_probe_command": self.runtime_probe_command,
+            "runtime_probe_stdout": self.runtime_probe_stdout,
+            "runtime_probe_stderr": self.runtime_probe_stderr,
             "error": self.error,
         }
 
@@ -92,6 +118,11 @@ def prepare_official_gcsim_engine_update(
     engine_id: str | None = None,
     patch_backend: PatchBackend | None = None,
     source_acquirer: Callable[..., OfficialGcsimSourceAcquisition] | None = None,
+    probe_runtime: bool = False,
+    runtime_probe_runner: GoRunner | None = None,
+    go_executable: str = "go",
+    go_work_dir: str | Path | None = None,
+    runtime_probe_timeout_seconds: int = DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
 ) -> GcsimOfficialEngineUpdateReport:
     store = GcsimEngineStore(store_dir)
     previous_active = store.active_engine_id()
@@ -120,7 +151,17 @@ def prepare_official_gcsim_engine_update(
             patch_stack_path="",
             patch_stack_status="not_started",
             check_status="source_acquisition_failed",
+            layout_check_status="not_started",
+            runtime_check_status="not_started",
             runtime_ready=False,
+            go_available=False,
+            go_version="",
+            go_os="",
+            go_arch="",
+            go_env_root="",
+            runtime_probe_command="",
+            runtime_probe_stdout="",
+            runtime_probe_stderr="",
             error=str(exc),
         )
 
@@ -132,16 +173,26 @@ def prepare_official_gcsim_engine_update(
         requested_release=release,
         patch_stack=patch_stack,
         patch_stack_status=patch_stack_status,
+        probe_runtime=probe_runtime,
     )
+    runtime_probe_state: dict[str, GcsimRuntimeProbeResult | None] = {"result": None}
     update_result = store.prepare_engine_update(
         source_dir=acquisition.source_dir,
         patch_stack_dir=patch_stack,
         source_label=f"gcsim-{acquisition.source_ref.tag}",
         engine_id=engine_id,
         patch_backend=backend,
-        capabilities=("official_source_layout", "gtt_patch_stack_boundary"),
+        capabilities=_engine_capabilities(probe_runtime=probe_runtime),
         metadata=metadata,
-        smoke_check=gcsim_source_layout_smoke_check,
+        smoke_check=_make_engine_update_smoke_check(
+            probe_runtime=probe_runtime,
+            metadata=metadata,
+            runtime_probe_state=runtime_probe_state,
+            go_executable=go_executable,
+            go_work_dir=go_work_dir,
+            runtime_probe_runner=runtime_probe_runner,
+            runtime_probe_timeout_seconds=runtime_probe_timeout_seconds,
+        ),
     )
     return _report_from_update_result(
         release=release,
@@ -150,6 +201,8 @@ def prepare_official_gcsim_engine_update(
         patch_stack=patch_stack,
         patch_stack_status=patch_stack_status,
         update_result=update_result,
+        probe_runtime=probe_runtime,
+        runtime_probe_result=runtime_probe_state["result"],
     )
 
 
@@ -164,12 +217,61 @@ def gcsim_source_layout_smoke_check(engine_dir: Path) -> str:
     return ""
 
 
+def _make_engine_update_smoke_check(
+    *,
+    probe_runtime: bool,
+    metadata: dict[str, str],
+    runtime_probe_state: dict[str, GcsimRuntimeProbeResult | None],
+    go_executable: str,
+    go_work_dir: str | Path | None,
+    runtime_probe_runner: GoRunner | None,
+    runtime_probe_timeout_seconds: int,
+):
+    def smoke_check(engine_dir: Path) -> str:
+        layout_error = gcsim_source_layout_smoke_check(engine_dir)
+        if layout_error:
+            metadata["layout_check_status"] = "source_layout_failed"
+            metadata["check_status"] = "source_layout_failed"
+            return layout_error
+        metadata["layout_check_status"] = "source_layout_passed"
+        metadata["check_status"] = "source_layout_passed"
+        if not probe_runtime:
+            metadata["runtime_check_status"] = "not_requested"
+            metadata["runtime_ready"] = "false"
+            return ""
+
+        result = run_gcsim_runtime_probe(
+            engine_dir,
+            go_executable=go_executable,
+            go_work_dir=go_work_dir,
+            timeout_seconds=runtime_probe_timeout_seconds,
+            runner=runtime_probe_runner,
+        )
+        runtime_probe_state["result"] = result
+        metadata.update(result.metadata())
+        if result.runtime_ready:
+            metadata["check_status"] = "runtime_probe_passed"
+            return ""
+        metadata["check_status"] = result.status
+        return result.error or result.status
+
+    return smoke_check
+
+
+def _engine_capabilities(*, probe_runtime: bool) -> tuple[str, ...]:
+    capabilities = ["official_source_layout", "gtt_patch_stack_boundary"]
+    if probe_runtime:
+        capabilities.append("go_runtime_probe")
+    return tuple(capabilities)
+
+
 def _engine_manifest_metadata(
     *,
     acquisition: OfficialGcsimSourceAcquisition,
     requested_release: str,
     patch_stack: Path | None,
     patch_stack_status: str,
+    probe_runtime: bool,
 ) -> dict[str, str]:
     return {
         "upstream_repo": acquisition.source_ref.upstream_repo,
@@ -184,9 +286,33 @@ def _engine_manifest_metadata(
         "patch_stack_path": "" if patch_stack is None else str(patch_stack),
         "patch_stack_status": patch_stack_status,
         "check_status": "source_layout_passed",
+        "layout_check_status": "source_layout_passed",
         "runtime_ready": "false",
-        "runtime_check_status": "not_run_no_build_step_yet",
+        "runtime_check_status": "not_requested" if not probe_runtime else "pending",
+        "go_available": "false",
+        "go_version": "",
+        "go_os": "",
+        "go_arch": "",
+        "go_env_root": "",
+        "runtime_probe_command": "",
+        "runtime_probe_stdout": "",
+        "runtime_probe_stderr": "",
     }
+
+
+def _runtime_status_for_report(
+    *,
+    probe_runtime: bool,
+    runtime_probe_result: GcsimRuntimeProbeResult | None,
+    update_result: GcsimEngineUpdateResult,
+) -> str:
+    if runtime_probe_result is not None:
+        return runtime_probe_result.status
+    if not probe_runtime:
+        return "not_requested"
+    if update_result.success:
+        return "runtime_probe_passed"
+    return "not_run"
 
 
 def _report_from_update_result(
@@ -197,10 +323,23 @@ def _report_from_update_result(
     patch_stack: Path | None,
     patch_stack_status: str,
     update_result: GcsimEngineUpdateResult,
+    probe_runtime: bool,
+    runtime_probe_result: GcsimRuntimeProbeResult | None,
 ) -> GcsimOfficialEngineUpdateReport:
     active_engine_id = store.active_engine_id()
-    check_status = (
+    layout_status = (
         "source_layout_passed"
+        if update_result.success or runtime_probe_result is not None
+        else (update_result.error or "engine_update_failed")
+    )
+    runtime_status = _runtime_status_for_report(
+        probe_runtime=probe_runtime,
+        runtime_probe_result=runtime_probe_result,
+        update_result=update_result,
+    )
+    runtime_ready = bool(runtime_probe_result and runtime_probe_result.runtime_ready)
+    check_status = (
+        runtime_status if probe_runtime else layout_status
         if update_result.success
         else (update_result.error or "engine_update_failed")
     )
@@ -222,9 +361,29 @@ def _report_from_update_result(
         patch_stack_path="" if patch_stack is None else str(patch_stack),
         patch_stack_status=patch_stack_status,
         check_status=check_status,
-        runtime_ready=False,
+        layout_check_status=layout_status,
+        runtime_check_status=runtime_status,
+        runtime_ready=runtime_ready,
+        go_available=False if runtime_probe_result is None else runtime_probe_result.go_available,
+        go_version="" if runtime_probe_result is None else runtime_probe_result.go_version,
+        go_os="" if runtime_probe_result is None else runtime_probe_result.go_os,
+        go_arch="" if runtime_probe_result is None else runtime_probe_result.go_arch,
+        go_env_root="" if runtime_probe_result is None else runtime_probe_result.go_env_root,
+        runtime_probe_command=""
+        if runtime_probe_result is None
+        else " ".join(runtime_probe_result.command),
+        runtime_probe_stdout="" if runtime_probe_result is None else runtime_probe_result.stdout,
+        runtime_probe_stderr="" if runtime_probe_result is None else runtime_probe_result.stderr,
         error=update_result.error,
     )
+
+
+def _go_target_text(report: GcsimOfficialEngineUpdateReport) -> str:
+    if not report.go_os and not report.go_arch:
+        return ""
+    if report.go_os and report.go_arch:
+        return f"{report.go_os}/{report.go_arch}"
+    return report.go_os or report.go_arch
 
 
 def _resolve_patch_stack_dir(path: str | Path | None) -> Path | None:
@@ -253,9 +412,22 @@ def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
         ),
         (
             "checks="
-            f"layout={report.check_status} runtime_ready={str(report.runtime_ready).lower()}"
+            f"layout={report.layout_check_status} "
+            f"runtime={report.runtime_check_status} "
+            f"runtime_ready={str(report.runtime_ready).lower()}"
+        ),
+        (
+            "go="
+            f"available={str(report.go_available).lower()} "
+            f"version={report.go_version or ''} "
+            f"target={_go_target_text(report)} "
+            f"cache={report.go_env_root or ''}"
         ),
     ]
+    if report.runtime_probe_stdout:
+        lines.append(f"probe_stdout={report.runtime_probe_stdout}")
+    if report.runtime_probe_stderr:
+        lines.append(f"probe_stderr={report.runtime_probe_stderr}")
     if report.error:
         lines.append(f"error={report.error}")
     return "\n".join(lines)
@@ -280,6 +452,26 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--engine-id", default=None, help="Optional explicit engine id.")
+    parser.add_argument(
+        "--probe-runtime",
+        action="store_true",
+        help=(
+            "Run an optional Go runtime probe. The new engine activates only if "
+            "source layout and `go run ./cmd/gcsim -version` pass."
+        ),
+    )
+    parser.add_argument("--go-executable", default="go", help="Go executable name/path.")
+    parser.add_argument(
+        "--go-work-dir",
+        default=None,
+        help="Project-local Go cache root. Defaults to .go under the project root.",
+    )
+    parser.add_argument(
+        "--runtime-probe-timeout",
+        type=int,
+        default=DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
+        help="Timeout in seconds for each Go probe command.",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     args = parser.parse_args(argv)
 
@@ -289,6 +481,10 @@ def main(argv: list[str] | None = None) -> int:
         source_cache_dir=args.source_cache_dir,
         patch_stack_dir=args.patch_stack,
         engine_id=args.engine_id,
+        probe_runtime=args.probe_runtime,
+        go_executable=args.go_executable,
+        go_work_dir=args.go_work_dir,
+        runtime_probe_timeout_seconds=args.runtime_probe_timeout,
     )
     if args.format == "json":
         print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False, sort_keys=True))

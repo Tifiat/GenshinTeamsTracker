@@ -1241,6 +1241,12 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
     if tooltip is None:
         return ""
 
+    small_gap = "<div style='font-size:3px; line-height:3px;'>&nbsp;</div>"
+    separator = (
+        "<table width='100%' cellspacing='0' cellpadding='0'>"
+        "<tr><td height='1' bgcolor='#b8aa86'></td></tr>"
+        "</table>"
+    )
     parts = [
         "<qt>",
         f"<b>{html.escape(tooltip.title)}</b><br>",
@@ -1252,7 +1258,7 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
         for enemy in tooltip.enemies:
             if enemy.wave != current_wave:
                 if current_wave is not None:
-                    parts.append("<br>")
+                    parts.append(small_gap)
                 current_wave = enemy.wave
                 parts.append(
                     f"<span style='color:#e8c474'>"
@@ -1293,30 +1299,32 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
                 )
             parts.append("<br>")
 
-    parts.append("<hr>")
+    parts.append(small_gap)
+    parts.append(separator)
+    parts.append(small_gap)
     parts.append(
         f"<b>{html.escape(tr('right_panel.fact_dps.tooltip.calculation'))}</b><br>"
+    )
+    parts.append(
+        html.escape(
+            tr(
+                "right_panel.fact_dps.tooltip.multi_target",
+                state=tooltip.hp_mode_label,
+            )
+        )
+        + "<br>"
     )
     if tooltip.total_hp is not None:
         parts.append(
             html.escape(
                 tr(
-                    "right_panel.fact_dps.tooltip.selected_hp",
+                    "right_panel.fact_dps.tooltip.hp_per_second",
                     hp=f"{tooltip.total_hp:,}",
-                    mode=tooltip.hp_mode_label,
+                    seconds=int(tooltip.elapsed_seconds),
                 )
             )
             + "<br>"
         )
-    parts.append(
-        html.escape(
-            tr(
-                "right_panel.fact_dps.tooltip.elapsed",
-                seconds=int(tooltip.elapsed_seconds),
-            )
-        )
-        + "<br>"
-    )
     if tooltip.calculated_dps is not None:
         parts.append(
             html.escape(
@@ -1361,18 +1369,17 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
 
 
 def _fact_dps_match_summary_text(tooltip: FactDpsTooltipViewModel) -> str:
-    pairs = {
-        (enemy.match_method, enemy.match_confidence)
+    confidences = {
+        enemy.match_confidence
         for enemy in tooltip.enemies
-        if enemy.match_method
+        if enemy.match_confidence
     }
-    if not pairs:
+    if not confidences:
         return ""
-    if len(pairs) == 1:
-        method, confidence = next(iter(pairs))
+    if len(confidences) == 1:
+        confidence = next(iter(confidences))
         return tr(
             "right_panel.fact_dps.tooltip.match",
-            method=_fact_dps_match_method_label(method),
             confidence=_fact_dps_match_confidence_label(confidence),
         )
     return tr("right_panel.fact_dps.tooltip.match_mixed")
@@ -1401,8 +1408,6 @@ def _fact_dps_match_confidence_label(confidence: str) -> str:
 
 
 def _fact_dps_compact_warning_text(tooltip: FactDpsTooltipViewModel) -> str:
-    if tooltip.is_available:
-        return ""
     warnings = tuple(
         warning
         for warning in tooltip.warnings
@@ -1427,6 +1432,15 @@ def _fact_dps_warning_is_user_relevant(warning: str) -> bool:
         "nanoka wave values are not used as composition authority",
         "non_strict_match:",
         "wave_label_missing_defaulted_to_",
+        "fandom_enemy_page_hp_fallback_attempted",
+        "fandom_enemy_page_hp_fallback_resolved",
+        "fandom_enemy_page_hp_fallback_used",
+        "fandom_enemy_page_hp_multiplier",
+        "fandom_enemy_page_hp_table_confidence",
+        "fandom_enemy_page_hp_table_method",
+        "nanoka_match_unavailable",
+        "nanoka_report_unavailable",
+        "nanoka_skipped_for_forced_fandom_enemy_page_hp_fallback",
     )
     return not any(fragment in lowered for fragment in hidden_fragments)
 

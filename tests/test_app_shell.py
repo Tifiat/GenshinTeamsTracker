@@ -568,13 +568,14 @@ class AppShellTest(unittest.TestCase):
                             total_solo_hp=3_747_864,
                             total_multi_target_hp=3_747_864,
                             hp_mode="solo",
-                            hp_mode_label="Multi-target off",
+                            hp_mode_label="off",
                             elapsed_seconds=60,
                             calculated_dps=62_464,
                             hp_source_label="Nanoka resolved HP",
                             warnings=(
                                 "Nanoka is the primary resolved HP source.",
                                 "non_strict_match:variant_strip",
+                                "fandom_enemy_page_hp_fallback_attempted:10",
                             ),
                         ),
                         sim_team1="not run",
@@ -597,7 +598,11 @@ class AppShellTest(unittest.TestCase):
         tooltip_controller = widget._chamber_table._fact_dps_tooltips[(0, 3)]
         tooltip_text = tooltip_controller.text()
         self.assertIn(
-            "Multi-target off HP: 3,747,864",
+            "Multi-target: off",
+            tooltip_text,
+        )
+        self.assertIn(
+            "HP/sec: 3,747,864 / 60s",
             tooltip_text,
         )
         self.assertIn(
@@ -609,6 +614,7 @@ class AppShellTest(unittest.TestCase):
             tooltip_text,
         )
         self.assertNotIn("non_strict_match", tooltip_text)
+        self.assertNotIn("fandom_enemy_page_hp_fallback_attempted", tooltip_text)
         self.assertEqual(
             widget._chamber_table._row_labels[(0, 3)].objectName(),
             "FactDpsCell",

@@ -29,6 +29,7 @@ from .enemy_type_registry import (
     MATCH_METHOD_AMBIGUOUS,
     MATCH_METHOD_MANUAL_MAPPING,
     MATCH_METHOD_MISSING,
+    MATCH_METHOD_SNAP_TITLE_CONTAINS_TARGET,
     MATCH_METHOD_SNAP_TITLE_FALLBACK,
 )
 from .snap_monster_titles import (
@@ -797,6 +798,14 @@ def _snap_title_resolution(
             ambiguous_types=registry_match.ambiguous_types,
             warnings=lookup.warnings + registry_match.warnings,
         )
+    contains_resolution = _snap_title_contains_target_resolution(
+        lookup,
+        candidates,
+        enemy_type_registry=enemy_type_registry,
+        selected_identity=selected_identity,
+    )
+    if contains_resolution is not None:
+        return contains_resolution
     missing_title = (
         lookup.candidates[0].normalized_title if lookup.candidates else "unknown"
     )
@@ -808,6 +817,49 @@ def _snap_title_resolution(
         warnings=lookup.warnings
         + registry_match.warnings
         + (f"snap_title_registry_match_missing:{missing_title}",),
+    )
+
+
+def _snap_title_contains_target_resolution(
+    lookup: Any,
+    candidates: tuple[AbyssEnemyIdentityCandidate, ...],
+    *,
+    enemy_type_registry: GcsimEnemyTypeRegistry,
+    selected_identity: AbyssEnemyIdentityCandidate | None,
+) -> AbyssEnemyTypeResolution | None:
+    if not lookup.candidates:
+        return None
+    snap_title = lookup.candidates[0].normalized_title
+    if not snap_title:
+        return None
+    matches = tuple(
+        sorted(
+            target_type
+            for target_type in enemy_type_registry.target_types
+            if snap_title in target_type
+        )
+    )
+    if not matches:
+        return None
+    identity = selected_identity or _snap_title_identity(lookup.candidates[0].title)
+    if len(matches) > 1:
+        return AbyssEnemyTypeResolution(
+            status="ambiguous_mapping",
+            candidates=candidates,
+            method=MATCH_METHOD_SNAP_TITLE_CONTAINS_TARGET,
+            selected_identity=identity,
+            ambiguous_types=matches,
+            warnings=lookup.warnings
+            + (f"snap_title_contains_target_ambiguous:{snap_title}",),
+        )
+    return AbyssEnemyTypeResolution(
+        status="resolved",
+        candidates=candidates,
+        gcsim_type=matches[0],
+        method=MATCH_METHOD_SNAP_TITLE_CONTAINS_TARGET,
+        selected_identity=identity,
+        warnings=lookup.warnings
+        + (f"snap_title_contains_target:{snap_title}->{matches[0]}",),
     )
 
 

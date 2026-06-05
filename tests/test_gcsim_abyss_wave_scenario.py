@@ -28,6 +28,7 @@ from run_workspace.gcsim.enemy_type_registry import (
     MATCH_METHOD_EXACT_NORMALIZED_NAME,
     MATCH_METHOD_MANUAL_MAPPING,
     MATCH_METHOD_MISSING,
+    MATCH_METHOD_SNAP_TITLE_CONTAINS_TARGET,
     MATCH_METHOD_SNAP_TITLE_FALLBACK,
 )
 from run_workspace.gcsim.snap_monster_titles import (
@@ -514,6 +515,62 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
         self.assertIn(
             "snap_title_registry_match_missing:assaultspecialistmek",
             result.audit.type_mapping_details[0]["warnings"],
+        )
+
+    def test_snap_title_contains_target_resolves_unique_registry_extension(self) -> None:
+        data = _rename_enemy(_source_data(), 0, "Tenebrous Papilla: Type II")
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("tenebrouspapillatypei", "secondenemy"),
+            snap_title_index=_snap_titles(
+                ("Tenebrous Papilla: Type II", "Tenebrous Papilla")
+            ),
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.payload["waves"][0]["targets"][0]["type"], "tenebrouspapillatypei")
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["method"],
+            MATCH_METHOD_SNAP_TITLE_CONTAINS_TARGET,
+        )
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["selected_identity"]["source_id"],
+            "Tenebrous Papilla",
+        )
+        self.assertIn(
+            "snap_title_contains_target:tenebrouspapilla->tenebrouspapillatypei",
+            result.audit.type_mapping_details[0]["warnings"],
+        )
+
+    def test_snap_title_contains_target_reports_ambiguous_matches(self) -> None:
+        data = _rename_enemy(_source_data(), 0, "Tenebrous Papilla: Type II")
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry(
+                "shadowtenebrouspapilla",
+                "tenebrouspapillatypei",
+                "secondenemy",
+            ),
+            snap_title_index=_snap_titles(
+                ("Tenebrous Papilla: Type II", "Tenebrous Papilla")
+            ),
+        )
+
+        self.assertFalse(result.ready)
+        self.assertEqual(len(result.audit.ambiguous_type_mapping_rows), 1)
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["method"],
+            MATCH_METHOD_SNAP_TITLE_CONTAINS_TARGET,
+        )
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["ambiguous_types"],
+            ["shadowtenebrouspapilla", "tenebrouspapillatypei"],
         )
 
     def test_falls_back_to_fandom_identity_when_nanoka_id_missing(self) -> None:

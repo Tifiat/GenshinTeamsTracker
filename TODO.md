@@ -437,7 +437,13 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   metadata must not be used as HP/stat/resist/wave/count truth or as source-data
   replacement. The fallback is intended for too-specific source names such as
   Arkhe suffixes and Tenebrous Mimesis forms, and duplicate normalized Snap
-  `Name` records with different `Title` values are reported as ambiguous.
+  `Name` records with different `Title` values are reported as ambiguous. If
+  even the Snap `Title` does not exact/base-match the registry, the final
+  last-resort matcher may resolve a unique GCSIM target whose key contains the
+  full normalized Snap title (`snap_title_contains_target`); multiple containing
+  targets remain ambiguous. This covers cases such as `Tenebrous Papilla: Type
+  II -> Tenebrous Papilla -> tenebrouspapillatypei` without turning arbitrary
+  display-name fuzziness into production truth.
   Missing Nanoka id alone is not a blocker; the blocker is missing any safe
   explicit or automatic compatible GCSIM target type. The bridge must not infer
   production-ready GCSIM type keys from arbitrary fuzzy/display-name similarity.
@@ -460,7 +466,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   rows, type-present/HP-missing rows, compact unresolved/ambiguous row lists,
   and JSON resolved-row details without fetching, mutating caches, running GCSIM,
   or touching UI. It accepts `--snap-monster-json path`; Snap fallback
-  resolutions are counted separately as `snap_title_fallback`, so exact/base
+  resolutions are counted separately as `snap_title_fallback` and final
+  containing-target resolutions as `snap_title_contains_target`, so exact/base
   coverage remains visible. Use it to validate matcher behavior on real cached
   Abyss rows. Missing/ambiguous rows should drive small matcher or alias fixes,
   not a full hand-written enemy mapping table.

@@ -26,6 +26,7 @@ from run_workspace.gcsim.enemy_type_registry import (
     MATCH_METHOD_EXACT_NORMALIZED_NAME,
     MATCH_METHOD_MANUAL_ALIAS,
     MATCH_METHOD_MANUAL_MAPPING,
+    MATCH_METHOD_SNAP_TITLE_CONTAINS_TARGET,
     MATCH_METHOD_SNAP_TITLE_FALLBACK,
     normalize_gcsim_enemy_name,
 )
@@ -197,6 +198,30 @@ class GcsimAbyssEnemyTypeMappingReportTest(unittest.TestCase):
         self.assertEqual(report.missing_mappings, 0)
         self.assertEqual(report.resolved_by_method[MATCH_METHOD_SNAP_TITLE_FALLBACK], 1)
         self.assertEqual(report.resolved_rows[0]["gcsim_type"], "assaultspecialistmek")
+
+    def test_coverage_report_counts_snap_title_contains_target_separately(self) -> None:
+        data = _cache_data_with_enemy_names(
+            "Tenebrous Papilla: Type II",
+            "Second Enemy",
+        )
+
+        report = build_abyss_enemy_type_coverage_report(
+            [data],
+            None,
+            enemy_type_registry=GcsimEnemyTypeRegistry(
+                ("secondenemy", "tenebrouspapillatypei")
+            ),
+            snap_title_index=_snap_titles(
+                ("Tenebrous Papilla: Type II", "Tenebrous Papilla")
+            ),
+        )
+
+        self.assertEqual(report.missing_mappings, 0)
+        self.assertEqual(
+            report.resolved_by_method[MATCH_METHOD_SNAP_TITLE_CONTAINS_TARGET],
+            1,
+        )
+        self.assertEqual(report.resolved_rows[0]["gcsim_type"], "tenebrouspapillatypei")
 
     def test_cli_json_report_loads_temp_cache_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

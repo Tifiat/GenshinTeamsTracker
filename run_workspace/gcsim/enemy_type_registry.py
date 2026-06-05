@@ -26,6 +26,7 @@ MATCH_METHOD_EXACT_NORMALIZED_NAME = "exact_normalized_name"
 MATCH_METHOD_COMPATIBLE_BASE_NAME = "compatible_base_name"
 MATCH_METHOD_MANUAL_ALIAS = "manual_alias"
 MATCH_METHOD_SNAP_TITLE_FALLBACK = "snap_title_fallback"
+MATCH_METHOD_SNAP_TITLE_CONTAINS_TARGET = "snap_title_contains_target"
 MATCH_METHOD_MISSING = "missing"
 MATCH_METHOD_AMBIGUOUS = "ambiguous"
 

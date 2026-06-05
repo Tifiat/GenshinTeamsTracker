@@ -21,6 +21,14 @@ from run_workspace.gcsim.abyss_wave_scenario import (
     load_enemy_type_mapping_from_json,
     write_abyss_wave_scenario_payload,
 )
+from run_workspace.gcsim.enemy_type_registry import (
+    GcsimEnemyTypeRegistry,
+    MATCH_METHOD_AMBIGUOUS,
+    MATCH_METHOD_COMPATIBLE_BASE_NAME,
+    MATCH_METHOD_EXACT_NORMALIZED_NAME,
+    MATCH_METHOD_MANUAL_MAPPING,
+    MATCH_METHOD_MISSING,
+)
 from tests.abyss.test_source_data import composition_report, fandom_row, nanoka_report, nanoka_row
 
 
@@ -109,6 +117,20 @@ def _fandom_mapping(*names: str) -> AbyssEnemyTypeMapping:
             for name in names
         ),
         mapping_name="fandom_title_mapping",
+    )
+
+
+def _registry(*target_types: str) -> GcsimEnemyTypeRegistry:
+    return GcsimEnemyTypeRegistry(target_types)
+
+
+def _rename_enemy(data, index: int, name: str):
+    return _replace_enemy_row(
+        data,
+        index,
+        primary_display_name=name,
+        fandom_enemy_page_url=f"https://genshin-impact.fandom.com/wiki/{name.replace(' ', '_')}",
+        matched_nanoka_display_name=name,
     )
 
 
@@ -203,6 +225,7 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
         self.assertEqual(result.payload["spawn_policy"], "group_clear")
         self.assertEqual(result.audit.enemy_type_mapping_name, "test_enemy_type_mapping")
         self.assertEqual(result.audit.type_mapping_details[0]["status"], "resolved")
+        self.assertEqual(result.audit.type_mapping_details[0]["method"], MATCH_METHOD_MANUAL_MAPPING)
         self.assertEqual(
             result.audit.type_mapping_details[0]["selected_identity"]["source_kind"],
             IDENTITY_KIND_NANOKA_MONSTER_ID,
@@ -211,6 +234,32 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
             result.payload["waves"][1]["targets"][0],
             {"hp": 200_000.0, "level": 90, "type": "dummy"},
         )
+
+    def test_manual_mapping_wins_over_registry_match(self) -> None:
+        result = build_abyss_wave_scenario_payload(
+            _source_data(),
+            chamber=1,
+            side=1,
+            enemy_type_mapping=AbyssEnemyTypeMapping(
+                records=(
+                    AbyssEnemyTypeMappingRecord(
+                        source_kind=IDENTITY_KIND_NANOKA_MONSTER_ID,
+                        source_id="first",
+                        gcsim_type="dummy",
+                    ),
+                    AbyssEnemyTypeMappingRecord(
+                        source_kind=IDENTITY_KIND_NANOKA_MONSTER_ID,
+                        source_id="second",
+                        gcsim_type="secondenemy",
+                    ),
+                )
+            ),
+            enemy_type_registry=_registry("firstenemy", "secondenemy", "dummy"),
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.payload["waves"][0]["targets"][0]["type"], "dummy")
+        self.assertEqual(result.audit.type_mapping_details[0]["method"], MATCH_METHOD_MANUAL_MAPPING)
 
     def test_identity_candidates_include_nanoka_and_fandom_sources(self) -> None:
         row = _source_data().enemy_rows[0]
@@ -223,6 +272,89 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
             (IDENTITY_KIND_FANDOM_PAGE_TITLE, "First Enemy"),
             [candidate.key() for candidate in candidates],
         )
+
+    def test_registry_resolves_grounded_geoshroom_to_known_gcsim_type(self) -> None:
+        data = _rename_enemy(_source_data(), 0, "Grounded Geoshroom")
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("groundedgeoshroom", "secondenemy"),
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.payload["waves"][0]["targets"][0]["type"], "groundedgeoshroom")
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["method"],
+            MATCH_METHOD_EXACT_NORMALIZED_NAME,
+        )
+
+    def test_registry_exact_normalized_match_works(self) -> None:
+        result = build_abyss_wave_scenario_payload(
+            _source_data(),
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("firstenemy", "secondenemy"),
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.payload["waves"][1]["targets"][0]["type"], "secondenemy")
+        self.assertEqual(
+            result.audit.type_mapping_details[1]["method"],
+            MATCH_METHOD_EXACT_NORMALIZED_NAME,
+        )
+
+    def test_registry_compatible_base_match_works_when_exact_variant_absent(self) -> None:
+        data = _rename_enemy(_source_data(), 0, "Battle-Hardened Grounded Geoshroom")
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("groundedgeoshroom", "secondenemy"),
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.payload["waves"][0]["targets"][0]["type"], "groundedgeoshroom")
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["method"],
+            MATCH_METHOD_COMPATIBLE_BASE_NAME,
+        )
+
+    def test_registry_ambiguous_compatible_match_is_reported(self) -> None:
+        data = _rename_enemy(_source_data(), 0, "Grounded Geoshroom")
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry(
+                "battlehardenedgroundedgeoshroom",
+                "veterangroundedgeoshroom",
+                "secondenemy",
+            ),
+        )
+
+        self.assertFalse(result.ready)
+        self.assertEqual(len(result.audit.ambiguous_type_mapping_rows), 1)
+        self.assertEqual(result.audit.type_mapping_details[0]["method"], MATCH_METHOD_AMBIGUOUS)
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["ambiguous_types"],
+            ["battlehardenedgroundedgeoshroom", "veterangroundedgeoshroom"],
+        )
+
+    def test_registry_missing_match_is_reported(self) -> None:
+        result = build_abyss_wave_scenario_payload(
+            _source_data(),
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("secondenemy"),
+        )
+
+        self.assertFalse(result.ready)
+        self.assertEqual(len(result.audit.missing_type_mapping_rows), 1)
+        self.assertEqual(result.audit.type_mapping_details[0]["method"], MATCH_METHOD_MISSING)
 
     def test_falls_back_to_fandom_identity_when_nanoka_id_missing(self) -> None:
         data = _replace_enemy_row(
@@ -289,6 +421,28 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
         self.assertTrue(result.ready)
         self.assertEqual(result.payload["waves"][0]["targets"][0]["type"], "dummy")
 
+    def test_nanoka_hp_accepts_fandom_name_registry_resolution(self) -> None:
+        data = _replace_enemy_row(
+            _source_data(),
+            0,
+            matched_nanoka_display_name=None,
+        )
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("firstenemy", "secondenemy"),
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.payload["waves"][0]["targets"][0]["hp"], 100_000.0)
+        self.assertEqual(result.payload["waves"][0]["targets"][0]["type"], "firstenemy")
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["selected_identity"]["source_kind"],
+            IDENTITY_KIND_FANDOM_PAGE_TITLE,
+        )
+
     def test_fandom_fallback_hp_can_resolve_type_by_nanoka_id(self) -> None:
         data = _replace_enemy_row(
             _source_data(),
@@ -307,6 +461,27 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
         self.assertEqual(
             result.audit.type_mapping_details[0]["selected_identity"]["source_kind"],
             IDENTITY_KIND_NANOKA_MONSTER_ID,
+        )
+
+    def test_fandom_fallback_hp_accepts_nanoka_name_registry_resolution(self) -> None:
+        data = _replace_enemy_row(
+            _source_data(),
+            0,
+            hp_source=HP_SOURCE_FANDOM_ENEMY_PAGE_FALLBACK,
+        )
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("firstenemy", "secondenemy"),
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.payload["waves"][0]["targets"][0]["hp"], 100_000.0)
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["selected_identity"]["source_kind"],
+            "nanoka_display_name",
         )
 
     def test_missing_all_accepted_mappings_reports_available_identities(self) -> None:

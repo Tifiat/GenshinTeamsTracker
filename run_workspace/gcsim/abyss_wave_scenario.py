@@ -3,8 +3,9 @@
 This module is intentionally backend-only and provisional. Abyss source-data
 rows currently provide enemy waves, per-enemy HP, display levels, confidence,
 and warnings, but they do not provide GCSIM enemy type keys. Payload generation
-therefore requires an explicit source-id -> GCSIM enemy type mapping. It does
-not infer GCSIM types from localized display names.
+therefore requires either an explicit source identity override mapping or an
+optional GCSIM enemy type registry matcher. It does not use fuzzy/display-name
+similarity as production truth.
 """
 
 from __future__ import annotations
@@ -20,6 +21,14 @@ from run_workspace.abyss.source_data import (
     AbyssChamberSideSourceData,
     AbyssEnemySourceRow,
     AbyssFloorSourceData,
+)
+
+from .enemy_type_registry import (
+    GcsimEnemyNameCandidate,
+    GcsimEnemyTypeRegistry,
+    MATCH_METHOD_AMBIGUOUS,
+    MATCH_METHOD_MANUAL_MAPPING,
+    MATCH_METHOD_MISSING,
 )
 
 
@@ -88,9 +97,11 @@ class AbyssEnemyTypeResolution:
     status: str
     candidates: tuple[AbyssEnemyIdentityCandidate, ...]
     gcsim_type: str = ""
+    method: str = ""
     selected_identity: AbyssEnemyIdentityCandidate | None = None
     selected_record: AbyssEnemyTypeMappingRecord | None = None
     ambiguous_records: tuple[AbyssEnemyTypeMappingRecord, ...] = ()
+    ambiguous_types: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
 
     @property
@@ -100,6 +111,7 @@ class AbyssEnemyTypeResolution:
     def to_dict(self) -> dict[str, Any]:
         return {
             "status": self.status,
+            "method": self.method,
             "gcsim_type": self.gcsim_type,
             "selected_identity": None
             if self.selected_identity is None
@@ -108,6 +120,7 @@ class AbyssEnemyTypeResolution:
             if self.selected_record is None
             else self.selected_record.to_dict(),
             "ambiguous_records": [record.to_dict() for record in self.ambiguous_records],
+            "ambiguous_types": list(self.ambiguous_types),
             "available_identities": [candidate.to_dict() for candidate in self.candidates],
             "warnings": list(self.warnings),
         }
@@ -149,7 +162,12 @@ class AbyssEnemyTypeMapping:
                 result.setdefault(record.source_id, record.gcsim_type)
         return result
 
-    def resolve_row(self, row: AbyssEnemySourceRow) -> AbyssEnemyTypeResolution:
+    def resolve_row(
+        self,
+        row: AbyssEnemySourceRow,
+        *,
+        enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
+    ) -> AbyssEnemyTypeResolution:
         candidates = abyss_enemy_identity_candidates(row)
         records_by_key = _records_by_key(self.records)
         for candidate in _resolution_candidates(candidates):
@@ -160,6 +178,7 @@ class AbyssEnemyTypeMapping:
                 return AbyssEnemyTypeResolution(
                     status="ambiguous_mapping",
                     candidates=candidates,
+                    method=MATCH_METHOD_MANUAL_MAPPING,
                     selected_identity=candidate,
                     ambiguous_records=matches,
                     warnings=(f"ambiguous_mapping:{candidate.source_kind}:{candidate.source_id}",),
@@ -169,18 +188,68 @@ class AbyssEnemyTypeMapping:
                 status="resolved",
                 candidates=candidates,
                 gcsim_type=record.gcsim_type,
+                method=MATCH_METHOD_MANUAL_MAPPING,
                 selected_identity=candidate,
                 selected_record=record,
                 warnings=record.warnings,
             )
+        if enemy_type_registry is not None:
+            registry_match = enemy_type_registry.match_name_candidates(
+                abyss_enemy_name_candidates(row)
+            )
+            if registry_match.ready and registry_match.selected_name is not None:
+                return AbyssEnemyTypeResolution(
+                    status="resolved",
+                    candidates=candidates,
+                    gcsim_type=registry_match.gcsim_type,
+                    method=registry_match.method,
+                    selected_identity=_identity_from_name_candidate(
+                        registry_match.selected_name,
+                        candidates,
+                    ),
+                    warnings=registry_match.warnings,
+                )
+            if registry_match.method == MATCH_METHOD_AMBIGUOUS:
+                return AbyssEnemyTypeResolution(
+                    status="ambiguous_mapping",
+                    candidates=candidates,
+                    method=MATCH_METHOD_AMBIGUOUS,
+                    selected_identity=_identity_from_name_candidate(
+                        registry_match.selected_name,
+                        candidates,
+                    ),
+                    ambiguous_types=registry_match.ambiguous_types,
+                    warnings=registry_match.warnings,
+                )
+            if registry_match.method == MATCH_METHOD_MISSING:
+                return AbyssEnemyTypeResolution(
+                    status="missing_mapping",
+                    candidates=candidates,
+                    method=MATCH_METHOD_MISSING,
+                    selected_identity=_identity_from_name_candidate(
+                        registry_match.selected_name,
+                        candidates,
+                    ),
+                    warnings=registry_match.warnings
+                    or ("missing_mapping_for_available_identities",),
+                )
         return AbyssEnemyTypeResolution(
             status="missing_mapping",
             candidates=candidates,
+            method=MATCH_METHOD_MISSING,
             warnings=("missing_mapping_for_available_identities",),
         )
 
-    def gcsim_type_for_row(self, row: AbyssEnemySourceRow) -> str | None:
-        resolution = self.resolve_row(row)
+    def gcsim_type_for_row(
+        self,
+        row: AbyssEnemySourceRow,
+        *,
+        enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
+    ) -> str | None:
+        resolution = self.resolve_row(
+            row,
+            enemy_type_registry=enemy_type_registry,
+        )
         return resolution.gcsim_type if resolution.ready else None
 
 
@@ -273,6 +342,7 @@ def audit_abyss_wave_scenario(
     chamber: int,
     side: int,
     enemy_type_mapping: AbyssEnemyTypeMapping | None = None,
+    enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
 ) -> AbyssWaveScenarioAudit:
     selected_side = _select_side(data, chamber=chamber, side=side)
     if selected_side is None:
@@ -287,6 +357,7 @@ def audit_abyss_wave_scenario(
         data,
         selected_side,
         enemy_type_mapping=enemy_type_mapping,
+        enemy_type_registry=enemy_type_registry,
     )
 
 
@@ -296,6 +367,7 @@ def build_abyss_wave_scenario_payload(
     chamber: int,
     side: int,
     enemy_type_mapping: AbyssEnemyTypeMapping | None = None,
+    enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
 ) -> AbyssWaveScenarioBuildResult:
     selected_side = _select_side(data, chamber=chamber, side=side)
     if selected_side is None:
@@ -312,16 +384,21 @@ def build_abyss_wave_scenario_payload(
         data,
         selected_side,
         enemy_type_mapping=enemy_type_mapping,
+        enemy_type_registry=enemy_type_registry,
     )
-    if not audit.ready or enemy_type_mapping is None:
+    if not audit.ready or (enemy_type_mapping is None and enemy_type_registry is None):
         return AbyssWaveScenarioBuildResult(audit=audit)
 
+    resolver = enemy_type_mapping or AbyssEnemyTypeMapping()
     waves: list[dict[str, Any]] = []
     for wave in selected_side.waves:
         targets: list[dict[str, Any]] = []
         for row in wave.enemies:
             for _ in range(_normalized_enemy_count(row)):
-                resolution = enemy_type_mapping.resolve_row(row)
+                resolution = resolver.resolve_row(
+                    row,
+                    enemy_type_registry=enemy_type_registry,
+                )
                 if not resolution.ready:
                     continue
                 targets.append(
@@ -422,6 +499,27 @@ def abyss_enemy_identity_candidates(
         row.primary_display_name,
     )
     return tuple(candidates)
+
+
+def abyss_enemy_name_candidates(
+    row: AbyssEnemySourceRow,
+) -> tuple[GcsimEnemyNameCandidate, ...]:
+    identity_candidates = abyss_enemy_identity_candidates(row)
+    result: list[GcsimEnemyNameCandidate] = []
+    for candidate in identity_candidates:
+        if candidate.source_kind not in {
+            IDENTITY_KIND_NANOKA_DISPLAY_NAME,
+            IDENTITY_KIND_FANDOM_PAGE_TITLE,
+            IDENTITY_KIND_FANDOM_DISPLAY_NAME,
+        }:
+            continue
+        result.append(
+            GcsimEnemyNameCandidate(
+                source_kind=candidate.source_kind,
+                source_name=candidate.source_id,
+            )
+        )
+    return tuple(result)
 
 
 def _resolution_candidates(
@@ -532,6 +630,7 @@ def _audit_selected_side(
     selected_side: AbyssChamberSideSourceData,
     *,
     enemy_type_mapping: AbyssEnemyTypeMapping | None,
+    enemy_type_registry: GcsimEnemyTypeRegistry | None,
 ) -> AbyssWaveScenarioAudit:
     missing_hp: list[str] = []
     missing_level: list[str] = []
@@ -547,10 +646,12 @@ def _audit_selected_side(
             count = _normalized_enemy_count(row)
             target_count += count
             label = _row_label(row)
-            resolution = (
-                None
-                if enemy_type_mapping is None
-                else enemy_type_mapping.resolve_row(row)
+            resolver = enemy_type_mapping or (
+                AbyssEnemyTypeMapping() if enemy_type_registry is not None else None
+            )
+            resolution = None if resolver is None else resolver.resolve_row(
+                row,
+                enemy_type_registry=enemy_type_registry,
             )
             if row.nanoka_hp is None:
                 missing_hp.append(label)
@@ -585,8 +686,11 @@ def _audit_selected_side(
         warnings.append("side_has_no_waves")
     if target_count <= 0:
         warnings.append("side_has_no_targets")
-    if enemy_type_mapping is None:
+    if enemy_type_mapping is None and enemy_type_registry is None:
         warnings.append(MISSING_ENEMY_TYPE_MAPPING_WARNING)
+    mapping_name = "" if enemy_type_mapping is None else enemy_type_mapping.mapping_name
+    if enemy_type_registry is not None:
+        mapping_name = mapping_name or "gcsim_enemy_type_registry"
 
     return AbyssWaveScenarioAudit(
         floor=data.floor,
@@ -596,7 +700,7 @@ def _audit_selected_side(
         side_name=selected_side.side_name,
         wave_count=len(selected_side.waves),
         source_enemy_row_count=sum(len(wave.enemies) for wave in selected_side.waves),
-        generated_target_count=target_count if enemy_type_mapping is not None else 0,
+        generated_target_count=target_count if mapping_name else 0,
         missing_hp_rows=tuple(missing_hp),
         missing_level_rows=tuple(missing_level),
         invalid_hp_rows=tuple(invalid_hp),
@@ -604,7 +708,7 @@ def _audit_selected_side(
         missing_type_mapping_rows=tuple(missing_type_mapping),
         ambiguous_type_mapping_rows=tuple(ambiguous_type_mapping),
         type_mapping_details=tuple(type_mapping_details),
-        enemy_type_mapping_name="" if enemy_type_mapping is None else enemy_type_mapping.mapping_name,
+        enemy_type_mapping_name=mapping_name,
         warnings=tuple(warnings),
     )
 
@@ -638,6 +742,25 @@ def _type_mapping_detail(
         }
     )
     return data
+
+
+def _identity_from_name_candidate(
+    name_candidate: GcsimEnemyNameCandidate | None,
+    identity_candidates: tuple[AbyssEnemyIdentityCandidate, ...],
+) -> AbyssEnemyIdentityCandidate | None:
+    if name_candidate is None:
+        return None
+    for candidate in identity_candidates:
+        if (
+            candidate.source_kind == name_candidate.source_kind
+            and candidate.source_id == name_candidate.source_name
+        ):
+            return candidate
+    return AbyssEnemyIdentityCandidate(
+        source_kind=name_candidate.source_kind,
+        source_id=name_candidate.source_name,
+        source_name=name_candidate.source_name,
+    )
 
 
 def _row_label(row: AbyssEnemySourceRow) -> str:

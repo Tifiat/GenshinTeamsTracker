@@ -419,22 +419,26 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   A narrow backend Abyss-to-GTT-wave bridge exists in
   `run_workspace/gcsim/abyss_wave_scenario.py`: it audits typed
   `AbyssFloorSourceData` chamber/side waves and can produce schema-v1
-  `group_clear` payloads only when per-enemy HP/level are present and an
-  explicit Abyss enemy source identity -> GCSIM enemy type mapping is provided.
+  `group_clear` payloads when per-enemy HP/level are present and each enemy can
+  resolve to a compatible valid GCSIM target type. GTT writes explicit Abyss HP
+  into the payload, so exact GCSIM HP/variant identity is not required at this
+  stage; `Grounded Geoshroom -> groundedgeoshroom` is an acceptable success case
+  when it avoids an unknown target type and keeps usable GCSIM resists.
   Nanoka monster id is the preferred strong identity when present, but it is not
   the only allowed identity: Fandom enemy page URL/page title/name candidates
   must remain valid fallback identities, and enemy-type fallback must be
   independent from HP source fallback. HP may come from Nanoka while GCSIM type
-  resolves through Fandom identity, or HP may come from Fandom fallback while
-  type resolves through Nanoka id. A last-resort debug-only identity source may
+  resolves through Fandom/name identity, or HP may come from Fandom fallback while
+  type resolves through Nanoka/name identity. A last-resort debug-only identity source may
   come from Snap metadata if normal Nanoka/Fandom matching breaks: tower schedule
   floor id -> tower floor `LevelGroupId` -> tower level monsters -> monster
   `DescribeId` -> monster `Name`/`Title`. Snap metadata is only a fallback name
   source for enemy type mapping; it must not be used as HP truth or gameplay
   stat truth, and it lacks source wave splits, so ordering/group matching is only
   diagnostic/provisional. Missing Nanoka id alone is not a blocker; the blocker
-  is missing explicit mapping for all available source identities. The bridge
-  must not infer production-ready GCSIM type keys from arbitrary display names.
+  is missing any safe explicit or automatic compatible GCSIM target type. The
+  bridge must not infer production-ready GCSIM type keys from arbitrary
+  fuzzy/display-name similarity.
   Dev CLI `python -m run_workspace.gcsim.abyss_wave_scenario_smoke` loads current or
   explicit cached Abyss source data, writes this provisional scenario JSON, and
   can optionally pass it with an existing caller-provided config into the active
@@ -444,12 +448,22 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `source_id`, `gcsim_type`, and optional diagnostics; the old
   `enemy_types_by_nanoka_monster_id` shape still loads for dev compatibility.
   Dev coverage checker
-  `python -m run_workspace.gcsim.abyss_enemy_type_mapping_report --enemy-type-map path --cache-file path --format text`
-  reports cached source-data coverage by identity kind, missing/ambiguous type
-  mappings, HP-present/type-missing rows, and type-present/HP-missing rows
-  without fetching, mutating caches, running GCSIM, or touching UI. Use it to
-  check both normal Nanoka-backed caches and forced Fandom fallback/Fandom-only
-  caches against the same mapping.
+  `python -m run_workspace.gcsim.abyss_enemy_type_mapping_report --enemy-type-map path --gcsim-enemy-registry-source path --cache-file path --format text`
+  reports cached source-data coverage by resolution method, identity kind,
+  missing/ambiguous type mappings, HP-present/type-missing rows, and
+  type-present/HP-missing rows without fetching, mutating caches, running GCSIM,
+  or touching UI. Use it to check both normal Nanoka-backed caches and forced
+  Fandom fallback/Fandom-only caches against overrides plus the registry.
+  Backend/dev GCSIM enemy type registry matcher exists in
+  `run_workspace/gcsim/enemy_type_registry.py`. It can parse known target type
+  keys from local prepared GCSIM `pkg/shortcut/enemies_gen.go` and match Abyss
+  Nanoka/Fandom name candidates by exact normalized name, compatible/base-name
+  rules, and small explicit aliases. Manual mapping JSON records remain the
+  first-priority override/exception layer, not a full production enemy database.
+  Missing or ambiguous compatible matches are reported instead of guessed, and
+  fuzzy/display-name similarity is not production truth. The smoke CLI and
+  coverage checker accept `--gcsim-enemy-registry-source path`; existing callers
+  without a registry remain strict/manual-only.
   Backend config readiness audit exists in
   `run_workspace/gcsim/config_readiness.py`; it accepts lightweight prepared
   team inputs and reports whether explicit non-display-name GCSIM mappings,

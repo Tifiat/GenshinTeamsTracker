@@ -2,11 +2,11 @@
 
 This command is a backend-only bridge around the provisional
 `abyss_wave_scenario` adapter. It loads already-cached typed Abyss source data,
-requires an explicit Abyss enemy source identity -> GCSIM enemy type mapping,
-writes a schema-v1 payload, and can optionally pass that payload to the existing
-active GTT-GCSIM artifact runner with a caller provided config. It does not
-refresh network data, generate account/team GCSIM configs, map
-character/weapon/artifact keys, or model final Abyss wave policy.
+requires either explicit enemy type overrides or an optional GCSIM enemy type
+registry matcher, writes a schema-v1 payload, and can optionally pass that
+payload to the existing active GTT-GCSIM artifact runner with a caller provided
+config. It does not refresh network data, generate account/team GCSIM configs,
+map character/weapon/artifact keys, or model final Abyss wave policy.
 """
 
 from __future__ import annotations
@@ -38,6 +38,7 @@ from .artifact_runner import (
     run_active_gcsim_artifact,
 )
 from .runtime_probe import DEFAULT_GO_PROBE_TIMEOUT_SECONDS
+from .enemy_type_registry import load_gcsim_enemy_type_registry_from_go_source
 
 
 ArtifactRunFunc = Callable[..., GcsimArtifactRunResult]
@@ -87,11 +88,13 @@ def run_abyss_wave_scenario_smoke(
         }
 
     enemy_type_mapping = _enemy_type_mapping_from_args(args)
+    enemy_type_registry = _enemy_type_registry_from_args(args)
     build = build_abyss_wave_scenario_payload(
         data,
         chamber=args.chamber,
         side=args.side,
         enemy_type_mapping=enemy_type_mapping,
+        enemy_type_registry=enemy_type_registry,
     )
     report: dict[str, Any] = {
         "success": False,
@@ -155,8 +158,14 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Explicit JSON mapping from Abyss enemy source identities to GCSIM enemy type. "
-            "When omitted, the command prints audit and exits nonzero."
+            "Manual records act as overrides; use --gcsim-enemy-registry-source for automatic "
+            "known target type matching."
         ),
+    )
+    parser.add_argument(
+        "--gcsim-enemy-registry-source",
+        default=None,
+        help="Optional local GCSIM pkg/shortcut/enemies_gen.go source for known target type matching.",
     )
     parser.add_argument("--scenario-out", default=None, help="Path for generated scenario JSON.")
     parser.add_argument("--config", default=None, help="Optional caller-provided GCSIM config path.")
@@ -195,6 +204,17 @@ def _enemy_type_mapping_from_args(args: argparse.Namespace):
     try:
         return load_enemy_type_mapping_from_json(args.enemy_type_map)
     except (ValueError, OSError, json.JSONDecodeError) as exc:
+        raise AbyssWaveScenarioSmokeError(str(exc)) from exc
+
+
+def _enemy_type_registry_from_args(args: argparse.Namespace):
+    if not args.gcsim_enemy_registry_source:
+        return None
+    try:
+        return load_gcsim_enemy_type_registry_from_go_source(
+            args.gcsim_enemy_registry_source
+        )
+    except (ValueError, OSError) as exc:
         raise AbyssWaveScenarioSmokeError(str(exc)) from exc
 
 

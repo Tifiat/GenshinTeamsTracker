@@ -10,6 +10,10 @@ Use the existing local SQLite DB:
 
 - `data/artifacts.db`
 
+The filename is legacy. Treat this as the unified local runtime SQLite DB for
+account, equipment, artifact, and selected static-effect tables, not as an
+artifact-only database.
+
 Schema initialization lives in:
 
 - `hoyolab_export/artifact_db.py`
@@ -102,6 +106,10 @@ condition instead of silently falling back to stale raw JSON.
 One canonical account-state row per HoYoLAB source/game character id.
 `account_characters.json` is the authoritative source for which characters are
 on the account.
+
+`name` is localized HoYoLAB display text. Do not use it as an English identity
+or as a GCSIM key source. Identity-sensitive adapters should key by
+`character_id` and an explicit mapping/catalog layer.
 
 Fields:
 

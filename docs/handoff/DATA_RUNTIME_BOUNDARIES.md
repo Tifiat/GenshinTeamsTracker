@@ -35,6 +35,10 @@ DB:
 
 - `data/artifacts.db`
 
+Note: this is a legacy filename for the unified local SQLite runtime DB. It is
+not artifact-only storage; account, equipment, artifact, and selected static
+effect tables can live in the same file.
+
 Runtime account tables:
 
 - `account_characters`
@@ -69,6 +73,9 @@ Terminology note: "stack" here means a deduped observed weapon fingerprint with
 
 Important limits:
 
+- `account_characters.name` is localized HoYoLAB display text. Identity-sensitive
+  adapters should use stable IDs such as `character_id` plus explicit mapping
+  data, not English-name searches or localized display-name matching;
 - observed weapon stacks are not guaranteed full weapon inventory;
 - HoYoLAB weapon id is a weapon type id, not a unique account instance id;
 - no fake weapon instance ids;

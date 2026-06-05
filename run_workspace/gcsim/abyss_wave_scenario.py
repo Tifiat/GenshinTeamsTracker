@@ -2,14 +2,14 @@
 
 This module is intentionally backend-only and provisional. Abyss source-data
 rows currently provide enemy waves, per-enemy HP, display levels, confidence,
-and warnings, but they do not provide source-derived GCSIM spawn positions,
-target radius, or resistance values. Payload generation therefore requires an
-explicit fixture policy for those fields, and the audit result records that the
-fixture fields are not product-correct Abyss data.
+and warnings, but they do not provide GCSIM enemy type keys. Payload generation
+therefore requires an explicit source-id -> GCSIM enemy type mapping. It does
+not infer GCSIM types from localized display names.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 import json
 from pathlib import Path
@@ -24,56 +24,26 @@ from run_workspace.abyss.source_data import (
 
 GTT_WAVE_SCENARIO_SCHEMA_VERSION = 1
 GTT_WAVE_SCENARIO_SPAWN_POLICY = "group_clear"
-FIXTURE_FIELDS_WARNING = "fixture_fields_used:radius_pos_resist_not_source_derived"
-SOURCE_FIELDS_MISSING_WARNING = "abyss_source_data_lacks_radius_pos_resist"
-MISSING_FIXTURE_POLICY_WARNING = "missing_fixture_policy:radius_pos_resist"
+MISSING_ENEMY_TYPE_MAPPING_WARNING = "missing_enemy_type_mapping:nanoka_monster_id_to_gcsim_type"
+SOURCE_FIELDS_MISSING_WARNING = "abyss_source_data_lacks_gcsim_enemy_type"
 
 
 @dataclass(frozen=True, slots=True)
-class ProvisionalTargetFixturePolicy:
-    """Explicit non-source policy for current schema-v1 target fixture fields."""
+class AbyssEnemyTypeMapping:
+    """Explicit source-id -> GCSIM enemy type mapping for scenario payloads."""
 
-    radius: float
-    resist: float
-    positions: tuple[tuple[float, float], ...]
-    policy_name: str = "provisional_fixture"
-    reuse_positions: bool = False
+    types_by_nanoka_monster_id: Mapping[str, str]
+    mapping_name: str = "explicit_enemy_type_mapping"
 
-    def validate_for_max_wave_targets(self, max_wave_targets: int) -> tuple[str, ...]:
-        warnings: list[str] = []
-        if self.radius <= 0:
-            warnings.append("fixture_policy_invalid:radius_must_be_positive")
-        if not self.positions:
-            warnings.append("fixture_policy_invalid:positions_required")
-        for index, pos in enumerate(self.positions):
-            if len(pos) != 2:
-                warnings.append(f"fixture_policy_invalid:positions[{index}]_must_have_two_values")
-                continue
-            for coord_index, coord in enumerate(pos):
-                if isinstance(coord, bool) or not isinstance(coord, (int, float)):
-                    warnings.append(
-                        "fixture_policy_invalid:"
-                        f"positions[{index}][{coord_index}]_must_be_number"
-                    )
-        if (
-            max_wave_targets > len(self.positions)
-            and self.positions
-            and not self.reuse_positions
-        ):
-            warnings.append(
-                "fixture_policy_invalid:"
-                f"positions_count={len(self.positions)}_less_than_max_wave_targets={max_wave_targets}"
-            )
-        if max_wave_targets > len(self.positions) and self.positions and self.reuse_positions:
-            warnings.append("fixture_policy_reuses_positions")
-        return tuple(warnings)
-
-    def position_for_target(self, target_index: int) -> tuple[float, float]:
-        if self.reuse_positions:
-            position = self.positions[target_index % len(self.positions)]
-        else:
-            position = self.positions[target_index]
-        return (float(position[0]), float(position[1]))
+    def gcsim_type_for_row(self, row: AbyssEnemySourceRow) -> str | None:
+        source_id = (row.nanoka_monster_id or "").strip()
+        if not source_id:
+            return None
+        value = self.types_by_nanoka_monster_id.get(source_id)
+        if value is None:
+            return None
+        value = str(value).strip()
+        return value or None
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,8 +60,8 @@ class AbyssWaveScenarioAudit:
     missing_level_rows: tuple[str, ...] = ()
     invalid_hp_rows: tuple[str, ...] = ()
     invalid_level_rows: tuple[str, ...] = ()
-    fixture_fields_used: bool = False
-    fixture_policy_name: str = ""
+    missing_type_mapping_rows: tuple[str, ...] = ()
+    enemy_type_mapping_name: str = ""
     warnings: tuple[str, ...] = ()
 
     @property
@@ -101,6 +71,7 @@ class AbyssWaveScenarioAudit:
             and not self.missing_level_rows
             and not self.invalid_hp_rows
             and not self.invalid_level_rows
+            and not self.missing_type_mapping_rows
             and not self.warnings_blocking
         )
 
@@ -109,8 +80,7 @@ class AbyssWaveScenarioAudit:
         return tuple(
             warning
             for warning in self.warnings
-            if warning.startswith("missing_fixture_policy:")
-            or warning.startswith("fixture_policy_invalid:")
+            if warning.startswith("missing_enemy_type_mapping:")
             or warning.startswith("side_not_found:")
             or warning == "side_has_no_waves"
             or warning == "side_has_no_targets"
@@ -131,8 +101,8 @@ class AbyssWaveScenarioAudit:
             "missing_level_rows": list(self.missing_level_rows),
             "invalid_hp_rows": list(self.invalid_hp_rows),
             "invalid_level_rows": list(self.invalid_level_rows),
-            "fixture_fields_used": self.fixture_fields_used,
-            "fixture_policy_name": self.fixture_policy_name,
+            "missing_type_mapping_rows": list(self.missing_type_mapping_rows),
+            "enemy_type_mapping_name": self.enemy_type_mapping_name,
             "warnings": list(self.warnings),
         }
 
@@ -159,7 +129,7 @@ def audit_abyss_wave_scenario(
     *,
     chamber: int,
     side: int,
-    fixture_policy: ProvisionalTargetFixturePolicy | None = None,
+    enemy_type_mapping: AbyssEnemyTypeMapping | None = None,
 ) -> AbyssWaveScenarioAudit:
     selected_side = _select_side(data, chamber=chamber, side=side)
     if selected_side is None:
@@ -173,7 +143,7 @@ def audit_abyss_wave_scenario(
     return _audit_selected_side(
         data,
         selected_side,
-        fixture_policy=fixture_policy,
+        enemy_type_mapping=enemy_type_mapping,
     )
 
 
@@ -182,7 +152,7 @@ def build_abyss_wave_scenario_payload(
     *,
     chamber: int,
     side: int,
-    fixture_policy: ProvisionalTargetFixturePolicy | None = None,
+    enemy_type_mapping: AbyssEnemyTypeMapping | None = None,
 ) -> AbyssWaveScenarioBuildResult:
     selected_side = _select_side(data, chamber=chamber, side=side)
     if selected_side is None:
@@ -198,9 +168,9 @@ def build_abyss_wave_scenario_payload(
     audit = _audit_selected_side(
         data,
         selected_side,
-        fixture_policy=fixture_policy,
+        enemy_type_mapping=enemy_type_mapping,
     )
-    if not audit.ready or fixture_policy is None:
+    if not audit.ready or enemy_type_mapping is None:
         return AbyssWaveScenarioBuildResult(audit=audit)
 
     waves: list[dict[str, Any]] = []
@@ -208,14 +178,14 @@ def build_abyss_wave_scenario_payload(
         targets: list[dict[str, Any]] = []
         for row in wave.enemies:
             for _ in range(_normalized_enemy_count(row)):
-                pos = fixture_policy.position_for_target(len(targets))
+                gcsim_type = enemy_type_mapping.gcsim_type_for_row(row)
+                if not gcsim_type:
+                    continue
                 targets.append(
                     {
                         "level": int(row.display_level or 0),
+                        "type": gcsim_type,
                         "hp": float(row.nanoka_hp or 0),
-                        "radius": float(fixture_policy.radius),
-                        "pos": [pos[0], pos[1]],
-                        "resist": float(fixture_policy.resist),
                     }
                 )
         waves.append({"targets": targets})
@@ -240,6 +210,26 @@ def write_abyss_wave_scenario_payload(payload: dict[str, Any], path: str | Path)
     return target_path
 
 
+def load_enemy_type_mapping_from_json(path: str | Path) -> AbyssEnemyTypeMapping:
+    raw = json.loads(Path(path).read_text(encoding="utf-8-sig"))
+    if not isinstance(raw, Mapping):
+        raise ValueError("enemy type mapping must be a JSON object")
+    mapping_raw = raw.get("enemy_types_by_nanoka_monster_id", raw)
+    if not isinstance(mapping_raw, Mapping):
+        raise ValueError("enemy_types_by_nanoka_monster_id must be a JSON object")
+    mapping: dict[str, str] = {}
+    for key, value in mapping_raw.items():
+        source_id = str(key).strip()
+        gcsim_type = str(value).strip()
+        if source_id and gcsim_type:
+            mapping[source_id] = gcsim_type
+    name = str(raw.get("mapping_name") or Path(path).name).strip()
+    return AbyssEnemyTypeMapping(
+        types_by_nanoka_monster_id=mapping,
+        mapping_name=name or "explicit_enemy_type_mapping",
+    )
+
+
 def _select_side(
     data: AbyssFloorSourceData,
     *,
@@ -256,20 +246,18 @@ def _audit_selected_side(
     data: AbyssFloorSourceData,
     selected_side: AbyssChamberSideSourceData,
     *,
-    fixture_policy: ProvisionalTargetFixturePolicy | None,
+    enemy_type_mapping: AbyssEnemyTypeMapping | None,
 ) -> AbyssWaveScenarioAudit:
     missing_hp: list[str] = []
     missing_level: list[str] = []
     invalid_hp: list[str] = []
     invalid_level: list[str] = []
+    missing_type_mapping: list[str] = []
     warnings: list[str] = [SOURCE_FIELDS_MISSING_WARNING]
     target_count = 0
-    max_wave_targets = 0
     for wave in selected_side.waves:
-        wave_target_count = 0
         for row in wave.enemies:
             count = _normalized_enemy_count(row)
-            wave_target_count += count
             target_count += count
             label = _row_label(row)
             if row.nanoka_hp is None:
@@ -280,17 +268,18 @@ def _audit_selected_side(
                 missing_level.append(label)
             elif row.display_level < 1 or row.display_level > 100:
                 invalid_level.append(label)
-        max_wave_targets = max(max_wave_targets, wave_target_count)
+            if count > 0 and (
+                enemy_type_mapping is None
+                or enemy_type_mapping.gcsim_type_for_row(row) is None
+            ):
+                missing_type_mapping.append(label)
 
     if not selected_side.waves:
         warnings.append("side_has_no_waves")
     if target_count <= 0:
         warnings.append("side_has_no_targets")
-    if fixture_policy is None:
-        warnings.append(MISSING_FIXTURE_POLICY_WARNING)
-    else:
-        warnings.append(FIXTURE_FIELDS_WARNING)
-        warnings.extend(fixture_policy.validate_for_max_wave_targets(max_wave_targets))
+    if enemy_type_mapping is None:
+        warnings.append(MISSING_ENEMY_TYPE_MAPPING_WARNING)
 
     return AbyssWaveScenarioAudit(
         floor=data.floor,
@@ -300,13 +289,13 @@ def _audit_selected_side(
         side_name=selected_side.side_name,
         wave_count=len(selected_side.waves),
         source_enemy_row_count=sum(len(wave.enemies) for wave in selected_side.waves),
-        generated_target_count=target_count if fixture_policy is not None else 0,
+        generated_target_count=target_count if enemy_type_mapping is not None else 0,
         missing_hp_rows=tuple(missing_hp),
         missing_level_rows=tuple(missing_level),
         invalid_hp_rows=tuple(invalid_hp),
         invalid_level_rows=tuple(invalid_level),
-        fixture_fields_used=fixture_policy is not None,
-        fixture_policy_name="" if fixture_policy is None else fixture_policy.policy_name,
+        missing_type_mapping_rows=tuple(missing_type_mapping),
+        enemy_type_mapping_name="" if enemy_type_mapping is None else enemy_type_mapping.mapping_name,
         warnings=tuple(warnings),
     )
 

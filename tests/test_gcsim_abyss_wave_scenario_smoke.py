@@ -15,6 +15,22 @@ from run_workspace.gcsim.artifact_runner import (
 from tests.test_gcsim_abyss_wave_scenario import _source_data
 
 
+def _write_enemy_type_map(path: Path) -> Path:
+    path.write_text(
+        json.dumps(
+            {
+                "mapping_name": "test_cli_enemy_type_map",
+                "enemy_types_by_nanoka_monster_id": {
+                    "first": "battlehardenedgroundedgeoshroom",
+                    "second": "dummy",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
 class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
     def test_explicit_period_cache_path_writes_schema_v1_scenario(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -22,6 +38,7 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
             data = _source_data()
             save_abyss_floor_source_data(data, cache_dir=root / "cache")
             scenario_path = root / "scenario.json"
+            mapping_path = _write_enemy_type_map(root / "enemy_types.json")
             stdout = StringIO()
 
             code = main(
@@ -36,14 +53,8 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
                     "1",
                     "--side",
                     "1",
-                    "--radius",
-                    "1.2",
-                    "--resist",
-                    "0.1",
-                    "--position",
-                    "0,0",
-                    "--position",
-                    "3,0",
+                    "--enemy-type-map",
+                    str(mapping_path),
                     "--scenario-out",
                     str(scenario_path),
                     "--format",
@@ -60,6 +71,8 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
         self.assertEqual(payload["schema_version"], 1)
         self.assertEqual(payload["spawn_policy"], "group_clear")
         self.assertEqual([len(wave["targets"]) for wave in payload["waves"]], [2, 1])
+        self.assertEqual(payload["waves"][0]["targets"][0]["type"], "battlehardenedgroundedgeoshroom")
+        self.assertNotIn("radius", payload["waves"][0]["targets"][0])
 
     def test_current_period_path_uses_temp_period_file_and_cache_dir(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -72,6 +85,7 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
                 encoding="utf-8",
             )
             scenario_path = root / "scenario.json"
+            mapping_path = _write_enemy_type_map(root / "enemy_types.json")
             stdout = StringIO()
 
             code = main(
@@ -84,14 +98,8 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
                     "1",
                     "--side",
                     "1",
-                    "--radius",
-                    "1.2",
-                    "--resist",
-                    "0.1",
-                    "--position",
-                    "0,0",
-                    "--position",
-                    "3,0",
+                    "--enemy-type-map",
+                    str(mapping_path),
                     "--scenario-out",
                     str(scenario_path),
                     "--format",
@@ -106,7 +114,7 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
         self.assertTrue(scenario_exists)
         self.assertEqual(report["source"]["mode"], "current_cached_period")
 
-    def test_missing_fixture_policy_reports_not_ready_without_writing(self) -> None:
+    def test_missing_enemy_type_mapping_reports_not_ready_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             save_abyss_floor_source_data(_source_data(), cache_dir=root / "cache")
@@ -137,7 +145,7 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
         self.assertFalse(report["success"])
         self.assertEqual(report["status"], "not_ready")
         self.assertIn(
-            "missing_fixture_policy:radius_pos_resist",
+            "missing_enemy_type_mapping:nanoka_monster_id_to_gcsim_type",
             report["audit"]["warnings"],
         )
 
@@ -166,6 +174,7 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
             save_abyss_floor_source_data(_source_data(), cache_dir=root / "cache")
             config_path = root / "config.txt"
             config_path.write_text("options iteration=1;", encoding="utf-8")
+            mapping_path = _write_enemy_type_map(root / "enemy_types.json")
             stdout = StringIO()
 
             code = main(
@@ -178,14 +187,8 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
                     "1",
                     "--side",
                     "1",
-                    "--radius",
-                    "1.2",
-                    "--resist",
-                    "0.1",
-                    "--position",
-                    "0,0",
-                    "--position",
-                    "3,0",
+                    "--enemy-type-map",
+                    str(mapping_path),
                     "--run-dir",
                     str(root / "run"),
                     "--config",

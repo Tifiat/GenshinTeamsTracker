@@ -140,10 +140,10 @@ index c347d60..d980082 100644
  	}
  }
 diff --git a/pkg/gtt/waves.go b/pkg/gtt/waves.go
-index 95ded4c..b3ecf18 100644
+index 95ded4c..f868b88 100644
 --- a/pkg/gtt/waves.go
 +++ b/pkg/gtt/waves.go
-@@ -1,11 +1,16 @@
+@@ -1,9 +1,13 @@
  package gtt
  
  import (
@@ -156,11 +156,8 @@ index 95ded4c..b3ecf18 100644
 +	"strings"
  
  	"github.com/genshinsim/gcsim/pkg/core"
-+	"github.com/genshinsim/gcsim/pkg/core/attributes"
  	"github.com/genshinsim/gcsim/pkg/core/event"
- 	"github.com/genshinsim/gcsim/pkg/core/glog"
- 	"github.com/genshinsim/gcsim/pkg/core/info"
-@@ -13,8 +18,10 @@ import (
+@@ -13,8 +17,10 @@ import (
  )
  
  const (
@@ -173,7 +170,7 @@ index 95ded4c..b3ecf18 100644
  )
  
  var (
-@@ -49,17 +56,151 @@ func ApplyConfigDirectives(raw string, cfg *info.ActionList) error {
+@@ -49,17 +55,157 @@ func ApplyConfigDirectives(raw string, cfg *info.ActionList) error {
  	return nil
  }
  
@@ -189,6 +186,7 @@ index 95ded4c..b3ecf18 100644
 +
 +type waveScenarioTarget struct {
 +	Level  *int      `json:"level"`
++	Type   string    `json:"type"`
 +	HP     *float64  `json:"hp"`
 +	Radius *float64  `json:"radius"`
 +	Pos    []float64 `json:"pos"`
@@ -268,40 +266,45 @@ index 95ded4c..b3ecf18 100644
 +	if *target.Level < 1 || *target.Level > 100 {
 +		return info.EnemyProfile{}, fmt.Errorf("%s.level must be between 1 and 100", prefix)
 +	}
++	if strings.TrimSpace(target.Type) == "" {
++		return info.EnemyProfile{}, fmt.Errorf("%s.type is required", prefix)
++	}
 +	if target.HP == nil {
 +		return info.EnemyProfile{}, fmt.Errorf("%s.hp is required", prefix)
 +	}
 +	if *target.HP <= 0 {
 +		return info.EnemyProfile{}, fmt.Errorf("%s.hp must be greater than 0", prefix)
 +	}
-+	if target.Radius == nil {
-+		return info.EnemyProfile{}, fmt.Errorf("%s.radius is required", prefix)
-+	}
-+	if *target.Radius <= 0 {
++	if target.Radius != nil && *target.Radius <= 0 {
 +		return info.EnemyProfile{}, fmt.Errorf("%s.radius must be greater than 0", prefix)
 +	}
-+	if len(target.Pos) != 2 {
-+		return info.EnemyProfile{}, fmt.Errorf("%s.pos must contain exactly two numbers", prefix)
++	if len(target.Pos) != 0 && len(target.Pos) != 2 {
++		return info.EnemyProfile{}, fmt.Errorf("%s.pos must contain exactly two numbers when provided", prefix)
 +	}
-+	if target.Resist == nil {
-+		return info.EnemyProfile{}, fmt.Errorf("%s.resist is required", prefix)
++	profile := info.EnemyProfile{
++		Level: *target.Level,
 +	}
-+	return info.EnemyProfile{
-+		Level:       *target.Level,
-+		HP:          *target.HP,
-+		Resist:      flatResistMap(*target.Resist),
-+		Pos:         info.Coord{X: target.Pos[0], Y: target.Pos[1], R: *target.Radius},
-+		MonsterName: fmt.Sprintf("gtt_wave_%d_target_%d", waveIndex+1, targetIndex+1),
-+		Modified:    true,
-+	}, nil
-+}
-+
-+func flatResistMap(value float64) attributes.ElementMap {
-+	resist := make(attributes.ElementMap)
-+	for _, attr := range []attributes.Element{attributes.Electro, attributes.Cryo, attributes.Hydro, attributes.Physical, attributes.Pyro, attributes.Geo, attributes.Dendro, attributes.Anemo} {
-+		resist[attr] = value
++	if len(target.Pos) == 2 {
++		profile.Pos.X = target.Pos[0]
++		profile.Pos.Y = target.Pos[1]
 +	}
-+	return resist
++	if target.Radius != nil {
++		profile.Pos.R = *target.Radius
++	}
++	if err := enemy.ConfigureTarget(&profile, target.Type, enemy.TargetParams{Particles: true}); err != nil {
++		return info.EnemyProfile{}, fmt.Errorf("%s.type %q is invalid: %w", prefix, target.Type, err)
++	}
++	if profile.Pos.R == 0 {
++		profile.Pos.R = 1
++	}
++	profile.HP = *target.HP
++	profile.Modified = true
++	if target.Resist != nil {
++		for attr := range profile.Resist {
++			profile.Resist[attr] = *target.Resist
++		}
++	}
++	return profile, nil
 +}
 +
  type SequentialWavePrototypeScheduler struct {
@@ -325,7 +328,7 @@ index 95ded4c..b3ecf18 100644
  	if !cfg.Settings.GTTSequentialWavePrototype || cfg.Settings.GTTSequentialWavePrototypeExtraWaves <= 0 {
  		return nil
  	}
-@@ -74,22 +215,65 @@ func NewSequentialWavePrototypeScheduler(c *core.Core, cfg *info.ActionList) *Se
+@@ -74,22 +220,65 @@ func NewSequentialWavePrototypeScheduler(c *core.Core, cfg *info.ActionList) *Se
  }
  
  func (s *SequentialWavePrototypeScheduler) SpawnNextWave() bool {
@@ -349,11 +352,12 @@ index 95ded4c..b3ecf18 100644
 +			Write("remaining_waves", len(s.waves)).
 +			Write("target_count", len(profiles))
 +		return true
- 	}
--	s.core.Events.Emit(event.OnEnemyAdded, nextEnemy)
++	}
 +	if s.remaining <= 0 {
 +		return false
+-	}
 +	}
+-	s.core.Events.Emit(event.OnEnemyAdded, nextEnemy)
 +	profile := s.prototype.Clone()
 +	s.spawnProfiles([]info.EnemyProfile{profile})
  	s.remaining--

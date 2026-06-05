@@ -6,21 +6,22 @@ from pathlib import Path
 
 from run_workspace.abyss.source_data import load_abyss_floor12_source_data
 from run_workspace.gcsim.abyss_wave_scenario import (
-    FIXTURE_FIELDS_WARNING,
-    MISSING_FIXTURE_POLICY_WARNING,
-    ProvisionalTargetFixturePolicy,
+    MISSING_ENEMY_TYPE_MAPPING_WARNING,
+    AbyssEnemyTypeMapping,
     build_abyss_wave_scenario_payload,
+    load_enemy_type_mapping_from_json,
     write_abyss_wave_scenario_payload,
 )
 from tests.abyss.test_source_data import composition_report, fandom_row, nanoka_report, nanoka_row
 
 
-def _fixture_policy() -> ProvisionalTargetFixturePolicy:
-    return ProvisionalTargetFixturePolicy(
-        radius=1.2,
-        resist=0.1,
-        positions=((0.0, 0.0), (3.0, 0.0), (-3.0, 0.0)),
-        policy_name="test_fixture_policy",
+def _enemy_type_mapping() -> AbyssEnemyTypeMapping:
+    return AbyssEnemyTypeMapping(
+        types_by_nanoka_monster_id={
+            "first": "battlehardenedgroundedgeoshroom",
+            "second": "dummy",
+        },
+        mapping_name="test_enemy_type_mapping",
     )
 
 
@@ -80,7 +81,7 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
             _source_data(),
             chamber=1,
             side=1,
-            fixture_policy=_fixture_policy(),
+            enemy_type_mapping=_enemy_type_mapping(),
         )
 
         self.assertTrue(result.ready)
@@ -93,15 +94,20 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
         self.assertEqual(result.payload["waves"][0]["targets"][0]["hp"], 100_000.0)
         self.assertEqual(result.payload["waves"][0]["targets"][1]["hp"], 100_000.0)
         self.assertEqual(result.payload["waves"][1]["targets"][0]["level"], 90)
-        self.assertEqual(result.payload["waves"][0]["targets"][0]["pos"], [0.0, 0.0])
-        self.assertEqual(result.payload["waves"][0]["targets"][1]["pos"], [3.0, 0.0])
+        self.assertEqual(
+            result.payload["waves"][0]["targets"][0]["type"],
+            "battlehardenedgroundedgeoshroom",
+        )
+        self.assertNotIn("radius", result.payload["waves"][0]["targets"][0])
+        self.assertNotIn("pos", result.payload["waves"][0]["targets"][0])
+        self.assertNotIn("resist", result.payload["waves"][0]["targets"][0])
 
     def test_missing_hp_reports_not_ready_without_payload(self) -> None:
         result = build_abyss_wave_scenario_payload(
             _source_data(missing_hp=True),
             chamber=1,
             side=1,
-            fixture_policy=_fixture_policy(),
+            enemy_type_mapping=_enemy_type_mapping(),
         )
 
         self.assertFalse(result.ready)
@@ -114,7 +120,7 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
             _source_data(missing_level=True),
             chamber=1,
             side=1,
-            fixture_policy=_fixture_policy(),
+            enemy_type_mapping=_enemy_type_mapping(),
         )
 
         self.assertFalse(result.ready)
@@ -122,20 +128,35 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
         self.assertGreater(len(result.audit.missing_level_rows), 0)
         self.assertIn("First Enemy", result.audit.missing_level_rows[0])
 
-    def test_missing_fixture_policy_prevents_payload_generation(self) -> None:
+    def test_missing_enemy_type_mapping_prevents_payload_generation(self) -> None:
         result = build_abyss_wave_scenario_payload(_source_data(), chamber=1, side=1)
 
         self.assertFalse(result.ready)
         self.assertIsNone(result.payload)
-        self.assertFalse(result.audit.fixture_fields_used)
-        self.assertIn(MISSING_FIXTURE_POLICY_WARNING, result.audit.warnings)
+        self.assertGreater(len(result.audit.missing_type_mapping_rows), 0)
+        self.assertIn(MISSING_ENEMY_TYPE_MAPPING_WARNING, result.audit.warnings)
 
-    def test_fixture_policy_produces_schema_v1_payload_and_audit_warning(self) -> None:
+    def test_partial_enemy_type_mapping_reports_missing_row(self) -> None:
         result = build_abyss_wave_scenario_payload(
             _source_data(),
             chamber=1,
             side=1,
-            fixture_policy=_fixture_policy(),
+            enemy_type_mapping=AbyssEnemyTypeMapping(
+                types_by_nanoka_monster_id={"first": "battlehardenedgroundedgeoshroom"}
+            ),
+        )
+
+        self.assertFalse(result.ready)
+        self.assertIsNone(result.payload)
+        self.assertEqual(len(result.audit.missing_type_mapping_rows), 1)
+        self.assertIn("Second Enemy", result.audit.missing_type_mapping_rows[0])
+
+    def test_enemy_type_mapping_produces_schema_v1_payload(self) -> None:
+        result = build_abyss_wave_scenario_payload(
+            _source_data(),
+            chamber=1,
+            side=1,
+            enemy_type_mapping=_enemy_type_mapping(),
         )
 
         self.assertTrue(result.ready)
@@ -143,16 +164,30 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
         assert result.payload is not None
         self.assertEqual(result.payload["schema_version"], 1)
         self.assertEqual(result.payload["spawn_policy"], "group_clear")
-        self.assertEqual(result.audit.fixture_policy_name, "test_fixture_policy")
-        self.assertTrue(result.audit.fixture_fields_used)
-        self.assertIn(FIXTURE_FIELDS_WARNING, result.audit.warnings)
+        self.assertEqual(result.audit.enemy_type_mapping_name, "test_enemy_type_mapping")
+        self.assertEqual(
+            result.payload["waves"][1]["targets"][0],
+            {"hp": 200_000.0, "level": 90, "type": "dummy"},
+        )
+
+    def test_load_enemy_type_mapping_from_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "enemy_types.json"
+            path.write_text(
+                '{"mapping_name":"tmp_mapping","enemy_types_by_nanoka_monster_id":{"first":"dummy"}}',
+                encoding="utf-8",
+            )
+            mapping = load_enemy_type_mapping_from_json(path)
+
+        self.assertEqual(mapping.mapping_name, "tmp_mapping")
+        self.assertEqual(mapping.types_by_nanoka_monster_id["first"], "dummy")
 
     def test_write_payload_helper_writes_json_only_when_caller_has_payload(self) -> None:
         result = build_abyss_wave_scenario_payload(
             _source_data(),
             chamber=1,
             side=1,
-            fixture_policy=_fixture_policy(),
+            enemy_type_mapping=_enemy_type_mapping(),
         )
         assert result.payload is not None
 

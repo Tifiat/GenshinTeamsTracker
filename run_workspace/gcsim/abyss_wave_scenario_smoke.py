@@ -2,11 +2,11 @@
 
 This command is a backend-only bridge around the provisional
 `abyss_wave_scenario` adapter. It loads already-cached typed Abyss source data,
-requires explicit fixture radius/position/resist fields because the source data
-does not contain them yet, writes a schema-v1 payload, and can optionally pass
-that payload to the existing active GTT-GCSIM artifact runner with a caller
-provided config. It does not refresh network data, generate account/team GCSIM
-configs, map character/weapon/artifact keys, or model final Abyss wave policy.
+requires an explicit Nanoka monster id -> GCSIM enemy type mapping, writes a
+schema-v1 payload, and can optionally pass that payload to the existing active
+GTT-GCSIM artifact runner with a caller provided config. It does not refresh
+network data, generate account/team GCSIM configs, map character/weapon/artifact
+keys, or model final Abyss wave policy.
 """
 
 from __future__ import annotations
@@ -28,8 +28,8 @@ from run_workspace.abyss.source_data_runtime import (
 )
 
 from .abyss_wave_scenario import (
-    ProvisionalTargetFixturePolicy,
     build_abyss_wave_scenario_payload,
+    load_enemy_type_mapping_from_json,
     write_abyss_wave_scenario_payload,
 )
 from .artifact_runner import (
@@ -86,12 +86,12 @@ def run_abyss_wave_scenario_smoke(
             "error": f"Abyss source-data cache not found for {source_label}.",
         }
 
-    fixture_policy = _fixture_policy_from_args(args)
+    enemy_type_mapping = _enemy_type_mapping_from_args(args)
     build = build_abyss_wave_scenario_payload(
         data,
         chamber=args.chamber,
         side=args.side,
-        fixture_policy=fixture_policy,
+        enemy_type_mapping=enemy_type_mapping,
     )
     report: dict[str, Any] = {
         "success": False,
@@ -150,19 +150,13 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cache-dir", default=None, help="Optional Abyss source-data cache dir.")
     parser.add_argument("--chamber", type=int, required=True, help="Abyss chamber number.")
     parser.add_argument("--side", type=int, required=True, help="Abyss side number.")
-    parser.add_argument("--radius", type=float, default=None, help="Explicit fixture target radius.")
-    parser.add_argument("--resist", type=float, default=None, help="Explicit fixture flat resist.")
     parser.add_argument(
-        "--position",
-        action="append",
-        default=[],
-        metavar="X,Y",
-        help="Explicit fixture target position. Repeat for multiple targets in a wave.",
-    )
-    parser.add_argument(
-        "--reuse-positions",
-        action="store_true",
-        help="Allow fixture positions to repeat when a wave has more targets than positions.",
+        "--enemy-type-map",
+        default=None,
+        help=(
+            "Explicit JSON mapping from Nanoka monster id to GCSIM enemy type. "
+            "When omitted, the command prints audit and exits nonzero."
+        ),
     )
     parser.add_argument("--scenario-out", default=None, help="Path for generated scenario JSON.")
     parser.add_argument("--config", default=None, help="Optional caller-provided GCSIM config path.")
@@ -195,44 +189,13 @@ def _load_source_data(args: argparse.Namespace) -> AbyssFloorSourceData | None:
         raise AbyssWaveScenarioSmokeError(str(exc)) from exc
 
 
-def _fixture_policy_from_args(
-    args: argparse.Namespace,
-) -> ProvisionalTargetFixturePolicy | None:
-    has_any = args.radius is not None or args.resist is not None or bool(args.position)
-    if not has_any:
+def _enemy_type_mapping_from_args(args: argparse.Namespace):
+    if not args.enemy_type_map:
         return None
-    missing = []
-    if args.radius is None:
-        missing.append("--radius")
-    if args.resist is None:
-        missing.append("--resist")
-    if not args.position:
-        missing.append("--position")
-    if missing:
-        raise AbyssWaveScenarioSmokeError(
-            "Incomplete provisional fixture policy; missing " + ", ".join(missing)
-        )
-    return ProvisionalTargetFixturePolicy(
-        radius=float(args.radius),
-        resist=float(args.resist),
-        positions=tuple(_parse_position(raw) for raw in args.position),
-        policy_name="cli_provisional_fixture",
-        reuse_positions=bool(args.reuse_positions),
-    )
-
-
-def _parse_position(raw: str) -> tuple[float, float]:
-    parts = [part.strip() for part in str(raw).split(",")]
-    if len(parts) != 2:
-        raise AbyssWaveScenarioSmokeError(
-            f"Invalid --position {raw!r}; expected X,Y."
-        )
     try:
-        return (float(parts[0]), float(parts[1]))
-    except ValueError as exc:
-        raise AbyssWaveScenarioSmokeError(
-            f"Invalid --position {raw!r}; coordinates must be numbers."
-        ) from exc
+        return load_enemy_type_mapping_from_json(args.enemy_type_map)
+    except (ValueError, OSError, json.JSONDecodeError) as exc:
+        raise AbyssWaveScenarioSmokeError(str(exc)) from exc
 
 
 def _scenario_output_path(args: argparse.Namespace) -> Path:
@@ -295,10 +258,13 @@ def _format_text(report: dict[str, Any]) -> str:
             lines.append("warnings=" + ",".join(str(item) for item in warnings))
         missing_hp = audit.get("missing_hp_rows") or []
         missing_level = audit.get("missing_level_rows") or []
+        missing_type = audit.get("missing_type_mapping_rows") or []
         if missing_hp:
             lines.append(f"missing_hp_rows={len(missing_hp)}")
         if missing_level:
             lines.append(f"missing_level_rows={len(missing_level)}")
+        if missing_type:
+            lines.append(f"missing_type_mapping_rows={len(missing_type)}")
     if report.get("scenario_path"):
         lines.append(f"scenario={report['scenario_path']}")
     run_result = report.get("run_result")

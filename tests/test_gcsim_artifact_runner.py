@@ -239,10 +239,8 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
                                 "targets": [
                                     {
                                         "level": 100,
+                                        "type": "dummy",
                                         "hp": 1000,
-                                        "radius": 2,
-                                        "pos": [0, 2.4],
-                                        "resist": 0.1,
                                     }
                                 ]
                             }

@@ -8,11 +8,12 @@ from .artifact_runner import (
     run_active_gcsim_artifact,
 )
 from .abyss_wave_scenario import (
+    AbyssEnemyTypeMapping,
     AbyssWaveScenarioAudit,
     AbyssWaveScenarioBuildResult,
-    ProvisionalTargetFixturePolicy,
     audit_abyss_wave_scenario,
     build_abyss_wave_scenario_payload,
+    load_enemy_type_mapping_from_json,
     write_abyss_wave_scenario_payload,
 )
 from .engine_store import (
@@ -42,11 +43,12 @@ __all__ = [
     "PatchBackend",
     "GitApplyPatchBackend",
     "GcsimRuntimeProbeResult",
+    "AbyssEnemyTypeMapping",
     "AbyssWaveScenarioAudit",
     "AbyssWaveScenarioBuildResult",
-    "ProvisionalTargetFixturePolicy",
     "audit_abyss_wave_scenario",
     "build_abyss_wave_scenario_payload",
+    "load_enemy_type_mapping_from_json",
     "parse_gcsim_result_payload",
     "run_active_gcsim_artifact",
     "run_gcsim_runtime_probe",

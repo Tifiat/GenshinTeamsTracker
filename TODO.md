@@ -398,9 +398,12 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   patch adds explicit `-gtt-wave-scenario scenario.json` input. Payload
   schema v1 is intentionally tiny: `schema_version=1`,
   `spawn_policy="group_clear"`, and `waves[].targets[]` with required
-  `level`, `hp`, `radius`, `pos=[x,y]`, and flat `resist`. The first payload
-  wave replaces parsed config targets; remaining waves spawn after the current
-  group clears inside the same simulation iteration. Current built GTT
+  `level`, `type`, and explicit `hp`. The patch builds the enemy through
+  GCSIM's target type/profile path so `type` owns the monster stats/resists;
+  optional `pos`/`radius` are only explicit overrides, and normal Abyss bridge
+  output does not write them. The first payload wave replaces parsed config
+  targets; remaining waves spawn after the current group clears inside the same
+  simulation iteration. Current built GTT
   artifacts should report `gtt_patch_version=gtt-wave-scenario-v1`,
   capabilities including `gtt_engine_marker`,
   `gtt_wave_scheduler_prototype`, and `gtt_wave_scenario_payload`, plus
@@ -417,14 +420,14 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `run_workspace/gcsim/abyss_wave_scenario.py`: it audits typed
   `AbyssFloorSourceData` chamber/side waves and can produce schema-v1
   `group_clear` payloads only when per-enemy HP/level are present and an
-  explicit `ProvisionalTargetFixturePolicy` supplies radius, position, and flat
-  resist fixture fields. Current Abyss source data does not provide
-  source-derived radius/position/resist, so this policy is provisional test/dev
-  data, not product-correct Abyss positioning or resistance data. Dev CLI
+  explicit `nanoka_monster_id -> GCSIM enemy type` mapping is provided. It does
+  not infer GCSIM type keys from display names. Dev CLI
   `python -m run_workspace.gcsim.abyss_wave_scenario_smoke` loads current or
   explicit cached Abyss source data, writes this provisional scenario JSON, and
   can optionally pass it with an existing caller-provided config into the active
-  artifact runner. Backend config readiness audit exists in
+  artifact runner. Missing cache/source fields or missing enemy type mapping
+  prints audit and exits nonzero without writing/running a misleading scenario.
+  Backend config readiness audit exists in
   `run_workspace/gcsim/config_readiness.py`; it accepts lightweight prepared
   team inputs and reports whether explicit non-display-name GCSIM mappings,
   current/max levels, weapon/refinement, artifact set mappings, normalized

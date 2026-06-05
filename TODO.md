@@ -513,6 +513,18 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   observed `gtt-wave-scenario-v1` with `gtt_wave_scenario_payload`. Parsed run
   summary stayed smoke-only: duration_mean `0.03333333333333333`, dps_mean
   `0.0`, total_damage_mean `0.0`; do not treat this as DPS correctness.
+  Additional manual/dev fixture
+  `run_workspace/gcsim/smoke_fixtures/manual_config_neuv_furina_lauma_xiangling.txt`
+  stores a hand-written Neuvillette/Furina/Lauma/Xiangling config for backend
+  compatibility diagnostics only. Its manual `target` lines are placeholders;
+  when used through `abyss_wave_scenario_smoke`, generated `-gtt-wave-scenario`
+  JSON remains the enemy/wave/HP/type source of truth. A real local run on
+  2026-06-05 for cached period `2026-05-16` F12 C2 S1 built three exact-name
+  scenario waves (`fatuielectrocicinmage`, `ruindrakeearthguard`,
+  `primogeovishap`) and passed artifact preflight, but the artifact run failed
+  with a GCSIM runtime panic in damage stats. The same config passed without
+  `-gtt-wave-scenario`, so this is classified as a generated-scenario/multi-wave
+  runtime issue, not config parse/key unsupported. No DPS correctness claim.
   Enemy type mapping JSON now supports explicit records with `source_kind`,
   `source_id`, `gcsim_type`, and optional diagnostics; the old
   `enemy_types_by_nanoka_monster_id` shape still loads for dev compatibility.

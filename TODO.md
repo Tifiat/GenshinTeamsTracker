@@ -586,7 +586,26 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   report CLI at `python -m run_workspace.gcsim.key_mapping_report --format text`.
   The seed is not production-complete coverage; it only records a few explicit
   curated/dev keys already pinned by backend fixtures/static catalog evidence.
-  Full character/weapon/artifact-set mapping coverage remains future work.
+  Backend/dev entity registry coverage reporting has been added in
+  `run_workspace/gcsim/entity_key_readiness_report.py`, with CLI
+  `python -m run_workspace.gcsim.entity_key_readiness_report --format text`.
+  It parses local prepared GCSIM shortcut sources `pkg/shortcut/characters.go`,
+  `weapons.go`, and `artifacts.go`, compares project entities by exact
+  normalized key candidate, and prefers explicit seed overrides first. Exact
+  normalized candidates are readiness evidence only
+  (`auto_exact_candidate_not_curated_mapping`), not committed curated production
+  mapping. Default local diagnostics read existing HoYoWiki character/weapon
+  stats caches and the artifact set static seed; character/weapon cache
+  identities are HoYoWiki `entry_page_id` values and are explicitly warned as
+  not the missing production game-id mapping owner. Traveler and Traveler
+  variants remain unsupported/deferred. Full character/weapon/artifact-set
+  production mapping coverage remains future work.
+  GCSIM level text helper has been added in `run_workspace/gcsim/config_level.py`.
+  It converts account level/promote data into current/max text for future config
+  generation: breakpoint levels such as `80,promote=5 -> 80/80` and
+  `80,promote=6 -> 80/90`, missing promote on breakpoint levels is assumed
+  after ascension with a warning, and final/special caps use `90/90`, `95/95`,
+  and `100/100`. Missing level is a controlled `missing_level` result.
   Backend shipped fallback artifact resolver exists in
   `run_workspace/gcsim/shipped_artifact.py`; runner support in
   `run_workspace/gcsim/artifact_runner.py` is explicit opt-in and uses a ready

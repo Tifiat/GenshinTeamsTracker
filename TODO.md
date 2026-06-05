@@ -487,16 +487,19 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   version/capability diagnostics and a rebuild-required message without running
   the sim. Runs without a wave scenario keep the previous behavior and do not
   require this preflight.
-  Latest backend/dev real smoke: manual config
-  `data/gcsim/runs/run-20260604175615977209/config.txt` plus generated Abyss
-  scenario for `2026-04-16` floor 12 chamber 3 side 2 passed through the active
-  artifact. Scenario generation used managed Snap cache hit
-  (`remote_not_needed`), resolved `Tenebrous Papilla: Type II` by
-  `snap_title_contains_target` to `tenebrouspapillatypei`, built one wave / one
-  target, and artifact preflight observed `gtt-wave-scenario-v1` with
-  `gtt_wave_scenario_payload`. Parsed run summary stayed smoke-only:
-  duration_mean `0.03333333333333333`, dps_mean `0.0`, total_damage_mean `0.0`;
-  do not treat this as DPS correctness.
+  Stable backend/dev smoke case catalog now exists at
+  `run_workspace/gcsim/smoke_cases.py`, with committed manual config fixture
+  `run_workspace/gcsim/smoke_fixtures/manual_config_minimal.txt`. Named case
+  `abyss_2026_04_16_f12_c3_s2_manual_config` proves manual GCSIM config plus
+  generated cached Abyss wave scenario, managed cache-first Snap matching, and
+  artifact preflight/run parsing without depending on an ad-hoc runtime run
+  directory config. Latest manual case run passed through the active artifact:
+  scenario generation used managed Snap cache hit (`remote_not_needed`),
+  resolved `Tenebrous Papilla: Type II` by `snap_title_contains_target` to
+  `tenebrouspapillatypei`, built one wave / one target, and artifact preflight
+  observed `gtt-wave-scenario-v1` with `gtt_wave_scenario_payload`. Parsed run
+  summary stayed smoke-only: duration_mean `0.03333333333333333`, dps_mean
+  `0.0`, total_damage_mean `0.0`; do not treat this as DPS correctness.
   Enemy type mapping JSON now supports explicit records with `source_kind`,
   `source_id`, `gcsim_type`, and optional diagnostics; the old
   `enemy_types_by_nanoka_monster_id` shape still loads for dev compatibility.

@@ -416,9 +416,13 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   explicit `ProvisionalTargetFixturePolicy` supplies radius, position, and flat
   resist fixture fields. Current Abyss source data does not provide
   source-derived radius/position/resist, so this policy is provisional test/dev
-  data, not product-correct Abyss positioning or resistance data. It still does
-  not generate account/team configs, map keys, model final Abyss wave policies,
-  or wire UI. Next GCSIM tasks should add shipped fallback support,
+  data, not product-correct Abyss positioning or resistance data. Dev CLI
+  `python -m run_workspace.gcsim.abyss_wave_scenario_smoke` loads current or
+  explicit cached Abyss source data, writes this provisional scenario JSON, and
+  can optionally pass it with an existing caller-provided config into the active
+  artifact runner. It still does not generate account/team configs, map keys,
+  model final Abyss wave policies, or wire UI. Next GCSIM tasks should add
+  shipped fallback support,
   config/key-mapping foundations, stronger smoke configs, and then generate
   payloads from app-owned scenario data before any UI wiring.
 - Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.

@@ -19,7 +19,11 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Before implementing a task specification, briefly inspect the relevant current code and handoff contract. Clarify only ambiguities that materially change architecture, behavior, or visible UI; use engineering judgment for narrow local implementation details after the contract is clear.
 - In this repo, handoff context means `CODEX.md`, `TODO.md`, and `docs/handoff/*.md`. When the user asks to update or clean handoffs, include all three entrypoints unless they narrow the scope.
 - After each completed task, update handoff docs before final response when the task changes roadmap, state, or reusable context: mark completed subitems compactly, add durable new knowledge to `CODEX.md`/`TODO.md` or a dedicated handoff file, and remove stale active-task/development-log leftovers.
-- After each completed pushable task, final responses should include one short Russian past-tense commit message.
+- After each completed pushable task, final responses should include one short
+  Russian commit-message suggestion in impersonal passive/resultative wording,
+  not first-person past wording. Prefer a style equivalent to "has been
+  added/fixed/updated" or "added/fixed/updated as a completed result", not a
+  style equivalent to "I added/fixed/updated".
 - Future test-suite cleanup: split broad AppShell/right-panel checks into
   narrower runnable groups so feature tasks can run only the tests covering the
   touched subsystem, while preserving a cheap full-smoke option.
@@ -420,11 +424,17 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `python -m run_workspace.gcsim.abyss_wave_scenario_smoke` loads current or
   explicit cached Abyss source data, writes this provisional scenario JSON, and
   can optionally pass it with an existing caller-provided config into the active
-  artifact runner. It still does not generate account/team configs, map keys,
+  artifact runner. Backend config readiness audit exists in
+  `run_workspace/gcsim/config_readiness.py`; it accepts lightweight prepared
+  team inputs and reports whether explicit non-display-name GCSIM mappings,
+  current/max levels, weapon/refinement, artifact set mappings, normalized
+  artifact add-stats, and confirmed talent order are ready. It does not infer
+  keys from localized/display names and keeps Traveler unsupported/deferred.
+  It still does not generate account/team configs, create real mapping reports,
   model final Abyss wave policies, or wire UI. Next GCSIM tasks should add
-  shipped fallback support,
-  config/key-mapping foundations, stronger smoke configs, and then generate
-  payloads from app-owned scenario data before any UI wiring.
+  shipped fallback support, real key-mapping data/report foundations, stronger
+  smoke configs, and then generate payloads/configs from app-owned scenario and
+  team data before any UI wiring.
 - Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.
 - Do not cram detailed GCSIM into the small TeamCard. Right panel should show only compact factual/sim DPS summary and readable GCSIM button/status; detailed GCSIM/rotation editor should open as a larger overlay/drawer around the right panel. If GCSIM lacks a character/reaction implementation, show a clear unavailable status.
 - Each team/run card should eventually have simulator action, GCSIM logo/label, and result area for sim DPS.

@@ -38,7 +38,11 @@ This file is written for future coding agents. Keep it compact, English, and mos
   a tool is genuinely reusable and no planned product surface owns it yet.
   Research probes still belong under `tools/experiments/`.
 - After every completed task that changes roadmap, architecture state, or reusable context, update the relevant handoff docs before final response. Mark completed subitems compactly, add durable new knowledge to `CODEX.md`/`TODO.md` or a dedicated handoff file, and remove stale active-task/development-log leftovers instead of letting old "next steps" linger.
-- After every completed pushable task, include one short Russian past-tense commit message in the final response.
+- After every completed pushable task, include one short Russian commit-message
+  suggestion in impersonal passive/resultative wording, not first-person past
+  wording. Prefer a style equivalent to "has been added/fixed/updated" or
+  "added/fixed/updated as a completed result", not a style equivalent to "I
+  added/fixed/updated".
 - When adding or changing any persistent project structure, source/cache format, domain model, or long-lived UI/data contract, update the relevant project map under `docs/handoff/` and keep root docs as concise pointers. Examples: backend data model -> architecture/data map; raw payload discovery -> source-field reference; UI prototype contract -> UI architecture notes; GCSIM/Abyss research -> dedicated handoff file.
 - Obsidian map maintenance: The Obsidian vault is stored in `docs/obsidian/GTT/`. `docs/obsidian/GTT/GenshinTeamsTracker.canvas` is the human project navigation map. `docs/obsidian/GTT/DataFlow.canvas` is the human data-flow map. `docs/obsidian/GTT/SourceBoundaries.canvas` is the human source/runtime boundary map for avoiding data-owner confusion. These maps do not replace `CODEX.md`/`TODO.md` or detailed handoff files. After meaningful structural changes, update the maps together with handoff files when the change affects human understanding of the project layout: new major subsystem, renamed/moved important folder, changed data flow, changed current priority, changed architecture direction, or an important feature moving from planned to active/done. Do not update maps for tiny bugfixes, one-line styling changes, or internal refactors that do not affect the project map.
 - Project SVG UI icons should go through `ui/utils/icon_utils.py` auto-contrast helpers instead of direct raw SVG loading or hardcoded final icon colors. This is needed for future theme support.

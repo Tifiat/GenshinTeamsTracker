@@ -633,8 +633,25 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   contain manual `char`/`add weapon`/`add set`/`add stats` lines and emits no
   partial full config when any character block is not ready. Explicit prepared
   input adapter boundary lives in `run_workspace/gcsim/prepared_config_adapter.py`;
-  it consumes dev JSON/dict fixtures only, does not access UI/storage/network,
-  and ignores final/right-panel stat fields instead of using them as `add stats`.
+  it consumes explicit prepared backend/dev JSON/dict input, does not access
+  UI/storage/network, and ignores final/right-panel stat fields instead of
+  using them as `add stats`. Dev fixture
+  `run_workspace/gcsim/smoke_fixtures/prepared_team_chasca_ororon_furina_bennett.json`
+  is marked `synthetic_dev_fixture`: it is not account truth, not UI state, and
+  not production mapping data, but it can render four ready generated blocks and
+  assemble them with the shell through
+  `python -m run_workspace.gcsim.prepared_config_adapter --format text|json`.
+  The bridge writes a full config only when all prepared characters and the
+  shell audit are ready; missing required characters, mappings, weapons,
+  talents, or artifact stats skip output instead of writing partial config.
+  Current owner audit found account character/weapon/equipment/runtime artifact
+  snapshot helpers, but no confirmed production owner for selected team plus
+  per-slot current build suitable for direct GCSIM config generation. Local
+  account DB had no Chasca/Ororon/Furina/Bennett rows during the dev check, so
+  the committed fixture remains synthetic. A local smoke on 2026-06-05 used this
+  generated config with cached `2026-02-16` F12 C1 S1 wave scenario and the
+  active artifact; it passed as a backend compatibility smoke only, with no DPS
+  correctness claim.
   Backend shipped fallback artifact resolver exists in
   `run_workspace/gcsim/shipped_artifact.py`; runner support in
   `run_workspace/gcsim/artifact_runner.py` is explicit opt-in and uses a ready

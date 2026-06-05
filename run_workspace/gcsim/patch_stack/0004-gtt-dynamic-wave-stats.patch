@@ -1,0 +1,124 @@
+diff --git a/pkg/agg/aura/aura.go b/pkg/agg/aura/aura.go
+index 844c3f7..e39922f 100644
+--- a/pkg/agg/aura/aura.go
++++ b/pkg/agg/aura/aura.go
+@@ -33,6 +33,8 @@ func NewAgg(cfg *info.ActionList) (agg.Aggregator, error) {
+ }
+ 
+ func (b *buffer) Add(result stats.Result) {
++	b.ensureTargetCount(len(result.Enemies))
++
+ 	for i, c := range result.Enemies {
+ 		for k, v := range c.ReactionUptime {
+ 			if _, ok := b.auraUptime[i][k]; !ok {
+@@ -44,6 +46,12 @@ func (b *buffer) Add(result stats.Result) {
+ 	b.iters++
+ }
+ 
++func (b *buffer) ensureTargetCount(count int) {
++	for len(b.auraUptime) < count {
++		b.auraUptime = append(b.auraUptime, make(map[string]*calc.StreamStats))
++	}
++}
++
+ func (b *buffer) Flush(result *model.SimulationStatistics) {
+ 	result.TargetAuraUptime = make([]*model.SourceStats, len(b.auraUptime))
+ 	for i, c := range b.auraUptime {
+diff --git a/pkg/stats/damage/damage.go b/pkg/stats/damage/damage.go
+index 2d54c2d..4dcf9ba 100644
+--- a/pkg/stats/damage/damage.go
++++ b/pkg/stats/damage/damage.go
+@@ -57,14 +57,18 @@ func NewStat(core *core.Core) (stats.Collector, error) {
+ 		}
+ 		out.cumuChar[bucket][attack.Info.ActorIndex] += damage
+ 
++		targetIndex := targetIndexForKey(core, targetKey)
++		targetCount := max(len(core.Combat.Enemies()), targetIndex+1)
++
+ 		last = out.cumuTarget[len(out.cumuTarget)-1]
+ 		for bucket >= len(out.cumuTarget) {
+-			newBucket := make([]float64, len(core.Combat.Enemies()))
++			newBucket := make([]float64, targetCount)
+ 			copy(newBucket, last)
+ 			out.cumuTarget = append(out.cumuTarget, newBucket)
+ 		}
+ 		// TODO: subject to break if target key gen changes...
+-		out.cumuTarget[bucket][targetKey-1] += damage
++		out.ensureTargetCount(targetCount)
++		out.cumuTarget[bucket][targetIndex] += damage
+ 
+ 		for bucket >= len(out.buckets) {
+ 			out.buckets = append(out.buckets, float64(0))
+@@ -107,7 +111,29 @@ func NewStat(core *core.Core) (stats.Collector, error) {
+ 	return &out, nil
+ }
+ 
++func targetIndexForKey(core *core.Core, targetKey info.TargetKey) int {
++	for index, target := range core.Combat.Enemies() {
++		if target.Key() == targetKey {
++			return index
++		}
++	}
++	if targetKey <= 0 {
++		return 0
++	}
++	return int(targetKey) - 1
++}
++
++func (b *buffer) ensureTargetCount(count int) {
++	for bucket := range b.cumuTarget {
++		for len(b.cumuTarget[bucket]) < count {
++			b.cumuTarget[bucket] = append(b.cumuTarget[bucket], 0)
++		}
++	}
++}
++
+ func (b buffer) Flush(core *core.Core, result *stats.Result) {
++	b.ensureTargetCount(len(core.Combat.Enemies()))
++
+ 	result.DamageBuckets = b.buckets
+ 	for c := 0; c < len(b.events); c++ {
+ 		result.Characters[c].DamageEvents = b.events[c]
+@@ -137,6 +163,9 @@ func (b buffer) Flush(core *core.Core, result *stats.Result) {
+ 	}
+ 	for i := 0; i < len(b.cumuTarget); i++ {
+ 		for e, v := range b.cumuTarget[i] {
++			if e >= len(result.Enemies) {
++				continue
++			}
+ 			result.Enemies[e].CumulativeDamage[i] = v
+ 		}
+ 	}
+diff --git a/pkg/stats/damage/damage_test.go b/pkg/stats/damage/damage_test.go
+new file mode 100644
+index 0000000..a07f4c0
+--- /dev/null
++++ b/pkg/stats/damage/damage_test.go
+@@ -0,0 +1,26 @@
++package damage
++
++import "testing"
++
++func TestEnsureTargetCountGrowsExistingBuckets(t *testing.T) {
++	b := buffer{
++		cumuTarget: [][]float64{
++			{11},
++			{22, 33},
++		},
++	}
++
++	b.ensureTargetCount(4)
++
++	for index, bucket := range b.cumuTarget {
++		if len(bucket) != 4 {
++			t.Fatalf("bucket %d length = %d, want 4", index, len(bucket))
++		}
++	}
++	if b.cumuTarget[0][0] != 11 {
++		t.Fatalf("first bucket existing value = %v, want 11", b.cumuTarget[0][0])
++	}
++	if b.cumuTarget[1][1] != 33 {
++		t.Fatalf("second bucket existing value = %v, want 33", b.cumuTarget[1][1])
++	}
++}
+

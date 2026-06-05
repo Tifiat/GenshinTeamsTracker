@@ -521,10 +521,16 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   JSON remains the enemy/wave/HP/type source of truth. A real local run on
   2026-06-05 for cached period `2026-05-16` F12 C2 S1 built three exact-name
   scenario waves (`fatuielectrocicinmage`, `ruindrakeearthguard`,
-  `primogeovishap`) and passed artifact preflight, but the artifact run failed
-  with a GCSIM runtime panic in damage stats. The same config passed without
-  `-gtt-wave-scenario`, so this is classified as a generated-scenario/multi-wave
-  runtime issue, not config parse/key unsupported. No DPS correctness claim.
+  `primogeovishap`) and passed artifact preflight. This smoke exposed a patched
+  GCSIM runtime panic in `pkg/stats/damage/damage.go`: dynamically spawned wave
+  enemies can receive sparse target keys after gadgets, while cumulative damage
+  buckets were sized by current enemy count and indexed by `targetKey-1`.
+  Patch-stack fix `0004-gtt-dynamic-wave-stats.patch` makes damage cumulative
+  buckets grow by resolved enemy index and lets aura aggregation grow for
+  dynamic `result.Enemies`. After rebuilding the active artifact in-place on
+  2026-06-05, the same 3-wave smoke passed with artifact preflight intact.
+  The same config also still passes without `-gtt-wave-scenario`. No DPS
+  correctness claim.
   Enemy type mapping JSON now supports explicit records with `source_kind`,
   `source_id`, `gcsim_type`, and optional diagnostics; the old
   `enemy_types_by_nanoka_monster_id` shape still loads for dev compatibility.

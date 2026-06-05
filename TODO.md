@@ -471,7 +471,14 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   expose structured progress steps such as `matching_enemy_names_primary`,
   `checking_cached_snap_titles`, `refreshing_snap_metadata`,
   `rechecking_snap_titles_after_refresh`, `building_abyss_wave_scenario`, and
-  `running_gcsim_artifact`.
+  `running_gcsim_artifact`. Coverage reports also include `timing_seconds`
+  diagnostics for primary matching, cached Snap loading/matching, remote
+  refresh/indexing when it happens, refreshed matching, and total report time.
+  The first forced Snap fallback can be noticeably slower because it refreshes
+  the managed runtime cache from the online `Monster.json`; later runs should
+  use the cached file and avoid network. Future UI loader messages should
+  surface these backend steps so enemy matching, Snap refresh, scenario build,
+  and optional artifact run do not look frozen.
   Enemy type mapping JSON now supports explicit records with `source_kind`,
   `source_id`, `gcsim_type`, and optional diagnostics; the old
   `enemy_types_by_nanoka_monster_id` shape still loads for dev compatibility.

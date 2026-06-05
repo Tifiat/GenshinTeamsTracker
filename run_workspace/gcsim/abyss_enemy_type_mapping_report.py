@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from time import perf_counter
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,6 +69,7 @@ class AbyssEnemyTypeCoverageReport:
     snap_source: dict[str, str] | None = None
     snap_cache: dict[str, Any] | None = None
     steps: tuple[str, ...] = ()
+    timing_seconds: dict[str, float] | None = None
     warnings: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
@@ -89,6 +91,7 @@ class AbyssEnemyTypeCoverageReport:
             "snap_source": self.snap_source,
             "snap_cache": self.snap_cache,
             "steps": list(self.steps),
+            "timing_seconds": self.timing_seconds,
             "warnings": list(self.warnings),
         }
 
@@ -102,6 +105,7 @@ def build_abyss_enemy_type_coverage_report(
     cache_files: tuple[str, ...] | list[str] = (),
     snap_cache: dict[str, Any] | None = None,
     steps: tuple[str, ...] | list[str] = (),
+    timing_seconds: dict[str, float] | None = None,
 ) -> AbyssEnemyTypeCoverageReport:
     resolver = mapping or AbyssEnemyTypeMapping(mapping_name="gcsim_enemy_type_registry")
     resolved_by_method: Counter[str] = Counter()
@@ -160,6 +164,7 @@ def build_abyss_enemy_type_coverage_report(
         snap_source=None if snap_title_index is None else snap_title_index.source_report(),
         snap_cache=snap_cache,
         steps=tuple(steps),
+        timing_seconds=_rounded_timing(timing_seconds),
     )
 
 
@@ -396,10 +401,13 @@ def _build_report_with_snap_flow(
     snap_cache_path: str | None,
     snap_fetcher: SnapJsonFetcher | None,
 ) -> AbyssEnemyTypeCoverageReport:
+    total_started = perf_counter()
+    timing: dict[str, float] = {}
     steps = ["matching_enemy_names_primary"]
     if direct_snap_title_index is not None:
         steps.append("checking_direct_snap_titles")
-        return build_abyss_enemy_type_coverage_report(
+        direct_started = perf_counter()
+        direct_report = build_abyss_enemy_type_coverage_report(
             source_data,
             mapping,
             enemy_type_registry=enemy_type_registry,
@@ -408,7 +416,10 @@ def _build_report_with_snap_flow(
             steps=steps,
             snap_cache=_snap_flow_report(phase="direct"),
         )
+        timing["direct_snap_matching_seconds"] = perf_counter() - direct_started
+        return _report_with_timing(direct_report, _with_total_timing(timing, total_started))
 
+    primary_started = perf_counter()
     primary = build_abyss_enemy_type_coverage_report(
         source_data,
         mapping,
@@ -420,14 +431,18 @@ def _build_report_with_snap_flow(
             refresh_status=SNAP_REFRESH_STATUS_NOT_NEEDED,
             phase="primary",
         ),
+        timing_seconds=timing,
     )
+    timing["primary_matching_seconds"] = perf_counter() - primary_started
     if not (use_cached_snap or refresh_snap_if_needed):
-        return primary
+        return _report_with_timing(primary, _with_total_timing(timing, total_started))
     if _report_ready(primary):
-        return primary
+        return _report_with_timing(primary, _with_total_timing(timing, total_started))
 
     steps.append("checking_cached_snap_titles")
+    cache_load_started = perf_counter()
     cache_load = load_cached_snap_monster_title_index(snap_cache_path)
+    timing["cached_snap_load_seconds"] = perf_counter() - cache_load_started
     cache_report = _snap_flow_report(
         cache_status=cache_load.status,
         refresh_status=SNAP_REFRESH_STATUS_NOT_NEEDED,
@@ -436,6 +451,7 @@ def _build_report_with_snap_flow(
         error=cache_load.error,
     )
     if cache_load.ready:
+        cached_matching_started = perf_counter()
         cached_report = build_abyss_enemy_type_coverage_report(
             source_data,
             mapping,
@@ -451,32 +467,39 @@ def _build_report_with_snap_flow(
                 enemy_type_registry,
             ),
             steps=steps,
+            timing_seconds=timing,
         )
+        timing["cached_snap_matching_seconds"] = perf_counter() - cached_matching_started
         if _report_ready(cached_report) or not refresh_snap_if_needed:
-            return cached_report
+            return _report_with_timing(cached_report, _with_total_timing(timing, total_started))
     elif not refresh_snap_if_needed:
-        return build_abyss_enemy_type_coverage_report(
+        no_refresh_report = build_abyss_enemy_type_coverage_report(
             source_data,
             mapping,
             enemy_type_registry=enemy_type_registry,
             cache_files=cache_files,
             snap_cache=cache_report,
             steps=steps,
+            timing_seconds=timing,
         )
+        return _report_with_timing(no_refresh_report, _with_total_timing(timing, total_started))
 
     steps.append("refreshing_snap_metadata")
+    refresh_started = perf_counter()
     refresh = refresh_cached_snap_monster_title_index(
         snap_cache_path,
         source_url=DEFAULT_SNAP_MONSTER_GITHUB_URL,
         fetcher=snap_fetcher,
     )
+    timing["remote_refresh_index_seconds"] = perf_counter() - refresh_started
     refresh_report = {**cache_report, **refresh.to_dict(), "phase": "refreshed"}
     if cache_report.get("error"):
         refresh_report["cache_error"] = cache_report["error"]
     if not refresh.ready:
         raise SnapMonsterTitleSourceError(refresh.error or refresh.status)
     steps.append("rechecking_snap_titles_after_refresh")
-    return build_abyss_enemy_type_coverage_report(
+    refreshed_matching_started = perf_counter()
+    refreshed_report = build_abyss_enemy_type_coverage_report(
         source_data,
         mapping,
         enemy_type_registry=enemy_type_registry,
@@ -491,11 +514,61 @@ def _build_report_with_snap_flow(
             enemy_type_registry,
         ),
         steps=steps,
+        timing_seconds=timing,
     )
+    timing["refreshed_snap_matching_seconds"] = perf_counter() - refreshed_matching_started
+    return _report_with_timing(refreshed_report, _with_total_timing(timing, total_started))
 
 
 def _report_ready(report: AbyssEnemyTypeCoverageReport) -> bool:
     return report.missing_mappings == 0 and report.ambiguous_mappings == 0
+
+
+def _report_with_timing(
+    report: AbyssEnemyTypeCoverageReport,
+    timing_seconds: dict[str, float],
+) -> AbyssEnemyTypeCoverageReport:
+    return AbyssEnemyTypeCoverageReport(
+        mapping_name=report.mapping_name,
+        source_count=report.source_count,
+        cache_file_count=report.cache_file_count,
+        cache_files=report.cache_files,
+        total_rows=report.total_rows,
+        resolved_by_method=report.resolved_by_method,
+        resolved_by_source_kind=report.resolved_by_source_kind,
+        missing_mappings=report.missing_mappings,
+        ambiguous_mappings=report.ambiguous_mappings,
+        hp_present_type_missing=report.hp_present_type_missing,
+        type_present_hp_missing=report.type_present_hp_missing,
+        resolved_rows=report.resolved_rows,
+        unresolved_rows=report.unresolved_rows,
+        ambiguous_rows=report.ambiguous_rows,
+        snap_source=report.snap_source,
+        snap_cache=report.snap_cache,
+        steps=report.steps,
+        timing_seconds=_rounded_timing(timing_seconds),
+        warnings=report.warnings,
+    )
+
+
+def _with_total_timing(
+    timing_seconds: dict[str, float],
+    total_started: float,
+    **extra: float,
+) -> dict[str, float]:
+    result = dict(timing_seconds)
+    result.update(extra)
+    result["total_report_seconds"] = perf_counter() - total_started
+    return result
+
+
+def _rounded_timing(timing_seconds: dict[str, float] | None) -> dict[str, float] | None:
+    if timing_seconds is None:
+        return None
+    return {
+        key: round(float(value), 6)
+        for key, value in sorted(timing_seconds.items())
+    }
 
 
 def _with_snap_counts(
@@ -703,6 +776,9 @@ def _format_text(payload: dict[str, Any]) -> str:
         steps = report.get("steps") or []
         if steps:
             lines.append("steps=" + ",".join(str(step) for step in steps))
+        timing = report.get("timing_seconds")
+        if isinstance(timing, dict):
+            lines.append("timing_seconds=" + json.dumps(timing, sort_keys=True))
         if unresolved_rows:
             lines.append("unresolved_rows=" + _compact_row_list(unresolved_rows))
         if ambiguous_rows:

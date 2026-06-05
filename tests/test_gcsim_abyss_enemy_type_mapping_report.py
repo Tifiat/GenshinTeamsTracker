@@ -342,6 +342,11 @@ class GcsimAbyssEnemyTypeMappingReportTest(unittest.TestCase):
         self.assertEqual(payload["report"]["missing_mappings"], 0)
         self.assertEqual(payload["report"]["snap_cache"]["refresh_status"], SNAP_REFRESH_STATUS_NOT_NEEDED)
         self.assertNotIn("checking_cached_snap_titles", payload["report"]["steps"])
+        timing = payload["report"]["timing_seconds"]
+        self.assertIn("primary_matching_seconds", timing)
+        self.assertIn("total_report_seconds", timing)
+        self.assertNotIn("cached_snap_load_seconds", timing)
+        self.assertNotIn("remote_refresh_index_seconds", timing)
 
     def test_managed_snap_cache_resolves_without_remote_fetch(self) -> None:
         def fake_fetch(_url: str, _timeout: float) -> str:
@@ -391,6 +396,9 @@ class GcsimAbyssEnemyTypeMappingReportTest(unittest.TestCase):
             report["snap_cache"]["snap_resolution_counts"]["cached_snap_title_fallback"],
             1,
         )
+        self.assertIn("cached_snap_load_seconds", report["timing_seconds"])
+        self.assertIn("cached_snap_matching_seconds", report["timing_seconds"])
+        self.assertNotIn("remote_refresh_index_seconds", report["timing_seconds"])
 
     def test_managed_snap_missing_cache_refreshes_and_resolves(self) -> None:
         calls: list[str] = []
@@ -438,6 +446,10 @@ class GcsimAbyssEnemyTypeMappingReportTest(unittest.TestCase):
         self.assertEqual(payload["report"]["snap_cache"]["cache_status"], SNAP_CACHE_STATUS_MISSING)
         self.assertEqual(payload["report"]["snap_cache"]["refresh_status"], SNAP_REFRESH_STATUS_SUCCESS)
         self.assertIn("rechecking_snap_titles_after_refresh", payload["report"]["steps"])
+        timing = payload["report"]["timing_seconds"]
+        self.assertIn("cached_snap_load_seconds", timing)
+        self.assertIn("remote_refresh_index_seconds", timing)
+        self.assertIn("refreshed_snap_matching_seconds", timing)
 
     def test_managed_snap_stale_cache_refreshes_and_retries(self) -> None:
         def fake_fetch(_url: str, _timeout: float) -> str:
@@ -521,6 +533,7 @@ class GcsimAbyssEnemyTypeMappingReportTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(payload["report"]["missing_mappings"], 1)
         self.assertEqual(payload["report"]["snap_cache"]["refresh_status"], SNAP_REFRESH_STATUS_NOT_NEEDED)
+        self.assertIn("cached_snap_matching_seconds", payload["report"]["timing_seconds"])
 
     def test_managed_snap_invalid_cache_can_refresh(self) -> None:
         def fake_fetch(_url: str, _timeout: float) -> str:

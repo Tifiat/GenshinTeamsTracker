@@ -448,12 +448,16 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `source_id`, `gcsim_type`, and optional diagnostics; the old
   `enemy_types_by_nanoka_monster_id` shape still loads for dev compatibility.
   Dev coverage checker
-  `python -m run_workspace.gcsim.abyss_enemy_type_mapping_report --enemy-type-map path --gcsim-enemy-registry-source path --cache-file path --format text`
-  reports cached source-data coverage by resolution method, identity kind,
-  missing/ambiguous type mappings, HP-present/type-missing rows, and
-  type-present/HP-missing rows without fetching, mutating caches, running GCSIM,
-  or touching UI. Use it to check both normal Nanoka-backed caches and forced
-  Fandom fallback/Fandom-only caches against overrides plus the registry.
+  `python -m run_workspace.gcsim.abyss_enemy_type_mapping_report --gcsim-enemy-registry-source path --scan-cache-dir data/cache/abyss/source_data --format text`
+  can bulk-scan cached source-data files (`**/floor_*.json`) or accept repeated
+  `--cache-file`; optional `--period-start`/`--floor` filters keep checks
+  narrow. It reports cache file count, source rows, resolution counts by method
+  and identity kind, missing/ambiguous type mappings, HP-present/type-missing
+  rows, type-present/HP-missing rows, compact unresolved/ambiguous row lists,
+  and JSON resolved-row details without fetching, mutating caches, running GCSIM,
+  or touching UI. Use it to validate matcher behavior on real cached Abyss rows.
+  Missing/ambiguous rows should drive small matcher or alias fixes, not a full
+  hand-written enemy mapping table.
   Backend/dev GCSIM enemy type registry matcher exists in
   `run_workspace/gcsim/enemy_type_registry.py`. It can parse known target type
   keys from local prepared GCSIM `pkg/shortcut/enemies_gen.go` and match Abyss

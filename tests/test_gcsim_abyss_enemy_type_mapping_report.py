@@ -31,6 +31,30 @@ from run_workspace.gcsim.enemy_type_registry import (
 from tests.test_gcsim_abyss_wave_scenario import _source_data
 
 
+def _cache_data(*, period_start: str = "2026-05-16", floor: int = 12):
+    data = _source_data()
+    rows = [replace(row, floor=floor) for row in data.enemy_rows]
+    rebuilt = rebuild_abyss_floor_source_data_with_rows(data, rows)
+    return replace(
+        rebuilt,
+        floor=floor,
+        period=replace(rebuilt.period, start_date=period_start),
+    )
+
+
+def _cache_data_with_enemy_names(*names: str, period_start: str = "2026-05-16", floor: int = 12):
+    data = _cache_data(period_start=period_start, floor=floor)
+    rows = list(data.enemy_rows)
+    for index, name in enumerate(names):
+        rows[index] = replace(
+            rows[index],
+            primary_display_name=name,
+            matched_nanoka_display_name=name,
+            fandom_enemy_page_url=f"https://genshin-impact.fandom.com/wiki/{name.replace(' ', '_')}",
+        )
+    return rebuild_abyss_floor_source_data_with_rows(data, rows)
+
+
 def _mapping() -> AbyssEnemyTypeMapping:
     return AbyssEnemyTypeMapping(
         records=(
@@ -215,6 +239,142 @@ class GcsimAbyssEnemyTypeMappingReportTest(unittest.TestCase):
             payload["report"]["resolved_by_method"][MATCH_METHOD_EXACT_NORMALIZED_NAME],
             2,
         )
+
+    def test_bulk_scanner_finds_multiple_cache_files_and_aggregates(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_root = root / "cache"
+            save_abyss_floor_source_data(
+                _cache_data_with_enemy_names("First Enemy", "Missing Enemy"),
+                cache_dir=cache_root,
+            )
+            save_abyss_floor_source_data(
+                _cache_data_with_enemy_names(
+                    "Battle-Hardened First Enemy",
+                    "Grounded Geoshroom",
+                    period_start="2026-06-16",
+                ),
+                cache_dir=cache_root,
+            )
+            registry_path = _write_registry(
+                root,
+                "firstenemy",
+                "battlehardenedgroundedgeoshroom",
+                "veterangroundedgeoshroom",
+            )
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--scan-cache-dir",
+                    str(cache_root),
+                    "--format",
+                    "json",
+                ],
+                stdout=stdout,
+            )
+            payload = json.loads(stdout.getvalue())
+            report = payload["report"]
+
+        self.assertEqual(code, 1)
+        self.assertEqual(report["cache_file_count"], 2)
+        self.assertEqual(report["total_rows"], 4)
+        self.assertEqual(report["resolved_by_method"][MATCH_METHOD_EXACT_NORMALIZED_NAME], 1)
+        self.assertEqual(report["resolved_by_method"][MATCH_METHOD_COMPATIBLE_BASE_NAME], 1)
+        self.assertEqual(report["missing_mappings"], 1)
+        self.assertEqual(report["ambiguous_mappings"], 1)
+        self.assertEqual(report["hp_present_type_missing"], 1)
+        self.assertEqual(report["unresolved_rows"][0]["enemy"], "Missing Enemy")
+        self.assertGreater(len(report["unresolved_rows"][0]["available_identities"]), 0)
+        self.assertEqual(
+            report["ambiguous_rows"][0]["resolution"]["ambiguous_types"],
+            ["battlehardenedgroundedgeoshroom", "veterangroundedgeoshroom"],
+        )
+
+    def test_bulk_scanner_period_and_floor_filters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_root = root / "cache"
+            save_abyss_floor_source_data(
+                _cache_data(period_start="2026-05-16", floor=12),
+                cache_dir=cache_root,
+            )
+            save_abyss_floor_source_data(
+                _cache_data(period_start="2026-06-16", floor=11),
+                cache_dir=cache_root,
+            )
+            registry_path = _write_registry(root, "firstenemy", "secondenemy")
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--scan-cache-dir",
+                    str(cache_root),
+                    "--period-start",
+                    "2026-06-16",
+                    "--floor",
+                    "11",
+                    "--format",
+                    "json",
+                ],
+                stdout=stdout,
+            )
+            payload = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 0)
+        self.assertEqual(payload["report"]["cache_file_count"], 1)
+        selected_path = Path(payload["report"]["cache_files"][0])
+        self.assertEqual(selected_path.parent.name, "2026-06-16")
+        self.assertEqual(selected_path.name, "floor_11.json")
+
+    def test_bulk_text_output_is_compact_with_missing_and_ambiguous_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_root = root / "cache"
+            save_abyss_floor_source_data(
+                _cache_data_with_enemy_names("Missing Enemy", "Grounded Geoshroom"),
+                cache_dir=cache_root,
+            )
+            registry_path = _write_registry(
+                root,
+                "battlehardenedgroundedgeoshroom",
+                "veterangroundedgeoshroom",
+            )
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--scan-cache-dir",
+                    str(cache_root),
+                    "--format",
+                    "text",
+                ],
+                stdout=stdout,
+            )
+            text = stdout.getvalue()
+
+        self.assertEqual(code, 1)
+        self.assertIn("cache_files=1", text)
+        self.assertIn("missing=1", text)
+        self.assertIn("ambiguous=1", text)
+        self.assertIn("unresolved_rows=", text)
+        self.assertIn("ambiguous_rows=", text)
+
+
+def _write_registry(root: Path, *target_types: str) -> Path:
+    path = root / "enemies_gen.go"
+    rows = "".join(f'\t"{target_type}": {index + 1},\n' for index, target_type in enumerate(target_types))
+    path.write_text(
+        "package shortcut\nvar MonsterNameToID = map[string]int{\n" + rows + "}\n",
+        encoding="utf-8",
+    )
+    return path
 
 
 if __name__ == "__main__":

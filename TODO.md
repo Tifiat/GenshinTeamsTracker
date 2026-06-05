@@ -437,7 +437,13 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   statuses by entity type, and warns that production mapping data is still
   missing unless a caller marks a trusted source present. Display-name and
   normalized-name guessed sources are rejected, and Traveler remains
-  unsupported/deferred. Backend shipped fallback artifact resolver exists in
+  unsupported/deferred. Tiny committed dev seed lives at
+  `run_workspace/gcsim/mapping_seeds/gcsim_key_mapping_seed_v1.json`, with a
+  report CLI at `python -m run_workspace.gcsim.key_mapping_report --format text`.
+  The seed is not production-complete coverage; it only records a few explicit
+  curated/dev keys already pinned by backend fixtures/static catalog evidence.
+  Full character/weapon/artifact-set mapping coverage remains future work.
+  Backend shipped fallback artifact resolver exists in
   `run_workspace/gcsim/shipped_artifact.py`; runner support in
   `run_workspace/gcsim/artifact_runner.py` is explicit opt-in and uses a ready
   fallback candidate only when the active built artifact is unavailable. No

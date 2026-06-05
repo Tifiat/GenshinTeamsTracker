@@ -40,9 +40,16 @@ SCHEMA_VERSION = 1
 SEED_KIND = "gcsim_key_mapping_seed_v1"
 
 SOURCE_KIND_CURATED = "curated"
+SOURCE_KIND_CURATED_DEV_SEED = "curated_dev_seed"
 SOURCE_KIND_CURATED_TEST_FIXTURE = "curated_test_fixture"
 SOURCE_KIND_DEV_FIXTURE = "dev_fixture"
 SOURCE_KIND_TEST_FIXTURE = "test_fixture"
+
+DEFAULT_GCSIM_KEY_MAPPING_SEED_PATH = (
+    Path(__file__).resolve().parent
+    / "mapping_seeds"
+    / "gcsim_key_mapping_seed_v1.json"
+)
 
 DISPLAY_NAME_SOURCE_KINDS = {
     "display_name",
@@ -357,6 +364,10 @@ def load_mapping_records_from_json(path: str | Path) -> tuple[GcsimKeyMappingRec
     if not isinstance(payload, Mapping):
         raise ValueError("GCSIM key mapping JSON root must be an object")
     return mapping_records_from_payload(payload, fallback_source_name=path.name)
+
+
+def load_default_mapping_seed_records() -> tuple[GcsimKeyMappingRecord, ...]:
+    return load_mapping_records_from_json(DEFAULT_GCSIM_KEY_MAPPING_SEED_PATH)
 
 
 def _record_from_mapping(mapping: Mapping[str, Any]) -> GcsimKeyMappingRecord:

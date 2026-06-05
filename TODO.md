@@ -613,6 +613,15 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `80,promote=6 -> 80/90`, missing promote on breakpoint levels is assumed
   after ascension with a warning, and final/special caps use `90/90`, `95/95`,
   and `100/100`. Missing level is a controlled `missing_level` result.
+  Backend character config block builder has been added in
+  `run_workspace/gcsim/config_blocks.py`. It renders one prepared
+  character/equipment block with character level/constellation/talents, weapon
+  key/refinement/level, artifact set counts, and artifact-snapshot-only
+  normalized `add stats`; missing mappings, unsupported Traveler, unconfirmed
+  talent order, missing levels, or unmappable artifact stats return controlled
+  not-ready results with no partial config text. It still does not generate a
+  full GCSIM config, query UI/account storage, create mapping data, run an
+  artifact, or wire UI.
   Backend shipped fallback artifact resolver exists in
   `run_workspace/gcsim/shipped_artifact.py`; runner support in
   `run_workspace/gcsim/artifact_runner.py` is explicit opt-in and uses a ready

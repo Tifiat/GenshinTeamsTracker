@@ -479,6 +479,19 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   use the cached file and avoid network. Future UI loader messages should
   surface these backend steps so enemy matching, Snap refresh, scenario build,
   and optional artifact run do not look frozen.
+  Wave scheduling contract: current implemented `group_clear` behavior is
+  sequential groups. The first scenario wave is active at sim start; the next
+  wave is spawned only after all enemies in the current wave/group are dead. If
+  a wave contains multiple targets, killing one target does not spawn the next
+  wave; the whole group must be cleared first, and then the next wave spawns as
+  a whole group. Future mode design: single-target DPS should use the selected
+  single target and then the next single target; this should later be tied to
+  the existing fact-DPS single-target/multi-target setting so fact DPS and GCSIM
+  DPS describe the same scenario. Multi-target DPS should eventually have two
+  settings-backed modes: `sequential waves` (current group-clear behavior) and
+  `stack/rolling replacement` (future, not implemented), where enemies from the
+  next wave may be added to replace dead enemies from the current group. Do not
+  implement stack mode until the in-game behavior/policy is confirmed.
   Artifact runs that supply `gtt_wave_scenario` now preflight-check the selected
   artifact with `-gtt-info` before sim execution. The selected active or shipped
   fallback artifact must report `gtt_patch_version=gtt-wave-scenario-v1` and

@@ -430,9 +430,17 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   current/max levels, weapon/refinement, artifact set mappings, normalized
   artifact add-stats, and confirmed talent order are ready. It does not infer
   keys from localized/display names and keeps Traveler unsupported/deferred.
-  It still does not generate account/team configs, create real mapping reports,
-  model final Abyss wave policies, or wire UI. Next GCSIM tasks should add
-  shipped fallback support, real key-mapping data/report foundations, stronger
+  Backend key-mapping report foundation exists in
+  `run_workspace/gcsim/key_mapping.py`; it accepts explicit character, weapon,
+  and artifact-set seed records, converts ready records into readiness
+  `GcsimMappingRef` values, summarizes missing/ambiguous/display-name-rejected
+  statuses by entity type, and warns that production mapping data is still
+  missing unless a caller marks a trusted source present. Display-name and
+  normalized-name guessed sources are rejected, and Traveler remains
+  unsupported/deferred. It still does not generate account/team configs, create
+  production project-id-to-GCSIM mapping data, model final Abyss wave policies,
+  or wire UI. Next GCSIM tasks should add shipped fallback support, real
+  key-mapping source data, stronger
   smoke configs, and then generate payloads/configs from app-owned scenario and
   team data before any UI wiring.
 - Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.

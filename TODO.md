@@ -479,6 +479,24 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   use the cached file and avoid network. Future UI loader messages should
   surface these backend steps so enemy matching, Snap refresh, scenario build,
   and optional artifact run do not look frozen.
+  Artifact runs that supply `gtt_wave_scenario` now preflight-check the selected
+  artifact with `-gtt-info` before sim execution. The selected active or shipped
+  fallback artifact must report `gtt_patch_version=gtt-wave-scenario-v1` and
+  capability `gtt_wave_scenario_payload`; otherwise the runner returns
+  `artifact_wave_scenario_contract_mismatch` with observed/required
+  version/capability diagnostics and a rebuild-required message without running
+  the sim. Runs without a wave scenario keep the previous behavior and do not
+  require this preflight.
+  Latest backend/dev real smoke: manual config
+  `data/gcsim/runs/run-20260604175615977209/config.txt` plus generated Abyss
+  scenario for `2026-04-16` floor 12 chamber 3 side 2 passed through the active
+  artifact. Scenario generation used managed Snap cache hit
+  (`remote_not_needed`), resolved `Tenebrous Papilla: Type II` by
+  `snap_title_contains_target` to `tenebrouspapillatypei`, built one wave / one
+  target, and artifact preflight observed `gtt-wave-scenario-v1` with
+  `gtt_wave_scenario_payload`. Parsed run summary stayed smoke-only:
+  duration_mean `0.03333333333333333`, dps_mean `0.0`, total_damage_mean `0.0`;
+  do not treat this as DPS correctness.
   Enemy type mapping JSON now supports explicit records with `source_kind`,
   `source_id`, `gcsim_type`, and optional diagnostics; the old
   `enemy_types_by_nanoka_monster_id` shape still loads for dev compatibility.

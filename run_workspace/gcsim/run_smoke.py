@@ -61,6 +61,13 @@ def _format_text(result) -> str:
         f"gtt_wave_scenario={result.gtt_wave_scenario_path}",
         f"result_json={result.result_path}",
         (
+            "artifact_preflight="
+            f"status={result.artifact_preflight_status} "
+            f"observed_patch={result.observed_gtt_patch_version} "
+            f"required_patch={result.required_gtt_patch_version} "
+            f"required_capability={result.required_gtt_capability}"
+        ),
+        (
             "summary="
             f"dps_mean={_format_number(summary.dps_mean)} "
             f"duration_mean={_format_number(summary.duration_mean)} "
@@ -80,6 +87,8 @@ def _format_text(result) -> str:
         lines.append(f"stderr={result.stderr}")
     if result.error:
         lines.append(f"error={result.error}")
+    if result.timing_seconds:
+        lines.append("timing_seconds=" + json.dumps(result.timing_seconds, sort_keys=True))
     return "\n".join(lines)
 
 

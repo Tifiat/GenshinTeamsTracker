@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+from time import perf_counter
 from typing import Callable, Mapping, Sequence
 
 from .engine_store import (
@@ -34,6 +35,9 @@ DEFAULT_GCSIM_RUNS_DIR = PROJECT_ROOT / "data" / "gcsim" / "runs"
 DEFAULT_GCSIM_CONFIG_FILENAME = "config.txt"
 DEFAULT_GCSIM_RESULT_FILENAME = "result.json"
 MAX_RESULT_LIST_ITEMS = 50
+GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION = "gtt-wave-scenario-v1"
+GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY = "gtt_wave_scenario_payload"
+GTT_WAVE_SCENARIO_CONTRACT_MISMATCH_STATUS = "artifact_wave_scenario_contract_mismatch"
 
 ArtifactRunner = Callable[
     [Sequence[str], Path, Mapping[str, str], int],
@@ -85,6 +89,16 @@ class GcsimArtifactRunResult:
     stderr: str = ""
     summary: GcsimResultSummary = field(default_factory=GcsimResultSummary)
     error: str = ""
+    artifact_preflight_status: str = ""
+    artifact_preflight_command: tuple[str, ...] = ()
+    artifact_preflight_returncode: int | None = None
+    artifact_preflight_stdout: str = ""
+    artifact_preflight_stderr: str = ""
+    observed_gtt_patch_version: str = ""
+    observed_gtt_capabilities: tuple[str, ...] = ()
+    required_gtt_patch_version: str = ""
+    required_gtt_capability: str = ""
+    timing_seconds: dict[str, float] | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -106,6 +120,16 @@ class GcsimArtifactRunResult:
             "stderr": self.stderr,
             "summary": self.summary.to_dict(),
             "error": self.error,
+            "artifact_preflight_status": self.artifact_preflight_status,
+            "artifact_preflight_command": list(self.artifact_preflight_command),
+            "artifact_preflight_returncode": self.artifact_preflight_returncode,
+            "artifact_preflight_stdout": self.artifact_preflight_stdout,
+            "artifact_preflight_stderr": self.artifact_preflight_stderr,
+            "observed_gtt_patch_version": self.observed_gtt_patch_version,
+            "observed_gtt_capabilities": list(self.observed_gtt_capabilities),
+            "required_gtt_patch_version": self.required_gtt_patch_version,
+            "required_gtt_capability": self.required_gtt_capability,
+            "timing_seconds": self.timing_seconds,
         }
 
 
@@ -263,18 +287,58 @@ def _run_artifact_process(
     actual_run_dir.mkdir(parents=True, exist_ok=True)
     config_path = actual_run_dir / DEFAULT_GCSIM_CONFIG_FILENAME
     result_path = actual_run_dir / DEFAULT_GCSIM_RESULT_FILENAME
-    config_path.write_text(str(config_text), encoding="utf-8")
     scenario_path = _resolve_optional_path(gtt_wave_scenario)
+    command_runner = runner or _subprocess_runner
+    env = dict(os.environ)
+
+    preflight = _preflight_wave_scenario_contract(
+        artifact_path,
+        artifact_source=artifact_source,
+        active_artifact_status=active_artifact_status,
+        shipped_fallback_status=shipped_fallback_status,
+        timeout_seconds=timeout_seconds,
+        runner=command_runner,
+        env=env,
+        enabled=scenario_path is not None,
+    )
+    if preflight is not None and not preflight.ready:
+        return _run_result(
+            status=GTT_WAVE_SCENARIO_CONTRACT_MISMATCH_STATUS,
+            success=False,
+            engine_id=engine_id,
+            engine_path=engine_path,
+            artifact_path=artifact_path,
+            artifact_source=artifact_source,
+            active_artifact_status=active_artifact_status,
+            shipped_fallback_status=shipped_fallback_status,
+            run_dir=actual_run_dir,
+            config_path=config_path,
+            gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
+            result_path=result_path,
+            artifact_preflight_status=preflight.status,
+            artifact_preflight_command=preflight.command,
+            artifact_preflight_returncode=preflight.returncode,
+            artifact_preflight_stdout=preflight.stdout,
+            artifact_preflight_stderr=preflight.stderr,
+            observed_gtt_patch_version=preflight.observed_patch_version,
+            observed_gtt_capabilities=preflight.observed_capabilities,
+            required_gtt_patch_version=preflight.required_patch_version,
+            required_gtt_capability=preflight.required_capability,
+            timing_seconds=preflight.timing_seconds,
+            error=preflight.error,
+        )
+
+    config_path.write_text(str(config_text), encoding="utf-8")
 
     command = [str(artifact_path)]
     if scenario_path is not None:
         command.extend(("-gtt-wave-scenario", str(scenario_path)))
     command.extend(("-c", config_path.name, "-out", result_path.name))
     command = tuple(command)
-    command_runner = runner or _subprocess_runner
-    env = dict(os.environ)
+    run_started = perf_counter()
     try:
         completed = command_runner(command, actual_run_dir, env, int(timeout_seconds))
+        run_seconds = perf_counter() - run_started
     except subprocess.TimeoutExpired as exc:
         return _run_result(
             status="timeout",
@@ -292,6 +356,8 @@ def _run_artifact_process(
             command=command,
             stdout=exc.stdout if isinstance(exc.stdout, str) else "",
             stderr=exc.stderr if isinstance(exc.stderr, str) else "",
+            **_preflight_result_kwargs(preflight),
+            timing_seconds=_merge_timing(preflight, artifact_run_seconds=perf_counter() - run_started),
             error="GCSIM artifact run timed out.",
         )
     except OSError as exc:
@@ -309,6 +375,8 @@ def _run_artifact_process(
             gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
             result_path=result_path,
             command=command,
+            **_preflight_result_kwargs(preflight),
+            timing_seconds=_merge_timing(preflight, artifact_run_seconds=perf_counter() - run_started),
             error=str(exc),
         )
 
@@ -330,6 +398,8 @@ def _run_artifact_process(
             returncode=completed.returncode,
             stdout=completed.stdout,
             stderr=completed.stderr,
+            **_preflight_result_kwargs(preflight),
+            timing_seconds=_merge_timing(preflight, artifact_run_seconds=run_seconds),
             error=f"GCSIM artifact exited with {completed.returncode}.",
         )
     if not result_path.exists():
@@ -350,6 +420,8 @@ def _run_artifact_process(
             returncode=completed.returncode,
             stdout=completed.stdout,
             stderr=completed.stderr,
+            **_preflight_result_kwargs(preflight),
+            timing_seconds=_merge_timing(preflight, artifact_run_seconds=run_seconds),
             error="GCSIM artifact did not create the expected result JSON.",
         )
 
@@ -373,6 +445,8 @@ def _run_artifact_process(
             returncode=completed.returncode,
             stdout=completed.stdout,
             stderr=completed.stderr,
+            **_preflight_result_kwargs(preflight),
+            timing_seconds=_merge_timing(preflight, artifact_run_seconds=run_seconds),
             error=str(exc),
         )
 
@@ -394,11 +468,204 @@ def _run_artifact_process(
         stdout=completed.stdout,
         stderr=completed.stderr,
         summary=summary,
+        **_preflight_result_kwargs(preflight),
+        timing_seconds=_merge_timing(preflight, artifact_run_seconds=run_seconds),
     )
 
 
 class GcsimResultParseError(RuntimeError):
     """Raised when a GCSIM result JSON file cannot be parsed at all."""
+
+
+@dataclass(frozen=True, slots=True)
+class GcsimArtifactContractPreflight:
+    status: str
+    ready: bool
+    command: tuple[str, ...] = ()
+    returncode: int | None = None
+    stdout: str = ""
+    stderr: str = ""
+    observed_patch_version: str = ""
+    observed_capabilities: tuple[str, ...] = ()
+    required_patch_version: str = GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION
+    required_capability: str = GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY
+    error: str = ""
+    timing_seconds: dict[str, float] | None = None
+
+
+def _preflight_wave_scenario_contract(
+    artifact_path: Path,
+    *,
+    artifact_source: str,
+    active_artifact_status: str,
+    shipped_fallback_status: str,
+    timeout_seconds: int,
+    runner: ArtifactRunner,
+    env: Mapping[str, str],
+    enabled: bool,
+) -> GcsimArtifactContractPreflight | None:
+    if not enabled:
+        return None
+    command = (str(artifact_path), "-gtt-info")
+    started = perf_counter()
+    try:
+        completed = runner(command, artifact_path.parent, env, int(timeout_seconds))
+    except subprocess.TimeoutExpired as exc:
+        return _contract_preflight_result(
+            status="gtt_info_timeout",
+            ready=False,
+            command=command,
+            stdout=exc.stdout if isinstance(exc.stdout, str) else "",
+            stderr=exc.stderr if isinstance(exc.stderr, str) else "",
+            timing_seconds={"artifact_preflight_seconds": perf_counter() - started},
+            error="GTT-GCSIM artifact -gtt-info timed out; rebuild active GTT-GCSIM artifact from current patch stack.",
+        )
+    except OSError as exc:
+        return _contract_preflight_result(
+            status="gtt_info_failed",
+            ready=False,
+            command=command,
+            timing_seconds={"artifact_preflight_seconds": perf_counter() - started},
+            error=f"GTT-GCSIM artifact -gtt-info failed for {artifact_source}: {exc}; rebuild active GTT-GCSIM artifact from current patch stack.",
+        )
+    timing = {"artifact_preflight_seconds": perf_counter() - started}
+    if completed.returncode != 0:
+        return _contract_preflight_result(
+            status="gtt_info_failed",
+            ready=False,
+            command=command,
+            returncode=completed.returncode,
+            stdout=completed.stdout,
+            stderr=completed.stderr,
+            timing_seconds=timing,
+            error=f"GTT-GCSIM artifact -gtt-info exited with {completed.returncode}; rebuild active GTT-GCSIM artifact from current patch stack.",
+        )
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        return _contract_preflight_result(
+            status="gtt_info_invalid_json",
+            ready=False,
+            command=command,
+            returncode=completed.returncode,
+            stdout=completed.stdout,
+            stderr=completed.stderr,
+            timing_seconds=timing,
+            error=f"GTT-GCSIM artifact -gtt-info returned invalid JSON: {exc}; rebuild active GTT-GCSIM artifact from current patch stack.",
+        )
+    observed_version = _text_value(payload, "gtt_patch_version", "gttPatchVersion")
+    observed_capabilities = _capabilities_from_gtt_info(payload)
+    ready = (
+        observed_version == GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION
+        and GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY in set(observed_capabilities)
+    )
+    if ready:
+        return _contract_preflight_result(
+            status="gtt_wave_scenario_contract_ready",
+            ready=True,
+            command=command,
+            returncode=completed.returncode,
+            stdout=completed.stdout,
+            stderr=completed.stderr,
+            observed_patch_version=observed_version,
+            observed_capabilities=observed_capabilities,
+            timing_seconds=timing,
+        )
+    missing: list[str] = []
+    if observed_version != GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION:
+        missing.append(
+            f"required patch version {GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION}, observed {observed_version or '<missing>'}"
+        )
+    if GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY not in set(observed_capabilities):
+        missing.append(f"required capability {GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY}")
+    return _contract_preflight_result(
+        status="gtt_wave_scenario_contract_missing",
+        ready=False,
+        command=command,
+        returncode=completed.returncode,
+        stdout=completed.stdout,
+        stderr=completed.stderr,
+        observed_patch_version=observed_version,
+        observed_capabilities=observed_capabilities,
+        timing_seconds=timing,
+        error=(
+            "GTT-GCSIM artifact cannot run -gtt-wave-scenario: "
+            + "; ".join(missing)
+            + f". artifact_source={artifact_source} active_artifact_status={active_artifact_status} "
+            + f"shipped_fallback_status={shipped_fallback_status}. "
+            + "Rebuild active GTT-GCSIM artifact from current patch stack."
+        ),
+    )
+
+
+def _contract_preflight_result(
+    *,
+    status: str,
+    ready: bool,
+    command: Sequence[str],
+    returncode: int | None = None,
+    stdout: str = "",
+    stderr: str = "",
+    observed_patch_version: str = "",
+    observed_capabilities: Sequence[str] = (),
+    timing_seconds: dict[str, float] | None = None,
+    error: str = "",
+) -> GcsimArtifactContractPreflight:
+    return GcsimArtifactContractPreflight(
+        status=status,
+        ready=ready,
+        command=tuple(str(part) for part in command),
+        returncode=returncode,
+        stdout=_trim_probe_text(stdout),
+        stderr=_trim_probe_text(stderr),
+        observed_patch_version=str(observed_patch_version or ""),
+        observed_capabilities=tuple(str(item) for item in observed_capabilities),
+        timing_seconds=_rounded_timing(timing_seconds),
+        error=_trim_probe_text(error),
+    )
+
+
+def _preflight_result_kwargs(
+    preflight: GcsimArtifactContractPreflight | None,
+) -> dict:
+    if preflight is None:
+        return {}
+    return {
+        "artifact_preflight_status": preflight.status,
+        "artifact_preflight_command": preflight.command,
+        "artifact_preflight_returncode": preflight.returncode,
+        "artifact_preflight_stdout": preflight.stdout,
+        "artifact_preflight_stderr": preflight.stderr,
+        "observed_gtt_patch_version": preflight.observed_patch_version,
+        "observed_gtt_capabilities": preflight.observed_capabilities,
+        "required_gtt_patch_version": preflight.required_patch_version,
+        "required_gtt_capability": preflight.required_capability,
+    }
+
+
+def _merge_timing(
+    preflight: GcsimArtifactContractPreflight | None,
+    **timing: float,
+) -> dict[str, float]:
+    result = dict(preflight.timing_seconds or {}) if preflight is not None else {}
+    result.update(timing)
+    return _rounded_timing(result) or {}
+
+
+def _capabilities_from_gtt_info(payload: Mapping) -> tuple[str, ...]:
+    value = payload.get("capabilities")
+    if not isinstance(value, list):
+        return ()
+    return tuple(str(item) for item in value)
+
+
+def _rounded_timing(timing_seconds: dict[str, float] | None) -> dict[str, float] | None:
+    if timing_seconds is None:
+        return None
+    return {
+        key: round(float(value), 6)
+        for key, value in sorted(timing_seconds.items())
+    }
 
 
 def parse_gcsim_result_file(path: str | Path) -> GcsimResultSummary:
@@ -558,6 +825,16 @@ def _run_result(
     stderr: str = "",
     summary: GcsimResultSummary | None = None,
     error: str = "",
+    artifact_preflight_status: str = "",
+    artifact_preflight_command: Sequence[str] = (),
+    artifact_preflight_returncode: int | None = None,
+    artifact_preflight_stdout: str = "",
+    artifact_preflight_stderr: str = "",
+    observed_gtt_patch_version: str = "",
+    observed_gtt_capabilities: Sequence[str] = (),
+    required_gtt_patch_version: str = "",
+    required_gtt_capability: str = "",
+    timing_seconds: dict[str, float] | None = None,
 ) -> GcsimArtifactRunResult:
     return GcsimArtifactRunResult(
         status=str(status),
@@ -580,4 +857,14 @@ def _run_result(
         stderr=_trim_probe_text(stderr),
         summary=summary or GcsimResultSummary(),
         error=_trim_probe_text(error),
+        artifact_preflight_status=str(artifact_preflight_status),
+        artifact_preflight_command=tuple(str(part) for part in artifact_preflight_command),
+        artifact_preflight_returncode=artifact_preflight_returncode,
+        artifact_preflight_stdout=_trim_probe_text(artifact_preflight_stdout),
+        artifact_preflight_stderr=_trim_probe_text(artifact_preflight_stderr),
+        observed_gtt_patch_version=str(observed_gtt_patch_version),
+        observed_gtt_capabilities=tuple(str(item) for item in observed_gtt_capabilities),
+        required_gtt_patch_version=str(required_gtt_patch_version),
+        required_gtt_capability=str(required_gtt_capability),
+        timing_seconds=_rounded_timing(timing_seconds),
     )

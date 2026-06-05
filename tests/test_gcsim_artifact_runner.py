@@ -7,6 +7,8 @@ import tempfile
 import unittest
 
 from run_workspace.gcsim.artifact_runner import (
+    GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY,
+    GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION,
     GcsimResultParseError,
     parse_gcsim_result_payload,
     run_active_gcsim_artifact,
@@ -249,7 +251,7 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            runner = FakeArtifactRunner(_write_result_json)
+            runner = FakeGttInfoThenArtifactRunner(_write_result_json)
 
             result = run_active_gcsim_artifact(
                 "options iteration=1;",
@@ -260,11 +262,122 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
             )
 
             self.assertTrue(result.success)
+            self.assertEqual(result.artifact_preflight_status, "gtt_wave_scenario_contract_ready")
+            self.assertEqual(result.observed_gtt_patch_version, GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION)
+            self.assertIn(GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY, result.observed_gtt_capabilities)
             self.assertEqual(result.gtt_wave_scenario_path, str(scenario_path.resolve()))
             self.assertIn("-gtt-wave-scenario", result.command)
             scenario_index = result.command.index("-gtt-wave-scenario") + 1
             self.assertEqual(result.command[scenario_index], str(scenario_path.resolve()))
             self.assertLess(result.command.index("-gtt-wave-scenario"), result.command.index("-c"))
+            self.assertEqual(len(runner.info_calls), 1)
+            self.assertEqual(len(runner.run_calls), 1)
+
+    def test_wave_scenario_missing_capability_returns_controlled_failure_without_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _install_active_engine(
+                root,
+                metadata={"artifact_relative_path": "build/gtt-gcsim.exe"},
+                artifact_bytes=b"fake exe",
+            )
+            scenario_path = _write_scenario(root / "scenario.json")
+            runner = FakeGttInfoThenArtifactRunner(
+                _write_result_json,
+                capabilities=("gtt_engine_marker",),
+            )
+
+            result = run_active_gcsim_artifact(
+                "options iteration=1;",
+                gtt_wave_scenario=scenario_path,
+                store_dir=root / "store",
+                run_dir=root / "run",
+                runner=runner,
+            )
+
+            self.assertFalse(result.success)
+            self.assertEqual(result.status, "artifact_wave_scenario_contract_mismatch")
+            self.assertEqual(result.artifact_preflight_status, "gtt_wave_scenario_contract_missing")
+            self.assertEqual(result.observed_gtt_patch_version, GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION)
+            self.assertNotIn(GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY, result.observed_gtt_capabilities)
+            self.assertEqual(result.required_gtt_patch_version, GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION)
+            self.assertEqual(result.required_gtt_capability, GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY)
+            self.assertIn("Rebuild active GTT-GCSIM artifact", result.error)
+            self.assertEqual(len(runner.info_calls), 1)
+            self.assertEqual(len(runner.run_calls), 0)
+
+    def test_wave_scenario_old_patch_version_returns_controlled_failure_without_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _install_active_engine(
+                root,
+                metadata={"artifact_relative_path": "build/gtt-gcsim.exe"},
+                artifact_bytes=b"fake exe",
+            )
+            scenario_path = _write_scenario(root / "scenario.json")
+            runner = FakeGttInfoThenArtifactRunner(
+                _write_result_json,
+                patch_version="gtt-wave-scheduler-prototype",
+            )
+
+            result = run_active_gcsim_artifact(
+                "options iteration=1;",
+                gtt_wave_scenario=scenario_path,
+                store_dir=root / "store",
+                run_dir=root / "run",
+                runner=runner,
+            )
+
+            self.assertFalse(result.success)
+            self.assertEqual(result.status, "artifact_wave_scenario_contract_mismatch")
+            self.assertEqual(result.observed_gtt_patch_version, "gtt-wave-scheduler-prototype")
+            self.assertEqual(result.required_gtt_patch_version, GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION)
+            self.assertEqual(len(runner.run_calls), 0)
+
+    def test_no_wave_scenario_does_not_require_gtt_info(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _install_active_engine(
+                root,
+                metadata={"artifact_relative_path": "build/gtt-gcsim.exe"},
+                artifact_bytes=b"fake exe",
+            )
+            runner = FakeArtifactRunner(_write_result_json)
+
+            result = run_active_gcsim_artifact(
+                "options iteration=1;",
+                store_dir=root / "store",
+                run_dir=root / "run",
+                runner=runner,
+            )
+
+            self.assertTrue(result.success)
+            self.assertEqual(result.artifact_preflight_status, "")
+            self.assertEqual(len(runner.calls), 1)
+
+    def test_wave_scenario_selected_shipped_fallback_is_preflight_checked(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fallback = root / "shipped" / "gtt-gcsim.exe"
+            fallback.parent.mkdir(parents=True)
+            fallback.write_bytes(b"fake shipped exe")
+            scenario_path = _write_scenario(root / "scenario.json")
+            runner = FakeGttInfoThenArtifactRunner(_write_result_json)
+
+            result = run_active_gcsim_artifact(
+                "options iteration=1;",
+                gtt_wave_scenario=scenario_path,
+                store_dir=root / "store",
+                run_dir=root / "run",
+                runner=runner,
+                enable_shipped_fallback=True,
+                shipped_fallback_artifact_path=fallback,
+            )
+
+            self.assertTrue(result.success)
+            self.assertEqual(result.artifact_source, "shipped_fallback")
+            self.assertEqual(result.artifact_preflight_status, "gtt_wave_scenario_contract_ready")
+            self.assertEqual(result.command[0], str(fallback.resolve()))
 
     def test_nonzero_artifact_exit_returns_controlled_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -387,6 +500,52 @@ class FakeArtifactRunner:
         return self.result
 
 
+class FakeGttInfoThenArtifactRunner:
+    def __init__(
+        self,
+        result,
+        *,
+        patch_version: str = GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION,
+        capabilities: tuple[str, ...] = (
+            "gtt_engine_marker",
+            GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY,
+        ),
+    ):
+        self.result = result
+        self.patch_version = patch_version
+        self.capabilities = capabilities
+        self.info_calls: list[dict] = []
+        self.run_calls: list[dict] = []
+
+    def __call__(self, command, cwd, env, timeout):
+        call = {
+            "command": tuple(command),
+            "cwd": cwd,
+            "env": dict(env),
+            "timeout": timeout,
+        }
+        if tuple(command)[1:] == ("-gtt-info",):
+            self.info_calls.append(call)
+            return subprocess.CompletedProcess(
+                args=list(command),
+                returncode=0,
+                stdout=json.dumps(
+                    {
+                        "gtt_engine": True,
+                        "gtt_patch_version": self.patch_version,
+                        "capabilities": list(self.capabilities),
+                    }
+                ),
+                stderr="",
+            )
+        self.run_calls.append(call)
+        if isinstance(self.result, BaseException):
+            raise self.result
+        if callable(self.result):
+            return self.result(command, cwd, env, timeout)
+        return self.result
+
+
 class UnexpectedRunner:
     def __call__(self, command, cwd, env, timeout):  # pragma: no cover - failure helper.
         raise AssertionError(f"Runner should not be called: {command}")
@@ -421,6 +580,30 @@ def _write_result_json(command, cwd: Path, _env, _timeout):
         stdout="sim ok",
         stderr="",
     )
+
+
+def _write_scenario(path: Path) -> Path:
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "spawn_policy": "group_clear",
+                "waves": [
+                    {
+                        "targets": [
+                            {
+                                "level": 100,
+                                "type": "dummy",
+                                "hp": 1000,
+                            }
+                        ]
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return path
 
 
 def _install_active_engine(

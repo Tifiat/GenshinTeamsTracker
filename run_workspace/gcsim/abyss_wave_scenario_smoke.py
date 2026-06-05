@@ -2,11 +2,11 @@
 
 This command is a backend-only bridge around the provisional
 `abyss_wave_scenario` adapter. It loads already-cached typed Abyss source data,
-requires an explicit Nanoka monster id -> GCSIM enemy type mapping, writes a
-schema-v1 payload, and can optionally pass that payload to the existing active
-GTT-GCSIM artifact runner with a caller provided config. It does not refresh
-network data, generate account/team GCSIM configs, map character/weapon/artifact
-keys, or model final Abyss wave policy.
+requires an explicit Abyss enemy source identity -> GCSIM enemy type mapping,
+writes a schema-v1 payload, and can optionally pass that payload to the existing
+active GTT-GCSIM artifact runner with a caller provided config. It does not
+refresh network data, generate account/team GCSIM configs, map
+character/weapon/artifact keys, or model final Abyss wave policy.
 """
 
 from __future__ import annotations
@@ -154,7 +154,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--enemy-type-map",
         default=None,
         help=(
-            "Explicit JSON mapping from Nanoka monster id to GCSIM enemy type. "
+            "Explicit JSON mapping from Abyss enemy source identities to GCSIM enemy type. "
             "When omitted, the command prints audit and exits nonzero."
         ),
     )
@@ -259,12 +259,15 @@ def _format_text(report: dict[str, Any]) -> str:
         missing_hp = audit.get("missing_hp_rows") or []
         missing_level = audit.get("missing_level_rows") or []
         missing_type = audit.get("missing_type_mapping_rows") or []
+        ambiguous_type = audit.get("ambiguous_type_mapping_rows") or []
         if missing_hp:
             lines.append(f"missing_hp_rows={len(missing_hp)}")
         if missing_level:
             lines.append(f"missing_level_rows={len(missing_level)}")
         if missing_type:
             lines.append(f"missing_type_mapping_rows={len(missing_type)}")
+        if ambiguous_type:
+            lines.append(f"ambiguous_type_mapping_rows={len(ambiguous_type)}")
     if report.get("scenario_path"):
         lines.append(f"scenario={report['scenario_path']}")
     run_result = report.get("run_result")

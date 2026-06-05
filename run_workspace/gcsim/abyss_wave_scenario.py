@@ -14,6 +14,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 from run_workspace.abyss.source_data import (
     AbyssChamberSideSourceData,
@@ -24,26 +25,163 @@ from run_workspace.abyss.source_data import (
 
 GTT_WAVE_SCENARIO_SCHEMA_VERSION = 1
 GTT_WAVE_SCENARIO_SPAWN_POLICY = "group_clear"
-MISSING_ENEMY_TYPE_MAPPING_WARNING = "missing_enemy_type_mapping:nanoka_monster_id_to_gcsim_type"
+MISSING_ENEMY_TYPE_MAPPING_WARNING = "missing_enemy_type_mapping:abyss_enemy_identity_to_gcsim_type"
 SOURCE_FIELDS_MISSING_WARNING = "abyss_source_data_lacks_gcsim_enemy_type"
+
+IDENTITY_KIND_NANOKA_MONSTER_ID = "nanoka_monster_id"
+IDENTITY_KIND_NANOKA_DISPLAY_NAME = "nanoka_display_name"
+IDENTITY_KIND_FANDOM_PAGE_URL = "fandom_page_url"
+IDENTITY_KIND_FANDOM_PAGE_TITLE = "fandom_page_title"
+IDENTITY_KIND_FANDOM_DISPLAY_NAME = "fandom_display_name"
+
+ACCEPTED_IDENTITY_KINDS = {
+    IDENTITY_KIND_NANOKA_MONSTER_ID,
+    IDENTITY_KIND_FANDOM_PAGE_URL,
+    IDENTITY_KIND_FANDOM_PAGE_TITLE,
+    IDENTITY_KIND_NANOKA_DISPLAY_NAME,
+    IDENTITY_KIND_FANDOM_DISPLAY_NAME,
+}
 
 
 @dataclass(frozen=True, slots=True)
-class AbyssEnemyTypeMapping:
-    """Explicit source-id -> GCSIM enemy type mapping for scenario payloads."""
+class AbyssEnemyIdentityCandidate:
+    source_kind: str
+    source_id: str
+    source_name: str = ""
 
-    types_by_nanoka_monster_id: Mapping[str, str]
+    def key(self) -> tuple[str, str]:
+        return (self.source_kind, self.source_id)
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "source_kind": self.source_kind,
+            "source_id": self.source_id,
+            "source_name": self.source_name,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class AbyssEnemyTypeMappingRecord:
+    source_kind: str
+    source_id: str
+    gcsim_type: str
+    source_name: str = ""
+    notes: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+
+    def key(self) -> tuple[str, str]:
+        return (self.source_kind, self.source_id)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source_kind": self.source_kind,
+            "source_id": self.source_id,
+            "gcsim_type": self.gcsim_type,
+            "source_name": self.source_name,
+            "notes": list(self.notes),
+            "warnings": list(self.warnings),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class AbyssEnemyTypeResolution:
+    status: str
+    candidates: tuple[AbyssEnemyIdentityCandidate, ...]
+    gcsim_type: str = ""
+    selected_identity: AbyssEnemyIdentityCandidate | None = None
+    selected_record: AbyssEnemyTypeMappingRecord | None = None
+    ambiguous_records: tuple[AbyssEnemyTypeMappingRecord, ...] = ()
+    warnings: tuple[str, ...] = ()
+
+    @property
+    def ready(self) -> bool:
+        return self.status == "resolved" and bool(self.gcsim_type)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "status": self.status,
+            "gcsim_type": self.gcsim_type,
+            "selected_identity": None
+            if self.selected_identity is None
+            else self.selected_identity.to_dict(),
+            "selected_record": None
+            if self.selected_record is None
+            else self.selected_record.to_dict(),
+            "ambiguous_records": [record.to_dict() for record in self.ambiguous_records],
+            "available_identities": [candidate.to_dict() for candidate in self.candidates],
+            "warnings": list(self.warnings),
+        }
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class AbyssEnemyTypeMapping:
+    """Explicit Abyss enemy source identity -> GCSIM enemy type mapping."""
+
+    records: tuple[AbyssEnemyTypeMappingRecord, ...] = ()
     mapping_name: str = "explicit_enemy_type_mapping"
 
+    def __init__(
+        self,
+        records: tuple[AbyssEnemyTypeMappingRecord, ...] | list[AbyssEnemyTypeMappingRecord] = (),
+        *,
+        mapping_name: str = "explicit_enemy_type_mapping",
+        types_by_nanoka_monster_id: Mapping[str, str] | None = None,
+    ) -> None:
+        normalized_records = list(records)
+        if types_by_nanoka_monster_id:
+            normalized_records.extend(
+                AbyssEnemyTypeMappingRecord(
+                    source_kind=IDENTITY_KIND_NANOKA_MONSTER_ID,
+                    source_id=str(source_id).strip(),
+                    gcsim_type=str(gcsim_type).strip(),
+                )
+                for source_id, gcsim_type in types_by_nanoka_monster_id.items()
+                if str(source_id).strip() and str(gcsim_type).strip()
+            )
+        object.__setattr__(self, "records", tuple(normalized_records))
+        object.__setattr__(self, "mapping_name", str(mapping_name or "explicit_enemy_type_mapping"))
+
+    @property
+    def types_by_nanoka_monster_id(self) -> dict[str, str]:
+        result: dict[str, str] = {}
+        for record in self.records:
+            if record.source_kind == IDENTITY_KIND_NANOKA_MONSTER_ID:
+                result.setdefault(record.source_id, record.gcsim_type)
+        return result
+
+    def resolve_row(self, row: AbyssEnemySourceRow) -> AbyssEnemyTypeResolution:
+        candidates = abyss_enemy_identity_candidates(row)
+        records_by_key = _records_by_key(self.records)
+        for candidate in _resolution_candidates(candidates):
+            matches = records_by_key.get(candidate.key(), ())
+            if not matches:
+                continue
+            if len(matches) > 1:
+                return AbyssEnemyTypeResolution(
+                    status="ambiguous_mapping",
+                    candidates=candidates,
+                    selected_identity=candidate,
+                    ambiguous_records=matches,
+                    warnings=(f"ambiguous_mapping:{candidate.source_kind}:{candidate.source_id}",),
+                )
+            record = matches[0]
+            return AbyssEnemyTypeResolution(
+                status="resolved",
+                candidates=candidates,
+                gcsim_type=record.gcsim_type,
+                selected_identity=candidate,
+                selected_record=record,
+                warnings=record.warnings,
+            )
+        return AbyssEnemyTypeResolution(
+            status="missing_mapping",
+            candidates=candidates,
+            warnings=("missing_mapping_for_available_identities",),
+        )
+
     def gcsim_type_for_row(self, row: AbyssEnemySourceRow) -> str | None:
-        source_id = (row.nanoka_monster_id or "").strip()
-        if not source_id:
-            return None
-        value = self.types_by_nanoka_monster_id.get(source_id)
-        if value is None:
-            return None
-        value = str(value).strip()
-        return value or None
+        resolution = self.resolve_row(row)
+        return resolution.gcsim_type if resolution.ready else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +199,8 @@ class AbyssWaveScenarioAudit:
     invalid_hp_rows: tuple[str, ...] = ()
     invalid_level_rows: tuple[str, ...] = ()
     missing_type_mapping_rows: tuple[str, ...] = ()
+    ambiguous_type_mapping_rows: tuple[str, ...] = ()
+    type_mapping_details: tuple[dict[str, Any], ...] = ()
     enemy_type_mapping_name: str = ""
     warnings: tuple[str, ...] = ()
 
@@ -72,6 +212,7 @@ class AbyssWaveScenarioAudit:
             and not self.invalid_hp_rows
             and not self.invalid_level_rows
             and not self.missing_type_mapping_rows
+            and not self.ambiguous_type_mapping_rows
             and not self.warnings_blocking
         )
 
@@ -102,6 +243,8 @@ class AbyssWaveScenarioAudit:
             "invalid_hp_rows": list(self.invalid_hp_rows),
             "invalid_level_rows": list(self.invalid_level_rows),
             "missing_type_mapping_rows": list(self.missing_type_mapping_rows),
+            "ambiguous_type_mapping_rows": list(self.ambiguous_type_mapping_rows),
+            "type_mapping_details": list(self.type_mapping_details),
             "enemy_type_mapping_name": self.enemy_type_mapping_name,
             "warnings": list(self.warnings),
         }
@@ -178,13 +321,13 @@ def build_abyss_wave_scenario_payload(
         targets: list[dict[str, Any]] = []
         for row in wave.enemies:
             for _ in range(_normalized_enemy_count(row)):
-                gcsim_type = enemy_type_mapping.gcsim_type_for_row(row)
-                if not gcsim_type:
+                resolution = enemy_type_mapping.resolve_row(row)
+                if not resolution.ready:
                     continue
                 targets.append(
                     {
                         "level": int(row.display_level or 0),
-                        "type": gcsim_type,
+                        "type": resolution.gcsim_type,
                         "hp": float(row.nanoka_hp or 0),
                     }
                 )
@@ -214,20 +357,162 @@ def load_enemy_type_mapping_from_json(path: str | Path) -> AbyssEnemyTypeMapping
     raw = json.loads(Path(path).read_text(encoding="utf-8-sig"))
     if not isinstance(raw, Mapping):
         raise ValueError("enemy type mapping must be a JSON object")
-    mapping_raw = raw.get("enemy_types_by_nanoka_monster_id", raw)
-    if not isinstance(mapping_raw, Mapping):
-        raise ValueError("enemy_types_by_nanoka_monster_id must be a JSON object")
-    mapping: dict[str, str] = {}
-    for key, value in mapping_raw.items():
-        source_id = str(key).strip()
-        gcsim_type = str(value).strip()
-        if source_id and gcsim_type:
-            mapping[source_id] = gcsim_type
     name = str(raw.get("mapping_name") or Path(path).name).strip()
+    records: list[AbyssEnemyTypeMappingRecord] = []
+    if "records" in raw:
+        records_raw = raw.get("records")
+        if not isinstance(records_raw, list):
+            raise ValueError("records must be a JSON list")
+        records.extend(_mapping_record_from_json(item) for item in records_raw)
+    if "enemy_types_by_nanoka_monster_id" in raw or not records:
+        mapping_raw = raw.get("enemy_types_by_nanoka_monster_id", raw)
+        if not isinstance(mapping_raw, Mapping):
+            raise ValueError("enemy_types_by_nanoka_monster_id must be a JSON object")
+        for key, value in mapping_raw.items():
+            if key in {"mapping_name", "records"}:
+                continue
+            source_id = str(key).strip()
+            gcsim_type = str(value).strip()
+            if source_id and gcsim_type:
+                records.append(
+                    AbyssEnemyTypeMappingRecord(
+                        source_kind=IDENTITY_KIND_NANOKA_MONSTER_ID,
+                        source_id=source_id,
+                        gcsim_type=gcsim_type,
+                    )
+                )
     return AbyssEnemyTypeMapping(
-        types_by_nanoka_monster_id=mapping,
+        records=tuple(records),
         mapping_name=name or "explicit_enemy_type_mapping",
     )
+
+
+def abyss_enemy_identity_candidates(
+    row: AbyssEnemySourceRow,
+) -> tuple[AbyssEnemyIdentityCandidate, ...]:
+    candidates: list[AbyssEnemyIdentityCandidate] = []
+    _append_identity_candidate(
+        candidates,
+        IDENTITY_KIND_NANOKA_MONSTER_ID,
+        row.nanoka_monster_id,
+        row.matched_nanoka_display_name or row.primary_display_name,
+    )
+    _append_identity_candidate(
+        candidates,
+        IDENTITY_KIND_NANOKA_DISPLAY_NAME,
+        row.matched_nanoka_display_name,
+        row.matched_nanoka_display_name,
+    )
+    _append_identity_candidate(
+        candidates,
+        IDENTITY_KIND_FANDOM_PAGE_URL,
+        row.fandom_enemy_page_url,
+        row.primary_display_name,
+    )
+    _append_identity_candidate(
+        candidates,
+        IDENTITY_KIND_FANDOM_PAGE_TITLE,
+        _fandom_page_title(row.fandom_enemy_page_url),
+        row.primary_display_name,
+    )
+    _append_identity_candidate(
+        candidates,
+        IDENTITY_KIND_FANDOM_DISPLAY_NAME,
+        row.primary_display_name,
+        row.primary_display_name,
+    )
+    return tuple(candidates)
+
+
+def _resolution_candidates(
+    candidates: tuple[AbyssEnemyIdentityCandidate, ...],
+) -> tuple[AbyssEnemyIdentityCandidate, ...]:
+    priority = {
+        IDENTITY_KIND_NANOKA_MONSTER_ID: 0,
+        IDENTITY_KIND_FANDOM_PAGE_URL: 1,
+        IDENTITY_KIND_FANDOM_PAGE_TITLE: 2,
+        IDENTITY_KIND_NANOKA_DISPLAY_NAME: 3,
+        IDENTITY_KIND_FANDOM_DISPLAY_NAME: 4,
+    }
+    return tuple(
+        sorted(
+            candidates,
+            key=lambda candidate: priority.get(candidate.source_kind, len(priority)),
+        )
+    )
+
+
+def _append_identity_candidate(
+    candidates: list[AbyssEnemyIdentityCandidate],
+    source_kind: str,
+    source_id: str | None,
+    source_name: str | None,
+) -> None:
+    normalized_source_id = str(source_id or "").strip()
+    if not normalized_source_id:
+        return
+    candidate = AbyssEnemyIdentityCandidate(
+        source_kind=source_kind,
+        source_id=normalized_source_id,
+        source_name=str(source_name or "").strip(),
+    )
+    if candidate.key() not in {existing.key() for existing in candidates}:
+        candidates.append(candidate)
+
+
+def _fandom_page_title(url: str | None) -> str | None:
+    if not url:
+        return None
+    path = urlparse(str(url)).path.rstrip("/")
+    if not path:
+        return None
+    title = unquote(path.rsplit("/", 1)[-1]).replace("_", " ").strip()
+    return title or None
+
+
+def _mapping_record_from_json(raw: Any) -> AbyssEnemyTypeMappingRecord:
+    if not isinstance(raw, Mapping):
+        raise ValueError("mapping records must be JSON objects")
+    source_kind = str(raw.get("source_kind") or "").strip()
+    source_id = str(raw.get("source_id") or "").strip()
+    gcsim_type = str(raw.get("gcsim_type") or "").strip()
+    if not source_kind:
+        raise ValueError("mapping record source_kind is required")
+    if source_kind not in ACCEPTED_IDENTITY_KINDS:
+        raise ValueError(f"unsupported mapping record source_kind: {source_kind}")
+    if not source_id:
+        raise ValueError("mapping record source_id is required")
+    if not gcsim_type:
+        raise ValueError("mapping record gcsim_type is required")
+    return AbyssEnemyTypeMappingRecord(
+        source_kind=source_kind,
+        source_id=source_id,
+        gcsim_type=gcsim_type,
+        source_name=str(raw.get("source_name") or "").strip(),
+        notes=_tuple_of_strings(raw.get("notes")),
+        warnings=_tuple_of_strings(raw.get("warnings")),
+    )
+
+
+def _records_by_key(
+    records: tuple[AbyssEnemyTypeMappingRecord, ...],
+) -> dict[tuple[str, str], tuple[AbyssEnemyTypeMappingRecord, ...]]:
+    grouped: dict[tuple[str, str], list[AbyssEnemyTypeMappingRecord]] = {}
+    for record in records:
+        if not record.source_kind or not record.source_id or not record.gcsim_type:
+            continue
+        grouped.setdefault(record.key(), []).append(record)
+    return {key: tuple(values) for key, values in grouped.items()}
+
+
+def _tuple_of_strings(value: Any) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        return (value,)
+    if isinstance(value, (list, tuple)):
+        return tuple(str(item) for item in value)
+    return (str(value),)
 
 
 def _select_side(
@@ -253,6 +538,8 @@ def _audit_selected_side(
     invalid_hp: list[str] = []
     invalid_level: list[str] = []
     missing_type_mapping: list[str] = []
+    ambiguous_type_mapping: list[str] = []
+    type_mapping_details: list[dict[str, Any]] = []
     warnings: list[str] = [SOURCE_FIELDS_MISSING_WARNING]
     target_count = 0
     for wave in selected_side.waves:
@@ -260,6 +547,11 @@ def _audit_selected_side(
             count = _normalized_enemy_count(row)
             target_count += count
             label = _row_label(row)
+            resolution = (
+                None
+                if enemy_type_mapping is None
+                else enemy_type_mapping.resolve_row(row)
+            )
             if row.nanoka_hp is None:
                 missing_hp.append(label)
             elif row.nanoka_hp <= 0:
@@ -268,11 +560,26 @@ def _audit_selected_side(
                 missing_level.append(label)
             elif row.display_level < 1 or row.display_level > 100:
                 invalid_level.append(label)
-            if count > 0 and (
-                enemy_type_mapping is None
-                or enemy_type_mapping.gcsim_type_for_row(row) is None
-            ):
-                missing_type_mapping.append(label)
+            if count > 0:
+                if resolution is None:
+                    missing_type_mapping.append(label)
+                    type_mapping_details.append(
+                        _type_mapping_detail(label, row, None)
+                    )
+                elif resolution.status == "missing_mapping":
+                    missing_type_mapping.append(label)
+                    type_mapping_details.append(
+                        _type_mapping_detail(label, row, resolution)
+                    )
+                elif resolution.status == "ambiguous_mapping":
+                    ambiguous_type_mapping.append(label)
+                    type_mapping_details.append(
+                        _type_mapping_detail(label, row, resolution)
+                    )
+                else:
+                    type_mapping_details.append(
+                        _type_mapping_detail(label, row, resolution)
+                    )
 
     if not selected_side.waves:
         warnings.append("side_has_no_waves")
@@ -295,6 +602,8 @@ def _audit_selected_side(
         invalid_hp_rows=tuple(invalid_hp),
         invalid_level_rows=tuple(invalid_level),
         missing_type_mapping_rows=tuple(missing_type_mapping),
+        ambiguous_type_mapping_rows=tuple(ambiguous_type_mapping),
+        type_mapping_details=tuple(type_mapping_details),
         enemy_type_mapping_name="" if enemy_type_mapping is None else enemy_type_mapping.mapping_name,
         warnings=tuple(warnings),
     )
@@ -302,6 +611,33 @@ def _audit_selected_side(
 
 def _normalized_enemy_count(row: AbyssEnemySourceRow) -> int:
     return max(0, int(row.enemy_count))
+
+
+def _type_mapping_detail(
+    label: str,
+    row: AbyssEnemySourceRow,
+    resolution: AbyssEnemyTypeResolution | None,
+) -> dict[str, Any]:
+    if resolution is None:
+        candidates = abyss_enemy_identity_candidates(row)
+        return {
+            "row": label,
+            "status": "missing_mapping",
+            "hp_source": row.hp_source,
+            "gcsim_type": "",
+            "selected_identity": None,
+            "available_identities": [candidate.to_dict() for candidate in candidates],
+            "ambiguous_records": [],
+            "warnings": [MISSING_ENEMY_TYPE_MAPPING_WARNING],
+        }
+    data = resolution.to_dict()
+    data.update(
+        {
+            "row": label,
+            "hp_source": row.hp_source,
+        }
+    )
+    return data
 
 
 def _row_label(row: AbyssEnemySourceRow) -> str:

@@ -440,6 +440,16 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   can optionally pass it with an existing caller-provided config into the active
   artifact runner. Missing cache/source fields or missing enemy type mapping
   prints audit and exits nonzero without writing/running a misleading scenario.
+  Enemy type mapping JSON now supports explicit records with `source_kind`,
+  `source_id`, `gcsim_type`, and optional diagnostics; the old
+  `enemy_types_by_nanoka_monster_id` shape still loads for dev compatibility.
+  Dev coverage checker
+  `python -m run_workspace.gcsim.abyss_enemy_type_mapping_report --enemy-type-map path --cache-file path --format text`
+  reports cached source-data coverage by identity kind, missing/ambiguous type
+  mappings, HP-present/type-missing rows, and type-present/HP-missing rows
+  without fetching, mutating caches, running GCSIM, or touching UI. Use it to
+  check both normal Nanoka-backed caches and forced Fandom fallback/Fandom-only
+  caches against the same mapping.
   Backend config readiness audit exists in
   `run_workspace/gcsim/config_readiness.py`; it accepts lightweight prepared
   team inputs and reports whether explicit non-display-name GCSIM mappings,

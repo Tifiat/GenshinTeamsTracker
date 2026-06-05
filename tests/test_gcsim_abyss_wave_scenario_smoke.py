@@ -145,7 +145,7 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
         self.assertFalse(report["success"])
         self.assertEqual(report["status"], "not_ready")
         self.assertIn(
-            "missing_enemy_type_mapping:nanoka_monster_id_to_gcsim_type",
+            "missing_enemy_type_mapping:abyss_enemy_identity_to_gcsim_type",
             report["audit"]["warnings"],
         )
 

@@ -470,7 +470,7 @@ def _engine_manifest_metadata(
         "gtt_info_command": "",
         "gtt_info_stdout": "",
         "gtt_info_stderr": "",
-        "shipped_fallback_status": "planned_not_implemented",
+        "shipped_fallback_status": "resolver_available_not_bundled",
     }
 
 

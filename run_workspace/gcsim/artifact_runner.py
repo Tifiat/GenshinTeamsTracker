@@ -24,6 +24,10 @@ from .engine_store import (
     PROJECT_ROOT,
 )
 from .runtime_probe import DEFAULT_GO_PROBE_TIMEOUT_SECONDS, _trim_probe_text
+from .shipped_artifact import (
+    GcsimShippedArtifactResolution,
+    resolve_shipped_gcsim_artifact,
+)
 
 
 DEFAULT_GCSIM_RUNS_DIR = PROJECT_ROOT / "data" / "gcsim" / "runs"
@@ -68,6 +72,9 @@ class GcsimArtifactRunResult:
     engine_id: str = ""
     engine_path: str = ""
     artifact_path: str = ""
+    artifact_source: str = ""
+    active_artifact_status: str = ""
+    shipped_fallback_status: str = ""
     run_dir: str = ""
     config_path: str = ""
     gtt_wave_scenario_path: str = ""
@@ -86,6 +93,9 @@ class GcsimArtifactRunResult:
             "engine_id": self.engine_id,
             "engine_path": self.engine_path,
             "artifact_path": self.artifact_path,
+            "artifact_source": self.artifact_source,
+            "active_artifact_status": self.active_artifact_status,
+            "shipped_fallback_status": self.shipped_fallback_status,
             "run_dir": self.run_dir,
             "config_path": self.config_path,
             "gtt_wave_scenario_path": self.gtt_wave_scenario_path,
@@ -107,42 +117,148 @@ def run_active_gcsim_artifact(
     run_dir: str | Path | None = None,
     timeout_seconds: int = DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
     runner: ArtifactRunner | None = None,
+    enable_shipped_fallback: bool = False,
+    shipped_fallback_artifact_path: str | Path | None = None,
 ) -> GcsimArtifactRunResult:
     store = GcsimEngineStore(store_dir or DEFAULT_GCSIM_ENGINE_STORE_DIR)
     try:
         active = store.get_active_engine()
     except GcsimEngineStoreError as exc:
+        fallback = _resolve_fallback(
+            enabled=enable_shipped_fallback,
+            candidate_path=shipped_fallback_artifact_path,
+        )
+        if fallback.ready:
+            return _run_artifact_process(
+                config_text,
+                gtt_wave_scenario=gtt_wave_scenario,
+                run_dir=run_dir,
+                timeout_seconds=timeout_seconds,
+                runner=runner,
+                artifact_path=Path(fallback.artifact_path),
+                artifact_source="shipped_fallback",
+                active_artifact_status="active_engine_invalid",
+                shipped_fallback_status=fallback.status,
+            )
         return _run_result(
             status="active_engine_invalid",
             success=False,
+            active_artifact_status="active_engine_invalid",
+            shipped_fallback_status=fallback.status,
             error=str(exc),
         )
     if active is None:
+        fallback = _resolve_fallback(
+            enabled=enable_shipped_fallback,
+            candidate_path=shipped_fallback_artifact_path,
+        )
+        if fallback.ready:
+            return _run_artifact_process(
+                config_text,
+                gtt_wave_scenario=gtt_wave_scenario,
+                run_dir=run_dir,
+                timeout_seconds=timeout_seconds,
+                runner=runner,
+                artifact_path=Path(fallback.artifact_path),
+                artifact_source="shipped_fallback",
+                active_artifact_status="no_active_engine",
+                shipped_fallback_status=fallback.status,
+            )
         return _run_result(
             status="no_active_engine",
             success=False,
+            active_artifact_status="no_active_engine",
+            shipped_fallback_status=fallback.status,
             error="No active GCSIM engine is configured.",
         )
 
     artifact_path = _active_artifact_path(active.path, active.manifest.metadata)
     if artifact_path is None:
+        fallback = _resolve_fallback(
+            enabled=enable_shipped_fallback,
+            candidate_path=shipped_fallback_artifact_path,
+        )
+        if fallback.ready:
+            return _run_artifact_process(
+                config_text,
+                gtt_wave_scenario=gtt_wave_scenario,
+                run_dir=run_dir,
+                timeout_seconds=timeout_seconds,
+                runner=runner,
+                engine_id=active.engine_id,
+                engine_path=active.path,
+                artifact_path=Path(fallback.artifact_path),
+                artifact_source="shipped_fallback",
+                active_artifact_status="artifact_path_missing",
+                shipped_fallback_status=fallback.status,
+            )
         return _run_result(
             status="artifact_path_missing",
             success=False,
             engine_id=active.engine_id,
             engine_path=active.path,
+            active_artifact_status="artifact_path_missing",
+            shipped_fallback_status=fallback.status,
             error="Active GCSIM engine manifest does not contain an artifact path.",
         )
     if not artifact_path.exists():
+        fallback = _resolve_fallback(
+            enabled=enable_shipped_fallback,
+            candidate_path=shipped_fallback_artifact_path,
+        )
+        if fallback.ready:
+            return _run_artifact_process(
+                config_text,
+                gtt_wave_scenario=gtt_wave_scenario,
+                run_dir=run_dir,
+                timeout_seconds=timeout_seconds,
+                runner=runner,
+                engine_id=active.engine_id,
+                engine_path=active.path,
+                artifact_path=Path(fallback.artifact_path),
+                artifact_source="shipped_fallback",
+                active_artifact_status="artifact_missing",
+                shipped_fallback_status=fallback.status,
+            )
         return _run_result(
             status="artifact_missing",
             success=False,
             engine_id=active.engine_id,
             engine_path=active.path,
             artifact_path=artifact_path,
+            active_artifact_status="artifact_missing",
+            shipped_fallback_status=fallback.status,
             error=f"Active GCSIM artifact is missing: {artifact_path}",
         )
 
+    return _run_artifact_process(
+        config_text,
+        gtt_wave_scenario=gtt_wave_scenario,
+        run_dir=run_dir,
+        timeout_seconds=timeout_seconds,
+        runner=runner,
+        engine_id=active.engine_id,
+        engine_path=active.path,
+        artifact_path=artifact_path,
+        artifact_source="active_engine",
+        active_artifact_status="ready",
+    )
+
+
+def _run_artifact_process(
+    config_text: str,
+    *,
+    gtt_wave_scenario: str | Path | None,
+    run_dir: str | Path | None,
+    timeout_seconds: int,
+    runner: ArtifactRunner | None,
+    artifact_path: Path,
+    artifact_source: str,
+    active_artifact_status: str = "",
+    shipped_fallback_status: str = "",
+    engine_id: str = "",
+    engine_path: str | Path = "",
+) -> GcsimArtifactRunResult:
     actual_run_dir = Path(run_dir) if run_dir is not None else _new_run_dir()
     actual_run_dir.mkdir(parents=True, exist_ok=True)
     config_path = actual_run_dir / DEFAULT_GCSIM_CONFIG_FILENAME
@@ -163,9 +279,12 @@ def run_active_gcsim_artifact(
         return _run_result(
             status="timeout",
             success=False,
-            engine_id=active.engine_id,
-            engine_path=active.path,
+            engine_id=engine_id,
+            engine_path=engine_path,
             artifact_path=artifact_path,
+            artifact_source=artifact_source,
+            active_artifact_status=active_artifact_status,
+            shipped_fallback_status=shipped_fallback_status,
             run_dir=actual_run_dir,
             config_path=config_path,
             gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
@@ -179,9 +298,12 @@ def run_active_gcsim_artifact(
         return _run_result(
             status="run_failed",
             success=False,
-            engine_id=active.engine_id,
-            engine_path=active.path,
+            engine_id=engine_id,
+            engine_path=engine_path,
             artifact_path=artifact_path,
+            artifact_source=artifact_source,
+            active_artifact_status=active_artifact_status,
+            shipped_fallback_status=shipped_fallback_status,
             run_dir=actual_run_dir,
             config_path=config_path,
             gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
@@ -194,9 +316,12 @@ def run_active_gcsim_artifact(
         return _run_result(
             status="run_failed",
             success=False,
-            engine_id=active.engine_id,
-            engine_path=active.path,
+            engine_id=engine_id,
+            engine_path=engine_path,
             artifact_path=artifact_path,
+            artifact_source=artifact_source,
+            active_artifact_status=active_artifact_status,
+            shipped_fallback_status=shipped_fallback_status,
             run_dir=actual_run_dir,
             config_path=config_path,
             gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
@@ -211,9 +336,12 @@ def run_active_gcsim_artifact(
         return _run_result(
             status="result_missing",
             success=False,
-            engine_id=active.engine_id,
-            engine_path=active.path,
+            engine_id=engine_id,
+            engine_path=engine_path,
             artifact_path=artifact_path,
+            artifact_source=artifact_source,
+            active_artifact_status=active_artifact_status,
+            shipped_fallback_status=shipped_fallback_status,
             run_dir=actual_run_dir,
             config_path=config_path,
             gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
@@ -231,9 +359,12 @@ def run_active_gcsim_artifact(
         return _run_result(
             status="result_invalid",
             success=False,
-            engine_id=active.engine_id,
-            engine_path=active.path,
+            engine_id=engine_id,
+            engine_path=engine_path,
             artifact_path=artifact_path,
+            artifact_source=artifact_source,
+            active_artifact_status=active_artifact_status,
+            shipped_fallback_status=shipped_fallback_status,
             run_dir=actual_run_dir,
             config_path=config_path,
             gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
@@ -248,9 +379,12 @@ def run_active_gcsim_artifact(
     return _run_result(
         status="passed",
         success=True,
-        engine_id=active.engine_id,
-        engine_path=active.path,
+        engine_id=engine_id,
+        engine_path=engine_path,
         artifact_path=artifact_path,
+        artifact_source=artifact_source,
+        active_artifact_status=active_artifact_status,
+        shipped_fallback_status=shipped_fallback_status,
         run_dir=actual_run_dir,
         config_path=config_path,
         gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
@@ -307,6 +441,17 @@ def _active_artifact_path(engine_path: Path, metadata: Mapping[str, str]) -> Pat
             return path
         return engine_path / path
     return None
+
+
+def _resolve_fallback(
+    *,
+    enabled: bool,
+    candidate_path: str | Path | None,
+) -> GcsimShippedArtifactResolution:
+    return resolve_shipped_gcsim_artifact(
+        enabled=enabled,
+        candidate_path=candidate_path,
+    )
 
 
 def _resolve_optional_path(path: str | Path | None) -> Path | None:
@@ -400,6 +545,9 @@ def _run_result(
     engine_id: str = "",
     engine_path: str | Path = "",
     artifact_path: str | Path = "",
+    artifact_source: str = "",
+    active_artifact_status: str = "",
+    shipped_fallback_status: str = "",
     run_dir: str | Path = "",
     config_path: str | Path = "",
     gtt_wave_scenario_path: str | Path = "",
@@ -417,6 +565,9 @@ def _run_result(
         engine_id=str(engine_id),
         engine_path=str(engine_path) if str(engine_path) else "",
         artifact_path=str(artifact_path) if str(artifact_path) else "",
+        artifact_source=str(artifact_source),
+        active_artifact_status=str(active_artifact_status),
+        shipped_fallback_status=str(shipped_fallback_status),
         run_dir=str(run_dir) if str(run_dir) else "",
         config_path=str(config_path) if str(config_path) else "",
         gtt_wave_scenario_path=str(gtt_wave_scenario_path)

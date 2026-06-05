@@ -99,7 +99,7 @@ class GcsimBuildArtifactResult:
             "gtt_info_stdout": self.gtt_info_stdout,
             "gtt_info_stderr": self.gtt_info_stderr,
             "artifact_error": self.error,
-            "shipped_fallback_status": "planned_not_implemented",
+            "shipped_fallback_status": "resolver_available_not_bundled",
         }
 
     def _artifact_build_status(self) -> str:

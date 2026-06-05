@@ -12,6 +12,10 @@ from run_workspace.gcsim.artifact_runner import (
     run_active_gcsim_artifact,
 )
 from run_workspace.gcsim.engine_store import GcsimEngineStore
+from run_workspace.gcsim.shipped_artifact import (
+    STATUS_CANDIDATE_READY,
+    STATUS_DISABLED,
+)
 
 
 class GcsimArtifactRunnerTest(unittest.TestCase):
@@ -97,6 +101,8 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
 
             self.assertTrue(result.success)
             self.assertEqual(result.status, "passed")
+            self.assertEqual(result.artifact_source, "active_engine")
+            self.assertEqual(result.active_artifact_status, "ready")
             self.assertEqual(result.returncode, 0)
             self.assertTrue(Path(result.config_path).exists())
             self.assertTrue(Path(result.result_path).exists())
@@ -113,6 +119,106 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
             self.assertEqual(result.summary.failed_actions, ("bad action",))
             self.assertEqual(result.summary.incomplete_characters, ("char_missing",))
             self.assertEqual(len(runner.calls), 1)
+
+    def test_fallback_disabled_preserves_no_active_engine_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fallback = root / "shipped" / "gtt-gcsim.exe"
+            fallback.parent.mkdir(parents=True)
+            fallback.write_bytes(b"fake shipped exe")
+
+            result = run_active_gcsim_artifact(
+                "options iteration=1;",
+                store_dir=root / "store",
+                shipped_fallback_artifact_path=fallback,
+                runner=UnexpectedRunner(),
+            )
+
+            self.assertFalse(result.success)
+            self.assertEqual(result.status, "no_active_engine")
+            self.assertEqual(result.active_artifact_status, "no_active_engine")
+            self.assertEqual(result.shipped_fallback_status, STATUS_DISABLED)
+
+    def test_fallback_enabled_runs_when_no_active_engine_exists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            fallback = root / "shipped" / "gtt-gcsim.exe"
+            fallback.parent.mkdir(parents=True)
+            fallback.write_bytes(b"fake shipped exe")
+            runner = FakeArtifactRunner(_write_result_json)
+
+            result = run_active_gcsim_artifact(
+                "options iteration=1;",
+                store_dir=root / "store",
+                run_dir=root / "run",
+                runner=runner,
+                enable_shipped_fallback=True,
+                shipped_fallback_artifact_path=fallback,
+            )
+
+            self.assertTrue(result.success)
+            self.assertEqual(result.status, "passed")
+            self.assertEqual(result.artifact_source, "shipped_fallback")
+            self.assertEqual(result.active_artifact_status, "no_active_engine")
+            self.assertEqual(result.shipped_fallback_status, STATUS_CANDIDATE_READY)
+            self.assertEqual(result.artifact_path, str(fallback.resolve()))
+            self.assertEqual(result.command[0], str(fallback.resolve()))
+            self.assertEqual(len(runner.calls), 1)
+
+    def test_fallback_enabled_runs_when_active_artifact_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _install_active_engine(
+                root,
+                metadata={"artifact_relative_path": "build/gtt-gcsim.exe"},
+            )
+            fallback = root / "shipped" / "gtt-gcsim.exe"
+            fallback.parent.mkdir(parents=True)
+            fallback.write_bytes(b"fake shipped exe")
+            runner = FakeArtifactRunner(_write_result_json)
+
+            result = run_active_gcsim_artifact(
+                "options iteration=1;",
+                store_dir=root / "store",
+                run_dir=root / "run",
+                runner=runner,
+                enable_shipped_fallback=True,
+                shipped_fallback_artifact_path=fallback,
+            )
+
+            self.assertTrue(result.success)
+            self.assertEqual(result.artifact_source, "shipped_fallback")
+            self.assertEqual(result.active_artifact_status, "artifact_missing")
+            self.assertEqual(result.shipped_fallback_status, STATUS_CANDIDATE_READY)
+
+    def test_active_artifact_wins_over_ready_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _install_active_engine(
+                root,
+                metadata={"artifact_relative_path": "build/gtt-gcsim.exe"},
+                artifact_bytes=b"fake active exe",
+            )
+            fallback = root / "shipped" / "gtt-gcsim.exe"
+            fallback.parent.mkdir(parents=True)
+            fallback.write_bytes(b"fake shipped exe")
+            runner = FakeArtifactRunner(_write_result_json)
+
+            result = run_active_gcsim_artifact(
+                "options iteration=1;",
+                store_dir=root / "store",
+                run_dir=root / "run",
+                runner=runner,
+                enable_shipped_fallback=True,
+                shipped_fallback_artifact_path=fallback,
+            )
+
+            self.assertTrue(result.success)
+            self.assertEqual(result.artifact_source, "active_engine")
+            self.assertEqual(result.active_artifact_status, "ready")
+            self.assertEqual(result.shipped_fallback_status, "")
+            self.assertIn("build", result.artifact_path)
+            self.assertEqual(result.command[0], result.artifact_path)
 
     def test_successful_fake_artifact_run_passes_gtt_wave_scenario_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -9,15 +9,22 @@ from urllib.error import URLError
 from run_workspace.gcsim.snap_monster_titles import (
     DEFAULT_SNAP_MONSTER_GITHUB_URL,
     DEFAULT_SNAP_MONSTER_RAW_URL,
+    SNAP_CACHE_STATUS_HIT,
+    SNAP_CACHE_STATUS_INVALID,
+    SNAP_CACHE_STATUS_MISSING,
+    SNAP_REFRESH_STATUS_SUCCESS,
     SNAP_SOURCE_KIND_DEFAULT_REMOTE_URL,
     SNAP_SOURCE_KIND_LOCAL_PATH,
+    SNAP_SOURCE_KIND_MANAGED_CACHE,
     SNAP_SOURCE_KIND_REMOTE_URL,
     SNAP_TITLE_STATUS_AMBIGUOUS,
     SNAP_TITLE_STATUS_MISSING,
     SNAP_TITLE_STATUS_RESOLVED,
     SnapMonsterTitleSourceError,
     load_default_remote_snap_monster_title_index,
+    load_cached_snap_monster_title_index,
     load_snap_monster_title_index,
+    refresh_cached_snap_monster_title_index,
     snap_monster_raw_url,
 )
 
@@ -204,6 +211,60 @@ class GcsimSnapMonsterTitlesTest(unittest.TestCase):
             load_snap_monster_title_index(DEFAULT_SNAP_MONSTER_RAW_URL, fetcher=fake_fetch)
 
         self.assertIn("list of objects with Name and Title", str(ctx.exception))
+
+    def test_load_cached_snap_monster_title_index_reports_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = load_cached_snap_monster_title_index(Path(tmp) / "Monster.json")
+
+        self.assertEqual(result.status, SNAP_CACHE_STATUS_MISSING)
+        self.assertFalse(result.ready)
+
+    def test_load_cached_snap_monster_title_index_reports_hit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "Monster.json"
+            path.write_text(
+                json.dumps([{"Name": "Known Enemy", "Title": "Known Enemy"}]),
+                encoding="utf-8",
+            )
+
+            result = load_cached_snap_monster_title_index(path)
+
+        self.assertEqual(result.status, SNAP_CACHE_STATUS_HIT)
+        self.assertTrue(result.ready)
+        assert result.index is not None
+        self.assertEqual(result.index.source_kind, SNAP_SOURCE_KIND_MANAGED_CACHE)
+        self.assertEqual(result.index.lookup("Known Enemy").status, SNAP_TITLE_STATUS_RESOLVED)
+
+    def test_load_cached_snap_monster_title_index_reports_invalid_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "Monster.json"
+            path.write_text("{not-json", encoding="utf-8")
+
+            result = load_cached_snap_monster_title_index(path)
+
+        self.assertEqual(result.status, SNAP_CACHE_STATUS_INVALID)
+        self.assertFalse(result.ready)
+        self.assertIn("invalid", result.error)
+
+    def test_refresh_cached_snap_monster_title_index_writes_cache_and_meta(self) -> None:
+        calls: list[str] = []
+
+        def fake_fetch(url: str, _timeout: float) -> str:
+            calls.append(url)
+            return json.dumps([{"Name": "Known Enemy", "Title": "Known Enemy"}])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "snap" / "Monster.json"
+            result = refresh_cached_snap_monster_title_index(path, fetcher=fake_fetch)
+            cached = load_cached_snap_monster_title_index(path)
+            meta_path = path.with_suffix(".meta.json")
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(calls, [DEFAULT_SNAP_MONSTER_RAW_URL])
+        self.assertEqual(result.status, SNAP_REFRESH_STATUS_SUCCESS)
+        self.assertTrue(result.ready)
+        self.assertTrue(cached.ready)
+        self.assertEqual(meta["resolved_url"], DEFAULT_SNAP_MONSTER_RAW_URL)
 
 
 if __name__ == "__main__":

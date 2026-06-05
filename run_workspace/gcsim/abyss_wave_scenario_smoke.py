@@ -5,10 +5,11 @@ This command is a backend-only bridge around the provisional
 requires either explicit enemy type overrides or an optional GCSIM enemy type
 registry matcher, writes a schema-v1 payload, and can optionally pass that
 payload to the existing active GTT-GCSIM artifact runner with a caller provided
-config. It fetches remote Snap.Metadata only when a URL or explicit
-default-remote flag is passed. It does not refresh Abyss network data, generate
-account/team GCSIM configs, map character/weapon/artifact keys, or model final
-Abyss wave policy.
+config. Managed Snap fallback is cache-first and refreshes the managed Snap
+Monster title cache from official online Monster.json only when explicitly
+enabled and still needed after primary matching. It does not refresh Abyss
+network data, generate account/team GCSIM configs, map character/weapon/artifact
+keys, or model final Abyss wave policy.
 """
 
 from __future__ import annotations
@@ -42,9 +43,15 @@ from .artifact_runner import (
 from .runtime_probe import DEFAULT_GO_PROBE_TIMEOUT_SECONDS
 from .enemy_type_registry import load_gcsim_enemy_type_registry_from_go_source
 from .snap_monster_titles import (
+    DEFAULT_SNAP_MONSTER_GITHUB_URL,
+    SNAP_CACHE_STATUS_REMOTE_NOT_NEEDED,
+    SNAP_REFRESH_STATUS_NOT_NEEDED,
     SnapJsonFetcher,
+    SnapMonsterTitleIndex,
+    load_cached_snap_monster_title_index,
     load_default_remote_snap_monster_title_index,
     load_snap_monster_title_index,
+    refresh_cached_snap_monster_title_index,
 )
 
 
@@ -102,14 +109,14 @@ def run_abyss_wave_scenario_smoke(
 
     enemy_type_mapping = _enemy_type_mapping_from_args(args)
     enemy_type_registry = _enemy_type_registry_from_args(args)
-    snap_title_index = _snap_title_index_from_args(args, fetcher=snap_fetcher)
-    build = build_abyss_wave_scenario_payload(
+    direct_snap_title_index = _direct_snap_title_index_from_args(args, fetcher=snap_fetcher)
+    build, snap_title_index, snap_cache, steps = _build_with_snap_flow(
         data,
-        chamber=args.chamber,
-        side=args.side,
+        args,
         enemy_type_mapping=enemy_type_mapping,
         enemy_type_registry=enemy_type_registry,
-        snap_title_index=snap_title_index,
+        direct_snap_title_index=direct_snap_title_index,
+        snap_fetcher=snap_fetcher,
     )
     report: dict[str, Any] = {
         "success": False,
@@ -117,6 +124,8 @@ def run_abyss_wave_scenario_smoke(
         "source": _source_report(data, explicit_period_start=args.period_start),
         "audit": build.audit.to_dict(),
         "scenario_path": "",
+        "snap_cache": snap_cache,
+        "steps": steps,
     }
     if snap_title_index is not None:
         report["snap_source"] = snap_title_index.source_report()
@@ -124,6 +133,7 @@ def run_abyss_wave_scenario_smoke(
         return report
 
     scenario_path = _scenario_output_path(args)
+    steps.append("building_abyss_wave_scenario")
     write_abyss_wave_scenario_payload(build.payload, scenario_path)
     report.update(
         {
@@ -134,6 +144,7 @@ def run_abyss_wave_scenario_smoke(
     )
 
     if args.config:
+        steps.append("running_gcsim_artifact")
         config_path = Path(args.config)
         config_text = config_path.read_text(encoding="utf-8-sig")
         run_result = artifact_run_func(
@@ -150,6 +161,7 @@ def run_abyss_wave_scenario_smoke(
                 "run_result": run_result.to_dict(),
             }
         )
+    report["steps"] = steps
     return report
 
 
@@ -197,9 +209,32 @@ def _build_parser() -> argparse.ArgumentParser:
         "--use-default-remote-snap-monster-json",
         action="store_true",
         help=(
-            "Fetch the official Snap.Metadata Genshin/EN/Monster.json over HTTPS. "
-            "No Git checkout or local file is required."
+            "Dev-only direct remote read of official Snap.Metadata Monster.json. "
+            "For the managed app-style flow, prefer --use-cached-snap-monster-json "
+            "with optional --refresh-snap-monster-json-if-needed."
         ),
+    )
+    parser.add_argument(
+        "--use-cached-snap-monster-json",
+        action="store_true",
+        help=(
+            "Use the managed cached Snap Monster.json only if primary enemy registry "
+            "matching leaves missing rows."
+        ),
+    )
+    parser.add_argument(
+        "--refresh-snap-monster-json-if-needed",
+        action="store_true",
+        help=(
+            "If cached Snap titles are missing/invalid/insufficient after primary "
+            "matching, refresh the managed cache from the official online Monster.json "
+            "and retry."
+        ),
+    )
+    parser.add_argument(
+        "--snap-monster-cache-path",
+        default=None,
+        help="Optional managed Snap Monster.json cache path for tests/dev diagnostics.",
     )
     parser.add_argument("--scenario-out", default=None, help="Path for generated scenario JSON.")
     parser.add_argument("--config", default=None, help="Optional caller-provided GCSIM config path.")
@@ -252,11 +287,18 @@ def _enemy_type_registry_from_args(args: argparse.Namespace):
         raise AbyssWaveScenarioSmokeError(str(exc)) from exc
 
 
-def _snap_title_index_from_args(
+def _direct_snap_title_index_from_args(
     args: argparse.Namespace,
     *,
     fetcher: SnapJsonFetcher | None = None,
 ):
+    managed_requested = bool(
+        args.use_cached_snap_monster_json or args.refresh_snap_monster_json_if_needed
+    )
+    if managed_requested and (args.snap_monster_json or args.use_default_remote_snap_monster_json):
+        raise AbyssWaveScenarioSmokeError(
+            "Use either direct Snap input or managed Snap cache/refresh options, not both."
+        )
     if args.snap_monster_json and args.use_default_remote_snap_monster_json:
         raise AbyssWaveScenarioSmokeError(
             "Use either --snap-monster-json or --use-default-remote-snap-monster-json, not both."
@@ -272,6 +314,114 @@ def _snap_title_index_from_args(
         return load_snap_monster_title_index(args.snap_monster_json, fetcher=fetcher)
     except (ValueError, OSError, json.JSONDecodeError) as exc:
         raise AbyssWaveScenarioSmokeError(str(exc)) from exc
+
+
+def _build_with_snap_flow(
+    data: AbyssFloorSourceData,
+    args: argparse.Namespace,
+    *,
+    enemy_type_mapping,
+    enemy_type_registry,
+    direct_snap_title_index: SnapMonsterTitleIndex | None,
+    snap_fetcher: SnapJsonFetcher | None,
+):
+    steps = ["matching_enemy_names_primary"]
+    if direct_snap_title_index is not None:
+        steps.append("checking_direct_snap_titles")
+        build = build_abyss_wave_scenario_payload(
+            data,
+            chamber=args.chamber,
+            side=args.side,
+            enemy_type_mapping=enemy_type_mapping,
+            enemy_type_registry=enemy_type_registry,
+            snap_title_index=direct_snap_title_index,
+        )
+        return build, direct_snap_title_index, _snap_flow_report(phase="direct"), steps
+
+    primary = build_abyss_wave_scenario_payload(
+        data,
+        chamber=args.chamber,
+        side=args.side,
+        enemy_type_mapping=enemy_type_mapping,
+        enemy_type_registry=enemy_type_registry,
+    )
+    use_managed = bool(
+        args.use_cached_snap_monster_json
+        or args.refresh_snap_monster_json_if_needed
+    )
+    if not use_managed or not primary.audit.missing_type_mapping_rows:
+        return (
+            primary,
+            None,
+            _snap_flow_report(
+                phase="primary",
+                cache_status=SNAP_CACHE_STATUS_REMOTE_NOT_NEEDED,
+                refresh_status=SNAP_REFRESH_STATUS_NOT_NEEDED,
+            ),
+            steps,
+        )
+
+    steps.append("checking_cached_snap_titles")
+    cache_load = load_cached_snap_monster_title_index(args.snap_monster_cache_path)
+    cache_report = _snap_flow_report(
+        phase="cache",
+        cache_status=cache_load.status,
+        refresh_status=SNAP_REFRESH_STATUS_NOT_NEEDED,
+        cache_path=cache_load.cache_path,
+        error=cache_load.error,
+    )
+    if cache_load.ready:
+        cached = build_abyss_wave_scenario_payload(
+            data,
+            chamber=args.chamber,
+            side=args.side,
+            enemy_type_mapping=enemy_type_mapping,
+            enemy_type_registry=enemy_type_registry,
+            snap_title_index=cache_load.index,
+        )
+        if cached.ready or not args.refresh_snap_monster_json_if_needed:
+            return cached, cache_load.index, cache_report, steps
+    elif not args.refresh_snap_monster_json_if_needed:
+        return primary, None, cache_report, steps
+
+    steps.append("refreshing_snap_metadata")
+    refresh = refresh_cached_snap_monster_title_index(
+        args.snap_monster_cache_path,
+        source_url=DEFAULT_SNAP_MONSTER_GITHUB_URL,
+        fetcher=snap_fetcher,
+    )
+    refresh_report = {**cache_report, **refresh.to_dict(), "phase": "refreshed"}
+    if cache_report.get("error"):
+        refresh_report["cache_error"] = cache_report["error"]
+    if not refresh.ready:
+        raise AbyssWaveScenarioSmokeError(refresh.error or refresh.status)
+    steps.append("rechecking_snap_titles_after_refresh")
+    refreshed = build_abyss_wave_scenario_payload(
+        data,
+        chamber=args.chamber,
+        side=args.side,
+        enemy_type_mapping=enemy_type_mapping,
+        enemy_type_registry=enemy_type_registry,
+        snap_title_index=refresh.index,
+    )
+    return refreshed, refresh.index, refresh_report, steps
+
+
+def _snap_flow_report(
+    *,
+    phase: str,
+    cache_status: str = "",
+    refresh_status: str = "",
+    cache_path: str = "",
+    error: str = "",
+) -> dict[str, Any]:
+    return {
+        "phase": phase,
+        "cache_status": cache_status,
+        "refresh_status": refresh_status,
+        "cache_path": cache_path,
+        "error": error,
+    }
 
 
 def _scenario_output_path(args: argparse.Namespace) -> Path:
@@ -326,6 +476,18 @@ def _format_text(report: dict[str, Any]) -> str:
             f"source={snap_source.get('source', '')} "
             f"resolved_url={snap_source.get('resolved_url', '')}"
         )
+    snap_cache = report.get("snap_cache")
+    if isinstance(snap_cache, dict):
+        lines.append(
+            "snap_cache="
+            f"phase={snap_cache.get('phase', '')} "
+            f"cache_status={snap_cache.get('cache_status', '')} "
+            f"refresh_status={snap_cache.get('refresh_status', '')} "
+            f"cache_path={snap_cache.get('cache_path', '')}"
+        )
+    steps = report.get("steps") or []
+    if steps:
+        lines.append("steps=" + ",".join(str(step) for step in steps))
     audit = report.get("audit")
     if isinstance(audit, dict):
         lines.append(

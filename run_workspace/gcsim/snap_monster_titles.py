@@ -1,15 +1,17 @@
 """Opt-in Snap monster Name -> Title fallback for GCSIM enemy type matching.
 
-This helper intentionally reads only the `Name` and `Title` fields from either
-the official remote Snap.Metadata `Monster.json` or an explicit dev/offline
-local file. It is a last-resort name/title bridge for enemy type matching and
-must not be used as HP, stat, resist, wave, or enemy-count truth.
+This helper intentionally reads only the `Name` and `Title` fields from the
+managed cached Snap Monster.json, the official online Snap.Metadata
+`Monster.json` refresh source, or an explicit dev/offline local file. It is a
+last-resort name/title bridge for enemy type matching and must not be used as
+HP, stat, resist, wave, or enemy-count truth.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 from typing import Any, Callable
@@ -17,7 +19,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-from .enemy_type_registry import GcsimEnemyNameCandidate, normalize_gcsim_enemy_name
+from .enemy_type_registry import (
+    PROJECT_ROOT,
+    GcsimEnemyNameCandidate,
+    normalize_gcsim_enemy_name,
+)
 
 
 DEFAULT_SNAP_MONSTER_GITHUB_URL = (
@@ -27,6 +33,9 @@ DEFAULT_SNAP_MONSTER_RAW_URL = (
     "https://raw.githubusercontent.com/wangdage12/Snap.Metadata/main/Genshin/EN/Monster.json"
 )
 DEFAULT_SNAP_MONSTER_FETCH_TIMEOUT_SECONDS = 20.0
+DEFAULT_SNAP_MONSTER_CACHE_PATH = (
+    PROJECT_ROOT / "data" / "cache" / "gcsim" / "snap_metadata" / "Monster.json"
+)
 
 SNAP_TITLE_SOURCE_KIND = "snap_monster_title"
 SNAP_TITLE_STATUS_MISSING = "missing"
@@ -35,12 +44,65 @@ SNAP_TITLE_STATUS_AMBIGUOUS = "ambiguous"
 SNAP_SOURCE_KIND_LOCAL_PATH = "local_path"
 SNAP_SOURCE_KIND_REMOTE_URL = "remote_url"
 SNAP_SOURCE_KIND_DEFAULT_REMOTE_URL = "default_remote_url"
+SNAP_SOURCE_KIND_MANAGED_CACHE = "managed_cache"
+
+SNAP_CACHE_STATUS_HIT = "cache_hit"
+SNAP_CACHE_STATUS_MISSING = "cache_missing"
+SNAP_CACHE_STATUS_INVALID = "cache_invalid"
+SNAP_CACHE_STATUS_REMOTE_NOT_NEEDED = "remote_not_needed"
+SNAP_REFRESH_STATUS_SUCCESS = "remote_refresh_success"
+SNAP_REFRESH_STATUS_FAILED = "remote_refresh_failed"
+SNAP_REFRESH_STATUS_NOT_NEEDED = "remote_not_needed"
 
 SnapJsonFetcher = Callable[[str, float], str | bytes]
 
 
 class SnapMonsterTitleSourceError(ValueError):
     """Raised for controlled Snap source loading errors."""
+
+
+@dataclass(frozen=True, slots=True)
+class SnapMonsterCacheLoadResult:
+    status: str
+    cache_path: str
+    index: "SnapMonsterTitleIndex | None" = None
+    error: str = ""
+
+    @property
+    def ready(self) -> bool:
+        return self.status == SNAP_CACHE_STATUS_HIT and self.index is not None
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "cache_status": self.status,
+            "cache_path": self.cache_path,
+            "error": self.error,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SnapMonsterCacheRefreshResult:
+    status: str
+    cache_path: str
+    source_url: str
+    resolved_url: str
+    index: "SnapMonsterTitleIndex | None" = None
+    fetched_at_utc: str = ""
+    error: str = ""
+
+    @property
+    def ready(self) -> bool:
+        return self.status == SNAP_REFRESH_STATUS_SUCCESS and self.index is not None
+
+    def to_dict(self) -> dict[str, str]:
+        return {
+            "refresh_status": self.status,
+            "cache_path": self.cache_path,
+            "source_url": self.source_url,
+            "resolved_url": self.resolved_url,
+            "fetched_at_utc": self.fetched_at_utc,
+            "error": self.error,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,6 +299,89 @@ def load_default_remote_snap_monster_title_index(
     )
 
 
+def load_cached_snap_monster_title_index(
+    cache_path: str | Path | None = None,
+) -> SnapMonsterCacheLoadResult:
+    path = Path(cache_path) if cache_path is not None else DEFAULT_SNAP_MONSTER_CACHE_PATH
+    if not path.is_file():
+        return SnapMonsterCacheLoadResult(
+            status=SNAP_CACHE_STATUS_MISSING,
+            cache_path=str(path),
+            error=f"cached Snap Monster.json not found: {path}",
+        )
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+        index = _index_from_payload(
+            payload,
+            source_path=str(path),
+            source_kind=SNAP_SOURCE_KIND_MANAGED_CACHE,
+            source_ref=str(path),
+            resolved_url=DEFAULT_SNAP_MONSTER_RAW_URL,
+        )
+    except (OSError, SnapMonsterTitleSourceError, json.JSONDecodeError) as exc:
+        return SnapMonsterCacheLoadResult(
+            status=SNAP_CACHE_STATUS_INVALID,
+            cache_path=str(path),
+            error=f"cached Snap Monster.json invalid at {path}: {exc}",
+        )
+    return SnapMonsterCacheLoadResult(
+        status=SNAP_CACHE_STATUS_HIT,
+        cache_path=str(path),
+        index=index,
+    )
+
+
+def refresh_cached_snap_monster_title_index(
+    cache_path: str | Path | None = None,
+    *,
+    source_url: str = DEFAULT_SNAP_MONSTER_GITHUB_URL,
+    fetcher: SnapJsonFetcher | None = None,
+    timeout_seconds: float = DEFAULT_SNAP_MONSTER_FETCH_TIMEOUT_SECONDS,
+) -> SnapMonsterCacheRefreshResult:
+    path = Path(cache_path) if cache_path is not None else DEFAULT_SNAP_MONSTER_CACHE_PATH
+    resolved_url = snap_monster_raw_url(source_url)
+    try:
+        payload, _text = _load_remote_snap_json_with_text(
+            resolved_url,
+            fetcher=fetcher,
+            timeout_seconds=timeout_seconds,
+        )
+        index = _index_from_payload(
+            payload,
+            source_path=str(path),
+            source_kind=SNAP_SOURCE_KIND_MANAGED_CACHE,
+            source_ref=str(path),
+            resolved_url=resolved_url,
+        )
+        fetched_at = datetime.now(timezone.utc).isoformat()
+        _write_json_atomic(path, payload)
+        _write_json_atomic(
+            path.with_suffix(".meta.json"),
+            {
+                "source_url": source_url,
+                "resolved_url": resolved_url,
+                "fetched_at_utc": fetched_at,
+                "cache_kind": "snap_monster_title_cache",
+            },
+        )
+    except (OSError, SnapMonsterTitleSourceError, json.JSONDecodeError) as exc:
+        return SnapMonsterCacheRefreshResult(
+            status=SNAP_REFRESH_STATUS_FAILED,
+            cache_path=str(path),
+            source_url=source_url,
+            resolved_url=resolved_url,
+            error=str(exc),
+        )
+    return SnapMonsterCacheRefreshResult(
+        status=SNAP_REFRESH_STATUS_SUCCESS,
+        cache_path=str(path),
+        source_url=source_url,
+        resolved_url=resolved_url,
+        index=index,
+        fetched_at_utc=fetched_at,
+    )
+
+
 def snap_monster_raw_url(source_url: str) -> str:
     parsed = urlparse(source_url)
     if parsed.scheme not in {"http", "https"}:
@@ -300,6 +445,20 @@ def _load_remote_snap_json(
     fetcher: SnapJsonFetcher | None,
     timeout_seconds: float,
 ) -> Any:
+    payload, _text = _load_remote_snap_json_with_text(
+        url,
+        fetcher=fetcher,
+        timeout_seconds=timeout_seconds,
+    )
+    return payload
+
+
+def _load_remote_snap_json_with_text(
+    url: str,
+    *,
+    fetcher: SnapJsonFetcher | None,
+    timeout_seconds: float,
+) -> tuple[Any, str]:
     try:
         raw = fetcher(url, timeout_seconds) if fetcher else _fetch_url_text(url, timeout_seconds)
     except HTTPError as exc:
@@ -312,7 +471,7 @@ def _load_remote_snap_json(
         ) from exc
     try:
         text = raw.decode("utf-8-sig") if isinstance(raw, bytes) else str(raw)
-        return json.loads(text)
+        return json.loads(text), text
     except json.JSONDecodeError as exc:
         raise SnapMonsterTitleSourceError(
             f"Snap monster JSON invalid JSON from {url}: {exc}"
@@ -339,3 +498,13 @@ def _monster_records(payload: Any) -> list[Any]:
             if isinstance(value, list):
                 return value
     raise ValueError("Snap monster JSON must be a list of objects with Name and Title")
+
+
+def _write_json_atomic(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_name(path.name + ".tmp")
+    temp_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    temp_path.replace(path)

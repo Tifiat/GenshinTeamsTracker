@@ -33,6 +33,11 @@ from run_workspace.gcsim.enemy_type_registry import (
 from run_workspace.gcsim.snap_monster_titles import (
     DEFAULT_SNAP_MONSTER_GITHUB_URL,
     DEFAULT_SNAP_MONSTER_RAW_URL,
+    SNAP_CACHE_STATUS_HIT,
+    SNAP_CACHE_STATUS_INVALID,
+    SNAP_CACHE_STATUS_MISSING,
+    SNAP_REFRESH_STATUS_NOT_NEEDED,
+    SNAP_REFRESH_STATUS_SUCCESS,
     SNAP_SOURCE_KIND_DEFAULT_REMOTE_URL,
     SNAP_SOURCE_KIND_REMOTE_URL,
     SnapMonsterTitleCandidate,
@@ -304,6 +309,298 @@ class GcsimAbyssEnemyTypeMappingReportTest(unittest.TestCase):
             payload["report"]["resolved_by_method"][MATCH_METHOD_EXACT_NORMALIZED_NAME],
             2,
         )
+
+    def test_managed_snap_not_read_when_primary_resolves_all_rows(self) -> None:
+        def fake_fetch(_url: str, _timeout: float) -> str:
+            raise AssertionError("remote should not be fetched")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_path = save_abyss_floor_source_data(_source_data(), cache_dir=root / "cache")
+            registry_path = _write_registry(root, "firstenemy", "secondenemy")
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--cache-file",
+                    str(cache_path),
+                    "--use-cached-snap-monster-json",
+                    "--refresh-snap-monster-json-if-needed",
+                    "--snap-monster-cache-path",
+                    str(root / "missing" / "Monster.json"),
+                    "--format",
+                    "json",
+                ],
+                stdout=stdout,
+                snap_fetcher=fake_fetch,
+            )
+            payload = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 0)
+        self.assertEqual(payload["report"]["missing_mappings"], 0)
+        self.assertEqual(payload["report"]["snap_cache"]["refresh_status"], SNAP_REFRESH_STATUS_NOT_NEEDED)
+        self.assertNotIn("checking_cached_snap_titles", payload["report"]["steps"])
+
+    def test_managed_snap_cache_resolves_without_remote_fetch(self) -> None:
+        def fake_fetch(_url: str, _timeout: float) -> str:
+            raise AssertionError("remote should not be fetched")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_root = root / "cache"
+            cache_path = save_abyss_floor_source_data(
+                _cache_data_with_enemy_names(
+                    "Assault Specialist Mek - Pneuma",
+                    "Second Enemy",
+                ),
+                cache_dir=cache_root,
+            )
+            registry_path = _write_registry(root, "assaultspecialistmek", "secondenemy")
+            snap_cache = _write_snap_cache(
+                root,
+                ("Assault Specialist Mek - Pneuma", "Assault Specialist Mek"),
+            )
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--cache-file",
+                    str(cache_path),
+                    "--use-cached-snap-monster-json",
+                    "--refresh-snap-monster-json-if-needed",
+                    "--snap-monster-cache-path",
+                    str(snap_cache),
+                    "--format",
+                    "json",
+                ],
+                stdout=stdout,
+                snap_fetcher=fake_fetch,
+            )
+            payload = json.loads(stdout.getvalue())
+
+        report = payload["report"]
+        self.assertEqual(code, 0)
+        self.assertEqual(report["snap_cache"]["cache_status"], SNAP_CACHE_STATUS_HIT)
+        self.assertEqual(report["snap_cache"]["refresh_status"], SNAP_REFRESH_STATUS_NOT_NEEDED)
+        self.assertEqual(report["resolved_by_method"][MATCH_METHOD_SNAP_TITLE_FALLBACK], 1)
+        self.assertEqual(
+            report["snap_cache"]["snap_resolution_counts"]["cached_snap_title_fallback"],
+            1,
+        )
+
+    def test_managed_snap_missing_cache_refreshes_and_resolves(self) -> None:
+        calls: list[str] = []
+
+        def fake_fetch(url: str, _timeout: float) -> str:
+            calls.append(url)
+            return json.dumps(
+                [{"Name": "Assault Specialist Mek - Pneuma", "Title": "Assault Specialist Mek"}]
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_path = save_abyss_floor_source_data(
+                _cache_data_with_enemy_names(
+                    "Assault Specialist Mek - Pneuma",
+                    "Second Enemy",
+                ),
+                cache_dir=root / "cache",
+            )
+            registry_path = _write_registry(root, "assaultspecialistmek", "secondenemy")
+            snap_cache = root / "snap" / "Monster.json"
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--cache-file",
+                    str(cache_path),
+                    "--refresh-snap-monster-json-if-needed",
+                    "--snap-monster-cache-path",
+                    str(snap_cache),
+                    "--format",
+                    "json",
+                ],
+                stdout=stdout,
+                snap_fetcher=fake_fetch,
+            )
+            payload = json.loads(stdout.getvalue())
+            cache_written = snap_cache.is_file()
+
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [DEFAULT_SNAP_MONSTER_RAW_URL])
+        self.assertTrue(cache_written)
+        self.assertEqual(payload["report"]["snap_cache"]["cache_status"], SNAP_CACHE_STATUS_MISSING)
+        self.assertEqual(payload["report"]["snap_cache"]["refresh_status"], SNAP_REFRESH_STATUS_SUCCESS)
+        self.assertIn("rechecking_snap_titles_after_refresh", payload["report"]["steps"])
+
+    def test_managed_snap_stale_cache_refreshes_and_retries(self) -> None:
+        def fake_fetch(_url: str, _timeout: float) -> str:
+            return json.dumps(
+                [{"Name": "Assault Specialist Mek - Pneuma", "Title": "Assault Specialist Mek"}]
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_path = save_abyss_floor_source_data(
+                _cache_data_with_enemy_names(
+                    "Assault Specialist Mek - Pneuma",
+                    "Second Enemy",
+                ),
+                cache_dir=root / "cache",
+            )
+            registry_path = _write_registry(root, "assaultspecialistmek", "secondenemy")
+            snap_cache = _write_snap_cache(root, ("Unrelated", "Unrelated"))
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--cache-file",
+                    str(cache_path),
+                    "--use-cached-snap-monster-json",
+                    "--refresh-snap-monster-json-if-needed",
+                    "--snap-monster-cache-path",
+                    str(snap_cache),
+                    "--format",
+                    "json",
+                ],
+                stdout=stdout,
+                snap_fetcher=fake_fetch,
+            )
+            payload = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 0)
+        self.assertEqual(payload["report"]["snap_cache"]["cache_status"], SNAP_CACHE_STATUS_HIT)
+        self.assertEqual(payload["report"]["snap_cache"]["refresh_status"], SNAP_REFRESH_STATUS_SUCCESS)
+        self.assertEqual(
+            payload["report"]["snap_cache"]["snap_resolution_counts"]["refreshed_snap_title_fallback"],
+            1,
+        )
+
+    def test_managed_snap_insufficient_cache_without_refresh_keeps_missing(self) -> None:
+        def fake_fetch(_url: str, _timeout: float) -> str:
+            raise AssertionError("remote should not be fetched")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_path = save_abyss_floor_source_data(
+                _cache_data_with_enemy_names(
+                    "Assault Specialist Mek - Pneuma",
+                    "Second Enemy",
+                ),
+                cache_dir=root / "cache",
+            )
+            registry_path = _write_registry(root, "assaultspecialistmek", "secondenemy")
+            snap_cache = _write_snap_cache(root, ("Unrelated", "Unrelated"))
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--cache-file",
+                    str(cache_path),
+                    "--use-cached-snap-monster-json",
+                    "--snap-monster-cache-path",
+                    str(snap_cache),
+                    "--format",
+                    "json",
+                ],
+                stdout=stdout,
+                snap_fetcher=fake_fetch,
+            )
+            payload = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 1)
+        self.assertEqual(payload["report"]["missing_mappings"], 1)
+        self.assertEqual(payload["report"]["snap_cache"]["refresh_status"], SNAP_REFRESH_STATUS_NOT_NEEDED)
+
+    def test_managed_snap_invalid_cache_can_refresh(self) -> None:
+        def fake_fetch(_url: str, _timeout: float) -> str:
+            return json.dumps(
+                [{"Name": "Assault Specialist Mek - Pneuma", "Title": "Assault Specialist Mek"}]
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_path = save_abyss_floor_source_data(
+                _cache_data_with_enemy_names(
+                    "Assault Specialist Mek - Pneuma",
+                    "Second Enemy",
+                ),
+                cache_dir=root / "cache",
+            )
+            registry_path = _write_registry(root, "assaultspecialistmek", "secondenemy")
+            snap_cache = root / "snap" / "Monster.json"
+            snap_cache.parent.mkdir(parents=True)
+            snap_cache.write_text("{not-json", encoding="utf-8")
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--cache-file",
+                    str(cache_path),
+                    "--refresh-snap-monster-json-if-needed",
+                    "--snap-monster-cache-path",
+                    str(snap_cache),
+                    "--format",
+                    "json",
+                ],
+                stdout=stdout,
+                snap_fetcher=fake_fetch,
+            )
+            payload = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 0)
+        self.assertEqual(payload["report"]["snap_cache"]["cache_status"], SNAP_CACHE_STATUS_INVALID)
+        self.assertEqual(payload["report"]["snap_cache"]["refresh_status"], SNAP_REFRESH_STATUS_SUCCESS)
+
+    def test_managed_snap_remote_failure_is_controlled(self) -> None:
+        def fake_fetch(_url: str, _timeout: float) -> str:
+            raise OSError("offline")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_path = save_abyss_floor_source_data(
+                _cache_data_with_enemy_names(
+                    "Assault Specialist Mek - Pneuma",
+                    "Second Enemy",
+                ),
+                cache_dir=root / "cache",
+            )
+            registry_path = _write_registry(root, "assaultspecialistmek", "secondenemy")
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--cache-file",
+                    str(cache_path),
+                    "--refresh-snap-monster-json-if-needed",
+                    "--snap-monster-cache-path",
+                    str(root / "snap" / "Monster.json"),
+                    "--format",
+                    "json",
+                ],
+                stdout=stdout,
+                snap_fetcher=fake_fetch,
+            )
+            payload = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 2)
+        self.assertFalse(payload["success"])
+        self.assertEqual(payload["status"], "input_error")
+        self.assertIn("remote fetch failed", payload["error"])
 
     def test_cli_json_report_accepts_snap_monster_json_with_scan_cache_dir(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -606,6 +903,16 @@ def _write_registry(root: Path, *target_types: str) -> Path:
     rows = "".join(f'\t"{target_type}": {index + 1},\n' for index, target_type in enumerate(target_types))
     path.write_text(
         "package shortcut\nvar MonsterNameToID = map[string]int{\n" + rows + "}\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def _write_snap_cache(root: Path, *pairs: tuple[str, str]) -> Path:
+    path = root / "snap" / "Monster.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps([{"Name": name, "Title": title} for name, title in pairs]),
         encoding="utf-8",
     )
     return path

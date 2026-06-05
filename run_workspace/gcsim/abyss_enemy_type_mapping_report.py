@@ -2,9 +2,10 @@
 
 This checker is intentionally narrow: it reads existing cached Abyss source-data
 plus optional explicit enemy type overrides and a GCSIM enemy type registry,
-then reports readiness coverage. It does not fetch network data, mutate caches,
-run GCSIM, or use fuzzy display-name similarity as production truth. It fetches
-remote Snap.Metadata only when a URL or explicit default-remote flag is passed.
+then reports readiness coverage. It does not refresh Abyss network data, run
+GCSIM, or use fuzzy display-name similarity as production truth. Managed Snap
+fallback is cache-first and refreshes the single remote Monster.json only when
+explicitly enabled and still needed after primary matching.
 """
 
 from __future__ import annotations
@@ -30,13 +31,21 @@ from .abyss_wave_scenario import (
 )
 from .enemy_type_registry import (
     GcsimEnemyTypeRegistry,
+    MATCH_METHOD_SNAP_TITLE_CONTAINS_TARGET,
+    MATCH_METHOD_SNAP_TITLE_FALLBACK,
     load_gcsim_enemy_type_registry_from_go_source,
 )
 from .snap_monster_titles import (
+    DEFAULT_SNAP_MONSTER_GITHUB_URL,
+    SNAP_CACHE_STATUS_REMOTE_NOT_NEEDED,
+    SNAP_REFRESH_STATUS_NOT_NEEDED,
     SnapJsonFetcher,
     SnapMonsterTitleIndex,
+    SnapMonsterTitleSourceError,
+    load_cached_snap_monster_title_index,
     load_default_remote_snap_monster_title_index,
     load_snap_monster_title_index,
+    refresh_cached_snap_monster_title_index,
 )
 
 
@@ -57,6 +66,8 @@ class AbyssEnemyTypeCoverageReport:
     unresolved_rows: tuple[dict[str, Any], ...]
     ambiguous_rows: tuple[dict[str, Any], ...]
     snap_source: dict[str, str] | None = None
+    snap_cache: dict[str, Any] | None = None
+    steps: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
@@ -76,6 +87,8 @@ class AbyssEnemyTypeCoverageReport:
             "unresolved_rows": list(self.unresolved_rows),
             "ambiguous_rows": list(self.ambiguous_rows),
             "snap_source": self.snap_source,
+            "snap_cache": self.snap_cache,
+            "steps": list(self.steps),
             "warnings": list(self.warnings),
         }
 
@@ -87,6 +100,8 @@ def build_abyss_enemy_type_coverage_report(
     enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
     snap_title_index: SnapMonsterTitleIndex | None = None,
     cache_files: tuple[str, ...] | list[str] = (),
+    snap_cache: dict[str, Any] | None = None,
+    steps: tuple[str, ...] | list[str] = (),
 ) -> AbyssEnemyTypeCoverageReport:
     resolver = mapping or AbyssEnemyTypeMapping(mapping_name="gcsim_enemy_type_registry")
     resolved_by_method: Counter[str] = Counter()
@@ -143,6 +158,8 @@ def build_abyss_enemy_type_coverage_report(
         unresolved_rows=tuple(unresolved_rows),
         ambiguous_rows=tuple(ambiguous_rows),
         snap_source=None if snap_title_index is None else snap_title_index.source_report(),
+        snap_cache=snap_cache,
+        steps=tuple(steps),
     )
 
 
@@ -166,21 +183,38 @@ def main(
             raise ValueError(
                 "Provide --enemy-type-map and/or --gcsim-enemy-registry-source."
             )
-        snap_title_index = _snap_title_index_from_args(args, fetcher=snap_fetcher)
         source_entries = _load_source_entries(args)
         source_data = [source for _path, source in source_entries]
+        direct_snap_index = _direct_snap_title_index_from_args(args, fetcher=snap_fetcher)
     except (AbyssSourceDataCacheError, ValueError, OSError, json.JSONDecodeError) as exc:
         report = {"success": False, "status": "input_error", "error": str(exc)}
         _print_report(report, format_name=args.format, stdout=output)
         return 2
 
-    report = build_abyss_enemy_type_coverage_report(
-        source_data,
-        mapping,
-        enemy_type_registry=enemy_type_registry,
-        snap_title_index=snap_title_index,
-        cache_files=[str(path) for path, _source in source_entries],
-    )
+    try:
+        report = _build_report_with_snap_flow(
+            source_data,
+            mapping,
+            enemy_type_registry=enemy_type_registry,
+            direct_snap_title_index=direct_snap_index,
+            cache_files=[str(path) for path, _source in source_entries],
+            use_cached_snap=bool(args.use_cached_snap_monster_json),
+            refresh_snap_if_needed=bool(args.refresh_snap_monster_json_if_needed),
+            snap_cache_path=args.snap_monster_cache_path,
+            snap_fetcher=snap_fetcher,
+        )
+    except SnapMonsterTitleSourceError as exc:
+        report_payload = {
+            "success": False,
+            "status": "input_error",
+            "error": str(exc),
+            "steps": [
+                "matching_enemy_names_primary",
+                "refreshing_snap_metadata",
+            ],
+        }
+        _print_report(report_payload, format_name=args.format, stdout=output)
+        return 2
     payload = {"success": True, "status": "reported", "report": report.to_dict()}
     _print_report(payload, format_name=args.format, stdout=output)
     return 0 if report.missing_mappings == 0 and report.ambiguous_mappings == 0 else 1
@@ -213,9 +247,32 @@ def _build_parser() -> argparse.ArgumentParser:
         "--use-default-remote-snap-monster-json",
         action="store_true",
         help=(
-            "Fetch the official Snap.Metadata Genshin/EN/Monster.json over HTTPS. "
-            "No Git checkout or local file is required."
+            "Dev-only direct remote read of official Snap.Metadata Monster.json. "
+            "For the managed app-style flow, prefer --use-cached-snap-monster-json "
+            "with optional --refresh-snap-monster-json-if-needed."
         ),
+    )
+    parser.add_argument(
+        "--use-cached-snap-monster-json",
+        action="store_true",
+        help=(
+            "Use the managed cached Snap Monster.json only if primary enemy registry "
+            "matching leaves missing rows."
+        ),
+    )
+    parser.add_argument(
+        "--refresh-snap-monster-json-if-needed",
+        action="store_true",
+        help=(
+            "If cached Snap titles are missing/invalid/insufficient after primary "
+            "matching, refresh the managed cache from the official online Monster.json "
+            "and retry."
+        ),
+    )
+    parser.add_argument(
+        "--snap-monster-cache-path",
+        default=None,
+        help="Optional managed Snap Monster.json cache path for tests/dev diagnostics.",
     )
     parser.add_argument(
         "--cache-file",
@@ -304,11 +361,18 @@ def _enemy_type_registry_from_args(args: argparse.Namespace) -> GcsimEnemyTypeRe
     )
 
 
-def _snap_title_index_from_args(
+def _direct_snap_title_index_from_args(
     args: argparse.Namespace,
     *,
     fetcher: SnapJsonFetcher | None = None,
 ) -> SnapMonsterTitleIndex | None:
+    managed_requested = bool(
+        args.use_cached_snap_monster_json or args.refresh_snap_monster_json_if_needed
+    )
+    if managed_requested and (args.snap_monster_json or args.use_default_remote_snap_monster_json):
+        raise ValueError(
+            "Use either direct Snap input or managed Snap cache/refresh options, not both."
+        )
     if args.snap_monster_json and args.use_default_remote_snap_monster_json:
         raise ValueError(
             "Use either --snap-monster-json or --use-default-remote-snap-monster-json, not both."
@@ -318,6 +382,179 @@ def _snap_title_index_from_args(
     if not args.snap_monster_json:
         return None
     return load_snap_monster_title_index(args.snap_monster_json, fetcher=fetcher)
+
+
+def _build_report_with_snap_flow(
+    source_data: list[AbyssFloorSourceData],
+    mapping: AbyssEnemyTypeMapping | None,
+    *,
+    enemy_type_registry: GcsimEnemyTypeRegistry | None,
+    direct_snap_title_index: SnapMonsterTitleIndex | None,
+    cache_files: list[str],
+    use_cached_snap: bool,
+    refresh_snap_if_needed: bool,
+    snap_cache_path: str | None,
+    snap_fetcher: SnapJsonFetcher | None,
+) -> AbyssEnemyTypeCoverageReport:
+    steps = ["matching_enemy_names_primary"]
+    if direct_snap_title_index is not None:
+        steps.append("checking_direct_snap_titles")
+        return build_abyss_enemy_type_coverage_report(
+            source_data,
+            mapping,
+            enemy_type_registry=enemy_type_registry,
+            snap_title_index=direct_snap_title_index,
+            cache_files=cache_files,
+            steps=steps,
+            snap_cache=_snap_flow_report(phase="direct"),
+        )
+
+    primary = build_abyss_enemy_type_coverage_report(
+        source_data,
+        mapping,
+        enemy_type_registry=enemy_type_registry,
+        cache_files=cache_files,
+        steps=steps,
+        snap_cache=_snap_flow_report(
+            cache_status=SNAP_CACHE_STATUS_REMOTE_NOT_NEEDED,
+            refresh_status=SNAP_REFRESH_STATUS_NOT_NEEDED,
+            phase="primary",
+        ),
+    )
+    if not (use_cached_snap or refresh_snap_if_needed):
+        return primary
+    if _report_ready(primary):
+        return primary
+
+    steps.append("checking_cached_snap_titles")
+    cache_load = load_cached_snap_monster_title_index(snap_cache_path)
+    cache_report = _snap_flow_report(
+        cache_status=cache_load.status,
+        refresh_status=SNAP_REFRESH_STATUS_NOT_NEEDED,
+        cache_path=cache_load.cache_path,
+        phase="cache",
+        error=cache_load.error,
+    )
+    if cache_load.ready:
+        cached_report = build_abyss_enemy_type_coverage_report(
+            source_data,
+            mapping,
+            enemy_type_registry=enemy_type_registry,
+            snap_title_index=cache_load.index,
+            cache_files=cache_files,
+            snap_cache=_with_snap_counts(
+                cache_report,
+                "cached",
+                cache_load.index,
+                source_data,
+                mapping,
+                enemy_type_registry,
+            ),
+            steps=steps,
+        )
+        if _report_ready(cached_report) or not refresh_snap_if_needed:
+            return cached_report
+    elif not refresh_snap_if_needed:
+        return build_abyss_enemy_type_coverage_report(
+            source_data,
+            mapping,
+            enemy_type_registry=enemy_type_registry,
+            cache_files=cache_files,
+            snap_cache=cache_report,
+            steps=steps,
+        )
+
+    steps.append("refreshing_snap_metadata")
+    refresh = refresh_cached_snap_monster_title_index(
+        snap_cache_path,
+        source_url=DEFAULT_SNAP_MONSTER_GITHUB_URL,
+        fetcher=snap_fetcher,
+    )
+    refresh_report = {**cache_report, **refresh.to_dict(), "phase": "refreshed"}
+    if cache_report.get("error"):
+        refresh_report["cache_error"] = cache_report["error"]
+    if not refresh.ready:
+        raise SnapMonsterTitleSourceError(refresh.error or refresh.status)
+    steps.append("rechecking_snap_titles_after_refresh")
+    return build_abyss_enemy_type_coverage_report(
+        source_data,
+        mapping,
+        enemy_type_registry=enemy_type_registry,
+        snap_title_index=refresh.index,
+        cache_files=cache_files,
+        snap_cache=_with_snap_counts(
+            refresh_report,
+            "refreshed",
+            refresh.index,
+            source_data,
+            mapping,
+            enemy_type_registry,
+        ),
+        steps=steps,
+    )
+
+
+def _report_ready(report: AbyssEnemyTypeCoverageReport) -> bool:
+    return report.missing_mappings == 0 and report.ambiguous_mappings == 0
+
+
+def _with_snap_counts(
+    report: dict[str, Any],
+    prefix: str,
+    snap_index: SnapMonsterTitleIndex | None,
+    source_data: list[AbyssFloorSourceData],
+    mapping: AbyssEnemyTypeMapping | None,
+    enemy_type_registry: GcsimEnemyTypeRegistry | None,
+) -> dict[str, Any]:
+    if snap_index is None:
+        return report
+    counted = build_abyss_enemy_type_coverage_report(
+        source_data,
+        mapping,
+        enemy_type_registry=enemy_type_registry,
+        snap_title_index=snap_index,
+    )
+    method_counts = counted.resolved_by_method
+    counts = {
+        "cached_snap_title_fallback": 0,
+        "cached_snap_contains_fallback": 0,
+        "refreshed_snap_title_fallback": 0,
+        "refreshed_snap_contains_fallback": 0,
+    }
+    counts[f"{prefix}_snap_title_fallback"] = method_counts.get(
+        MATCH_METHOD_SNAP_TITLE_FALLBACK,
+        0,
+    )
+    contains_key = (
+        "cached_snap_contains_fallback"
+        if prefix == "cached"
+        else "refreshed_snap_contains_fallback"
+    )
+    counts[contains_key] = method_counts.get(MATCH_METHOD_SNAP_TITLE_CONTAINS_TARGET, 0)
+    return {**report, "snap_resolution_counts": counts}
+
+
+def _snap_flow_report(
+    *,
+    cache_status: str = "",
+    refresh_status: str = "",
+    cache_path: str = "",
+    phase: str,
+    error: str = "",
+) -> dict[str, Any]:
+    return {
+        "phase": phase,
+        "cache_status": cache_status,
+        "refresh_status": refresh_status,
+        "cache_path": cache_path,
+        "error": error,
+        "snap_resolution_counts": {
+            "cached_snap_title_fallback": 0,
+            "cached_snap_contains_fallback": 0,
+            "refreshed_snap_title_fallback": 0,
+            "refreshed_snap_contains_fallback": 0,
+        },
+    }
 
 
 def _scan_cache_files(
@@ -451,6 +688,21 @@ def _format_text(payload: dict[str, Any]) -> str:
                 f"source={snap_source.get('source', '')} "
                 f"resolved_url={snap_source.get('resolved_url', '')}"
             )
+        snap_cache = report.get("snap_cache")
+        if isinstance(snap_cache, dict):
+            lines.append(
+                "snap_cache="
+                f"phase={snap_cache.get('phase', '')} "
+                f"cache_status={snap_cache.get('cache_status', '')} "
+                f"refresh_status={snap_cache.get('refresh_status', '')} "
+                f"cache_path={snap_cache.get('cache_path', '')}"
+            )
+            counts = snap_cache.get("snap_resolution_counts")
+            if isinstance(counts, dict):
+                lines.append("snap_resolution_counts=" + json.dumps(counts, sort_keys=True))
+        steps = report.get("steps") or []
+        if steps:
+            lines.append("steps=" + ",".join(str(step) for step in steps))
         if unresolved_rows:
             lines.append("unresolved_rows=" + _compact_row_list(unresolved_rows))
         if ambiguous_rows:

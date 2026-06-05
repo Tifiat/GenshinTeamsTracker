@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from io import StringIO
 import json
 import tempfile
@@ -15,6 +16,8 @@ from run_workspace.gcsim.artifact_runner import (
 from run_workspace.gcsim.snap_monster_titles import (
     DEFAULT_SNAP_MONSTER_GITHUB_URL,
     DEFAULT_SNAP_MONSTER_RAW_URL,
+    SNAP_CACHE_STATUS_HIT,
+    SNAP_REFRESH_STATUS_SUCCESS,
     SNAP_SOURCE_KIND_DEFAULT_REMOTE_URL,
     SNAP_SOURCE_KIND_REMOTE_URL,
 )
@@ -205,6 +208,190 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(report["snap_source"]["kind"], SNAP_SOURCE_KIND_DEFAULT_REMOTE_URL)
+
+    def test_managed_snap_not_read_when_primary_resolves(self) -> None:
+        def fake_fetch(_url: str, _timeout: float) -> str:
+            raise AssertionError("remote should not be fetched")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            save_abyss_floor_source_data(_source_data(), cache_dir=root / "cache")
+            scenario_path = root / "scenario.json"
+            registry_path = root / "enemies_gen.go"
+            registry_path.write_text(
+                'package shortcut\nvar MonsterNameToID = map[string]int{\n'
+                '\t"firstenemy": 1,\n'
+                '\t"secondenemy": 2,\n'
+                "}\n",
+                encoding="utf-8",
+            )
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--period-start",
+                    "2026-05-16",
+                    "--cache-dir",
+                    str(root / "cache"),
+                    "--chamber",
+                    "1",
+                    "--side",
+                    "1",
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--refresh-snap-monster-json-if-needed",
+                    "--snap-monster-cache-path",
+                    str(root / "snap" / "Monster.json"),
+                    "--scenario-out",
+                    str(scenario_path),
+                    "--format",
+                    "json",
+                ],
+                snap_fetcher=fake_fetch,
+                stdout=stdout,
+            )
+            report = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 0)
+        self.assertTrue(report["success"])
+        self.assertNotIn("checking_cached_snap_titles", report["steps"])
+
+    def test_managed_snap_cache_resolves_scenario_without_remote(self) -> None:
+        def fake_fetch(_url: str, _timeout: float) -> str:
+            raise AssertionError("remote should not be fetched")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = _source_data()
+            rows = list(data.enemy_rows)
+            rows[0] = replace(
+                rows[0],
+                primary_display_name="Assault Specialist Mek - Pneuma",
+                matched_nanoka_display_name="Assault Specialist Mek - Pneuma",
+                fandom_enemy_page_url="https://genshin-impact.fandom.com/wiki/Assault_Specialist_Mek_-_Pneuma",
+            )
+            # Keep this test local to the CLI; source-data details are pinned elsewhere.
+            from run_workspace.abyss.source_data import rebuild_abyss_floor_source_data_with_rows
+
+            save_abyss_floor_source_data(
+                rebuild_abyss_floor_source_data_with_rows(data, rows),
+                cache_dir=root / "cache",
+            )
+            registry_path = root / "enemies_gen.go"
+            registry_path.write_text(
+                'package shortcut\nvar MonsterNameToID = map[string]int{\n'
+                '\t"assaultspecialistmek": 1,\n'
+                '\t"secondenemy": 2,\n'
+                "}\n",
+                encoding="utf-8",
+            )
+            snap_cache = root / "snap" / "Monster.json"
+            snap_cache.parent.mkdir(parents=True)
+            snap_cache.write_text(
+                json.dumps(
+                    [{"Name": "Assault Specialist Mek - Pneuma", "Title": "Assault Specialist Mek"}]
+                ),
+                encoding="utf-8",
+            )
+            scenario_path = root / "scenario.json"
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--period-start",
+                    "2026-05-16",
+                    "--cache-dir",
+                    str(root / "cache"),
+                    "--chamber",
+                    "1",
+                    "--side",
+                    "1",
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--use-cached-snap-monster-json",
+                    "--refresh-snap-monster-json-if-needed",
+                    "--snap-monster-cache-path",
+                    str(snap_cache),
+                    "--scenario-out",
+                    str(scenario_path),
+                    "--format",
+                    "json",
+                ],
+                snap_fetcher=fake_fetch,
+                stdout=stdout,
+            )
+            report = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 0)
+        self.assertTrue(report["success"])
+        self.assertEqual(report["snap_cache"]["cache_status"], SNAP_CACHE_STATUS_HIT)
+        self.assertEqual(report["audit"]["type_mapping_details"][0]["method"], "snap_title_fallback")
+
+    def test_managed_snap_refresh_if_needed_writes_cache_and_resolves(self) -> None:
+        def fake_fetch(_url: str, _timeout: float) -> str:
+            return json.dumps(
+                [{"Name": "Tenebrous Papilla: Type II", "Title": "Tenebrous Papilla"}]
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = _source_data()
+            rows = list(data.enemy_rows)
+            rows[0] = replace(
+                rows[0],
+                primary_display_name="Tenebrous Papilla: Type II",
+                matched_nanoka_display_name="Tenebrous Papilla: Type II",
+                fandom_enemy_page_url="https://genshin-impact.fandom.com/wiki/Tenebrous_Papilla:_Type_II",
+            )
+            from run_workspace.abyss.source_data import rebuild_abyss_floor_source_data_with_rows
+
+            save_abyss_floor_source_data(
+                rebuild_abyss_floor_source_data_with_rows(data, rows),
+                cache_dir=root / "cache",
+            )
+            registry_path = root / "enemies_gen.go"
+            registry_path.write_text(
+                'package shortcut\nvar MonsterNameToID = map[string]int{\n'
+                '\t"tenebrouspapillatypei": 1,\n'
+                '\t"secondenemy": 2,\n'
+                "}\n",
+                encoding="utf-8",
+            )
+            snap_cache = root / "snap" / "Monster.json"
+            scenario_path = root / "scenario.json"
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--period-start",
+                    "2026-05-16",
+                    "--cache-dir",
+                    str(root / "cache"),
+                    "--chamber",
+                    "1",
+                    "--side",
+                    "1",
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--refresh-snap-monster-json-if-needed",
+                    "--snap-monster-cache-path",
+                    str(snap_cache),
+                    "--scenario-out",
+                    str(scenario_path),
+                    "--format",
+                    "json",
+                ],
+                snap_fetcher=fake_fetch,
+                stdout=stdout,
+            )
+            report = json.loads(stdout.getvalue())
+            cache_written = snap_cache.is_file()
+
+        self.assertEqual(code, 0)
+        self.assertTrue(cache_written)
+        self.assertEqual(report["snap_cache"]["refresh_status"], SNAP_REFRESH_STATUS_SUCCESS)
+        self.assertEqual(report["audit"]["type_mapping_details"][0]["method"], "snap_title_contains_target")
+        self.assertIn("rechecking_snap_titles_after_refresh", report["steps"])
 
     def test_missing_enemy_type_mapping_reports_not_ready_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

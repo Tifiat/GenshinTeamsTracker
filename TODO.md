@@ -590,15 +590,22 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `run_workspace/gcsim/entity_key_readiness_report.py`, with CLI
   `python -m run_workspace.gcsim.entity_key_readiness_report --format text`.
   It parses local prepared GCSIM shortcut sources `pkg/shortcut/characters.go`,
-  `weapons.go`, and `artifacts.go`, compares project entities by exact
-  normalized key candidate, and prefers explicit seed overrides first. Exact
-  normalized candidates are readiness evidence only
-  (`auto_exact_candidate_not_curated_mapping`), not committed curated production
-  mapping. Default local diagnostics read existing HoYoWiki character/weapon
-  stats caches and the artifact set static seed; character/weapon cache
-  identities are HoYoWiki `entry_page_id` values and are explicitly warned as
-  not the missing production game-id mapping owner. Traveler and Traveler
-  variants remain unsupported/deferred. Full character/weapon/artifact-set
+  `weapons.go`, and `artifacts.go`, prefers explicit seed overrides first, then
+  exact normalized key candidates, then a conservative contiguous-name-span
+  fallback. The span fallback matches whole normalized tokens/spans only, not
+  random substrings: `Yumemizuki Mizuki -> mizuki` and
+  `Rainbow Serpent's Rain Bow -> rainbowserpent` are accepted as audit
+  candidates, while `The Daybreak Chronicles -> ak` is rejected. Exact and span
+  candidates are readiness evidence only
+  (`auto_exact_candidate_not_curated_mapping` /
+  `contiguous_name_span_candidate_not_curated_mapping`), not committed curated
+  production mapping. Default local diagnostics read existing HoYoWiki
+  character/weapon stats caches and the artifact set static seed;
+  character/weapon cache identities are HoYoWiki `entry_page_id` values and are
+  explicitly warned as not the missing production game-id mapping owner. Traveler
+  and Traveler variants remain unsupported/deferred. Current-registry gaps
+  remain controlled missing and should later surface as user-facing warnings to
+  replace the entity or update GCSIM source. Full character/weapon/artifact-set
   production mapping coverage remains future work.
   GCSIM level text helper has been added in `run_workspace/gcsim/config_level.py`.
   It converts account level/promote data into current/max text for future config

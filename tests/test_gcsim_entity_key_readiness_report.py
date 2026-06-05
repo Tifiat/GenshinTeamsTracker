@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from run_workspace.gcsim.entity_key_readiness_report import (
+    METHOD_CONTIGUOUS_NAME_SPAN,
     METHOD_EXACT_NORMALIZED_NAME,
     METHOD_EXPLICIT_SEED,
     STATUS_AMBIGUOUS,
@@ -79,6 +80,40 @@ var CharNameToKey = map[string]keys.Char{
         self.assertEqual(entry.gcsim_key, "mona")
         self.assertIn(WARNING_AUTO_EXACT_NOT_CURATED, entry.warnings)
 
+    def test_exact_normalized_match_wins_over_contiguous_span_fallback(self) -> None:
+        report = report_for(
+            (
+                ProjectEntity(
+                    entity_type=ENTITY_CHARACTER,
+                    project_id="7420",
+                    display_name="Yumemizuki Mizuki",
+                ),
+            ),
+            registry=fixture_registry(
+                character_keys=("mizuki", "yumemizukimizuki"),
+            ),
+        )
+
+        self.assertEqual(report.entries[0].status, STATUS_READY)
+        self.assertEqual(report.entries[0].method, METHOD_EXACT_NORMALIZED_NAME)
+        self.assertEqual(report.entries[0].gcsim_key, "yumemizukimizuki")
+
+    def test_character_contiguous_name_span_fallback_succeeds(self) -> None:
+        report = report_for(
+            (
+                ProjectEntity(
+                    entity_type=ENTITY_CHARACTER,
+                    project_id="7420",
+                    display_name="Yumemizuki Mizuki",
+                ),
+            ),
+            registry=fixture_registry(character_keys=("mizuki",)),
+        )
+
+        self.assertEqual(report.entries[0].status, STATUS_READY)
+        self.assertEqual(report.entries[0].method, METHOD_CONTIGUOUS_NAME_SPAN)
+        self.assertEqual(report.entries[0].gcsim_key, "mizuki")
+
     def test_exact_normalized_weapon_match_succeeds(self) -> None:
         report = report_for(
             (
@@ -92,6 +127,73 @@ var CharNameToKey = map[string]keys.Char{
 
         self.assertEqual(report.entries[0].status, STATUS_READY)
         self.assertEqual(report.entries[0].gcsim_key, "favoniuscodex")
+
+    def test_weapon_contiguous_name_span_fallback_prefers_unique_longest(self) -> None:
+        report = report_for(
+            (
+                ProjectEntity(
+                    entity_type=ENTITY_WEAPON,
+                    project_id="9046",
+                    display_name="Rainbow Serpent's Rain Bow",
+                ),
+            ),
+            registry=fixture_registry(
+                weapon_keys=("rainbowserpent", "serpent", "ak"),
+            ),
+        )
+
+        self.assertEqual(report.entries[0].status, STATUS_READY)
+        self.assertEqual(report.entries[0].method, METHOD_CONTIGUOUS_NAME_SPAN)
+        self.assertEqual(report.entries[0].gcsim_key, "rainbowserpent")
+
+    def test_tiny_random_substring_is_rejected(self) -> None:
+        report = report_for(
+            (
+                ProjectEntity(
+                    entity_type=ENTITY_WEAPON,
+                    project_id="9047",
+                    display_name="The Daybreak Chronicles",
+                ),
+            ),
+            registry=fixture_registry(weapon_keys=("ak",)),
+        )
+
+        self.assertEqual(report.entries[0].status, STATUS_MISSING)
+        self.assertEqual(report.entries[0].gcsim_key, "")
+
+    def test_random_substring_inside_token_is_rejected(self) -> None:
+        report = report_for(
+            (
+                ProjectEntity(
+                    entity_type=ENTITY_WEAPON,
+                    project_id="9999",
+                    display_name="Daybreak",
+                ),
+            ),
+            registry=fixture_registry(weapon_keys=("break",)),
+        )
+
+        self.assertEqual(report.entries[0].status, STATUS_MISSING)
+        self.assertEqual(report.entries[0].gcsim_key, "")
+
+    def test_multiple_equal_contiguous_span_candidates_are_ambiguous(self) -> None:
+        report = report_for(
+            (
+                ProjectEntity(
+                    entity_type=ENTITY_CHARACTER,
+                    project_id="10000099",
+                    display_name="Alpha Beta Gamma",
+                ),
+            ),
+            registry=fixture_registry(character_keys=("alphabeta", "betagamma")),
+        )
+
+        self.assertEqual(report.entries[0].status, STATUS_AMBIGUOUS)
+        self.assertEqual(report.entries[0].method, METHOD_CONTIGUOUS_NAME_SPAN)
+        self.assertEqual(
+            report.entries[0].candidates,
+            ("alphabeta", "betagamma"),
+        )
 
     def test_exact_normalized_artifact_set_match_succeeds(self) -> None:
         report = report_for(

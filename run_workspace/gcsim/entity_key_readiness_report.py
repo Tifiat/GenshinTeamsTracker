@@ -55,11 +55,19 @@ STATUS_UNSUPPORTED_TRAVELER = "unsupported_traveler"
 
 METHOD_EXPLICIT_SEED = "explicit_seed"
 METHOD_EXACT_NORMALIZED_NAME = "exact_normalized_name"
+METHOD_CONTIGUOUS_NAME_SPAN = "contiguous_name_span"
 METHOD_MISSING = "missing"
 METHOD_AMBIGUOUS = "ambiguous"
 METHOD_UNSUPPORTED_TRAVELER = "unsupported_traveler"
 
 WARNING_AUTO_EXACT_NOT_CURATED = "auto_exact_candidate_not_curated_mapping"
+WARNING_CONTIGUOUS_NAME_SPAN_NOT_CURATED = (
+    "contiguous_name_span_candidate_not_curated_mapping"
+)
+WARNING_SINGLE_TOKEN_CONTIGUOUS_SPAN = "single_token_contiguous_span_lower_confidence"
+WARNING_SHORTER_CONTIGUOUS_SPAN_CANDIDATES_IGNORED = (
+    "shorter_contiguous_span_candidates_ignored"
+)
 WARNING_DEV_SEED_NOT_PRODUCTION = "default_seed_is_curated_dev_seed_only"
 WARNING_CHARACTER_IDENTITY_IS_HOYOWIKI_ENTRY_PAGE_ID = (
     "character_identity_is_hoyowiki_entry_page_id"
@@ -90,6 +98,8 @@ DEFAULT_ARTIFACT_SET_SHORTCUT_SOURCE = (
 )
 
 _GO_MAP_KEY_RE = re.compile(r'(?m)^\s*"([^"\n]+)"\s*:')
+_POSSESSIVE_RE = re.compile(r"([a-z0-9])['\u2019]s\b")
+_MIN_CONTIGUOUS_SPAN_KEY_LENGTH = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -389,6 +399,27 @@ def audit_project_entity(
             warnings=warnings,
         )
 
+    span_match = _contiguous_name_span_match(normalized, registry_index)
+    if span_match.status == STATUS_READY:
+        warnings.extend(span_match.warnings)
+        return _entry(
+            normalized,
+            status=STATUS_READY,
+            method=METHOD_CONTIGUOUS_NAME_SPAN,
+            gcsim_key=span_match.gcsim_key,
+            candidates=span_match.candidates,
+            warnings=warnings,
+        )
+    if span_match.status == STATUS_AMBIGUOUS:
+        warnings.extend(span_match.warnings)
+        return _entry(
+            normalized,
+            status=STATUS_AMBIGUOUS,
+            method=METHOD_CONTIGUOUS_NAME_SPAN,
+            candidates=span_match.candidates,
+            warnings=warnings,
+        )
+
     warnings.append(WARNING_GCSIM_REGISTRY_KEY_MISSING)
     return _entry(
         normalized,
@@ -418,6 +449,76 @@ def normalize_project_entity(entity: ProjectEntity | Mapping[str, Any]) -> Proje
 def normalize_gcsim_key_candidate(value: Any) -> str:
     text = unicodedata.normalize("NFKC", str(value or "")).casefold()
     return "".join(re.findall(r"[a-z0-9]+", text))
+
+
+@dataclass(frozen=True, slots=True)
+class _ContiguousSpanMatch:
+    status: str = STATUS_MISSING
+    gcsim_key: str = ""
+    candidates: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+
+
+def _contiguous_name_span_match(
+    entity: ProjectEntity,
+    registry_index: Mapping[str, Mapping[str, tuple[str, ...]]],
+) -> _ContiguousSpanMatch:
+    spans = _contiguous_name_span_map(entity.display_name)
+    if not spans:
+        return _ContiguousSpanMatch()
+
+    candidates: list[tuple[str, str, int]] = []
+    for normalized_key, keys in registry_index.get(entity.entity_type, {}).items():
+        if (
+            normalized_key in spans
+            and len(normalized_key) >= _MIN_CONTIGUOUS_SPAN_KEY_LENGTH
+        ):
+            for key in keys:
+                candidates.append((key, normalized_key, spans[normalized_key]))
+
+    if not candidates:
+        return _ContiguousSpanMatch()
+
+    longest_length = max(len(normalized_key) for _, normalized_key, _ in candidates)
+    longest = tuple(
+        item for item in candidates if len(item[1]) == longest_length
+    )
+    if len(longest) != 1:
+        return _ContiguousSpanMatch(
+            status=STATUS_AMBIGUOUS,
+            candidates=_dedupe_tuple(key for key, _, _ in longest),
+        )
+
+    key, _, token_count = longest[0]
+    warnings = [WARNING_CONTIGUOUS_NAME_SPAN_NOT_CURATED]
+    if token_count == 1:
+        warnings.append(WARNING_SINGLE_TOKEN_CONTIGUOUS_SPAN)
+    if len(candidates) > 1:
+        warnings.append(WARNING_SHORTER_CONTIGUOUS_SPAN_CANDIDATES_IGNORED)
+    return _ContiguousSpanMatch(
+        status=STATUS_READY,
+        gcsim_key=key,
+        candidates=(key,),
+        warnings=tuple(warnings),
+    )
+
+
+def _contiguous_name_span_map(value: Any) -> dict[str, int]:
+    tokens = _normalized_name_tokens(value)
+    spans: dict[str, int] = {}
+    for start in range(len(tokens)):
+        span = ""
+        for end in range(start, len(tokens)):
+            span += tokens[end]
+            spans[span] = max(spans.get(span, 0), end - start + 1)
+    return spans
+
+
+def _normalized_name_tokens(value: Any) -> tuple[str, ...]:
+    text = unicodedata.normalize("NFKC", str(value or "")).casefold()
+    text = _POSSESSIVE_RE.sub(r"\1", text)
+    tokens = re.findall(r"[a-z0-9]+", text)
+    return tuple(token for token in tokens if token and token != "s")
 
 
 def load_project_entities_from_json(path: str | Path) -> tuple[ProjectEntity, ...]:

@@ -26,7 +26,12 @@ from run_workspace.gcsim.enemy_type_registry import (
     MATCH_METHOD_EXACT_NORMALIZED_NAME,
     MATCH_METHOD_MANUAL_ALIAS,
     MATCH_METHOD_MANUAL_MAPPING,
+    MATCH_METHOD_SNAP_TITLE_FALLBACK,
     normalize_gcsim_enemy_name,
+)
+from run_workspace.gcsim.snap_monster_titles import (
+    SnapMonsterTitleCandidate,
+    SnapMonsterTitleIndex,
 )
 from tests.test_gcsim_abyss_wave_scenario import _source_data
 
@@ -70,6 +75,16 @@ def _mapping() -> AbyssEnemyTypeMapping:
             ),
         ),
         mapping_name="coverage_mapping",
+    )
+
+
+def _snap_titles(*pairs: tuple[str, str]) -> SnapMonsterTitleIndex:
+    grouped: dict[str, list[SnapMonsterTitleCandidate]] = {}
+    for name, title in pairs:
+        candidate = SnapMonsterTitleCandidate(source_name=name, title=title)
+        grouped.setdefault(candidate.normalized_source_name, []).append(candidate)
+    return SnapMonsterTitleIndex(
+        {key: tuple(value) for key, value in grouped.items()}
     )
 
 
@@ -162,6 +177,27 @@ class GcsimAbyssEnemyTypeMappingReportTest(unittest.TestCase):
         self.assertEqual(ambiguous_report.ambiguous_mappings, 1)
         self.assertEqual(ambiguous_report.ambiguous_rows[0]["method"], MATCH_METHOD_AMBIGUOUS)
 
+    def test_coverage_report_counts_snap_title_fallback_separately(self) -> None:
+        data = _cache_data_with_enemy_names(
+            "Assault Specialist Mek - Pneuma",
+            "Second Enemy",
+        )
+
+        report = build_abyss_enemy_type_coverage_report(
+            [data],
+            None,
+            enemy_type_registry=GcsimEnemyTypeRegistry(
+                ("assaultspecialistmek", "secondenemy")
+            ),
+            snap_title_index=_snap_titles(
+                ("Assault Specialist Mek - Pneuma", "Assault Specialist Mek")
+            ),
+        )
+
+        self.assertEqual(report.missing_mappings, 0)
+        self.assertEqual(report.resolved_by_method[MATCH_METHOD_SNAP_TITLE_FALLBACK], 1)
+        self.assertEqual(report.resolved_rows[0]["gcsim_type"], "assaultspecialistmek")
+
     def test_cli_json_report_loads_temp_cache_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -238,6 +274,57 @@ class GcsimAbyssEnemyTypeMappingReportTest(unittest.TestCase):
         self.assertEqual(
             payload["report"]["resolved_by_method"][MATCH_METHOD_EXACT_NORMALIZED_NAME],
             2,
+        )
+
+    def test_cli_json_report_accepts_snap_monster_json_with_scan_cache_dir(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cache_root = root / "cache"
+            save_abyss_floor_source_data(
+                _cache_data_with_enemy_names(
+                    "Assault Specialist Mek - Pneuma",
+                    "Second Enemy",
+                ),
+                cache_dir=cache_root,
+            )
+            registry_path = _write_registry(
+                root,
+                "assaultspecialistmek",
+                "secondenemy",
+            )
+            snap_path = root / "monster.json"
+            snap_path.write_text(
+                json.dumps(
+                    [
+                        {
+                            "Name": "Assault Specialist Mek - Pneuma",
+                            "Title": "Assault Specialist Mek",
+                        }
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--gcsim-enemy-registry-source",
+                    str(registry_path),
+                    "--snap-monster-json",
+                    str(snap_path),
+                    "--scan-cache-dir",
+                    str(cache_root),
+                    "--format",
+                    "json",
+                ],
+                stdout=stdout,
+            )
+            payload = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            payload["report"]["resolved_by_method"][MATCH_METHOD_SNAP_TITLE_FALLBACK],
+            1,
         )
 
     def test_bulk_scanner_finds_multiple_cache_files_and_aggregates(self) -> None:

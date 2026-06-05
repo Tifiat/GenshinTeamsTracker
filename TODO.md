@@ -429,21 +429,25 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   must remain valid fallback identities, and enemy-type fallback must be
   independent from HP source fallback. HP may come from Nanoka while GCSIM type
   resolves through Fandom/name identity, or HP may come from Fandom fallback while
-  type resolves through Nanoka/name identity. A last-resort debug-only identity source may
-  come from Snap metadata if normal Nanoka/Fandom matching breaks: tower schedule
-  floor id -> tower floor `LevelGroupId` -> tower level monsters -> monster
-  `DescribeId` -> monster `Name`/`Title`. Snap metadata is only a fallback name
-  source for enemy type mapping; it must not be used as HP truth or gameplay
-  stat truth, and it lacks source wave splits, so ordering/group matching is only
-  diagnostic/provisional. Missing Nanoka id alone is not a blocker; the blocker
-  is missing any safe explicit or automatic compatible GCSIM target type. The
-  bridge must not infer production-ready GCSIM type keys from arbitrary
-  fuzzy/display-name similarity.
+  type resolves through Nanoka/name identity. Optional explicit Snap
+  `monster.json` support now exists in
+  `run_workspace/gcsim/snap_monster_titles.py` as a last-resort enemy
+  `Name -> Title` fallback after manual overrides, normal registry exact/base
+  matching, and small aliases fail. Only `Name` and `Title` are read; Snap
+  metadata must not be used as HP/stat/resist/wave/count truth or as source-data
+  replacement. The fallback is intended for too-specific source names such as
+  Arkhe suffixes and Tenebrous Mimesis forms, and duplicate normalized Snap
+  `Name` records with different `Title` values are reported as ambiguous.
+  Missing Nanoka id alone is not a blocker; the blocker is missing any safe
+  explicit or automatic compatible GCSIM target type. The bridge must not infer
+  production-ready GCSIM type keys from arbitrary fuzzy/display-name similarity.
   Dev CLI `python -m run_workspace.gcsim.abyss_wave_scenario_smoke` loads current or
   explicit cached Abyss source data, writes this provisional scenario JSON, and
   can optionally pass it with an existing caller-provided config into the active
-  artifact runner. Missing cache/source fields or missing enemy type mapping
-  prints audit and exits nonzero without writing/running a misleading scenario.
+  artifact runner. It accepts `--snap-monster-json path` only as the explicit
+  last-resort `Name -> Title` enemy type fallback described above. Missing
+  cache/source fields or missing enemy type mapping prints audit and exits
+  nonzero without writing/running a misleading scenario.
   Enemy type mapping JSON now supports explicit records with `source_kind`,
   `source_id`, `gcsim_type`, and optional diagnostics; the old
   `enemy_types_by_nanoka_monster_id` shape still loads for dev compatibility.
@@ -455,9 +459,11 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   and identity kind, missing/ambiguous type mappings, HP-present/type-missing
   rows, type-present/HP-missing rows, compact unresolved/ambiguous row lists,
   and JSON resolved-row details without fetching, mutating caches, running GCSIM,
-  or touching UI. Use it to validate matcher behavior on real cached Abyss rows.
-  Missing/ambiguous rows should drive small matcher or alias fixes, not a full
-  hand-written enemy mapping table.
+  or touching UI. It accepts `--snap-monster-json path`; Snap fallback
+  resolutions are counted separately as `snap_title_fallback`, so exact/base
+  coverage remains visible. Use it to validate matcher behavior on real cached
+  Abyss rows. Missing/ambiguous rows should drive small matcher or alias fixes,
+  not a full hand-written enemy mapping table.
   Backend/dev GCSIM enemy type registry matcher exists in
   `run_workspace/gcsim/enemy_type_registry.py`. It can parse known target type
   keys from local prepared GCSIM `pkg/shortcut/enemies_gen.go` and match Abyss

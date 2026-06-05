@@ -28,6 +28,12 @@ from run_workspace.gcsim.enemy_type_registry import (
     MATCH_METHOD_EXACT_NORMALIZED_NAME,
     MATCH_METHOD_MANUAL_MAPPING,
     MATCH_METHOD_MISSING,
+    MATCH_METHOD_SNAP_TITLE_FALLBACK,
+)
+from run_workspace.gcsim.snap_monster_titles import (
+    SNAP_TITLE_SOURCE_KIND,
+    SnapMonsterTitleCandidate,
+    SnapMonsterTitleIndex,
 )
 from tests.abyss.test_source_data import composition_report, fandom_row, nanoka_report, nanoka_row
 
@@ -122,6 +128,16 @@ def _fandom_mapping(*names: str) -> AbyssEnemyTypeMapping:
 
 def _registry(*target_types: str) -> GcsimEnemyTypeRegistry:
     return GcsimEnemyTypeRegistry(target_types)
+
+
+def _snap_titles(*pairs: tuple[str, str]) -> SnapMonsterTitleIndex:
+    grouped: dict[str, list[SnapMonsterTitleCandidate]] = {}
+    for name, title in pairs:
+        candidate = SnapMonsterTitleCandidate(source_name=name, title=title)
+        grouped.setdefault(candidate.normalized_source_name, []).append(candidate)
+    return SnapMonsterTitleIndex(
+        {key: tuple(value) for key, value in grouped.items()}
+    )
 
 
 def _rename_enemy(data, index: int, name: str):
@@ -355,6 +371,150 @@ class GcsimAbyssWaveScenarioTest(unittest.TestCase):
         self.assertFalse(result.ready)
         self.assertEqual(len(result.audit.missing_type_mapping_rows), 1)
         self.assertEqual(result.audit.type_mapping_details[0]["method"], MATCH_METHOD_MISSING)
+
+    def test_snap_title_fallback_resolves_mek_arkhe_suffix(self) -> None:
+        data = _rename_enemy(_source_data(), 0, "Assault Specialist Mek - Pneuma")
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("assaultspecialistmek", "secondenemy"),
+            snap_title_index=_snap_titles(
+                ("Assault Specialist Mek - Pneuma", "Assault Specialist Mek")
+            ),
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.payload["waves"][0]["targets"][0]["type"], "assaultspecialistmek")
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["method"],
+            MATCH_METHOD_SNAP_TITLE_FALLBACK,
+        )
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["selected_identity"]["source_kind"],
+            SNAP_TITLE_SOURCE_KIND,
+        )
+
+    def test_snap_title_fallback_resolves_tenebrous_mimesis_form(self) -> None:
+        data = _rename_enemy(
+            _source_data(),
+            0,
+            "Tenebrous Mimesis - Anemo Hilichurl Rogue",
+        )
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("tenebrousmimiflora", "secondenemy"),
+            snap_title_index=_snap_titles(
+                (
+                    "Tenebrous Mimesis - Anemo Hilichurl Rogue",
+                    "Tenebrous Mimiflora",
+                )
+            ),
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.payload["waves"][0]["targets"][0]["type"], "tenebrousmimiflora")
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["method"],
+            MATCH_METHOD_SNAP_TITLE_FALLBACK,
+        )
+
+    def test_registry_exact_match_wins_before_snap_title_fallback(self) -> None:
+        result = build_abyss_wave_scenario_payload(
+            _source_data(),
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("firstenemy", "secondenemy", "wrongenemy"),
+            snap_title_index=_snap_titles(("First Enemy", "Wrong Enemy")),
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(result.payload["waves"][0]["targets"][0]["type"], "firstenemy")
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["method"],
+            MATCH_METHOD_EXACT_NORMALIZED_NAME,
+        )
+
+    def test_manual_mapping_wins_before_snap_title_fallback(self) -> None:
+        result = build_abyss_wave_scenario_payload(
+            _source_data(),
+            chamber=1,
+            side=1,
+            enemy_type_mapping=_enemy_type_mapping(),
+            enemy_type_registry=_registry("firstenemy", "secondenemy", "wrongenemy"),
+            snap_title_index=_snap_titles(("First Enemy", "Wrong Enemy")),
+        )
+
+        self.assertTrue(result.ready)
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["method"],
+            MATCH_METHOD_MANUAL_MAPPING,
+        )
+
+    def test_without_snap_title_index_missing_behavior_is_unchanged(self) -> None:
+        data = _rename_enemy(_source_data(), 0, "Assault Specialist Mek - Pneuma")
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("secondenemy"),
+        )
+
+        self.assertFalse(result.ready)
+        self.assertEqual(result.audit.type_mapping_details[0]["method"], MATCH_METHOD_MISSING)
+
+    def test_duplicate_snap_name_with_different_titles_is_ambiguous(self) -> None:
+        data = _rename_enemy(_source_data(), 0, "Assault Specialist Mek - Pneuma")
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("assaultspecialistmek", "clockworkmek"),
+            snap_title_index=_snap_titles(
+                ("Assault Specialist Mek - Pneuma", "Assault Specialist Mek"),
+                ("Assault Specialist Mek - Pneuma", "Clockwork Mek"),
+            ),
+        )
+
+        self.assertFalse(result.ready)
+        self.assertEqual(len(result.audit.ambiguous_type_mapping_rows), 1)
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["method"],
+            MATCH_METHOD_SNAP_TITLE_FALLBACK,
+        )
+        self.assertIn(
+            "snap_title_ambiguous_for_name:assaultspecialistmekpneuma",
+            result.audit.type_mapping_details[0]["warnings"],
+        )
+
+    def test_snap_title_missing_from_registry_reports_missing(self) -> None:
+        data = _rename_enemy(_source_data(), 0, "Assault Specialist Mek - Pneuma")
+
+        result = build_abyss_wave_scenario_payload(
+            data,
+            chamber=1,
+            side=1,
+            enemy_type_registry=_registry("secondenemy"),
+            snap_title_index=_snap_titles(
+                ("Assault Specialist Mek - Pneuma", "Assault Specialist Mek")
+            ),
+        )
+
+        self.assertFalse(result.ready)
+        self.assertEqual(
+            result.audit.type_mapping_details[0]["method"],
+            MATCH_METHOD_SNAP_TITLE_FALLBACK,
+        )
+        self.assertIn(
+            "snap_title_registry_match_missing:assaultspecialistmek",
+            result.audit.type_mapping_details[0]["warnings"],
+        )
 
     def test_falls_back_to_fandom_identity_when_nanoka_id_missing(self) -> None:
         data = _replace_enemy_row(

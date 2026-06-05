@@ -31,6 +31,7 @@ from .enemy_type_registry import (
     GcsimEnemyTypeRegistry,
     load_gcsim_enemy_type_registry_from_go_source,
 )
+from .snap_monster_titles import SnapMonsterTitleIndex, load_snap_monster_title_index
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,6 +77,7 @@ def build_abyss_enemy_type_coverage_report(
     mapping: AbyssEnemyTypeMapping | None,
     *,
     enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
+    snap_title_index: SnapMonsterTitleIndex | None = None,
     cache_files: tuple[str, ...] | list[str] = (),
 ) -> AbyssEnemyTypeCoverageReport:
     resolver = mapping or AbyssEnemyTypeMapping(mapping_name="gcsim_enemy_type_registry")
@@ -96,6 +98,7 @@ def build_abyss_enemy_type_coverage_report(
             resolution = resolver.resolve_row(
                 row,
                 enemy_type_registry=enemy_type_registry,
+                snap_title_index=snap_title_index,
             )
             has_hp = row.nanoka_hp is not None and row.nanoka_hp > 0
             if resolution.ready:
@@ -145,6 +148,7 @@ def main(argv: list[str] | None = None, *, stdout: TextIO | None = None) -> int:
             else None
         )
         enemy_type_registry = _enemy_type_registry_from_args(args)
+        snap_title_index = _snap_title_index_from_args(args)
         if mapping is None and enemy_type_registry is None:
             raise ValueError(
                 "Provide --enemy-type-map and/or --gcsim-enemy-registry-source."
@@ -160,6 +164,7 @@ def main(argv: list[str] | None = None, *, stdout: TextIO | None = None) -> int:
         source_data,
         mapping,
         enemy_type_registry=enemy_type_registry,
+        snap_title_index=snap_title_index,
         cache_files=[str(path) for path, _source in source_entries],
     )
     payload = {"success": True, "status": "reported", "report": report.to_dict()}
@@ -180,6 +185,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--gcsim-enemy-registry-source",
         default=None,
         help="Optional local GCSIM pkg/shortcut/enemies_gen.go source for known target type matching.",
+    )
+    parser.add_argument(
+        "--snap-monster-json",
+        default=None,
+        help=(
+            "Optional Snap monster.json path. Uses only Name -> Title as a "
+            "last-resort enemy type name fallback after normal registry matching fails."
+        ),
     )
     parser.add_argument(
         "--cache-file",
@@ -266,6 +279,12 @@ def _enemy_type_registry_from_args(args: argparse.Namespace) -> GcsimEnemyTypeRe
     return load_gcsim_enemy_type_registry_from_go_source(
         args.gcsim_enemy_registry_source
     )
+
+
+def _snap_title_index_from_args(args: argparse.Namespace) -> SnapMonsterTitleIndex | None:
+    if not args.snap_monster_json:
+        return None
+    return load_snap_monster_title_index(args.snap_monster_json)
 
 
 def _scan_cache_files(

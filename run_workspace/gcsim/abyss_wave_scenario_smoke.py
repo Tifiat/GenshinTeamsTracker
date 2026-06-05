@@ -39,6 +39,7 @@ from .artifact_runner import (
 )
 from .runtime_probe import DEFAULT_GO_PROBE_TIMEOUT_SECONDS
 from .enemy_type_registry import load_gcsim_enemy_type_registry_from_go_source
+from .snap_monster_titles import load_snap_monster_title_index
 
 
 ArtifactRunFunc = Callable[..., GcsimArtifactRunResult]
@@ -89,12 +90,14 @@ def run_abyss_wave_scenario_smoke(
 
     enemy_type_mapping = _enemy_type_mapping_from_args(args)
     enemy_type_registry = _enemy_type_registry_from_args(args)
+    snap_title_index = _snap_title_index_from_args(args)
     build = build_abyss_wave_scenario_payload(
         data,
         chamber=args.chamber,
         side=args.side,
         enemy_type_mapping=enemy_type_mapping,
         enemy_type_registry=enemy_type_registry,
+        snap_title_index=snap_title_index,
     )
     report: dict[str, Any] = {
         "success": False,
@@ -167,6 +170,14 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional local GCSIM pkg/shortcut/enemies_gen.go source for known target type matching.",
     )
+    parser.add_argument(
+        "--snap-monster-json",
+        default=None,
+        help=(
+            "Optional Snap monster.json path. Uses only Name -> Title as a "
+            "last-resort enemy type name fallback after normal registry matching fails."
+        ),
+    )
     parser.add_argument("--scenario-out", default=None, help="Path for generated scenario JSON.")
     parser.add_argument("--config", default=None, help="Optional caller-provided GCSIM config path.")
     parser.add_argument("--store-dir", default=None, help="Optional GCSIM engine store root.")
@@ -215,6 +226,15 @@ def _enemy_type_registry_from_args(args: argparse.Namespace):
             args.gcsim_enemy_registry_source
         )
     except (ValueError, OSError) as exc:
+        raise AbyssWaveScenarioSmokeError(str(exc)) from exc
+
+
+def _snap_title_index_from_args(args: argparse.Namespace):
+    if not args.snap_monster_json:
+        return None
+    try:
+        return load_snap_monster_title_index(args.snap_monster_json)
+    except (ValueError, OSError, json.JSONDecodeError) as exc:
         raise AbyssWaveScenarioSmokeError(str(exc)) from exc
 
 

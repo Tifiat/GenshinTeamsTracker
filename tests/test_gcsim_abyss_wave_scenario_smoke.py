@@ -39,6 +39,11 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
             save_abyss_floor_source_data(data, cache_dir=root / "cache")
             scenario_path = root / "scenario.json"
             mapping_path = _write_enemy_type_map(root / "enemy_types.json")
+            snap_path = root / "monster.json"
+            snap_path.write_text(
+                json.dumps([{"Name": "First Enemy", "Title": "First Enemy"}]),
+                encoding="utf-8",
+            )
             stdout = StringIO()
 
             code = main(
@@ -55,6 +60,8 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
                     "1",
                     "--enemy-type-map",
                     str(mapping_path),
+                    "--snap-monster-json",
+                    str(snap_path),
                     "--scenario-out",
                     str(scenario_path),
                     "--format",

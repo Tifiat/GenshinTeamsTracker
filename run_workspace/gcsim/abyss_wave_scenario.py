@@ -29,6 +29,13 @@ from .enemy_type_registry import (
     MATCH_METHOD_AMBIGUOUS,
     MATCH_METHOD_MANUAL_MAPPING,
     MATCH_METHOD_MISSING,
+    MATCH_METHOD_SNAP_TITLE_FALLBACK,
+)
+from .snap_monster_titles import (
+    SNAP_TITLE_SOURCE_KIND,
+    SNAP_TITLE_STATUS_AMBIGUOUS,
+    SNAP_TITLE_STATUS_MISSING,
+    SnapMonsterTitleIndex,
 )
 
 
@@ -167,6 +174,7 @@ class AbyssEnemyTypeMapping:
         row: AbyssEnemySourceRow,
         *,
         enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
+        snap_title_index: SnapMonsterTitleIndex | None = None,
     ) -> AbyssEnemyTypeResolution:
         candidates = abyss_enemy_identity_candidates(row)
         records_by_key = _records_by_key(self.records)
@@ -222,6 +230,14 @@ class AbyssEnemyTypeMapping:
                     warnings=registry_match.warnings,
                 )
             if registry_match.method == MATCH_METHOD_MISSING:
+                snap_resolution = _snap_title_resolution(
+                    row,
+                    candidates,
+                    enemy_type_registry=enemy_type_registry,
+                    snap_title_index=snap_title_index,
+                )
+                if snap_resolution is not None:
+                    return snap_resolution
                 return AbyssEnemyTypeResolution(
                     status="missing_mapping",
                     candidates=candidates,
@@ -245,10 +261,12 @@ class AbyssEnemyTypeMapping:
         row: AbyssEnemySourceRow,
         *,
         enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
+        snap_title_index: SnapMonsterTitleIndex | None = None,
     ) -> str | None:
         resolution = self.resolve_row(
             row,
             enemy_type_registry=enemy_type_registry,
+            snap_title_index=snap_title_index,
         )
         return resolution.gcsim_type if resolution.ready else None
 
@@ -343,6 +361,7 @@ def audit_abyss_wave_scenario(
     side: int,
     enemy_type_mapping: AbyssEnemyTypeMapping | None = None,
     enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
+    snap_title_index: SnapMonsterTitleIndex | None = None,
 ) -> AbyssWaveScenarioAudit:
     selected_side = _select_side(data, chamber=chamber, side=side)
     if selected_side is None:
@@ -358,6 +377,7 @@ def audit_abyss_wave_scenario(
         selected_side,
         enemy_type_mapping=enemy_type_mapping,
         enemy_type_registry=enemy_type_registry,
+        snap_title_index=snap_title_index,
     )
 
 
@@ -368,6 +388,7 @@ def build_abyss_wave_scenario_payload(
     side: int,
     enemy_type_mapping: AbyssEnemyTypeMapping | None = None,
     enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
+    snap_title_index: SnapMonsterTitleIndex | None = None,
 ) -> AbyssWaveScenarioBuildResult:
     selected_side = _select_side(data, chamber=chamber, side=side)
     if selected_side is None:
@@ -385,6 +406,7 @@ def build_abyss_wave_scenario_payload(
         selected_side,
         enemy_type_mapping=enemy_type_mapping,
         enemy_type_registry=enemy_type_registry,
+        snap_title_index=snap_title_index,
     )
     if not audit.ready or (enemy_type_mapping is None and enemy_type_registry is None):
         return AbyssWaveScenarioBuildResult(audit=audit)
@@ -398,6 +420,7 @@ def build_abyss_wave_scenario_payload(
                 resolution = resolver.resolve_row(
                     row,
                     enemy_type_registry=enemy_type_registry,
+                    snap_title_index=snap_title_index,
                 )
                 if not resolution.ready:
                     continue
@@ -631,6 +654,7 @@ def _audit_selected_side(
     *,
     enemy_type_mapping: AbyssEnemyTypeMapping | None,
     enemy_type_registry: GcsimEnemyTypeRegistry | None,
+    snap_title_index: SnapMonsterTitleIndex | None,
 ) -> AbyssWaveScenarioAudit:
     missing_hp: list[str] = []
     missing_level: list[str] = []
@@ -652,6 +676,7 @@ def _audit_selected_side(
             resolution = None if resolver is None else resolver.resolve_row(
                 row,
                 enemy_type_registry=enemy_type_registry,
+                snap_title_index=snap_title_index,
             )
             if row.nanoka_hp is None:
                 missing_hp.append(label)
@@ -717,6 +742,75 @@ def _normalized_enemy_count(row: AbyssEnemySourceRow) -> int:
     return max(0, int(row.enemy_count))
 
 
+def _snap_title_resolution(
+    row: AbyssEnemySourceRow,
+    candidates: tuple[AbyssEnemyIdentityCandidate, ...],
+    *,
+    enemy_type_registry: GcsimEnemyTypeRegistry,
+    snap_title_index: SnapMonsterTitleIndex | None,
+) -> AbyssEnemyTypeResolution | None:
+    if snap_title_index is None:
+        return None
+    lookup = snap_title_index.title_candidates_for_names(abyss_enemy_name_candidates(row))
+    if lookup.status == SNAP_TITLE_STATUS_MISSING:
+        return AbyssEnemyTypeResolution(
+            status="missing_mapping",
+            candidates=candidates,
+            method=MATCH_METHOD_MISSING,
+            warnings=("gcsim_enemy_type_match_missing",) + lookup.warnings,
+        )
+    if lookup.status == SNAP_TITLE_STATUS_AMBIGUOUS:
+        return AbyssEnemyTypeResolution(
+            status="ambiguous_mapping",
+            candidates=candidates,
+            method=MATCH_METHOD_SNAP_TITLE_FALLBACK,
+            selected_identity=_snap_title_identity(lookup.source_name),
+            ambiguous_types=tuple(
+                sorted({candidate.normalized_title for candidate in lookup.candidates})
+            ),
+            warnings=lookup.warnings,
+        )
+
+    title_candidates = tuple(
+        candidate.to_name_candidate() for candidate in lookup.candidates
+    )
+    registry_match = enemy_type_registry.match_name_candidates(title_candidates)
+    selected_identity = _identity_from_name_candidate(
+        registry_match.selected_name,
+        candidates,
+    )
+    if registry_match.ready and registry_match.selected_name is not None:
+        return AbyssEnemyTypeResolution(
+            status="resolved",
+            candidates=candidates,
+            gcsim_type=registry_match.gcsim_type,
+            method=MATCH_METHOD_SNAP_TITLE_FALLBACK,
+            selected_identity=selected_identity,
+            warnings=lookup.warnings + registry_match.warnings,
+        )
+    if registry_match.method == MATCH_METHOD_AMBIGUOUS:
+        return AbyssEnemyTypeResolution(
+            status="ambiguous_mapping",
+            candidates=candidates,
+            method=MATCH_METHOD_SNAP_TITLE_FALLBACK,
+            selected_identity=selected_identity,
+            ambiguous_types=registry_match.ambiguous_types,
+            warnings=lookup.warnings + registry_match.warnings,
+        )
+    missing_title = (
+        lookup.candidates[0].normalized_title if lookup.candidates else "unknown"
+    )
+    return AbyssEnemyTypeResolution(
+        status="missing_mapping",
+        candidates=candidates,
+        method=MATCH_METHOD_SNAP_TITLE_FALLBACK,
+        selected_identity=selected_identity or _snap_title_identity(lookup.source_name),
+        warnings=lookup.warnings
+        + registry_match.warnings
+        + (f"snap_title_registry_match_missing:{missing_title}",),
+    )
+
+
 def _type_mapping_detail(
     label: str,
     row: AbyssEnemySourceRow,
@@ -760,6 +854,14 @@ def _identity_from_name_candidate(
         source_kind=name_candidate.source_kind,
         source_id=name_candidate.source_name,
         source_name=name_candidate.source_name,
+    )
+
+
+def _snap_title_identity(source_name: str) -> AbyssEnemyIdentityCandidate:
+    return AbyssEnemyIdentityCandidate(
+        source_kind=SNAP_TITLE_SOURCE_KIND,
+        source_id=str(source_name or ""),
+        source_name=str(source_name or ""),
     )
 
 

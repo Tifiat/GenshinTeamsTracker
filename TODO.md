@@ -420,9 +420,22 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `run_workspace/gcsim/abyss_wave_scenario.py`: it audits typed
   `AbyssFloorSourceData` chamber/side waves and can produce schema-v1
   `group_clear` payloads only when per-enemy HP/level are present and an
-  explicit `nanoka_monster_id -> GCSIM enemy type` mapping is provided. It does
-  not infer GCSIM type keys from display names. Dev CLI
-  `python -m run_workspace.gcsim.abyss_wave_scenario_smoke` loads current or
+  explicit Abyss enemy source identity -> GCSIM enemy type mapping is provided.
+  Nanoka monster id is the preferred strong identity when present, but it is not
+  the only allowed identity: Fandom enemy page URL/page title/name candidates
+  must remain valid fallback identities, and enemy-type fallback must be
+  independent from HP source fallback. HP may come from Nanoka while GCSIM type
+  resolves through Fandom identity, or HP may come from Fandom fallback while
+  type resolves through Nanoka id. A last-resort debug-only identity source may
+  come from Snap metadata if normal Nanoka/Fandom matching breaks: tower schedule
+  floor id -> tower floor `LevelGroupId` -> tower level monsters -> monster
+  `DescribeId` -> monster `Name`/`Title`. Snap metadata is only a fallback name
+  source for enemy type mapping; it must not be used as HP truth or gameplay
+  stat truth, and it lacks source wave splits, so ordering/group matching is only
+  diagnostic/provisional. Missing Nanoka id alone is not a blocker; the blocker
+  is missing explicit mapping for all available source identities. The bridge
+  must not infer production-ready GCSIM type keys from arbitrary display names.
+  Dev CLI `python -m run_workspace.gcsim.abyss_wave_scenario_smoke` loads current or
   explicit cached Abyss source data, writes this provisional scenario JSON, and
   can optionally pass it with an existing caller-provided config into the active
   artifact runner. Missing cache/source fields or missing enemy type mapping

@@ -103,6 +103,7 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
             self.assertEqual(Path(result.config_path).read_text(encoding="utf-8"), "options iteration=1;")
             self.assertIn("-c", result.command)
             self.assertIn("-out", result.command)
+            self.assertNotIn("-gtt-wave-scenario", result.command)
             self.assertEqual(result.summary.schema_version, "1")
             self.assertEqual(result.summary.sim_version, "sim-test")
             self.assertEqual(result.summary.dps_mean, 12345.5)
@@ -112,6 +113,54 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
             self.assertEqual(result.summary.failed_actions, ("bad action",))
             self.assertEqual(result.summary.incomplete_characters, ("char_missing",))
             self.assertEqual(len(runner.calls), 1)
+
+    def test_successful_fake_artifact_run_passes_gtt_wave_scenario_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _install_active_engine(
+                root,
+                metadata={"artifact_relative_path": "build/gtt-gcsim.exe"},
+                artifact_bytes=b"fake exe",
+            )
+            scenario_path = root / "scenario.json"
+            scenario_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 1,
+                        "spawn_policy": "group_clear",
+                        "waves": [
+                            {
+                                "targets": [
+                                    {
+                                        "level": 100,
+                                        "hp": 1000,
+                                        "radius": 2,
+                                        "pos": [0, 2.4],
+                                        "resist": 0.1,
+                                    }
+                                ]
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            runner = FakeArtifactRunner(_write_result_json)
+
+            result = run_active_gcsim_artifact(
+                "options iteration=1;",
+                gtt_wave_scenario=scenario_path,
+                store_dir=root / "store",
+                run_dir=root / "run",
+                runner=runner,
+            )
+
+            self.assertTrue(result.success)
+            self.assertEqual(result.gtt_wave_scenario_path, str(scenario_path.resolve()))
+            self.assertIn("-gtt-wave-scenario", result.command)
+            scenario_index = result.command.index("-gtt-wave-scenario") + 1
+            self.assertEqual(result.command[scenario_index], str(scenario_path.resolve()))
+            self.assertLess(result.command.index("-gtt-wave-scenario"), result.command.index("-c"))
 
     def test_nonzero_artifact_exit_returns_controlled_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

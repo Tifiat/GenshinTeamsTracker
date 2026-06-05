@@ -54,7 +54,7 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
                 "001-first.patch\n002-second.patch",
             )
 
-    def test_default_gtt_patch_stack_orders_marker_before_wave_prototype(self) -> None:
+    def test_default_gtt_patch_stack_orders_marker_before_wave_payload(self) -> None:
         patch_stack = Path(__file__).resolve().parents[1] / "run_workspace" / "gcsim" / "patch_stack"
 
         patch_files = sorted(
@@ -65,9 +65,14 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
 
         self.assertIn("0001-gtt-engine-marker.patch", patch_files)
         self.assertIn("0002-gtt-sequential-wave-prototype.patch", patch_files)
+        self.assertIn("0003-gtt-wave-scenario-payload.patch", patch_files)
         self.assertLess(
             patch_files.index("0001-gtt-engine-marker.patch"),
             patch_files.index("0002-gtt-sequential-wave-prototype.patch"),
+        )
+        self.assertLess(
+            patch_files.index("0002-gtt-sequential-wave-prototype.patch"),
+            patch_files.index("0003-gtt-wave-scenario-payload.patch"),
         )
 
     def test_missing_git_is_controlled_failure_and_preserves_old_active(self) -> None:

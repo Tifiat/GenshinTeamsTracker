@@ -1,0 +1,456 @@
+diff --git a/cmd/gcsim/main.go b/cmd/gcsim/main.go
+index e3dafec..6196635 100644
+--- a/cmd/gcsim/main.go
++++ b/cmd/gcsim/main.go
+@@ -28,6 +28,7 @@ var (
+ 
+ type opts struct {
+ 	config           string
++	gttWaveScenario  string
+ 	out              string // file result name
+ 	sample           string // file sample name
+ 	sampleMinDps     string // file sample name for the min-DPS run
+@@ -65,6 +66,7 @@ func mainImpl() error {
+ 	var gttInfo bool
+ 	flag.BoolVar(&version, "version", false, "check gcsim version (git hash)")
+ 	flag.BoolVar(&gttInfo, "gtt-info", false, "print GTT engine metadata as JSON")
++	flag.StringVar(&opt.gttWaveScenario, "gtt-wave-scenario", "", "path to GTT wave scenario JSON")
+ 	flag.StringVar(&opt.config, "c", "config.txt", "which profile to use")
+ 	flag.StringVar(&opt.out, "out", "", "output result to file? supply file path (otherwise empty string for disabled). default disabled")
+ 	flag.StringVar(&opt.sample, "sample", "", "create sample result. supply file path (otherwise empty string for disabled). default disabled")
+@@ -157,9 +159,10 @@ can be viewed in the browser via "go tool pprof -http=localhost:3000 mem.prof" (
+ 	}
+ 
+ 	simopt := simulator.Options{
+-		ConfigPath:       opt.config,
+-		ResultSaveToPath: opt.out,
+-		GZIPResult:       opt.gz,
++		ConfigPath:          opt.config,
++		GTTWaveScenarioPath: opt.gttWaveScenario,
++		ResultSaveToPath:    opt.out,
++		GZIPResult:          opt.gz,
+ 	}
+ 
+ 	if opt.substatOptim {
+diff --git a/pkg/core/info/actionlist.go b/pkg/core/info/actionlist.go
+index 0dadfe8..f1d4152 100644
+--- a/pkg/core/info/actionlist.go
++++ b/pkg/core/info/actionlist.go
+@@ -9,15 +9,16 @@ import (
+ )
+ 
+ type ActionList struct {
+-	Targets          []EnemyProfile     `json:"targets"`
+-	InitialPlayerPos Coord              `json:"initial_player_pos"`
+-	Characters       []CharacterProfile `json:"characters"`
+-	InitialChar      keys.Char          `json:"initial_char"`
+-	EnergySettings   EnergySettings     `json:"energy_settings"`
+-	HurtSettings     HurtSettings       `json:"hurt_settings"`
+-	Settings         SimulatorSettings  `json:"settings"`
+-	Errors           []error            `json:"-"` // These represents errors preventing ActionList from being executed
+-	ErrorMsgs        []string           `json:"error_msgs"`
++	Targets                   []EnemyProfile     `json:"targets"`
++	InitialPlayerPos          Coord              `json:"initial_player_pos"`
++	Characters                []CharacterProfile `json:"characters"`
++	InitialChar               keys.Char          `json:"initial_char"`
++	EnergySettings            EnergySettings     `json:"energy_settings"`
++	HurtSettings              HurtSettings       `json:"hurt_settings"`
++	Settings                  SimulatorSettings  `json:"settings"`
++	GTTSequentialWaveScenario [][]EnemyProfile   `json:"-"`
++	Errors                    []error            `json:"-"` // These represents errors preventing ActionList from being executed
++	ErrorMsgs                 []string           `json:"error_msgs"`
+ }
+ 
+ type EnergySettings struct {
+@@ -41,12 +42,12 @@ type HurtSettings struct {
+ }
+ 
+ type SimulatorSettings struct {
+-	Duration                            float64 `json:"-"`
+-	DamageMode                          bool    `json:"damage_mode"`
+-	EnableHitlag                        bool    `json:"enable_hitlag"`
+-	DefHalt                             bool    `json:"def_halt"` // for hitlag
+-	IgnoreBurstEnergy                   bool    `json:"ignore_burst_energy"`
+-	GTTSequentialWavePrototype          bool    `json:"-"`
++	Duration                             float64 `json:"-"`
++	DamageMode                           bool    `json:"damage_mode"`
++	EnableHitlag                         bool    `json:"enable_hitlag"`
++	DefHalt                              bool    `json:"def_halt"` // for hitlag
++	IgnoreBurstEnergy                    bool    `json:"ignore_burst_energy"`
++	GTTSequentialWavePrototype           bool    `json:"-"`
+ 	GTTSequentialWavePrototypeExtraWaves int     `json:"-"`
+ 	// other stuff
+ 	NumberOfWorkers int    `json:"-"`          // how many workers to run the simulation
+@@ -74,6 +75,7 @@ func (a *ActionList) Copy() *ActionList {
+ 	for i := range a.Targets {
+ 		r.Targets[i] = a.Targets[i].Clone()
+ 	}
++	r.GTTSequentialWaveScenario = cloneEnemyProfileWaves(a.GTTSequentialWaveScenario)
+ 
+ 	r.Characters = make([]CharacterProfile, len(a.Characters))
+ 	for i := range a.Characters {
+@@ -83,6 +85,20 @@ func (a *ActionList) Copy() *ActionList {
+ 	return &r
+ }
+ 
++func cloneEnemyProfileWaves(waves [][]EnemyProfile) [][]EnemyProfile {
++	if len(waves) == 0 {
++		return nil
++	}
++	clone := make([][]EnemyProfile, len(waves))
++	for waveIndex := range waves {
++		clone[waveIndex] = make([]EnemyProfile, len(waves[waveIndex]))
++		for targetIndex := range waves[waveIndex] {
++			clone[waveIndex][targetIndex] = waves[waveIndex][targetIndex].Clone()
++		}
++	}
++	return clone
++}
++
+ func (a *ActionList) PrettyPrint() string {
+ 	prettyJSON, err := json.MarshalIndent(a, "", "  ")
+ 	if err != nil {
+diff --git a/pkg/gtt/info.go b/pkg/gtt/info.go
+index c347d60..d980082 100644
+--- a/pkg/gtt/info.go
++++ b/pkg/gtt/info.go
+@@ -5,7 +5,7 @@ import (
+ 	"io"
+ )
+ 
+-const PatchVersion = "gtt-wave-prototype-v1"
++const PatchVersion = "gtt-wave-scenario-v1"
+ 
+ type EngineInfo struct {
+ 	GTTEngine          bool     `json:"gtt_engine"`
+@@ -18,11 +18,11 @@ type EngineInfo struct {
+ 
+ func Info(upstreamVersion string) EngineInfo {
+ 	return EngineInfo{
+-		GTTEngine:       true,
+-		GTTPatchVersion: PatchVersion,
+-		Capabilities:       []string{"gtt_engine_marker", WaveSchedulerPrototypeCapability},
++		GTTEngine:          true,
++		GTTPatchVersion:    PatchVersion,
++		Capabilities:       []string{"gtt_engine_marker", WaveSchedulerPrototypeCapability, WaveScenarioPayloadCapability},
+ 		SequentialWaves:    true,
+-		WaveSchedulerStage: "prototype",
++		WaveSchedulerStage: "scenario_payload_prototype",
+ 		UpstreamVersion:    upstreamVersion,
+ 	}
+ }
+diff --git a/pkg/gtt/waves.go b/pkg/gtt/waves.go
+index 95ded4c..b3ecf18 100644
+--- a/pkg/gtt/waves.go
++++ b/pkg/gtt/waves.go
+@@ -1,11 +1,16 @@
+ package gtt
+ 
+ import (
++	"bytes"
++	"encoding/json"
+ 	"fmt"
++	"os"
+ 	"regexp"
+ 	"strconv"
++	"strings"
+ 
+ 	"github.com/genshinsim/gcsim/pkg/core"
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
+ 	"github.com/genshinsim/gcsim/pkg/core/event"
+ 	"github.com/genshinsim/gcsim/pkg/core/glog"
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
+@@ -13,8 +18,10 @@ import (
+ )
+ 
+ const (
+-	WaveSchedulerPrototypeCapability = "gtt_wave_scheduler_prototype"
+-	WavePrototypeDirective           = "gtt_wave_prototype"
++	WaveSchedulerPrototypeCapability  = "gtt_wave_scheduler_prototype"
++	WaveScenarioPayloadCapability     = "gtt_wave_scenario_payload"
++	WavePrototypeDirective            = "gtt_wave_prototype"
++	WaveScenarioSpawnPolicyGroupClear = "group_clear"
+ )
+ 
+ var (
+@@ -49,17 +56,151 @@ func ApplyConfigDirectives(raw string, cfg *info.ActionList) error {
+ 	return nil
+ }
+ 
++type waveScenarioFile struct {
++	SchemaVersion int                `json:"schema_version"`
++	SpawnPolicy   string             `json:"spawn_policy"`
++	Waves         []waveScenarioWave `json:"waves"`
++}
++
++type waveScenarioWave struct {
++	Targets []waveScenarioTarget `json:"targets"`
++}
++
++type waveScenarioTarget struct {
++	Level  *int      `json:"level"`
++	HP     *float64  `json:"hp"`
++	Radius *float64  `json:"radius"`
++	Pos    []float64 `json:"pos"`
++	Resist *float64  `json:"resist"`
++}
++
++// ApplyWaveScenarioFile applies an explicit structured GTT wave scenario. The
++// first scenario wave replaces the parsed config targets; remaining waves are
++// queued for the sequential wave scheduler. Empty path is a no-op so vanilla
++// configs remain unchanged unless this GTT flag is explicitly provided.
++func ApplyWaveScenarioFile(path string, cfg *info.ActionList) error {
++	if cfg == nil || strings.TrimSpace(path) == "" {
++		return nil
++	}
++	payload, err := loadWaveScenarioFile(path)
++	if err != nil {
++		return err
++	}
++	waves, err := payload.enemyWaves()
++	if err != nil {
++		return err
++	}
++	cfg.Targets = cloneWaveProfiles(waves[0])
++	cfg.GTTSequentialWaveScenario = cloneScenarioWaves(waves[1:])
++	cfg.Settings.DamageMode = true
++	cfg.Settings.GTTSequentialWavePrototype = true
++	cfg.Settings.GTTSequentialWavePrototypeExtraWaves = 0
++	return nil
++}
++
++func loadWaveScenarioFile(path string) (waveScenarioFile, error) {
++	data, err := os.ReadFile(path)
++	if err != nil {
++		return waveScenarioFile{}, fmt.Errorf("gtt wave scenario: could not read %q: %w", path, err)
++	}
++	decoder := json.NewDecoder(bytes.NewReader(data))
++	decoder.DisallowUnknownFields()
++	var payload waveScenarioFile
++	if err := decoder.Decode(&payload); err != nil {
++		return waveScenarioFile{}, fmt.Errorf("gtt wave scenario: invalid JSON in %q: %w", path, err)
++	}
++	return payload, nil
++}
++
++func (payload waveScenarioFile) enemyWaves() ([][]info.EnemyProfile, error) {
++	if payload.SchemaVersion != 1 {
++		return nil, fmt.Errorf("gtt wave scenario: schema_version must be 1")
++	}
++	if payload.SpawnPolicy != WaveScenarioSpawnPolicyGroupClear {
++		return nil, fmt.Errorf("gtt wave scenario: unsupported spawn_policy %q; expected %q", payload.SpawnPolicy, WaveScenarioSpawnPolicyGroupClear)
++	}
++	if len(payload.Waves) == 0 {
++		return nil, fmt.Errorf("gtt wave scenario: waves must contain at least one wave")
++	}
++	waves := make([][]info.EnemyProfile, len(payload.Waves))
++	for waveIndex, wave := range payload.Waves {
++		if len(wave.Targets) == 0 {
++			return nil, fmt.Errorf("gtt wave scenario: waves[%d].targets must contain at least one target", waveIndex)
++		}
++		waves[waveIndex] = make([]info.EnemyProfile, len(wave.Targets))
++		for targetIndex, target := range wave.Targets {
++			profile, err := target.enemyProfile(waveIndex, targetIndex)
++			if err != nil {
++				return nil, err
++			}
++			waves[waveIndex][targetIndex] = profile
++		}
++	}
++	return waves, nil
++}
++
++func (target waveScenarioTarget) enemyProfile(waveIndex int, targetIndex int) (info.EnemyProfile, error) {
++	prefix := fmt.Sprintf("gtt wave scenario: waves[%d].targets[%d]", waveIndex, targetIndex)
++	if target.Level == nil {
++		return info.EnemyProfile{}, fmt.Errorf("%s.level is required", prefix)
++	}
++	if *target.Level < 1 || *target.Level > 100 {
++		return info.EnemyProfile{}, fmt.Errorf("%s.level must be between 1 and 100", prefix)
++	}
++	if target.HP == nil {
++		return info.EnemyProfile{}, fmt.Errorf("%s.hp is required", prefix)
++	}
++	if *target.HP <= 0 {
++		return info.EnemyProfile{}, fmt.Errorf("%s.hp must be greater than 0", prefix)
++	}
++	if target.Radius == nil {
++		return info.EnemyProfile{}, fmt.Errorf("%s.radius is required", prefix)
++	}
++	if *target.Radius <= 0 {
++		return info.EnemyProfile{}, fmt.Errorf("%s.radius must be greater than 0", prefix)
++	}
++	if len(target.Pos) != 2 {
++		return info.EnemyProfile{}, fmt.Errorf("%s.pos must contain exactly two numbers", prefix)
++	}
++	if target.Resist == nil {
++		return info.EnemyProfile{}, fmt.Errorf("%s.resist is required", prefix)
++	}
++	return info.EnemyProfile{
++		Level:       *target.Level,
++		HP:          *target.HP,
++		Resist:      flatResistMap(*target.Resist),
++		Pos:         info.Coord{X: target.Pos[0], Y: target.Pos[1], R: *target.Radius},
++		MonsterName: fmt.Sprintf("gtt_wave_%d_target_%d", waveIndex+1, targetIndex+1),
++		Modified:    true,
++	}, nil
++}
++
++func flatResistMap(value float64) attributes.ElementMap {
++	resist := make(attributes.ElementMap)
++	for _, attr := range []attributes.Element{attributes.Electro, attributes.Cryo, attributes.Hydro, attributes.Physical, attributes.Pyro, attributes.Geo, attributes.Dendro, attributes.Anemo} {
++		resist[attr] = value
++	}
++	return resist
++}
++
+ type SequentialWavePrototypeScheduler struct {
+ 	core      *core.Core
+ 	prototype info.EnemyProfile
+ 	remaining int
+ 	spawned   int
++	waves     [][]info.EnemyProfile
+ }
+ 
+ func NewSequentialWavePrototypeScheduler(c *core.Core, cfg *info.ActionList) *SequentialWavePrototypeScheduler {
+ 	if c == nil || cfg == nil {
+ 		return nil
+ 	}
++	if len(cfg.GTTSequentialWaveScenario) > 0 {
++		return &SequentialWavePrototypeScheduler{
++			core:  c,
++			waves: cloneScenarioWaves(cfg.GTTSequentialWaveScenario),
++		}
++	}
+ 	if !cfg.Settings.GTTSequentialWavePrototype || cfg.Settings.GTTSequentialWavePrototypeExtraWaves <= 0 {
+ 		return nil
+ 	}
+@@ -74,22 +215,65 @@ func NewSequentialWavePrototypeScheduler(c *core.Core, cfg *info.ActionList) *Se
+ }
+ 
+ func (s *SequentialWavePrototypeScheduler) SpawnNextWave() bool {
+-	if s == nil || s.remaining <= 0 {
++	if s == nil {
+ 		return false
+ 	}
+-	profile := s.prototype.Clone()
+-	nextEnemy := enemy.New(s.core, profile)
+-	s.core.Combat.AddEnemy(nextEnemy)
+-	s.core.Combat.DefaultTarget = nextEnemy.Key()
+-	if player := s.core.Combat.Player(); player != nil {
+-		player.SetDirection(nextEnemy.Pos())
++	if len(s.waves) > 0 {
++		profiles := cloneWaveProfiles(s.waves[0])
++		s.waves = s.waves[1:]
++		s.spawned++
++		s.spawnProfiles(profiles)
++		s.core.Log.NewEvent("gtt sequential wave scenario spawned group", glog.LogSimEvent, -1).
++			Write("spawned_wave", s.spawned).
++			Write("remaining_waves", len(s.waves)).
++			Write("target_count", len(profiles))
++		return true
+ 	}
+-	s.core.Events.Emit(event.OnEnemyAdded, nextEnemy)
++	if s.remaining <= 0 {
++		return false
++	}
++	profile := s.prototype.Clone()
++	s.spawnProfiles([]info.EnemyProfile{profile})
+ 	s.remaining--
+ 	s.spawned++
+ 	s.core.Log.NewEvent("gtt sequential wave prototype spawned target", glog.LogSimEvent, -1).
+ 		Write("spawned", s.spawned).
+-		Write("remaining", s.remaining).
+-		Write("target_key", nextEnemy.Key())
++		Write("remaining", s.remaining)
+ 	return true
+ }
++
++func (s *SequentialWavePrototypeScheduler) spawnProfiles(profiles []info.EnemyProfile) {
++	for idx, profile := range profiles {
++		nextEnemy := enemy.New(s.core, profile.Clone())
++		s.core.Combat.AddEnemy(nextEnemy)
++		if idx == 0 {
++			s.core.Combat.DefaultTarget = nextEnemy.Key()
++			if player := s.core.Combat.Player(); player != nil {
++				player.SetDirection(nextEnemy.Pos())
++			}
++		}
++		s.core.Events.Emit(event.OnEnemyAdded, nextEnemy)
++	}
++}
++
++func cloneScenarioWaves(waves [][]info.EnemyProfile) [][]info.EnemyProfile {
++	if len(waves) == 0 {
++		return nil
++	}
++	clone := make([][]info.EnemyProfile, len(waves))
++	for waveIndex := range waves {
++		clone[waveIndex] = cloneWaveProfiles(waves[waveIndex])
++	}
++	return clone
++}
++
++func cloneWaveProfiles(wave []info.EnemyProfile) []info.EnemyProfile {
++	if len(wave) == 0 {
++		return nil
++	}
++	clone := make([]info.EnemyProfile, len(wave))
++	for i := range wave {
++		clone[i] = wave[i].Clone()
++	}
++	return clone
++}
+diff --git a/pkg/simulator/sample.go b/pkg/simulator/sample.go
+index a01caa8..f3f3945 100644
+--- a/pkg/simulator/sample.go
++++ b/pkg/simulator/sample.go
+@@ -6,6 +6,7 @@ import (
+ 
+ 	"github.com/genshinsim/gcsim/pkg/gcs/ast"
+ 	"github.com/genshinsim/gcsim/pkg/gcs/eval"
++	"github.com/genshinsim/gcsim/pkg/gtt"
+ 	"github.com/genshinsim/gcsim/pkg/model"
+ 	"github.com/genshinsim/gcsim/pkg/simulation"
+ 	"google.golang.org/protobuf/types/known/structpb"
+@@ -19,6 +20,12 @@ func GenerateSampleWithSeed(cfg string, seed uint64, opts Options) (*model.Sampl
+ 	if err != nil {
+ 		return &model.Sample{}, err
+ 	}
++	if err := gtt.ApplyConfigDirectives(cfg, simcfg); err != nil {
++		return &model.Sample{}, err
++	}
++	if err := gtt.ApplyWaveScenarioFile(opts.GTTWaveScenarioPath, simcfg); err != nil {
++		return &model.Sample{}, err
++	}
+ 
+ 	c, err := simulation.NewCore(int64(seed), true, simcfg)
+ 	if err != nil {
+diff --git a/pkg/simulator/simulator.go b/pkg/simulator/simulator.go
+index 037dbb1..28bb583 100644
+--- a/pkg/simulator/simulator.go
++++ b/pkg/simulator/simulator.go
+@@ -29,9 +29,10 @@ import (
+ 
+ // Options sets out the settings to run the sim by (such as debug mode, etc..)
+ type Options struct {
+-	ResultSaveToPath string // file name (excluding ext) to save the result file; if "" then nothing is saved to file
+-	GZIPResult       bool   // should the result file be gzipped; only if ResultSaveToPath is not ""
+-	ConfigPath       string // path to the config file to read
++	ResultSaveToPath    string // file name (excluding ext) to save the result file; if "" then nothing is saved to file
++	GZIPResult          bool   // should the result file be gzipped; only if ResultSaveToPath is not ""
++	ConfigPath          string // path to the config file to read
++	GTTWaveScenarioPath string // optional GTT wave scenario JSON file; ignored when empty
+ }
+ 
+ var (
+@@ -107,6 +108,9 @@ func RunWithConfig(ctx context.Context, file *ast.File, cfg string, simcfg *info
+ 	if err := gtt.ApplyConfigDirectives(cfg, simcfg); err != nil {
+ 		return &model.SimulationResult{}, err
+ 	}
++	if err := gtt.ApplyWaveScenarioFile(opts.GTTWaveScenarioPath, simcfg); err != nil {
++		return &model.SimulationResult{}, err
++	}
+ 	return run(ctx, file, cfg, simcfg, gcsl, CryptoRandSeed)
+ }
+ 

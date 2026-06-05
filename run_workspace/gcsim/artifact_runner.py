@@ -70,6 +70,7 @@ class GcsimArtifactRunResult:
     artifact_path: str = ""
     run_dir: str = ""
     config_path: str = ""
+    gtt_wave_scenario_path: str = ""
     result_path: str = ""
     command: tuple[str, ...] = ()
     returncode: int | None = None
@@ -87,6 +88,7 @@ class GcsimArtifactRunResult:
             "artifact_path": self.artifact_path,
             "run_dir": self.run_dir,
             "config_path": self.config_path,
+            "gtt_wave_scenario_path": self.gtt_wave_scenario_path,
             "result_path": self.result_path,
             "command": list(self.command),
             "returncode": self.returncode,
@@ -100,6 +102,7 @@ class GcsimArtifactRunResult:
 def run_active_gcsim_artifact(
     config_text: str,
     *,
+    gtt_wave_scenario: str | Path | None = None,
     store_dir: str | Path | None = None,
     run_dir: str | Path | None = None,
     timeout_seconds: int = DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
@@ -145,14 +148,13 @@ def run_active_gcsim_artifact(
     config_path = actual_run_dir / DEFAULT_GCSIM_CONFIG_FILENAME
     result_path = actual_run_dir / DEFAULT_GCSIM_RESULT_FILENAME
     config_path.write_text(str(config_text), encoding="utf-8")
+    scenario_path = _resolve_optional_path(gtt_wave_scenario)
 
-    command = (
-        str(artifact_path),
-        "-c",
-        config_path.name,
-        "-out",
-        result_path.name,
-    )
+    command = [str(artifact_path)]
+    if scenario_path is not None:
+        command.extend(("-gtt-wave-scenario", str(scenario_path)))
+    command.extend(("-c", config_path.name, "-out", result_path.name))
+    command = tuple(command)
     command_runner = runner or _subprocess_runner
     env = dict(os.environ)
     try:
@@ -166,6 +168,7 @@ def run_active_gcsim_artifact(
             artifact_path=artifact_path,
             run_dir=actual_run_dir,
             config_path=config_path,
+            gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
             result_path=result_path,
             command=command,
             stdout=exc.stdout if isinstance(exc.stdout, str) else "",
@@ -181,6 +184,7 @@ def run_active_gcsim_artifact(
             artifact_path=artifact_path,
             run_dir=actual_run_dir,
             config_path=config_path,
+            gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
             result_path=result_path,
             command=command,
             error=str(exc),
@@ -195,6 +199,7 @@ def run_active_gcsim_artifact(
             artifact_path=artifact_path,
             run_dir=actual_run_dir,
             config_path=config_path,
+            gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
             result_path=result_path,
             command=command,
             returncode=completed.returncode,
@@ -211,6 +216,7 @@ def run_active_gcsim_artifact(
             artifact_path=artifact_path,
             run_dir=actual_run_dir,
             config_path=config_path,
+            gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
             result_path=result_path,
             command=command,
             returncode=completed.returncode,
@@ -230,6 +236,7 @@ def run_active_gcsim_artifact(
             artifact_path=artifact_path,
             run_dir=actual_run_dir,
             config_path=config_path,
+            gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
             result_path=result_path,
             command=command,
             returncode=completed.returncode,
@@ -246,6 +253,7 @@ def run_active_gcsim_artifact(
         artifact_path=artifact_path,
         run_dir=actual_run_dir,
         config_path=config_path,
+        gtt_wave_scenario_path="" if scenario_path is None else scenario_path,
         result_path=result_path,
         command=command,
         returncode=completed.returncode,
@@ -299,6 +307,15 @@ def _active_artifact_path(engine_path: Path, metadata: Mapping[str, str]) -> Pat
             return path
         return engine_path / path
     return None
+
+
+def _resolve_optional_path(path: str | Path | None) -> Path | None:
+    if path is None:
+        return None
+    raw = str(path).strip()
+    if not raw:
+        return None
+    return Path(raw).expanduser().resolve()
 
 
 def _subprocess_runner(
@@ -385,6 +402,7 @@ def _run_result(
     artifact_path: str | Path = "",
     run_dir: str | Path = "",
     config_path: str | Path = "",
+    gtt_wave_scenario_path: str | Path = "",
     result_path: str | Path = "",
     command: Sequence[str] = (),
     returncode: int | None = None,
@@ -401,6 +419,9 @@ def _run_result(
         artifact_path=str(artifact_path) if str(artifact_path) else "",
         run_dir=str(run_dir) if str(run_dir) else "",
         config_path=str(config_path) if str(config_path) else "",
+        gtt_wave_scenario_path=str(gtt_wave_scenario_path)
+        if str(gtt_wave_scenario_path)
+        else "",
         result_path=str(result_path) if str(result_path) else "",
         command=tuple(str(part) for part in command),
         returncode=returncode,

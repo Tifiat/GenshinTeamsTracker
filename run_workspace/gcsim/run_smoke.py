@@ -18,6 +18,11 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     parser.add_argument("--config", required=True, help="Path to a GCSIM config text file.")
+    parser.add_argument(
+        "--gtt-wave-scenario",
+        default=None,
+        help="Optional path to a GTT wave scenario JSON payload.",
+    )
     parser.add_argument("--store-dir", default=None, help="Optional engine store root.")
     parser.add_argument("--run-dir", default=None, help="Optional output run directory.")
     parser.add_argument(
@@ -33,6 +38,7 @@ def main(argv: list[str] | None = None) -> int:
     config_text = config_path.read_text(encoding="utf-8-sig")
     result = run_active_gcsim_artifact(
         config_text,
+        gtt_wave_scenario=args.gtt_wave_scenario,
         store_dir=args.store_dir,
         run_dir=args.run_dir,
         timeout_seconds=args.timeout,
@@ -52,6 +58,7 @@ def _format_text(result) -> str:
         f"engine_id={result.engine_id}",
         f"artifact={result.artifact_path}",
         f"run_dir={result.run_dir}",
+        f"gtt_wave_scenario={result.gtt_wave_scenario_path}",
         f"result_json={result.result_path}",
         (
             "summary="

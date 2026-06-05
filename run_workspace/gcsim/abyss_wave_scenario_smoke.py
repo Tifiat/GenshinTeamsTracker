@@ -5,8 +5,10 @@ This command is a backend-only bridge around the provisional
 requires either explicit enemy type overrides or an optional GCSIM enemy type
 registry matcher, writes a schema-v1 payload, and can optionally pass that
 payload to the existing active GTT-GCSIM artifact runner with a caller provided
-config. It does not refresh network data, generate account/team GCSIM configs,
-map character/weapon/artifact keys, or model final Abyss wave policy.
+config. It fetches remote Snap.Metadata only when a URL or explicit
+default-remote flag is passed. It does not refresh Abyss network data, generate
+account/team GCSIM configs, map character/weapon/artifact keys, or model final
+Abyss wave policy.
 """
 
 from __future__ import annotations
@@ -39,7 +41,11 @@ from .artifact_runner import (
 )
 from .runtime_probe import DEFAULT_GO_PROBE_TIMEOUT_SECONDS
 from .enemy_type_registry import load_gcsim_enemy_type_registry_from_go_source
-from .snap_monster_titles import load_snap_monster_title_index
+from .snap_monster_titles import (
+    SnapJsonFetcher,
+    load_default_remote_snap_monster_title_index,
+    load_snap_monster_title_index,
+)
 
 
 ArtifactRunFunc = Callable[..., GcsimArtifactRunResult]
@@ -53,6 +59,7 @@ def main(
     argv: list[str] | None = None,
     *,
     artifact_run_func: ArtifactRunFunc = run_active_gcsim_artifact,
+    snap_fetcher: SnapJsonFetcher | None = None,
     stdout: TextIO | None = None,
 ) -> int:
     output = stdout or sys.stdout
@@ -60,7 +67,11 @@ def main(
     args = parser.parse_args(argv)
 
     try:
-        result = run_abyss_wave_scenario_smoke(args, artifact_run_func=artifact_run_func)
+        result = run_abyss_wave_scenario_smoke(
+            args,
+            artifact_run_func=artifact_run_func,
+            snap_fetcher=snap_fetcher,
+        )
     except AbyssWaveScenarioSmokeError as exc:
         report = {"success": False, "status": "input_error", "error": str(exc)}
         _print_report(report, format_name=args.format, stdout=output)
@@ -74,6 +85,7 @@ def run_abyss_wave_scenario_smoke(
     args: argparse.Namespace,
     *,
     artifact_run_func: ArtifactRunFunc = run_active_gcsim_artifact,
+    snap_fetcher: SnapJsonFetcher | None = None,
 ) -> dict[str, Any]:
     data = _load_source_data(args)
     if data is None:
@@ -90,7 +102,7 @@ def run_abyss_wave_scenario_smoke(
 
     enemy_type_mapping = _enemy_type_mapping_from_args(args)
     enemy_type_registry = _enemy_type_registry_from_args(args)
-    snap_title_index = _snap_title_index_from_args(args)
+    snap_title_index = _snap_title_index_from_args(args, fetcher=snap_fetcher)
     build = build_abyss_wave_scenario_payload(
         data,
         chamber=args.chamber,
@@ -106,6 +118,8 @@ def run_abyss_wave_scenario_smoke(
         "audit": build.audit.to_dict(),
         "scenario_path": "",
     }
+    if snap_title_index is not None:
+        report["snap_source"] = snap_title_index.source_report()
     if not build.ready or build.payload is None:
         return report
 
@@ -174,8 +188,17 @@ def _build_parser() -> argparse.ArgumentParser:
         "--snap-monster-json",
         default=None,
         help=(
-            "Optional Snap monster.json path. Uses only Name -> Title as a "
-            "last-resort enemy type name fallback after normal registry matching fails."
+            "Optional Snap Monster.json path or URL. Uses only Name -> Title as a "
+            "last-resort enemy type name fallback after normal registry matching fails. "
+            "GitHub blob URLs are converted to raw content URLs."
+        ),
+    )
+    parser.add_argument(
+        "--use-default-remote-snap-monster-json",
+        action="store_true",
+        help=(
+            "Fetch the official Snap.Metadata Genshin/EN/Monster.json over HTTPS. "
+            "No Git checkout or local file is required."
         ),
     )
     parser.add_argument("--scenario-out", default=None, help="Path for generated scenario JSON.")
@@ -229,11 +252,24 @@ def _enemy_type_registry_from_args(args: argparse.Namespace):
         raise AbyssWaveScenarioSmokeError(str(exc)) from exc
 
 
-def _snap_title_index_from_args(args: argparse.Namespace):
+def _snap_title_index_from_args(
+    args: argparse.Namespace,
+    *,
+    fetcher: SnapJsonFetcher | None = None,
+):
+    if args.snap_monster_json and args.use_default_remote_snap_monster_json:
+        raise AbyssWaveScenarioSmokeError(
+            "Use either --snap-monster-json or --use-default-remote-snap-monster-json, not both."
+        )
+    if args.use_default_remote_snap_monster_json:
+        try:
+            return load_default_remote_snap_monster_title_index(fetcher=fetcher)
+        except (ValueError, OSError, json.JSONDecodeError) as exc:
+            raise AbyssWaveScenarioSmokeError(str(exc)) from exc
     if not args.snap_monster_json:
         return None
     try:
-        return load_snap_monster_title_index(args.snap_monster_json)
+        return load_snap_monster_title_index(args.snap_monster_json, fetcher=fetcher)
     except (ValueError, OSError, json.JSONDecodeError) as exc:
         raise AbyssWaveScenarioSmokeError(str(exc)) from exc
 
@@ -281,6 +317,14 @@ def _format_text(report: dict[str, Any]) -> str:
             f"mode={source.get('mode', '')} "
             f"period_start={source.get('period_start', '')} "
             f"floor={source.get('floor', '')}"
+        )
+    snap_source = report.get("snap_source")
+    if isinstance(snap_source, dict) and snap_source.get("kind"):
+        lines.append(
+            "snap_source="
+            f"kind={snap_source.get('kind', '')} "
+            f"source={snap_source.get('source', '')} "
+            f"resolved_url={snap_source.get('resolved_url', '')}"
         )
     audit = report.get("audit")
     if isinstance(audit, dict):

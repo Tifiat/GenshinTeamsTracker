@@ -3,7 +3,8 @@
 This checker is intentionally narrow: it reads existing cached Abyss source-data
 plus optional explicit enemy type overrides and a GCSIM enemy type registry,
 then reports readiness coverage. It does not fetch network data, mutate caches,
-run GCSIM, or use fuzzy display-name similarity as production truth.
+run GCSIM, or use fuzzy display-name similarity as production truth. It fetches
+remote Snap.Metadata only when a URL or explicit default-remote flag is passed.
 """
 
 from __future__ import annotations
@@ -31,7 +32,12 @@ from .enemy_type_registry import (
     GcsimEnemyTypeRegistry,
     load_gcsim_enemy_type_registry_from_go_source,
 )
-from .snap_monster_titles import SnapMonsterTitleIndex, load_snap_monster_title_index
+from .snap_monster_titles import (
+    SnapJsonFetcher,
+    SnapMonsterTitleIndex,
+    load_default_remote_snap_monster_title_index,
+    load_snap_monster_title_index,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +56,7 @@ class AbyssEnemyTypeCoverageReport:
     resolved_rows: tuple[dict[str, Any], ...]
     unresolved_rows: tuple[dict[str, Any], ...]
     ambiguous_rows: tuple[dict[str, Any], ...]
+    snap_source: dict[str, str] | None = None
     warnings: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
@@ -68,6 +75,7 @@ class AbyssEnemyTypeCoverageReport:
             "resolved_rows": list(self.resolved_rows),
             "unresolved_rows": list(self.unresolved_rows),
             "ambiguous_rows": list(self.ambiguous_rows),
+            "snap_source": self.snap_source,
             "warnings": list(self.warnings),
         }
 
@@ -134,10 +142,16 @@ def build_abyss_enemy_type_coverage_report(
         resolved_rows=tuple(resolved_rows),
         unresolved_rows=tuple(unresolved_rows),
         ambiguous_rows=tuple(ambiguous_rows),
+        snap_source=None if snap_title_index is None else snap_title_index.source_report(),
     )
 
 
-def main(argv: list[str] | None = None, *, stdout: TextIO | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    stdout: TextIO | None = None,
+    snap_fetcher: SnapJsonFetcher | None = None,
+) -> int:
     output = stdout or sys.stdout
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -148,11 +162,11 @@ def main(argv: list[str] | None = None, *, stdout: TextIO | None = None) -> int:
             else None
         )
         enemy_type_registry = _enemy_type_registry_from_args(args)
-        snap_title_index = _snap_title_index_from_args(args)
         if mapping is None and enemy_type_registry is None:
             raise ValueError(
                 "Provide --enemy-type-map and/or --gcsim-enemy-registry-source."
             )
+        snap_title_index = _snap_title_index_from_args(args, fetcher=snap_fetcher)
         source_entries = _load_source_entries(args)
         source_data = [source for _path, source in source_entries]
     except (AbyssSourceDataCacheError, ValueError, OSError, json.JSONDecodeError) as exc:
@@ -190,8 +204,17 @@ def _build_parser() -> argparse.ArgumentParser:
         "--snap-monster-json",
         default=None,
         help=(
-            "Optional Snap monster.json path. Uses only Name -> Title as a "
-            "last-resort enemy type name fallback after normal registry matching fails."
+            "Optional Snap Monster.json path or URL. Uses only Name -> Title as a "
+            "last-resort enemy type name fallback after normal registry matching fails. "
+            "GitHub blob URLs are converted to raw content URLs."
+        ),
+    )
+    parser.add_argument(
+        "--use-default-remote-snap-monster-json",
+        action="store_true",
+        help=(
+            "Fetch the official Snap.Metadata Genshin/EN/Monster.json over HTTPS. "
+            "No Git checkout or local file is required."
         ),
     )
     parser.add_argument(
@@ -281,10 +304,20 @@ def _enemy_type_registry_from_args(args: argparse.Namespace) -> GcsimEnemyTypeRe
     )
 
 
-def _snap_title_index_from_args(args: argparse.Namespace) -> SnapMonsterTitleIndex | None:
+def _snap_title_index_from_args(
+    args: argparse.Namespace,
+    *,
+    fetcher: SnapJsonFetcher | None = None,
+) -> SnapMonsterTitleIndex | None:
+    if args.snap_monster_json and args.use_default_remote_snap_monster_json:
+        raise ValueError(
+            "Use either --snap-monster-json or --use-default-remote-snap-monster-json, not both."
+        )
+    if args.use_default_remote_snap_monster_json:
+        return load_default_remote_snap_monster_title_index(fetcher=fetcher)
     if not args.snap_monster_json:
         return None
-    return load_snap_monster_title_index(args.snap_monster_json)
+    return load_snap_monster_title_index(args.snap_monster_json, fetcher=fetcher)
 
 
 def _scan_cache_files(
@@ -410,6 +443,14 @@ def _format_text(payload: dict[str, Any]) -> str:
                 ),
             ]
         )
+        snap_source = report.get("snap_source")
+        if isinstance(snap_source, dict) and snap_source.get("kind"):
+            lines.append(
+                "snap_source="
+                f"kind={snap_source.get('kind', '')} "
+                f"source={snap_source.get('source', '')} "
+                f"resolved_url={snap_source.get('resolved_url', '')}"
+            )
         if unresolved_rows:
             lines.append("unresolved_rows=" + _compact_row_list(unresolved_rows))
         if ambiguous_rows:

@@ -1,9 +1,9 @@
 """Opt-in Snap monster Name -> Title fallback for GCSIM enemy type matching.
 
-This helper intentionally reads only the `Name` and `Title` fields from an
-explicit caller-provided Snap `monster.json`. It is a last-resort name/title
-bridge for enemy type matching and must not be used as HP, stat, resist, wave,
-or enemy-count truth.
+This helper intentionally reads only the `Name` and `Title` fields from either
+the official remote Snap.Metadata `Monster.json` or an explicit dev/offline
+local file. It is a last-resort name/title bridge for enemy type matching and
+must not be used as HP, stat, resist, wave, or enemy-count truth.
 """
 
 from __future__ import annotations
@@ -12,15 +12,35 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
+from urllib.request import Request, urlopen
 
 from .enemy_type_registry import GcsimEnemyNameCandidate, normalize_gcsim_enemy_name
 
+
+DEFAULT_SNAP_MONSTER_GITHUB_URL = (
+    "https://github.com/wangdage12/Snap.Metadata/blob/main/Genshin/EN/Monster.json"
+)
+DEFAULT_SNAP_MONSTER_RAW_URL = (
+    "https://raw.githubusercontent.com/wangdage12/Snap.Metadata/main/Genshin/EN/Monster.json"
+)
+DEFAULT_SNAP_MONSTER_FETCH_TIMEOUT_SECONDS = 20.0
 
 SNAP_TITLE_SOURCE_KIND = "snap_monster_title"
 SNAP_TITLE_STATUS_MISSING = "missing"
 SNAP_TITLE_STATUS_RESOLVED = "resolved"
 SNAP_TITLE_STATUS_AMBIGUOUS = "ambiguous"
+SNAP_SOURCE_KIND_LOCAL_PATH = "local_path"
+SNAP_SOURCE_KIND_REMOTE_URL = "remote_url"
+SNAP_SOURCE_KIND_DEFAULT_REMOTE_URL = "default_remote_url"
+
+SnapJsonFetcher = Callable[[str, float], str | bytes]
+
+
+class SnapMonsterTitleSourceError(ValueError):
+    """Raised for controlled Snap source loading errors."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +95,9 @@ class SnapMonsterTitleLookup:
 class SnapMonsterTitleIndex:
     titles_by_normalized_name: Mapping[str, tuple[SnapMonsterTitleCandidate, ...]]
     source_path: str = ""
+    source_kind: str = ""
+    source_ref: str = ""
+    resolved_url: str = ""
 
     def lookup(self, source_name: str) -> SnapMonsterTitleLookup:
         normalized = normalize_gcsim_enemy_name(source_name)
@@ -152,10 +175,96 @@ class SnapMonsterTitleIndex:
         )
 
 
-def load_snap_monster_title_index(path: str | Path) -> SnapMonsterTitleIndex:
-    source_path = Path(path)
-    payload = json.loads(source_path.read_text(encoding="utf-8-sig"))
-    records = _monster_records(payload)
+    def source_report(self) -> dict[str, str]:
+        return {
+            "kind": self.source_kind,
+            "source": self.source_ref or self.source_path,
+            "resolved_url": self.resolved_url,
+        }
+
+
+def load_snap_monster_title_index(
+    source: str | Path,
+    *,
+    fetcher: SnapJsonFetcher | None = None,
+    timeout_seconds: float = DEFAULT_SNAP_MONSTER_FETCH_TIMEOUT_SECONDS,
+    source_kind: str | None = None,
+) -> SnapMonsterTitleIndex:
+    source_ref = str(source)
+    if _is_http_url(source_ref):
+        resolved_url = snap_monster_raw_url(source_ref)
+        payload = _load_remote_snap_json(
+            resolved_url,
+            fetcher=fetcher,
+            timeout_seconds=timeout_seconds,
+        )
+        return _index_from_payload(
+            payload,
+            source_path=source_ref,
+            source_kind=source_kind or SNAP_SOURCE_KIND_REMOTE_URL,
+            source_ref=source_ref,
+            resolved_url=resolved_url,
+        )
+    source_path = Path(source)
+    try:
+        payload = json.loads(source_path.read_text(encoding="utf-8-sig"))
+    except json.JSONDecodeError as exc:
+        raise SnapMonsterTitleSourceError(
+            f"Snap monster JSON invalid JSON at {source_path}: {exc}"
+        ) from exc
+    except OSError as exc:
+        raise SnapMonsterTitleSourceError(
+            f"Snap monster JSON local file unavailable at {source_path}: {exc}"
+        ) from exc
+    return _index_from_payload(
+        payload,
+        source_path=str(source_path),
+        source_kind=source_kind or SNAP_SOURCE_KIND_LOCAL_PATH,
+        source_ref=str(source_path),
+    )
+
+
+def load_default_remote_snap_monster_title_index(
+    *,
+    fetcher: SnapJsonFetcher | None = None,
+    timeout_seconds: float = DEFAULT_SNAP_MONSTER_FETCH_TIMEOUT_SECONDS,
+) -> SnapMonsterTitleIndex:
+    return load_snap_monster_title_index(
+        DEFAULT_SNAP_MONSTER_GITHUB_URL,
+        fetcher=fetcher,
+        timeout_seconds=timeout_seconds,
+        source_kind=SNAP_SOURCE_KIND_DEFAULT_REMOTE_URL,
+    )
+
+
+def snap_monster_raw_url(source_url: str) -> str:
+    parsed = urlparse(source_url)
+    if parsed.scheme not in {"http", "https"}:
+        raise SnapMonsterTitleSourceError(f"Snap monster URL must use HTTP(S): {source_url}")
+    if parsed.netloc.casefold() == "raw.githubusercontent.com":
+        return source_url
+    if parsed.netloc.casefold() != "github.com":
+        return source_url
+    parts = [part for part in parsed.path.split("/") if part]
+    if len(parts) < 5 or parts[2] != "blob":
+        return source_url
+    owner, repo, _blob, branch = parts[:4]
+    raw_path = "/".join(parts[4:])
+    return f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{raw_path}"
+
+
+def _index_from_payload(
+    payload: Any,
+    *,
+    source_path: str,
+    source_kind: str,
+    source_ref: str,
+    resolved_url: str = "",
+) -> SnapMonsterTitleIndex:
+    try:
+        records = _monster_records(payload)
+    except ValueError as exc:
+        raise SnapMonsterTitleSourceError(str(exc)) from exc
     grouped: dict[str, list[SnapMonsterTitleCandidate]] = {}
     seen: set[tuple[str, str]] = set()
     for record in records:
@@ -178,8 +287,47 @@ def load_snap_monster_title_index(path: str | Path) -> SnapMonsterTitleIndex:
         titles_by_normalized_name={
             name: tuple(candidates) for name, candidates in grouped.items()
         },
-        source_path=str(source_path),
+        source_path=source_path,
+        source_kind=source_kind,
+        source_ref=source_ref,
+        resolved_url=resolved_url,
     )
+
+
+def _load_remote_snap_json(
+    url: str,
+    *,
+    fetcher: SnapJsonFetcher | None,
+    timeout_seconds: float,
+) -> Any:
+    try:
+        raw = fetcher(url, timeout_seconds) if fetcher else _fetch_url_text(url, timeout_seconds)
+    except HTTPError as exc:
+        raise SnapMonsterTitleSourceError(
+            f"Snap monster JSON HTTP error {exc.code} for {url}: {exc.reason}"
+        ) from exc
+    except (URLError, TimeoutError, OSError) as exc:
+        raise SnapMonsterTitleSourceError(
+            f"Snap monster JSON remote fetch failed for {url}: {exc}"
+        ) from exc
+    try:
+        text = raw.decode("utf-8-sig") if isinstance(raw, bytes) else str(raw)
+        return json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise SnapMonsterTitleSourceError(
+            f"Snap monster JSON invalid JSON from {url}: {exc}"
+        ) from exc
+
+
+def _fetch_url_text(url: str, timeout_seconds: float) -> str:
+    request = Request(url, headers={"User-Agent": "GenshinTeamsTracker-dev"})
+    with urlopen(request, timeout=timeout_seconds) as response:
+        return response.read().decode("utf-8-sig")
+
+
+def _is_http_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return parsed.scheme in {"http", "https"}
 
 
 def _monster_records(payload: Any) -> list[Any]:

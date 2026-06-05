@@ -429,29 +429,37 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   must remain valid fallback identities, and enemy-type fallback must be
   independent from HP source fallback. HP may come from Nanoka while GCSIM type
   resolves through Fandom/name identity, or HP may come from Fandom fallback while
-  type resolves through Nanoka/name identity. Optional explicit Snap
-  `monster.json` support now exists in
-  `run_workspace/gcsim/snap_monster_titles.py` as a last-resort enemy
-  `Name -> Title` fallback after manual overrides, normal registry exact/base
-  matching, and small aliases fail. Only `Name` and `Title` are read; Snap
-  metadata must not be used as HP/stat/resist/wave/count truth or as source-data
-  replacement. The fallback is intended for too-specific source names such as
-  Arkhe suffixes and Tenebrous Mimesis forms, and duplicate normalized Snap
-  `Name` records with different `Title` values are reported as ambiguous. If
-  even the Snap `Title` does not exact/base-match the registry, the final
-  last-resort matcher may resolve a unique GCSIM target whose key contains the
-  full normalized Snap title (`snap_title_contains_target`); multiple containing
-  targets remain ambiguous. This covers cases such as `Tenebrous Papilla: Type
-  II -> Tenebrous Papilla -> tenebrouspapillatypei` without turning arbitrary
-  display-name fuzziness into production truth.
+  type resolves through Nanoka/name identity. Optional explicit Snap.Metadata
+  support now exists in `run_workspace/gcsim/snap_monster_titles.py` as a
+  last-resort enemy `Name -> Title` fallback after manual overrides, normal
+  registry exact/base matching, and small aliases fail. The primary contract is
+  the official online Snap.Metadata file
+  `https://github.com/wangdage12/Snap.Metadata/blob/main/Genshin/EN/Monster.json`;
+  the loader converts GitHub blob URLs to raw HTTPS content and reads the JSON
+  into memory once per checker/smoke run. No Git install, repository checkout,
+  or persisted downloaded JSON is required. A local file path remains supported
+  only as an explicit dev/offline/debug input, not as the normal app contract.
+  Only `Name` and `Title` are read; Snap metadata must not be used as
+  HP/stat/resist/wave/count truth or as source-data replacement. The fallback is
+  intended for too-specific source names such as Arkhe suffixes and Tenebrous
+  Mimesis forms, and duplicate normalized Snap `Name` records with different
+  `Title` values are reported as ambiguous. If even the Snap `Title` does not
+  exact/base-match the registry, the final last-resort matcher may resolve a
+  unique GCSIM target whose key contains the full normalized Snap title
+  (`snap_title_contains_target`); multiple containing targets remain ambiguous.
+  This covers cases such as `Tenebrous Papilla: Type II -> Tenebrous Papilla ->
+  tenebrouspapillatypei` without turning arbitrary display-name fuzziness into
+  production truth.
   Missing Nanoka id alone is not a blocker; the blocker is missing any safe
   explicit or automatic compatible GCSIM target type. The bridge must not infer
   production-ready GCSIM type keys from arbitrary fuzzy/display-name similarity.
   Dev CLI `python -m run_workspace.gcsim.abyss_wave_scenario_smoke` loads current or
   explicit cached Abyss source data, writes this provisional scenario JSON, and
   can optionally pass it with an existing caller-provided config into the active
-  artifact runner. It accepts `--snap-monster-json path` only as the explicit
-  last-resort `Name -> Title` enemy type fallback described above. Missing
+  artifact runner. It accepts `--snap-monster-json PATH_OR_URL` and
+  `--use-default-remote-snap-monster-json` for the explicit last-resort
+  `Name -> Title` enemy type fallback described above. Remote Snap fetch
+  failures, invalid JSON, and invalid shape are controlled input errors. Missing
   cache/source fields or missing enemy type mapping prints audit and exits
   nonzero without writing/running a misleading scenario.
   Enemy type mapping JSON now supports explicit records with `source_kind`,
@@ -464,13 +472,19 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   narrow. It reports cache file count, source rows, resolution counts by method
   and identity kind, missing/ambiguous type mappings, HP-present/type-missing
   rows, type-present/HP-missing rows, compact unresolved/ambiguous row lists,
-  and JSON resolved-row details without fetching, mutating caches, running GCSIM,
-  or touching UI. It accepts `--snap-monster-json path`; Snap fallback
+  and JSON resolved-row details without mutating caches, running GCSIM, or
+  touching UI. It accepts `--snap-monster-json PATH_OR_URL` and
+  `--use-default-remote-snap-monster-json`; remote Snap fetch happens only when
+  a URL/default flag is explicitly provided, and the report records whether the
+  source was a local path, remote URL, or default remote URL. Snap fallback
   resolutions are counted separately as `snap_title_fallback` and final
   containing-target resolutions as `snap_title_contains_target`, so exact/base
-  coverage remains visible. Use it to validate matcher behavior on real cached
-  Abyss rows. Missing/ambiguous rows should drive small matcher or alias fixes,
-  not a full hand-written enemy mapping table.
+  coverage remains visible. Current real-code-path diagnostic against the
+  official remote Snap URL over the 8 cached source files / 96 rows resolved 88
+  exact, 7 `snap_title_fallback`, 1 `snap_title_contains_target`, 0 missing, and
+  0 ambiguous. Use it to validate matcher behavior on real cached Abyss rows.
+  Missing/ambiguous rows should drive small matcher or alias fixes, not a full
+  hand-written enemy mapping table.
   Backend/dev GCSIM enemy type registry matcher exists in
   `run_workspace/gcsim/enemy_type_registry.py`. It can parse known target type
   keys from local prepared GCSIM `pkg/shortcut/enemies_gen.go` and match Abyss

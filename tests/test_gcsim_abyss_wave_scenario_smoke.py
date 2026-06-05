@@ -12,6 +12,12 @@ from run_workspace.gcsim.artifact_runner import (
     GcsimArtifactRunResult,
     GcsimResultSummary,
 )
+from run_workspace.gcsim.snap_monster_titles import (
+    DEFAULT_SNAP_MONSTER_GITHUB_URL,
+    DEFAULT_SNAP_MONSTER_RAW_URL,
+    SNAP_SOURCE_KIND_DEFAULT_REMOTE_URL,
+    SNAP_SOURCE_KIND_REMOTE_URL,
+)
 from tests.test_gcsim_abyss_wave_scenario import _source_data
 
 
@@ -120,6 +126,85 @@ class GcsimAbyssWaveScenarioSmokeTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertTrue(scenario_exists)
         self.assertEqual(report["source"]["mode"], "current_cached_period")
+
+    def test_snap_monster_json_url_uses_fake_fetcher(self) -> None:
+        calls: list[str] = []
+
+        def fake_fetch(url: str, _timeout: float) -> str:
+            calls.append(url)
+            return json.dumps([{"Name": "First Enemy", "Title": "First Enemy"}])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            save_abyss_floor_source_data(_source_data(), cache_dir=root / "cache")
+            scenario_path = root / "scenario.json"
+            mapping_path = _write_enemy_type_map(root / "enemy_types.json")
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--period-start",
+                    "2026-05-16",
+                    "--cache-dir",
+                    str(root / "cache"),
+                    "--chamber",
+                    "1",
+                    "--side",
+                    "1",
+                    "--enemy-type-map",
+                    str(mapping_path),
+                    "--snap-monster-json",
+                    DEFAULT_SNAP_MONSTER_GITHUB_URL,
+                    "--scenario-out",
+                    str(scenario_path),
+                    "--format",
+                    "json",
+                ],
+                snap_fetcher=fake_fetch,
+                stdout=stdout,
+            )
+            report = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [DEFAULT_SNAP_MONSTER_RAW_URL])
+        self.assertEqual(report["snap_source"]["kind"], SNAP_SOURCE_KIND_REMOTE_URL)
+
+    def test_default_remote_snap_monster_json_uses_fake_fetcher(self) -> None:
+        def fake_fetch(_url: str, _timeout: float) -> str:
+            return json.dumps([{"Name": "First Enemy", "Title": "First Enemy"}])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            save_abyss_floor_source_data(_source_data(), cache_dir=root / "cache")
+            scenario_path = root / "scenario.json"
+            mapping_path = _write_enemy_type_map(root / "enemy_types.json")
+            stdout = StringIO()
+
+            code = main(
+                [
+                    "--period-start",
+                    "2026-05-16",
+                    "--cache-dir",
+                    str(root / "cache"),
+                    "--chamber",
+                    "1",
+                    "--side",
+                    "1",
+                    "--enemy-type-map",
+                    str(mapping_path),
+                    "--use-default-remote-snap-monster-json",
+                    "--scenario-out",
+                    str(scenario_path),
+                    "--format",
+                    "json",
+                ],
+                snap_fetcher=fake_fetch,
+                stdout=stdout,
+            )
+            report = json.loads(stdout.getvalue())
+
+        self.assertEqual(code, 0)
+        self.assertEqual(report["snap_source"]["kind"], SNAP_SOURCE_KIND_DEFAULT_REMOTE_URL)
 
     def test_missing_enemy_type_mapping_reports_not_ready_without_writing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

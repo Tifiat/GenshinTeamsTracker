@@ -1,0 +1,25 @@
+# Backend/dev rotation shell only.
+# Character/equipment/artifact blocks are generated separately from prepared
+# backend account/build data. The target below is only a parser placeholder;
+# when used with GTT-GCSIM, -gtt-wave-scenario is the source of enemy waves,
+# HP, and target types.
+options swap_delay=12 iteration=1000;
+energy every interval=480,720 amount=1;
+target lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;
+
+active furina;
+
+for let i=0; i<4; i=i+1 {
+  if is_even(i) {
+    furina skill, dash, burst;
+  }
+  ororon burst, skill;
+  bennett skill, burst;
+  chasca skill;
+  chasca aim:4;
+  chasca aim[bullets=4];
+  if is_even(i) {
+    chasca burst;
+  }
+}
+wait(82);

@@ -622,6 +622,19 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   not-ready results with no partial config text. It still does not generate a
   full GCSIM config, query UI/account storage, create mapping data, run an
   artifact, or wire UI.
+  Backend/dev full-config assembly foundation has been added in
+  `run_workspace/gcsim/config_assembly.py`, with a shell-only Chasca/Ororon/
+  Furina/Bennett rotation fixture at
+  `run_workspace/gcsim/smoke_fixtures/rotation_chasca_ororon_furina_bennett.txt`.
+  The shell supplies only options, energy, active character, placeholder target,
+  and rotation script; generated character/equipment/artifact blocks must come
+  from prepared backend state, and enemy/wave/HP/type truth remains the
+  generated `-gtt-wave-scenario` payload. The assembler rejects shells that
+  contain manual `char`/`add weapon`/`add set`/`add stats` lines and emits no
+  partial full config when any character block is not ready. Explicit prepared
+  input adapter boundary lives in `run_workspace/gcsim/prepared_config_adapter.py`;
+  it consumes dev JSON/dict fixtures only, does not access UI/storage/network,
+  and ignores final/right-panel stat fields instead of using them as `add stats`.
   Backend shipped fallback artifact resolver exists in
   `run_workspace/gcsim/shipped_artifact.py`; runner support in
   `run_workspace/gcsim/artifact_runner.py` is explicit opt-in and uses a ready

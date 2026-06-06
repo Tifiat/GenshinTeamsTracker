@@ -116,6 +116,62 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         self.assertIn("Failed action buckets: 1:skill_cd", text)
         self.assertIn("DPS correctness claim: false", text)
 
+    def test_formats_selected_chamber_separates_expected_notes(self) -> None:
+        payload = {
+            "ready": True,
+            "status": "ready",
+            "error_category": "",
+            "selection": {
+                "team_label": "Team 1",
+                "side": 1,
+                "chamber": 1,
+                "period_start": "2026-06-01",
+                "floor": 12,
+            },
+            "smoke": {"status": "run_passed", "run_result": {"summary": {}}},
+            "warnings": [
+                "dev_talent_order_skill_id_assumed",
+                "artifact_set_auto_registry_mapping_not_curated",
+                "runtime_warning",
+            ],
+        }
+
+        text = format_gcsim_browser_run_report(payload)
+
+        self.assertIn("Expected/dev notes:", text)
+        self.assertIn("  - dev_talent_order_skill_id_assumed", text)
+        self.assertIn("  - artifact_set_auto_registry_mapping_not_curated", text)
+        self.assertIn("Real warnings/issues:", text)
+        self.assertIn("  - runtime_warning", text)
+        self.assertNotIn("\nWarnings:", text)
+
+    def test_formats_selected_chamber_expected_notes_without_real_warning_section(self) -> None:
+        payload = {
+            "ready": True,
+            "status": "ready",
+            "error_category": "",
+            "selection": {
+                "team_label": "Team 1",
+                "side": 1,
+                "chamber": 1,
+                "period_start": "2026-06-01",
+                "floor": 12,
+            },
+            "smoke": {"status": "run_passed", "run_result": {"summary": {}}},
+            "warnings": [
+                "prepared_fixture_adapter_boundary",
+                "dev_energy_line_appended_no_existing_energy_line",
+            ],
+        }
+
+        text = format_gcsim_browser_run_report(payload)
+
+        self.assertIn("Expected/dev notes:", text)
+        self.assertIn("  - prepared_fixture_adapter_boundary", text)
+        self.assertIn("  - dev_energy_line_appended_no_existing_energy_line", text)
+        self.assertNotIn("Real warnings/issues:", text)
+        self.assertNotIn("\nWarnings:", text)
+
     def test_missing_abyss_source_identity_does_not_use_backend_default(self) -> None:
         payload = run_gcsim_browser_selected_chamber(
             GcsimBrowserRunRequest(
@@ -183,6 +239,53 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         self.assertIn("C2: status=run_failed error_category=gcsim_runtime_error", text)
         self.assertIn("scenario_hp=4.43e+06", text)
         self.assertIn("DPS correctness claim: false", text)
+
+    def test_formats_batch_report_separates_expected_notes(self) -> None:
+        payload = {
+            "batch_status": "partial_failed",
+            "success": False,
+            "selection": {
+                "team_label": "Team 1",
+                "side": 1,
+                "period_start": "2026-06-01",
+                "floor": 12,
+            },
+            "chambers": [
+                _chamber_payload(
+                    1,
+                    success=True,
+                    status="run_passed",
+                    warnings=("shell_target_placeholder_not_enemy_truth",),
+                ),
+                _chamber_payload(
+                    2,
+                    success=False,
+                    status="run_failed",
+                    error_category=ERROR_GCSIM_RUNTIME_ERROR,
+                    warnings=(
+                        "artifact_set_count_below_two_ignored",
+                        "runtime_warning",
+                    ),
+                ),
+            ],
+            "warnings": [
+                "shell_target_placeholder_not_enemy_truth",
+                "artifact_set_count_below_two_ignored",
+                "runtime_warning",
+            ],
+        }
+
+        text = format_gcsim_browser_batch_report(payload)
+
+        self.assertIn("Expected/dev notes:", text)
+        self.assertIn("  - shell_target_placeholder_not_enemy_truth", text)
+        self.assertIn("  - artifact_set_count_below_two_ignored", text)
+        self.assertIn("Real warnings/issues:", text)
+        self.assertIn("  - runtime_warning", text)
+        self.assertIn("    notes=shell_target_placeholder_not_enemy_truth", text)
+        self.assertIn("    notes=artifact_set_count_below_two_ignored", text)
+        self.assertIn("    warnings=runtime_warning", text)
+        self.assertNotIn("\nWarnings:", text)
 
 
 def _chamber_payload(

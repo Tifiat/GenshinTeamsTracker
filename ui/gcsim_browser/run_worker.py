@@ -24,6 +24,17 @@ WARNING_ABYSS_PREVIEW_SCENARIO_SOURCE_MISMATCH = (
     "abyss_preview_scenario_source_mismatch"
 )
 WARNING_ABYSS_SOURCE_IDENTITY_MISSING = "abyss_source_identity_missing_no_default_used"
+EXPECTED_DEV_WARNING_IDS = frozenset(
+    {
+        "dev_talent_order_skill_id_assumed",
+        "artifact_set_auto_registry_mapping_not_curated",
+        "prepared_fixture_adapter_boundary",
+        "no_ui_or_storage_access",
+        "artifact_set_count_below_two_ignored",
+        "shell_target_placeholder_not_enemy_truth",
+        "dev_energy_line_appended_no_existing_energy_line",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,6 +251,20 @@ def _batch_status(chambers: list[dict[str, Any]]) -> str:
     return "failed"
 
 
+def split_gcsim_browser_warnings(warnings: Any) -> tuple[list[str], list[str]]:
+    expected_notes: list[str] = []
+    real_warnings: list[str] = []
+    for warning in warnings or []:
+        text = str(warning)
+        if not text:
+            continue
+        if text in EXPECTED_DEV_WARNING_IDS:
+            expected_notes.append(text)
+        else:
+            real_warnings.append(text)
+    return _dedupe(expected_notes), _dedupe(real_warnings)
+
+
 def format_gcsim_browser_run_report(payload: dict[str, Any]) -> str:
     selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else {}
     smoke = payload.get("smoke") if isinstance(payload.get("smoke"), dict) else {}
@@ -319,9 +344,7 @@ def format_gcsim_browser_run_report(payload: dict[str, Any]) -> str:
                 continue
             lines.append("  - " + _character_line(character))
 
-    warnings = payload.get("warnings") or []
-    if warnings:
-        lines.extend(["", "Warnings:", *[f"  - {warning}" for warning in warnings]])
+    _extend_warning_sections(lines, payload.get("warnings") or [])
     error = str(payload.get("error") or "")
     if error:
         lines.extend(["", f"Error: {error}"])
@@ -351,9 +374,7 @@ def format_gcsim_browser_batch_report(payload: dict[str, Any]) -> str:
         if not isinstance(chamber_payload, dict):
             continue
         lines.extend(_batch_chamber_lines(chamber_payload))
-    warnings = payload.get("warnings") or []
-    if warnings:
-        lines.extend(["", "Warnings:", *[f"  - {warning}" for warning in warnings]])
+    _extend_warning_sections(lines, payload.get("warnings") or [])
     error = str(payload.get("error") or "")
     if error:
         lines.extend(["", f"Error: {error}"])
@@ -387,15 +408,37 @@ def _batch_chamber_lines(payload: dict[str, Any]) -> list[str]:
             f"targets={scenario.get('target_count', '-')}"
         )
     ]
-    warnings = payload.get("warnings") or []
-    if warnings:
-        lines.append(
-            "    warnings=" + ", ".join(str(warning) for warning in warnings)
-        )
+    expected_notes, real_warnings = split_gcsim_browser_warnings(
+        payload.get("warnings") or []
+    )
+    if expected_notes:
+        lines.append("    notes=" + ", ".join(expected_notes))
+    if real_warnings:
+        lines.append("    warnings=" + ", ".join(real_warnings))
     error = str(payload.get("error") or "")
     if error:
         lines.append(f"    error={error}")
     return lines
+
+
+def _extend_warning_sections(lines: list[str], warnings: Any) -> None:
+    expected_notes, real_warnings = split_gcsim_browser_warnings(warnings)
+    if expected_notes:
+        lines.extend(
+            [
+                "",
+                "Expected/dev notes:",
+                *[f"  - {warning}" for warning in expected_notes],
+            ]
+        )
+    if real_warnings:
+        lines.extend(
+            [
+                "",
+                "Real warnings/issues:",
+                *[f"  - {warning}" for warning in real_warnings],
+            ]
+        )
 
 
 def _character_line(character: dict[str, Any]) -> str:

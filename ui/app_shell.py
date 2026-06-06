@@ -96,6 +96,9 @@ from ui.right_panel_prototype import (
     make_mode_tab_button,
     right_panel_stylesheet,
 )
+from run_workspace.gcsim.account_prepared_config import (
+    build_account_prepared_full_config_report,
+)
 from run_workspace.perf import log_perf, perf_ms, perf_now
 from ui.utils.filter_button_style import (
     FILTER_BUTTON_ICON_SIZE,
@@ -674,6 +677,27 @@ class AppShellController:
             previews.append(tuple(team_slots))
         return tuple(previews)
 
+    def gcsim_browser_team_names(self, team_index: int) -> tuple[str, ...]:
+        try:
+            team = self.state.team(int(team_index))
+        except IndexError:
+            return ()
+        names: list[str] = []
+        for slot in team.slots:
+            if slot.character is None:
+                continue
+            details = _mapping(slot.character_details_data)
+            character = _mapping(details.get("account_character")) or slot.character.to_dict()
+            name = (
+                _text(character.get("catalog_english_name"))
+                or _text(character.get("gcsim_character_key"))
+                or _text(character.get("name"))
+                or _text(slot.character.name)
+            )
+            if name:
+                names.append(name)
+        return tuple(names)
+
     def gcsim_browser_abyss_targets_preview(
         self,
     ) -> tuple[str, tuple[tuple[str, ...], ...]]:
@@ -1231,6 +1255,9 @@ class AppShell(QWidget):
         self.right_dock.account_page.fact_dps_multi_target_changed.connect(
             self._on_fact_dps_multi_target_changed
         )
+        self.left_host.gcsim_browser_workspace.prepare_requested.connect(
+            self._on_gcsim_prepare_requested
+        )
 
         self._right_panel_refresh_pending = False
         self._right_panel_refresh_timer = QTimer(self)
@@ -1522,6 +1549,41 @@ class AppShell(QWidget):
             team_previews=self.controller.gcsim_browser_team_previews(),
             target_mode_label=target_mode_label,
             targets_preview_by_team=targets_preview_by_team,
+        )
+
+    def _on_gcsim_prepare_requested(
+        self,
+        team_index: int,
+        rotation_shell_text: str,
+    ) -> None:
+        team_names = self.controller.gcsim_browser_team_names(team_index)
+        if not team_names:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Prepare failed: active team has no characters."
+            )
+            return
+
+        run_dir = PROJECT_ROOT / "data" / "gcsim" / "runs" / "gcsim-browser-prepare"
+        rotation_shell_path = run_dir / "rotation_shell.txt"
+        try:
+            run_dir.mkdir(parents=True, exist_ok=True)
+            rotation_shell_path.write_text(rotation_shell_text, encoding="utf-8")
+            report = build_account_prepared_full_config_report(
+                db_path=self.controller.equipment_db_path,
+                team_names=team_names,
+                rotation_shell_path=rotation_shell_path,
+                run_dir=run_dir,
+                write_config=True,
+                run_abyss_smoke=False,
+            )
+        except Exception as exc:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                f"Prepare failed: {exc}"
+            )
+            return
+
+        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+            _gcsim_prepare_report_text(report.to_dict())
         )
 
     def _on_artifact_browser_equipment_changed(self, result: object) -> None:
@@ -2063,6 +2125,42 @@ class LeftWorkspaceHost(QWidget):
             target_mode_label=target_mode_label,
             preview_by_team=targets_preview_by_team,
         )
+
+
+def _gcsim_prepare_report_text(payload: dict[str, Any]) -> str:
+    lines = [
+        f"Prepare status: {payload.get('status', '-')}",
+        f"Ready: {payload.get('ready', False)}",
+        f"Config path: {payload.get('config_path') or '-'}",
+        "GCSIM run: not started",
+        "",
+        "Characters:",
+    ]
+    team = _mapping(payload.get("team"))
+    for character in team.get("characters") or []:
+        row = _mapping(character)
+        account_character = _mapping(row.get("account_character"))
+        weapon = _mapping(row.get("weapon"))
+        sets = [
+            f"{item.get('set_key') or item.get('set_uid') or item.get('set_name')}:{item.get('count')}"
+            for item in row.get("artifact_set_counts") or []
+            if isinstance(item, dict)
+        ]
+        lines.append(
+            "  - "
+            f"{account_character.get('catalog_english_name') or account_character.get('name') or row.get('requested_name')}: "
+            f"{row.get('status')} | "
+            f"weapon={weapon.get('catalog_english_name') or weapon.get('name') or '-'} "
+            f"({row.get('weapon_selection_method') or '-'}) | "
+            f"sets={', '.join(sets) if sets else '-'}"
+        )
+    warnings = payload.get("warnings") or []
+    if warnings:
+        lines.extend(["", "Warnings:", *[f"  - {warning}" for warning in warnings]])
+    issues = payload.get("issues") or []
+    if issues:
+        lines.extend(["", "Issues:", *[f"  - {issue}" for issue in issues]])
+    return "\n".join(lines)
 
 
 class RightDockHeader(QWidget):

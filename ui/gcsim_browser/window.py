@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -21,7 +21,13 @@ from localization import tr
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
 
 
-DEFAULT_ROTATION_CODE = """for let i=0; i<4; i=i+1 {
+DEFAULT_ROTATION_CODE = """options swap_delay=12 iteration=1000;
+energy every interval=480,720 amount=100;
+target lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;
+
+active furina;
+
+for let i=0; i<4; i=i+1 {
   if is_even(i) {
     furina skill, dash, burst;
   }
@@ -47,6 +53,8 @@ class GcsimBrowserTeamSlotPreview:
 
 
 class GcsimBrowserWorkspace(QWidget):
+    prepare_requested = Signal(int, str)
+
     """First visual shell for the future GCSIM Browser.
 
     This widget is intentionally UI-only:
@@ -168,7 +176,8 @@ class GcsimBrowserWorkspace(QWidget):
         actions.setContentsMargins(0, 0, 0, 0)
         actions.setSpacing(6)
         self.prepare_button = QPushButton()
-        self.prepare_button.setEnabled(False)
+        self.prepare_button.setEnabled(True)
+        self.prepare_button.clicked.connect(self._request_prepare_config)
         self.run_selected_button = QPushButton()
         self.run_selected_button.setEnabled(False)
         self.run_all_button = QPushButton()
@@ -360,6 +369,21 @@ class GcsimBrowserWorkspace(QWidget):
         return _fallback(
             "gcsim.browser.targets_placeholder",
             "Chamber waves, enemy HP and resolved GCSIM target types will appear here.",
+        )
+
+    def _request_prepare_config(self) -> None:
+        team_index = max(0, int(self.team_tabs.currentIndex()))
+        if self._mode == MODE_DPS_DUMMY:
+            team_index = 0
+        self.results_placeholder.setText(
+            _fallback("gcsim.browser.prepare_requested", "Preparing config...")
+        )
+        self.prepare_requested.emit(team_index, self.rotation_editor.toPlainText())
+
+    def set_prepare_result_text(self, text: str) -> None:
+        self.results_placeholder.setText(
+            text.strip()
+            or _fallback("gcsim.browser.results_placeholder", "No prepare report.")
         )
 
 

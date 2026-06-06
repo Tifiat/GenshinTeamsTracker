@@ -716,6 +716,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - compact team readiness cards: character, weapon, set summary, ready/issues;
   - GCSIM total-stats tooltip/report for each character, to compare against right-panel/account stats;
   - Abyss target browser: C1/C2/C3, side by team, waves, enemy names, levels, HP, and resolved GCSIM target types;
+  - Later visual polish: render Abyss enemies as compact horizontal cards similar to Nanoka enemy cards, with icon, name, level, HP, wave grouping, and compact use of horizontal space instead of long vertical plain-text lists.
   - current solo/multi target toggle controls which targets are sent to GCSIM;
   - current wave policy remains `group_clear`; stack/rolling replacement stays future work;
   - temporary run-defaults block shows iterations and boosted-energy status; later move defaults to GCSIM settings;

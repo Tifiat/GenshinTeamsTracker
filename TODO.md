@@ -721,7 +721,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - current wave policy remains `group_clear`; stack/rolling replacement stays future work;
   - temporary run-defaults block shows iterations and boosted-energy status; later move defaults to GCSIM settings;
   - raw GCSIM rotation-code editor is required in the MVP; visual/button-based rotation building is later/optional;
-  - run action should calculate the active team rotation against the three corresponding Abyss chambers and write Sim DPS/clear-time results back to the right panel while also showing detailed per-chamber result/warnings/config info in the browser.
+  - current implemented first run action is `Run selected chamber`: it maps active Team 1/Team 2 tab to Abyss side 1/2, uses the selected C1/C2/C3 button, runs asynchronously through `ui/gcsim_browser/run_worker.py`, and writes config/scenario paths, observed duration, DPS summary, warnings, failed action buckets, incomplete characters, and controlled error category only into the GCSIM Browser Results panel. It does not write Sim DPS/clear-time back to the right panel yet.
+  - later run action should calculate the active team rotation against the three corresponding Abyss chambers and write Sim DPS/clear-time results back to the right panel while also showing detailed per-chamber result/warnings/config info in the browser.
 - First UI should prioritize readiness reports, generated config visibility, run results, warnings/stderr, and clear error categories over visual polish.
 - Each team/run card should eventually have simulator action, GCSIM logo/label, and compact result area for sim DPS/clear time.
 - Clicking the GCSIM logo should show a dialog like "Open GCSIM website?" before opening the official GCSIM site, for useful attribution and license/credit clarity.

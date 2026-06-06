@@ -9,7 +9,7 @@ from pathlib import Path
 from collections.abc import Callable, Iterable
 from typing import Any
 
-from PySide6.QtCore import QEvent, QRect, QSize, QTimer, Qt, Signal
+from PySide6.QtCore import QEvent, QRect, QSize, QThread, QTimer, Qt, Signal
 from PySide6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -88,6 +88,11 @@ from ui.account_data_page import AccountDataPage
 from ui.gcsim_browser.window import (
     GcsimBrowserTeamSlotPreview,
     GcsimBrowserWorkspace,
+)
+from ui.gcsim_browser.run_worker import (
+    GcsimBrowserRunRequest,
+    GcsimBrowserRunWorker,
+    format_gcsim_browser_run_report,
 )
 from ui.right_panel_prototype import (
     RIGHT_PANEL_PROTOTYPE_MIN_WIDTH,
@@ -1258,6 +1263,11 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.prepare_requested.connect(
             self._on_gcsim_prepare_requested
         )
+        self.left_host.gcsim_browser_workspace.run_selected_requested.connect(
+            self._on_gcsim_run_selected_requested
+        )
+        self._gcsim_browser_run_thread: QThread | None = None
+        self._gcsim_browser_run_worker: GcsimBrowserRunWorker | None = None
 
         self._right_panel_refresh_pending = False
         self._right_panel_refresh_timer = QTimer(self)
@@ -1585,6 +1595,64 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.set_prepare_result_text(
             _gcsim_prepare_report_text(report.to_dict())
         )
+
+    def _on_gcsim_run_selected_requested(
+        self,
+        team_index: int,
+        chamber: int,
+        rotation_shell_text: str,
+    ) -> None:
+        if self._gcsim_browser_run_thread is not None:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run selected chamber: already running."
+            )
+            return
+        normalized_team_index = max(0, min(1, int(team_index)))
+        team_names = self.controller.gcsim_browser_team_names(normalized_team_index)
+        if not team_names:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run selected chamber failed: active team has no characters."
+            )
+            return
+
+        side = 1 if normalized_team_index == 0 else 2
+        request = GcsimBrowserRunRequest(
+            db_path=str(self.controller.equipment_db_path),
+            team_names=team_names,
+            team_index=normalized_team_index,
+            chamber=max(1, min(3, int(chamber))),
+            side=side,
+            rotation_shell_text=rotation_shell_text,
+        )
+        worker = GcsimBrowserRunWorker(request)
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._on_gcsim_run_selected_finished)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._clear_gcsim_run_worker_refs)
+        self._gcsim_browser_run_worker = worker
+        self._gcsim_browser_run_thread = thread
+        self.left_host.gcsim_browser_workspace.set_actions_busy(
+            True,
+            message=(
+                f"Running selected chamber: Team {normalized_team_index + 1} "
+                f"/ C{request.chamber} / side {side}..."
+            ),
+        )
+        thread.start()
+
+    def _on_gcsim_run_selected_finished(self, payload: dict) -> None:
+        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+            format_gcsim_browser_run_report(dict(payload))
+        )
+
+    def _clear_gcsim_run_worker_refs(self) -> None:
+        self._gcsim_browser_run_thread = None
+        self._gcsim_browser_run_worker = None
+        self.left_host.gcsim_browser_workspace.set_actions_busy(False)
 
     def _on_artifact_browser_equipment_changed(self, result: object) -> None:
         affected_ids = {

@@ -64,6 +64,12 @@ class GcsimBrowserWorkspace(QWidget):
     ) -> None:
         super().__init__(parent)
         self._mode = mode if mode in {MODE_ABYSS, MODE_DPS_DUMMY} else MODE_ABYSS
+        self._team_previews: list[list[GcsimBrowserTeamSlotPreview]] = [
+            [GcsimBrowserTeamSlotPreview() for _ in range(4)],
+            [GcsimBrowserTeamSlotPreview() for _ in range(4)],
+        ]
+        self._team_cards: list[list[_TeamCard]] = []
+        self._team_notes: list[QLabel] = []
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -87,7 +93,9 @@ class GcsimBrowserWorkspace(QWidget):
         self.title_label.setObjectName("GcsimBrowserTitle")
         header.addWidget(self.title_label, 1)
         self.status_label = QLabel()
-        self.status_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self.status_label.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
         header.addWidget(self.status_label, 0)
         layout.addLayout(header)
 
@@ -110,7 +118,7 @@ class GcsimBrowserWorkspace(QWidget):
         chamber_row.setContentsMargins(0, 0, 0, 0)
         chamber_row.setSpacing(6)
         self.chamber_buttons: list[QPushButton] = []
-        for index in range(3):
+        for _index in range(3):
             button = QPushButton()
             button.setCheckable(True)
             button.setEnabled(False)
@@ -123,7 +131,9 @@ class GcsimBrowserWorkspace(QWidget):
 
         self.targets_placeholder = QLabel()
         self.targets_placeholder.setWordWrap(True)
-        self.targets_placeholder.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.targets_placeholder.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
         targets_layout.addWidget(self.targets_placeholder)
         layout.addWidget(self.targets_section)
 
@@ -167,7 +177,9 @@ class GcsimBrowserWorkspace(QWidget):
         results_layout.addWidget(self.results_title)
         self.results_placeholder = QLabel()
         self.results_placeholder.setWordWrap(True)
-        self.results_placeholder.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.results_placeholder.setAlignment(
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft
+        )
         results_layout.addWidget(self.results_placeholder)
         layout.addWidget(self.results_section)
 
@@ -187,36 +199,45 @@ class GcsimBrowserWorkspace(QWidget):
         team_index: int,
         slots: list[GcsimBrowserTeamSlotPreview],
     ) -> None:
-        if team_index < 0 or team_index >= len(self.team_tab_widgets):
+        if team_index < 0 or team_index >= len(self._team_cards):
             return
-        grid = self.team_tab_widgets[team_index].findChild(QGridLayout)
-        if grid is None:
-            return
-        for slot_index, slot in enumerate(slots[:4]):
-            card = self.team_tab_widgets[team_index].findChild(
-                QFrame,
-                f"gcsimTeamCard{team_index}_{slot_index}",
-            )
-            if card is None:
-                continue
-            labels = card.findChildren(QLabel)
-            if len(labels) < 4:
-                continue
-            labels[0].setText(slot.name or _fallback("gcsim.browser.empty_slot", "Empty slot"))
-            labels[1].setText(slot.weapon or _fallback("gcsim.browser.weapon_pending", "Weapon: pending"))
-            labels[2].setText(slot.sets or _fallback("gcsim.browser.sets_pending", "Sets: pending"))
-            labels[3].setText(slot.status or _fallback("gcsim.browser.status_placeholder", "Not checked"))
+        normalized_slots = list(slots[:4])
+        while len(normalized_slots) < 4:
+            normalized_slots.append(GcsimBrowserTeamSlotPreview())
+        self._team_previews[team_index] = normalized_slots
+        for slot_index, card in enumerate(self._team_cards[team_index]):
+            card.set_preview(normalized_slots[slot_index])
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(_fallback("gcsim.browser.title", "GCSIM Browser"))
         self.status_label.setText(
-            _fallback("gcsim.browser.status_skeleton", "UI skeleton · backend not connected")
+            _fallback(
+                "gcsim.browser.status_skeleton",
+                "UI skeleton · backend not connected",
+            )
         )
         self.team_tabs.setTabText(0, _fallback("gcsim.browser.team_1", "Team 1"))
         self.team_tabs.setTabText(1, _fallback("gcsim.browser.team_2", "Team 2"))
-        self.targets_title.setText(_fallback("gcsim.browser.targets", "Abyss targets"))
+
+        for note in self._team_notes:
+            note.setText(
+                _fallback(
+                    "gcsim.browser.team_placeholder",
+                    "Readiness will be computed from current runtime team state later.",
+                )
+            )
+        for team_index, cards in enumerate(self._team_cards):
+            for slot_index, card in enumerate(cards):
+                card.set_preview(self._team_previews[team_index][slot_index])
+
+        self.targets_title.setText(
+            _fallback("gcsim.browser.targets", "Abyss targets")
+        )
         self.target_mode_label.setText(
-            _fallback("gcsim.browser.target_mode_placeholder", "Target mode: follows right panel")
+            _fallback(
+                "gcsim.browser.target_mode_placeholder",
+                "Target mode: follows right panel",
+            )
         )
         for index, button in enumerate(self.chamber_buttons, start=1):
             button.setText(f"C{index}")
@@ -226,19 +247,30 @@ class GcsimBrowserWorkspace(QWidget):
                 "Chamber waves, enemy HP and resolved GCSIM target types will appear here.",
             )
         )
-        self.defaults_title.setText(_fallback("gcsim.browser.defaults", "Run defaults"))
+
+        self.defaults_title.setText(
+            _fallback("gcsim.browser.defaults", "Run defaults")
+        )
         self.defaults_label.setText(
             _fallback(
                 "gcsim.browser.defaults_placeholder",
                 "Iterations: 100 · Boosted energy: dev-only placeholder",
             )
         )
-        self.rotation_title.setText(_fallback("gcsim.browser.rotation", "Rotation code"))
-        self.prepare_button.setText(_fallback("gcsim.browser.prepare", "Prepare config"))
+
+        self.rotation_title.setText(
+            _fallback("gcsim.browser.rotation", "Rotation code")
+        )
+        self.prepare_button.setText(
+            _fallback("gcsim.browser.prepare", "Prepare config")
+        )
         self.run_selected_button.setText(
             _fallback("gcsim.browser.run_selected", "Run selected chamber")
         )
-        self.run_all_button.setText(_fallback("gcsim.browser.run_all", "Run 3 chambers"))
+        self.run_all_button.setText(
+            _fallback("gcsim.browser.run_all", "Run 3 chambers")
+        )
+
         self.results_title.setText(_fallback("gcsim.browser.results", "Results"))
         self.results_placeholder.setText(
             _fallback(
@@ -259,18 +291,19 @@ class GcsimBrowserWorkspace(QWidget):
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setHorizontalSpacing(8)
         grid.setVerticalSpacing(8)
+
+        cards: list[_TeamCard] = []
         for slot_index in range(4):
-            card = _make_team_card(team_index, slot_index)
+            card = _TeamCard()
+            card.setObjectName(f"gcsimTeamCard{team_index}_{slot_index}")
             grid.addWidget(card, 0, slot_index)
+            cards.append(card)
+        self._team_cards.append(cards)
         layout.addWidget(grid_widget)
 
-        note = QLabel(
-            _fallback(
-                "gcsim.browser.team_placeholder",
-                "Readiness will be computed from current runtime team state later.",
-            )
-        )
+        note = QLabel()
         note.setWordWrap(True)
+        self._team_notes.append(note)
         layout.addWidget(note)
         return tab
 
@@ -280,24 +313,48 @@ class GcsimBrowserWorkspace(QWidget):
         self.targets_section.setVisible(is_abyss)
 
 
-def _make_team_card(team_index: int, slot_index: int) -> QFrame:
-    card = QFrame()
-    card.setObjectName(f"gcsimTeamCard{team_index}_{slot_index}")
-    card.setFrameShape(QFrame.Shape.StyledPanel)
-    card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-    layout = QVBoxLayout(card)
-    layout.setContentsMargins(8, 8, 8, 8)
-    layout.setSpacing(4)
+class _TeamCard(QFrame):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setFrameShape(QFrame.Shape.StyledPanel)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-    name = QLabel(_fallback("gcsim.browser.empty_slot", "Empty slot"))
-    name.setObjectName("GcsimBrowserTeamName")
-    weapon = QLabel(_fallback("gcsim.browser.weapon_pending", "Weapon: pending"))
-    sets = QLabel(_fallback("gcsim.browser.sets_pending", "Sets: pending"))
-    status = QLabel(_fallback("gcsim.browser.status_placeholder", "Not checked"))
-    for label in (name, weapon, sets, status):
-        label.setWordWrap(True)
-        layout.addWidget(label)
-    return card
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(4)
+
+        self.name_label = QLabel()
+        self.name_label.setObjectName("GcsimBrowserTeamName")
+        self.weapon_label = QLabel()
+        self.sets_label = QLabel()
+        self.status_label = QLabel()
+
+        for label in (
+            self.name_label,
+            self.weapon_label,
+            self.sets_label,
+            self.status_label,
+        ):
+            label.setWordWrap(True)
+            layout.addWidget(label)
+
+        self.set_preview(GcsimBrowserTeamSlotPreview())
+
+    def set_preview(self, preview: GcsimBrowserTeamSlotPreview) -> None:
+        self.name_label.setText(
+            preview.name or _fallback("gcsim.browser.empty_slot", "Empty slot")
+        )
+        self.weapon_label.setText(
+            preview.weapon
+            or _fallback("gcsim.browser.weapon_pending", "Weapon: pending")
+        )
+        self.sets_label.setText(
+            preview.sets or _fallback("gcsim.browser.sets_pending", "Build: pending")
+        )
+        self.status_label.setText(
+            preview.status
+            or _fallback("gcsim.browser.status_placeholder", "Not checked")
+        )
 
 
 def _make_section() -> tuple[QFrame, QVBoxLayout]:

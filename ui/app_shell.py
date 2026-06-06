@@ -674,9 +674,11 @@ class AppShellController:
             previews.append(tuple(team_slots))
         return tuple(previews)
 
-    def gcsim_browser_abyss_targets_preview(self) -> tuple[str, str]:
+    def gcsim_browser_abyss_targets_preview(
+        self,
+    ) -> tuple[str, tuple[tuple[str, ...], ...]]:
         if self.mode != MODE_ABYSS:
-            return "", ""
+            return "", ((), ())
         chamber_rows = build_abyss_chamber_rows(
             self.abyss_timer_states,
             abyss_source_data=self.cached_abyss_source_data(),
@@ -687,24 +689,34 @@ class AppShellController:
             if self.abyss_fact_dps_multi_target_enabled
             else "Target mode: solo target"
         )
-        lines: list[str] = []
+        team1_chambers: list[str] = []
+        team2_chambers: list[str] = []
         for row in chamber_rows:
-            lines.append(row.chamber_label)
-            lines.append("  Team 1 / first half:")
-            lines.extend(
-                f"    {line}"
-                for line in self._gcsim_browser_fact_tooltip_lines(
-                    row.factual_team1_tooltip
+            team1_chambers.append(
+                self._gcsim_browser_chamber_preview_text(
+                    row.chamber_label,
+                    "Team 1 / first half",
+                    row.factual_team1_tooltip,
                 )
             )
-            lines.append("  Team 2 / second half:")
-            lines.extend(
-                f"    {line}"
-                for line in self._gcsim_browser_fact_tooltip_lines(
-                    row.factual_team2_tooltip
+            team2_chambers.append(
+                self._gcsim_browser_chamber_preview_text(
+                    row.chamber_label,
+                    "Team 2 / second half",
+                    row.factual_team2_tooltip,
                 )
             )
-        return mode_label, "\n".join(lines)
+        return mode_label, (tuple(team1_chambers), tuple(team2_chambers))
+
+    def _gcsim_browser_chamber_preview_text(
+        self,
+        chamber_label: str,
+        side_label: str,
+        tooltip: object | None,
+    ) -> str:
+        lines = [f"{chamber_label} / {side_label}"]
+        lines.extend(self._gcsim_browser_fact_tooltip_lines(tooltip))
+        return "\n".join(lines)
 
     def _gcsim_browser_fact_tooltip_lines(self, tooltip: object | None) -> list[str]:
         if tooltip is None:
@@ -1502,14 +1514,14 @@ class AppShell(QWidget):
         )
 
     def _sync_gcsim_browser_context(self) -> None:
-        target_mode_label, targets_preview = (
+        target_mode_label, targets_preview_by_team = (
             self.controller.gcsim_browser_abyss_targets_preview()
         )
         self.left_host.set_gcsim_browser_context(
             mode=self.controller.mode,
             team_previews=self.controller.gcsim_browser_team_previews(),
             target_mode_label=target_mode_label,
-            targets_preview=targets_preview,
+            targets_preview_by_team=targets_preview_by_team,
         )
 
     def _on_artifact_browser_equipment_changed(self, result: object) -> None:
@@ -2039,7 +2051,7 @@ class LeftWorkspaceHost(QWidget):
         mode: str,
         team_previews: tuple[tuple[GcsimBrowserTeamSlotPreview, ...], ...],
         target_mode_label: str = "",
-        targets_preview: str = "",
+        targets_preview_by_team: tuple[tuple[str, ...], ...] = ((), ()),
     ) -> None:
         self.gcsim_browser_workspace.set_mode(mode)
         for team_index, slots in enumerate(team_previews):
@@ -2049,7 +2061,7 @@ class LeftWorkspaceHost(QWidget):
             )
         self.gcsim_browser_workspace.set_abyss_targets_preview(
             target_mode_label=target_mode_label,
-            preview_text=targets_preview,
+            preview_by_team=targets_preview_by_team,
         )
 
 

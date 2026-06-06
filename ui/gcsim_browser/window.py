@@ -64,8 +64,9 @@ class GcsimBrowserWorkspace(QWidget):
     ) -> None:
         super().__init__(parent)
         self._mode = mode if mode in {MODE_ABYSS, MODE_DPS_DUMMY} else MODE_ABYSS
+        self._selected_chamber_index = 0
         self._target_mode_preview = ""
-        self._targets_preview_text = ""
+        self._targets_preview_by_team: tuple[tuple[str, ...], ...] = ((), ())
         self._team_previews: list[list[GcsimBrowserTeamSlotPreview]] = [
             [GcsimBrowserTeamSlotPreview() for _ in range(4)],
             [GcsimBrowserTeamSlotPreview() for _ in range(4)],
@@ -109,6 +110,7 @@ class GcsimBrowserWorkspace(QWidget):
         ]
         self.team_tabs.addTab(self.team_tab_widgets[0], "")
         self.team_tabs.addTab(self.team_tab_widgets[1], "")
+        self.team_tabs.currentChanged.connect(self._refresh_targets_preview)
         layout.addWidget(self.team_tabs)
 
         self.targets_section, targets_layout = _make_section()
@@ -122,8 +124,13 @@ class GcsimBrowserWorkspace(QWidget):
         self.chamber_buttons: list[QPushButton] = []
         for _index in range(3):
             button = QPushButton()
+            chamber_index = _index
             button.setCheckable(True)
-            button.setEnabled(False)
+            button.setEnabled(True)
+            button.setChecked(chamber_index == 0)
+            button.clicked.connect(
+                lambda _checked=False, value=chamber_index: self._select_chamber(value)
+            )
             self.chamber_buttons.append(button)
             chamber_row.addWidget(button)
         chamber_row.addStretch(1)
@@ -214,11 +221,11 @@ class GcsimBrowserWorkspace(QWidget):
         self,
         *,
         target_mode_label: str = "",
-        preview_text: str = "",
+        preview_by_team: tuple[tuple[str, ...], ...] = ((), ()),
     ) -> None:
         self._target_mode_preview = target_mode_label
-        self._targets_preview_text = preview_text
-        self.retranslate_ui()
+        self._targets_preview_by_team = preview_by_team
+        self._refresh_targets_preview()
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(_fallback("gcsim.browser.title", "GCSIM Browser"))
@@ -256,12 +263,7 @@ class GcsimBrowserWorkspace(QWidget):
         for index, button in enumerate(self.chamber_buttons, start=1):
             button.setText(f"C{index}")
         self.targets_placeholder.setText(
-            self._targets_preview_text
-            or
-            _fallback(
-                "gcsim.browser.targets_placeholder",
-                "Chamber waves, enemy HP and resolved GCSIM target types will appear here.",
-            )
+            self._current_targets_preview_text()
         )
 
         self.defaults_title.setText(
@@ -327,6 +329,38 @@ class GcsimBrowserWorkspace(QWidget):
         is_abyss = self._mode == MODE_ABYSS
         self.team_tabs.setTabVisible(1, is_abyss)
         self.targets_section.setVisible(is_abyss)
+
+    def _select_chamber(self, chamber_index: int) -> None:
+        self._selected_chamber_index = max(0, min(2, int(chamber_index)))
+        for index, button in enumerate(self.chamber_buttons):
+            button.setChecked(index == self._selected_chamber_index)
+        self._refresh_targets_preview()
+
+    def _refresh_targets_preview(self) -> None:
+        if not hasattr(self, "targets_placeholder"):
+            return
+        self.targets_placeholder.setText(self._current_targets_preview_text())
+
+    def _current_targets_preview_text(self) -> str:
+        if self._mode != MODE_ABYSS:
+            return _fallback(
+                "gcsim.browser.targets_placeholder",
+                "Chamber waves, enemy HP and resolved GCSIM target types will appear here.",
+            )
+        team_index = max(0, min(1, int(self.team_tabs.currentIndex())))
+        team_rows = (
+            self._targets_preview_by_team[team_index]
+            if team_index < len(self._targets_preview_by_team)
+            else ()
+        )
+        if self._selected_chamber_index < len(team_rows):
+            text = team_rows[self._selected_chamber_index].strip()
+            if text:
+                return text
+        return _fallback(
+            "gcsim.browser.targets_placeholder",
+            "Chamber waves, enemy HP and resolved GCSIM target types will appear here.",
+        )
 
 
 class _TeamCard(QFrame):

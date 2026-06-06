@@ -241,3 +241,74 @@ class GcsimBrowserWorkspace(QWidget):
         self.run_all_button.setText(_fallback("gcsim.browser.run_all", "Run 3 chambers"))
         self.results_title.setText(_fallback("gcsim.browser.results", "Results"))
         self.results_placeholder.setText(
+            _fallback(
+                "gcsim.browser.results_placeholder",
+                "Per-chamber clear time, DPS, warnings and generated config links will appear here.",
+            )
+        )
+        self._update_mode_visibility()
+
+    def _make_team_tab(self, team_index: int) -> QWidget:
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(0, 8, 0, 0)
+        layout.setSpacing(8)
+
+        grid_widget = QWidget()
+        grid = QGridLayout(grid_widget)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(8)
+        grid.setVerticalSpacing(8)
+        for slot_index in range(4):
+            card = _make_team_card(team_index, slot_index)
+            grid.addWidget(card, 0, slot_index)
+        layout.addWidget(grid_widget)
+
+        note = QLabel(
+            _fallback(
+                "gcsim.browser.team_placeholder",
+                "Readiness will be computed from current runtime team state later.",
+            )
+        )
+        note.setWordWrap(True)
+        layout.addWidget(note)
+        return tab
+
+    def _update_mode_visibility(self) -> None:
+        is_abyss = self._mode == MODE_ABYSS
+        self.team_tabs.setTabVisible(1, is_abyss)
+        self.targets_section.setVisible(is_abyss)
+
+
+def _make_team_card(team_index: int, slot_index: int) -> QFrame:
+    card = QFrame()
+    card.setObjectName(f"gcsimTeamCard{team_index}_{slot_index}")
+    card.setFrameShape(QFrame.Shape.StyledPanel)
+    card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+    layout = QVBoxLayout(card)
+    layout.setContentsMargins(8, 8, 8, 8)
+    layout.setSpacing(4)
+
+    name = QLabel(_fallback("gcsim.browser.empty_slot", "Empty slot"))
+    name.setObjectName("GcsimBrowserTeamName")
+    weapon = QLabel(_fallback("gcsim.browser.weapon_pending", "Weapon: pending"))
+    sets = QLabel(_fallback("gcsim.browser.sets_pending", "Sets: pending"))
+    status = QLabel(_fallback("gcsim.browser.status_placeholder", "Not checked"))
+    for label in (name, weapon, sets, status):
+        label.setWordWrap(True)
+        layout.addWidget(label)
+    return card
+
+
+def _make_section() -> tuple[QFrame, QVBoxLayout]:
+    frame = QFrame()
+    frame.setFrameShape(QFrame.Shape.StyledPanel)
+    layout = QVBoxLayout(frame)
+    layout.setContentsMargins(10, 10, 10, 10)
+    layout.setSpacing(8)
+    return frame, layout
+
+
+def _fallback(key: str, fallback: str) -> str:
+    value = tr(key)
+    return fallback if value == key else value

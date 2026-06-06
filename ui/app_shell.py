@@ -85,6 +85,7 @@ from ui.character_assets import (
     standard_character_filter_icon,
 )
 from ui.account_data_page import AccountDataPage
+from ui.gcsim_browser import GcsimBrowserWorkspace
 from ui.right_panel_prototype import (
     RIGHT_PANEL_PROTOTYPE_MIN_WIDTH,
     RunModeTabsWidget,
@@ -131,6 +132,7 @@ RIGHT_DOCK_PAGE_ACCOUNT = "account"
 RIGHT_DOCK_ACCOUNT_ICON_SIZE = 18
 LEFT_WORKSPACE_CHARACTERS_WEAPONS = "characters_weapons"
 LEFT_WORKSPACE_ARTIFACTS = "artifacts"
+LEFT_WORKSPACE_GCSIM = "gcsim"
 
 # Calibrated global shell minimum for the embedded Artifact Browser footprint.
 # This is intentionally a top-level contract, not a dynamic maximum of current
@@ -1781,6 +1783,12 @@ class LeftWorkspaceHost(QWidget):
         self._workspace_buttons_by_id[
             LEFT_WORKSPACE_ARTIFACTS
         ] = self.artifact_browser_button
+        self.gcsim_browser_workspace = GcsimBrowserWorkspace()
+        self.gcsim_browser_button = self.add_workspace(
+            LEFT_WORKSPACE_GCSIM,
+            "GCSIM",
+            self.gcsim_browser_workspace,
+        )
         self.stack.currentChanged.connect(self._on_stack_current_changed)
 
     def _make_artifact_browser_placeholder(self) -> QWidget:
@@ -1901,6 +1909,7 @@ class LeftWorkspaceHost(QWidget):
             tr("app_shell.workspace.characters_weapons")
         )
         self.artifact_browser_button.setText(tr("app_shell.workspace.artifacts"))
+        self.gcsim_browser_button.setText("GCSIM")
         self.character_weapon_workspace.retranslate_ui()
         if self.artifact_browser_workspace is None:
             self.artifact_browser_placeholder_label.setText(

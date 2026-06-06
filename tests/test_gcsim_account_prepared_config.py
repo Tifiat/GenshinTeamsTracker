@@ -6,9 +6,10 @@ import unittest
 from pathlib import Path
 
 from run_workspace.gcsim.account_prepared_config import (
+    ARTIFACT_SOURCE_CURRENT_EQUIPPED,
+    ARTIFACT_STATS_SOURCE_CURRENT_EQUIPPED_MAIN_SUB,
     DEFAULT_ACCOUNT_CHASCA_TEAM,
     WARNING_DEV_WEAPON_CANDIDATE_NOT_ACCOUNT_TRUTH,
-    WARNING_SYNTHETIC_DEV_ARTIFACT_STATS_NOT_ACCOUNT_TRUTH,
     build_account_prepared_full_config_report,
     build_account_prepared_team_payload,
 )
@@ -23,6 +24,7 @@ class GcsimAccountPreparedConfigTest(unittest.TestCase):
             result = build_account_prepared_team_payload(
                 db_path=db_path,
                 team_names=("Chasca",),
+                artifact_set_registry_source=db_path.artifact_set_registry_source,
             )
 
         self.assertTrue(result.ready)
@@ -40,6 +42,7 @@ class GcsimAccountPreparedConfigTest(unittest.TestCase):
             result = build_account_prepared_team_payload(
                 db_path=db_path,
                 team_names=("Chasca", "Ororon"),
+                artifact_set_registry_source=db_path.artifact_set_registry_source,
             )
 
         self.assertTrue(result.ready)
@@ -56,19 +59,28 @@ class GcsimAccountPreparedConfigTest(unittest.TestCase):
                 character.warnings,
             )
 
-    def test_synthetic_artifact_stats_are_marked_not_account_truth(self) -> None:
-        with seeded_account_config_db(equip_furina_artifacts=True) as db_path:
+    def test_current_artifact_stats_are_marked_account_truth(self) -> None:
+        with seeded_account_config_db() as db_path:
             result = build_account_prepared_team_payload(
                 db_path=db_path,
                 team_names=("Furina",),
+                artifact_set_registry_source=db_path.artifact_set_registry_source,
             )
 
         self.assertTrue(result.ready)
         detail = result.characters[0]
         self.assertEqual(detail.current_equipped_artifact_count, 5)
-        self.assertEqual(detail.artifact_source, "synthetic_dev_artifact_stats")
-        self.assertFalse(detail.artifact_account_truth)
-        self.assertIn(WARNING_SYNTHETIC_DEV_ARTIFACT_STATS_NOT_ACCOUNT_TRUTH, detail.warnings)
+        self.assertEqual(detail.artifact_source, ARTIFACT_SOURCE_CURRENT_EQUIPPED)
+        self.assertEqual(
+            detail.artifact_stats_source,
+            ARTIFACT_STATS_SOURCE_CURRENT_EQUIPPED_MAIN_SUB,
+        )
+        self.assertTrue(detail.artifact_account_truth)
+        self.assertEqual(detail.artifact_set_counts[0]["count"], 5)
+        self.assertEqual(
+            detail.artifact_set_counts[0]["mapping"]["gcsim_key"],
+            "goldentroupe",
+        )
 
     def test_full_config_assembles_for_four_ready_account_characters(self) -> None:
         with seeded_account_config_db() as db_path:
@@ -77,6 +89,7 @@ class GcsimAccountPreparedConfigTest(unittest.TestCase):
                     db_path=db_path,
                     team_names=DEFAULT_ACCOUNT_CHASCA_TEAM,
                     run_dir=Path(temp_dir) / "run",
+                    artifact_set_registry_source=db_path.artifact_set_registry_source,
                 )
                 config_text = Path(report.full_config.config_path).read_text(
                     encoding="utf-8"
@@ -94,6 +107,11 @@ class GcsimAccountPreparedConfigTest(unittest.TestCase):
         self.assertIn("bennett char lvl=90/90", config_text)
         self.assertIn("ororon char lvl=90/90 cons=6 talent=1,9,9;", config_text)
         self.assertIn("bennett char lvl=90/90 cons=6 talent=1,9,10;", config_text)
+        self.assertIn('chasca add set="obsidiancodex" count=4;', config_text)
+        self.assertIn('ororon add set="deepwoodmemories" count=2;', config_text)
+        self.assertIn('ororon add set="emblemofseveredfate" count=2;', config_text)
+        self.assertIn('furina add set="goldentroupe" count=5;', config_text)
+        self.assertIn('bennett add set="noblesseoblige" count=5;', config_text)
         self.assertIn("active furina;", config_text)
         self.assertNotIn(
             WARNING_POST_NORMALIZATION_TALENT_LEVEL_CAPPED_TO_GCSIM_RANGE,
@@ -111,6 +129,7 @@ class GcsimAccountPreparedConfigTest(unittest.TestCase):
             result = build_account_prepared_team_payload(
                 db_path=db_path,
                 team_names=("Furina", "Bennett"),
+                artifact_set_registry_source=db_path.artifact_set_registry_source,
             )
 
         self.assertTrue(result.ready)
@@ -131,6 +150,7 @@ class GcsimAccountPreparedConfigTest(unittest.TestCase):
                     db_path=db_path,
                     team_names=DEFAULT_ACCOUNT_CHASCA_TEAM,
                     run_dir=run_dir,
+                    artifact_set_registry_source=db_path.artifact_set_registry_source,
                 )
 
                 config_exists = (run_dir / "config.txt").exists()
@@ -143,20 +163,86 @@ class GcsimAccountPreparedConfigTest(unittest.TestCase):
             [issue.status for issue in report.team.issues],
         )
 
+    def test_missing_current_artifacts_is_not_character_missing(self) -> None:
+        with seeded_account_config_db(equip_artifacts=False) as db_path:
+            result = build_account_prepared_team_payload(
+                db_path=db_path,
+                team_names=("Furina",),
+                artifact_set_registry_source=db_path.artifact_set_registry_source,
+            )
+
+        self.assertFalse(result.ready)
+        self.assertTrue(result.characters[0].character_found)
+        self.assertEqual(result.characters[0].artifact_source, "missing_current_equipped_artifacts")
+        self.assertIn("current_artifacts_missing", [issue.status for issue in result.issues])
+        self.assertNotIn("missing_account_character", [issue.status for issue in result.issues])
+
+    def test_artifact_stats_ignore_final_or_right_panel_rows(self) -> None:
+        with seeded_account_config_db() as db_path:
+            conn = sqlite3.connect(db_path)
+            try:
+                conn.execute(
+                    """
+                    INSERT INTO account_final_stats (
+                        character_id,
+                        property_type,
+                        raw_value,
+                        source
+                    )
+                    VALUES (10000089, 20, 999999, 'right_panel_total')
+                    """
+                )
+                conn.commit()
+            finally:
+                conn.close()
+            with tempfile.TemporaryDirectory() as temp_dir:
+                report = build_account_prepared_full_config_report(
+                    db_path=db_path,
+                    team_names=("Furina",),
+                    run_dir=Path(temp_dir) / "run",
+                    artifact_set_registry_source=db_path.artifact_set_registry_source,
+                )
+                config_text = Path(report.full_config.config_path).read_text(
+                    encoding="utf-8"
+                )
+
+        self.assertTrue(report.ready)
+        add_stats_lines = [
+            line for line in config_text.splitlines() if " add stats " in line
+        ]
+        self.assertEqual(len(add_stats_lines), 1)
+        self.assertNotIn("999999", add_stats_lines[0])
+
 
 class seeded_account_config_db:
     def __init__(
         self,
         *,
         ororon_ready: bool = True,
-        equip_furina_artifacts: bool = False,
+        equip_artifacts: bool = True,
     ) -> None:
         self.ororon_ready = ororon_ready
-        self.equip_furina_artifacts = equip_furina_artifacts
+        self.equip_artifacts = equip_artifacts
 
-    def __enter__(self) -> Path:
+    def __enter__(self) -> "seeded_account_config_db":
         self._tmp = tempfile.TemporaryDirectory()
         self.path = Path(self._tmp.name) / "artifacts.db"
+        self.artifact_set_registry_source = Path(self._tmp.name) / "artifacts.go"
+        self.artifact_set_registry_source.write_text(
+            "\n".join(
+                [
+                    "package shortcut",
+                    "var artifactMap = map[string]int{",
+                    '  "deepwoodmemories": 1,',
+                    '  "emblemofseveredfate": 1,',
+                    '  "goldentroupe": 1,',
+                    '  "noblesseoblige": 1,',
+                    '  "obsidiancodex": 1,',
+                    "}",
+                ]
+            ),
+            encoding="utf-8",
+        )
         conn = sqlite3.connect(self.path)
         try:
             create_schema(conn)
@@ -165,12 +251,16 @@ class seeded_account_config_db:
             seed_constellations(conn)
             seed_weapons(conn)
             seed_current_weapons(conn)
-            if self.equip_furina_artifacts:
+            seed_artifacts(conn)
+            if self.equip_artifacts:
                 seed_current_artifacts(conn)
             conn.commit()
         finally:
             conn.close()
-        return self.path
+        return self
+
+    def __fspath__(self) -> str:
+        return str(self.path)
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self._tmp.cleanup()
@@ -240,6 +330,34 @@ def create_schema(conn: sqlite3.Connection) -> None:
             artifact_id INTEGER NOT NULL,
             source TEXT,
             updated_at TEXT
+        );
+
+        CREATE TABLE artifacts (
+            id INTEGER PRIMARY KEY,
+            pos INTEGER NOT NULL,
+            name TEXT NOT NULL DEFAULT '',
+            set_uid TEXT,
+            set_name TEXT,
+            main_property_type INTEGER,
+            main_property_name TEXT,
+            main_property_value TEXT
+        );
+
+        CREATE TABLE artifact_substats (
+            artifact_id INTEGER NOT NULL,
+            slot_index INTEGER NOT NULL,
+            property_type INTEGER,
+            property_name TEXT,
+            value TEXT,
+            times INTEGER,
+            PRIMARY KEY (artifact_id, slot_index)
+        );
+
+        CREATE TABLE account_final_stats (
+            character_id INTEGER NOT NULL,
+            property_type INTEGER NOT NULL,
+            raw_value REAL,
+            source TEXT
         );
         """
     )
@@ -407,6 +525,105 @@ def seed_current_weapons(conn: sqlite3.Connection) -> None:
     )
 
 
+def seed_artifacts(conn: sqlite3.Connection) -> None:
+    artifact_rows: list[tuple[int, int, str, str, str, int, str, str]] = []
+    substat_rows: list[tuple[int, int, int, str, str, int]] = []
+
+    def add_character_artifacts(
+        *,
+        start_id: int,
+        sets: list[tuple[str, str]],
+    ) -> None:
+        main_stats = (
+            (2, "HP", "4780"),
+            (5, "ATK", "311"),
+            (23, "Energy Recharge", "51.8"),
+            (20, "CRIT Rate", "31.1"),
+            (22, "CRIT DMG", "62.2"),
+        )
+        for index, (set_uid, set_name) in enumerate(sets, start=1):
+            artifact_id = start_id + index - 1
+            property_type, property_name, value = main_stats[index - 1]
+            artifact_rows.append(
+                (
+                    artifact_id,
+                    index,
+                    f"{set_name} Piece {index}",
+                    set_uid,
+                    set_name,
+                    property_type,
+                    property_name,
+                    value,
+                )
+            )
+            substat_rows.extend(
+                [
+                    (artifact_id, 0, 20, "CRIT Rate", "3.1", 1),
+                    (artifact_id, 1, 22, "CRIT DMG", "6.2", 1),
+                ]
+            )
+
+    add_character_artifacts(
+        start_id=100,
+        sets=[
+            ("ObsidianCodex", "Obsidian Codex"),
+            ("ObsidianCodex", "Obsidian Codex"),
+            ("ObsidianCodex", "Obsidian Codex"),
+            ("ObsidianCodex", "Obsidian Codex"),
+            ("EmblemOfSeveredFate", "Emblem of Severed Fate"),
+        ],
+    )
+    add_character_artifacts(
+        start_id=200,
+        sets=[
+            ("EmblemOfSeveredFate", "Emblem of Severed Fate"),
+            ("EmblemOfSeveredFate", "Emblem of Severed Fate"),
+            ("DeepwoodMemories", "Deepwood Memories"),
+            ("DeepwoodMemories", "Deepwood Memories"),
+            ("NoblesseOblige", "Noblesse Oblige"),
+        ],
+    )
+    add_character_artifacts(
+        start_id=300,
+        sets=[("GoldenTroupe", "Golden Troupe")] * 5,
+    )
+    add_character_artifacts(
+        start_id=400,
+        sets=[("NoblesseOblige", "Noblesse Oblige")] * 5,
+    )
+
+    conn.executemany(
+        """
+        INSERT INTO artifacts (
+            id,
+            pos,
+            name,
+            set_uid,
+            set_name,
+            main_property_type,
+            main_property_name,
+            main_property_value
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        artifact_rows,
+    )
+    conn.executemany(
+        """
+        INSERT INTO artifact_substats (
+            artifact_id,
+            slot_index,
+            property_type,
+            property_name,
+            value,
+            times
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        substat_rows,
+    )
+
+
 def seed_current_artifacts(conn: sqlite3.Connection) -> None:
     conn.executemany(
         """
@@ -420,11 +637,26 @@ def seed_current_artifacts(conn: sqlite3.Connection) -> None:
         VALUES (?, ?, ?, 'preset_equip', '2026-06-06T00:00:00+00:00')
         """,
         (
-            (10000089, "flower", 1),
-            (10000089, "plume", 2),
-            (10000089, "sands", 3),
-            (10000089, "goblet", 4),
-            (10000089, "circlet", 5),
+            (10000104, "flower", 100),
+            (10000104, "plume", 101),
+            (10000104, "sands", 102),
+            (10000104, "goblet", 103),
+            (10000104, "circlet", 104),
+            (10000105, "flower", 200),
+            (10000105, "plume", 201),
+            (10000105, "sands", 202),
+            (10000105, "goblet", 203),
+            (10000105, "circlet", 204),
+            (10000089, "flower", 300),
+            (10000089, "plume", 301),
+            (10000089, "sands", 302),
+            (10000089, "goblet", 303),
+            (10000089, "circlet", 304),
+            (10000032, "flower", 400),
+            (10000032, "plume", 401),
+            (10000032, "sands", 402),
+            (10000032, "goblet", 403),
+            (10000032, "circlet", 404),
         ),
     )
 

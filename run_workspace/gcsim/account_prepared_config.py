@@ -23,18 +23,7 @@ from typing import Any, TextIO
 from urllib.parse import quote
 
 from hoyolab_export.account_storage import DEFAULT_ACCOUNT_DB_PATH
-from hoyolab_export.artifact_stats import (
-    ANEMO_DAMAGE,
-    ATK_FLAT,
-    ATK_PERCENT,
-    CRIT_DAMAGE,
-    CRIT_RATE,
-    ELECTRO_DAMAGE,
-    ENERGY_RECHARGE,
-    HP_FLAT,
-    HP_PERCENT,
-    HYDRO_DAMAGE,
-)
+from hoyolab_export.artifact_db import calculate_raw_build_summary
 from run_workspace.gcsim.abyss_wave_scenario_smoke import run_abyss_wave_scenario_smoke
 from run_workspace.gcsim.artifact_runner import (
     DEFAULT_GCSIM_RUNS_DIR,
@@ -47,6 +36,11 @@ from run_workspace.gcsim.config_talents import (
     GcsimConstellationSource,
     GcsimTalentSource,
     prepare_gcsim_talent_levels,
+)
+from run_workspace.gcsim.entity_key_readiness_report import (
+    DEFAULT_ARTIFACT_SET_SHORTCUT_SOURCE,
+    load_gcsim_shortcut_keys,
+    normalize_gcsim_key_candidate,
 )
 from run_workspace.gcsim.enemy_type_registry import (
     find_default_gcsim_enemy_shortcut_source,
@@ -67,11 +61,16 @@ ACCOUNT_PREPARED_CONFIG_SMOKE_SKIPPED = "smoke_skipped"
 WARNING_DEV_WEAPON_CANDIDATE_NOT_ACCOUNT_TRUTH = (
     "dev_weapon_candidate_not_account_truth"
 )
-WARNING_SYNTHETIC_DEV_ARTIFACT_STATS_NOT_ACCOUNT_TRUTH = (
-    "synthetic_dev_artifact_stats_not_account_truth"
-)
 WARNING_TALENT_ORDER_SKILL_ID_DEV_ASSUMED = "dev_talent_order_skill_id_assumed"
-WARNING_CURRENT_ARTIFACTS_NOT_USED = "current_artifacts_seen_but_not_used"
+WARNING_ARTIFACT_SET_AUTO_REGISTRY_MAPPING = (
+    "artifact_set_auto_registry_mapping_not_curated"
+)
+
+ARTIFACT_SOURCE_CURRENT_EQUIPPED = "current_equipped_artifacts"
+ARTIFACT_SOURCE_MISSING = "missing_current_equipped_artifacts"
+ARTIFACT_STATS_SOURCE_CURRENT_EQUIPPED_MAIN_SUB = (
+    "current_equipped_artifact_main_sub_stats"
+)
 
 DEFAULT_ACCOUNT_CHASCA_TEAM: tuple[str, ...] = (
     "Chasca",
@@ -116,6 +115,8 @@ class AccountPreparedCharacterDetail:
     weapon_selection_method: str = ""
     artifact_source: str = ""
     artifact_account_truth: bool = False
+    artifact_stats_source: str = ""
+    artifact_set_counts: tuple[dict[str, Any], ...] = ()
     current_equipped_artifact_count: int = 0
     talents: dict[str, Any] = field(default_factory=dict)
     block_ready: bool = False
@@ -137,6 +138,8 @@ class AccountPreparedCharacterDetail:
             "weapon_selection_method": self.weapon_selection_method,
             "artifact_source": self.artifact_source,
             "artifact_account_truth": self.artifact_account_truth,
+            "artifact_stats_source": self.artifact_stats_source,
+            "artifact_set_counts": [dict(item) for item in self.artifact_set_counts],
             "current_equipped_artifact_count": self.current_equipped_artifact_count,
             "talents": dict(self.talents),
             "block_ready": self.block_ready,
@@ -200,11 +203,13 @@ def build_account_prepared_team_payload(
     *,
     db_path: str | Path = DEFAULT_ACCOUNT_DB_PATH,
     team_names: Iterable[str] = DEFAULT_ACCOUNT_CHASCA_TEAM,
+    artifact_set_registry_source: str | Path | None = None,
 ) -> AccountPreparedTeamBuild:
     names = tuple(_text(name) for name in team_names if _text(name))
     used_weapon_counts: defaultdict[str, int] = defaultdict(int)
     payload_characters: list[dict[str, Any]] = []
     details: list[AccountPreparedCharacterDetail] = []
+    artifact_set_resolver = _artifact_set_key_resolver(artifact_set_registry_source)
 
     with closing(_connect_readonly_db(db_path)) as conn:
         for requested_name in names:
@@ -284,16 +289,18 @@ def build_account_prepared_team_payload(
                         )
                     )
 
-            artifact_count = _current_equipped_artifact_count(
+            (
+                artifact_payload,
+                artifact_report,
+                artifact_issues,
+                artifact_warnings,
+            ) = _current_artifact_payload_from_account_rows(
                 conn,
                 character.get("character_id"),
+                artifact_set_resolver=artifact_set_resolver,
             )
-            if artifact_count:
-                warnings.append(WARNING_CURRENT_ARTIFACTS_NOT_USED)
-            warnings.append(WARNING_SYNTHETIC_DEV_ARTIFACT_STATS_NOT_ACCOUNT_TRUTH)
-            artifact_payload = _synthetic_artifact_payload_for_character(
-                _text(character.get("gcsim_character_key")) or requested_name
-            )
+            warnings.extend(artifact_warnings)
+            issues.extend(artifact_issues)
 
             character_payload = {
                 "project_character_id": _text(character.get("character_id")),
@@ -328,21 +335,38 @@ def build_account_prepared_team_payload(
                     weapon_found=bool(weapon),
                     weapon_key_ready=weapon_ready,
                     weapon_selection_method=weapon_method,
-                    artifact_source="synthetic_dev_artifact_stats",
-                    artifact_account_truth=False,
-                    current_equipped_artifact_count=artifact_count,
+                    artifact_source=_text(artifact_report.get("artifact_source")),
+                    artifact_account_truth=bool(artifact_report.get("account_truth")),
+                    artifact_stats_source=_text(artifact_report.get("artifact_stats_source")),
+                    artifact_set_counts=tuple(
+                        dict(item)
+                        for item in artifact_report.get("set_counts", ())
+                        if isinstance(item, Mapping)
+                    ),
+                    current_equipped_artifact_count=_optional_int(
+                        artifact_report.get("artifact_count")
+                    )
+                    or 0,
                     talents=talent_report,
                     warnings=_dedupe_tuple(warnings),
                     issues=tuple(issues),
                 )
             )
 
+    uses_dev_weapon_fallback = any(
+        WARNING_DEV_WEAPON_CANDIDATE_NOT_ACCOUNT_TRUTH in detail.warnings
+        for detail in details
+    )
+    all_artifacts_account_truth = bool(details) and all(
+        detail.artifact_account_truth for detail in details
+    )
     payload = {
         "schema_version": 1,
         "source": "account_sqlite_backend_dev_adapter",
         "source_kind": "backend_dev_account_sqlite",
-        "account_truth": False,
+        "account_truth": not uses_dev_weapon_fallback and all_artifacts_account_truth,
         "account_character_truth": True,
+        "account_artifact_truth": all_artifacts_account_truth,
         "ui_state": False,
         "production_mapping": False,
         "required_characters": list(names),
@@ -353,9 +377,11 @@ def build_account_prepared_team_payload(
             "weapon_source": (
                 "current_equipped_weapon_when_present_else_deterministic_dev_candidate"
             ),
-            "dev_weapon_candidate_not_account_truth": True,
-            "artifact_source": "synthetic_dev_artifact_stats",
-            "synthetic_dev_artifact_stats_not_account_truth": True,
+            "dev_weapon_candidate_not_account_truth": uses_dev_weapon_fallback,
+            "artifact_source": ARTIFACT_SOURCE_CURRENT_EQUIPPED,
+            "artifact_stats_source": ARTIFACT_STATS_SOURCE_CURRENT_EQUIPPED_MAIN_SUB,
+            "right_panel_final_stats_used": False,
+            "artifact_set_bonuses_manually_applied": False,
             "right_panel_persistence": False,
             "final_or_right_panel_stats_as_add_stats": False,
         },
@@ -398,13 +424,18 @@ def build_account_prepared_full_config_report(
     abyss_cache_dir: str | Path | None = None,
     gcsim_enemy_registry_source: str | Path | None = None,
     snap_monster_cache_path: str | Path | None = None,
+    artifact_set_registry_source: str | Path | None = None,
     store_dir: str | Path | None = None,
     timeout_seconds: int = DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
     artifact_run_func: ArtifactRunFunc = run_active_gcsim_artifact,
     snap_fetcher: SnapJsonFetcher | None = None,
 ) -> AccountPreparedFullConfigReport:
     names = tuple(_text(name) for name in team_names if _text(name))
-    team = build_account_prepared_team_payload(db_path=db_path, team_names=names)
+    team = build_account_prepared_team_payload(
+        db_path=db_path,
+        team_names=names,
+        artifact_set_registry_source=artifact_set_registry_source,
+    )
     effective_run_dir = (
         run_dir
         if run_dir is not None or config_out is not None
@@ -467,7 +498,8 @@ def build_account_prepared_full_config_report(
             "localized_names_used_as_gcsim_identity": False,
             "final_or_right_panel_stats_as_add_stats": False,
             "dev_weapon_candidate_not_account_truth": True,
-            "synthetic_dev_artifact_stats_not_account_truth": True,
+            "artifact_source": ARTIFACT_SOURCE_CURRENT_EQUIPPED,
+            "artifact_stats_source": ARTIFACT_STATS_SOURCE_CURRENT_EQUIPPED_MAIN_SUB,
         },
     )
 
@@ -498,6 +530,7 @@ def main(
             abyss_cache_dir=args.abyss_cache_dir,
             gcsim_enemy_registry_source=args.gcsim_enemy_registry_source,
             snap_monster_cache_path=args.snap_monster_cache_path,
+            artifact_set_registry_source=args.artifact_set_registry_source,
             store_dir=args.store_dir,
             timeout_seconds=args.timeout,
             artifact_run_func=artifact_run_func,
@@ -731,6 +764,211 @@ def _current_equipped_artifact_count(
     return int(row["count"] if row is not None else 0)
 
 
+def _current_artifact_payload_from_account_rows(
+    conn: sqlite3.Connection,
+    character_id: Any,
+    *,
+    artifact_set_resolver: "_ArtifactSetKeyResolver",
+) -> tuple[
+    dict[str, Any] | None,
+    dict[str, Any],
+    tuple[AccountPreparedConfigIssue, ...],
+    tuple[str, ...],
+]:
+    character_id_int = _optional_int(character_id)
+    required_tables = (
+        "account_character_equipped_artifacts",
+        "artifacts",
+        "artifact_substats",
+    )
+    missing_table = next(
+        (table for table in required_tables if not _table_exists(conn, table)),
+        "",
+    )
+    if character_id_int is None or missing_table:
+        issue = AccountPreparedConfigIssue(
+            "current_artifacts_missing",
+            missing_table or "account_character_equipped_artifacts",
+            "Current equipped artifact owner rows and artifact main/sub stat rows are required.",
+        )
+        return (
+            None,
+            {
+                "artifact_source": ARTIFACT_SOURCE_MISSING,
+                "artifact_stats_source": "",
+                "account_truth": False,
+                "artifact_count": 0,
+                "set_counts": [],
+                "missing_positions": [1, 2, 3, 4, 5],
+            },
+            (issue,),
+            (),
+        )
+
+    rows = conn.execute(
+        """
+        SELECT
+            equipped.slot_key,
+            equipped.artifact_id,
+            artifacts.pos,
+            artifacts.set_uid,
+            artifacts.set_name
+        FROM account_character_equipped_artifacts AS equipped
+        JOIN artifacts
+          ON artifacts.id = equipped.artifact_id
+        WHERE equipped.character_id = ?
+        ORDER BY artifacts.pos ASC
+        """,
+        (character_id_int,),
+    ).fetchall()
+    slots = {
+        int(row["pos"]): int(row["artifact_id"])
+        for row in rows
+        if _optional_int(row["pos"]) is not None
+        and _optional_int(row["artifact_id"]) is not None
+    }
+    summary = calculate_raw_build_summary(conn, slots=slots)
+    missing_positions = [
+        int(pos)
+        for pos in summary.get("missing_positions", [])
+        if _optional_int(pos) is not None
+    ]
+    issues: list[AccountPreparedConfigIssue] = []
+    if missing_positions:
+        issues.append(
+            AccountPreparedConfigIssue(
+                "current_artifacts_missing",
+                "account_character_equipped_artifacts",
+                "Need current equipped artifacts for all five slots.",
+            )
+        )
+
+    set_counts: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for item in summary.get("set_counts") or []:
+        if not isinstance(item, Mapping):
+            continue
+        resolved = artifact_set_resolver.resolve(
+            set_uid=_text(item.get("set_uid")),
+            set_name=_text(item.get("set_name")),
+        )
+        count = _optional_int(item.get("count")) or 0
+        if count >= 2 and not resolved["gcsim_key"]:
+            issues.append(
+                AccountPreparedConfigIssue(
+                    "artifact_set_gcsim_key_not_ready",
+                    "artifacts.set_uid",
+                    "Current artifact set needs a ready GCSIM key mapping.",
+                )
+            )
+        warnings.extend(resolved["warnings"])
+        set_counts.append(
+            {
+                "set_uid": _text(item.get("set_uid")),
+                "display_name": _text(item.get("set_name")) or _text(item.get("set_uid")),
+                "set_name": _text(item.get("set_name")),
+                "count": count,
+                "mapping": {
+                    "gcsim_key": resolved["gcsim_key"],
+                    "source": resolved["source"],
+                    "ambiguous": resolved["ambiguous"],
+                },
+            }
+        )
+
+    stat_totals = [
+        {
+            **dict(item),
+            "source_kind": ARTIFACT_STATS_SOURCE_CURRENT_EQUIPPED_MAIN_SUB,
+        }
+        for item in summary.get("total_stats") or []
+        if isinstance(item, Mapping)
+    ]
+    artifact_source = (
+        ARTIFACT_SOURCE_MISSING
+        if missing_positions
+        else ARTIFACT_SOURCE_CURRENT_EQUIPPED
+    )
+    payload = {
+        "artifact_ids_by_pos": {
+            str(pos): artifact_id
+            for pos, artifact_id in (summary.get("artifact_ids_by_pos") or {}).items()
+        },
+        "missing_positions": missing_positions,
+        "set_counts": set_counts,
+        "stat_totals": stat_totals,
+        "source": artifact_source,
+        "source_kind": "account_sqlite_current_equipped_artifacts",
+        "artifact_stats_source": ARTIFACT_STATS_SOURCE_CURRENT_EQUIPPED_MAIN_SUB,
+        "right_panel_final_stats_used": False,
+        "artifact_set_bonuses_manually_applied": False,
+    }
+    report = {
+        "artifact_source": artifact_source,
+        "artifact_stats_source": ARTIFACT_STATS_SOURCE_CURRENT_EQUIPPED_MAIN_SUB,
+        "account_truth": not missing_positions,
+        "artifact_count": len(slots),
+        "artifact_ids_by_pos": dict(summary.get("artifact_ids_by_pos") or {}),
+        "missing_positions": missing_positions,
+        "set_counts": set_counts,
+        "stat_total_count": len(stat_totals),
+    }
+    return payload, report, tuple(issues), _dedupe_tuple(warnings)
+
+
+class _ArtifactSetKeyResolver:
+    def __init__(self, keys: Iterable[str]) -> None:
+        self._index: dict[str, tuple[str, ...]] = {}
+        grouped: defaultdict[str, list[str]] = defaultdict(list)
+        for key in keys:
+            normalized = normalize_gcsim_key_candidate(key)
+            if normalized:
+                grouped[normalized].append(_text(key))
+        self._index = {key: tuple(values) for key, values in grouped.items()}
+
+    def resolve(self, *, set_uid: str, set_name: str) -> dict[str, Any]:
+        candidates: list[str] = []
+        source_basis = ""
+        for label, value in (("set_uid", set_uid), ("set_name", set_name)):
+            normalized = normalize_gcsim_key_candidate(value)
+            if not normalized:
+                continue
+            matches = self._index.get(normalized, ())
+            if matches:
+                candidates.extend(matches)
+                source_basis = source_basis or label
+        candidates_tuple = _dedupe_tuple(candidates)
+        if len(candidates_tuple) == 1:
+            return {
+                "gcsim_key": candidates_tuple[0],
+                "source": f"gcsim_artifact_registry_exact_{source_basis}",
+                "ambiguous": False,
+                "warnings": (WARNING_ARTIFACT_SET_AUTO_REGISTRY_MAPPING,),
+            }
+        if len(candidates_tuple) > 1:
+            return {
+                "gcsim_key": "",
+                "source": "gcsim_artifact_registry_ambiguous",
+                "ambiguous": True,
+                "warnings": (),
+            }
+        return {
+            "gcsim_key": "",
+            "source": "gcsim_artifact_registry_missing",
+            "ambiguous": False,
+            "warnings": (),
+        }
+
+
+def _artifact_set_key_resolver(
+    source_path: str | Path | None,
+) -> _ArtifactSetKeyResolver:
+    path = Path(source_path) if source_path else DEFAULT_ARTIFACT_SET_SHORTCUT_SOURCE
+    if not path.is_file():
+        return _ArtifactSetKeyResolver(())
+    return _ArtifactSetKeyResolver(load_gcsim_shortcut_keys(path))
+
+
 def _weapon_payload(weapon: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "project_weapon_id": _text(weapon.get("weapon_id")),
@@ -746,112 +984,6 @@ def _weapon_payload(weapon: Mapping[str, Any]) -> dict[str, Any]:
             "source": "account_sqlite_resolved_weapon_key",
         },
     }
-
-
-def _synthetic_artifact_payload_for_character(character_key: str) -> dict[str, Any]:
-    key = _text(character_key).casefold()
-    return _SYNTHETIC_ARTIFACTS_BY_CHARACTER_KEY.get(
-        key,
-        _SYNTHETIC_ARTIFACTS_BY_CHARACTER_KEY["default"],
-    )
-
-
-def _artifact_payload(
-    *,
-    set_uid: str,
-    display_name: str,
-    gcsim_key: str,
-    stat_totals: Iterable[Mapping[str, Any]],
-) -> dict[str, Any]:
-    return {
-        "set_counts": [
-            {
-                "set_uid": set_uid,
-                "display_name": display_name,
-                "count": 4,
-                "mapping": {
-                    "gcsim_key": gcsim_key,
-                    "source": "synthetic_dev_artifact_fixture_registry_checked",
-                },
-            }
-        ],
-        "stat_totals": [dict(item) for item in stat_totals],
-    }
-
-
-def _stat(property_type: int, raw_value: float | int) -> dict[str, Any]:
-    return {
-        "property_type": property_type,
-        "raw_value": raw_value,
-        "source_kind": "synthetic_dev_artifact_stats",
-    }
-
-
-_SYNTHETIC_ARTIFACTS_BY_CHARACTER_KEY: dict[str, dict[str, Any]] = {
-    "chasca": _artifact_payload(
-        set_uid="synthetic:obsidiancodex",
-        display_name="Obsidian Codex",
-        gcsim_key="obsidiancodex",
-        stat_totals=(
-            _stat(HP_FLAT, 4780),
-            _stat(ATK_FLAT, 311),
-            _stat(ATK_PERCENT, 46.6),
-            _stat(CRIT_RATE, 31.1),
-            _stat(CRIT_DAMAGE, 62.2),
-            _stat(ANEMO_DAMAGE, 46.6),
-        ),
-    ),
-    "ororon": _artifact_payload(
-        set_uid="synthetic:scrolloftheheroofcindercity",
-        display_name="Scroll of the Hero of Cinder City",
-        gcsim_key="scrolloftheheroofcindercity",
-        stat_totals=(
-            _stat(HP_FLAT, 4780),
-            _stat(ATK_FLAT, 311),
-            _stat(CRIT_RATE, 31.1),
-            _stat(CRIT_DAMAGE, 62.2),
-            _stat(ENERGY_RECHARGE, 51.8),
-            _stat(ELECTRO_DAMAGE, 46.6),
-        ),
-    ),
-    "furina": _artifact_payload(
-        set_uid="synthetic:goldentroupe",
-        display_name="Golden Troupe",
-        gcsim_key="goldentroupe",
-        stat_totals=(
-            _stat(HP_FLAT, 4780),
-            _stat(HP_PERCENT, 46.6),
-            _stat(CRIT_RATE, 31.1),
-            _stat(CRIT_DAMAGE, 62.2),
-            _stat(ENERGY_RECHARGE, 20),
-            _stat(HYDRO_DAMAGE, 46.6),
-        ),
-    ),
-    "bennett": _artifact_payload(
-        set_uid="synthetic:noblesseoblige",
-        display_name="Noblesse Oblige",
-        gcsim_key="noblesseoblige",
-        stat_totals=(
-            _stat(HP_FLAT, 4780),
-            _stat(ATK_FLAT, 311),
-            _stat(CRIT_RATE, 31.1),
-            _stat(CRIT_DAMAGE, 62.2),
-            _stat(ENERGY_RECHARGE, 51.8),
-            _stat(ATK_PERCENT, 46.6),
-        ),
-    ),
-    "default": _artifact_payload(
-        set_uid="synthetic:noblesseoblige",
-        display_name="Noblesse Oblige",
-        gcsim_key="noblesseoblige",
-        stat_totals=(
-            _stat(HP_FLAT, 4780),
-            _stat(ATK_FLAT, 311),
-            _stat(CRIT_RATE, 31.1),
-            _stat(CRIT_DAMAGE, 62.2),
-        ),
-    ),
-}
 
 
 def _run_optional_abyss_smoke(
@@ -958,6 +1090,8 @@ def _attach_block_statuses(
                 weapon_selection_method=detail.weapon_selection_method,
                 artifact_source=detail.artifact_source,
                 artifact_account_truth=detail.artifact_account_truth,
+                artifact_stats_source=detail.artifact_stats_source,
+                artifact_set_counts=detail.artifact_set_counts,
                 current_equipped_artifact_count=detail.current_equipped_artifact_count,
                 talents=detail.talents,
                 block_ready=result.ready,
@@ -1058,6 +1192,15 @@ def _build_parser() -> argparse.ArgumentParser:
         "--rotation-shell",
         default=str(CHASCA_ORORON_FURINA_BENNETT_ROTATION_SHELL_PATH),
     )
+    parser.add_argument(
+        "--artifact-set-registry-source",
+        default=None,
+        help=(
+            "Optional local GCSIM pkg/shortcut/artifacts.go source for exact "
+            "set_uid -> GCSIM set key readiness checks. Defaults to the "
+            "prepared local v2.42.2 source path when present."
+        ),
+    )
     parser.add_argument("--config-out", default=None)
     parser.add_argument(
         "--run-dir",
@@ -1103,6 +1246,10 @@ def _format_text_report(report: Mapping[str, Any]) -> str:
                 continue
             account = item.get("account_character") if isinstance(item.get("account_character"), Mapping) else {}
             weapon = item.get("weapon") if isinstance(item.get("weapon"), Mapping) else {}
+            talents = item.get("talents") if isinstance(item.get("talents"), Mapping) else {}
+            set_counts = item.get("artifact_set_counts") or []
+            talent_summary = _format_talent_summary(talents)
+            set_summary = _format_set_counts_summary(set_counts)
             lines.append(
                 "character="
                 f"requested={item.get('requested_name', '')} "
@@ -1113,8 +1260,14 @@ def _format_text_report(report: Mapping[str, Any]) -> str:
                 f"character_ready={str(bool(item.get('character_key_ready'))).lower()} "
                 f"weapon={weapon.get('catalog_english_name', '') or weapon.get('localized_name', '')} "
                 f"weapon_key={weapon.get('gcsim_weapon_key', '')} "
+                f"weapon_refine={weapon.get('refinement', '')} "
+                f"weapon_level={weapon.get('level', '')} "
                 f"weapon_method={item.get('weapon_selection_method', '')} "
+                f"talents={talent_summary} "
                 f"artifact_source={item.get('artifact_source', '')} "
+                f"artifact_stats_source={item.get('artifact_stats_source', '')} "
+                f"artifact_count={item.get('current_equipped_artifact_count', '')} "
+                f"sets={set_summary} "
                 f"block_ready={str(bool(item.get('block_ready'))).lower()} "
                 f"block_status={item.get('block_status', '')}"
             )
@@ -1154,6 +1307,38 @@ def _format_text_report(report: Mapping[str, Any]) -> str:
     if report.get("error"):
         lines.append(f"error={report.get('error')}")
     return "\n".join(lines)
+
+
+def _format_talent_summary(talents: Mapping[str, Any]) -> str:
+    parts: list[str] = []
+    for item in talents.get("talents") or ():
+        if not isinstance(item, Mapping):
+            continue
+        slot = _text(item.get("slot")) or "talent"
+        displayed = item.get("displayed_level")
+        bonus = _optional_int(item.get("parsed_constellation_bonus")) or 0
+        gcsim = item.get("gcsim_level")
+        if bonus:
+            parts.append(f"{slot}:{displayed}-{bonus}->{gcsim}")
+        else:
+            parts.append(f"{slot}:{displayed}->{gcsim}")
+    return "|".join(parts)
+
+
+def _format_set_counts_summary(set_counts: Iterable[Any]) -> str:
+    parts: list[str] = []
+    for item in set_counts:
+        if not isinstance(item, Mapping):
+            continue
+        name = _text(item.get("set_uid")) or _text(item.get("display_name")) or "set"
+        mapping = item.get("mapping") if isinstance(item.get("mapping"), Mapping) else {}
+        key = _text(mapping.get("gcsim_key"))
+        count = _optional_int(item.get("count")) or 0
+        if key:
+            parts.append(f"{name}->{key}:{count}")
+        else:
+            parts.append(f"{name}:missing:{count}")
+    return "|".join(parts)
 
 
 def _format_number(value: object) -> str:

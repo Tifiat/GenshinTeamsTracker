@@ -155,6 +155,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - If a preset contains artifacts currently worn by other characters, show a compact confirmation with character side icons only before applying. Accepted apply uses equipment service move/swap semantics.
 - Current equipment set icons in the right-panel mini build box and static bonus strip must come from the same persistent artifact/set icon data used by Artifact Browser rows, not guessed paths. Text fallbacks such as `2p`, `4p`, or `2+2` are only for genuinely missing/invalid icon assets.
 - Artifact owner icons, preset owner icons, and weapon owner icons come from current equipment tables, not `artifact_build_targets`. Weapon owner icons must respect `weapon_fingerprint` + `known_count` without fake weapon instance ids.
+- Known visual bug: the weapon owner overlay/side icon can fail to appear on duplicate/count weapon stacks, for example two Favonius Sword 90 lvl R2/R5 copies. Weapon equips and selected weapon display can still be correct; the remaining issue is only overlay identity/count visual feedback.
 - Future weapon-card visual polish: if weapon thumbnails later receive a more noticeable corner radius, keep the occupied-weapon outline radius synchronized with the thumbnail shape. The current occupied outline intentionally uses only a minimal 3px rounding.
 - Later/post-release: add recommended artifact stat filters per character. Examples: Varesa should rank Electro DMG goblets higher, Ineffa should rank ATK goblets higher. This likely needs imported guide/recommendation data from external sources; do not implement it in the current equipment-flow work.
 - Future weapon panel move/swap UI: when all known copies of a `weapon_fingerprint` are assigned, require an explicit current owner/source choice before moving or swapping. Do not silently steal an exhausted assigned weapon by fingerprint.
@@ -659,12 +660,17 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   stored ready `gcsim_character_key` and `gcsim_weapon_key` fields, never uses
   localized `name` as GCSIM identity, uses current-equipped weapon rows when
   present, and otherwise chooses deterministic ready observed weapon candidates
-  by weapon type with `dev_weapon_candidate_not_account_truth`. Artifacts remain
-  synthetic/dev for this bridge and are marked
-  `synthetic_dev_artifact_stats_not_account_truth`; current artifact rows may be
-  reported but are not used as account-truth GCSIM `add stats` until
-  artifact-set mapping/current-build ownership is confirmed. The adapter writes
-  no partial config when a character/weapon/talent/artifact block is not ready.
+  by weapon type with `dev_weapon_candidate_not_account_truth`. Current-equipped
+  artifact rows are now consumed when present: the bridge reads
+  `account_character_equipped_artifacts`, joins `artifacts` and
+  `artifact_substats`, builds `add stats` only from equipped artifact main/sub
+  stat totals, and builds `add set` from equipped set counts. It does not inject
+  final/account/right-panel stat sheets or manual set bonuses. Missing or
+  incomplete current artifacts produce a controlled not-ready report instead of
+  a silent synthetic fallback. Artifact set keys are exact registry-checked
+  `set_uid` candidates for this backend/dev bridge and are not curated
+  production mapping. The adapter writes no partial config when a
+  character/weapon/talent/artifact block is not ready.
   Because current GCSIM v2.42.2 parser accepts talent levels only in `1..10`,
   account/HoYoLAB displayed talent levels are normalized through
   `run_workspace/gcsim/config_talents.py` before config output: active C3/C5

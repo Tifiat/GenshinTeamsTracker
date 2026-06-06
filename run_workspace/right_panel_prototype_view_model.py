@@ -359,6 +359,56 @@ class RightPanelChamberRowViewModel:
 
 
 @dataclass(frozen=True, slots=True)
+class RightPanelGcsimChamberResult:
+    chamber: int
+    team_index: int
+    side: int
+    status: str
+    error_category: str = ""
+    clear_time_seconds: float | None = None
+    dps_mean: float | None = None
+    total_damage_mean: float | None = None
+    scenario_total_hp: float | None = None
+    warnings: tuple[str, ...] = ()
+    issues: tuple[str, ...] = ()
+    config_path: str = ""
+    scenario_path: str = ""
+    mode: str = MODE_ABYSS
+    period_start: str = ""
+    floor: int = 0
+    target_mode: str = FACT_DPS_HP_MODE_SOLO
+    rotation_hash: str = ""
+    stale: bool = False
+
+    @property
+    def passed(self) -> bool:
+        return self.status in {"run_passed", "passed"} and not self.error_category
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "chamber": self.chamber,
+            "team_index": self.team_index,
+            "side": self.side,
+            "status": self.status,
+            "error_category": self.error_category,
+            "clear_time_seconds": self.clear_time_seconds,
+            "dps_mean": self.dps_mean,
+            "total_damage_mean": self.total_damage_mean,
+            "scenario_total_hp": self.scenario_total_hp,
+            "warnings": list(self.warnings),
+            "issues": list(self.issues),
+            "config_path": self.config_path,
+            "scenario_path": self.scenario_path,
+            "mode": self.mode,
+            "period_start": self.period_start,
+            "floor": self.floor,
+            "target_mode": self.target_mode,
+            "rotation_hash": self.rotation_hash,
+            "stale": self.stale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class FactDpsEnemyTooltipViewModel:
     wave: int
     primary_display_name: str
@@ -478,6 +528,7 @@ def build_right_panel_prototype_view_model(
     selected_slot_index: int = 0,
     external_bonuses_enabled: bool = True,
     chamber_rows: tuple[RightPanelChamberRowViewModel, ...] | None = None,
+    gcsim_status: RightPanelGcsimStatusViewModel | None = None,
 ) -> RightPanelPrototypeViewModel:
     total_start = perf_now()
     normalized_mode = _normalize_mode(mode)
@@ -518,7 +569,7 @@ def build_right_panel_prototype_view_model(
         chamber_headers=CHAMBER_TABLE_HEADERS,
         chamber_rows=chamber_rows,
         total_seconds=total_seconds,
-        gcsim_status=_gcsim_status_for_mode(normalized_mode),
+        gcsim_status=gcsim_status or _gcsim_status_for_mode(normalized_mode),
         external_bonuses_enabled=bool(external_bonuses_enabled),
     )
     log_perf(
@@ -1534,6 +1585,7 @@ def build_abyss_chamber_rows(
     *,
     abyss_source_data: AbyssFloorSourceData | None = None,
     fact_dps_multi_target_enabled: bool = False,
+    gcsim_results: tuple[RightPanelGcsimChamberResult, ...] = (),
 ) -> tuple[RightPanelChamberRowViewModel, ...]:
     return tuple(
         _abyss_chamber_row(
@@ -1541,6 +1593,7 @@ def build_abyss_chamber_rows(
             chamber_index=index,
             abyss_source_data=abyss_source_data,
             fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
+            gcsim_results=gcsim_results,
         )
         for index, timer_state in enumerate(timer_states, start=1)
     )
@@ -1552,6 +1605,7 @@ def _abyss_chamber_row(
     chamber_index: int,
     abyss_source_data: AbyssFloorSourceData | None = None,
     fact_dps_multi_target_enabled: bool = False,
+    gcsim_results: tuple[RightPanelGcsimChamberResult, ...] = (),
 ) -> RightPanelChamberRowViewModel:
     result = calculate_abyss_chamber_result(
         timer_state,
@@ -1575,6 +1629,33 @@ def _abyss_chamber_row(
     team2_dps = calculate_factual_dps(
         total_hp=team2_total_hp,
         elapsed_seconds=result.team2_elapsed_seconds,
+    )
+    target_mode = (
+        FACT_DPS_HP_MODE_MULTI_TARGET
+        if fact_dps_multi_target_enabled
+        else FACT_DPS_HP_MODE_SOLO
+    )
+    period_start = (
+        _text(getattr(getattr(abyss_source_data, "period", None), "start_date", ""))
+        if abyss_source_data is not None
+        else ""
+    )
+    floor = (
+        _optional_int(getattr(abyss_source_data, "floor", None)) or 0
+        if abyss_source_data is not None
+        else 0
+    )
+    team1_sim = _format_gcsim_sim_cell(
+        _gcsim_result_for_side(gcsim_results, chamber_index, 1),
+        period_start=period_start,
+        floor=floor,
+        target_mode=target_mode,
+    )
+    team2_sim = _format_gcsim_sim_cell(
+        _gcsim_result_for_side(gcsim_results, chamber_index, 2),
+        period_start=period_start,
+        floor=floor,
+        target_mode=target_mode,
     )
     return RightPanelChamberRowViewModel(
         chamber_label=f"C{chamber_index}",
@@ -1602,8 +1683,8 @@ def _abyss_chamber_row(
             dps_result=team2_dps,
             fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
         ),
-        sim_team1="not run",
-        sim_team2="not run",
+        sim_team1=team1_sim,
+        sim_team2=team2_sim,
         total_seconds=result.total_elapsed_seconds,
         timer_editable=True,
     )
@@ -1634,6 +1715,70 @@ def _fact_dps_total_hp(
         if multi_target_enabled
         else side_summary.solo_target_hp
     )
+
+
+def _gcsim_result_for_side(
+    results: tuple[RightPanelGcsimChamberResult, ...],
+    chamber_index: int,
+    side: int,
+) -> RightPanelGcsimChamberResult | None:
+    for result in results:
+        if int(result.chamber) == int(chamber_index) and int(result.side) == int(side):
+            return result
+    return None
+
+
+def _format_gcsim_sim_cell(
+    result: RightPanelGcsimChamberResult | None,
+    *,
+    period_start: str,
+    floor: int,
+    target_mode: str,
+) -> str:
+    if result is None:
+        return "not run"
+    if _gcsim_result_is_stale(
+        result,
+        period_start=period_start,
+        floor=floor,
+        target_mode=target_mode,
+    ):
+        return "stale"
+    if not result.passed:
+        return "failed"
+    clear_time = _optional_float(result.clear_time_seconds)
+    dps = _optional_float(result.dps_mean)
+    if clear_time is None or dps is None:
+        return "failed"
+    return f"{_format_compact_seconds(clear_time)} / {_format_compact_sim_dps(dps)}"
+
+
+def _gcsim_result_is_stale(
+    result: RightPanelGcsimChamberResult,
+    *,
+    period_start: str,
+    floor: int,
+    target_mode: str,
+) -> bool:
+    return (
+        bool(result.stale)
+        or result.mode != MODE_ABYSS
+        or result.period_start != period_start
+        or int(result.floor) != int(floor)
+        or result.target_mode != target_mode
+    )
+
+
+def _format_compact_seconds(value: float) -> str:
+    return f"{int(float(value) + 0.5)}s"
+
+
+def _format_compact_sim_dps(value: float) -> str:
+    value = float(value)
+    if abs(value) >= 1000:
+        rounded = int(value / 1000.0 + 0.5)
+        return f"{rounded}k"
+    return f"{int(value + 0.5)}"
 
 
 def _fact_dps_hp_mode_label(hp_mode: str) -> str:

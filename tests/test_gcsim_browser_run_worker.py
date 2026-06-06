@@ -13,6 +13,7 @@ from ui.gcsim_browser.run_worker import (
     classify_gcsim_browser_run_payload,
     format_gcsim_browser_batch_report,
     format_gcsim_browser_run_report,
+    right_panel_gcsim_results_from_browser_batch_payload,
     run_gcsim_browser_three_chambers,
     run_gcsim_browser_selected_chamber,
 )
@@ -286,6 +287,47 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         self.assertIn("    notes=artifact_set_count_below_two_ignored", text)
         self.assertIn("    warnings=runtime_warning", text)
         self.assertNotIn("\nWarnings:", text)
+
+    def test_batch_payload_converts_to_ordered_right_panel_runtime_results(self) -> None:
+        payload = {
+            "batch_status": "partial_failed",
+            "selection": {
+                "team_index": 0,
+                "side": 1,
+                "period_start": "2026-06-01",
+                "floor": 12,
+            },
+            "chambers": [
+                _chamber_payload(3, success=True, status="run_passed"),
+                _chamber_payload(
+                    1,
+                    success=False,
+                    status="run_failed",
+                    error_category=ERROR_GCSIM_RUNTIME_ERROR,
+                    warnings=("runtime_warning",),
+                ),
+                _chamber_payload(2, success=True, status="run_passed"),
+            ],
+        }
+
+        results = right_panel_gcsim_results_from_browser_batch_payload(
+            payload,
+            rotation_hash="rotation-hash",
+            target_mode="solo",
+        )
+
+        self.assertEqual([result.chamber for result in results], [1, 2, 3])
+        self.assertEqual([result.side for result in results], [1, 1, 1])
+        self.assertEqual(results[0].team_index, 0)
+        self.assertEqual(results[0].status, "run_failed")
+        self.assertEqual(results[0].error_category, ERROR_GCSIM_RUNTIME_ERROR)
+        self.assertEqual(results[1].clear_time_seconds, 52)
+        self.assertEqual(results[1].dps_mean, 100002)
+        self.assertEqual(results[1].scenario_total_hp, 4430000)
+        self.assertEqual(results[1].period_start, "2026-06-01")
+        self.assertEqual(results[1].floor, 12)
+        self.assertEqual(results[1].target_mode, "solo")
+        self.assertEqual(results[1].rotation_hash, "rotation-hash")
 
 
 def _chamber_payload(

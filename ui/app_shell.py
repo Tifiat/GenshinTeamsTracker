@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -48,8 +49,12 @@ from hoyolab_export.team_card_data import (
 )
 from localization import tr
 from run_workspace.right_panel_prototype_view_model import (
+    FACT_DPS_HP_MODE_MULTI_TARGET,
+    FACT_DPS_HP_MODE_SOLO,
     MODE_ABYSS,
     MODE_DPS_DUMMY,
+    RightPanelGcsimChamberResult,
+    RightPanelGcsimStatusViewModel,
     build_abyss_chamber_rows,
     build_right_panel_prototype_view_model,
 )
@@ -96,6 +101,7 @@ from ui.gcsim_browser.run_worker import (
     GcsimBrowserRunWorker,
     format_gcsim_browser_batch_report,
     format_gcsim_browser_run_report,
+    right_panel_gcsim_results_from_browser_batch_payload,
 )
 from ui.right_panel_prototype import (
     RIGHT_PANEL_PROTOTYPE_MIN_WIDTH,
@@ -275,6 +281,7 @@ class AppShellController:
     )
     _cached_abyss_source_data_loaded: bool = False
     _cached_abyss_source_data: AbyssFloorSourceData | None = None
+    gcsim_chamber_results: tuple[RightPanelGcsimChamberResult, ...] = ()
 
     @classmethod
     def empty(
@@ -316,6 +323,7 @@ class AppShellController:
                 fact_dps_multi_target_enabled=(
                     self.abyss_fact_dps_multi_target_enabled
                 ),
+                gcsim_results=self.gcsim_chamber_results,
             )
             if self.mode == MODE_ABYSS
             else None
@@ -327,6 +335,7 @@ class AppShellController:
             selected_slot_index=self.selected_slot_index,
             external_bonuses_enabled=self.external_bonuses_enabled,
             chamber_rows=chamber_rows,
+            gcsim_status=self._gcsim_status_view_model(),
         )
 
     def cached_abyss_source_data(self) -> AbyssFloorSourceData | None:
@@ -340,13 +349,86 @@ class AppShellController:
     def invalidate_cached_abyss_source_data(self) -> None:
         self._cached_abyss_source_data_loaded = False
         self._cached_abyss_source_data = None
+        self.clear_gcsim_results()
 
     def set_mode(self, mode: str) -> None:
+        previous_mode = self.mode
         self._store_current_mode_state()
         self.mode = _normalize_mode(mode)
         self.state = self.mode_states.get(self.mode) or _empty_state_for_mode(self.mode)
         self.mode_states[self.mode] = self.state
         self.clear_selection()
+        if previous_mode != self.mode and self.mode != MODE_ABYSS:
+            self.clear_gcsim_results()
+
+    def gcsim_target_mode(self) -> str:
+        return (
+            FACT_DPS_HP_MODE_MULTI_TARGET
+            if self.abyss_fact_dps_multi_target_enabled
+            else FACT_DPS_HP_MODE_SOLO
+        )
+
+    def set_abyss_fact_dps_multi_target_enabled(self, enabled: bool) -> bool:
+        enabled = bool(enabled)
+        if self.abyss_fact_dps_multi_target_enabled == enabled:
+            return False
+        self.abyss_fact_dps_multi_target_enabled = enabled
+        self.clear_gcsim_results()
+        return True
+
+    def clear_gcsim_results(self, team_index: int | None = None) -> None:
+        if team_index is None:
+            self.gcsim_chamber_results = ()
+            return
+        normalized_team_index = int(team_index)
+        self.gcsim_chamber_results = tuple(
+            result
+            for result in self.gcsim_chamber_results
+            if int(result.team_index) != normalized_team_index
+        )
+
+    def store_gcsim_browser_batch_payload(
+        self,
+        payload: dict[str, Any],
+        *,
+        rotation_shell_text: str,
+    ) -> bool:
+        status = str(payload.get("batch_status") or "")
+        if status not in {"passed", "partial_failed"}:
+            return False
+        results = right_panel_gcsim_results_from_browser_batch_payload(
+            payload,
+            rotation_hash=_gcsim_rotation_hash(rotation_shell_text),
+            target_mode=self.gcsim_target_mode(),
+        )
+        if not results:
+            return False
+        team_index = int(results[0].team_index)
+        retained = tuple(
+            result
+            for result in self.gcsim_chamber_results
+            if int(result.team_index) != team_index
+        )
+        self.gcsim_chamber_results = (*retained, *results)
+        return True
+
+    def _gcsim_status_view_model(self) -> RightPanelGcsimStatusViewModel:
+        if self.mode != MODE_ABYSS:
+            return RightPanelGcsimStatusViewModel(status="GCSIM: not configured")
+        if not self.gcsim_chamber_results:
+            return RightPanelGcsimStatusViewModel(status="GCSIM: not run")
+        stale = any(
+            result.target_mode != self.gcsim_target_mode()
+            or result.mode != MODE_ABYSS
+            for result in self.gcsim_chamber_results
+        )
+        if stale:
+            return RightPanelGcsimStatusViewModel(status="GCSIM: stale")
+        if all(result.passed for result in self.gcsim_chamber_results):
+            return RightPanelGcsimStatusViewModel(status="GCSIM: complete")
+        if any(result.passed for result in self.gcsim_chamber_results):
+            return RightPanelGcsimStatusViewModel(status="GCSIM: partial")
+        return RightPanelGcsimStatusViewModel(status="GCSIM: failed")
 
     def toggle_slot_selection(self, team_index: int, slot_index: int) -> None:
         if (
@@ -446,6 +528,7 @@ class AppShellController:
             target_team_index,
             target_slot_index,
         )
+        self.clear_gcsim_results()
         self.selected_team_index = target_team_index
         self.selected_slot_index = target_slot_index
         self._store_current_mode_state()
@@ -469,6 +552,7 @@ class AppShellController:
                 and self.selected_slot_index == slot_index
             ):
                 self.clear_selection()
+            self.clear_gcsim_results()
             self._store_current_mode_state()
             return CharacterPlacementResult(
                 changed=True,
@@ -491,6 +575,7 @@ class AppShellController:
         )
         self.selected_team_index = team_index
         self.selected_slot_index = slot_index
+        self.clear_gcsim_results()
         self._store_current_mode_state()
         return CharacterPlacementResult(
             changed=True,
@@ -604,6 +689,7 @@ class AppShellController:
             details,
         )
         self.last_equipment_error = ""
+        self.clear_gcsim_results()
         self._store_current_mode_state()
         for affected_character_id in sorted(affected_character_ids - {character_id}):
             self.refresh_persistent_equipment_for_character(affected_character_id)
@@ -828,6 +914,7 @@ class AppShellController:
             character,
             asset_path=asset_path,
         )
+        self.clear_gcsim_results()
         self._store_current_mode_state()
         return True
 
@@ -1272,10 +1359,14 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.run_all_requested.connect(
             self._on_gcsim_run_all_requested
         )
+        self.left_host.gcsim_browser_workspace.rotation_text_changed.connect(
+            self._on_gcsim_rotation_text_changed
+        )
         self._gcsim_browser_run_thread: QThread | None = None
         self._gcsim_browser_run_worker: (
             GcsimBrowserRunWorker | GcsimBrowserBatchRunWorker | None
         ) = None
+        self._gcsim_browser_run_rotation_text = ""
 
         self._right_panel_refresh_pending = False
         self._right_panel_refresh_timer = QTimer(self)
@@ -1710,6 +1801,9 @@ class AppShell(QWidget):
         thread.finished.connect(self._clear_gcsim_run_worker_refs)
         self._gcsim_browser_run_worker = worker
         self._gcsim_browser_run_thread = thread
+        self._gcsim_browser_run_rotation_text = rotation_shell_text
+        self.controller.clear_gcsim_results(normalized_team_index)
+        self._refresh_right_panel()
         self.left_host.gcsim_browser_workspace.set_actions_busy(
             True,
             message=(
@@ -1720,13 +1814,21 @@ class AppShell(QWidget):
         thread.start()
 
     def _on_gcsim_run_all_finished(self, payload: dict) -> None:
-        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
-            format_gcsim_browser_batch_report(dict(payload))
+        payload_dict = dict(payload)
+        stored = self.controller.store_gcsim_browser_batch_payload(
+            payload_dict,
+            rotation_shell_text=self._gcsim_browser_run_rotation_text,
         )
+        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+            format_gcsim_browser_batch_report(payload_dict)
+        )
+        if stored:
+            self._refresh_right_panel()
 
     def _clear_gcsim_run_worker_refs(self) -> None:
         self._gcsim_browser_run_thread = None
         self._gcsim_browser_run_worker = None
+        self._gcsim_browser_run_rotation_text = ""
         self.left_host.gcsim_browser_workspace.set_actions_busy(False)
 
     def _on_artifact_browser_equipment_changed(self, result: object) -> None:
@@ -1747,6 +1849,7 @@ class AppShell(QWidget):
                 or refreshed
             )
         if refreshed:
+            self.controller.clear_gcsim_results()
             self.schedule_right_panel_refresh()
 
     def _on_account_data_changed(self, reset_runtime_state: bool) -> None:
@@ -1756,6 +1859,7 @@ class AppShell(QWidget):
             self._weapon_filter_sync_timer.stop()
         self._weapon_filter_sync_pending = False
         self.controller.invalidate_cached_abyss_source_data()
+        self.controller.clear_gcsim_results()
 
         if reset_runtime_state:
             previous_mode = self.controller.mode
@@ -1783,8 +1887,13 @@ class AppShell(QWidget):
         self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
 
     def _on_fact_dps_multi_target_changed(self, enabled: bool) -> None:
-        self.controller.abyss_fact_dps_multi_target_enabled = bool(enabled)
+        self.controller.set_abyss_fact_dps_multi_target_enabled(enabled)
         self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+
+    def _on_gcsim_rotation_text_changed(self) -> None:
+        if self.controller.gcsim_chamber_results:
+            self.controller.clear_gcsim_results()
+            self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
 
     def _refresh_right_panel(self) -> dict[str, float]:
         total_start = perf_now()
@@ -3709,6 +3818,10 @@ def _optional_int(value: Any) -> int | None:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _gcsim_rotation_hash(text: str) -> str:
+    return hashlib.sha256(str(text or "").encode("utf-8")).hexdigest()
 
 
 def _dedupe(values: list[str]) -> list[str]:

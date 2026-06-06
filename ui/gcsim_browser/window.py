@@ -56,6 +56,7 @@ class GcsimBrowserWorkspace(QWidget):
     prepare_requested = Signal(int, str)
     run_selected_requested = Signal(int, int, str)
     run_all_requested = Signal(int, str)
+    rotation_text_changed = Signal()
 
     """First visual shell for the future GCSIM Browser.
 
@@ -171,6 +172,7 @@ class GcsimBrowserWorkspace(QWidget):
         rotation_layout.addWidget(self.rotation_title)
         self.rotation_editor = QPlainTextEdit()
         self.rotation_editor.setPlainText(DEFAULT_ROTATION_CODE)
+        self.rotation_editor.textChanged.connect(self.rotation_text_changed.emit)
         self.rotation_editor.setMinimumHeight(180)
         rotation_layout.addWidget(self.rotation_editor)
 

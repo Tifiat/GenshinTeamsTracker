@@ -80,6 +80,7 @@ from run_workspace.right_panel_prototype_view_model import (
     FactDpsEnemyTooltipViewModel,
     FactDpsTooltipViewModel,
     RightPanelChamberRowViewModel,
+    RightPanelGcsimChamberResult,
     RightPanelGcsimStatusViewModel,
     RightPanelPrototypeViewModel,
     RightPanelSelectedDetailsViewModel,
@@ -119,7 +120,7 @@ class AppShellTest(unittest.TestCase):
             CharacterWeaponWorkspace,
         )
         self.assertEqual(shell.left_host.stack.currentIndex(), 0)
-        self.assertEqual(shell.left_host.stack.count(), 2)
+        self.assertEqual(shell.left_host.stack.count(), 3)
         self.assertIsNone(shell.left_host.artifact_browser_workspace)
         self.assertEqual(
             shell.active_left_workspace_id,
@@ -447,6 +448,58 @@ class AppShellTest(unittest.TestCase):
             10_000,
         )
         provider.assert_called_once_with(floor=12)
+
+    def test_app_shell_right_panel_applies_team1_gcsim_batch_results(self) -> None:
+        source_data = _simple_abyss_source_data_for_gcsim_writeback()
+        controller = AppShellController.empty()
+        stored = controller.store_gcsim_browser_batch_payload(
+            _gcsim_batch_payload(team_index=0, side=1),
+            rotation_shell_text="active chasca;",
+        )
+
+        with patch(
+            "ui.app_shell.load_current_cached_abyss_floor_source_data",
+            return_value=source_data,
+        ):
+            model = controller.right_panel_model()
+
+        self.assertTrue(stored)
+        self.assertEqual(model.chamber_rows[0].sim_team1, "52s / 148k")
+        self.assertEqual(model.chamber_rows[0].sim_team2, "not run")
+        self.assertEqual(model.chamber_rows[1].sim_team1, "53s / 149k")
+        self.assertEqual(model.gcsim_status.status, "GCSIM: complete")
+
+    def test_app_shell_right_panel_applies_team2_gcsim_batch_results(self) -> None:
+        source_data = _simple_abyss_source_data_for_gcsim_writeback()
+        controller = AppShellController.empty()
+        stored = controller.store_gcsim_browser_batch_payload(
+            _gcsim_batch_payload(team_index=1, side=2),
+            rotation_shell_text="active furina;",
+        )
+
+        with patch(
+            "ui.app_shell.load_current_cached_abyss_floor_source_data",
+            return_value=source_data,
+        ):
+            model = controller.right_panel_model()
+
+        self.assertTrue(stored)
+        self.assertEqual(model.chamber_rows[0].sim_team1, "not run")
+        self.assertEqual(model.chamber_rows[0].sim_team2, "52s / 148k")
+
+    def test_app_shell_gcsim_results_clear_on_team_source_and_target_mode_change(self) -> None:
+        controller = AppShellController.empty()
+        controller.gcsim_chamber_results = (_stored_gcsim_result(),)
+        controller.add_or_replace_character_fast(_character_asset("10000050", "Thoma"))
+        self.assertEqual(controller.gcsim_chamber_results, ())
+
+        controller.gcsim_chamber_results = (_stored_gcsim_result(),)
+        controller.invalidate_cached_abyss_source_data()
+        self.assertEqual(controller.gcsim_chamber_results, ())
+
+        controller.gcsim_chamber_results = (_stored_gcsim_result(),)
+        self.assertTrue(controller.set_abyss_fact_dps_multi_target_enabled(True))
+        self.assertEqual(controller.gcsim_chamber_results, ())
 
     def test_app_shell_abyss_fact_dps_retries_after_initial_cache_miss(self) -> None:
         source_data = load_abyss_floor12_source_data(
@@ -3726,6 +3779,109 @@ def _character_asset(
             }
         },
     }
+
+
+def _simple_abyss_source_data_for_gcsim_writeback():
+    return load_abyss_floor12_source_data(
+        "2026-06-01",
+        "120",
+        composition_report=composition_report(
+            "2026-06-01",
+            [
+                fandom_row("Team 1 Enemy", chamber=1, side=1, wave=1, level=100),
+                fandom_row("Team 2 Enemy", chamber=1, side=2, wave=1, level=100),
+            ],
+        ),
+        nanoka_report=nanoka_report(
+            "120",
+            [
+                nanoka_row(
+                    "Team 1 Enemy",
+                    chamber=1,
+                    side=1,
+                    hp=500_000,
+                    monster_id="team1",
+                    level=100,
+                ),
+                nanoka_row(
+                    "Team 2 Enemy",
+                    chamber=1,
+                    side=2,
+                    hp=300_000,
+                    monster_id="team2",
+                    level=100,
+                ),
+            ],
+        ),
+    )
+
+
+def _gcsim_batch_payload(*, team_index: int, side: int) -> dict:
+    return {
+        "batch_status": "passed",
+        "selection": {
+            "team_index": team_index,
+            "team_label": f"Team {team_index + 1}",
+            "side": side,
+            "period_start": "2026-06-01",
+            "floor": 12,
+        },
+        "chambers": [
+            _gcsim_chamber_payload(1, side=side, duration=51.5, dps=148000),
+            _gcsim_chamber_payload(2, side=side, duration=52.6, dps=148500),
+            _gcsim_chamber_payload(3, side=side, duration=53.4, dps=149200),
+        ],
+    }
+
+
+def _gcsim_chamber_payload(
+    chamber: int,
+    *,
+    side: int,
+    duration: float,
+    dps: float,
+) -> dict:
+    return {
+        "success": True,
+        "ready": True,
+        "config_path": f"C:/runs/c{chamber}/config.txt",
+        "error_category": "",
+        "selection": {
+            "side": side,
+            "chamber": chamber,
+            "period_start": "2026-06-01",
+            "floor": 12,
+        },
+        "smoke": {
+            "status": "run_passed",
+            "scenario_path": f"C:/runs/c{chamber}/scenario.json",
+            "scenario_summary": {
+                "wave_count": 1,
+                "target_count": 1,
+                "total_hp": 500000,
+            },
+            "run_result": {
+                "summary": {
+                    "duration_mean": duration,
+                    "dps_mean": dps,
+                    "total_damage_mean": 500000,
+                },
+            },
+        },
+    }
+
+
+def _stored_gcsim_result() -> RightPanelGcsimChamberResult:
+    return RightPanelGcsimChamberResult(
+        chamber=1,
+        team_index=0,
+        side=1,
+        status="run_passed",
+        clear_time_seconds=51.5,
+        dps_mean=148000,
+        period_start="2026-06-01",
+        floor=12,
+    )
 
 
 def _weapon_asset(

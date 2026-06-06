@@ -12,6 +12,11 @@ from run_workspace.gcsim.account_prepared_config import (
     DEFAULT_DEV_ENERGY_OVERRIDE_LINE,
     build_account_prepared_full_config_report,
 )
+from run_workspace.right_panel_prototype_view_model import (
+    FACT_DPS_HP_MODE_SOLO,
+    MODE_ABYSS,
+    RightPanelGcsimChamberResult,
+)
 
 
 ERROR_PREPARE_NOT_READY = "prepare_not_ready"
@@ -381,6 +386,78 @@ def format_gcsim_browser_batch_report(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def right_panel_gcsim_results_from_browser_batch_payload(
+    payload: dict[str, Any],
+    *,
+    rotation_hash: str = "",
+    target_mode: str = FACT_DPS_HP_MODE_SOLO,
+) -> tuple[RightPanelGcsimChamberResult, ...]:
+    selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else {}
+    side = _optional_int(selection.get("side")) or 0
+    team_index = _optional_int(selection.get("team_index"))
+    if team_index is None:
+        team_index = max(0, side - 1) if side else 0
+    period_start = str(selection.get("period_start") or "")
+    floor = _optional_int(selection.get("floor")) or 0
+    results: list[RightPanelGcsimChamberResult] = []
+    chambers = payload.get("chambers") if isinstance(payload.get("chambers"), list) else []
+    for chamber_payload in chambers:
+        if not isinstance(chamber_payload, dict):
+            continue
+        chamber_selection = (
+            chamber_payload.get("selection")
+            if isinstance(chamber_payload.get("selection"), dict)
+            else {}
+        )
+        chamber = _optional_int(chamber_selection.get("chamber"))
+        chamber_side = _optional_int(chamber_selection.get("side")) or side
+        if chamber is None or chamber_side not in (1, 2):
+            continue
+        smoke = (
+            chamber_payload.get("smoke")
+            if isinstance(chamber_payload.get("smoke"), dict)
+            else {}
+        )
+        run_result = (
+            smoke.get("run_result")
+            if isinstance(smoke.get("run_result"), dict)
+            else {}
+        )
+        summary = (
+            run_result.get("summary")
+            if isinstance(run_result.get("summary"), dict)
+            else {}
+        )
+        scenario = (
+            smoke.get("scenario_summary")
+            if isinstance(smoke.get("scenario_summary"), dict)
+            else {}
+        )
+        results.append(
+            RightPanelGcsimChamberResult(
+                chamber=chamber,
+                team_index=team_index,
+                side=chamber_side,
+                status=str(smoke.get("status") or chamber_payload.get("status") or ""),
+                error_category=str(chamber_payload.get("error_category") or ""),
+                clear_time_seconds=_optional_float(summary.get("duration_mean")),
+                dps_mean=_optional_float(summary.get("dps_mean")),
+                total_damage_mean=_optional_float(summary.get("total_damage_mean")),
+                scenario_total_hp=_optional_float(scenario.get("total_hp")),
+                warnings=tuple(str(warning) for warning in chamber_payload.get("warnings") or []),
+                issues=_issue_strings(chamber_payload.get("issues") or []),
+                config_path=str(chamber_payload.get("config_path") or ""),
+                scenario_path=str(smoke.get("scenario_path") or ""),
+                mode=MODE_ABYSS,
+                period_start=period_start,
+                floor=floor,
+                target_mode=target_mode,
+                rotation_hash=rotation_hash,
+            )
+        )
+    return tuple(sorted(results, key=lambda result: (result.chamber, result.side)))
+
+
 def _batch_chamber_lines(payload: dict[str, Any]) -> list[str]:
     selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else {}
     smoke = payload.get("smoke") if isinstance(payload.get("smoke"), dict) else {}
@@ -589,3 +666,37 @@ def _format_number(value: Any) -> str:
     if isinstance(value, (int, float)):
         return f"{value:g}"
     return str(value)
+
+
+def _optional_int(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _issue_strings(issues: Any) -> tuple[str, ...]:
+    result: list[str] = []
+    for issue in issues or []:
+        if isinstance(issue, dict):
+            status = issue.get("status")
+            field = issue.get("field")
+            text = ":".join(str(part) for part in (status, field) if part)
+            if text:
+                result.append(text)
+            continue
+        text = str(issue)
+        if text:
+            result.append(text)
+    return tuple(_dedupe(result))

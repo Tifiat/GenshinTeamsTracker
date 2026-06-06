@@ -6,8 +6,10 @@ from dataclasses import replace
 
 from localization import get_language, set_language
 from run_workspace.right_panel_prototype_view_model import (
+    FACT_DPS_HP_MODE_SOLO,
     MODE_ABYSS,
     MODE_DPS_DUMMY,
+    RightPanelGcsimChamberResult,
     _format_hexerei_sections_for_tooltip,
     _hexerei_member_tooltip,
     _hexerei_source_tooltip_text,
@@ -392,6 +394,98 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertEqual(row.sim_team1, "not run")
         self.assertEqual(row.sim_team2, "not run")
         self.assertEqual(source_data.side_summary(1, 1).multi_target_hp, 3_600_000)
+
+    def test_abyss_chamber_rows_show_team1_gcsim_result_only_in_team1_sim_cell(self) -> None:
+        source_data = _simple_source_data()
+
+        rows = build_abyss_chamber_rows(
+            (AbyssTimerState(team1_left_seconds=600, team2_left_seconds=600),),
+            abyss_source_data=source_data,
+            gcsim_results=(
+                _gcsim_result(
+                    chamber=1,
+                    side=1,
+                    team_index=0,
+                    period_start="2026-06-01",
+                    floor=12,
+                    clear_time_seconds=51.5,
+                    dps_mean=148000,
+                ),
+            ),
+        )
+
+        self.assertEqual(rows[0].sim_team1, "52s / 148k")
+        self.assertEqual(rows[0].sim_team2, "not run")
+
+    def test_abyss_chamber_rows_show_team2_gcsim_result_only_in_team2_sim_cell(self) -> None:
+        source_data = _simple_source_data()
+
+        rows = build_abyss_chamber_rows(
+            (AbyssTimerState(team1_left_seconds=600, team2_left_seconds=600),),
+            abyss_source_data=source_data,
+            gcsim_results=(
+                _gcsim_result(
+                    chamber=1,
+                    side=2,
+                    team_index=1,
+                    period_start="2026-06-01",
+                    floor=12,
+                    clear_time_seconds=44.2,
+                    dps_mean=99000,
+                ),
+            ),
+        )
+
+        self.assertEqual(rows[0].sim_team1, "not run")
+        self.assertEqual(rows[0].sim_team2, "44s / 99k")
+
+    def test_abyss_chamber_rows_show_failed_gcsim_result_without_fake_dps(self) -> None:
+        source_data = _simple_source_data()
+
+        rows = build_abyss_chamber_rows(
+            (AbyssTimerState(team1_left_seconds=600, team2_left_seconds=600),),
+            abyss_source_data=source_data,
+            gcsim_results=(
+                _gcsim_result(
+                    chamber=1,
+                    side=1,
+                    team_index=0,
+                    period_start="2026-06-01",
+                    floor=12,
+                    status="run_failed",
+                    error_category="gcsim_runtime_error",
+                    clear_time_seconds=51.5,
+                    dps_mean=148000,
+                ),
+            ),
+        )
+
+        self.assertEqual(rows[0].sim_team1, "failed")
+        self.assertEqual(rows[0].sim_team2, "not run")
+
+    def test_abyss_chamber_rows_show_stale_gcsim_result_on_target_mode_mismatch(self) -> None:
+        source_data = _simple_source_data()
+
+        rows = build_abyss_chamber_rows(
+            (AbyssTimerState(team1_left_seconds=600, team2_left_seconds=600),),
+            abyss_source_data=source_data,
+            fact_dps_multi_target_enabled=True,
+            gcsim_results=(
+                _gcsim_result(
+                    chamber=1,
+                    side=1,
+                    team_index=0,
+                    period_start="2026-06-01",
+                    floor=12,
+                    target_mode=FACT_DPS_HP_MODE_SOLO,
+                    clear_time_seconds=51.5,
+                    dps_mean=148000,
+                ),
+            ),
+        )
+
+        self.assertEqual(rows[0].sim_team1, "stale")
+        self.assertEqual(rows[0].sim_team2, "not run")
 
     def test_abyss_chamber_rows_can_use_multi_target_hp_mode(self) -> None:
         source_data = load_abyss_floor12_source_data(
@@ -1291,6 +1385,68 @@ def _state_with_characters(
             },
         )
     return state
+
+
+def _simple_source_data():
+    return load_abyss_floor12_source_data(
+        "2026-06-01",
+        "120",
+        composition_report=composition_report(
+            "2026-06-01",
+            [
+                fandom_row("Team 1 Enemy", chamber=1, side=1, wave=1, level=100),
+                fandom_row("Team 2 Enemy", chamber=1, side=2, wave=1, level=100),
+            ],
+        ),
+        nanoka_report=nanoka_report(
+            "120",
+            [
+                nanoka_row(
+                    "Team 1 Enemy",
+                    chamber=1,
+                    side=1,
+                    hp=500_000,
+                    monster_id="team1",
+                    level=100,
+                ),
+                nanoka_row(
+                    "Team 2 Enemy",
+                    chamber=1,
+                    side=2,
+                    hp=300_000,
+                    monster_id="team2",
+                    level=100,
+                ),
+            ],
+        ),
+    )
+
+
+def _gcsim_result(
+    *,
+    chamber: int,
+    side: int,
+    team_index: int,
+    period_start: str,
+    floor: int,
+    status: str = "run_passed",
+    error_category: str = "",
+    clear_time_seconds: float | None = None,
+    dps_mean: float | None = None,
+    target_mode: str = FACT_DPS_HP_MODE_SOLO,
+) -> RightPanelGcsimChamberResult:
+    return RightPanelGcsimChamberResult(
+        chamber=chamber,
+        side=side,
+        team_index=team_index,
+        status=status,
+        error_category=error_category,
+        clear_time_seconds=clear_time_seconds,
+        dps_mean=dps_mean,
+        period_start=period_start,
+        floor=floor,
+        target_mode=target_mode,
+    )
 
 
 if __name__ == "__main__":

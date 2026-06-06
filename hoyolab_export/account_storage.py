@@ -54,7 +54,7 @@ DEFAULT_CROP_MANIFEST_PATH = HOYOLAB_DATA_DIR / "crop_manifest.json"
 DEFAULT_ACCOUNT_LANGUAGE_PATH = HOYOLAB_DATA_DIR / "account_language.json"
 DEFAULT_ACCOUNT_DB_PATH = PROJECT_ROOT / "data" / "artifacts.db"
 
-ACCOUNT_STORAGE_SCHEMA_VERSION = 4
+ACCOUNT_STORAGE_SCHEMA_VERSION = 5
 DEFAULT_SIDE_ICON_CACHE_DIR = HOYOLAB_CHARACTER_ASSETS_DIR / "side_icons"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -67,6 +67,9 @@ WARNING_ASCENSION_ENTRY_MISSING = "account_character_ascension_entry_missing"
 WARNING_CHARACTER_SOURCE_EMPTY_PRESERVED = "account_character_source_empty_preserved"
 WARNING_CHARACTER_SIDE_ICON_CACHE_FAILED = "account_character_side_icon_cache_failed"
 WARNING_CHARACTER_TALENT_SKILL_ID_MISSING = "account_character_talent_skill_id_missing"
+WARNING_CHARACTER_CONSTELLATION_POS_MISSING = (
+    "account_character_constellation_pos_missing"
+)
 WARNING_WEAPON_DETAIL_MISSING = "account_weapon_detail_missing"
 WARNING_WEAPON_IDENTITY_NO_INSTANCE_ID = "account_weapon_identity_no_source_instance_id"
 WARNING_WEAPON_OBSERVED_STACK_NOT_FULL_INVENTORY = (
@@ -96,6 +99,8 @@ class AccountStorageSyncSummary:
     characters_upserted: int = 0
     talents_seen: int = 0
     talents_upserted: int = 0
+    constellations_seen: int = 0
+    constellations_upserted: int = 0
     weapon_observations_seen: int = 0
     weapon_stacks_seen: int = 0
     weapon_stacks_upserted: int = 0
@@ -109,6 +114,8 @@ class AccountStorageSyncSummary:
             "characters_upserted": self.characters_upserted,
             "talents_seen": self.talents_seen,
             "talents_upserted": self.talents_upserted,
+            "constellations_seen": self.constellations_seen,
+            "constellations_upserted": self.constellations_upserted,
             "weapon_observations_seen": self.weapon_observations_seen,
             "weapon_stacks_seen": self.weapon_stacks_seen,
             "weapon_stacks_upserted": self.weapon_stacks_upserted,
@@ -139,6 +146,32 @@ class AccountCharacterTalentRecord:
             "level": self.level,
             "icon_url": self.icon_url,
             "is_unlock": self.is_unlock,
+            "warnings": list(self.warnings),
+            "source_metadata": dict(self.source_metadata or {}),
+            "first_seen_at": self.first_seen_at,
+            "last_seen_at": self.last_seen_at,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class AccountCharacterConstellationRecord:
+    character_id: str
+    pos: int
+    name: str = ""
+    effect: str = ""
+    is_actived: bool | None = None
+    warnings: tuple[str, ...] = ()
+    source_metadata: dict[str, Any] | None = None
+    first_seen_at: str = ""
+    last_seen_at: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "character_id": self.character_id,
+            "pos": self.pos,
+            "name": self.name,
+            "effect": self.effect,
+            "is_actived": self.is_actived,
             "warnings": list(self.warnings),
             "source_metadata": dict(self.source_metadata or {}),
             "first_seen_at": self.first_seen_at,
@@ -502,6 +535,26 @@ def init_account_storage(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_account_character_talents_character_id
             ON account_character_talents(character_id);
 
+        CREATE TABLE IF NOT EXISTS account_character_constellations (
+            character_id INTEGER NOT NULL,
+            pos INTEGER NOT NULL,
+            name TEXT,
+            effect TEXT,
+            is_actived INTEGER,
+            source_metadata_json TEXT NOT NULL DEFAULT '{}',
+            warnings_json TEXT NOT NULL DEFAULT '[]',
+            first_seen_at TEXT,
+            last_seen_at TEXT,
+            updated_at TEXT,
+
+            PRIMARY KEY (character_id, pos),
+            FOREIGN KEY (character_id) REFERENCES account_characters(character_id)
+                ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_account_character_constellations_character_id
+            ON account_character_constellations(character_id);
+
         CREATE TABLE IF NOT EXISTS account_weapon_observed_stacks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             weapon_fingerprint TEXT NOT NULL UNIQUE,
@@ -540,6 +593,7 @@ def init_account_storage(conn: sqlite3.Connection) -> None:
     )
     _ensure_account_character_columns(conn)
     _ensure_account_character_talent_columns(conn)
+    _ensure_account_character_constellation_columns(conn)
     _ensure_observed_weapon_columns(conn)
     init_character_identity_storage(conn)
 
@@ -641,6 +695,8 @@ def sync_account_storage_from_sources(
     characters_upserted = 0
     talents_seen = 0
     talents_upserted = 0
+    constellations_seen = 0
+    constellations_upserted = 0
 
     if account_characters:
         for account_character in account_characters:
@@ -759,6 +815,17 @@ def sync_account_storage_from_sources(
                 talents_seen += seen
                 talents_upserted += upserted
                 warnings.extend(talent_warnings)
+                seen, upserted, constellation_warnings = (
+                    _sync_account_character_constellations(
+                        conn,
+                        character_id=character_id,
+                        detail=detail,
+                        now=now,
+                    )
+                )
+                constellations_seen += seen
+                constellations_upserted += upserted
+                warnings.extend(constellation_warnings)
     else:
         warnings.append(WARNING_CHARACTER_SOURCE_EMPTY_PRESERVED)
 
@@ -866,6 +933,8 @@ def sync_account_storage_from_sources(
         characters_upserted=characters_upserted,
         talents_seen=talents_seen,
         talents_upserted=talents_upserted,
+        constellations_seen=constellations_seen,
+        constellations_upserted=constellations_upserted,
         weapon_observations_seen=len(observation_by_key),
         weapon_stacks_seen=len(grouped),
         weapon_stacks_upserted=weapon_stacks_upserted,
@@ -1018,6 +1087,17 @@ def list_account_character_talents(
 ) -> tuple[AccountCharacterTalentRecord, ...]:
     init_account_storage(conn)
     return _talents_by_character_id(conn, [_optional_int(character_id)]).get(
+        _optional_int(character_id),
+        (),
+    )
+
+
+def list_account_character_constellations(
+    conn: sqlite3.Connection,
+    character_id: str | int,
+) -> tuple[AccountCharacterConstellationRecord, ...]:
+    init_account_storage(conn)
+    return _constellations_by_character_id(conn, [_optional_int(character_id)]).get(
         _optional_int(character_id),
         (),
     )
@@ -1256,6 +1336,82 @@ def _sync_account_character_talents(
                 _optional_int(skill.get("level")),
                 _text(skill.get("icon")),
                 _optional_bool_int(skill.get("is_unlock")),
+                _json_dumps(source_metadata),
+                _json_dumps([]),
+                now,
+                now,
+                now,
+            ),
+        )
+        upserted += 1
+    return seen, upserted, warnings
+
+
+def _sync_account_character_constellations(
+    conn: sqlite3.Connection,
+    *,
+    character_id: int,
+    detail: Mapping[str, Any],
+    now: str,
+) -> tuple[int, int, list[str]]:
+    constellations = detail.get("constellations")
+    if not isinstance(constellations, list):
+        return 0, 0, []
+
+    seen = 0
+    upserted = 0
+    warnings: list[str] = []
+    for index, constellation in enumerate(constellations):
+        if not isinstance(constellation, Mapping):
+            continue
+        pos = _optional_int(constellation.get("pos"))
+        if pos is None:
+            warnings.append(WARNING_CHARACTER_CONSTELLATION_POS_MISSING)
+            continue
+        seen += 1
+        source_metadata = {
+            "source": "hoyolab_account_character_details_constellations",
+            "source_path": "account_character_details.json -> json.data.list[].constellations[]",
+            "source_row_index": index,
+            "raw_fields_present": sorted(str(key) for key in constellation.keys()),
+            "account_state_only": True,
+            "stored_for_gcsim_talent_normalization_only": True,
+            "not_a_buff_engine": True,
+        }
+        conn.execute(
+            """
+            INSERT INTO account_character_constellations (
+                character_id,
+                pos,
+                name,
+                effect,
+                is_actived,
+                source_metadata_json,
+                warnings_json,
+                first_seen_at,
+                last_seen_at,
+                updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(character_id, pos) DO UPDATE SET
+                name = excluded.name,
+                effect = excluded.effect,
+                is_actived = excluded.is_actived,
+                source_metadata_json = excluded.source_metadata_json,
+                warnings_json = excluded.warnings_json,
+                first_seen_at = COALESCE(
+                    account_character_constellations.first_seen_at,
+                    excluded.first_seen_at
+                ),
+                last_seen_at = excluded.last_seen_at,
+                updated_at = excluded.updated_at
+            """,
+            (
+                character_id,
+                pos,
+                _text(constellation.get("name")),
+                _text(constellation.get("effect")),
+                _optional_bool_int(constellation.get("is_actived")),
                 _json_dumps(source_metadata),
                 _json_dumps([]),
                 now,
@@ -1703,6 +1859,32 @@ def _talents_by_character_id(
     return {key: tuple(value) for key, value in grouped.items()}
 
 
+def _constellations_by_character_id(
+    conn: sqlite3.Connection,
+    character_ids: list[int | None],
+) -> dict[int | None, tuple[AccountCharacterConstellationRecord, ...]]:
+    ids = sorted({item for item in character_ids if item is not None})
+    if not ids:
+        return {}
+    placeholders = ",".join("?" for _ in ids)
+    rows = conn.execute(
+        f"""
+        SELECT *
+        FROM account_character_constellations
+        WHERE character_id IN ({placeholders})
+        ORDER BY character_id ASC, pos ASC
+        """,
+        tuple(ids),
+    ).fetchall()
+    grouped: dict[int | None, list[AccountCharacterConstellationRecord]] = {}
+    for row in rows:
+        character_id = _optional_int(row["character_id"])
+        grouped.setdefault(character_id, []).append(
+            _account_character_constellation_record(row)
+        )
+    return {key: tuple(value) for key, value in grouped.items()}
+
+
 def _account_character_talent_record(
     row: sqlite3.Row | Mapping[str, Any],
 ) -> AccountCharacterTalentRecord:
@@ -1716,6 +1898,24 @@ def _account_character_talent_record(
         level=_optional_int(row["level"]),
         icon_url=_text(row["icon_url"]),
         is_unlock=is_unlock,
+        warnings=tuple(_json_list(row["warnings_json"])),
+        source_metadata=_json_dict(row["source_metadata_json"]),
+        first_seen_at=_text(row["first_seen_at"]),
+        last_seen_at=_text(row["last_seen_at"]),
+    )
+
+
+def _account_character_constellation_record(
+    row: sqlite3.Row | Mapping[str, Any],
+) -> AccountCharacterConstellationRecord:
+    active_value = row["is_actived"]
+    is_actived = None if active_value is None else bool(int(active_value))
+    return AccountCharacterConstellationRecord(
+        character_id=_text(row["character_id"]),
+        pos=_optional_int(row["pos"]) or 0,
+        name=_text(row["name"]),
+        effect=_text(row["effect"]),
+        is_actived=is_actived,
         warnings=tuple(_json_list(row["warnings_json"])),
         source_metadata=_json_dict(row["source_metadata_json"]),
         first_seen_at=_text(row["first_seen_at"]),
@@ -2073,6 +2273,23 @@ def _ensure_account_character_talent_columns(conn: sqlite3.Connection) -> None:
             )
 
 
+def _ensure_account_character_constellation_columns(conn: sqlite3.Connection) -> None:
+    columns = _table_columns(conn, "account_character_constellations")
+    additions = {
+        "source_metadata_json": "TEXT NOT NULL DEFAULT '{}'",
+        "warnings_json": "TEXT NOT NULL DEFAULT '[]'",
+        "first_seen_at": "TEXT",
+        "last_seen_at": "TEXT",
+        "updated_at": "TEXT",
+    }
+    for column, definition in additions.items():
+        if column not in columns:
+            conn.execute(
+                "ALTER TABLE account_character_constellations "
+                f"ADD COLUMN {column} {definition}"
+            )
+
+
 def _ensure_observed_weapon_columns(conn: sqlite3.Connection) -> None:
     columns = _table_columns(conn, "account_weapon_observed_stacks")
     additions = {
@@ -2157,6 +2374,12 @@ def _optional_int(value: Any) -> int | None:
 def _optional_bool_int(value: Any) -> int | None:
     if value in (None, ""):
         return None
+    if isinstance(value, str):
+        text = value.strip().casefold()
+        if text in {"0", "false", "no", "n"}:
+            return 0
+        if text in {"1", "true", "yes", "y"}:
+            return 1
     return 1 if bool(value) else 0
 
 

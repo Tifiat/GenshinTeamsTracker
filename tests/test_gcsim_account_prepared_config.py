@@ -9,9 +9,11 @@ from run_workspace.gcsim.account_prepared_config import (
     DEFAULT_ACCOUNT_CHASCA_TEAM,
     WARNING_DEV_WEAPON_CANDIDATE_NOT_ACCOUNT_TRUTH,
     WARNING_SYNTHETIC_DEV_ARTIFACT_STATS_NOT_ACCOUNT_TRUTH,
-    WARNING_TALENT_LEVEL_CAPPED_TO_GCSIM_PARSER_RANGE,
     build_account_prepared_full_config_report,
     build_account_prepared_team_payload,
+)
+from run_workspace.gcsim.config_talents import (
+    WARNING_POST_NORMALIZATION_TALENT_LEVEL_CAPPED_TO_GCSIM_RANGE,
 )
 
 
@@ -90,12 +92,18 @@ class GcsimAccountPreparedConfigTest(unittest.TestCase):
         self.assertIn("ororon char lvl=90/90", config_text)
         self.assertIn("furina char lvl=90/90", config_text)
         self.assertIn("bennett char lvl=90/90", config_text)
-        self.assertIn("ororon char lvl=90/90 cons=6 talent=1,9,10;", config_text)
+        self.assertIn("ororon char lvl=90/90 cons=6 talent=1,9,9;", config_text)
         self.assertIn("bennett char lvl=90/90 cons=6 talent=1,9,10;", config_text)
         self.assertIn("active furina;", config_text)
-        self.assertIn(
-            WARNING_TALENT_LEVEL_CAPPED_TO_GCSIM_PARSER_RANGE,
+        self.assertNotIn(
+            WARNING_POST_NORMALIZATION_TALENT_LEVEL_CAPPED_TO_GCSIM_RANGE,
             report.warnings,
+        )
+        self.assertEqual(
+            report.team.characters[1].talents["talents"][2][
+                "parsed_constellation_bonus"
+            ],
+            3,
         )
 
     def test_current_weapon_is_used_when_present(self) -> None:
@@ -154,6 +162,7 @@ class seeded_account_config_db:
             create_schema(conn)
             seed_characters(conn, ororon_ready=self.ororon_ready)
             seed_talents(conn)
+            seed_constellations(conn)
             seed_weapons(conn)
             seed_current_weapons(conn)
             if self.equip_furina_artifacts:
@@ -190,6 +199,15 @@ def create_schema(conn: sqlite3.Connection) -> None:
             name TEXT,
             level INTEGER,
             is_unlock INTEGER
+        );
+
+        CREATE TABLE account_character_constellations (
+            character_id INTEGER NOT NULL,
+            pos INTEGER NOT NULL,
+            name TEXT,
+            effect TEXT,
+            is_actived INTEGER,
+            PRIMARY KEY (character_id, pos)
         );
 
         CREATE TABLE account_weapon_observed_stacks (
@@ -290,6 +308,38 @@ def seed_talents(conn: sqlite3.Connection) -> None:
             is_unlock
         )
         VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        rows,
+    )
+
+
+def seed_constellations(conn: sqlite3.Connection) -> None:
+    rows = [
+        (
+            10000105,
+            5,
+            "Burst Boost",
+            "Increases <color=#FFD780FF>Burst</color> by 3.",
+            1,
+        ),
+        (
+            10000032,
+            5,
+            "Burst Boost",
+            "Increases <color=#FFD780FF>Burst</color> by 3.",
+            1,
+        ),
+    ]
+    conn.executemany(
+        """
+        INSERT INTO account_character_constellations (
+            character_id,
+            pos,
+            name,
+            effect,
+            is_actived
+        )
+        VALUES (?, ?, ?, ?, ?)
         """,
         rows,
     )

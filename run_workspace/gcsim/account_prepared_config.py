@@ -43,6 +43,11 @@ from run_workspace.gcsim.artifact_runner import (
 from run_workspace.gcsim.config_assembly import (
     CHASCA_ORORON_FURINA_BENNETT_ROTATION_SHELL_PATH,
 )
+from run_workspace.gcsim.config_talents import (
+    GcsimConstellationSource,
+    GcsimTalentSource,
+    prepare_gcsim_talent_levels,
+)
 from run_workspace.gcsim.enemy_type_registry import (
     find_default_gcsim_enemy_shortcut_source,
 )
@@ -66,11 +71,7 @@ WARNING_SYNTHETIC_DEV_ARTIFACT_STATS_NOT_ACCOUNT_TRUTH = (
     "synthetic_dev_artifact_stats_not_account_truth"
 )
 WARNING_TALENT_ORDER_SKILL_ID_DEV_ASSUMED = "dev_talent_order_skill_id_assumed"
-WARNING_TALENT_LEVEL_CAPPED_TO_GCSIM_PARSER_RANGE = (
-    "talent_level_capped_to_gcsim_parser_range_not_account_truth"
-)
 WARNING_CURRENT_ARTIFACTS_NOT_USED = "current_artifacts_seen_but_not_used"
-GCSIM_MAX_PARSER_TALENT_LEVEL = 10
 
 DEFAULT_ACCOUNT_CHASCA_TEAM: tuple[str, ...] = (
     "Chasca",
@@ -116,6 +117,7 @@ class AccountPreparedCharacterDetail:
     artifact_source: str = ""
     artifact_account_truth: bool = False
     current_equipped_artifact_count: int = 0
+    talents: dict[str, Any] = field(default_factory=dict)
     block_ready: bool = False
     block_status: str = ""
     warnings: tuple[str, ...] = ()
@@ -136,6 +138,7 @@ class AccountPreparedCharacterDetail:
             "artifact_source": self.artifact_source,
             "artifact_account_truth": self.artifact_account_truth,
             "current_equipped_artifact_count": self.current_equipped_artifact_count,
+            "talents": dict(self.talents),
             "block_ready": self.block_ready,
             "block_status": self.block_status,
             "warnings": list(self.warnings),
@@ -238,7 +241,12 @@ def build_account_prepared_team_payload(
                     )
                 )
 
-            talents, talent_warnings, talent_issues = _talent_input_from_account_rows(
+            (
+                talents,
+                talent_warnings,
+                talent_issues,
+                talent_report,
+            ) = _talent_input_from_account_rows(
                 conn,
                 character.get("character_id"),
             )
@@ -323,6 +331,7 @@ def build_account_prepared_team_payload(
                     artifact_source="synthetic_dev_artifact_stats",
                     artifact_account_truth=False,
                     current_equipped_artifact_count=artifact_count,
+                    talents=talent_report,
                     warnings=_dedupe_tuple(warnings),
                     issues=tuple(issues),
                 )
@@ -532,10 +541,15 @@ def _find_account_character(
 def _talent_input_from_account_rows(
     conn: sqlite3.Connection,
     character_id: Any,
-) -> tuple[dict[str, Any] | None, tuple[str, ...], tuple[AccountPreparedConfigIssue, ...]]:
+) -> tuple[
+    dict[str, Any] | None,
+    tuple[str, ...],
+    tuple[AccountPreparedConfigIssue, ...],
+    dict[str, Any],
+]:
     rows = conn.execute(
         """
-        SELECT skill_id, skill_type, level
+        SELECT skill_id, skill_type, name, level
         FROM account_character_talents
         WHERE character_id = ?
           AND COALESCE(skill_type, 0) = 1
@@ -556,13 +570,18 @@ def _talent_input_from_account_rows(
                     "Need three active skill_type=1 talent levels ordered by skill_id.",
                 ),
             ),
+            {},
         )
-    levels = [
-        _optional_int(active[0]["level"]),
-        _optional_int(active[1]["level"]),
-        _optional_int(active[2]["level"]),
+    talents = [
+        GcsimTalentSource(
+            slot=slot,
+            skill_id=_text(row["skill_id"]),
+            name=_text(row["name"]),
+            displayed_level=_optional_int(row["level"]),
+        )
+        for slot, row in zip(("normal", "skill", "burst"), active[:3])
     ]
-    if any(level is None or level < 1 for level in levels):
+    if any(talent.displayed_level is None or talent.displayed_level < 1 for talent in talents):
         return (
             None,
             (),
@@ -573,24 +592,59 @@ def _talent_input_from_account_rows(
                     "GCSIM parser talent levels must be positive.",
                 ),
             ),
+            {},
         )
-    capped_levels = [
-        min(int(level), GCSIM_MAX_PARSER_TALENT_LEVEL)
-        for level in levels
-        if level is not None
+    constellations = _constellation_sources_from_account_rows(conn, character_id)
+    preparation = prepare_gcsim_talent_levels(talents, constellations)
+    warnings = [
+        WARNING_TALENT_ORDER_SKILL_ID_DEV_ASSUMED,
+        *preparation.warnings,
     ]
-    warnings = [WARNING_TALENT_ORDER_SKILL_ID_DEV_ASSUMED]
-    if capped_levels != [int(level) for level in levels if level is not None]:
-        warnings.append(WARNING_TALENT_LEVEL_CAPPED_TO_GCSIM_PARSER_RANGE)
+    talent_input = preparation.to_talent_input_dict()
+    if not preparation.ready or talent_input is None:
+        return (
+            None,
+            _dedupe_tuple(warnings),
+            (
+                AccountPreparedConfigIssue(
+                    "talents_invalid",
+                    "account_character_talents.level",
+                    "GCSIM parser talent levels must be in 1..10 after C3/C5 normalization.",
+                ),
+            ),
+            preparation.to_dict(),
+        )
     return (
-        {
-            "normal": capped_levels[0],
-            "skill": capped_levels[1],
-            "burst": capped_levels[2],
-            "source_order_confirmed": True,
-        },
-        tuple(warnings),
+        talent_input,
+        _dedupe_tuple(warnings),
         (),
+        preparation.to_dict(),
+    )
+
+
+def _constellation_sources_from_account_rows(
+    conn: sqlite3.Connection,
+    character_id: Any,
+) -> tuple[GcsimConstellationSource, ...]:
+    if not _table_exists(conn, "account_character_constellations"):
+        return ()
+    rows = conn.execute(
+        """
+        SELECT pos, name, effect, is_actived
+        FROM account_character_constellations
+        WHERE character_id = ?
+        ORDER BY pos ASC
+        """,
+        (_optional_int(character_id),),
+    ).fetchall()
+    return tuple(
+        GcsimConstellationSource(
+            pos=_optional_int(row["pos"]),
+            name=_text(row["name"]),
+            effect=_text(row["effect"]),
+            is_actived=bool(int(row["is_actived"])) if row["is_actived"] is not None else False,
+        )
+        for row in rows
     )
 
 
@@ -905,6 +959,7 @@ def _attach_block_statuses(
                 artifact_source=detail.artifact_source,
                 artifact_account_truth=detail.artifact_account_truth,
                 current_equipped_artifact_count=detail.current_equipped_artifact_count,
+                talents=detail.talents,
                 block_ready=result.ready,
                 block_status=block_status,
                 warnings=_dedupe_tuple([*detail.warnings, *result.warnings]),

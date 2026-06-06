@@ -59,7 +59,9 @@ Normal runtime/UI account data should read from the SQLite adapter in
 - account character grids/lists use `account_characters`;
 - character level/constellation/element/rarity/icon/portrait/side icon/base
   values come from `AccountCharacterRuntimeRecord`;
-- talent levels come from `account_character_talents`;
+- displayed talent levels come from `account_character_talents`; minimal active
+  constellation effect rows for GCSIM talent normalization come from
+  `account_character_constellations`;
 - region, `Moonsign`/`Hexerei`, and standard 5-star membership come from the
   SQLite `character_identity` enrichment table through the same account read
   adapter;
@@ -231,7 +233,7 @@ suffix. Elemental Mastery remains flat/additive.
 `account_characters` does not contain:
 
 - talent descriptions/effects;
-- constellation descriptions/effects;
+- constellation descriptions/effects on the character row itself;
 - parsed buffs;
 - GCSIM formulas;
 - current equipped artifact-influenced final stats as canonical values.
@@ -293,7 +295,44 @@ Storage contract:
 - constellation effects;
 - GCSIM-specific config.
 
-Future static talent/constellation effect parsing belongs in a separate
+### `account_character_constellations`
+
+Minimal observed constellation rows from local HoYoLAB detail JSON:
+
+- `account_character_details.json -> json.data.list[].constellations[]`
+
+Fields:
+
+- `character_id INTEGER NOT NULL`
+- `pos INTEGER NOT NULL`
+- `name`
+- `effect`
+- `is_actived`
+- `source_metadata_json`
+- `warnings_json`
+- `first_seen_at`
+- `last_seen_at`
+- `updated_at`
+
+Primary key:
+
+- `(character_id, pos)`
+
+Storage contract:
+
+`account_character_constellations` contains only enough account/source state for
+GCSIM talent normalization. The GCSIM helper uses active C3/C5 rows and colored
+talent references in `effect` to remove displayed +3 talent bonuses before
+config output.
+
+`account_character_constellations` does not contain:
+
+- parsed formulas;
+- a buff engine;
+- static constellation effect catalog coverage;
+- GCSIM config text.
+
+Future broad static talent/constellation effect parsing belongs in a separate
 catalog/research task. Do not scrape broad HoYoLAB/HoYoWiki sources for static
 talent descriptions in this account-storage area.
 
@@ -495,6 +534,7 @@ character/weapon observation rows, use `hoyolab_export/account_storage.py`:
 - `list_account_characters(conn)`
 - `get_account_character(conn, character_id)`
 - `list_account_character_talents(conn, character_id)`
+- `list_account_character_constellations(conn, character_id)`
 - `list_account_weapon_observed_stacks(conn)`
 - `get_account_weapon_observed_stack(conn, weapon_fingerprint)`
 - `get_account_weapon_observed_stack_by_id(conn, stack_id)`

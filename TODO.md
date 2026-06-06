@@ -666,10 +666,13 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   artifact-set mapping/current-build ownership is confirmed. The adapter writes
   no partial config when a character/weapon/talent/artifact block is not ready.
   Because current GCSIM v2.42.2 parser accepts talent levels only in `1..10`,
-  account-observed constellation-boosted talent levels above 10 are capped for
-  parser compatibility with
-  `talent_level_capped_to_gcsim_parser_range_not_account_truth`; this is a dev
-  smoke compatibility bridge, not final talent truth. Local no-network smoke on
+  account/HoYoLAB displayed talent levels are normalized through
+  `run_workspace/gcsim/config_talents.py` before config output: active C3/C5
+  effects are matched by colored talent references against active skill names,
+  the +3 bonus is removed when exactly one talent matches, and unresolved or
+  still-above-range levels are capped to 10 with explicit warnings such as
+  `constellation_talent_bonus_not_resolved` and
+  `post_normalization_talent_level_capped_to_gcsim_range`. Local no-network smoke on
   2026-06-06 used real account Chasca/Ororon/Furina/Bennett rows, cached
   `2026-02-16` F12 C1 S1 wave scenario, and the active artifact; it passed as a
   backend compatibility smoke only, with no DPS correctness claim. Right-panel

@@ -17,6 +17,7 @@ from hoyolab_export.account_storage import (
     get_account_character,
     get_account_weapon_observed_stack_by_id,
     get_account_weapon_observed_stack,
+    list_account_character_constellations,
     list_account_character_talents,
     list_account_characters,
     list_account_weapon_observed_stacks,
@@ -55,6 +56,7 @@ class AccountStorageTest(unittest.TestCase):
         self.assertIn("artifact_builds", account_objects)
         self.assertIn("account_characters", account_objects)
         self.assertIn("account_character_talents", account_objects)
+        self.assertIn("account_character_constellations", account_objects)
         self.assertIn("account_weapon_observed_stacks", account_objects)
         self.assertIn("character_identity", account_objects)
         self.assertNotIn("account_current_equipped_weapons", account_objects)
@@ -298,6 +300,7 @@ class AccountStorageTest(unittest.TestCase):
                 characters = list_account_characters(conn)
                 character = get_account_character(conn, 1001)
                 talents = list_account_character_talents(conn, 1001)
+                constellations = list_account_character_constellations(conn, 1001)
                 stacks = list_account_weapon_observed_stacks(conn)
                 stack = get_account_weapon_observed_stack(
                     conn,
@@ -313,6 +316,7 @@ class AccountStorageTest(unittest.TestCase):
         self.assertEqual(character.to_team_builder_character_ref()["source"], "account_sqlite")
         self.assertEqual(character.base_atk, 200)
         self.assertEqual(len(talents), 2)
+        self.assertEqual(len(constellations), 2)
         self.assertEqual(
             character.to_team_builder_character_ref()["side_icon_url"],
             "https://example.test/detail-side.png",
@@ -680,6 +684,41 @@ class AccountStorageTest(unittest.TestCase):
         self.assertEqual(len(character.talents), 2)
         self.assertEqual(character.talents[0].level, 9)
 
+    def test_constellation_rows_sync_for_talent_normalization(self) -> None:
+        changed_details = deepcopy(fake_account_details())
+        first_constellation = changed_details["json"]["data"]["list"][0][
+            "constellations"
+        ][0]
+        first_constellation["effect"] = (
+            "Changed <color=#FFD780FF>Normal Skill</color> text."
+        )
+
+        with temp_artifact_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                init_db(conn)
+                summary = sync_account_storage_from_sources(
+                    conn,
+                    account_characters=[fake_account_character()],
+                    account_weapons=[fake_account_weapon()],
+                    account_character_details=fake_account_details(),
+                )
+                sync_account_storage_from_sources(
+                    conn,
+                    account_characters=[fake_account_character()],
+                    account_weapons=[fake_account_weapon()],
+                    account_character_details=changed_details,
+                )
+                constellations = list_account_character_constellations(conn, 1001)
+
+        self.assertEqual(summary.constellations_seen, 2)
+        self.assertEqual(summary.constellations_upserted, 2)
+        self.assertEqual(len(constellations), 2)
+        self.assertEqual([item.pos for item in constellations], [3, 5])
+        self.assertTrue(constellations[0].is_actived)
+        self.assertIn("Changed", constellations[0].effect)
+        metadata = constellations[0].source_metadata or {}
+        self.assertTrue(metadata["stored_for_gcsim_talent_normalization_only"])
+
     def test_identical_weapon_fingerprints_in_one_sync_increase_known_count(self) -> None:
         second_character = fake_account_character(character_id=1002, name="Second Hero")
         weapon_one = fake_account_weapon()
@@ -858,6 +897,7 @@ def account_row_counts(conn) -> dict[str, int]:
     for table in (
         "account_characters",
         "account_character_talents",
+        "account_character_constellations",
         "account_weapon_observed_stacks",
     ):
         result[table] = int(
@@ -1012,6 +1052,26 @@ def fake_account_details(
                                 "is_unlock": True,
                                 "desc": "Effect text is source-only and not stored.",
                                 "skill_affix_list": [],
+                            },
+                        ],
+                        "constellations": [
+                            {
+                                "pos": 3,
+                                "name": "Talent C3",
+                                "effect": (
+                                    "Increases <color=#FFD780FF>Normal Skill</color> "
+                                    "by 3."
+                                ),
+                                "is_actived": True,
+                            },
+                            {
+                                "pos": 5,
+                                "name": "Talent C5",
+                                "effect": (
+                                    "Increases <color=#FFD780FF>Elemental Skill</color> "
+                                    "by 3."
+                                ),
+                                "is_actived": False,
                             },
                         ],
                     }

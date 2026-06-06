@@ -85,7 +85,7 @@ from ui.character_assets import (
     standard_character_filter_icon,
 )
 from ui.account_data_page import AccountDataPage
-from ui.gcsim_browser.gcsim_browser import (
+from ui.gcsim_browser.window import (
     GcsimBrowserTeamSlotPreview,
     GcsimBrowserWorkspace,
 )

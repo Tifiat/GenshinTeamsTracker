@@ -705,6 +705,12 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   team data before any UI wiring.
 - Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.
 - First GCSIM Browser UI should be a dedicated browser tab/page near the existing character/weapon and artifact browser areas, not an isolated popup and not a small TeamCard-only panel. The right panel remains the compact run summary that shows factual DPS and Sim DPS results.
+- UI browser package cleanup plan:
+  - GCSIM Browser code should live under `ui/gcsim_browser/`, with the main widget in `window.py`, following the existing `ui/artifact_browser/window.py` pattern.
+  - Do not keep browser/page widgets as loose one-off files directly under `ui/` unless they are truly tiny shared pages.
+  - Later, move the current character/weapon workspace out of the monolithic `ui/app_shell.py` into a dedicated browser package, likely `ui/character_browser/` or `ui/character_weapon_browser/`.
+  - That later refactor should be done only after the GCSIM Browser skeleton is stable, because the current character/weapon workspace is working and tied to selection markers, weapon overlays, filters, and app-shell runtime state.
+  - The later refactor must be split into small behavior-preserving moves: first move classes without behavior changes, then update imports, then add tests/smoke checks.
 - The first browser MVP should consume the current runtime team composition from Run Workspace/right panel without adding right-panel persistence. Abyss mode has Team 1 / Team 2 tabs; DPS Dummy mode has one team tab.
 - GCSIM Browser MVP layout:
   - compact team readiness cards: character, weapon, set summary, ready/issues;

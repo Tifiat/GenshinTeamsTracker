@@ -652,19 +652,29 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   The bridge writes a full config only when all prepared characters and the
   shell audit are ready; missing required characters, mappings, weapons,
   talents, or artifact stats skip output instead of writing partial config.
-  Current owner audit found account character/weapon/equipment/runtime artifact
-  snapshot helpers in unified local SQLite `data/artifacts.db`, but no confirmed
-  production owner for selected team plus per-slot current build suitable for
-  direct GCSIM config generation. Account sync now stores local-cache-derived
-  `catalog_english_name` and resolved `gcsim_character_key` /
-  `gcsim_weapon_key` status/method fields for account characters and observed
-  weapon stacks, so future config generation can consume ready stored keys
-  directly instead of searching localized display names. The committed fixture
-  remains synthetic because selected-team/current-build ownership, artifact-set
-  mapping, and config adapter wiring are still future work. A local smoke on 2026-06-05 used this
-  generated config with cached `2026-02-16` F12 C1 S1 wave scenario and the
-  active artifact; it passed as a backend compatibility smoke only, with no DPS
-  correctness claim.
+  Account-backed backend/dev prepared config adapter now exists in
+  `run_workspace/gcsim/account_prepared_config.py`; CLI:
+  `python -m run_workspace.gcsim.account_prepared_config --format text|json`.
+  It reads real account SQLite rows for Chasca/Ororon/Furina/Bennett, consumes
+  stored ready `gcsim_character_key` and `gcsim_weapon_key` fields, never uses
+  localized `name` as GCSIM identity, uses current-equipped weapon rows when
+  present, and otherwise chooses deterministic ready observed weapon candidates
+  by weapon type with `dev_weapon_candidate_not_account_truth`. Artifacts remain
+  synthetic/dev for this bridge and are marked
+  `synthetic_dev_artifact_stats_not_account_truth`; current artifact rows may be
+  reported but are not used as account-truth GCSIM `add stats` until
+  artifact-set mapping/current-build ownership is confirmed. The adapter writes
+  no partial config when a character/weapon/talent/artifact block is not ready.
+  Because current GCSIM v2.42.2 parser accepts talent levels only in `1..10`,
+  account-observed constellation-boosted talent levels above 10 are capped for
+  parser compatibility with
+  `talent_level_capped_to_gcsim_parser_range_not_account_truth`; this is a dev
+  smoke compatibility bridge, not final talent truth. Local no-network smoke on
+  2026-06-06 used real account Chasca/Ororon/Furina/Bennett rows, cached
+  `2026-02-16` F12 C1 S1 wave scenario, and the active artifact; it passed as a
+  backend compatibility smoke only, with no DPS correctness claim. Right-panel
+  persistence/UI and production selected-team/current-build ownership were not
+  added.
   Backend shipped fallback artifact resolver exists in
   `run_workspace/gcsim/shipped_artifact.py`; runner support in
   `run_workspace/gcsim/artifact_runner.py` is explicit opt-in and uses a ready

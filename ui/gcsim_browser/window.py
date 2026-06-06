@@ -64,6 +64,8 @@ class GcsimBrowserWorkspace(QWidget):
     ) -> None:
         super().__init__(parent)
         self._mode = mode if mode in {MODE_ABYSS, MODE_DPS_DUMMY} else MODE_ABYSS
+        self._target_mode_preview = ""
+        self._targets_preview_text = ""
         self._team_previews: list[list[GcsimBrowserTeamSlotPreview]] = [
             [GcsimBrowserTeamSlotPreview() for _ in range(4)],
             [GcsimBrowserTeamSlotPreview() for _ in range(4)],
@@ -208,6 +210,16 @@ class GcsimBrowserWorkspace(QWidget):
         for slot_index, card in enumerate(self._team_cards[team_index]):
             card.set_preview(normalized_slots[slot_index])
 
+    def set_abyss_targets_preview(
+        self,
+        *,
+        target_mode_label: str = "",
+        preview_text: str = "",
+    ) -> None:
+        self._target_mode_preview = target_mode_label
+        self._targets_preview_text = preview_text
+        self.retranslate_ui()
+
     def retranslate_ui(self) -> None:
         self.title_label.setText(_fallback("gcsim.browser.title", "GCSIM Browser"))
         self.status_label.setText(
@@ -234,6 +246,8 @@ class GcsimBrowserWorkspace(QWidget):
             _fallback("gcsim.browser.targets", "Abyss targets")
         )
         self.target_mode_label.setText(
+            self._target_mode_preview
+            or
             _fallback(
                 "gcsim.browser.target_mode_placeholder",
                 "Target mode: follows right panel",
@@ -242,6 +256,8 @@ class GcsimBrowserWorkspace(QWidget):
         for index, button in enumerate(self.chamber_buttons, start=1):
             button.setText(f"C{index}")
         self.targets_placeholder.setText(
+            self._targets_preview_text
+            or
             _fallback(
                 "gcsim.browser.targets_placeholder",
                 "Chamber waves, enemy HP and resolved GCSIM target types will appear here.",

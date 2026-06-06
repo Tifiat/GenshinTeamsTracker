@@ -674,6 +674,66 @@ class AppShellController:
             previews.append(tuple(team_slots))
         return tuple(previews)
 
+    def gcsim_browser_abyss_targets_preview(self) -> tuple[str, str]:
+        if self.mode != MODE_ABYSS:
+            return "", ""
+        chamber_rows = build_abyss_chamber_rows(
+            self.abyss_timer_states,
+            abyss_source_data=self.cached_abyss_source_data(),
+            fact_dps_multi_target_enabled=self.abyss_fact_dps_multi_target_enabled,
+        )
+        mode_label = (
+            "Target mode: multi target"
+            if self.abyss_fact_dps_multi_target_enabled
+            else "Target mode: solo target"
+        )
+        lines: list[str] = []
+        for row in chamber_rows:
+            lines.append(row.chamber_label)
+            lines.append("  Team 1 / first half:")
+            lines.extend(
+                f"    {line}"
+                for line in self._gcsim_browser_fact_tooltip_lines(
+                    row.factual_team1_tooltip
+                )
+            )
+            lines.append("  Team 2 / second half:")
+            lines.extend(
+                f"    {line}"
+                for line in self._gcsim_browser_fact_tooltip_lines(
+                    row.factual_team2_tooltip
+                )
+            )
+        return mode_label, "\n".join(lines)
+
+    def _gcsim_browser_fact_tooltip_lines(self, tooltip: object | None) -> list[str]:
+        if tooltip is None:
+            return ["No cached enemy data"]
+        unavailable_reason = _text(getattr(tooltip, "unavailable_reason", ""))
+        enemies = list(getattr(tooltip, "enemies", ()) or ())
+        if not enemies:
+            return [unavailable_reason or "No enemy rows"]
+        lines: list[str] = []
+        for enemy in enemies:
+            wave = getattr(enemy, "wave", None)
+            count = getattr(enemy, "enemy_count", None)
+            level = getattr(enemy, "display_level", None)
+            hp = getattr(enemy, "hp_used", None)
+            selected = bool(getattr(enemy, "selected_for_solo", False))
+            name = _text(getattr(enemy, "primary_display_name", ""))
+            pieces = [f"W{wave}" if wave is not None else "W?"]
+            pieces.append(name or "Unknown enemy")
+            if count:
+                pieces.append(f"x{count}")
+            if level is not None:
+                pieces.append(f"lvl {level}")
+            if hp is not None:
+                pieces.append(f"HP {hp}")
+            if selected:
+                pieces.append("solo")
+            lines.append(" · ".join(pieces))
+        return lines
+
     def selected_equipment_hydration_target(
         self,
     ) -> CharacterPlacementResult | None:
@@ -1442,9 +1502,14 @@ class AppShell(QWidget):
         )
 
     def _sync_gcsim_browser_context(self) -> None:
+        target_mode_label, targets_preview = (
+            self.controller.gcsim_browser_abyss_targets_preview()
+        )
         self.left_host.set_gcsim_browser_context(
             mode=self.controller.mode,
             team_previews=self.controller.gcsim_browser_team_previews(),
+            target_mode_label=target_mode_label,
+            targets_preview=targets_preview,
         )
 
     def _on_artifact_browser_equipment_changed(self, result: object) -> None:
@@ -1973,6 +2038,8 @@ class LeftWorkspaceHost(QWidget):
         *,
         mode: str,
         team_previews: tuple[tuple[GcsimBrowserTeamSlotPreview, ...], ...],
+        target_mode_label: str = "",
+        targets_preview: str = "",
     ) -> None:
         self.gcsim_browser_workspace.set_mode(mode)
         for team_index, slots in enumerate(team_previews):
@@ -1980,6 +2047,10 @@ class LeftWorkspaceHost(QWidget):
                 team_index,
                 list(slots),
             )
+        self.gcsim_browser_workspace.set_abyss_targets_preview(
+            target_mode_label=target_mode_label,
+            preview_text=targets_preview,
+        )
 
 
 class RightDockHeader(QWidget):

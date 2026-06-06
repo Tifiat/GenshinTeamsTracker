@@ -65,6 +65,7 @@ WARNING_TALENT_ORDER_SKILL_ID_DEV_ASSUMED = "dev_talent_order_skill_id_assumed"
 WARNING_ARTIFACT_SET_AUTO_REGISTRY_MAPPING = (
     "artifact_set_auto_registry_mapping_not_curated"
 )
+WARNING_DEV_ENERGY_LINE_APPENDED = "dev_energy_line_appended_no_existing_energy_line"
 
 ARTIFACT_SOURCE_CURRENT_EQUIPPED = "current_equipped_artifacts"
 ARTIFACT_SOURCE_MISSING = "missing_current_equipped_artifacts"
@@ -82,6 +83,7 @@ DEFAULT_ABYSS_SMOKE_PERIOD_START = "2026-02-16"
 DEFAULT_ABYSS_SMOKE_FLOOR = 12
 DEFAULT_ABYSS_SMOKE_CHAMBER = 1
 DEFAULT_ABYSS_SMOKE_SIDE = 1
+DEFAULT_DEV_ENERGY_OVERRIDE_LINE = "energy every interval=480,720 amount=100;"
 
 
 ArtifactRunFunc = Any
@@ -427,6 +429,7 @@ def build_account_prepared_full_config_report(
     artifact_set_registry_source: str | Path | None = None,
     store_dir: str | Path | None = None,
     timeout_seconds: int = DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
+    dev_energy_override_line: str = "",
     artifact_run_func: ArtifactRunFunc = run_active_gcsim_artifact,
     snap_fetcher: SnapJsonFetcher | None = None,
 ) -> AccountPreparedFullConfigReport:
@@ -441,9 +444,28 @@ def build_account_prepared_full_config_report(
         if run_dir is not None or config_out is not None
         else _new_account_config_run_dir()
     )
+    energy_override_report: dict[str, Any] = {
+        "enabled": False,
+        "line": "",
+        "shell_path": "",
+        "replaced_existing_energy_line": False,
+        "warnings": [],
+    }
+    effective_rotation_shell_path: str | Path = rotation_shell_path
+    dev_energy_line = _text(dev_energy_override_line)
+    if dev_energy_line:
+        if effective_run_dir is None:
+            effective_run_dir = Path(config_out).resolve().parent if config_out else _new_account_config_run_dir()
+        effective_rotation_shell_path, energy_override_report = (
+            _write_rotation_shell_with_energy_override(
+                rotation_shell_path,
+                run_dir=effective_run_dir,
+                energy_line=dev_energy_line,
+            )
+        )
     full_config = build_prepared_team_full_config_report(
         team.payload,
-        rotation_shell_path=rotation_shell_path,
+        rotation_shell_path=effective_rotation_shell_path,
         config_out=config_out,
         run_dir=effective_run_dir,
         write_config=write_config,
@@ -474,6 +496,7 @@ def build_account_prepared_full_config_report(
             snap_fetcher=snap_fetcher,
         )
     warnings = _dedupe_tuple([*team.warnings, *full_config.warnings])
+    warnings = _dedupe_tuple([*warnings, *energy_override_report.get("warnings", [])])
     status = (
         ACCOUNT_PREPARED_CONFIG_READY
         if full_config.ready
@@ -500,6 +523,7 @@ def build_account_prepared_full_config_report(
             "dev_weapon_candidate_not_account_truth": True,
             "artifact_source": ARTIFACT_SOURCE_CURRENT_EQUIPPED,
             "artifact_stats_source": ARTIFACT_STATS_SOURCE_CURRENT_EQUIPPED_MAIN_SUB,
+            "dev_energy_override": energy_override_report,
         },
     )
 
@@ -533,6 +557,9 @@ def main(
             artifact_set_registry_source=args.artifact_set_registry_source,
             store_dir=args.store_dir,
             timeout_seconds=args.timeout,
+            dev_energy_override_line=(
+                args.dev_energy_line if args.dev_energy_override else ""
+            ),
             artifact_run_func=artifact_run_func,
             snap_fetcher=snap_fetcher,
         )
@@ -986,6 +1013,54 @@ def _weapon_payload(weapon: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def override_rotation_shell_energy_line(
+    shell_text: str,
+    energy_line: str = DEFAULT_DEV_ENERGY_OVERRIDE_LINE,
+) -> tuple[str, bool]:
+    line = _text(energy_line)
+    if not line.startswith("energy ") or not line.endswith(";"):
+        raise ValueError("dev energy override line must be a complete GCSIM energy line")
+    output_lines: list[str] = []
+    replaced = False
+    for existing in str(shell_text).splitlines():
+        if not replaced and existing.strip().startswith("energy "):
+            output_lines.append(line)
+            replaced = True
+        else:
+            output_lines.append(existing)
+    if not replaced:
+        output_lines.append(line)
+    return "\n".join(output_lines) + "\n", replaced
+
+
+def _write_rotation_shell_with_energy_override(
+    rotation_shell_path: str | Path,
+    *,
+    run_dir: str | Path,
+    energy_line: str,
+) -> tuple[Path, dict[str, Any]]:
+    source_path = Path(rotation_shell_path)
+    shell_text = source_path.read_text(encoding="utf-8-sig")
+    replaced_text, replaced = override_rotation_shell_energy_line(
+        shell_text,
+        energy_line,
+    )
+    destination_dir = Path(run_dir)
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    destination_path = destination_dir / "rotation_shell.dev_energy_override.txt"
+    destination_path.write_text(replaced_text, encoding="utf-8")
+    warnings = [] if replaced else [WARNING_DEV_ENERGY_LINE_APPENDED]
+    return destination_path, {
+        "enabled": True,
+        "line": _text(energy_line),
+        "shell_path": str(destination_path),
+        "source_shell_path": str(source_path),
+        "replaced_existing_energy_line": replaced,
+        "warnings": warnings,
+        "dev_only": True,
+    }
+
+
 def _run_optional_abyss_smoke(
     full_config: PreparedGcsimFullConfigResult,
     *,
@@ -1043,6 +1118,10 @@ def _run_optional_abyss_smoke(
         artifact_run_func=artifact_run_func,
         snap_fetcher=snap_fetcher,
     )
+    result["enemy_mapping_method_counts"] = _enemy_mapping_method_counts(
+        result.get("audit") if isinstance(result.get("audit"), Mapping) else {}
+    )
+    result["scenario_summary"] = _scenario_summary_from_smoke_result(result)
     result["smoke_case"] = {
         "period_start": _text(abyss_period_start),
         "floor": int(abyss_floor),
@@ -1052,6 +1131,64 @@ def _run_optional_abyss_smoke(
         "dps_correctness_claim": False,
     }
     return result
+
+
+def _enemy_mapping_method_counts(audit: Mapping[str, Any]) -> dict[str, int]:
+    counts: defaultdict[str, int] = defaultdict(int)
+    for detail in audit.get("type_mapping_details") or ():
+        if not isinstance(detail, Mapping):
+            continue
+        method = _text(detail.get("method")) or _text(detail.get("status")) or "unknown"
+        counts[method] += 1
+    return dict(sorted(counts.items()))
+
+
+def _scenario_summary_from_smoke_result(result: Mapping[str, Any]) -> dict[str, Any]:
+    path = _text(result.get("scenario_path"))
+    if not path:
+        return {"path": "", "wave_count": 0, "target_count": 0, "waves": []}
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "path": path,
+            "wave_count": 0,
+            "target_count": 0,
+            "waves": [],
+            "error": str(exc),
+        }
+    waves_report: list[dict[str, Any]] = []
+    target_count = 0
+    for index, wave in enumerate(payload.get("waves") or (), start=1):
+        if not isinstance(wave, Mapping):
+            continue
+        targets: list[dict[str, Any]] = []
+        for target in wave.get("targets") or ():
+            if not isinstance(target, Mapping):
+                continue
+            targets.append(
+                {
+                    "type": _text(target.get("type")),
+                    "level": target.get("level"),
+                    "hp": target.get("hp"),
+                }
+            )
+        target_count += len(targets)
+        waves_report.append(
+            {
+                "wave": index,
+                "target_count": len(targets),
+                "targets": targets,
+            }
+        )
+    return {
+        "path": path,
+        "schema_version": payload.get("schema_version"),
+        "spawn_policy": payload.get("spawn_policy"),
+        "wave_count": len(waves_report),
+        "target_count": target_count,
+        "waves": waves_report,
+    }
 
 
 def _resolve_enemy_registry_source(path: str | Path | None) -> Path | None:
@@ -1212,6 +1349,19 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--no-write", action="store_true")
     parser.add_argument("--run-abyss-smoke", action="store_true")
+    parser.add_argument(
+        "--dev-energy-override",
+        action="store_true",
+        help=(
+            "Dev-only: write a temporary rotation shell copy with the energy "
+            "line replaced before assembling the full config."
+        ),
+    )
+    parser.add_argument(
+        "--dev-energy-line",
+        default=DEFAULT_DEV_ENERGY_OVERRIDE_LINE,
+        help="Energy line used with --dev-energy-override.",
+    )
     parser.add_argument("--abyss-period-start", default=DEFAULT_ABYSS_SMOKE_PERIOD_START)
     parser.add_argument("--abyss-floor", type=int, default=DEFAULT_ABYSS_SMOKE_FLOOR)
     parser.add_argument("--abyss-chamber", type=int, default=DEFAULT_ABYSS_SMOKE_CHAMBER)
@@ -1279,8 +1429,48 @@ def _format_text_report(report: Mapping[str, Any]) -> str:
                 )
     if report.get("config_path"):
         lines.append(f"config={report.get('config_path')}")
+    source_notes = report.get("source_notes")
+    if isinstance(source_notes, Mapping):
+        energy = source_notes.get("dev_energy_override")
+        if isinstance(energy, Mapping) and energy.get("enabled"):
+            lines.append(
+                "dev_energy_override="
+                f"line={energy.get('line', '')} "
+                f"shell={energy.get('shell_path', '')} "
+                "dev_only=true"
+            )
     smoke = report.get("smoke")
     if isinstance(smoke, Mapping):
+        mapping_counts = smoke.get("enemy_mapping_method_counts")
+        if isinstance(mapping_counts, Mapping):
+            lines.append(
+                "enemy_mapping_methods="
+                + ",".join(
+                    f"{method}:{count}"
+                    for method, count in sorted(mapping_counts.items())
+                )
+            )
+        scenario_summary = smoke.get("scenario_summary")
+        if isinstance(scenario_summary, Mapping):
+            lines.append(
+                "scenario_summary="
+                f"waves={scenario_summary.get('wave_count', '')} "
+                f"targets={scenario_summary.get('target_count', '')} "
+                f"spawn_policy={scenario_summary.get('spawn_policy', '')}"
+            )
+            for wave in scenario_summary.get("waves") or []:
+                if not isinstance(wave, Mapping):
+                    continue
+                target_parts = []
+                for target in wave.get("targets") or []:
+                    if not isinstance(target, Mapping):
+                        continue
+                    target_parts.append(
+                        f"{target.get('type', '')}@lvl{target.get('level', '')}:hp{target.get('hp', '')}"
+                    )
+                lines.append(
+                    f"wave[{wave.get('wave', '')}]=" + "|".join(target_parts)
+                )
         lines.append(
             "optional_smoke="
             f"success={str(bool(smoke.get('success'))).lower()} "
@@ -1297,6 +1487,25 @@ def _format_text_report(report: Mapping[str, Any]) -> str:
                 f"total_damage_mean={_format_number(summary.get('total_damage_mean'))} "
                 f"run_status={run_result.get('status', '')}"
             )
+            lines.append(
+                "artifact_preflight="
+                f"status={run_result.get('artifact_preflight_status', '')} "
+                f"artifact_source={run_result.get('artifact_source', '')}"
+            )
+            failed_actions = summary.get("failed_actions") or []
+            incomplete = summary.get("incomplete_characters") or []
+            if failed_actions:
+                lines.append("failed_action_buckets=" + _format_failed_action_buckets(failed_actions))
+            if incomplete:
+                lines.append(
+                    "incomplete_characters="
+                    + ",".join(str(item) for item in incomplete)
+                )
+            if run_result.get("success") and smoke.get("status") == "run_passed":
+                lines.append(
+                    "backend_end_to_end_compatibility_smoke=passed "
+                    "dps_correctness_claim=false"
+                )
         if smoke.get("reason"):
             lines.append(f"optional_smoke_reason={smoke.get('reason')}")
         if smoke.get("error"):
@@ -1341,6 +1550,32 @@ def _format_set_counts_summary(set_counts: Iterable[Any]) -> str:
     return "|".join(parts)
 
 
+def _format_failed_action_buckets(buckets: Iterable[Any]) -> str:
+    parts: list[str] = []
+    for index, bucket in enumerate(buckets, start=1):
+        if isinstance(bucket, str):
+            try:
+                parsed = json.loads(bucket)
+            except json.JSONDecodeError:
+                parsed = bucket
+            bucket = parsed
+        if not isinstance(bucket, Mapping):
+            parts.append(f"{index}:{bucket}")
+            continue
+        nonzero: list[str] = []
+        for name, stats in sorted(bucket.items()):
+            if not isinstance(stats, Mapping):
+                continue
+            mean = _optional_float(stats.get("mean")) or 0.0
+            maximum = _optional_float(stats.get("max")) or 0.0
+            if mean or maximum:
+                nonzero.append(
+                    f"{name}(mean={_format_number(mean)},max={_format_number(maximum)})"
+                )
+        parts.append(f"{index}:{'|'.join(nonzero) if nonzero else 'none'}")
+    return ";".join(parts)
+
+
 def _format_number(value: object) -> str:
     if value is None:
         return ""
@@ -1354,6 +1589,15 @@ def _optional_int(value: Any) -> int | None:
         if value is None or value == "":
             return None
         return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_float(value: Any) -> float | None:
+    try:
+        if value is None or value == "":
+            return None
+        return float(value)
     except (TypeError, ValueError):
         return None
 

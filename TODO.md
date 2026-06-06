@@ -684,6 +684,14 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   backend compatibility smoke only, with no DPS correctness claim. Right-panel
   persistence/UI and production selected-team/current-build ownership were not
   added.
+  The same backend CLI now supports an end-to-end dev smoke with account-prepared
+  team blocks, the manual Chasca rotation shell, a temporary dev-only boosted
+  energy override (`--dev-energy-override`), generated cached Abyss waves, and
+  the existing patched artifact runner. The override writes a temporary shell
+  copy in the run dir and does not mutate the committed rotation fixture. This
+  remains a backend compatibility smoke only, not DPS correctness. Future GCSIM
+  browser work needs direct rotation code input/editing rather than relying only
+  on committed shell fixtures.
   Backend shipped fallback artifact resolver exists in
   `run_workspace/gcsim/shipped_artifact.py`; runner support in
   `run_workspace/gcsim/artifact_runner.py` is explicit opt-in and uses a ready

@@ -8,10 +8,12 @@ from pathlib import Path
 from run_workspace.gcsim.account_prepared_config import (
     ARTIFACT_SOURCE_CURRENT_EQUIPPED,
     ARTIFACT_STATS_SOURCE_CURRENT_EQUIPPED_MAIN_SUB,
+    DEFAULT_DEV_ENERGY_OVERRIDE_LINE,
     DEFAULT_ACCOUNT_CHASCA_TEAM,
     WARNING_DEV_WEAPON_CANDIDATE_NOT_ACCOUNT_TRUTH,
     build_account_prepared_full_config_report,
     build_account_prepared_team_payload,
+    override_rotation_shell_energy_line,
 )
 from run_workspace.gcsim.config_talents import (
     WARNING_POST_NORMALIZATION_TALENT_LEVEL_CAPPED_TO_GCSIM_RANGE,
@@ -19,6 +21,43 @@ from run_workspace.gcsim.config_talents import (
 
 
 class GcsimAccountPreparedConfigTest(unittest.TestCase):
+    def test_dev_energy_override_replaces_shell_energy_line(self) -> None:
+        text, replaced = override_rotation_shell_energy_line(
+            "options swap_delay=12;\nenergy every interval=480,720 amount=1;\nactive furina;\n"
+        )
+
+        self.assertTrue(replaced)
+        self.assertIn(DEFAULT_DEV_ENERGY_OVERRIDE_LINE, text)
+        self.assertNotIn("energy every interval=480,720 amount=1;", text)
+
+    def test_dev_energy_override_is_written_to_temp_shell_only(self) -> None:
+        with seeded_account_config_db() as db_path:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                source_shell = Path(temp_dir) / "shell.txt"
+                source_shell.write_text(
+                    "options swap_delay=12;\n"
+                    "energy every interval=480,720 amount=1;\n"
+                    "target lvl=100 resist=0.1 hp=999999999;\n"
+                    "active furina;\n",
+                    encoding="utf-8",
+                )
+                report = build_account_prepared_full_config_report(
+                    db_path=db_path,
+                    team_names=("Furina",),
+                    rotation_shell_path=source_shell,
+                    run_dir=Path(temp_dir) / "run",
+                    artifact_set_registry_source=db_path.artifact_set_registry_source,
+                    dev_energy_override_line=DEFAULT_DEV_ENERGY_OVERRIDE_LINE,
+                )
+                config_text = Path(report.full_config.config_path).read_text(
+                    encoding="utf-8"
+                )
+                source_text = source_shell.read_text(encoding="utf-8")
+
+        self.assertTrue(report.ready)
+        self.assertIn(DEFAULT_DEV_ENERGY_OVERRIDE_LINE, config_text)
+        self.assertIn("amount=1", source_text)
+
     def test_account_character_uses_stored_gcsim_key_not_localized_name(self) -> None:
         with seeded_account_config_db() as db_path:
             result = build_account_prepared_team_payload(

@@ -85,7 +85,10 @@ from ui.character_assets import (
     standard_character_filter_icon,
 )
 from ui.account_data_page import AccountDataPage
-from ui.gcsim_browser import GcsimBrowserWorkspace
+from ui.gcsim_browser import (
+    GcsimBrowserTeamSlotPreview,
+    GcsimBrowserWorkspace,
+)
 from ui.right_panel_prototype import (
     RIGHT_PANEL_PROTOTYPE_MIN_WIDTH,
     RunModeTabsWidget,
@@ -633,6 +636,44 @@ class AppShellController:
             "slot_index": self.selected_slot_index,
         }
 
+    def gcsim_browser_team_previews(
+        self,
+    ) -> tuple[tuple[GcsimBrowserTeamSlotPreview, ...], ...]:
+        previews: list[tuple[GcsimBrowserTeamSlotPreview, ...]] = []
+        for team in self.state.teams:
+            team_slots: list[GcsimBrowserTeamSlotPreview] = []
+            for slot in team.slots:
+                if slot.character is None:
+                    team_slots.append(GcsimBrowserTeamSlotPreview())
+                    continue
+                details = _mapping(slot.character_details_data)
+                character = _mapping(details.get("account_character")) or slot.character.to_dict()
+                weapon = _mapping(details.get("account_weapon"))
+                if not weapon and slot.weapon is not None:
+                    weapon = slot.weapon.to_dict()
+                selected_build = _mapping(details.get("selected_build"))
+                if not selected_build and slot.artifact_build is not None:
+                    selected_build = slot.artifact_build.to_dict()
+
+                name = _text(character.get("name")) or _text(slot.character.name)
+                weapon_name = _text(weapon.get("name")) if weapon else ""
+                build_name = _text(selected_build.get("build_name")) if selected_build else ""
+                artifact_ids = _mapping(details.get("current_equipped_artifact_ids_by_slot"))
+                sets = build_name
+                if artifact_ids and not sets:
+                    sets = f"Current artifacts: {len(artifact_ids)}/5"
+                status = "Runtime preview · readiness not checked"
+                team_slots.append(
+                    GcsimBrowserTeamSlotPreview(
+                        name=name,
+                        weapon=f"Weapon: {weapon_name}" if weapon_name else "Weapon: pending",
+                        sets=f"Build: {sets}" if sets else "Build: pending",
+                        status=status,
+                    )
+                )
+            previews.append(tuple(team_slots))
+        return tuple(previews)
+
     def selected_equipment_hydration_target(
         self,
     ) -> CharacterPlacementResult | None:
@@ -1163,6 +1204,7 @@ class AppShell(QWidget):
         self.active_left_workspace_id = self.left_host.active_workspace_id()
         self._refresh_character_selection_markers()
         self._sync_artifact_browser_operation_target()
+        self._sync_gcsim_browser_context()
 
     def retranslate_ui(self) -> None:
         self.setWindowTitle(tr("app_shell.title"))
@@ -1399,6 +1441,12 @@ class AppShell(QWidget):
             self.controller.selected_operation_target()
         )
 
+    def _sync_gcsim_browser_context(self) -> None:
+        self.left_host.set_gcsim_browser_context(
+            mode=self.controller.mode,
+            team_previews=self.controller.gcsim_browser_team_previews(),
+        )
+
     def _on_artifact_browser_equipment_changed(self, result: object) -> None:
         affected_ids = {
             str(character_id)
@@ -1464,6 +1512,7 @@ class AppShell(QWidget):
         set_model_start = perf_now()
         self.right_panel.set_model(model)
         set_model_ms = perf_ms(set_model_start)
+        self._sync_gcsim_browser_context()
         total_ms = perf_ms(total_start)
         log_perf(
             "right_panel_refresh",
@@ -1911,12 +1960,26 @@ class LeftWorkspaceHost(QWidget):
         self.artifact_browser_button.setText(tr("app_shell.workspace.artifacts"))
         self.gcsim_browser_button.setText("GCSIM")
         self.character_weapon_workspace.retranslate_ui()
+        self.gcsim_browser_workspace.retranslate_ui()
         if self.artifact_browser_workspace is None:
             self.artifact_browser_placeholder_label.setText(
                 tr("artifact.browser.title")
             )
         else:
             self.artifact_browser_workspace.retranslate_ui()
+
+    def set_gcsim_browser_context(
+        self,
+        *,
+        mode: str,
+        team_previews: tuple[tuple[GcsimBrowserTeamSlotPreview, ...], ...],
+    ) -> None:
+        self.gcsim_browser_workspace.set_mode(mode)
+        for team_index, slots in enumerate(team_previews):
+            self.gcsim_browser_workspace.set_team_preview(
+                team_index,
+                list(slots),
+            )
 
 
 class RightDockHeader(QWidget):

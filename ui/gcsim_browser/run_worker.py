@@ -13,6 +13,7 @@ from run_workspace.gcsim.account_prepared_config import (
     build_account_prepared_full_config_report,
 )
 from run_workspace.right_panel_prototype_view_model import (
+    FACT_DPS_HP_MODE_MULTI_TARGET,
     FACT_DPS_HP_MODE_SOLO,
     MODE_ABYSS,
     RightPanelGcsimChamberResult,
@@ -53,6 +54,7 @@ class GcsimBrowserRunRequest:
     abyss_period_start: str = ""
     abyss_floor: int = 0
     abyss_cache_dir: str = ""
+    target_mode: str = FACT_DPS_HP_MODE_MULTI_TARGET
     run_root: str = ""
 
 
@@ -66,6 +68,7 @@ class GcsimBrowserBatchRunRequest:
     abyss_period_start: str = ""
     abyss_floor: int = 0
     abyss_cache_dir: str = ""
+    target_mode: str = FACT_DPS_HP_MODE_MULTI_TARGET
     chambers: tuple[int, ...] = (1, 2, 3)
     run_root: str = ""
 
@@ -129,6 +132,9 @@ def run_gcsim_browser_selected_chamber(
             abyss_floor=request.abyss_floor,
             abyss_chamber=request.chamber,
             abyss_side=request.side,
+            abyss_fact_dps_multi_target_enabled=(
+                request.target_mode != FACT_DPS_HP_MODE_SOLO
+            ),
             abyss_cache_dir=request.abyss_cache_dir or None,
             dev_energy_override_line=DEFAULT_DEV_ENERGY_OVERRIDE_LINE,
         )
@@ -196,6 +202,7 @@ def run_gcsim_browser_three_chambers(
             abyss_period_start=request.abyss_period_start,
             abyss_floor=request.abyss_floor,
             abyss_cache_dir=request.abyss_cache_dir,
+            target_mode=request.target_mode,
             run_root=request.run_root,
         )
         chambers.append(run_gcsim_browser_selected_chamber(chamber_request))
@@ -607,6 +614,7 @@ def _selection_report(request: GcsimBrowserRunRequest) -> dict[str, Any]:
         "period_start": request.abyss_period_start,
         "floor": int(request.abyss_floor or 0),
         "cache_dir": request.abyss_cache_dir,
+        "target_mode": request.target_mode,
     }
 
 
@@ -619,6 +627,7 @@ def _batch_selection_report(request: GcsimBrowserBatchRunRequest) -> dict[str, A
         "period_start": request.abyss_period_start,
         "floor": int(request.abyss_floor or 0),
         "cache_dir": request.abyss_cache_dir,
+        "target_mode": request.target_mode,
         "chambers": [int(chamber) for chamber in request.chambers],
     }
 

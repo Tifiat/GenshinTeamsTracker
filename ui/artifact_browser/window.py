@@ -864,15 +864,19 @@ class BuildTargetPreviewStrip(QWidget):
         if not self._has_content:
             width = viewport_width
             bar.setValue(0)
+            self.scroll_area.set_scrolling_enabled(False)
             self.scroll_area.set_edge_hints_enabled(False)
         else:
             width = max(self._strip_width, viewport_width)
             can_scroll = viewport_width > 0 and self._strip_width > viewport_width
             if not can_scroll:
                 bar.setValue(0)
+            self.scroll_area.set_scrolling_enabled(can_scroll)
             self.scroll_area.set_edge_hints_enabled(can_scroll)
 
         self.content.setFixedSize(width, BUILD_TARGET_PREVIEW_ROW_HEIGHT)
+        if not self._has_content or not (viewport_width > 0 and self._strip_width > viewport_width):
+            bar.setValue(0)
         self.content.updateGeometry()
         self.scroll_area.viewport().update()
         self.scroll_area.update_edge_hints()

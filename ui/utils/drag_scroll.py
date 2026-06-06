@@ -29,6 +29,7 @@ class DragScrollArea(QScrollArea):
         self._drag_moved = False
         self._drag_start_pos = 0
         self._drag_start_value = 0
+        self._scrolling_enabled = True
 
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -115,7 +116,7 @@ QWidget[dragScrollContent="true"] {
         super().wheelEvent(event)
 
     def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt override
-        if event.button() == Qt.MouseButton.LeftButton:
+        if self._scrolling_enabled and event.button() == Qt.MouseButton.LeftButton:
             self._begin_drag(event)
             event.accept()
             return
@@ -148,7 +149,7 @@ QWidget[dragScrollContent="true"] {
             return False
 
         if event_type == QEvent.Type.MouseButtonPress:
-            if event.button() == Qt.MouseButton.LeftButton:
+            if self._scrolling_enabled and event.button() == Qt.MouseButton.LeftButton:
                 self._begin_drag(event)
             return False
 
@@ -173,8 +174,16 @@ QWidget[dragScrollContent="true"] {
         self._edge_hints_enabled = bool(enabled)
         self.update_edge_hints()
 
+    def set_scrolling_enabled(self, enabled: bool) -> None:
+        self._scrolling_enabled = bool(enabled)
+        if not self._scrolling_enabled:
+            if self._dragging:
+                self._end_drag()
+            self._scroll_bar().setValue(self._scroll_bar().minimum())
+        self.update_edge_hints()
+
     def update_edge_hints(self) -> None:
-        if not self._edge_hints_enabled:
+        if not self._edge_hints_enabled or not self._scrolling_enabled:
             self._start_hint.hide()
             self._end_hint.hide()
             return
@@ -215,6 +224,8 @@ QWidget[dragScrollContent="true"] {
         return int(raw_delta / 120 * self._wheel_step)
 
     def _scroll_by_wheel(self, event) -> bool:
+        if not self._scrolling_enabled:
+            return False
         bar = self._scroll_bar()
         if bar.maximum() <= bar.minimum():
             return False
@@ -228,12 +239,16 @@ QWidget[dragScrollContent="true"] {
         return True
 
     def _begin_drag(self, event) -> None:
+        if not self._scrolling_enabled:
+            return
         self._dragging = True
         self._drag_moved = False
         self._drag_start_pos = self._event_pos(event)
         self._drag_start_value = self._scroll_bar().value()
 
     def _drag_to(self, event) -> None:
+        if not self._scrolling_enabled:
+            return
         delta = self._drag_start_pos - self._event_pos(event)
         if abs(delta) > 3:
             self._drag_moved = True

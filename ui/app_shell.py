@@ -1730,6 +1730,7 @@ class AppShell(QWidget):
             rotation_shell_text=rotation_shell_text,
             abyss_period_start=abyss_source_data.period.start_date,
             abyss_floor=abyss_source_data.floor,
+            target_mode=self.controller.gcsim_target_mode(),
         )
         worker = GcsimBrowserRunWorker(request)
         thread = QThread(self)
@@ -1789,6 +1790,7 @@ class AppShell(QWidget):
             rotation_shell_text=rotation_shell_text,
             abyss_period_start=abyss_source_data.period.start_date,
             abyss_floor=abyss_source_data.floor,
+            target_mode=self.controller.gcsim_target_mode(),
         )
         worker = GcsimBrowserBatchRunWorker(request)
         thread = QThread(self)

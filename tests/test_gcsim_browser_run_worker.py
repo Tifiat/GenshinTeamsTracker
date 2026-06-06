@@ -7,8 +7,11 @@ from ui.gcsim_browser.run_worker import (
     ERROR_CONFIG_PARSE_OR_ROTATION_ERROR,
     ERROR_GCSIM_RUNTIME_ERROR,
     ERROR_PREPARE_NOT_READY,
+    WARNING_ABYSS_SOURCE_IDENTITY_MISSING,
+    GcsimBrowserRunRequest,
     classify_gcsim_browser_run_payload,
     format_gcsim_browser_run_report,
+    run_gcsim_browser_selected_chamber,
 )
 
 
@@ -69,7 +72,13 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
             "status": "ready",
             "config_path": "C:/repo/data/gcsim/runs/run/config.txt",
             "error_category": "",
-            "selection": {"team_label": "Team 2", "side": 2, "chamber": 3},
+            "selection": {
+                "team_label": "Team 2",
+                "side": 2,
+                "chamber": 3,
+                "period_start": "2026-06-01",
+                "floor": 12,
+            },
             "smoke": {
                 "status": "run_passed",
                 "scenario_path": "C:/repo/data/gcsim/runs/run/gtt_wave_scenario.json",
@@ -77,6 +86,7 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
                 "scenario_summary": {
                     "wave_count": 5,
                     "target_count": 15,
+                    "total_hp": 4430000,
                     "spawn_policy": "group_clear",
                 },
                 "run_result": {
@@ -96,10 +106,29 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         text = format_gcsim_browser_run_report(payload)
 
         self.assertIn("Team: Team 2 / Side 2 / C3", text)
+        self.assertIn("Abyss source: period_start=2026-06-01 floor=12", text)
         self.assertIn("Observed clear time: 51.5", text)
+        self.assertIn("total_hp=4.43e+06", text)
         self.assertIn("Enemy mapping methods: exact_normalized_name:5", text)
         self.assertIn("Failed action buckets: 1:skill_cd", text)
         self.assertIn("DPS correctness claim: false", text)
+
+    def test_missing_abyss_source_identity_does_not_use_backend_default(self) -> None:
+        payload = run_gcsim_browser_selected_chamber(
+            GcsimBrowserRunRequest(
+                db_path="missing.db",
+                team_names=("Chasca",),
+                team_index=0,
+                chamber=1,
+                side=1,
+                rotation_shell_text="active chasca;",
+            )
+        )
+
+        self.assertFalse(payload["success"])
+        self.assertEqual(payload["error_category"], ERROR_PREPARE_NOT_READY)
+        self.assertIn(WARNING_ABYSS_SOURCE_IDENTITY_MISSING, payload["warnings"])
+        self.assertIn("not using backend defaults", payload["error"])
 
 
 if __name__ == "__main__":

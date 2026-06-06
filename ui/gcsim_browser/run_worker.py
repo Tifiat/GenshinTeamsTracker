@@ -20,6 +20,10 @@ ERROR_ARTIFACT_PREFLIGHT_FAILED = "artifact_preflight_failed"
 ERROR_GCSIM_RUNTIME_ERROR = "gcsim_runtime_error"
 ERROR_CONFIG_PARSE_OR_ROTATION_ERROR = "config_parse_or_rotation_error"
 ERROR_UNKNOWN = "unknown_error"
+WARNING_ABYSS_PREVIEW_SCENARIO_SOURCE_MISMATCH = (
+    "abyss_preview_scenario_source_mismatch"
+)
+WARNING_ABYSS_SOURCE_IDENTITY_MISSING = "abyss_source_identity_missing_no_default_used"
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +34,9 @@ class GcsimBrowserRunRequest:
     chamber: int
     side: int
     rotation_shell_text: str
+    abyss_period_start: str = ""
+    abyss_floor: int = 0
+    abyss_cache_dir: str = ""
     run_root: str = ""
 
 
@@ -55,6 +62,14 @@ def run_gcsim_browser_selected_chamber(
             "error": "Selected team has no characters.",
             "selection": _selection_report(request),
         }
+    if not request.abyss_period_start or not request.abyss_floor:
+        return {
+            "success": False,
+            "error_category": ERROR_PREPARE_NOT_READY,
+            "error": "Current Abyss source-data identity is missing; not using backend defaults.",
+            "selection": _selection_report(request),
+            "warnings": [WARNING_ABYSS_SOURCE_IDENTITY_MISSING],
+        }
 
     run_dir = _new_run_dir(request.run_root)
     rotation_shell_path = run_dir / "rotation_shell.from_editor.txt"
@@ -68,8 +83,11 @@ def run_gcsim_browser_selected_chamber(
             run_dir=run_dir,
             write_config=True,
             run_abyss_smoke=True,
+            abyss_period_start=request.abyss_period_start,
+            abyss_floor=request.abyss_floor,
             abyss_chamber=request.chamber,
             abyss_side=request.side,
+            abyss_cache_dir=request.abyss_cache_dir or None,
             dev_energy_override_line=DEFAULT_DEV_ENERGY_OVERRIDE_LINE,
         )
         payload = report.to_dict()
@@ -86,6 +104,12 @@ def run_gcsim_browser_selected_chamber(
     payload["selection"] = _selection_report(request)
     payload["run_dir"] = str(run_dir)
     payload["rotation_shell_path"] = str(rotation_shell_path)
+    mismatch_warning = _source_mismatch_warning(payload, request)
+    if mismatch_warning:
+        payload["warnings"] = [
+            *(payload.get("warnings") or []),
+            mismatch_warning,
+        ]
     payload["error_category"] = classify_gcsim_browser_run_payload(payload)
     payload["success"] = bool(
         payload.get("ready")
@@ -149,6 +173,11 @@ def format_gcsim_browser_run_report(payload: dict[str, Any]) -> str:
             f"/ Side {selection.get('side', '-')} "
             f"/ C{selection.get('chamber', '-')}"
         ),
+        (
+            "Abyss source: "
+            f"period_start={selection.get('period_start') or '-'} "
+            f"floor={selection.get('floor') or '-'}"
+        ),
         f"Status: {smoke.get('status') or payload.get('status') or '-'}",
         f"Error category: {payload.get('error_category') or '-'}",
         f"Config path: {payload.get('config_path') or '-'}",
@@ -181,6 +210,7 @@ def format_gcsim_browser_run_report(payload: dict[str, Any]) -> str:
             "Scenario: "
             f"waves={scenario_summary.get('wave_count', '-')} "
             f"targets={scenario_summary.get('target_count', '-')} "
+            f"total_hp={_format_number(scenario_summary.get('total_hp')) or '-'} "
             f"spawn_policy={scenario_summary.get('spawn_policy', '-')}"
         )
 
@@ -297,7 +327,29 @@ def _selection_report(request: GcsimBrowserRunRequest) -> dict[str, Any]:
         "chamber": int(request.chamber),
         "side": int(request.side),
         "team_names": list(request.team_names),
+        "period_start": request.abyss_period_start,
+        "floor": int(request.abyss_floor or 0),
+        "cache_dir": request.abyss_cache_dir,
     }
+
+
+def _source_mismatch_warning(
+    payload: dict[str, Any],
+    request: GcsimBrowserRunRequest,
+) -> str:
+    smoke = payload.get("smoke") if isinstance(payload.get("smoke"), dict) else {}
+    source = smoke.get("source") if isinstance(smoke.get("source"), dict) else {}
+    actual_period = str(source.get("period_start") or "")
+    actual_floor = int(source.get("floor") or 0)
+    if (
+        request.abyss_period_start
+        and actual_period
+        and actual_period != request.abyss_period_start
+    ):
+        return WARNING_ABYSS_PREVIEW_SCENARIO_SOURCE_MISMATCH
+    if request.abyss_floor and actual_floor and actual_floor != request.abyss_floor:
+        return WARNING_ABYSS_PREVIEW_SCENARIO_SOURCE_MISMATCH
+    return ""
 
 
 def _new_run_dir(run_root: str) -> Path:

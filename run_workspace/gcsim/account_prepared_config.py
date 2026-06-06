@@ -1146,7 +1146,7 @@ def _enemy_mapping_method_counts(audit: Mapping[str, Any]) -> dict[str, int]:
 def _scenario_summary_from_smoke_result(result: Mapping[str, Any]) -> dict[str, Any]:
     path = _text(result.get("scenario_path"))
     if not path:
-        return {"path": "", "wave_count": 0, "target_count": 0, "waves": []}
+        return {"path": "", "wave_count": 0, "target_count": 0, "total_hp": 0, "waves": []}
     try:
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -1154,11 +1154,13 @@ def _scenario_summary_from_smoke_result(result: Mapping[str, Any]) -> dict[str, 
             "path": path,
             "wave_count": 0,
             "target_count": 0,
+            "total_hp": 0,
             "waves": [],
             "error": str(exc),
         }
     waves_report: list[dict[str, Any]] = []
     target_count = 0
+    total_hp = 0.0
     for index, wave in enumerate(payload.get("waves") or (), start=1):
         if not isinstance(wave, Mapping):
             continue
@@ -1173,6 +1175,9 @@ def _scenario_summary_from_smoke_result(result: Mapping[str, Any]) -> dict[str, 
                     "hp": target.get("hp"),
                 }
             )
+            hp = _optional_float(target.get("hp"))
+            if hp is not None:
+                total_hp += hp
         target_count += len(targets)
         waves_report.append(
             {
@@ -1187,6 +1192,7 @@ def _scenario_summary_from_smoke_result(result: Mapping[str, Any]) -> dict[str, 
         "spawn_policy": payload.get("spawn_policy"),
         "wave_count": len(waves_report),
         "target_count": target_count,
+        "total_hp": round(total_hp, 6),
         "waves": waves_report,
     }
 

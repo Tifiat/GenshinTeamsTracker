@@ -1614,6 +1614,12 @@ class AppShell(QWidget):
                 "Run selected chamber failed: active team has no characters."
             )
             return
+        abyss_source_data = self.controller.cached_abyss_source_data()
+        if abyss_source_data is None:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run selected chamber failed: current Abyss source-data cache is missing."
+            )
+            return
 
         side = 1 if normalized_team_index == 0 else 2
         request = GcsimBrowserRunRequest(
@@ -1623,6 +1629,8 @@ class AppShell(QWidget):
             chamber=max(1, min(3, int(chamber))),
             side=side,
             rotation_shell_text=rotation_shell_text,
+            abyss_period_start=abyss_source_data.period.start_date,
+            abyss_floor=abyss_source_data.floor,
         )
         worker = GcsimBrowserRunWorker(request)
         thread = QThread(self)

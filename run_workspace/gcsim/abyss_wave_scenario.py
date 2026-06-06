@@ -363,6 +363,7 @@ def audit_abyss_wave_scenario(
     enemy_type_mapping: AbyssEnemyTypeMapping | None = None,
     enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
     snap_title_index: SnapMonsterTitleIndex | None = None,
+    fact_dps_multi_target_enabled: bool = True,
 ) -> AbyssWaveScenarioAudit:
     selected_side = _select_side(data, chamber=chamber, side=side)
     if selected_side is None:
@@ -379,6 +380,7 @@ def audit_abyss_wave_scenario(
         enemy_type_mapping=enemy_type_mapping,
         enemy_type_registry=enemy_type_registry,
         snap_title_index=snap_title_index,
+        fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
     )
 
 
@@ -390,6 +392,7 @@ def build_abyss_wave_scenario_payload(
     enemy_type_mapping: AbyssEnemyTypeMapping | None = None,
     enemy_type_registry: GcsimEnemyTypeRegistry | None = None,
     snap_title_index: SnapMonsterTitleIndex | None = None,
+    fact_dps_multi_target_enabled: bool = True,
 ) -> AbyssWaveScenarioBuildResult:
     selected_side = _select_side(data, chamber=chamber, side=side)
     if selected_side is None:
@@ -408,6 +411,7 @@ def build_abyss_wave_scenario_payload(
         enemy_type_mapping=enemy_type_mapping,
         enemy_type_registry=enemy_type_registry,
         snap_title_index=snap_title_index,
+        fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
     )
     if not audit.ready or (enemy_type_mapping is None and enemy_type_registry is None):
         return AbyssWaveScenarioBuildResult(audit=audit)
@@ -416,8 +420,11 @@ def build_abyss_wave_scenario_payload(
     waves: list[dict[str, Any]] = []
     for wave in selected_side.waves:
         targets: list[dict[str, Any]] = []
-        for row in wave.enemies:
-            for _ in range(_normalized_enemy_count(row)):
+        for row, count in _target_rows_for_wave(
+            wave,
+            fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
+        ):
+            for _ in range(count):
                 resolution = resolver.resolve_row(
                     row,
                     enemy_type_registry=enemy_type_registry,
@@ -656,6 +663,7 @@ def _audit_selected_side(
     enemy_type_mapping: AbyssEnemyTypeMapping | None,
     enemy_type_registry: GcsimEnemyTypeRegistry | None,
     snap_title_index: SnapMonsterTitleIndex | None,
+    fact_dps_multi_target_enabled: bool,
 ) -> AbyssWaveScenarioAudit:
     missing_hp: list[str] = []
     missing_level: list[str] = []
@@ -667,8 +675,10 @@ def _audit_selected_side(
     warnings: list[str] = [SOURCE_FIELDS_MISSING_WARNING]
     target_count = 0
     for wave in selected_side.waves:
-        for row in wave.enemies:
-            count = _normalized_enemy_count(row)
+        for row, count in _target_rows_for_wave(
+            wave,
+            fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
+        ):
             target_count += count
             label = _row_label(row)
             resolver = enemy_type_mapping or (
@@ -741,6 +751,22 @@ def _audit_selected_side(
 
 def _normalized_enemy_count(row: AbyssEnemySourceRow) -> int:
     return max(0, int(row.enemy_count))
+
+
+def _target_rows_for_wave(
+    wave: Any,
+    *,
+    fact_dps_multi_target_enabled: bool,
+) -> tuple[tuple[AbyssEnemySourceRow, int], ...]:
+    if fact_dps_multi_target_enabled:
+        return tuple((row, _normalized_enemy_count(row)) for row in wave.enemies)
+    selected_name = str(wave.selected_solo_enemy_name or "").strip()
+    if not selected_name:
+        return ()
+    for row in wave.enemies:
+        if row.primary_display_name == selected_name:
+            return ((row, 1),)
+    return ()
 
 
 def _snap_title_resolution(

@@ -174,6 +174,23 @@ Account-backed backend/dev prepared config bridge now exists in `run_workspace/g
 
 The account-backed CLI also supports a backend end-to-end compatibility smoke: `python -m run_workspace.gcsim.account_prepared_config --run-abyss-smoke --dev-energy-override --format text`. It assembles account-prepared team blocks with the manual Chasca rotation shell, writes a temporary dev-only boosted-energy shell copy in the run dir, generates cached Abyss waves for the configured chamber/side, and runs the existing patched artifact runner with `-gtt-wave-scenario`. The boosted energy line is dev-only and must not be treated as product rotation truth. Future GCSIM browser/editor work needs direct rotation code input/editing, not only committed shell fixtures.
 
+### First GCSIM Browser MVP UI contract
+
+The first GCSIM UI should be a browser tab/page near the existing character/weapon and artifact browser areas, not an isolated popup and not a small TeamCard-only panel. The right panel remains the compact Run Workspace summary that receives Sim DPS / clear-time results.
+
+Contracts:
+
+- Consume the current runtime team composition from Run Workspace/right panel; do not add right-panel persistence.
+- Abyss mode has Team 1 / Team 2 tabs. Team 1 maps to first-half Abyss enemies, Team 2 maps to second-half Abyss enemies. DPS Dummy mode has one team tab.
+- Show compact team readiness cards with character, weapon, artifact set summary, and ready/issues. Full build editing stays in the existing account/artifact UI.
+- Provide GCSIM total-stats tooltip/report per character so users can compare GCSIM-computed totals with the app/right-panel totals.
+- Show an Abyss target browser below the team: C1/C2/C3, side by active team, waves, enemy names, levels, HP, and resolved GCSIM target types.
+- The existing solo/multi target toggle must control which targets are sent to GCSIM. Current generated wave policy remains `group_clear`; stack/rolling replacement is future work.
+- Show temporary run defaults in the browser, for example iterations and boosted-energy status. Later these defaults move to a GCSIM settings section.
+- Raw GCSIM rotation-code input is required in the MVP. A visual/button-based rotation builder can be added later, but must not replace direct code input.
+- The primary Abyss action should run the active team's rotation against the three corresponding chambers and write Sim DPS / clear-time results back to the right panel, while the browser shows detailed per-chamber result, generated config, warnings/stderr, and error category.
+- First UI work should prioritize readiness/report/config/result visibility over visual polish.
+
 ## 8. Talent Levels
 
 Current GCSIM v2.42.2 validates config talent levels as parser/base values in the inclusive range `1..10` (`pkg/core/player/character/character.go`). Account/HoYoLAB observed talent rows may include constellation-boosted displayed levels above 10, so displayed levels are not GCSIM-ready.

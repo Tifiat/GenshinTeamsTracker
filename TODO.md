@@ -704,20 +704,31 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   smoke configs, and then generate payloads/configs from app-owned scenario and
   team data before any UI wiring.
 - Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.
-- Do not cram detailed GCSIM into the small TeamCard. Right panel should show only compact factual/sim DPS summary and readable GCSIM button/status; detailed GCSIM/rotation editor should open as a larger overlay/drawer around the right panel. If GCSIM lacks a character/reaction implementation, show a clear unavailable status.
-- Each team/run card should eventually have simulator action, GCSIM logo/label, and result area for sim DPS.
+- First GCSIM Browser UI should be a dedicated browser tab/page near the existing character/weapon and artifact browser areas, not an isolated popup and not a small TeamCard-only panel. The right panel remains the compact run summary that shows factual DPS and Sim DPS results.
+- The first browser MVP should consume the current runtime team composition from Run Workspace/right panel without adding right-panel persistence. Abyss mode has Team 1 / Team 2 tabs; DPS Dummy mode has one team tab.
+- GCSIM Browser MVP layout:
+  - compact team readiness cards: character, weapon, set summary, ready/issues;
+  - GCSIM total-stats tooltip/report for each character, to compare against right-panel/account stats;
+  - Abyss target browser: C1/C2/C3, side by team, waves, enemy names, levels, HP, and resolved GCSIM target types;
+  - current solo/multi target toggle controls which targets are sent to GCSIM;
+  - current wave policy remains `group_clear`; stack/rolling replacement stays future work;
+  - temporary run-defaults block shows iterations and boosted-energy status; later move defaults to GCSIM settings;
+  - raw GCSIM rotation-code editor is required in the MVP; visual/button-based rotation building is later/optional;
+  - run action should calculate the active team rotation against the three corresponding Abyss chambers and write Sim DPS/clear-time results back to the right panel while also showing detailed per-chamber result/warnings/config info in the browser.
+- First UI should prioritize readiness reports, generated config visibility, run results, warnings/stderr, and clear error categories over visual polish.
+- Each team/run card should eventually have simulator action, GCSIM logo/label, and compact result area for sim DPS/clear time.
 - Clicking the GCSIM logo should show a dialog like "Open GCSIM website?" before opening the official GCSIM site, for useful attribution and license/credit clarity.
 - Before bundling or modifying GCSIM, verify current license/attribution requirements. It is believed to be MIT-compatible, but do not rely on memory.
 - Simulator window should receive team data from TeamCard/TeamSnapshot: characters, constellations, weapons, refinements, artifacts, stats, set bonuses, talents if available, rotation, target/enemy setup.
-- Implement GCSIM for DPS Dummy first:
+- DPS Dummy GCSIM path remains supported as the simpler one-team mode:
   - one team;
   - one target;
   - configurable HP/resistance or supported target setup;
-  - rotation editor;
+  - raw rotation editor;
   - sim DPS result;
   - comparison with factual dummy DPS if available.
-- GCSIM for Abyss later should start with simplified modes: single target, multi-target, simplified room, manual target. Do not promise perfect full-Abyss simulation.
-- For Abyss, compare factual DPS from HP/time with sim DPS from simplified/current selected target.
+- GCSIM for Abyss should start from the backend path that already exists: account-prepared team, raw rotation code, generated cached Abyss waves, and `group_clear` wave scenario. Do not promise perfect full-Abyss simulation.
+- For Abyss, compare factual DPS from HP/time with Sim DPS/clear time from the selected solo/multi target mode.
 - Later GCSIM implementation/research follow-ups from `docs/handoff/GCSIM.md`:
   - CLI/binary/library options;
   - config format;

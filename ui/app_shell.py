@@ -90,8 +90,11 @@ from ui.gcsim_browser.window import (
     GcsimBrowserWorkspace,
 )
 from ui.gcsim_browser.run_worker import (
+    GcsimBrowserBatchRunRequest,
+    GcsimBrowserBatchRunWorker,
     GcsimBrowserRunRequest,
     GcsimBrowserRunWorker,
+    format_gcsim_browser_batch_report,
     format_gcsim_browser_run_report,
 )
 from ui.right_panel_prototype import (
@@ -1266,8 +1269,13 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.run_selected_requested.connect(
             self._on_gcsim_run_selected_requested
         )
+        self.left_host.gcsim_browser_workspace.run_all_requested.connect(
+            self._on_gcsim_run_all_requested
+        )
         self._gcsim_browser_run_thread: QThread | None = None
-        self._gcsim_browser_run_worker: GcsimBrowserRunWorker | None = None
+        self._gcsim_browser_run_worker: (
+            GcsimBrowserRunWorker | GcsimBrowserBatchRunWorker | None
+        ) = None
 
         self._right_panel_refresh_pending = False
         self._right_panel_refresh_timer = QTimer(self)
@@ -1655,6 +1663,65 @@ class AppShell(QWidget):
     def _on_gcsim_run_selected_finished(self, payload: dict) -> None:
         self.left_host.gcsim_browser_workspace.set_prepare_result_text(
             format_gcsim_browser_run_report(dict(payload))
+        )
+
+    def _on_gcsim_run_all_requested(
+        self,
+        team_index: int,
+        rotation_shell_text: str,
+    ) -> None:
+        if self._gcsim_browser_run_thread is not None:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run 3 chambers: already running."
+            )
+            return
+        normalized_team_index = max(0, min(1, int(team_index)))
+        team_names = self.controller.gcsim_browser_team_names(normalized_team_index)
+        if not team_names:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run 3 chambers failed: active team has no characters."
+            )
+            return
+        abyss_source_data = self.controller.cached_abyss_source_data()
+        if abyss_source_data is None:
+            self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+                "Run 3 chambers failed: current Abyss source-data cache is missing."
+            )
+            return
+
+        side = 1 if normalized_team_index == 0 else 2
+        request = GcsimBrowserBatchRunRequest(
+            db_path=str(self.controller.equipment_db_path),
+            team_names=team_names,
+            team_index=normalized_team_index,
+            side=side,
+            rotation_shell_text=rotation_shell_text,
+            abyss_period_start=abyss_source_data.period.start_date,
+            abyss_floor=abyss_source_data.floor,
+        )
+        worker = GcsimBrowserBatchRunWorker(request)
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._on_gcsim_run_all_finished)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._clear_gcsim_run_worker_refs)
+        self._gcsim_browser_run_worker = worker
+        self._gcsim_browser_run_thread = thread
+        self.left_host.gcsim_browser_workspace.set_actions_busy(
+            True,
+            message=(
+                f"Running 3 chambers: Team {normalized_team_index + 1} "
+                f"/ side {side}..."
+            ),
+        )
+        thread.start()
+
+    def _on_gcsim_run_all_finished(self, payload: dict) -> None:
+        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+            format_gcsim_browser_batch_report(dict(payload))
         )
 
     def _clear_gcsim_run_worker_refs(self) -> None:

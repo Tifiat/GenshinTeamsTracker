@@ -8,9 +8,12 @@ from ui.gcsim_browser.run_worker import (
     ERROR_GCSIM_RUNTIME_ERROR,
     ERROR_PREPARE_NOT_READY,
     WARNING_ABYSS_SOURCE_IDENTITY_MISSING,
+    GcsimBrowserBatchRunRequest,
     GcsimBrowserRunRequest,
     classify_gcsim_browser_run_payload,
+    format_gcsim_browser_batch_report,
     format_gcsim_browser_run_report,
+    run_gcsim_browser_three_chambers,
     run_gcsim_browser_selected_chamber,
 )
 
@@ -129,6 +132,95 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         self.assertEqual(payload["error_category"], ERROR_PREPARE_NOT_READY)
         self.assertIn(WARNING_ABYSS_SOURCE_IDENTITY_MISSING, payload["warnings"])
         self.assertIn("not using backend defaults", payload["error"])
+
+    def test_batch_missing_abyss_source_identity_does_not_use_backend_default(self) -> None:
+        payload = run_gcsim_browser_three_chambers(
+            GcsimBrowserBatchRunRequest(
+                db_path="missing.db",
+                team_names=("Chasca",),
+                team_index=0,
+                side=1,
+                rotation_shell_text="active chasca;",
+            )
+        )
+
+        self.assertFalse(payload["success"])
+        self.assertEqual(payload["batch_status"], "failed")
+        self.assertIn(WARNING_ABYSS_SOURCE_IDENTITY_MISSING, payload["warnings"])
+        self.assertEqual(payload["chambers"], [])
+
+    def test_formats_batch_report(self) -> None:
+        payload = {
+            "batch_status": "partial_failed",
+            "success": False,
+            "selection": {
+                "team_label": "Team 1",
+                "side": 1,
+                "period_start": "2026-06-01",
+                "floor": 12,
+            },
+            "chambers": [
+                _chamber_payload(1, success=True, status="run_passed"),
+                _chamber_payload(
+                    2,
+                    success=False,
+                    status="run_failed",
+                    error_category=ERROR_GCSIM_RUNTIME_ERROR,
+                    warnings=("runtime_warning",),
+                ),
+                _chamber_payload(3, success=True, status="run_passed"),
+            ],
+            "warnings": ["runtime_warning"],
+        }
+
+        text = format_gcsim_browser_batch_report(payload)
+
+        self.assertIn("Run 3 chambers", text)
+        self.assertIn("Team: Team 1 / Side 1", text)
+        self.assertIn("Abyss source: period_start=2026-06-01 floor=12", text)
+        self.assertIn("Batch status: partial_failed", text)
+        self.assertIn("C1: status=run_passed", text)
+        self.assertIn("C2: status=run_failed error_category=gcsim_runtime_error", text)
+        self.assertIn("scenario_hp=4.43e+06", text)
+        self.assertIn("DPS correctness claim: false", text)
+
+
+def _chamber_payload(
+    chamber: int,
+    *,
+    success: bool,
+    status: str,
+    error_category: str = "",
+    warnings: tuple[str, ...] = (),
+) -> dict:
+    return {
+        "success": success,
+        "status": "ready",
+        "error_category": error_category,
+        "selection": {
+            "team_label": "Team 1",
+            "side": 1,
+            "chamber": chamber,
+            "period_start": "2026-06-01",
+            "floor": 12,
+        },
+        "warnings": list(warnings),
+        "smoke": {
+            "status": status,
+            "scenario_summary": {
+                "wave_count": 2,
+                "target_count": 2,
+                "total_hp": 4430000,
+            },
+            "run_result": {
+                "summary": {
+                    "duration_mean": 50 + chamber,
+                    "dps_mean": 100000 + chamber,
+                    "total_damage_mean": 4430000,
+                },
+            },
+        },
+    }
 
 
 if __name__ == "__main__":

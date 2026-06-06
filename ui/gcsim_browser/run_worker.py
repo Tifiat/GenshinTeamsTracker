@@ -40,6 +40,20 @@ class GcsimBrowserRunRequest:
     run_root: str = ""
 
 
+@dataclass(frozen=True, slots=True)
+class GcsimBrowserBatchRunRequest:
+    db_path: str
+    team_names: tuple[str, ...]
+    team_index: int
+    side: int
+    rotation_shell_text: str
+    abyss_period_start: str = ""
+    abyss_floor: int = 0
+    abyss_cache_dir: str = ""
+    chambers: tuple[int, ...] = (1, 2, 3)
+    run_root: str = ""
+
+
 class GcsimBrowserRunWorker(QObject):
     finished = Signal(dict)
 
@@ -50,6 +64,18 @@ class GcsimBrowserRunWorker(QObject):
     @Slot()
     def run(self) -> None:
         self.finished.emit(run_gcsim_browser_selected_chamber(self._request))
+
+
+class GcsimBrowserBatchRunWorker(QObject):
+    finished = Signal(dict)
+
+    def __init__(self, request: GcsimBrowserBatchRunRequest) -> None:
+        super().__init__()
+        self._request = request
+
+    @Slot()
+    def run(self) -> None:
+        self.finished.emit(run_gcsim_browser_three_chambers(self._request))
 
 
 def run_gcsim_browser_selected_chamber(
@@ -119,6 +145,59 @@ def run_gcsim_browser_selected_chamber(
     return payload
 
 
+def run_gcsim_browser_three_chambers(
+    request: GcsimBrowserBatchRunRequest,
+) -> dict[str, Any]:
+    if not request.team_names:
+        return {
+            "success": False,
+            "batch_status": "failed",
+            "error_category": ERROR_PREPARE_NOT_READY,
+            "error": "Selected team has no characters.",
+            "selection": _batch_selection_report(request),
+            "chambers": [],
+        }
+    if not request.abyss_period_start or not request.abyss_floor:
+        return {
+            "success": False,
+            "batch_status": "failed",
+            "error_category": ERROR_PREPARE_NOT_READY,
+            "error": "Current Abyss source-data identity is missing; not using backend defaults.",
+            "selection": _batch_selection_report(request),
+            "warnings": [WARNING_ABYSS_SOURCE_IDENTITY_MISSING],
+            "chambers": [],
+        }
+
+    chambers: list[dict[str, Any]] = []
+    for chamber in request.chambers:
+        chamber_request = GcsimBrowserRunRequest(
+            db_path=request.db_path,
+            team_names=request.team_names,
+            team_index=request.team_index,
+            chamber=int(chamber),
+            side=request.side,
+            rotation_shell_text=request.rotation_shell_text,
+            abyss_period_start=request.abyss_period_start,
+            abyss_floor=request.abyss_floor,
+            abyss_cache_dir=request.abyss_cache_dir,
+            run_root=request.run_root,
+        )
+        chambers.append(run_gcsim_browser_selected_chamber(chamber_request))
+
+    status = _batch_status(chambers)
+    return {
+        "success": status == "passed",
+        "batch_status": status,
+        "selection": _batch_selection_report(request),
+        "chambers": chambers,
+        "warnings": _dedupe(
+            warning
+            for chamber in chambers
+            for warning in (chamber.get("warnings") or [])
+        ),
+    }
+
+
 def classify_gcsim_browser_run_payload(payload: dict[str, Any]) -> str:
     issues = _issue_statuses(payload)
     if any("shell" in status or "rotation" in status for status in issues):
@@ -151,6 +230,14 @@ def classify_gcsim_browser_run_payload(payload: dict[str, Any]) -> str:
     if payload.get("ready") and smoke.get("success"):
         return ""
     return ERROR_UNKNOWN
+
+
+def _batch_status(chambers: list[dict[str, Any]]) -> str:
+    if chambers and all(bool(chamber.get("success")) for chamber in chambers):
+        return "passed"
+    if any(bool(chamber.get("success")) for chamber in chambers):
+        return "partial_failed"
+    return "failed"
 
 
 def format_gcsim_browser_run_report(payload: dict[str, Any]) -> str:
@@ -239,6 +326,76 @@ def format_gcsim_browser_run_report(payload: dict[str, Any]) -> str:
     if error:
         lines.extend(["", f"Error: {error}"])
     return "\n".join(lines)
+
+
+def format_gcsim_browser_batch_report(payload: dict[str, Any]) -> str:
+    selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else {}
+    lines = [
+        "Run 3 chambers",
+        (
+            f"Team: {selection.get('team_label', '-')} "
+            f"/ Side {selection.get('side', '-')}"
+        ),
+        (
+            "Abyss source: "
+            f"period_start={selection.get('period_start') or '-'} "
+            f"floor={selection.get('floor') or '-'}"
+        ),
+        f"Batch status: {payload.get('batch_status') or '-'}",
+        "DPS correctness claim: false",
+        "",
+        "Chambers:",
+    ]
+    chambers = payload.get("chambers") if isinstance(payload.get("chambers"), list) else []
+    for chamber_payload in chambers:
+        if not isinstance(chamber_payload, dict):
+            continue
+        lines.extend(_batch_chamber_lines(chamber_payload))
+    warnings = payload.get("warnings") or []
+    if warnings:
+        lines.extend(["", "Warnings:", *[f"  - {warning}" for warning in warnings]])
+    error = str(payload.get("error") or "")
+    if error:
+        lines.extend(["", f"Error: {error}"])
+    return "\n".join(lines)
+
+
+def _batch_chamber_lines(payload: dict[str, Any]) -> list[str]:
+    selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else {}
+    smoke = payload.get("smoke") if isinstance(payload.get("smoke"), dict) else {}
+    run_result = (
+        smoke.get("run_result")
+        if isinstance(smoke.get("run_result"), dict)
+        else {}
+    )
+    summary = (
+        run_result.get("summary")
+        if isinstance(run_result.get("summary"), dict)
+        else {}
+    )
+    scenario = smoke.get("scenario_summary") if isinstance(smoke.get("scenario_summary"), dict) else {}
+    lines = [
+        (
+            f"  C{selection.get('chamber', '-')}: "
+            f"status={smoke.get('status') or payload.get('status') or '-'} "
+            f"error_category={payload.get('error_category') or '-'} "
+            f"clear_time={_format_number(summary.get('duration_mean')) or '-'} "
+            f"dps={_format_number(summary.get('dps_mean')) or '-'} "
+            f"total_damage={_format_number(summary.get('total_damage_mean')) or '-'} "
+            f"scenario_hp={_format_number(scenario.get('total_hp')) or '-'} "
+            f"waves={scenario.get('wave_count', '-')} "
+            f"targets={scenario.get('target_count', '-')}"
+        )
+    ]
+    warnings = payload.get("warnings") or []
+    if warnings:
+        lines.append(
+            "    warnings=" + ", ".join(str(warning) for warning in warnings)
+        )
+    error = str(payload.get("error") or "")
+    if error:
+        lines.append(f"    error={error}")
+    return lines
 
 
 def _character_line(character: dict[str, Any]) -> str:
@@ -333,6 +490,19 @@ def _selection_report(request: GcsimBrowserRunRequest) -> dict[str, Any]:
     }
 
 
+def _batch_selection_report(request: GcsimBrowserBatchRunRequest) -> dict[str, Any]:
+    return {
+        "team_index": int(request.team_index),
+        "team_label": f"Team {int(request.team_index) + 1}",
+        "side": int(request.side),
+        "team_names": list(request.team_names),
+        "period_start": request.abyss_period_start,
+        "floor": int(request.abyss_floor or 0),
+        "cache_dir": request.abyss_cache_dir,
+        "chambers": [int(chamber) for chamber in request.chambers],
+    }
+
+
 def _source_mismatch_warning(
     payload: dict[str, Any],
     request: GcsimBrowserRunRequest,
@@ -350,6 +520,18 @@ def _source_mismatch_warning(
     if request.abyss_floor and actual_floor and actual_floor != request.abyss_floor:
         return WARNING_ABYSS_PREVIEW_SCENARIO_SOURCE_MISMATCH
     return ""
+
+
+def _dedupe(values: Any) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = str(value)
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        result.append(text)
+    return result
 
 
 def _new_run_dir(run_root: str) -> Path:

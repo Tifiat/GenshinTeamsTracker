@@ -55,6 +55,7 @@ class GcsimBrowserTeamSlotPreview:
 class GcsimBrowserWorkspace(QWidget):
     prepare_requested = Signal(int, str)
     run_selected_requested = Signal(int, int, str)
+    run_all_requested = Signal(int, str)
 
     """First visual shell for the future GCSIM Browser.
 
@@ -183,7 +184,8 @@ class GcsimBrowserWorkspace(QWidget):
         self.run_selected_button.setEnabled(True)
         self.run_selected_button.clicked.connect(self._request_run_selected_chamber)
         self.run_all_button = QPushButton()
-        self.run_all_button.setEnabled(False)
+        self.run_all_button.setEnabled(True)
+        self.run_all_button.clicked.connect(self._request_run_all_chambers)
         actions.addWidget(self.prepare_button)
         actions.addWidget(self.run_selected_button)
         actions.addWidget(self.run_all_button)
@@ -396,9 +398,19 @@ class GcsimBrowserWorkspace(QWidget):
             self.rotation_editor.toPlainText(),
         )
 
+    def _request_run_all_chambers(self) -> None:
+        team_index = max(0, int(self.team_tabs.currentIndex()))
+        if self._mode == MODE_DPS_DUMMY:
+            team_index = 0
+        self.results_placeholder.setText(
+            _fallback("gcsim.browser.run_all_requested", "Running 3 chambers...")
+        )
+        self.run_all_requested.emit(team_index, self.rotation_editor.toPlainText())
+
     def set_actions_busy(self, busy: bool, *, message: str = "") -> None:
         self.prepare_button.setEnabled(not busy)
         self.run_selected_button.setEnabled(not busy)
+        self.run_all_button.setEnabled(not busy)
         if message:
             self.results_placeholder.setText(message)
 

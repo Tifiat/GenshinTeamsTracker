@@ -268,21 +268,35 @@ Confirmed:
 
 - `CharacterDetailsData.gcsim_readiness` currently reports:
   - `gcsim_config_generation_not_implemented`
-  - `gcsim_key_mapping_not_implemented`
+  - stored account character/weapon GCSIM key fields may be available, but
+    config generation is not wired yet
   - `final_totals_not_computed`
 - GCSIM character, weapon, and set keys are separate from stat keys.
 
+Current character/weapon key boundary:
+
+- `hoyolab_export/account_storage.py` stores `catalog_english_name` plus
+  resolved `gcsim_character_key` / `gcsim_weapon_key` status and method for
+  account characters and observed weapon stacks.
+- The resolver uses local HoYoWiki stats caches for English names and local
+  prepared GCSIM shortcut sources for accepted keys. It does not use localized
+  display names, does not fetch network data, and does not run a GCSIM artifact.
+- Ready stored keys can become `GcsimMappingRef` inputs for future config
+  generation; missing/ambiguous/unsupported rows remain not-ready.
+
 Needs follow-up:
 
-- Build mapping from account/HoYoWiki character names to GCSIM character keys.
-- Build mapping from account/HoYoWiki weapon names to GCSIM weapon keys.
 - Build mapping from artifact `set_uid`/names to GCSIM set keys.
 - Decide Traveler handling for GCSIM separately; account Traveler cannot be blindly mapped to one elemental Traveler variant.
+- Wire selected team/current build adapters to consume stored ready
+  character/weapon keys.
 
 MVP recommendation:
 
 - Do not generate GCSIM configs from localized display names.
-- Add explicit key-mapping reports similar to the existing HoYoWiki catalog mapping reports.
+- Keep explicit key-mapping reports for global/catalog coverage and diagnostics;
+  account SQLite key fields are a runtime cache of resolved local-account rows,
+  not a complete production mapping table.
 - Keep unknown/unmapped characters, weapons, and sets as readiness warnings, not silent fallbacks.
 
 ## 9. Source Pointers

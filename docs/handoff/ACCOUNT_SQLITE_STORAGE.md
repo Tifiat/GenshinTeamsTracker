@@ -111,6 +111,13 @@ on the account.
 or as a GCSIM key source. Identity-sensitive adapters should key by
 `character_id` and an explicit mapping/catalog layer.
 
+GCSIM character key enrichment is stored on the account row as a resolved
+registry result, not as a raw normalized-name guess. Account sync joins the
+HoYoWiki character stats cache entry by `hoyowiki_character_entry_id`, takes the
+English catalog name, resolves it against the local GCSIM shortcut registry
+once per sync, then stores `gcsim_character_key` only when the resolver reports
+`ready`. Traveler and missing/ambiguous current-registry rows remain not-ready.
+
 Fields:
 
 - `character_id INTEGER PRIMARY KEY`
@@ -130,6 +137,10 @@ Fields:
 - `base_def`
 - `ascension_bonus_stat_type`
 - `ascension_bonus_value`
+- `catalog_english_name`
+- `gcsim_character_key`
+- `gcsim_character_key_status`
+- `gcsim_character_key_method`
 - `source_metadata_json`
 - `warnings_json`
 - `first_seen_at`
@@ -320,10 +331,38 @@ Fields:
 - `icon_url`
 - `icon_path`
 - `known_count INTEGER NOT NULL DEFAULT 1`
+- `catalog_english_name`
+- `gcsim_weapon_key`
+- `gcsim_weapon_key_status`
+- `gcsim_weapon_key_method`
 - `first_seen_at`
 - `last_seen_at`
 - `source_metadata_json`
 - `warnings_json`
+
+### GCSIM key enrichment fields
+
+`account_characters` and `account_weapon_observed_stacks` both carry
+GCSIM-ready key metadata:
+
+- `catalog_english_name`: English HoYoWiki stats catalog name used as resolver
+  input. This is diagnostic/source context, not UI localization.
+- `gcsim_character_key` / `gcsim_weapon_key`: resolved GCSIM shortcut key. This
+  is populated only for `ready` resolver results.
+- `gcsim_character_key_status` / `gcsim_weapon_key_status`: resolver status such
+  as `ready`, `missing`, `ambiguous`, `unsupported_traveler`, `not_checked`, or
+  `registry_unavailable`.
+- `gcsim_character_key_method` / `gcsim_weapon_key_method`: resolver method such
+  as `exact_normalized_name`, `contiguous_name_span`, or `missing`.
+
+The resolver reads local GCSIM shortcut source keys once per account sync and
+then performs in-memory lookup for rows. It does not run a GCSIM artifact and
+does not fetch network data. If the local registry is unavailable, account sync
+continues and marks key status as `registry_unavailable`.
+
+Do not treat `catalog_english_name` or an internal normalized candidate as a
+valid key. Future GCSIM config generation should consume only rows whose stored
+GCSIM key status is `ready`; other statuses must stay controlled not-ready.
 
 Fingerprint identity fields use project canonical values:
 

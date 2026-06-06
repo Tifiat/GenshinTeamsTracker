@@ -37,6 +37,12 @@ from .character_stats_catalog import (
 from .crop_manifest import IGNORED_CHARACTER_IDS, icon_key
 from .paths import HOYOLAB_DATA_DIR, PROJECT_ROOT
 from .paths import HOYOLAB_CHARACTER_ASSETS_DIR
+from .weapon_stats_catalog import (
+    WEAPON_STATS_CACHE_PATH,
+    WeaponStatsCatalog,
+    WeaponStatsEntry,
+    read_weapon_stats_cache,
+)
 from .character_trait_catalog import (
     load_character_trait_catalog,
     rebuild_character_trait_reference_from_catalog,
@@ -48,7 +54,7 @@ DEFAULT_CROP_MANIFEST_PATH = HOYOLAB_DATA_DIR / "crop_manifest.json"
 DEFAULT_ACCOUNT_LANGUAGE_PATH = HOYOLAB_DATA_DIR / "account_language.json"
 DEFAULT_ACCOUNT_DB_PATH = PROJECT_ROOT / "data" / "artifacts.db"
 
-ACCOUNT_STORAGE_SCHEMA_VERSION = 3
+ACCOUNT_STORAGE_SCHEMA_VERSION = 4
 DEFAULT_SIDE_ICON_CACHE_DIR = HOYOLAB_CHARACTER_ASSETS_DIR / "side_icons"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -69,6 +75,13 @@ WARNING_WEAPON_OBSERVED_STACK_NOT_FULL_INVENTORY = (
 WARNING_WEAPON_OBSERVATIONS_EMPTY_PRESERVED = (
     "account_weapon_observations_empty_preserved"
 )
+WARNING_GCSIM_KEY_REGISTRY_UNAVAILABLE = "gcsim_key_registry_unavailable"
+GCSIM_KEY_STATUS_NOT_CHECKED = "not_checked"
+GCSIM_KEY_STATUS_REGISTRY_UNAVAILABLE = "registry_unavailable"
+GCSIM_KEY_METHOD_NOT_CHECKED = "not_checked"
+GCSIM_KEY_METHOD_REGISTRY_UNAVAILABLE = "registry_unavailable"
+GCSIM_ENTITY_CHARACTER = "character"
+GCSIM_ENTITY_WEAPON = "weapon"
 _ACCOUNT_STORAGE_HIDDEN_ASCENSION_WARNINGS = {
     "character_ascension_phase_assumed",
     "ascension_phase_unknown",
@@ -150,6 +163,38 @@ class AccountSideIconCacheResult:
 
 
 @dataclass(frozen=True, slots=True)
+class AccountGcsimKeyResolution:
+    catalog_english_name: str = ""
+    gcsim_key: str = ""
+    status: str = ""
+    method: str = ""
+    candidates: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+    source_paths: Mapping[str, str] | None = None
+
+    @property
+    def ready(self) -> bool:
+        return self.status == "ready" and bool(self.gcsim_key)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "catalog_english_name": self.catalog_english_name,
+            "gcsim_key": self.gcsim_key,
+            "status": self.status,
+            "method": self.method,
+            "candidates": list(self.candidates),
+            "warnings": list(self.warnings),
+            "source_paths": dict(self.source_paths or {}),
+        }
+
+
+AccountGcsimKeyResolver = Callable[
+    [str, str, str],
+    AccountGcsimKeyResolution,
+]
+
+
+@dataclass(frozen=True, slots=True)
 class AccountCharacterRuntimeRecord:
     character_id: str
     name: str
@@ -173,6 +218,10 @@ class AccountCharacterRuntimeRecord:
     base_def: float | None = None
     ascension_bonus_stat_type: str = ""
     ascension_bonus_value: float | None = None
+    catalog_english_name: str = ""
+    gcsim_character_key: str = ""
+    gcsim_character_key_status: str = ""
+    gcsim_character_key_method: str = ""
     warnings: tuple[str, ...] = ()
     talents: tuple[AccountCharacterTalentRecord, ...] = ()
     source_metadata: dict[str, Any] | None = None
@@ -205,6 +254,10 @@ class AccountCharacterRuntimeRecord:
             "base_def": self.base_def,
             "ascension_bonus_stat_type": self.ascension_bonus_stat_type,
             "ascension_bonus_value": self.ascension_bonus_value,
+            "catalog_english_name": self.catalog_english_name,
+            "gcsim_character_key": self.gcsim_character_key,
+            "gcsim_character_key_status": self.gcsim_character_key_status,
+            "gcsim_character_key_method": self.gcsim_character_key_method,
             "warnings": list(self.warnings),
             "talents": [talent.to_dict() for talent in self.talents],
             "source_metadata": dict(self.source_metadata or {}),
@@ -237,6 +290,10 @@ class AccountCharacterRuntimeRecord:
             "base_def": self.base_def,
             "ascension_bonus_stat_type": self.ascension_bonus_stat_type,
             "ascension_bonus_value": self.ascension_bonus_value,
+            "catalog_english_name": self.catalog_english_name,
+            "gcsim_character_key": self.gcsim_character_key,
+            "gcsim_character_key_status": self.gcsim_character_key_status,
+            "gcsim_character_key_method": self.gcsim_character_key_method,
             "talents": [talent.to_dict() for talent in self.talents],
             "source": "account_sqlite",
             "warnings": list(self.warnings),
@@ -264,6 +321,10 @@ class AccountWeaponObservedStack:
     icon_url: str = ""
     icon_path: str = ""
     known_count: int = 1
+    catalog_english_name: str = ""
+    gcsim_weapon_key: str = ""
+    gcsim_weapon_key_status: str = ""
+    gcsim_weapon_key_method: str = ""
     warnings: tuple[str, ...] = ()
     source_metadata: dict[str, Any] | None = None
     first_seen_at: str = ""
@@ -292,6 +353,10 @@ class AccountWeaponObservedStack:
             "icon_url": self.icon_url,
             "icon_path": self.icon_path,
             "known_count": self.known_count,
+            "catalog_english_name": self.catalog_english_name,
+            "gcsim_weapon_key": self.gcsim_weapon_key,
+            "gcsim_weapon_key_status": self.gcsim_weapon_key_status,
+            "gcsim_weapon_key_method": self.gcsim_weapon_key_method,
             "warnings": list(self.warnings),
             "source_metadata": dict(self.source_metadata or {}),
             "first_seen_at": self.first_seen_at,
@@ -401,6 +466,10 @@ def init_account_storage(conn: sqlite3.Connection) -> None:
             base_def REAL,
             ascension_bonus_stat_type TEXT,
             ascension_bonus_value REAL,
+            catalog_english_name TEXT NOT NULL DEFAULT '',
+            gcsim_character_key TEXT NOT NULL DEFAULT '',
+            gcsim_character_key_status TEXT NOT NULL DEFAULT '',
+            gcsim_character_key_method TEXT NOT NULL DEFAULT '',
             source_metadata_json TEXT NOT NULL DEFAULT '{}',
             warnings_json TEXT NOT NULL DEFAULT '[]',
             first_seen_at TEXT,
@@ -453,6 +522,10 @@ def init_account_storage(conn: sqlite3.Connection) -> None:
             icon_url TEXT,
             icon_path TEXT,
             known_count INTEGER NOT NULL DEFAULT 1,
+            catalog_english_name TEXT NOT NULL DEFAULT '',
+            gcsim_weapon_key TEXT NOT NULL DEFAULT '',
+            gcsim_weapon_key_status TEXT NOT NULL DEFAULT '',
+            gcsim_weapon_key_method TEXT NOT NULL DEFAULT '',
             first_seen_at TEXT,
             last_seen_at TEXT,
             source_metadata_json TEXT NOT NULL DEFAULT '{}',
@@ -480,8 +553,12 @@ def sync_account_storage_from_local_files(
     crop_manifest_path: str | Path = DEFAULT_CROP_MANIFEST_PATH,
     account_language_path: str | Path = DEFAULT_ACCOUNT_LANGUAGE_PATH,
     character_stats_catalog_path: str | Path = CHARACTER_BASE_STATS_CACHE_PATH,
+    weapon_stats_catalog_path: str | Path = WEAPON_STATS_CACHE_PATH,
     side_icon_cache_dir: str | Path = DEFAULT_SIDE_ICON_CACHE_DIR,
     download_side_icons: bool = False,
+    enrich_gcsim_keys: bool = True,
+    gcsim_character_registry_source_path: str | Path | None = None,
+    gcsim_weapon_registry_source_path: str | Path | None = None,
 ) -> AccountStorageSyncSummary:
     """Populate account tables from already-local HoYoLAB/cache files.
 
@@ -495,9 +572,18 @@ def sync_account_storage_from_local_files(
     crop_manifest = _load_json_dict(crop_manifest_path)
     account_language = _load_json_dict(account_language_path)
     character_catalog = read_character_base_stats_cache(character_stats_catalog_path)
+    weapon_catalog = read_weapon_stats_cache(weapon_stats_catalog_path)
     content_language = _text(account_language.get("contentLanguage")) or "en-us"
     region_entries = load_character_region_catalog(content_language, allow_network=False)
     trait_catalog = load_character_trait_catalog()
+    gcsim_key_resolver = (
+        build_account_gcsim_key_resolver(
+            character_source_path=gcsim_character_registry_source_path,
+            weapon_source_path=gcsim_weapon_registry_source_path,
+        )
+        if enrich_gcsim_keys
+        else None
+    )
 
     with connect_db(db_path) as conn:
         init_db(conn)
@@ -509,6 +595,8 @@ def sync_account_storage_from_local_files(
             account_character_details=account_details,
             crop_manifest=crop_manifest,
             character_stats_catalog=character_catalog,
+            weapon_stats_catalog=weapon_catalog,
+            gcsim_key_resolver=gcsim_key_resolver,
             character_region_entries=region_entries,
             character_trait_entries=trait_catalog.entries,
             side_icon_cache_dir=side_icon_cache_dir,
@@ -526,6 +614,8 @@ def sync_account_storage_from_sources(
     account_character_details: Mapping[str, Any] | None = None,
     crop_manifest: Mapping[str, Any] | None = None,
     character_stats_catalog: CharacterBaseStatsCatalog | None = None,
+    weapon_stats_catalog: WeaponStatsCatalog | None = None,
+    gcsim_key_resolver: AccountGcsimKeyResolver | None = None,
     character_region_entries: list[dict[str, Any]] | tuple[dict[str, Any], ...] = (),
     character_trait_entries: tuple[Any, ...] = (),
     side_icon_cache_dir: str | Path = DEFAULT_SIDE_ICON_CACHE_DIR,
@@ -541,6 +631,7 @@ def sync_account_storage_from_sources(
     avatar_wiki = _string_map(details_data.get("avatar_wiki"))
     weapon_wiki = _string_map(details_data.get("weapon_wiki"))
     character_entries = _character_entries_by_id(character_stats_catalog)
+    weapon_entries = _weapon_entries_by_id(weapon_stats_catalog)
     character_crops = _character_crops_by_id(crop_manifest or {})
     weapon_icon_paths = _weapon_icon_paths(crop_manifest or {})
     now = _utc_now()
@@ -566,6 +657,7 @@ def sync_account_storage_from_sources(
             base_values = None
             ascension_bonus = None
             entry_id = ""
+            entry: CharacterBaseStatsEntry | None = None
             if detail is not None:
                 stat_sheet = parse_account_character_stat_sheet(detail)
                 base_values = extract_account_character_base_values(stat_sheet)
@@ -614,6 +706,16 @@ def sync_account_storage_from_sources(
                 "destructive_missing_character_pruning": False,
                 "side_icon_cache": side_icon_result.to_dict(),
             }
+            gcsim_resolution = _resolve_account_gcsim_key(
+                gcsim_key_resolver,
+                entity_type=GCSIM_ENTITY_CHARACTER,
+                project_id=str(character_id),
+                catalog_english_name=entry.name if entry is not None else "",
+            )
+            if gcsim_resolution.catalog_english_name or gcsim_resolution.status:
+                source_metadata["gcsim_character_key_resolution"] = (
+                    gcsim_resolution.to_dict()
+                )
             if base_values is not None:
                 source_metadata["base_values"] = base_values.to_dict()
             if ascension_bonus is not None:
@@ -636,6 +738,10 @@ def sync_account_storage_from_sources(
                 ascension_bonus_value=_number_or_none(
                     ascension_bonus.selected_value if ascension_bonus else None
                 ),
+                catalog_english_name=gcsim_resolution.catalog_english_name,
+                gcsim_character_key=gcsim_resolution.gcsim_key,
+                gcsim_character_key_status=gcsim_resolution.status,
+                gcsim_character_key_method=gcsim_resolution.method,
                 source_metadata=source_metadata,
                 warnings=_dedupe(row_warnings),
                 now=now,
@@ -717,6 +823,20 @@ def sync_account_storage_from_sources(
                     "sync_observed_count": len(stack_observations),
                 }
             )
+            weapon_entry_id = _text(source_metadata.get("hoyowiki_weapon_entry_id"))
+            weapon_entry = weapon_entries.get(weapon_entry_id)
+            gcsim_resolution = _resolve_account_gcsim_key(
+                gcsim_key_resolver,
+                entity_type=GCSIM_ENTITY_WEAPON,
+                project_id=str(chosen.weapon_id or ""),
+                catalog_english_name=(
+                    weapon_entry.name if weapon_entry is not None else ""
+                ),
+            )
+            if gcsim_resolution.catalog_english_name or gcsim_resolution.status:
+                source_metadata["gcsim_weapon_key_resolution"] = (
+                    gcsim_resolution.to_dict()
+                )
             row_warnings = _dedupe(
                 list(chosen.warnings)
                 + [
@@ -728,6 +848,10 @@ def sync_account_storage_from_sources(
                 conn,
                 chosen,
                 known_count=len(stack_observations),
+                catalog_english_name=gcsim_resolution.catalog_english_name,
+                gcsim_weapon_key=gcsim_resolution.gcsim_key,
+                gcsim_weapon_key_status=gcsim_resolution.status,
+                gcsim_weapon_key_method=gcsim_resolution.method,
                 source_metadata=source_metadata,
                 warnings=row_warnings,
                 now=now,
@@ -963,6 +1087,10 @@ def _upsert_account_character(
     base_def: float | None,
     ascension_bonus_stat_type: str,
     ascension_bonus_value: float | None,
+    catalog_english_name: str,
+    gcsim_character_key: str,
+    gcsim_character_key_status: str,
+    gcsim_character_key_method: str,
     source_metadata: Mapping[str, Any],
     warnings: list[str],
     now: str,
@@ -987,13 +1115,17 @@ def _upsert_account_character(
             base_def,
             ascension_bonus_stat_type,
             ascension_bonus_value,
+            catalog_english_name,
+            gcsim_character_key,
+            gcsim_character_key_status,
+            gcsim_character_key_method,
             source_metadata_json,
             warnings_json,
             first_seen_at,
             last_seen_at,
             updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(character_id) DO UPDATE SET
             name = excluded.name,
             element = excluded.element,
@@ -1011,6 +1143,10 @@ def _upsert_account_character(
             base_def = excluded.base_def,
             ascension_bonus_stat_type = excluded.ascension_bonus_stat_type,
             ascension_bonus_value = excluded.ascension_bonus_value,
+            catalog_english_name = excluded.catalog_english_name,
+            gcsim_character_key = excluded.gcsim_character_key,
+            gcsim_character_key_status = excluded.gcsim_character_key_status,
+            gcsim_character_key_method = excluded.gcsim_character_key_method,
             source_metadata_json = excluded.source_metadata_json,
             warnings_json = excluded.warnings_json,
             first_seen_at = COALESCE(account_characters.first_seen_at, excluded.first_seen_at),
@@ -1037,6 +1173,10 @@ def _upsert_account_character(
             base_def,
             ascension_bonus_stat_type,
             ascension_bonus_value,
+            _text(catalog_english_name),
+            _text(gcsim_character_key),
+            _text(gcsim_character_key_status),
+            _text(gcsim_character_key_method),
             _json_dumps(source_metadata),
             _json_dumps(_dedupe(warnings)),
             now,
@@ -1132,6 +1272,10 @@ def _upsert_weapon_observed_stack(
     observation: _WeaponObservation,
     *,
     known_count: int,
+    catalog_english_name: str,
+    gcsim_weapon_key: str,
+    gcsim_weapon_key_status: str,
+    gcsim_weapon_key_method: str,
     source_metadata: Mapping[str, Any],
     warnings: list[str],
     now: str,
@@ -1157,12 +1301,16 @@ def _upsert_weapon_observed_stack(
             icon_url,
             icon_path,
             known_count,
+            catalog_english_name,
+            gcsim_weapon_key,
+            gcsim_weapon_key_status,
+            gcsim_weapon_key_method,
             first_seen_at,
             last_seen_at,
             source_metadata_json,
             warnings_json
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(weapon_fingerprint) DO UPDATE SET
             weapon_id = excluded.weapon_id,
             name = excluded.name,
@@ -1190,6 +1338,10 @@ def _upsert_weapon_observed_stack(
                 excluded.first_seen_at
             ),
             last_seen_at = excluded.last_seen_at,
+            catalog_english_name = excluded.catalog_english_name,
+            gcsim_weapon_key = excluded.gcsim_weapon_key,
+            gcsim_weapon_key_status = excluded.gcsim_weapon_key_status,
+            gcsim_weapon_key_method = excluded.gcsim_weapon_key_method,
             source_metadata_json = excluded.source_metadata_json,
             warnings_json = excluded.warnings_json
         """,
@@ -1212,6 +1364,10 @@ def _upsert_weapon_observed_stack(
             observation.icon_url,
             observation.icon_path,
             max(1, int(known_count)),
+            _text(catalog_english_name),
+            _text(gcsim_weapon_key),
+            _text(gcsim_weapon_key_status),
+            _text(gcsim_weapon_key_method),
             now,
             now,
             _json_dumps(source_metadata),
@@ -1511,6 +1667,10 @@ def _account_character_runtime_record(
         base_def=_number_or_none(row["base_def"]),
         ascension_bonus_stat_type=_text(row["ascension_bonus_stat_type"]),
         ascension_bonus_value=_number_or_none(row["ascension_bonus_value"]),
+        catalog_english_name=_text(row["catalog_english_name"]),
+        gcsim_character_key=_text(row["gcsim_character_key"]),
+        gcsim_character_key_status=_text(row["gcsim_character_key_status"]),
+        gcsim_character_key_method=_text(row["gcsim_character_key_method"]),
         warnings=tuple(_json_list(row["warnings_json"])),
         talents=talents,
         source_metadata=_json_dict(row["source_metadata_json"]),
@@ -1586,6 +1746,10 @@ def _account_weapon_observed_stack(
         icon_url=_text(row["icon_url"]),
         icon_path=_text(row["icon_path"]),
         known_count=_optional_int(row["known_count"]) or 1,
+        catalog_english_name=_text(row["catalog_english_name"]),
+        gcsim_weapon_key=_text(row["gcsim_weapon_key"]),
+        gcsim_weapon_key_status=_text(row["gcsim_weapon_key_status"]),
+        gcsim_weapon_key_method=_text(row["gcsim_weapon_key_method"]),
         warnings=tuple(_json_list(row["warnings_json"])),
         source_metadata=_json_dict(row["source_metadata_json"]),
         first_seen_at=_text(row["first_seen_at"]),
@@ -1628,6 +1792,138 @@ def _character_entries_by_id(
     if catalog is None:
         return {}
     return {entry.entry_page_id: entry for entry in catalog.entries if entry.entry_page_id}
+
+
+def _weapon_entries_by_id(
+    catalog: WeaponStatsCatalog | None,
+) -> dict[str, WeaponStatsEntry]:
+    if catalog is None:
+        return {}
+    return {entry.entry_page_id: entry for entry in catalog.entries if entry.entry_page_id}
+
+
+def build_account_gcsim_key_resolver(
+    *,
+    character_source_path: str | Path | None = None,
+    weapon_source_path: str | Path | None = None,
+) -> AccountGcsimKeyResolver:
+    try:
+        from run_workspace.gcsim.entity_key_readiness_report import (
+            DEFAULT_CHARACTER_SHORTCUT_SOURCE,
+            DEFAULT_WEAPON_SHORTCUT_SOURCE,
+            GcsimEntityRegistry,
+            ProjectEntity,
+            audit_project_entity,
+            build_gcsim_registry_index,
+            load_gcsim_shortcut_keys,
+            project_relative_path,
+        )
+    except Exception as exc:  # pragma: no cover - defensive import boundary.
+        return _unavailable_gcsim_key_resolver(
+            source_paths={},
+            warnings=(
+                WARNING_GCSIM_KEY_REGISTRY_UNAVAILABLE,
+                f"gcsim_resolver_import_failed:{type(exc).__name__}",
+            ),
+        )
+
+    character_path = Path(character_source_path or DEFAULT_CHARACTER_SHORTCUT_SOURCE)
+    weapon_path = Path(weapon_source_path or DEFAULT_WEAPON_SHORTCUT_SOURCE)
+    source_paths = {
+        GCSIM_ENTITY_CHARACTER: project_relative_path(character_path),
+        GCSIM_ENTITY_WEAPON: project_relative_path(weapon_path),
+    }
+
+    try:
+        registry = GcsimEntityRegistry(
+            character_keys=load_gcsim_shortcut_keys(character_path),
+            weapon_keys=load_gcsim_shortcut_keys(weapon_path),
+            source_paths=source_paths,
+        )
+        registry_index = build_gcsim_registry_index(registry)
+    except Exception as exc:
+        return _unavailable_gcsim_key_resolver(
+            source_paths=source_paths,
+            warnings=(
+                WARNING_GCSIM_KEY_REGISTRY_UNAVAILABLE,
+                f"gcsim_registry_load_failed:{type(exc).__name__}",
+            ),
+        )
+
+    def resolve(
+        entity_type: str,
+        project_id: str,
+        catalog_english_name: str,
+    ) -> AccountGcsimKeyResolution:
+        display_name = _text(catalog_english_name)
+        if not display_name:
+            return AccountGcsimKeyResolution()
+        entry = audit_project_entity(
+            ProjectEntity(
+                entity_type=_text(entity_type),
+                project_id=_text(project_id),
+                display_name=display_name,
+                source_name="account_storage:catalog_english_name",
+            ),
+            registry_index,
+            {},
+        )
+        return AccountGcsimKeyResolution(
+            catalog_english_name=display_name,
+            gcsim_key=entry.gcsim_key if entry.ready else "",
+            status=entry.status,
+            method=entry.method,
+            candidates=entry.candidates,
+            warnings=entry.warnings,
+            source_paths=source_paths,
+        )
+
+    return resolve
+
+
+def _unavailable_gcsim_key_resolver(
+    *,
+    source_paths: Mapping[str, str],
+    warnings: tuple[str, ...],
+) -> AccountGcsimKeyResolver:
+    deduped_warnings = _dedupe_tuple(warnings)
+
+    def resolve(
+        entity_type: str,
+        project_id: str,
+        catalog_english_name: str,
+    ) -> AccountGcsimKeyResolution:
+        display_name = _text(catalog_english_name)
+        if not display_name:
+            return AccountGcsimKeyResolution()
+        return AccountGcsimKeyResolution(
+            catalog_english_name=display_name,
+            status=GCSIM_KEY_STATUS_REGISTRY_UNAVAILABLE,
+            method=GCSIM_KEY_METHOD_REGISTRY_UNAVAILABLE,
+            warnings=deduped_warnings,
+            source_paths=source_paths,
+        )
+
+    return resolve
+
+
+def _resolve_account_gcsim_key(
+    resolver: AccountGcsimKeyResolver | None,
+    *,
+    entity_type: str,
+    project_id: str,
+    catalog_english_name: str,
+) -> AccountGcsimKeyResolution:
+    display_name = _text(catalog_english_name)
+    if not display_name:
+        return AccountGcsimKeyResolution()
+    if resolver is None:
+        return AccountGcsimKeyResolution(
+            catalog_english_name=display_name,
+            status=GCSIM_KEY_STATUS_NOT_CHECKED,
+            method=GCSIM_KEY_METHOD_NOT_CHECKED,
+        )
+    return resolver(entity_type, _text(project_id), display_name)
 
 
 def _character_crops_by_id(manifest: Mapping[str, Any]) -> dict[str, str]:
@@ -1749,6 +2045,10 @@ def _ensure_account_character_columns(conn: sqlite3.Connection) -> None:
         "updated_at": "TEXT",
         "source_metadata_json": "TEXT NOT NULL DEFAULT '{}'",
         "warnings_json": "TEXT NOT NULL DEFAULT '[]'",
+        "catalog_english_name": "TEXT NOT NULL DEFAULT ''",
+        "gcsim_character_key": "TEXT NOT NULL DEFAULT ''",
+        "gcsim_character_key_status": "TEXT NOT NULL DEFAULT ''",
+        "gcsim_character_key_method": "TEXT NOT NULL DEFAULT ''",
     }
     for column, definition in additions.items():
         if column not in columns:
@@ -1781,6 +2081,10 @@ def _ensure_observed_weapon_columns(conn: sqlite3.Connection) -> None:
         "last_seen_at": "TEXT",
         "source_metadata_json": "TEXT NOT NULL DEFAULT '{}'",
         "warnings_json": "TEXT NOT NULL DEFAULT '[]'",
+        "catalog_english_name": "TEXT NOT NULL DEFAULT ''",
+        "gcsim_weapon_key": "TEXT NOT NULL DEFAULT ''",
+        "gcsim_weapon_key_status": "TEXT NOT NULL DEFAULT ''",
+        "gcsim_weapon_key_method": "TEXT NOT NULL DEFAULT ''",
     }
     for column, definition in additions.items():
         if column not in columns:
@@ -1900,6 +2204,10 @@ def _dedupe(values: list[str]) -> list[str]:
     return result
 
 
+def _dedupe_tuple(values: tuple[str, ...] | list[str]) -> tuple[str, ...]:
+    return tuple(_dedupe([_text(value) for value in values]))
+
+
 def _account_storage_ascension_warnings(values: tuple[str, ...]) -> list[str]:
     return [
         value
@@ -2004,6 +2312,17 @@ def main(argv: list[str] | None = None) -> int:
         default=str(CHARACTER_BASE_STATS_CACHE_PATH),
     )
     parser.add_argument(
+        "--weapon-stats-catalog",
+        default=str(WEAPON_STATS_CACHE_PATH),
+    )
+    parser.add_argument(
+        "--skip-gcsim-key-enrichment",
+        action="store_true",
+        help="Skip local GCSIM registry key enrichment for account rows.",
+    )
+    parser.add_argument("--gcsim-character-registry-source")
+    parser.add_argument("--gcsim-weapon-registry-source")
+    parser.add_argument(
         "--download-side-icons",
         action="store_true",
         help=(
@@ -2020,7 +2339,11 @@ def main(argv: list[str] | None = None) -> int:
         account_character_details_path=args.character_details,
         crop_manifest_path=args.crop_manifest,
         character_stats_catalog_path=args.character_stats_catalog,
+        weapon_stats_catalog_path=args.weapon_stats_catalog,
         download_side_icons=args.download_side_icons,
+        enrich_gcsim_keys=not args.skip_gcsim_key_enrichment,
+        gcsim_character_registry_source_path=args.gcsim_character_registry_source,
+        gcsim_weapon_registry_source_path=args.gcsim_weapon_registry_source,
     )
     print(json.dumps(summary.to_dict(), ensure_ascii=False, indent=2))
     return 0

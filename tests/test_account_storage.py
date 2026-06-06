@@ -8,10 +8,12 @@ from contextlib import closing
 from pathlib import Path
 
 from hoyolab_export.account_storage import (
+    AccountGcsimKeyResolution,
     WARNING_CHARACTER_SIDE_ICON_CACHE_FAILED,
     WARNING_CHARACTER_SOURCE_EMPTY_PRESERVED,
     WARNING_WEAPON_OBSERVED_STACK_NOT_FULL_INVENTORY,
     account_side_icon_local_path,
+    build_account_gcsim_key_resolver,
     get_account_character,
     get_account_weapon_observed_stack_by_id,
     get_account_weapon_observed_stack,
@@ -30,6 +32,7 @@ from hoyolab_export.character_ascension_bonus import (
     MATCHED_BY_BASE_HP,
     WARNING_ASCENSION_BONUS_BASE_STAT_NO_MATCH,
 )
+from hoyolab_export.weapon_stats_catalog import WeaponStatsCatalog, WeaponStatsEntry
 
 
 class AccountStorageTest(unittest.TestCase):
@@ -148,6 +151,137 @@ class AccountStorageTest(unittest.TestCase):
         self.assertEqual(weapon.icon_path, "assets/hoyolab/weapons/test.png")
         self.assertEqual(weapon.known_count, 1)
         self.assertIn(WARNING_WEAPON_OBSERVED_STACK_NOT_FULL_INVENTORY, weapon.warnings)
+
+    def test_sync_stores_validated_gcsim_keys_from_catalog_names(self) -> None:
+        def resolver(
+            entity_type: str,
+            project_id: str,
+            catalog_english_name: str,
+        ) -> AccountGcsimKeyResolution:
+            if entity_type == "character":
+                self.assertEqual(project_id, "1001")
+                self.assertEqual(catalog_english_name, "Test Hero")
+                return AccountGcsimKeyResolution(
+                    catalog_english_name=catalog_english_name,
+                    gcsim_key="testhero",
+                    status="ready",
+                    method="exact_normalized_name",
+                    warnings=("auto_exact_candidate_not_curated_mapping",),
+                )
+            if entity_type == "weapon":
+                self.assertEqual(project_id, "2001")
+                self.assertEqual(catalog_english_name, "Test Spear")
+                return AccountGcsimKeyResolution(
+                    catalog_english_name=catalog_english_name,
+                    gcsim_key="testspear",
+                    status="ready",
+                    method="exact_normalized_name",
+                )
+            raise AssertionError(entity_type)
+
+        with temp_artifact_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                init_db(conn)
+                sync_account_storage_from_sources(
+                    conn,
+                    account_characters=[
+                        fake_account_character(name="Локальный герой")
+                    ],
+                    account_weapons=[
+                        fake_account_weapon(
+                            character_name="Локальный герой",
+                            weapon_name="Локальное копье",
+                        )
+                    ],
+                    account_character_details=fake_account_details(
+                        character_name="Локальный герой",
+                        weapon_name="Локальное копье",
+                    ),
+                    crop_manifest=fake_crop_manifest(),
+                    character_stats_catalog=fake_character_catalog(),
+                    weapon_stats_catalog=fake_weapon_catalog(),
+                    gcsim_key_resolver=resolver,
+                )
+                character = get_account_character(conn, 1001)
+                stacks = list_account_weapon_observed_stacks(conn)
+
+        self.assertIsNotNone(character)
+        self.assertEqual(character.name, "Локальный герой")
+        self.assertEqual(character.catalog_english_name, "Test Hero")
+        self.assertEqual(character.gcsim_character_key, "testhero")
+        self.assertEqual(character.gcsim_character_key_status, "ready")
+        self.assertEqual(character.gcsim_character_key_method, "exact_normalized_name")
+        self.assertNotIn("auto_exact_candidate_not_curated_mapping", character.warnings)
+        character_metadata = character.source_metadata or {}
+        self.assertEqual(
+            character_metadata["gcsim_character_key_resolution"]["gcsim_key"],
+            "testhero",
+        )
+
+        self.assertEqual(len(stacks), 1)
+        weapon = stacks[0]
+        self.assertEqual(weapon.name, "Локальное копье")
+        self.assertEqual(weapon.catalog_english_name, "Test Spear")
+        self.assertEqual(weapon.gcsim_weapon_key, "testspear")
+        self.assertEqual(weapon.gcsim_weapon_key_status, "ready")
+        self.assertEqual(weapon.gcsim_weapon_key_method, "exact_normalized_name")
+        weapon_metadata = weapon.source_metadata or {}
+        self.assertEqual(
+            weapon_metadata["gcsim_weapon_key_resolution"]["gcsim_key"],
+            "testspear",
+        )
+
+    def test_sync_marks_catalog_names_not_checked_without_gcsim_resolver(self) -> None:
+        with temp_artifact_db() as db_path:
+            with closing(connect_db(db_path)) as conn:
+                init_db(conn)
+                sync_account_storage_from_sources(
+                    conn,
+                    account_characters=[fake_account_character()],
+                    account_weapons=[fake_account_weapon()],
+                    account_character_details=fake_account_details(),
+                    crop_manifest=fake_crop_manifest(),
+                    character_stats_catalog=fake_character_catalog(),
+                    weapon_stats_catalog=fake_weapon_catalog(),
+                )
+                character = get_account_character(conn, 1001)
+                weapon = list_account_weapon_observed_stacks(conn)[0]
+
+        self.assertIsNotNone(character)
+        self.assertEqual(character.catalog_english_name, "Test Hero")
+        self.assertEqual(character.gcsim_character_key, "")
+        self.assertEqual(character.gcsim_character_key_status, "not_checked")
+        self.assertEqual(weapon.catalog_english_name, "Test Spear")
+        self.assertEqual(weapon.gcsim_weapon_key, "")
+        self.assertEqual(weapon.gcsim_weapon_key_status, "not_checked")
+
+    def test_default_gcsim_key_resolver_uses_registry_mapper(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            character_source = root / "characters.go"
+            weapon_source = root / "weapons.go"
+            character_source.write_text(
+                'package shortcut\nvar characterMap = map[string]int{\n"mizuki": 1,\n}\n',
+                encoding="utf-8",
+            )
+            weapon_source.write_text(
+                'package shortcut\nvar weaponMap = map[string]int{\n"testspear": 1,\n}\n',
+                encoding="utf-8",
+            )
+
+            resolver = build_account_gcsim_key_resolver(
+                character_source_path=character_source,
+                weapon_source_path=weapon_source,
+            )
+            character = resolver("character", "100999", "Yumemizuki Mizuki")
+            weapon = resolver("weapon", "2001", "Test Spear")
+
+        self.assertEqual(character.gcsim_key, "mizuki")
+        self.assertEqual(character.status, "ready")
+        self.assertEqual(character.method, "contiguous_name_span")
+        self.assertEqual(weapon.gcsim_key, "testspear")
+        self.assertEqual(weapon.status, "ready")
+        self.assertEqual(weapon.method, "exact_normalized_name")
 
     def test_read_adapter_returns_clean_records_without_current_equipped_semantics(self) -> None:
         with temp_artifact_db() as db_path:
@@ -787,6 +921,9 @@ def fake_account_details(
                 "avatar_wiki": {
                     str(character_id): "https://wiki.example/entry/9001",
                 },
+                "weapon_wiki": {
+                    str(weapon_id): "https://wiki.example/entry/9101",
+                },
                 "list": [
                     {
                         "base": {
@@ -939,6 +1076,31 @@ def fake_character_catalog() -> CharacterBaseStatsCatalog:
                                 "before": "18%",
                                 "after": "24%",
                             },
+                        }
+                    ],
+                }
+            ),
+        ),
+    )
+
+
+def fake_weapon_catalog() -> WeaponStatsCatalog:
+    return WeaponStatsCatalog(
+        entries=(
+            WeaponStatsEntry.from_dict(
+                {
+                    "entry_page_id": "9101",
+                    "name": "Test Spear",
+                    "lang": "en-us",
+                    "rows": [
+                        {
+                            "level_key": "Lv.70",
+                            "base_atk": {
+                                "before": "90",
+                                "after": "100",
+                            },
+                            "secondary_stat_type": "Energy Recharge",
+                            "secondary_stat_value": "25.2%",
                         }
                     ],
                 }

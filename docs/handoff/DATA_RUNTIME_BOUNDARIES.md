@@ -62,11 +62,13 @@ Readers:
 Meaning:
 
 - `account_characters`: authoritative account character state from HoYoLAB
-  character list plus clean base/reference fields where available;
+  character list plus clean base/reference fields where available and resolved
+  GCSIM character key readiness metadata;
 - `account_character_talents`: observed account skill/talent levels from local
   HoYoLAB detail `skills[]`;
 - `account_weapon_observed_stacks`: reconstructed observed weapon stacks from
-  equipped/detail observations.
+  equipped/detail observations, including resolved GCSIM weapon key readiness
+  metadata.
 
 Terminology note: "stack" here means a deduped observed weapon fingerprint with
 `known_count`, not a UI tooltip/grouping of different weapon variants.
@@ -76,6 +78,10 @@ Important limits:
 - `account_characters.name` is localized HoYoLAB display text. Identity-sensitive
   adapters should use stable IDs such as `character_id` plus explicit mapping
   data, not English-name searches or localized display-name matching;
+- GCSIM config adapters should consume stored resolved `gcsim_character_key` and
+  `gcsim_weapon_key` only when their status is `ready`. The
+  `catalog_english_name` fields are local HoYoWiki source context and are not
+  valid GCSIM keys by themselves;
 - observed weapon stacks are not guaranteed full weapon inventory;
 - HoYoLAB weapon id is a weapon type id, not a unique account instance id;
 - no fake weapon instance ids;

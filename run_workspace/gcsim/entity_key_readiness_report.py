@@ -295,6 +295,12 @@ def load_gcsim_entity_registry(
     )
 
 
+def build_gcsim_registry_index(
+    registry: GcsimEntityRegistry,
+) -> dict[str, dict[str, tuple[str, ...]]]:
+    return _registry_index(registry)
+
+
 def build_entity_key_coverage_report(
     entities: Iterable[ProjectEntity | Mapping[str, Any]],
     registry: GcsimEntityRegistry,

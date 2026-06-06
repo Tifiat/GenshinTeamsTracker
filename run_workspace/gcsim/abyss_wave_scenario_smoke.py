@@ -238,6 +238,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--scenario-out", default=None, help="Path for generated scenario JSON.")
     parser.add_argument("--config", default=None, help="Optional caller-provided GCSIM config path.")
+    parser.add_argument(
+        "--solo-target-mode",
+        action="store_true",
+        help="Build scenario from the selected solo target of each wave instead of all targets.",
+    )
     parser.add_argument("--store-dir", default=None, help="Optional GCSIM engine store root.")
     parser.add_argument("--run-dir", default=None, help="Optional output run directory.")
     parser.add_argument(
@@ -326,6 +331,7 @@ def _build_with_snap_flow(
     snap_fetcher: SnapJsonFetcher | None,
 ):
     steps = ["matching_enemy_names_primary"]
+    fact_dps_multi_target_enabled = _fact_dps_multi_target_enabled_from_args(args)
     if direct_snap_title_index is not None:
         steps.append("checking_direct_snap_titles")
         build = build_abyss_wave_scenario_payload(
@@ -335,6 +341,7 @@ def _build_with_snap_flow(
             enemy_type_mapping=enemy_type_mapping,
             enemy_type_registry=enemy_type_registry,
             snap_title_index=direct_snap_title_index,
+            fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
         )
         return build, direct_snap_title_index, _snap_flow_report(phase="direct"), steps
 
@@ -344,6 +351,7 @@ def _build_with_snap_flow(
         side=args.side,
         enemy_type_mapping=enemy_type_mapping,
         enemy_type_registry=enemy_type_registry,
+        fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
     )
     use_managed = bool(
         args.use_cached_snap_monster_json
@@ -378,6 +386,7 @@ def _build_with_snap_flow(
             enemy_type_mapping=enemy_type_mapping,
             enemy_type_registry=enemy_type_registry,
             snap_title_index=cache_load.index,
+            fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
         )
         if cached.ready or not args.refresh_snap_monster_json_if_needed:
             return cached, cache_load.index, cache_report, steps
@@ -403,8 +412,13 @@ def _build_with_snap_flow(
         enemy_type_mapping=enemy_type_mapping,
         enemy_type_registry=enemy_type_registry,
         snap_title_index=refresh.index,
+        fact_dps_multi_target_enabled=fact_dps_multi_target_enabled,
     )
     return refreshed, refresh.index, refresh_report, steps
+
+
+def _fact_dps_multi_target_enabled_from_args(args: argparse.Namespace) -> bool:
+    return not bool(getattr(args, "solo_target_mode", False))
 
 
 def _snap_flow_report(

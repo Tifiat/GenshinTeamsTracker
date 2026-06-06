@@ -423,6 +423,7 @@ def build_account_prepared_full_config_report(
     abyss_floor: int = DEFAULT_ABYSS_SMOKE_FLOOR,
     abyss_chamber: int = DEFAULT_ABYSS_SMOKE_CHAMBER,
     abyss_side: int = DEFAULT_ABYSS_SMOKE_SIDE,
+    abyss_fact_dps_multi_target_enabled: bool = True,
     abyss_cache_dir: str | Path | None = None,
     gcsim_enemy_registry_source: str | Path | None = None,
     snap_monster_cache_path: str | Path | None = None,
@@ -487,6 +488,7 @@ def build_account_prepared_full_config_report(
             abyss_floor=abyss_floor,
             abyss_chamber=abyss_chamber,
             abyss_side=abyss_side,
+            abyss_fact_dps_multi_target_enabled=abyss_fact_dps_multi_target_enabled,
             abyss_cache_dir=abyss_cache_dir,
             gcsim_enemy_registry_source=gcsim_enemy_registry_source,
             snap_monster_cache_path=snap_monster_cache_path,
@@ -1068,6 +1070,7 @@ def _run_optional_abyss_smoke(
     abyss_floor: int,
     abyss_chamber: int,
     abyss_side: int,
+    abyss_fact_dps_multi_target_enabled: bool,
     abyss_cache_dir: str | Path | None,
     gcsim_enemy_registry_source: str | Path | None,
     snap_monster_cache_path: str | Path | None,
@@ -1106,6 +1109,7 @@ def _run_optional_abyss_smoke(
         snap_monster_cache_path=(
             None if snap_monster_cache_path is None else str(snap_monster_cache_path)
         ),
+        solo_target_mode=not bool(abyss_fact_dps_multi_target_enabled),
         scenario_out=str(Path(run_dir) / "gtt_wave_scenario.json"),
         config=str(full_config.config_path),
         store_dir=None if store_dir is None else str(store_dir),
@@ -1127,6 +1131,9 @@ def _run_optional_abyss_smoke(
         "floor": int(abyss_floor),
         "chamber": int(abyss_chamber),
         "side": int(abyss_side),
+        "target_mode": (
+            "multi_target" if abyss_fact_dps_multi_target_enabled else "solo_target"
+        ),
         "network_fetch": False,
         "dps_correctness_claim": False,
     }

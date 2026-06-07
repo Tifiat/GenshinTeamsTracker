@@ -33,7 +33,6 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## Known Bugs
 
-- [ ] Changing app language can change the window size, narrowing the character selector area; the artifact grid is not recalculated afterward.
 - [ ] Editing the timer for one room does not adjust overlapping room timers, so impossible totals can appear, for example room 1 ends at 9:50 (10s), room 2 ends at 9:56 (-6s), total 4s.
 - [ ] After dragging a character into a team slot, the same character remains available in the character grid; characters already placed in slots cannot be moved to another slot or another team's slot.
 
@@ -49,7 +48,6 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Build preview set bonus cells and compact preset-row set bonus icons use stored 2p/4p set bonus descriptions and custom tooltips.
 - Region filters are implemented through `assets/filters/Statue.png`; character regions come from HoYoWiki character list `menu_id=2`, are cached at `data/cache/hoyowiki/character_region_catalog.json`, and are joined into SQLite `character_identity` for runtime filters.
 - Region/trait filters are multi-select: OR inside their own group, AND with element/weapon/rarity. Standard 5-star is tri-state: all / only Standard 5-star / exclude Standard 5-star.
-- Non-priority UI polish: add custom in-app tooltips for character/target filter buttons. Do not use system tooltips there; Artifact Browser target filter system tooltips are intentionally disabled until custom tooltips exist.
 - Artifact Browser has fixed bottom-row `Import JSON` / `Clear JSON` buttons; JSON clear deletes only `json_imported=1` + `import_source='artiscan'` artifacts and clears affected build preset slots.
 - Sort and Sets popups toggle closed on repeated button click and order game/custom sets by owned piece count descending.
 - Region/trait joins prefer HoYoWiki entry ids when available and use normalized names only as fallback.
@@ -888,12 +886,6 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   runtime data outside the bundled app, and verify the final unpacked and
   installer sizes. Target this as a dedicated packaging pass, not as ordinary
   feature work.
-- Artifact Browser polish: JSON import/clear controls are compact at one
-  artifact column and expand only at 2+ artifact columns. They must not force
-  the one-column artifact viewport wider than one `GRID_SIZE.width()` cell.
-- Artifact Browser polish: shift the artifact grid overlay scrollbar visually
-  right by roughly one scrollbar width plus a small 1-5px margin, while keeping
-  it overlay-style and non-layout-consuming.
 - AppShell resize twitch: isolated probe reproduced the effect outside the app,
   and it is reduced on a 144Hz monitor without desktop holes. Treat it as
   system/environment live-resize behavior for now; no active app-level fix is

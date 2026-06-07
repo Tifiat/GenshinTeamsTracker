@@ -296,7 +296,7 @@ Artifact Browser equip-context design:
 - Manual artifact clicks in equip mode equip the clicked artifact to the operation target through the equipment service. In preset-edit mode, artifact clicks edit/construct the preset only.
 - If a preset contains artifacts currently worn by other characters, show a compact confirmation with owner side icons before applying. Accepted apply uses equipment service move/swap semantics and does not mutate the preset definition.
 - Artifact owner icons, preset owner icons, and weapon owner icons are derived from persistent current equipment tables. `artifact_build_targets` remains intended/available target metadata, not current wearer metadata. Weapon owner display must use `weapon_fingerprint` + `known_count` without fake weapon instance ids. Future weapon move/swap UI must require an explicit current owner/source choice when all known copies of a fingerprint are assigned; do not silently steal exhausted assigned weapons by fingerprint.
-- Embedded Artifact Browser geometry is calibrated around a compact minimum-width landing: one `GRID_SIZE.width()` artifact cell, compact Assignment minimum, target rows using `MarqueeButton` with a reserved portrait/icon zone and marquee text only in the name area, fixed preset/current-equipment panel, and JSON import/clear controls that must not force the artifact viewport wider than one grid cell. Divmod/remainder adaptive fit is implemented from these source values: extra width that is not enough for another artifact column goes to Assignment as preferred/current width, not as a propagated minimum. Do not reintroduce candidate-width search or guessed card/gap constants. Remaining polish: shift artifact grid overlay scrollbar visually right without consuming layout width.
+- Embedded Artifact Browser geometry is calibrated around a compact minimum-width landing: one `GRID_SIZE.width()` artifact cell, compact Assignment minimum, target rows using `MarqueeButton` with a reserved portrait/icon zone and marquee text only in the name area, and fixed preset/current-equipment panel. Divmod/remainder adaptive fit is implemented from these source values: extra width that is not enough for another artifact column goes to Assignment as preferred/current width, not as a propagated minimum. Do not reintroduce candidate-width search or guessed card/gap constants.
 
 Old per-artifact icon cache path has been removed from current code. Do not reintroduce:
 
@@ -389,9 +389,6 @@ Build presets:
 - Region and `Moonsign`/`Hexerei` filters are OR inside their own group, then AND
   with selected element/weapon/rarity filters. Standard 5-star is a tri-state
   filter using `assets/filters/standard.png`.
-- Non-priority UI polish: add custom in-app tooltips for character/target filter
-  buttons. Do not use system tooltips there; Artifact Browser target filter
-  system tooltips are intentionally disabled until custom tooltips exist.
 - Region/trait joins prefer HoYoWiki entry ids and use normalized localized names only as fallback.
 - `assets/filters/Icon_Back.png` is used as the build target selector reset-all filter button.
 - Editing a saved build preset temporarily switches selected targets to that preset's targets; after save/cancel, the previous target browsing selection is restored.

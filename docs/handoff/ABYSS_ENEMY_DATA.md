@@ -8,9 +8,9 @@ were used under the OS temp directory to inspect public data schemas.
 
 Follow-up fixture:
 
-- `ABYSS_HP_FIXTURE.md` contains a concrete current Floor 12
+- `ABYSS_HP_FIXTURE.md` contains a historical Floor 12
   `2026-05-16` HP/mapping fixture, including Fandom lineup parsing, monster id
-  mapping, base HP/curve/resistance rows, `2.5x` fallback totals, likely current
+  mapping, base HP/curve/resistance rows, `2.5x` fallback totals, likely
   `3.75x` Stage12 totals, and parser implementation notes.
 - That fixture is historical research/debug material only. Normal displayed
   AppShell Fact DPS uses cached production source-data from
@@ -413,7 +413,7 @@ Confirmed:
   - fields include `id`, `icon`, `nameTextMapHash`, `specialNameLabID`,
     `titleID`.
 - Text maps can resolve `nameTextMapHash` in multiple languages.
-- Current Floor 12 HP multiplier hint is exposed through level entities:
+- The inspected Floor 12 HP multiplier hint is exposed through level entities:
   - `DungeonLevelEntityConfigData.json` id `2156` has
     `levelConfigName=LevelEntity_Monster_HpUp_Stage12_New2`.
   - `TextMap_MediumCHS.json` `descTextMapHash=48688570` contains a test
@@ -619,7 +619,7 @@ Confirmed:
   - `target1`, `target2`, `target3`
   - `enemies1_1`, `enemies1_2`, etc.
   - `note1`, etc. when wave details are manually described.
-- Current Floor 12 example from the 2026-05-16 page:
+- Inspected Floor 12 example from the 2026-05-16 page:
   - Floor 12 chamber 1 level `95`
     - first half: `Super-Heavy Landrover: Mechanized Fortress`
     - second half: `Hydro Hilichurl Rogue` and
@@ -690,17 +690,17 @@ Confirmed:
   - challenge conditions;
   - disorders;
   - older monster lists.
-- Current variant `1129` was present, but its monster list rendered empty in the
-  inspected HTML, matching the empty current `TowerLevelExcelConfigData`
+- Inspected variant `1129` was present, but its monster list rendered empty in the
+  inspected HTML, matching the empty inspected `TowerLevelExcelConfigData`
   `firstMonsterList` / `secondMonsterList` issue.
-- The current floor 12 variant showed a test Chinese HP-up line indicating
+- The inspected Floor 12 variant showed a test Chinese HP-up line indicating
   monster HP increase `275%`.
 
 Risk:
 
 - HTML scraping is brittle and includes ads/site UI.
 - License/terms for scraping or reuse were not confirmed.
-- It did not provide current monsters for the inspected current Floor 12 variant.
+- It did not provide monsters for the inspected Floor 12 variant.
 
 MVP recommendation:
 
@@ -801,8 +801,8 @@ Confirmed:
   - classic Floor 12 examples use `LevelEntity_Monster_HpUp_Lv4` with text
     `Opponents' HP increased by 150%`, equivalent to `2.5x` if interpreted as
     base plus increase.
-  - current Floor 12 `LevelEntity_Monster_HpUp_Stage12_New2` showed a test CHS
-    text with `275%`, likely `3.75x` if interpreted the same way.
+  - inspected Floor 12 `LevelEntity_Monster_HpUp_Stage12_New2` showed a test
+    CHS text with `275%`, likely `3.75x` if interpreted the same way.
 
 Unconfirmed:
 
@@ -1189,9 +1189,9 @@ Needs follow-up:
     `LevelDesign/Monsters/*.json`;
   - identify obfuscated fields for monster id, group id, config id, position,
     route, and trigger/wave conditions.
-- Verify numeric HP multipliers for current `LevelEntity_Monster_HpUp_*` configs,
+- Verify numeric HP multipliers for inspected `LevelEntity_Monster_HpUp_*` configs,
   especially `Stage12_New2`.
-- Build a small fixture for one known current Floor 12 chamber:
+- Build a small fixture for one known inspected Floor 12 chamber:
   - Fandom names -> monster ids;
   - monster base HP/curve/resists;
   - level;

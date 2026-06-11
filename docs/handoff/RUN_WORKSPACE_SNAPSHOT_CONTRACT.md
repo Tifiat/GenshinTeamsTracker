@@ -2,17 +2,19 @@
 
 Date: 2026-06-02
 
-Scope: planning and data contract for the next Run Workspace stages before
-history and GCSIM implementation. This is not a UI implementation plan for
-legacy cleanup, and it does not switch `main.py`.
+Scope: planning and data contract for the next Run Workspace stages around
+typed session ownership, immutable history snapshots, and durable GCSIM result
+attachment. This is not a UI implementation plan for legacy cleanup, and it
+does not switch `main.py`.
 
 ## Current State
 
 - `AppShell` is the future root coordinator and already owns independent
   in-memory `TeamBuilderState` selections for Abyss and DPS Dummy.
 - `RightOperationsDock` is the fixed right operation area. Its current
-  `RightPanelPrototypeWidget` still has display-only chamber rows and action
-  labels.
+  `RightPanelPrototypeWidget` has live in-memory Abyss timer editing, factual
+  DPS rows, and compact GCSIM status/result cells, but reset/save/history
+  commands are not yet durable run/session operations.
 - `run_workspace.team_builder` is the typed team composition layer.
 - `run_workspace.models` contains an early legacy Abyss snapshot adapter:
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,
@@ -26,14 +28,19 @@ legacy cleanup, and it does not switch `main.py`.
   visual `MM:SS` field per T1/T2 cell. Raw segment input normalizes only on
   commit. Left/Right changes the active segment; mouse wheel and Up/Down step
   the active minute or second segment.
-- The next implementation step is current in-memory run/session state and result
-  calculation. Saved snapshot models are intentionally later.
+- Current in-memory Abyss timer/session behavior exists inside the AppShell
+  controller path. The next durable implementation step is extracting/owning
+  that state through typed run/session boundaries, then wiring reset/save/history
+  and immutable snapshots.
 - `ui/widgets/timers.py` contains useful timer editing behavior but must not
   remain the durable owner of run/session state.
 - `ui/run_history_window.py` and `runs_history.json` are legacy image/path
   history. They are not the future history model.
-- `docs/handoff/GCSIM.md` documents future simulator integration. GCSIM must
-  consume snapshots/config data, not UI widgets.
+- `docs/handoff/GCSIM.md` and
+  `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md` document simulator
+  integration. Backend/dev GCSIM and Browser MVP paths exist, but durable saved
+  GCSIM results must attach to typed run/session state or snapshots, not UI
+  widgets.
 
 ## Production Switch Blockers
 
@@ -292,39 +299,45 @@ widgets, or GCSIM adapters.
 
 ## GCSIM Boundary
 
-GCSIM plugs in after typed team/run snapshots exist.
+Backend/dev GCSIM and the AppShell Browser MVP already exist. Their current
+runtime outputs are session/UI results, not saved history. Durable GCSIM results
+must plug into typed run/session state and immutable snapshots before they are
+treated as saved records.
 
 Integration rules:
 
-- GCSIM config generation consumes explicit team/build/target snapshots.
+- GCSIM config generation consumes explicit team/build/target data from typed
+  session/snapshot boundaries, not UI widgets.
 - GCSIM runner executes outside the UI thread and stores/parses sim results.
 - GCSIM result metadata attaches to run/session state or saved snapshots as
   `sim DPS`, not `factual DPS`.
-- DPS Dummy is the first GCSIM consumer.
-- Abyss GCSIM starts later with simplified/manual target assumptions.
+- Current Browser MVP targets Abyss chamber flows first; DPS Dummy remains a
+  later consumer.
 - Detailed GCSIM controls use a larger drawer/workspace/overlay; the right dock
   shows only compact status/action and summary values.
-- Read `docs/handoff/GCSIM.md` and `docs/handoff/STAT_NORMALIZATION.md` before
-  implementing config generation or result parsing.
+- Read `docs/handoff/GCSIM.md`,
+  `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`, and
+  `docs/handoff/STAT_NORMALIZATION.md` before implementing config generation or
+  result parsing.
 
 ## Next Narrow Implementation Sequence
 
-1. Extend `run_workspace.models` or a sibling module with typed
-   current-run/session state: `RunSessionState`, `AbyssRunState`, and
-   `DpsDummyRunState`. Do not add saved snapshot dataclasses in this step.
-2. Add pure tests for current timer/session calculations, reset/default
-   behavior, and factual DPS math.
-3. Add an AppShell-side session controller adapter while keeping current
-   `AppShellController` team mutations working.
-4. Replace display-only chamber rows in
-   `run_workspace.right_panel_prototype_view_model` with rows derived from the
-   session model.
-5. Wire Reset and current timer/result commands through `AppShell`/session
-   controller.
-6. Add DPS Dummy current factual-DPS inputs/results and then GCSIM DPS Dummy
-   integration as separate steps.
-7. Only after working timer/DPS/GCSIM result data exists, design immutable saved
-   snapshots and snapshot persistence.
+1. Extract the current AppShell-owned Abyss timer/factual-DPS/GCSIM runtime
+   state into typed run/session ownership (`RunSessionState`, `AbyssRunState`,
+   `DpsDummyRunState` or equivalent) without breaking existing team mutations.
+2. Add/keep pure tests for timer/session calculations, reset/default behavior,
+   factual DPS math, and GCSIM result stale/current metadata.
+3. Wire Reset through the session controller so it resets the active run
+   session, not widgets.
+4. Design immutable saved snapshot dataclasses/services once current timer,
+   factual-DPS, and GCSIM runtime result fields are clear enough to preserve.
+5. Wire Save to snapshot creation for the active run type.
+6. Add a minimal History left workspace that reads immutable snapshots, and route
+   right-dock History to that workspace with the active run type as default.
+7. Attach Browser/GCSIM results to session/snapshot metadata as `sim DPS` and
+   keep them separate from factual DPS.
+8. Add DPS Dummy current factual-DPS inputs/results and GCSIM DPS Dummy
+   integration as separate follow-up work.
 
 ## Non-Goals For The Next Stage
 

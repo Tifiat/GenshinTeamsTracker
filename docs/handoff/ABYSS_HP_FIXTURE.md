@@ -1,9 +1,15 @@
-# Abyss HP Fixture: 2026-05-16 Floor 12
+# Historical Abyss HP Fixture: 2026-05-16 Floor 12
 
 Research date: 2026-05-18
 
 Scope: research/parsing notes only. No app code, HoYoLAB import, app startup, local
 account data, artifact DB, or generated/private project data were used.
+
+This file is historical research/debug context for the `2026-05-16` Floor 12
+fixture. It is not the current/runtime source of AppShell factual DPS. Normal
+runtime factual DPS should use the production source-data cache and helpers
+under `run_workspace/abyss/source_data*.py`; this fixture remains useful for
+parser confidence notes and reproducing the original HP-source investigation.
 
 Labels:
 
@@ -17,16 +23,16 @@ Labels:
 
 Confirmed:
 
-- Current Floor 12 lineup for `2026-05-16` is parseable from Fandom MediaWiki
+- Historical Floor 12 lineup for `2026-05-16` is parseable from Fandom MediaWiki
   wikitext.
-- All inspected current Floor 12 enemy names can be mapped to monster ids and
+- All inspected `2026-05-16` Floor 12 enemy names can be mapped to monster ids and
   base HP/curve/resistance data through GCSIM and/or AnimeGameData.
 - Fandom's `Enemy/Level_Scaling` page confirms the general enemy HP formula and
   default Spiral Abyss HP bonuses:
   - Floor 3-7: `+50%` -> `1.5x`.
   - Floor 8-11: `+100%` -> `2.0x`.
   - Floor 12: `+150% nominal bonus` -> `2.5x`.
-- Current AnimeGameData Floor 12 `floorLevelConfigId=2156` maps to
+- The inspected AnimeGameData Floor 12 `floorLevelConfigId=2156` maps to
   `LevelEntity_Monster_HpUp_Stage12_New2`; its CHS text hash says
   `(test) monster HP increased by 275%`, which likely means `3.75x` total HP.
 - Fandom enemy pages can contain Abyss-specific RES/mechanics. Example:
@@ -35,7 +41,8 @@ Confirmed:
 
 MVP recommendation:
 
-- We can produce useful factual DPS estimates for current Floor 12 if the UI
+- This research path can produce useful factual DPS estimates for the inspected
+  Floor 12 if the UI
   carries confidence/source flags.
 - Use a confidence ladder:
   - `source_like_period_multiplier`: source-like floor/chamber multiplier parsed
@@ -43,9 +50,9 @@ MVP recommendation:
   - `fandom_period_note`: current period page note says a specific HP change.
   - `fandom_floor_scaling_estimate`: general Fandom floor multiplier only.
   - `unavailable`: missing or contradictory inputs.
-- For current Floor 12, show both the general `2.5x` fallback and the likely
-  current `3.75x` Stage12 value in reports until `Stage12_New2` runtime semantics
-  are fully verified.
+- For this historical Floor 12 fixture, reports can show both the general
+  `2.5x` fallback and the likely `3.75x` Stage12 value until `Stage12_New2`
+  runtime semantics are fully verified.
 
 ## Sources Inspected
 
@@ -88,7 +95,7 @@ Yatta/Ambr:
 - Monster detail endpoint, useful but not fresh enough for every current enemy:
   - `https://gi.yatta.moe/api/v2/en/monster/<monster_id>`
 
-## Current Floor 12 Lineup
+## Historical 2026-05-16 Floor 12 Lineup
 
 Confirmed from Fandom `Spiral_Abyss/Floors/2026-05-16` wikitext:
 
@@ -120,7 +127,7 @@ Confirmed:
   - `Real Max HP = Normal Max HP * (1 + sum HP bonuses) * co-op * special event`.
 - Fandom general Spiral Abyss HP bonus:
   - Floor 12 `+150%` nominal -> `2.5x`.
-- AnimeGameData current Floor 12 row:
+- Inspected AnimeGameData Floor 12 row:
   - `floorId=1129`, `floorIndex=12`, `levelGroupId=129`,
     `floorLevelConfigId=2156`.
   - `DungeonLevelEntityConfigData.id=2156`,
@@ -135,7 +142,7 @@ Risk:
   streaming check. It is still source-like and tied to current floor config, but
   runtime semantics should be verified before treating it as fully confirmed.
 - Do not stack Fandom `2.5x` with `Stage12_New2`. Treat `Stage12_New2` as a
-  replacement/current period multiplier candidate.
+  replacement multiplier candidate for this inspected period.
 
 ## Monster Mapping And HP Fixture
 
@@ -148,7 +155,7 @@ abyss_hp_3_75 = normal_hp * 3.75
 ```
 
 The `2.5x` column is the generic Floor 12 fallback. The `3.75x` column is the
-likely current Floor 12 source-like estimate from `Stage12_New2`.
+likely inspected Floor 12 source-like estimate from `Stage12_New2`.
 
 | Chamber/side | Enemy | ID | Level | HP curve | Normal HP | 2.5x HP | 3.75x HP | Key caveat |
 | --- | --- | ---: | ---: | --- | ---: | ---: | ---: | --- |
@@ -207,10 +214,10 @@ Risk:
 
 Confirmed:
 
-- Yatta monster detail works for older/current-known ids such as Landrover,
+- Yatta monster detail worked for older/known ids such as Landrover,
   Hilichurl Rogue, Lord, Fatui Electro Cicin Mage, Ruin Drake, Primo Geovishap,
   and Ruin Guard.
-- Yatta returned 404 for newer current Floor 12 ids:
+- Yatta returned 404 for newer inspected Floor 12 ids:
   - `26120501` Battle-Hardened Grounded Geoshroom;
   - `20081201` Hexadecatonic Battle-Hardened Mandragora;
   - `26162601` Battle-Scarred Rock Crab.
@@ -218,7 +225,7 @@ Confirmed:
 
 MVP recommendation:
 
-- Prefer AnimeGameData/GCSIM for current monster stats until a fresher structured
+- Prefer AnimeGameData/GCSIM for monster stats until a fresher structured
   API is confirmed.
 - Treat Yatta/Ambr as a schema reference and optional fallback, not the primary
   current source.
@@ -265,10 +272,10 @@ Next parser task:
 
 ## Open Risks
 
-- Current Floor 12 HP multiplier likely uses `3.75x`, but product code should
-  keep both source text and confidence until verified.
-- Fandom display levels and AnimeGameData `monsterLevel` differ by 1 in current
-  Floor 12 shell data; this needs a source-semantics note in code/docs.
+- The inspected Floor 12 HP multiplier likely uses `3.75x`, but product code
+  should keep both source text and confidence until verified.
+- Fandom display levels and AnimeGameData `monsterLevel` differ by 1 in the
+  inspected Floor 12 shell data; this needs a source-semantics note in code/docs.
 - Enemy variants matter. Example: `Primo Geovishap (Cryo)` should map to
   `26050301`, not the generic shortcut id alone.
 - Some enemy page stats are mode-specific. Example: Lord's Stygian Onslaught HP

@@ -5,8 +5,9 @@ Research date: 2026-05-19
 Scope: docs-only research notes. No app code, app startup, HoYoLAB import,
 local account data, artifact DB, generated/private files, or tests were used.
 
-Primary seed enemy list: `ABYSS_HP_FIXTURE.md` for current Floor 12
-`2026-05-16`.
+Primary seed enemy list: historical `ABYSS_HP_FIXTURE.md` for Floor 12
+`2026-05-16`. This is parser/debug context, not current runtime factual-DPS
+truth.
 
 ## Summary
 
@@ -54,7 +55,7 @@ MVP recommendation:
 | `burrow_or_downtime` | Enemy can burrow/leave normal hitbox. | Warn about downtime. |
 | `phase_threshold` | Behavior changes at HP thresholds. | Show phase warning. |
 
-## Current Floor 12 Mechanics Table
+## Historical 2026-05-16 Floor 12 Mechanics Table
 
 | Enemy | Structured fields found | Mechanic tags | Prose-only notes | Parser confidence | UI warning recommendation |
 | --- | --- | --- | --- | --- | --- |
@@ -63,8 +64,8 @@ MVP recommendation:
 | Lord of the Hidden Depths: Whisperer of Nightmares | Fandom fields include `ability1=Ward`, normal/paralyzed RES rows (`resglobal2=-60%`), `hp_ratio=27`, `hp_type=2`; page also has Stygian Onslaught stats. | `ward_or_barrier`, `summons_or_adds`, `elemental_requirement`, `lunar_requirement`, `paralyze_window`, `true_damage_hp_event`, `mode_specific_stats` | Deepdark Shield is 45% Max HP; four Fisher summons reduce shield by 25% each when defeated; Elemental DMG damages shield; Lunar Reaction DMG has large shield multiplier; shield break can cause true physical HP event, RES reduction, paralyze. | High for mode-specific warning and tags; medium for exact values until parser validates block selection. | Show "Ward/summons/Lunar shield mechanic; do not use Stygian stat block for ordinary Abyss unless period says so." |
 | Fatui Electro Cicin Mage | Fandom fields include `weakpoint=yes`, `ability1=Shield`, `ability2=Interruption Resistance`, `ability3=Summoning`, `phys_res=-20%`, `electro_res=50%`, `hp_ratio=5`, `hp_type=1`, Electro shield data. | `summons_or_adds`, `shield_check`, `phase_invulnerability`, `high_mobility`, `elemental_requirement` | Summons Electro Cicins; Thundering Shield absorbs Cicins, gives damage immunity, speed, and stagger resistance; shield decays over time and via reactions. | High for shield/summon tags; medium for timing. | Show "Summons Cicins and can become shielded/immune; Electro RES 50%, Physical RES -20%." |
 | Ruin Drake: Earthguard | Fandom fields include `weakpoint=yes`, `phys_res=50%`, `hp_ratio=7`, `hp_type=2`; page also contains Local Legend data. | `weakpoint_paralyze`, `state_res_override`, `mode_specific_stats`, `high_mobility` | Exposes weak point while charging; weakpoint hit can paralyze. Can absorb the most-damaged element and gain RES to it. | Medium; ordinary vs Local Legend behavior must be separated. | Show "Weakpoint/paralyze and absorbed-element RES risk; avoid Local Legend stats unless explicitly needed." |
-| Primo Geovishap (Cryo) | Fandom fields include `weakpoint=yes`, `phys_res=30%`, `geo_res=50%`, Countered RES rows, Beginning of Fight high RES rows, `hp_ratio=30`, `hp_type=1`. | `state_res_override`, `elemental_variant`, `burrow_or_downtime`, `shield_check`, `true_damage_hp_event`, `phase_threshold`, `elemental_requirement` | Variant can be Pyro/Hydro/Cryo/Electro; current fixture needs Cryo variant id. Primordial Shower can be countered by shields, causing boss HP loss/stagger and RES reduction. Can burrow if player is far. | High for state/variant warning; medium for exact counter timing. | Show "Cryo variant matters; shield counter can remove HP and alter RES; shortcut `primogeovishap` is too coarse." |
-| Battle-Hardened Grounded Geoshroom | Fandom generic `Grounded Geoshroom` page includes normal and Local Legend-like sections; current fixture maps Battle-Hardened id through GCSIM/AnimeGameData. Normal page has Dendro/Geo RES 30%; Local Legend block has much higher stats/states. | `state_res_override`, `elemental_requirement`, `paralyze_window`, `mode_specific_stats` | Local Legend prose has Scorched/Activated/Fury/stun loop, but this may not exactly describe Battle-Hardened Abyss row. | Low-medium for mechanics until variant block is confirmed; high for "mode-specific hazard". | Show "Battle-Hardened variant may not equal generic/Local Legend page block; trust fixture ids/stats and keep mechanics warning conservative." |
+| Primo Geovishap (Cryo) | Fandom fields include `weakpoint=yes`, `phys_res=30%`, `geo_res=50%`, Countered RES rows, Beginning of Fight high RES rows, `hp_ratio=30`, `hp_type=1`. | `state_res_override`, `elemental_variant`, `burrow_or_downtime`, `shield_check`, `true_damage_hp_event`, `phase_threshold`, `elemental_requirement` | Variant can be Pyro/Hydro/Cryo/Electro; the historical fixture needs Cryo variant id. Primordial Shower can be countered by shields, causing boss HP loss/stagger and RES reduction. Can burrow if player is far. | High for state/variant warning; medium for exact counter timing. | Show "Cryo variant matters; shield counter can remove HP and alter RES; shortcut `primogeovishap` is too coarse." |
+| Battle-Hardened Grounded Geoshroom | Fandom generic `Grounded Geoshroom` page includes normal and Local Legend-like sections; the historical fixture maps Battle-Hardened id through GCSIM/AnimeGameData. Normal page has Dendro/Geo RES 30%; Local Legend block has much higher stats/states. | `state_res_override`, `elemental_requirement`, `paralyze_window`, `mode_specific_stats` | Local Legend prose has Scorched/Activated/Fury/stun loop, but this may not exactly describe Battle-Hardened Abyss row. | Low-medium for mechanics until variant block is confirmed; high for "mode-specific hazard". | Show "Battle-Hardened variant may not equal generic/Local Legend page block; trust fixture ids/stats and keep mechanics warning conservative." |
 | Hexadecatonic Battle-Hardened Mandragora | Fandom page `Hexadecatonic Mandragora` contains Local Legend, Battle-Hardened, Stygian, and Mini Mandragora data. Battle-Hardened block has `hp_ratio=17.28`, base global RES `80%`, Dendro RES `205%`, Diminished Dendro RES `135%`. | `summons_or_adds`, `burrow_or_downtime`, `phase_invulnerability`, `paralyze_window`, `state_res_override`, `mode_specific_stats`, `elemental_requirement` | Fury/countdown and Sporebloom mechanics; burrows, spawns Mini Mandragoras, shares damage with boss while boss cannot be killed in that phase, then stun/diminished state. | High for mode-specific fields/tags; medium for exact state timeline. | Show "Dendro RES/state shift, summon/burrow/unkillable phase risk; factual DPS includes downtime." |
 | Ruin Guard | Fandom fields include `weakpoint=yes`, `phys_res=70%`, `hp_ratio=7`, `hp_type=1`. | `weakpoint_paralyze`, `high_mobility` | Two weakpoint hits can stun/paralyze; spin/missile behavior can add movement pressure. | High for basic warning. | Show "Physical RES 70%; weakpoint stun can affect practical clear time." |
 | Battle-Scarred Rock Crab | Fandom page `Crab Tsar` contains Local Legend, Battle-Scarred, and Stygian sections. Battle-Scarred block has shielded/global RES states and `hp_ratio=21.2`. | `ward_or_barrier`, `reaction_requirement`, `summons_or_adds`, `paralyze_window`, `state_res_override`, `mode_specific_stats` | Stoneborne Seeds and Ward mechanics; Bloom/Burgeon/Hyperbloom/Lunar-Bloom reactions interact with seeds/ward; ward depletion can stun, failure can increase RES. Stygian instant-kill text should not be used for ordinary Abyss unless mode says so. | High for reaction/ward warning; medium for exact Battle-Scarred state timing. | Show "Bloom-family reaction check and ward/stun/RES state; exclude Stygian-only instant-kill warning from ordinary Abyss by default." |
@@ -102,7 +103,7 @@ Important risk:
 
 Fandom:
 
-- Current Floor 12 fixture source:
+- Historical `2026-05-16` fixture source:
   https://genshin-impact.fandom.com/wiki/Spiral_Abyss/Floors/2026-05-16
 - MediaWiki API pattern:
   `https://genshin-impact.fandom.com/api.php?action=parse&page=<page>&prop=wikitext&format=json`

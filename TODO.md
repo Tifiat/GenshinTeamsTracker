@@ -19,6 +19,9 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Before implementing a task specification, briefly inspect the relevant current code and handoff contract. Clarify only ambiguities that materially change architecture, behavior, or visible UI; use engineering judgment for narrow local implementation details after the contract is clear.
 - In this repo, handoff context means `CODEX.md`, `TODO.md`, and `docs/handoff/*.md`. When the user asks to update or clean handoffs, include all three entrypoints unless they narrow the scope.
 - After each completed task, update handoff docs before final response when the task changes roadmap, state, or reusable context: mark completed subitems compactly, add durable new knowledge to `CODEX.md`/`TODO.md` or a dedicated handoff file, and remove stale active-task/development-log leftovers.
+- After large stages, compact source-of-truth handoffs before the next major
+  task. If root docs become long, contradictory, or dominated by completed
+  history, report: "handoffs should be cleaned before the next major task."
 - After each completed pushable task, final responses should include one short
   Russian commit-message suggestion in impersonal passive/resultative wording,
   not first-person past wording. Prefer a style equivalent to "has been
@@ -50,7 +53,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 - New target main app shell is documented in `docs/handoff/APP_SHELL_WORKSPACE_PLAN.md`: `[LeftWorkspaceHost] [RightOperationsDock]`. Treat `ui/main_window.py` as legacy once the new shell begins; do not patch the old right column as the final architecture.
 - Future AppShell tasks:
-  - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the new chamber/action area is still display-only, typed run/session save-reset-history behavior is not wired, and the approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
+  - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the compact chamber/action area has live in-memory Abyss timer and factual-DPS behavior, but typed reset/save/history persistence is not wired, and the approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
   - keep the reduced fixed-width right operations dock around `RightPanelPrototypeWidget`; it must not be user-resizable or expand with the window;
   - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
   - AppShell left workspace navigation exists with Character/Weapon and lazy-created Artifacts workspaces. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; keep future workspace-driven right-dock policies at that root coordination boundary;
@@ -195,7 +198,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   then stores `cached_icon_path` on rows for future tooltip UI. Icon downloads
   are bounded-parallel and reuse existing URL-hash files even during source-data
   `--force`; force refreshes source data, not identical already-cached icons.
-  It does not wire UI or replace the current fixture. HP source modes are now
+  It does not wire final UI; it supersedes the historical static fixture as the
+  runtime source-data path. HP source modes are now
   explicit: `--hp-source auto` uses Nanoka as primary and Fandom enemy-page HP
   as fallback only for missing HP, `--hp-source nanoka-only` keeps the old
   no-enemy-page fallback path, and `--hp-source fandom-only` forces Fandom
@@ -254,7 +258,11 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   source-data boundary.
 - For each Abyss chamber/side, data should ideally support enemies, waves, enemy HP, total HP, resistances, immunities, special states, invulnerability/phases where available, and icons.
 - Do not require this data for the app to function.
-- Abyss source research is done; see `docs/handoff/ABYSS_ENEMY_DATA.md`, `docs/handoff/ABYSS_HP_FIXTURE.md`, and `docs/handoff/ABYSS_MECHANICS_NOTES.md`. Keep the source join resilient so one unavailable/stale source does not break the feature.
+- Abyss source research is done; see `docs/handoff/ABYSS_ENEMY_DATA.md` and
+  `docs/handoff/ABYSS_MECHANICS_NOTES.md`. `docs/handoff/ABYSS_HP_FIXTURE.md`
+  is a historical 2026-05-16 research/debug fixture, not current runtime
+  factual-DPS truth. Keep the source join resilient so one unavailable/stale
+  source does not break the feature.
 - Do not download a huge historical database initially. Update current Abyss info at the relevant time and create a new season/page if current Abyss data changed.
 - No network / no data fallback:
   - future UI may create/use a provisional Abyss period based on the system
@@ -367,389 +375,22 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 11. GCSIM Integration
 
-- GCSIM is a major future feature and should influence architecture now, but implementation comes later.
-- Detailed GCSIM research handoff lives in `docs/handoff/GCSIM.md`; read it before implementing any engine download/runner/config work.
-- Initial isolated engine lifecycle prototype exists in
-  `run_workspace/gcsim/engine_store.py`; official GitHub source acquisition and
-  the backend/dev update command exist in `run_workspace/gcsim/source_acquisition.py`
-  and `run_workspace/gcsim/engine_update.py`. Command:
-  `python -m run_workspace.gcsim.engine_update --release latest`. It downloads
-  official source, applies the selected replaceable patch backend, runs a source
-  layout smoke check, writes a manifest, and activates only on success. Use
-  `--probe-runtime` to additionally require local Go `windows/amd64` and
-  `go run ./cmd/gcsim -version`; this marks `runtime_ready=true` only when the
-  probe passes and keeps the old active engine on Go/probe failure. Go cache/bin
-  paths are sandboxed under ignored `.go/`; the rebuildable `.go/build-cache`
-  is deleted after successful `--probe-runtime`/`--build-artifact` unless
-  `--keep-go-build-cache` is passed, while `.go/pkg/mod` is kept as the small
-  module cache. Generated engine-store cleanup now keeps the active engine,
-  one previous successful rollback engine, and one latest failed engine; older
-  generated engines/staging folders are pruned. Manual cleanup/dry-run command:
-  `python -m run_workspace.gcsim.cleanup` (`--apply` to delete).
-  `--patch-backend git` now applies
-  ordered `.patch` stacks with `git apply --check` then `git apply`; it isolates
-  patch application from the parent GTT repository so generated `data/gcsim/...`
-  engine trees are patched as plain source folders. Overlay remains the
-  conservative default/test backend. `--build-artifact` now builds
-  `build/gtt-gcsim.exe` inside the prepared engine folder, verifies that
-  executable with `-version`, records artifact path/hash/build metadata, and
-  marks `runtime_ready=true` only when the built artifact works. The default git
-  patch stack contains `run_workspace/gcsim/patch_stack/0001-gtt-engine-marker.patch`,
-  `run_workspace/gcsim/patch_stack/0002-gtt-sequential-wave-prototype.patch`,
-  and `run_workspace/gcsim/patch_stack/0003-gtt-wave-scenario-payload.patch`.
-  The marker adds `-gtt-info`; the prototype patch keeps the legacy opt-in
-  comment proof `# gtt_wave_prototype duplicate_first_target=1`; the payload
-  patch adds explicit `-gtt-wave-scenario scenario.json` input. Payload
-  schema v1 is intentionally tiny: `schema_version=1`,
-  `spawn_policy="group_clear"`, and `waves[].targets[]` with required
-  `level`, `type`, and explicit `hp`. The patch builds the enemy through
-  GCSIM's target type/profile path so `type` owns the monster stats/resists;
-  optional `pos`/`radius` are only explicit overrides, and normal Abyss bridge
-  output does not write them. The first payload wave replaces parsed config
-  targets; remaining waves spawn after the current group clears inside the same
-  simulation iteration. Current built GTT
-  artifacts should report `gtt_patch_version=gtt-wave-scenario-v1`,
-  capabilities including `gtt_engine_marker`,
-  `gtt_wave_scheduler_prototype`, and `gtt_wave_scenario_payload`, plus
-  `sequential_waves=true`. This is still a prototype explicit-target payload,
-  not final Abyss enemy/key mapping or 3+3+3 modeling. When
-  `--build-artifact` is used with a non-empty `.patch` stack, `-gtt-info` is
-  required; missing, nonzero, invalid, or capability-missing output keeps the
-  previous active engine. Minimal active-artifact runner exists in
-  `run_workspace/gcsim/artifact_runner.py`; dev smoke command:
-  `python -m run_workspace.gcsim.run_smoke --config path --gtt-wave-scenario scenario.json --format text`.
-  It runs the active built artifact with caller-provided config text and
-  optional scenario payload, then parses only a tolerant result JSON summary.
-  A narrow backend Abyss-to-GTT-wave bridge exists in
-  `run_workspace/gcsim/abyss_wave_scenario.py`: it audits typed
-  `AbyssFloorSourceData` chamber/side waves and can produce schema-v1
-  `group_clear` payloads when per-enemy HP/level are present and each enemy can
-  resolve to a compatible valid GCSIM target type. GTT writes explicit Abyss HP
-  into the payload, so exact GCSIM HP/variant identity is not required at this
-  stage; `Grounded Geoshroom -> groundedgeoshroom` is an acceptable success case
-  when it avoids an unknown target type and keeps usable GCSIM resists.
-  Nanoka monster id is the preferred strong identity when present, but it is not
-  the only allowed identity: Fandom enemy page URL/page title/name candidates
-  must remain valid fallback identities, and enemy-type fallback must be
-  independent from HP source fallback. HP may come from Nanoka while GCSIM type
-  resolves through Fandom/name identity, or HP may come from Fandom fallback while
-  type resolves through Nanoka/name identity. Managed Snap Monster title cache
-  support now exists in `run_workspace/gcsim/snap_monster_titles.py` as a
-  last-resort enemy `Name -> Title` fallback after manual overrides, normal
-  registry exact/base matching, and small aliases fail. The normal app-style
-  contract is cache-first: primary matching runs without Snap; if rows remain
-  unresolved, GTT may check the managed cached
-  `data/cache/gcsim/snap_metadata/Monster.json`; if cached `Name -> Title`
-  matching and cached title-containing-target matching are still insufficient,
-  the cache may be refreshed from the official online Snap.Metadata file
-  `https://github.com/wangdage12/Snap.Metadata/blob/main/Genshin/EN/Monster.json`
-  and then rechecked. No Git install or Snap.Metadata repository checkout is
-  required. The refresh step reads the single online `Monster.json` over HTTPS
-  and persists only the managed cache file plus a small sidecar metadata file.
-  A local file path or direct URL remains supported only as an explicit
-  dev/offline/debug input, not as the normal app contract. Only `Name` and
-  `Title` are read; Snap metadata must not be used as HP/stat/resist/wave/count
-  truth or as source-data replacement. The fallback is intended for too-specific
-  source names such as Arkhe suffixes and Tenebrous Mimesis forms, and duplicate
-  normalized Snap `Name` records with different `Title` values are reported as
-  ambiguous. If even the Snap `Title` does not exact/base-match the registry,
-  the final last-resort matcher may resolve a unique GCSIM target whose key
-  contains the full normalized Snap title (`snap_title_contains_target`);
-  multiple containing targets remain ambiguous. This covers cases such as
-  `Tenebrous Papilla: Type II -> Tenebrous Papilla -> tenebrouspapillatypei`
-  without turning arbitrary display-name fuzziness into production truth.
-  Missing Nanoka id alone is not a blocker; the blocker is missing any safe
-  explicit or automatic compatible GCSIM target type. The bridge must not infer
-  production-ready GCSIM type keys from arbitrary fuzzy/display-name similarity.
-  Dev CLI `python -m run_workspace.gcsim.abyss_wave_scenario_smoke` loads current or
-  explicit cached Abyss source data, writes this provisional scenario JSON, and
-  can optionally pass it with an existing caller-provided config into the active
-  artifact runner. It accepts managed Snap cache flags
-  `--use-cached-snap-monster-json`, `--refresh-snap-monster-json-if-needed`, and
-  optional `--snap-monster-cache-path`; direct `--snap-monster-json PATH_OR_URL`
-  and `--use-default-remote-snap-monster-json` remain dev/debug overrides and
-  are mutually exclusive with the managed flow. Remote Snap refresh failures,
-  invalid JSON, and invalid shape are controlled input errors. Missing
-  cache/source fields or missing enemy type mapping prints audit and exits
-  nonzero without writing/running a misleading scenario. Backend reports now
-  expose structured progress steps such as `matching_enemy_names_primary`,
-  `checking_cached_snap_titles`, `refreshing_snap_metadata`,
-  `rechecking_snap_titles_after_refresh`, `building_abyss_wave_scenario`, and
-  `running_gcsim_artifact`. Coverage reports also include `timing_seconds`
-  diagnostics for primary matching, cached Snap loading/matching, remote
-  refresh/indexing when it happens, refreshed matching, and total report time.
-  The first forced Snap fallback can be noticeably slower because it refreshes
-  the managed runtime cache from the online `Monster.json`; later runs should
-  use the cached file and avoid network. Future UI loader messages should
-  surface these backend steps so enemy matching, Snap refresh, scenario build,
-  and optional artifact run do not look frozen.
-  Wave scheduling contract: current implemented `group_clear` behavior is
-  sequential groups. The first scenario wave is active at sim start; the next
-  wave is spawned only after all enemies in the current wave/group are dead. If
-  a wave contains multiple targets, killing one target does not spawn the next
-  wave; the whole group must be cleared first, and then the next wave spawns as
-  a whole group. Future mode design: single-target DPS should use the selected
-  single target and then the next single target; this should later be tied to
-  the existing fact-DPS single-target/multi-target setting so fact DPS and GCSIM
-  DPS describe the same scenario. Multi-target DPS should eventually have two
-  settings-backed modes: `sequential waves` (current group-clear behavior) and
-  `stack/rolling replacement` (future, not implemented), where enemies from the
-  next wave may be added to replace dead enemies from the current group. Do not
-  implement stack mode until the in-game behavior/policy is confirmed.
-  Artifact runs that supply `gtt_wave_scenario` now preflight-check the selected
-  artifact with `-gtt-info` before sim execution. The selected active or shipped
-  fallback artifact must report `gtt_patch_version=gtt-wave-scenario-v1` and
-  capability `gtt_wave_scenario_payload`; otherwise the runner returns
-  `artifact_wave_scenario_contract_mismatch` with observed/required
-  version/capability diagnostics and a rebuild-required message without running
-  the sim. Runs without a wave scenario keep the previous behavior and do not
-  require this preflight.
-  Stable backend/dev smoke case catalog now exists at
-  `run_workspace/gcsim/smoke_cases.py`, with committed manual config fixture
-  `run_workspace/gcsim/smoke_fixtures/manual_config_minimal.txt`. Named case
-  `abyss_2026_04_16_f12_c3_s2_manual_config` proves manual GCSIM config plus
-  generated cached Abyss wave scenario, managed cache-first Snap matching, and
-  artifact preflight/run parsing without depending on an ad-hoc runtime run
-  directory config. Latest manual case run passed through the active artifact:
-  scenario generation used managed Snap cache hit (`remote_not_needed`),
-  resolved `Tenebrous Papilla: Type II` by `snap_title_contains_target` to
-  `tenebrouspapillatypei`, built one wave / one target, and artifact preflight
-  observed `gtt-wave-scenario-v1` with `gtt_wave_scenario_payload`. Parsed run
-  summary stayed smoke-only: duration_mean `0.03333333333333333`, dps_mean
-  `0.0`, total_damage_mean `0.0`; do not treat this as DPS correctness.
-  Additional manual/dev fixture
-  `run_workspace/gcsim/smoke_fixtures/manual_config_neuv_furina_lauma_xiangling.txt`
-  stores a hand-written Neuvillette/Furina/Lauma/Xiangling config for backend
-  compatibility diagnostics only. Its manual `target` lines are placeholders;
-  when used through `abyss_wave_scenario_smoke`, generated `-gtt-wave-scenario`
-  JSON remains the enemy/wave/HP/type source of truth. A real local run on
-  2026-06-05 for cached period `2026-05-16` F12 C2 S1 built three exact-name
-  scenario waves (`fatuielectrocicinmage`, `ruindrakeearthguard`,
-  `primogeovishap`) and passed artifact preflight. This smoke exposed a patched
-  GCSIM runtime panic in `pkg/stats/damage/damage.go`: dynamically spawned wave
-  enemies can receive sparse target keys after gadgets, while cumulative damage
-  buckets were sized by current enemy count and indexed by `targetKey-1`.
-  Patch-stack fix `0004-gtt-dynamic-wave-stats.patch` makes damage cumulative
-  buckets grow by resolved enemy index and lets aura aggregation grow for
-  dynamic `result.Enemies`. After rebuilding the active artifact in-place on
-  2026-06-05, the same 3-wave smoke passed with artifact preflight intact.
-  The same config also still passes without `-gtt-wave-scenario`. No DPS
-  correctness claim.
-  Enemy type mapping JSON now supports explicit records with `source_kind`,
-  `source_id`, `gcsim_type`, and optional diagnostics; the old
-  `enemy_types_by_nanoka_monster_id` shape still loads for dev compatibility.
-  Dev coverage checker
-  `python -m run_workspace.gcsim.abyss_enemy_type_mapping_report --gcsim-enemy-registry-source path --scan-cache-dir data/cache/abyss/source_data --format text`
-  can bulk-scan cached source-data files (`**/floor_*.json`) or accept repeated
-  `--cache-file`; optional `--period-start`/`--floor` filters keep checks
-  narrow. It reports cache file count, source rows, resolution counts by method
-  and identity kind, missing/ambiguous type mappings, HP-present/type-missing
-  rows, type-present/HP-missing rows, compact unresolved/ambiguous row lists,
-  and JSON resolved-row details without mutating caches, running GCSIM, or
-  touching UI. It accepts the same managed Snap cache flags as the smoke CLI.
-  Network is not used when primary registry matching resolves all rows, and is
-  not used when the cached Snap title fallback resolves the remaining rows.
-  The online Snap `Monster.json` refresh is a last step only when explicitly
-  enabled and cache results are missing, invalid, or insufficient. The report
-  records `snap_cache`, refresh/cache status, source kind, progress `steps`, and
-  Snap fallback counts. Direct `--snap-monster-json PATH_OR_URL` and
-  `--use-default-remote-snap-monster-json` remain dev/debug overrides. Snap
-  fallback resolutions are counted separately as `snap_title_fallback` and final
-  containing-target resolutions as `snap_title_contains_target`, so exact/base
-  coverage remains visible. Current real-code-path diagnostic over the 8 cached
-  source files / 96 rows resolved 88 exact, 7 `snap_title_fallback`, 1
-  `snap_title_contains_target`, 0 missing, and 0 ambiguous after Snap title
-  fallback. Use it to validate matcher behavior on real cached Abyss rows.
-  Missing/ambiguous rows should drive small matcher or alias fixes, not a full
-  hand-written enemy mapping table.
-  Backend/dev GCSIM enemy type registry matcher exists in
-  `run_workspace/gcsim/enemy_type_registry.py`. It can parse known target type
-  keys from local prepared GCSIM `pkg/shortcut/enemies_gen.go` and match Abyss
-  Nanoka/Fandom name candidates by exact normalized name, compatible/base-name
-  rules, and small explicit aliases. Manual mapping JSON records remain the
-  first-priority override/exception layer, not a full production enemy database.
-  Missing or ambiguous compatible matches are reported instead of guessed, and
-  fuzzy/display-name similarity is not production truth. The smoke CLI and
-  coverage checker accept `--gcsim-enemy-registry-source path`; existing callers
-  without a registry remain strict/manual-only.
-  Backend config readiness audit exists in
-  `run_workspace/gcsim/config_readiness.py`; it accepts lightweight prepared
-  team inputs and reports whether explicit non-display-name GCSIM mappings,
-  current/max levels, weapon/refinement, artifact set mappings, normalized
-  artifact add-stats, and confirmed talent order are ready. It does not infer
-  keys from localized/display names and keeps Traveler unsupported/deferred.
-  Backend key-mapping report foundation exists in
-  `run_workspace/gcsim/key_mapping.py`; it accepts explicit character, weapon,
-  and artifact-set seed records, converts ready records into readiness
-  `GcsimMappingRef` values, summarizes missing/ambiguous/display-name-rejected
-  statuses by entity type, and warns that production mapping data is still
-  missing unless a caller marks a trusted source present. Display-name and
-  normalized-name guessed sources are rejected, and Traveler remains
-  unsupported/deferred. Tiny committed dev seed lives at
-  `run_workspace/gcsim/mapping_seeds/gcsim_key_mapping_seed_v1.json`, with a
-  report CLI at `python -m run_workspace.gcsim.key_mapping_report --format text`.
-  The seed is not production-complete coverage; it only records a few explicit
-  curated/dev keys already pinned by backend fixtures/static catalog evidence.
-  Backend/dev entity registry coverage reporting has been added in
-  `run_workspace/gcsim/entity_key_readiness_report.py`, with CLI
-  `python -m run_workspace.gcsim.entity_key_readiness_report --format text`.
-  It parses local prepared GCSIM shortcut sources `pkg/shortcut/characters.go`,
-  `weapons.go`, and `artifacts.go`, prefers explicit seed overrides first, then
-  exact normalized key candidates, then a conservative contiguous-name-span
-  fallback. The span fallback matches whole normalized tokens/spans only, not
-  random substrings: `Yumemizuki Mizuki -> mizuki` and
-  `Rainbow Serpent's Rain Bow -> rainbowserpent` are accepted as audit
-  candidates, while `The Daybreak Chronicles -> ak` is rejected. Exact and span
-  candidates are readiness evidence only
-  (`auto_exact_candidate_not_curated_mapping` /
-  `contiguous_name_span_candidate_not_curated_mapping`), not committed curated
-  production mapping. Default local diagnostics read existing HoYoWiki
-  character/weapon stats caches and the artifact set static seed;
-  character/weapon cache identities are HoYoWiki `entry_page_id` values and are
-  explicitly warned as not the missing production game-id mapping owner. Traveler
-  and Traveler variants remain unsupported/deferred. Current-registry gaps
-  remain controlled missing and should later surface as user-facing warnings to
-  replace the entity or update GCSIM source. Full character/weapon/artifact-set
-  production mapping coverage remains future work.
-  This report is a catalog/registry diagnostic, not an account SQLite mapper:
-  default character and weapon names such as Mizuki come from local HoYoWiki
-  stats caches, not from localized `account_characters.name` and not from
-  network at report runtime.
-  GCSIM level text helper has been added in `run_workspace/gcsim/config_level.py`.
-  It converts account level/promote data into current/max text for future config
-  generation: breakpoint levels such as `80,promote=5 -> 80/80` and
-  `80,promote=6 -> 80/90`, missing promote on breakpoint levels is assumed
-  after ascension with a warning, and final/special caps use `90/90`, `95/95`,
-  and `100/100`. Missing level is a controlled `missing_level` result.
-  Backend character config block builder has been added in
-  `run_workspace/gcsim/config_blocks.py`. It renders one prepared
-  character/equipment block with character level/constellation/talents, weapon
-  key/refinement/level, artifact set counts, and artifact-snapshot-only
-  normalized `add stats`; missing mappings, unsupported Traveler, unconfirmed
-  talent order, missing levels, or unmappable artifact stats return controlled
-  not-ready results with no partial config text. It still does not generate a
-  full GCSIM config, query UI/account storage, create mapping data, run an
-  artifact, or wire UI.
-  Backend/dev full-config assembly foundation has been added in
-  `run_workspace/gcsim/config_assembly.py`, with a shell-only Chasca/Ororon/
-  Furina/Bennett rotation fixture at
-  `run_workspace/gcsim/smoke_fixtures/rotation_chasca_ororon_furina_bennett.txt`.
-  The shell supplies only options, energy, active character, placeholder target,
-  and rotation script; generated character/equipment/artifact blocks must come
-  from prepared backend state, and enemy/wave/HP/type truth remains the
-  generated `-gtt-wave-scenario` payload. The assembler rejects shells that
-  contain manual `char`/`add weapon`/`add set`/`add stats` lines and emits no
-  partial full config when any character block is not ready. Explicit prepared
-  input adapter boundary lives in `run_workspace/gcsim/prepared_config_adapter.py`;
-  it consumes explicit prepared backend/dev JSON/dict input, does not access
-  UI/storage/network, and ignores final/right-panel stat fields instead of
-  using them as `add stats`. Dev fixture
-  `run_workspace/gcsim/smoke_fixtures/prepared_team_chasca_ororon_furina_bennett.json`
-  is marked `synthetic_dev_fixture`: it is not account truth, not UI state, and
-  not production mapping data, but it can render four ready generated blocks and
-  assemble them with the shell through
-  `python -m run_workspace.gcsim.prepared_config_adapter --format text|json`.
-  The bridge writes a full config only when all prepared characters and the
-  shell audit are ready; missing required characters, mappings, weapons,
-  talents, or artifact stats skip output instead of writing partial config.
-  Account-backed backend/dev prepared config adapter now exists in
-  `run_workspace/gcsim/account_prepared_config.py`; CLI:
-  `python -m run_workspace.gcsim.account_prepared_config --format text|json`.
-  It reads real account SQLite rows for Chasca/Ororon/Furina/Bennett, consumes
-  stored ready `gcsim_character_key` and `gcsim_weapon_key` fields, never uses
-  localized `name` as GCSIM identity, uses current-equipped weapon rows when
-  present, and otherwise chooses deterministic ready observed weapon candidates
-  by weapon type with `dev_weapon_candidate_not_account_truth`. Current-equipped
-  artifact rows are now consumed when present: the bridge reads
-  `account_character_equipped_artifacts`, joins `artifacts` and
-  `artifact_substats`, builds `add stats` only from equipped artifact main/sub
-  stat totals, and builds `add set` from equipped set counts. It does not inject
-  final/account/right-panel stat sheets or manual set bonuses. Missing or
-  incomplete current artifacts produce a controlled not-ready report instead of
-  a silent synthetic fallback. Artifact set keys are exact registry-checked
-  `set_uid` candidates for this backend/dev bridge and are not curated
-  production mapping. The adapter writes no partial config when a
-  character/weapon/talent/artifact block is not ready.
-  Because current GCSIM v2.42.2 parser accepts talent levels only in `1..10`,
-  account/HoYoLAB displayed talent levels are normalized through
-  `run_workspace/gcsim/config_talents.py` before config output: active C3/C5
-  effects are matched by colored talent references against active skill names,
-  the +3 bonus is removed when exactly one talent matches, and unresolved or
-  still-above-range levels are capped to 10 with explicit warnings such as
-  `constellation_talent_bonus_not_resolved` and
-  `post_normalization_talent_level_capped_to_gcsim_range`. Local no-network smoke on
-  2026-06-06 used real account Chasca/Ororon/Furina/Bennett rows, cached
-  `2026-02-16` F12 C1 S1 wave scenario, and the active artifact; it passed as a
-  backend compatibility smoke only, with no DPS correctness claim. Right-panel
-  persistence/UI and production selected-team/current-build ownership were not
-  added.
-  The same backend CLI now supports an end-to-end dev smoke with account-prepared
-  team blocks, the manual Chasca rotation shell, a temporary dev-only boosted
-  energy override (`--dev-energy-override`), generated cached Abyss waves, and
-  the existing patched artifact runner. The override writes a temporary shell
-  copy in the run dir and does not mutate the committed rotation fixture. This
-  remains a backend compatibility smoke only, not DPS correctness. Future GCSIM
-  browser work needs direct rotation code input/editing rather than relying only
-  on committed shell fixtures.
-  Backend shipped fallback artifact resolver exists in
-  `run_workspace/gcsim/shipped_artifact.py`; runner support in
-  `run_workspace/gcsim/artifact_runner.py` is explicit opt-in and uses a ready
-  fallback candidate only when the active built artifact is unavailable. No
-  production shipped binary is bundled yet, and shipped fallback marker/capability
-  validation is still future release-process work. It still does not generate
-  account/team configs, create production project-id-to-GCSIM mapping data,
-  model final Abyss wave policies, or wire UI. Next GCSIM tasks should add real
-  shipped artifact packaging/validation, real key-mapping source data, stronger
-  smoke configs, and then generate payloads/configs from app-owned scenario and
-  team data before any UI wiring.
-- Stat/GCSIM `add stats` key mapping handoff lives in `docs/handoff/STAT_NORMALIZATION.md`; the pure normalization layer exists in `hoyolab_export/stat_normalization.py`. Use it before final stat totals or GCSIM config generation.
-- First GCSIM Browser UI should be a dedicated browser tab/page near the existing character/weapon and artifact browser areas, not an isolated popup and not a small TeamCard-only panel. The right panel remains the compact run summary that shows factual DPS and Sim DPS results.
-- UI browser package cleanup plan:
-  - GCSIM Browser code should live under `ui/gcsim_browser/`, with the main widget in `window.py`, following the existing `ui/artifact_browser/window.py` pattern.
-  - Do not keep browser/page widgets as loose one-off files directly under `ui/` unless they are truly tiny shared pages.
-  - Later, move the current character/weapon workspace out of the monolithic `ui/app_shell.py` into a dedicated browser package, likely `ui/character_browser/` or `ui/character_weapon_browser/`.
-  - That later refactor should be done only after the GCSIM Browser skeleton is stable, because the current character/weapon workspace is working and tied to selection markers, weapon overlays, filters, and app-shell runtime state.
-  - The later refactor must be split into small behavior-preserving moves: first move classes without behavior changes, then update imports, then add tests/smoke checks.
-- The first browser MVP should consume the current runtime team composition from Run Workspace/right panel without adding right-panel persistence. Abyss mode has Team 1 / Team 2 tabs; DPS Dummy mode has one team tab.
-- GCSIM Browser MVP layout:
-  - compact team readiness cards: character, weapon, set summary, ready/issues;
-  - GCSIM total-stats tooltip/report for each character, to compare against right-panel/account stats;
-  - Abyss target browser: C1/C2/C3, side by team, waves, enemy names, levels, HP, and resolved GCSIM target types;
-  - Later visual polish: render Abyss enemies as compact horizontal cards similar to Nanoka enemy cards, with icon, name, level, HP, wave grouping, and compact use of horizontal space instead of long vertical plain-text lists.
-  - current solo/multi target toggle controls which targets are sent to GCSIM;
-  - current wave policy remains `group_clear`; stack/rolling replacement stays future work;
-  - temporary run-defaults block shows iterations and boosted-energy status; later move defaults to GCSIM settings;
-  - raw GCSIM rotation-code editor is required in the MVP; visual/button-based rotation building is later/optional;
-  - current implemented first run action is `Run selected chamber`: it maps active Team 1/Team 2 tab to Abyss side 1/2, uses the selected C1/C2/C3 button, takes the same current cached Abyss source-data identity used by the Browser/right-panel preview (`period_start`, `floor`) instead of backend smoke defaults, runs asynchronously through `ui/gcsim_browser/run_worker.py`, and writes config/scenario paths, source identity, scenario waves/targets/total HP, observed duration, DPS summary, warnings, failed action buckets, incomplete characters, and controlled error category only into the GCSIM Browser Results panel. It does not write Sim DPS/clear-time back to the right panel yet.
-  - current implemented batch action is `Run 3 chambers`: it maps the active Team 1/Team 2 tab to side 1/2, uses the same source identity and rotation editor text, runs C1/C2/C3 sequentially in the same Qt worker (no parallel GCSIM processes), writes a compact batch report into GCSIM Browser Results, and writes runtime-only compact Sim DPS cells (`clear time / DPS`) into the right panel for the active team only. Results live on `AppShellController`, are not persisted to SQLite/history, and are cleared on obvious input changes such as team/equipment/source/target-mode/rotation changes.
-  - future GCSIM run scheduler should keep the current sequential `Run 3 chambers` path as the safe MVP, then add bounded parallel chamber runs only when the user's machine can handle them. It needs `max_workers`/auto mode, isolated `run_dir`/config/scenario/stdout/stderr per chamber, ordered C1/C2/C3 result aggregation, and cancellation/progress handling.
-  - later run work should add right-panel sim tooltips/details, stale/result history policy, settings-backed run defaults, and production polish around Browser/right-panel result navigation.
-- First UI should prioritize readiness reports, generated config visibility, run results, warnings/stderr, and clear error categories over visual polish.
-- Each team/run card should eventually have simulator action, GCSIM logo/label, and compact result area for sim DPS/clear time.
-- The right-panel GCSIM logo/label/button must not open the GCSIM website. Its likely product behavior is to open/focus the in-app GCSIM Browser workspace tab, duplicating the left workspace GCSIM tab for discoverability from the Sim DPS column. Final exact behavior can be decided later.
-- Before bundling or modifying GCSIM, verify current license/attribution requirements. It is believed to be MIT-compatible, but do not rely on memory.
-- Simulator window should receive team data from TeamCard/TeamSnapshot: characters, constellations, weapons, refinements, artifacts, stats, set bonuses, talents if available, rotation, target/enemy setup.
-- DPS Dummy GCSIM path remains supported as the simpler one-team mode:
-  - one team;
-  - one target;
-  - configurable HP/resistance or supported target setup;
-  - raw rotation editor;
-  - sim DPS result;
-  - comparison with factual dummy DPS if available.
-- GCSIM for Abyss should start from the backend path that already exists: account-prepared team, raw rotation code, generated cached Abyss waves, and `group_clear` wave scenario. Do not promise perfect full-Abyss simulation.
-- For Abyss, compare factual DPS from HP/time with Sim DPS/clear time from the selected solo/multi target mode.
-- Later GCSIM implementation/research follow-ups from `docs/handoff/GCSIM.md`:
-  - CLI/binary/library options;
-  - config format;
-  - enemies/targets;
-  - rotation representation;
-  - output format;
-  - cancellation/timeouts;
-  - result parser;
-  - optimizer functionality;
-  - whether local GCSIM data can provide character/weapon base stats;
-  - where standard/KQM-style builds come from.
-- Possible architecture names: `GcsimEngineManager`, `GcsimConfigGenerator`, `GcsimRunner`, `GcsimResultParser`, rotation editor, result cache keyed by team/build/rotation/target/gcsim version.
+- GCSIM is now partially implemented as backend/dev infrastructure and an AppShell Browser MVP path. It is no longer only a later idea, but production packaging, mapping coverage, saved-result persistence/history policy, and final UI polish remain future work.
+- Read before GCSIM work:
+  - `docs/handoff/GCSIM.md` for upstream research and CLI/result behavior;
+  - `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md` for the current GTT engine lifecycle, patch stack, Browser MVP, cleanup/retention policy, and production-readiness sequence;
+  - `docs/handoff/STAT_NORMALIZATION.md` for project stat normalization and GCSIM stat-key mapping rules.
+- Implemented enough to rely on:
+  - transactional local engine-store/update prototype with source acquisition, ordered patch backends, runtime probe/build-artifact checks, and active/rollback metadata;
+  - patch stack and `-gtt-info` capability validation owned by the dedicated GCSIM handoff rather than this root TODO;
+  - active-artifact runner plus backend/dev config readiness, key mapping reports, account-prepared config bridge, and Abyss wave scenario bridge;
+  - AppShell GCSIM Browser workspace can prepare/run selected or three-chamber dev flows and surface compact right-panel Sim DPS results, but Browser runtime results are not saved history;
+  - generated GCSIM engines are retention-pruned to active + one previous successful + one latest failed; `.go/build-cache` is rebuildable and cleaned after successful probe/build unless explicitly kept; `.go/pkg/mod` remains as the small module cache; manual cleanup dry-run command is `python -m run_workspace.gcsim.cleanup`.
+- Real next work:
+  - create/curate production project-id-to-GCSIM mappings for characters, weapons, artifact sets, and enemy type overrides where automatic registry matching is insufficient;
+  - decide production packaging/shipped fallback artifact policy and release validation for `gtt-gcsim.exe`;
+  - connect GCSIM results to typed run/session state and immutable saved snapshots/history instead of treating Browser runs as durable results;
+  - finish user-facing readiness/error UI, rotation editing policy, run retention/debug keep-artifacts controls, cancellation/progress, and final AppShell integration polish.
 
 ## 12. KQM / Standard Builds Research
 
@@ -786,72 +427,11 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - It must not include cookies, auth tokens, browser profile/session data, or private debug dumps.
 - Use versioned profile format and safe restore/backup semantics.
 
-## 15. Tournament / PvP
+## 15. Far Future / Non-MVP Ideas
 
-- PvP is experimental and important long-term, but do not mix it into MVP before normal run/history/simulator features work well.
-- General PvP flow:
-  - select/import tournament ruleset;
-  - build deck according to rules;
-  - enter lobby;
-  - picks/bans draft;
-  - after draft, move to team composition;
-  - compose teams only from picked characters;
-  - select weapons only from deck weapons;
-  - account artifacts are unrestricted by default;
-  - enter timers/results;
-  - confirm results;
-  - export verified result image.
-- Future custom tournament system idea: balance not only by character cost/tier but also by account artifact strength. Keep this as design/research, not immediate implementation.
-- PvP ruleset audit exists at `docs/handoff/PVP_RULESETS_AUDIT.md`. Gentor exposes structured public JSON via `https://gentor.com.br/planilha` / `/planilha/{id}` with character C0-C6 costs, weapon R1-R5 costs, character-specific weapon overrides, tiers/restrictions, draft config, and optional TypeScript draft script.
-- Backend `TournamentRulesetV1` model and validation report exist in `hoyolab_export/tournament_ruleset.py` and `hoyolab_export/tournament_ruleset_report.py`. Command: `python -m hoyolab_export.tournament_ruleset_report --ruleset-json samples/rulesets/minimal_ruleset.json`. MVP accepts normalized JSON and simple CSV files, reports missing/duplicate/unknown/unsupported fields, and does not execute third-party TypeScript scripts.
-- XLSX import and Gentor website/API adapter remain future work after the internal schema/report are useful. Next PvP step is UI/import flow or deck validation, not another source search.
-- Deck builder should evaluate total cost, tier constraints, invalid choices, and why a deck is invalid.
-- Lobby/networking stages should be realistic:
-  - local/hotseat lobby;
-  - LAN/direct IP or manual connection;
-  - import/export lobby state fallback;
-  - investigate P2P with connection code;
-  - investigate STUN/signaling/relay;
-  - optional user-hosted relay or future server only if resources/donations justify it.
-- Do not promise fully reliable serverless P2P; NAT, CG-NAT, firewalls, routers, and provider restrictions can break direct connections.
-- PvP roles: player 1, player 2, spectator, moderator/judge, host.
-- Draft engine must be generic/data-driven and support ban order, pick order, timers, locked picks, unavailable characters after pick/ban, rule validation, and action log.
-- PvP result confirmation should bind confirmations to a state hash. Any result change after one player confirms clears that confirmation. Final means both players confirmed the same unchanged state inside the app.
-- Do not claim the app guarantees real-world truth of entered timers. It can guarantee only that both players confirmed the same unchanged in-app result state.
-- Export result image should include players, rooms, teams, timers per room/run, total timers, winner, confirmation status, statement like "confirmed by both players in GenshinTeamsTracker", and maybe session id/hash.
-- PvP multi-run timer logic should support cumulative totals across games.
-
-### PvP / Tournament Analytics
-
-- Future analytics feature, not immediate MVP: collect local/in-app statistics across matches/games for characters and weapons.
-- Character analytics can include winrate, banrate, pick/draft frequency, deck inclusion rate, account ownership rate, and constellation-tier breakdown where useful. Different constellations can be treated as separate statistical variants.
-- Constellation ownership is cumulative/inclusive upward, not independent buckets. Example: C1 = 50% and C2 = 40% means that among players/accounts with the character, some have C1 only and 40% have C2 or higher. UI can show an overall character row first, then expandable constellation details with exact percentages where useful.
-- Weapon analytics can mirror character analytics where applicable: winrate, pickrate/usage rate when the weapon exists on the account, and deck inclusion/selection rate. Initial version can ignore ascension/refinement tiers unless later needed.
-- Use cases: draft bot heuristics, tournament balancing, tierlist-like analysis, custom ruleset balancing, and checking whether artifact/account strength changes results.
-- Privacy: keep analytics local/in-app first. Any global/shared analytics must be opt-in and needs privacy policy/anonymization decisions. Do not imply online telemetry now.
-
-## 16. Draft Bots
-
-- Future bots should let the user practice drafts when no one is available.
-- Start with a rule-based bot, not global self-learning.
-- Bot should consider current Abyss, tournament rules, cost/tier limits, enemy features, elements, immunities/counter-picks, team archetypes, synergy/anti-synergy, and rough character strength.
-- Possible later stages: local imitation bot trained from user draft history, opt-in global draft data only with privacy policy/infrastructure, anonymization, and explicit consent.
-- Bot logic should use metrics/tags, not only memorized character names, so new characters are not ignored.
-- Useful tags/metrics: role, element, archetype, pick/ban priority, synergy, anti-synergy, Abyss suitability, historical pick/ban rate when available.
-- After draft, bot should assign picked characters into teams/rooms using Abyss enemy features, similar GCSIM team/rotation data, KQM/default standards, assumed fallback talents, reasonable weapon fallback, and other available structured data.
-
-## 17. Donation / Support Page
-
-- Future non-core task: add a support/donation page/dialog.
-- It should say users can support development and can potentially donate toward a specific major feature, but specific feature requests should be discussed with the developer first for feasibility.
-- Mention that some features may depend on external APIs, licenses, servers, infrastructure, or third-party data, so not every requested feature is guaranteed feasible.
-- Do not clutter core UI with donation content.
-
-## 18. Far Future Inspiration / Monetization
-
-- Non-MVP inspiration only: optional custom character icons/profile cosmetics, loosely inspired by Akasha-like profile customization.
-- Optional tiny local AI companion could help with UI, comment on builds/runs, and lightly praise/tease the user, but only if it can run on weak PCs and stays optional.
-- Investigate whether GitHub distribution can support paid feature unlocks; otherwise research a separate paid executable, overlay, or license mechanism compatible with the free app. This must not shape MVP architecture.
+- Far-future PvP/tournament, analytics, draft bot, donation/support, monetization, optional AI companion, and similar speculative ideas live in `docs/handoff/FAR_FUTURE_TODO.md`.
+- Do not load those ideas into normal MVP task planning unless the user asks about them or wants to add/update a far-future idea.
+- Current PvP/tournament source audit remains in `docs/handoff/PVP_RULESETS_AUDIT.md`; backend ruleset parser/report code exists, but UI/import/deck validation are not MVP blockers.
 
 ## Other Future / Maintenance Items
 

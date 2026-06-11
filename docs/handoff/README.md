@@ -13,15 +13,17 @@ Current maps:
 - `ARTIFACT_BROWSER_EQUIPMENT_UX.md` - Artifact Browser equip-mode UX, current equipment zone, preset apply behavior, and artifact/preset/weapon owner side-icon model.
 - `ABYSS_ENEMY_DATA.md` - Abyss enemy data source research.
 - `ABYSS_ENEMY_DATA_AUDIT_TASK.md` - original prompt for the Abyss enemy data audit.
-- `ABYSS_HP_FIXTURE.md` - concrete current Floor 12 HP fixture and source-join notes.
+- `ABYSS_HP_FIXTURE.md` - historical `2026-05-16` Floor 12 HP research/debug fixture and source-join notes; not current runtime factual-DPS truth.
 - `ABYSS_MECHANICS_NOTES.md` - Abyss enemy mechanics parser tags and source notes.
 - `GCSIM.md` - GCSIM research and integration notes.
 - `GCSIM_ENGINE_INTEGRATION_PLAN.md` - working implementation-direction plan for GTT-modified GCSIM engine updates, local patching, sequential Abyss waves, resource budgeting, and UI result boundaries.
+- `FAR_FUTURE_TODO.md` - non-MVP PvP, analytics, draft bot, support/donation, monetization, and optional AI companion ideas.
 - `PVP_RULESETS_AUDIT.md` - PvP/tournament ruleset source audit.
 - `STAT_NORMALIZATION.md` - stat normalization and GCSIM stat-key mapping handoff.
 - `MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md` - audit and staged plan for replacing the legacy main-window right panel with fixed Right Panel Prototype v6 plus left workspaces.
 - `APP_SHELL_WORKSPACE_PLAN.md` - target AppShell architecture: left workspace host plus fixed right operations dock, with staged migration notes.
-- `RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` - next Run Workspace session/snapshot contract before history, GCSIM, and the `main.py` switch.
+- `RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` - Run Workspace session/snapshot contract
+  for durable history, GCSIM result attachment, and the future `main.py` switch.
 
 Rules:
 

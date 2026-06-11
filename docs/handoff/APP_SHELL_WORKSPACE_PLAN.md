@@ -151,8 +151,12 @@ right column patched in place.
 
 ### GCSIM Workspace
 
-- Future simulation/generation/results workspace.
-- Do not implement until the app shell and typed team/run state are in place.
+- GCSIM Browser MVP exists as a left workspace in AppShell. It can prepare
+  account-backed configs and run selected or three-chamber dev flows through the
+  backend GCSIM bridge.
+- Browser runtime results may update compact right-panel Sim DPS cells, but they
+  are not durable saved history. Treat them as current-session runtime results
+  until immutable run snapshots/history are implemented.
 
 ### History Workspace
 
@@ -251,8 +255,8 @@ Future weapon move/swap rule:
   T2 follows the same chamber's T1 until T2 is manually edited; if T1 is edited
   below the current T2 value, T2 clamps down to T1 and returns to follow mode.
   Fact DPS reads cached Abyss source-data and uses Account/Data's solo/multi
-  HP mode setting. Reset, persistence, immutable snapshots, History, and GCSIM
-  remain future work.
+  HP mode setting. Reset, persistence, immutable snapshots, History, and durable
+  saved-result GCSIM integration remain future work.
 - Detailed next-stage contract lives in
   `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. Follow it before coding
   History or GCSIM.
@@ -266,7 +270,8 @@ Saved runs must be immutable structured snapshots for Abyss and DPS Dummy, not
 live references to account/build state and not image-only legacy records.
 Factual DPS belongs in pure run/session result code near `run_workspace.models`
 or a future `run_workspace.results` module. GCSIM sim DPS remains a separate
-result kind and plugs in later through explicit snapshots/config data.
+result kind: Browser MVP runtime results may update current UI state, while
+durable saved results must later attach through explicit session/snapshot data.
 
 ## Legacy Plan
 
@@ -646,16 +651,18 @@ Sizing note:
   icons, current-equipment preview, and selected-card highlights are wired
   through typed state plus the `account_equipment` service.
 
-### Stage 5: GCSIM And History
+### Stage 5: GCSIM And History Production Readiness
 
-- Add typed run/session state and immutable snapshot persistence before coding
-  History or GCSIM.
-- Add new History workspace based on immutable saved run snapshots, routed from
-  the right-dock History command according to active run type.
-- Add GCSIM after the shell, session model, and snapshot contracts are stable.
-  DPS Dummy is the first consumer; Abyss GCSIM starts later with simplified or
-  manual target assumptions.
-- Do not migrate legacy history UI as the final design.
+- Backend/dev GCSIM and the AppShell GCSIM Browser MVP have already started.
+  Continue that work without treating Browser runtime output as saved history.
+- Add typed run/session ownership for reset/save/history commands and immutable
+  snapshot persistence before any GCSIM result becomes a durable saved result.
+- Add a new History workspace based on immutable saved run snapshots, routed
+  from the right-dock History command according to active run type.
+- Attach GCSIM results to current session/snapshots as `sim DPS` metadata, kept
+  separate from factual HP/time DPS.
+- Production switch still depends on the correct AppShell/session/snapshot
+  boundaries; do not migrate legacy history UI as the final design.
 
 ### Stage 6: Legacy Cleanup
 

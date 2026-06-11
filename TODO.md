@@ -24,9 +24,9 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   not first-person past wording. Prefer a style equivalent to "has been
   added/fixed/updated" or "added/fixed/updated as a completed result", not a
   style equivalent to "I added/fixed/updated".
-- Future test-suite cleanup: split broad AppShell/right-panel checks into
-  narrower runnable groups so feature tasks can run only the tests covering the
-  touched subsystem, while preserving a cheap full-smoke option.
+- Test-suite layout/rules live in `docs/handoff/TESTS.md`; keep new tests under
+  the matching project area and prefer narrow per-folder `unittest discover`
+  runs for the touched subsystem.
 - When adding/changing persistent structures, source/cache formats, domain models, raw payload discoveries, UI prototype contracts, or long-lived research, update the relevant project map in `docs/handoff/` and keep root docs as concise entrypoint pointers.
 - Obsidian map maintenance: The Obsidian vault is stored in `docs/obsidian/GTT/`. `docs/obsidian/GTT/GenshinTeamsTracker.canvas` is the human project navigation map. `docs/obsidian/GTT/DataFlow.canvas` is the human data-flow map. `docs/obsidian/GTT/SourceBoundaries.canvas` is the human source/runtime boundary map for avoiding data-owner confusion. These maps do not replace `CODEX.md`/`TODO.md` or detailed handoff files. After meaningful structural changes, update the maps together with handoff files when the change affects human understanding of the project layout: new major subsystem, renamed/moved important folder, changed data flow, changed current priority, changed architecture direction, or an important feature moving from planned to active/done. Do not update maps for tiny bugfixes, one-line styling changes, or internal refactors that do not affect the project map.
 

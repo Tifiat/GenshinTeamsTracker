@@ -7,7 +7,8 @@ display.
 Implementation status: Stage A is implemented in
 `hoyolab_export/account_equipment.py` and initialized through
 `hoyolab_export/artifact_db.py::init_db`. The schema and focused service helpers
-exist, with tests in `tests/test_account_equipment.py`. Stage B wires AppShell
+exist, with tests in
+`tests/hoyolab_export/account/test_account_equipment.py`. Stage B wires AppShell
 weapon restore/assignment to this persistent state. Stage B2 builds a
 runtime-only current-equipment artifact snapshot for right-panel stats/set
 bonuses without creating saved build rows. Stage C embeds Artifact Browser in

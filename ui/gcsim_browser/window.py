@@ -22,7 +22,7 @@ from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_
 
 
 DEFAULT_ROTATION_CODE = """options swap_delay=12 iteration=1000;
-energy every interval=480,720 amount=100;
+energy every interval=480,720 amount=1;
 target lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;
 
 active furina;
@@ -60,11 +60,8 @@ class GcsimBrowserWorkspace(QWidget):
 
     """First visual shell for the future GCSIM Browser.
 
-    This widget is intentionally UI-only:
-    - no backend calls;
-    - no GCSIM artifact runs;
-    - no right-panel persistence;
-    - no result writeback.
+    This widget owns only the local editor/preview UI. AppShell wires backend
+    prepare/run workers and decides whether successful results are persisted.
     """
 
     def __init__(
@@ -247,7 +244,7 @@ class GcsimBrowserWorkspace(QWidget):
         self.status_label.setText(
             _fallback(
                 "gcsim.browser.status_skeleton",
-                "UI skeleton · backend not connected",
+                "Selected-team backend",
             )
         )
         self.team_tabs.setTabText(0, _fallback("gcsim.browser.team_1", "Team 1"))
@@ -257,7 +254,7 @@ class GcsimBrowserWorkspace(QWidget):
             note.setText(
                 _fallback(
                     "gcsim.browser.team_placeholder",
-                    "Readiness will be computed from current runtime team state later.",
+                    "Readiness uses current runtime team, weapon and artifact state.",
                 )
             )
         for team_index, cards in enumerate(self._team_cards):
@@ -287,7 +284,7 @@ class GcsimBrowserWorkspace(QWidget):
         self.defaults_label.setText(
             _fallback(
                 "gcsim.browser.defaults_placeholder",
-                "Iterations: 100 · Boosted energy: dev-only placeholder",
+                "Iterations: from rotation code · Boosted energy: app setting",
             )
         )
 
@@ -300,6 +297,8 @@ class GcsimBrowserWorkspace(QWidget):
         self.run_selected_button.setText(
             _fallback("gcsim.browser.run_selected", "Run selected chamber")
         )
+        if self._mode == MODE_DPS_DUMMY:
+            self.run_selected_button.setText("Run DPS Dummy")
         self.run_all_button.setText(
             _fallback("gcsim.browser.run_all", "Run 3 chambers")
         )
@@ -344,6 +343,8 @@ class GcsimBrowserWorkspace(QWidget):
         is_abyss = self._mode == MODE_ABYSS
         self.team_tabs.setTabVisible(1, is_abyss)
         self.targets_section.setVisible(is_abyss)
+        self.run_all_button.setVisible(is_abyss)
+        self.run_all_button.setEnabled(is_abyss and self.run_selected_button.isEnabled())
 
     def _select_chamber(self, chamber_index: int) -> None:
         self._selected_chamber_index = max(0, min(2, int(chamber_index)))
@@ -412,7 +413,7 @@ class GcsimBrowserWorkspace(QWidget):
     def set_actions_busy(self, busy: bool, *, message: str = "") -> None:
         self.prepare_button.setEnabled(not busy)
         self.run_selected_button.setEnabled(not busy)
-        self.run_all_button.setEnabled(not busy)
+        self.run_all_button.setEnabled(not busy and self._mode == MODE_ABYSS)
         if message:
             self.results_placeholder.setText(message)
 

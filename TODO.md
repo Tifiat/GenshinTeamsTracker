@@ -383,14 +383,17 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Implemented enough to rely on:
   - transactional local engine-store/update prototype with source acquisition, ordered patch backends, runtime probe/build-artifact checks, and active/rollback metadata;
   - patch stack and `-gtt-info` capability validation owned by the dedicated GCSIM handoff rather than this root TODO;
-  - active-artifact runner plus backend/dev config readiness, key mapping reports, account-prepared config bridge, and Abyss wave scenario bridge;
-  - AppShell GCSIM Browser workspace can prepare/run selected or three-chamber dev flows and surface compact right-panel Sim DPS results, but Browser runtime results are not saved history;
+  - active-artifact runner plus backend/dev config readiness, key mapping reports, account-prepared config bridge, selected-runtime-team config adapter, and Abyss wave scenario bridge;
+  - AppShell GCSIM Browser workspace prepares/runs from the current selected TeamBuilder/AppShell team state, not localized-name `team_names`; missing characters/weapons/artifact sets/artifacts/talents/levels/refinement/rotation errors produce grouped readiness summaries;
+  - Abyss Browser runs still require the current cached Abyss source identity and never fall back to backend smoke defaults; DPS Dummy has a minimal backend run path that uses the selected team and manual rotation shell without Abyss identity, history persistence, or no-code rotation support;
+  - GCSIM boosted/infinite energy is an explicit app setting (`gcsim_boosted_energy_enabled`) that injects/replaces `energy every interval=480,720 amount=100;` only when enabled; dev CLI energy override remains in `account_prepared_config.py`;
+  - AppShell GCSIM Browser can surface compact right-panel Sim DPS results for successful Abyss batch runs, but Browser runtime results are not saved history;
   - generated GCSIM engines are retention-pruned to active + one previous successful + one latest failed; `.go/build-cache` is rebuildable and cleaned after successful probe/build unless explicitly kept; `.go/pkg/mod` remains as the small module cache; manual cleanup dry-run command is `python -m run_workspace.gcsim.cleanup`.
 - Real next work:
   - create/curate production project-id-to-GCSIM mappings for characters, weapons, artifact sets, and enemy type overrides where automatic registry matching is insufficient;
   - decide production packaging/shipped fallback artifact policy and release validation for `gtt-gcsim.exe`;
   - connect GCSIM results to typed run/session state and immutable saved snapshots/history instead of treating Browser runs as durable results;
-  - finish user-facing readiness/error UI, rotation editing policy, run retention/debug keep-artifacts controls, cancellation/progress, and final AppShell integration polish.
+  - finish production mapping coverage, user-facing readiness/error polish, rotation editing policy, run retention/debug keep-artifacts controls, cancellation/progress, and final AppShell integration polish.
 
 ## 12. KQM / Standard Builds Research
 

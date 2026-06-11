@@ -8,14 +8,23 @@ from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot
 
 from hoyolab_export.paths import PROJECT_ROOT
-from run_workspace.gcsim.account_prepared_config import (
-    DEFAULT_DEV_ENERGY_OVERRIDE_LINE,
-    build_account_prepared_full_config_report,
+from run_workspace.gcsim.readiness_summary import (
+    build_gcsim_readiness_summary,
+    format_gcsim_readiness_summary,
 )
+from run_workspace.gcsim.selected_team_config import (
+    build_selected_team_full_config_report,
+    report_with_dps_dummy_run,
+    report_with_smoke,
+    run_selected_team_abyss_smoke,
+    run_selected_team_dps_dummy_artifact,
+)
+from run_workspace.gcsim.settings import GcsimRunSettings
 from run_workspace.right_panel_prototype_view_model import (
     FACT_DPS_HP_MODE_MULTI_TARGET,
     FACT_DPS_HP_MODE_SOLO,
     MODE_ABYSS,
+    MODE_DPS_DUMMY,
     RightPanelGcsimChamberResult,
 )
 
@@ -34,11 +43,13 @@ EXPECTED_DEV_WARNING_IDS = frozenset(
     {
         "dev_talent_order_skill_id_assumed",
         "artifact_set_auto_registry_mapping_not_curated",
-        "prepared_fixture_adapter_boundary",
-        "no_ui_or_storage_access",
+        "selected_runtime_team_adapter_boundary",
+        "slot_details_snapshot_used",
+        "slot_db_current_equipment_used",
         "artifact_set_count_below_two_ignored",
         "shell_target_placeholder_not_enemy_truth",
-        "dev_energy_line_appended_no_existing_energy_line",
+        "gcsim_boosted_energy_line_appended_no_existing_energy_line",
+        "gcsim_dummy_target_from_rotation_shell",
     }
 )
 
@@ -46,7 +57,7 @@ EXPECTED_DEV_WARNING_IDS = frozenset(
 @dataclass(frozen=True, slots=True)
 class GcsimBrowserRunRequest:
     db_path: str
-    team_names: tuple[str, ...]
+    selected_team: dict[str, Any]
     team_index: int
     chamber: int
     side: int
@@ -55,13 +66,14 @@ class GcsimBrowserRunRequest:
     abyss_floor: int = 0
     abyss_cache_dir: str = ""
     target_mode: str = FACT_DPS_HP_MODE_MULTI_TARGET
+    boosted_energy_enabled: bool = False
     run_root: str = ""
 
 
 @dataclass(frozen=True, slots=True)
 class GcsimBrowserBatchRunRequest:
     db_path: str
-    team_names: tuple[str, ...]
+    selected_team: dict[str, Any]
     team_index: int
     side: int
     rotation_shell_text: str
@@ -70,6 +82,17 @@ class GcsimBrowserBatchRunRequest:
     abyss_cache_dir: str = ""
     target_mode: str = FACT_DPS_HP_MODE_MULTI_TARGET
     chambers: tuple[int, ...] = (1, 2, 3)
+    boosted_energy_enabled: bool = False
+    run_root: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class GcsimBrowserDpsDummyRunRequest:
+    db_path: str
+    selected_team: dict[str, Any]
+    team_index: int
+    rotation_shell_text: str
+    boosted_energy_enabled: bool = False
     run_root: str = ""
 
 
@@ -97,16 +120,27 @@ class GcsimBrowserBatchRunWorker(QObject):
         self.finished.emit(run_gcsim_browser_three_chambers(self._request))
 
 
+class GcsimBrowserDpsDummyRunWorker(QObject):
+    finished = Signal(dict)
+
+    def __init__(self, request: GcsimBrowserDpsDummyRunRequest) -> None:
+        super().__init__()
+        self._request = request
+
+    @Slot()
+    def run(self) -> None:
+        self.finished.emit(run_gcsim_browser_dps_dummy(self._request))
+
+
 def run_gcsim_browser_selected_chamber(
     request: GcsimBrowserRunRequest,
 ) -> dict[str, Any]:
-    if not request.team_names:
-        return {
-            "success": False,
-            "error_category": ERROR_PREPARE_NOT_READY,
-            "error": "Selected team has no characters.",
-            "selection": _selection_report(request),
-        }
+    if _selected_slot_count(request.selected_team) <= 0:
+        return _with_readiness_summary(
+            _selected_team_empty_error_payload(
+                selection=_selection_report(request),
+            )
+        )
     if not request.abyss_period_start or not request.abyss_floor:
         return {
             "success": False,
@@ -121,33 +155,42 @@ def run_gcsim_browser_selected_chamber(
     try:
         run_dir.mkdir(parents=True, exist_ok=True)
         rotation_shell_path.write_text(request.rotation_shell_text, encoding="utf-8")
-        report = build_account_prepared_full_config_report(
+        report = build_selected_team_full_config_report(
             db_path=request.db_path,
-            team_names=request.team_names,
+            selected_team=request.selected_team,
+            team_index=request.team_index,
             rotation_shell_path=rotation_shell_path,
             run_dir=run_dir,
             write_config=True,
-            run_abyss_smoke=True,
-            abyss_period_start=request.abyss_period_start,
-            abyss_floor=request.abyss_floor,
-            abyss_chamber=request.chamber,
-            abyss_side=request.side,
-            abyss_fact_dps_multi_target_enabled=(
-                request.target_mode != FACT_DPS_HP_MODE_SOLO
+            run_settings=GcsimRunSettings(
+                boosted_energy_enabled=request.boosted_energy_enabled,
             ),
-            abyss_cache_dir=request.abyss_cache_dir or None,
-            dev_energy_override_line=DEFAULT_DEV_ENERGY_OVERRIDE_LINE,
         )
+        if report.ready:
+            smoke = run_selected_team_abyss_smoke(
+                report,
+                abyss_period_start=request.abyss_period_start,
+                abyss_floor=request.abyss_floor,
+                abyss_chamber=request.chamber,
+                abyss_side=request.side,
+                abyss_fact_dps_multi_target_enabled=(
+                    request.target_mode != FACT_DPS_HP_MODE_SOLO
+                ),
+                abyss_cache_dir=request.abyss_cache_dir or None,
+            )
+            report = report_with_smoke(report, smoke)
         payload = report.to_dict()
     except Exception as exc:
-        return {
-            "success": False,
-            "error_category": ERROR_CONFIG_PREPARE_ERROR,
-            "error": str(exc),
-            "selection": _selection_report(request),
-            "run_dir": str(run_dir),
-            "rotation_shell_path": str(rotation_shell_path),
-        }
+        return _with_readiness_summary(
+            {
+                "success": False,
+                "error_category": ERROR_CONFIG_PREPARE_ERROR,
+                "error": str(exc),
+                "selection": _selection_report(request),
+                "run_dir": str(run_dir),
+                "rotation_shell_path": str(rotation_shell_path),
+            }
+        )
 
     payload["selection"] = _selection_report(request)
     payload["run_dir"] = str(run_dir)
@@ -164,21 +207,79 @@ def run_gcsim_browser_selected_chamber(
         and isinstance(payload.get("smoke"), dict)
         and payload["smoke"].get("success")
     )
-    return payload
+    return _with_readiness_summary(payload)
+
+
+def run_gcsim_browser_dps_dummy(
+    request: GcsimBrowserDpsDummyRunRequest,
+) -> dict[str, Any]:
+    if _selected_slot_count(request.selected_team) <= 0:
+        return _with_readiness_summary(
+            _selected_team_empty_error_payload(
+                selection=_dps_dummy_selection_report(request),
+            )
+        )
+
+    run_dir = _new_run_dir(request.run_root)
+    rotation_shell_path = run_dir / "rotation_shell.from_editor.txt"
+    try:
+        run_dir.mkdir(parents=True, exist_ok=True)
+        rotation_shell_path.write_text(request.rotation_shell_text, encoding="utf-8")
+        report = build_selected_team_full_config_report(
+            db_path=request.db_path,
+            selected_team=request.selected_team,
+            team_index=request.team_index,
+            rotation_shell_path=rotation_shell_path,
+            run_dir=run_dir,
+            write_config=True,
+            run_settings=GcsimRunSettings(
+                boosted_energy_enabled=request.boosted_energy_enabled,
+            ),
+        )
+        if report.ready:
+            dps_dummy_run = run_selected_team_dps_dummy_artifact(
+                report,
+                run_dir=run_dir,
+            )
+            report = report_with_dps_dummy_run(report, dps_dummy_run)
+        payload = report.to_dict()
+    except Exception as exc:
+        return _with_readiness_summary(
+            {
+                "success": False,
+                "error_category": ERROR_CONFIG_PREPARE_ERROR,
+                "error": str(exc),
+                "selection": _dps_dummy_selection_report(request),
+                "run_dir": str(run_dir),
+                "rotation_shell_path": str(rotation_shell_path),
+            }
+        )
+
+    payload["selection"] = _dps_dummy_selection_report(request)
+    payload["run_dir"] = str(run_dir)
+    payload["rotation_shell_path"] = str(rotation_shell_path)
+    payload["error_category"] = classify_gcsim_browser_run_payload(payload)
+    payload["success"] = bool(
+        payload.get("ready")
+        and isinstance(payload.get("dps_dummy_run"), dict)
+        and payload["dps_dummy_run"].get("success")
+    )
+    return _with_readiness_summary(payload)
 
 
 def run_gcsim_browser_three_chambers(
     request: GcsimBrowserBatchRunRequest,
 ) -> dict[str, Any]:
-    if not request.team_names:
-        return {
-            "success": False,
-            "batch_status": "failed",
-            "error_category": ERROR_PREPARE_NOT_READY,
-            "error": "Selected team has no characters.",
-            "selection": _batch_selection_report(request),
-            "chambers": [],
-        }
+    if _selected_slot_count(request.selected_team) <= 0:
+        return _with_readiness_summary(
+            {
+                **_selected_team_empty_error_payload(
+                    selection=_batch_selection_report(request),
+                ),
+                "batch_status": "failed",
+                "chambers": [],
+            }
+        )
     if not request.abyss_period_start or not request.abyss_floor:
         return {
             "success": False,
@@ -194,7 +295,7 @@ def run_gcsim_browser_three_chambers(
     for chamber in request.chambers:
         chamber_request = GcsimBrowserRunRequest(
             db_path=request.db_path,
-            team_names=request.team_names,
+            selected_team=request.selected_team,
             team_index=request.team_index,
             chamber=int(chamber),
             side=request.side,
@@ -203,6 +304,7 @@ def run_gcsim_browser_three_chambers(
             abyss_floor=request.abyss_floor,
             abyss_cache_dir=request.abyss_cache_dir,
             target_mode=request.target_mode,
+            boosted_energy_enabled=request.boosted_energy_enabled,
             run_root=request.run_root,
         )
         chambers.append(run_gcsim_browser_selected_chamber(chamber_request))
@@ -227,13 +329,19 @@ def classify_gcsim_browser_run_payload(payload: dict[str, Any]) -> str:
         return ERROR_CONFIG_PARSE_OR_ROTATION_ERROR
 
     smoke = payload.get("smoke") if isinstance(payload.get("smoke"), dict) else {}
+    dps_dummy = (
+        payload.get("dps_dummy_run")
+        if isinstance(payload.get("dps_dummy_run"), dict)
+        else {}
+    )
+    run_payload = smoke or dps_dummy
     run_result = (
-        smoke.get("run_result")
-        if isinstance(smoke.get("run_result"), dict)
+        run_payload.get("run_result")
+        if isinstance(run_payload.get("run_result"), dict)
         else {}
     )
     preflight_status = str(run_result.get("artifact_preflight_status") or "")
-    run_status = str(run_result.get("status") or smoke.get("status") or "")
+    run_status = str(run_result.get("status") or run_payload.get("status") or "")
     if preflight_status and preflight_status != "gtt_wave_scenario_contract_ready":
         return ERROR_ARTIFACT_PREFLIGHT_FAILED
     if "preflight" in run_status or "contract" in run_status:
@@ -242,15 +350,15 @@ def classify_gcsim_browser_run_payload(payload: dict[str, Any]) -> str:
     if payload.get("ready") is False:
         return ERROR_PREPARE_NOT_READY
 
-    if run_result and not run_result.get("success", False):
+    if run_result and run_result.get("success") is False:
         return ERROR_GCSIM_RUNTIME_ERROR
-    if smoke and not smoke.get("success", False):
-        status = str(smoke.get("status") or "")
+    if run_payload and not run_payload.get("success", False):
+        status = str(run_payload.get("status") or "")
         if status == "run_failed":
             return ERROR_GCSIM_RUNTIME_ERROR
         return ERROR_UNKNOWN
 
-    if payload.get("ready") and smoke.get("success"):
+    if payload.get("ready") and run_payload.get("success"):
         return ""
     return ERROR_UNKNOWN
 
@@ -356,6 +464,60 @@ def format_gcsim_browser_run_report(payload: dict[str, Any]) -> str:
                 continue
             lines.append("  - " + _character_line(character))
 
+    _extend_readiness_summary(lines, payload)
+    _extend_warning_sections(lines, payload.get("warnings") or [])
+    error = str(payload.get("error") or "")
+    if error:
+        lines.extend(["", f"Error: {error}"])
+    return "\n".join(lines)
+
+
+def format_gcsim_browser_dps_dummy_report(payload: dict[str, Any]) -> str:
+    selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else {}
+    dps_dummy = (
+        payload.get("dps_dummy_run")
+        if isinstance(payload.get("dps_dummy_run"), dict)
+        else {}
+    )
+    run_result = (
+        dps_dummy.get("run_result")
+        if isinstance(dps_dummy.get("run_result"), dict)
+        else {}
+    )
+    summary = (
+        run_result.get("summary")
+        if isinstance(run_result.get("summary"), dict)
+        else {}
+    )
+    lines = [
+        "Run DPS Dummy",
+        f"Team: {selection.get('team_label', '-')}",
+        f"Status: {dps_dummy.get('status') or payload.get('status') or '-'}",
+        f"Error category: {payload.get('error_category') or '-'}",
+        f"Config path: {payload.get('config_path') or '-'}",
+        f"DPS mean: {_format_number(summary.get('dps_mean')) or '-'}",
+        (
+            "Total damage mean: "
+            f"{_format_number(summary.get('total_damage_mean')) or '-'}"
+        ),
+        (
+            "Artifact preflight: "
+            f"{run_result.get('artifact_preflight_status') or '-'}"
+        ),
+        "Abyss source: not used",
+        "History persistence: disabled",
+        "DPS correctness claim: false",
+    ]
+
+    team = payload.get("team") if isinstance(payload.get("team"), dict) else {}
+    characters = team.get("characters") if isinstance(team.get("characters"), list) else []
+    if characters:
+        lines.extend(["", "Characters:"])
+        for character in characters:
+            if isinstance(character, dict):
+                lines.append("  - " + _character_line(character))
+
+    _extend_readiness_summary(lines, payload)
     _extend_warning_sections(lines, payload.get("warnings") or [])
     error = str(payload.get("error") or "")
     if error:
@@ -386,6 +548,7 @@ def format_gcsim_browser_batch_report(payload: dict[str, Any]) -> str:
         if not isinstance(chamber_payload, dict):
             continue
         lines.extend(_batch_chamber_lines(chamber_payload))
+    _extend_readiness_summary(lines, payload)
     _extend_warning_sections(lines, payload.get("warnings") or [])
     error = str(payload.get("error") or "")
     if error:
@@ -525,8 +688,20 @@ def _extend_warning_sections(lines: list[str], warnings: Any) -> None:
         )
 
 
+def _extend_readiness_summary(lines: list[str], payload: dict[str, Any]) -> None:
+    summary = (
+        payload.get("readiness_summary")
+        if isinstance(payload.get("readiness_summary"), dict)
+        else {}
+    )
+    text = format_gcsim_readiness_summary(summary)
+    if text:
+        lines.extend(["", text])
+
+
 def _character_line(character: dict[str, Any]) -> str:
     account = character.get("account_character") if isinstance(character.get("account_character"), dict) else {}
+    payload = character.get("payload_character") if isinstance(character.get("payload_character"), dict) else {}
     weapon = character.get("weapon") if isinstance(character.get("weapon"), dict) else {}
     sets = []
     for item in character.get("artifact_set_counts") or []:
@@ -537,7 +712,7 @@ def _character_line(character: dict[str, Any]) -> str:
         key = mapping.get("gcsim_key") or ""
         sets.append(f"{set_name}->{key}:{item.get('count')}")
     return (
-        f"{account.get('catalog_english_name') or account.get('localized_name') or character.get('requested_name')}: "
+        f"{account.get('catalog_english_name') or account.get('localized_name') or payload.get('display_name') or 'slot'}: "
         f"weapon_source={character.get('weapon_selection_method') or '-'} "
         f"weapon={weapon.get('catalog_english_name') or weapon.get('localized_name') or '-'} "
         f"artifact_source={character.get('artifact_source') or '-'} "
@@ -601,6 +776,10 @@ def _issue_statuses(payload: dict[str, Any]) -> tuple[str, ...]:
     for issue in full_config.get("issues") or []:
         if isinstance(issue, dict) and issue.get("status"):
             statuses.append(str(issue["status"]))
+    assembly = payload.get("assembly") if isinstance(payload.get("assembly"), dict) else {}
+    for issue in assembly.get("issues") or []:
+        if isinstance(issue, dict) and issue.get("status"):
+            statuses.append(str(issue["status"]))
     return tuple(statuses)
 
 
@@ -610,11 +789,12 @@ def _selection_report(request: GcsimBrowserRunRequest) -> dict[str, Any]:
         "team_label": f"Team {int(request.team_index) + 1}",
         "chamber": int(request.chamber),
         "side": int(request.side),
-        "team_names": list(request.team_names),
+        "selected_slot_count": _selected_slot_count(request.selected_team),
         "period_start": request.abyss_period_start,
         "floor": int(request.abyss_floor or 0),
         "cache_dir": request.abyss_cache_dir,
         "target_mode": request.target_mode,
+        "boosted_energy_enabled": bool(request.boosted_energy_enabled),
     }
 
 
@@ -623,12 +803,26 @@ def _batch_selection_report(request: GcsimBrowserBatchRunRequest) -> dict[str, A
         "team_index": int(request.team_index),
         "team_label": f"Team {int(request.team_index) + 1}",
         "side": int(request.side),
-        "team_names": list(request.team_names),
+        "selected_slot_count": _selected_slot_count(request.selected_team),
         "period_start": request.abyss_period_start,
         "floor": int(request.abyss_floor or 0),
         "cache_dir": request.abyss_cache_dir,
         "target_mode": request.target_mode,
+        "boosted_energy_enabled": bool(request.boosted_energy_enabled),
         "chambers": [int(chamber) for chamber in request.chambers],
+    }
+
+
+def _dps_dummy_selection_report(
+    request: GcsimBrowserDpsDummyRunRequest,
+) -> dict[str, Any]:
+    return {
+        "team_index": int(request.team_index),
+        "team_label": f"Team {int(request.team_index) + 1}",
+        "mode": MODE_DPS_DUMMY,
+        "selected_slot_count": _selected_slot_count(request.selected_team),
+        "target_mode": MODE_DPS_DUMMY,
+        "boosted_energy_enabled": bool(request.boosted_energy_enabled),
     }
 
 
@@ -649,6 +843,55 @@ def _source_mismatch_warning(
     if request.abyss_floor and actual_floor and actual_floor != request.abyss_floor:
         return WARNING_ABYSS_PREVIEW_SCENARIO_SOURCE_MISMATCH
     return ""
+
+
+def _with_readiness_summary(payload: dict[str, Any]) -> dict[str, Any]:
+    summary = build_gcsim_readiness_summary(payload)
+    if summary.blocked:
+        payload = dict(payload)
+        payload["readiness_summary"] = summary.to_dict()
+    return payload
+
+
+def _selected_team_empty_error_payload(
+    *,
+    selection: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "success": False,
+        "error_category": ERROR_PREPARE_NOT_READY,
+        "error": "Selected team has no characters.",
+        "selection": selection,
+        "issues": [
+            {
+                "status": "selected_team_empty",
+                "field": "selected_team.slots",
+                "message": "Selected team has no character slots.",
+            }
+        ],
+    }
+
+
+def _selected_slot_count(selected_team: Any) -> int:
+    if not isinstance(selected_team, dict):
+        return 0
+    slots = selected_team.get("slots")
+    if not isinstance(slots, list):
+        return 0
+    count = 0
+    for slot in slots:
+        if not isinstance(slot, dict):
+            continue
+        if slot.get("character") or _nested_character(slot):
+            count += 1
+    return count
+
+
+def _nested_character(slot: dict[str, Any]) -> dict[str, Any]:
+    details = slot.get("character_details_data")
+    if isinstance(details, dict) and isinstance(details.get("account_character"), dict):
+        return details["account_character"]
+    return {}
 
 
 def _dedupe(values: Any) -> list[str]:

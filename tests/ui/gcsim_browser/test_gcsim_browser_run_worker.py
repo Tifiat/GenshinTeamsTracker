@@ -9,11 +9,14 @@ from ui.gcsim_browser.run_worker import (
     ERROR_PREPARE_NOT_READY,
     WARNING_ABYSS_SOURCE_IDENTITY_MISSING,
     GcsimBrowserBatchRunRequest,
+    GcsimBrowserDpsDummyRunRequest,
     GcsimBrowserRunRequest,
     classify_gcsim_browser_run_payload,
     format_gcsim_browser_batch_report,
+    format_gcsim_browser_dps_dummy_report,
     format_gcsim_browser_run_report,
     right_panel_gcsim_results_from_browser_batch_payload,
+    run_gcsim_browser_dps_dummy,
     run_gcsim_browser_three_chambers,
     run_gcsim_browser_selected_chamber,
 )
@@ -69,6 +72,18 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
             classify_gcsim_browser_run_payload(payload),
             ERROR_GCSIM_RUNTIME_ERROR,
         )
+
+    def test_classifies_dps_dummy_success(self) -> None:
+        payload = {
+            "ready": True,
+            "dps_dummy_run": {
+                "success": True,
+                "status": "run_passed",
+                "run_result": {"summary": {}},
+            },
+        }
+
+        self.assertEqual(classify_gcsim_browser_run_payload(payload), "")
 
     def test_formats_selected_chamber_report(self) -> None:
         payload = {
@@ -160,16 +175,16 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
             },
             "smoke": {"status": "run_passed", "run_result": {"summary": {}}},
             "warnings": [
-                "prepared_fixture_adapter_boundary",
-                "dev_energy_line_appended_no_existing_energy_line",
+                "selected_runtime_team_adapter_boundary",
+                "gcsim_boosted_energy_line_appended_no_existing_energy_line",
             ],
         }
 
         text = format_gcsim_browser_run_report(payload)
 
         self.assertIn("Expected/dev notes:", text)
-        self.assertIn("  - prepared_fixture_adapter_boundary", text)
-        self.assertIn("  - dev_energy_line_appended_no_existing_energy_line", text)
+        self.assertIn("  - selected_runtime_team_adapter_boundary", text)
+        self.assertIn("  - gcsim_boosted_energy_line_appended_no_existing_energy_line", text)
         self.assertNotIn("Real warnings/issues:", text)
         self.assertNotIn("\nWarnings:", text)
 
@@ -177,7 +192,7 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         payload = run_gcsim_browser_selected_chamber(
             GcsimBrowserRunRequest(
                 db_path="missing.db",
-                team_names=("Chasca",),
+                selected_team=_selected_team(),
                 team_index=0,
                 chamber=1,
                 side=1,
@@ -194,7 +209,7 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         payload = run_gcsim_browser_three_chambers(
             GcsimBrowserBatchRunRequest(
                 db_path="missing.db",
-                team_names=("Chasca",),
+                selected_team=_selected_team(),
                 team_index=0,
                 side=1,
                 rotation_shell_text="active chasca;",
@@ -205,6 +220,46 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         self.assertEqual(payload["batch_status"], "failed")
         self.assertIn(WARNING_ABYSS_SOURCE_IDENTITY_MISSING, payload["warnings"])
         self.assertEqual(payload["chambers"], [])
+
+    def test_dps_dummy_run_path_does_not_require_abyss_source_identity(self) -> None:
+        payload = run_gcsim_browser_dps_dummy(
+            GcsimBrowserDpsDummyRunRequest(
+                db_path="missing.db",
+                selected_team=_selected_team(),
+                team_index=0,
+                rotation_shell_text="active chasca;",
+            )
+        )
+
+        self.assertFalse(payload["success"])
+        self.assertNotIn(WARNING_ABYSS_SOURCE_IDENTITY_MISSING, payload.get("warnings") or [])
+        self.assertNotIn("Abyss source-data identity is missing", payload.get("error", ""))
+
+    def test_formats_dps_dummy_report(self) -> None:
+        payload = {
+            "ready": True,
+            "status": "ready",
+            "config_path": "C:/repo/data/gcsim/runs/run/config.txt",
+            "error_category": "",
+            "selection": {"team_label": "Team 1"},
+            "dps_dummy_run": {
+                "status": "run_passed",
+                "run_result": {
+                    "artifact_preflight_status": "ready",
+                    "summary": {
+                        "dps_mean": 12345,
+                        "total_damage_mean": 67890,
+                    },
+                },
+            },
+        }
+
+        text = format_gcsim_browser_dps_dummy_report(payload)
+
+        self.assertIn("Run DPS Dummy", text)
+        self.assertIn("Abyss source: not used", text)
+        self.assertIn("History persistence: disabled", text)
+        self.assertIn("DPS mean: 12345", text)
 
     def test_formats_batch_report(self) -> None:
         payload = {
@@ -365,6 +420,20 @@ def _chamber_payload(
                 },
             },
         },
+    }
+
+
+def _selected_team() -> dict:
+    return {
+        "slots": [
+            {
+                "slot_index": 0,
+                "character": {
+                    "id": 10000104,
+                    "name": "Chasca",
+                },
+            }
+        ]
     }
 
 

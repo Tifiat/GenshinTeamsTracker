@@ -97,9 +97,12 @@ from ui.gcsim_browser.window import (
 from ui.gcsim_browser.run_worker import (
     GcsimBrowserBatchRunRequest,
     GcsimBrowserBatchRunWorker,
+    GcsimBrowserDpsDummyRunRequest,
+    GcsimBrowserDpsDummyRunWorker,
     GcsimBrowserRunRequest,
     GcsimBrowserRunWorker,
     format_gcsim_browser_batch_report,
+    format_gcsim_browser_dps_dummy_report,
     format_gcsim_browser_run_report,
     right_panel_gcsim_results_from_browser_batch_payload,
 )
@@ -110,8 +113,16 @@ from ui.right_panel_prototype import (
     make_mode_tab_button,
     right_panel_stylesheet,
 )
-from run_workspace.gcsim.account_prepared_config import (
-    build_account_prepared_full_config_report,
+from run_workspace.gcsim.selected_team_config import (
+    build_selected_team_full_config_report,
+)
+from run_workspace.gcsim.readiness_summary import (
+    build_gcsim_readiness_summary,
+    format_gcsim_readiness_summary,
+)
+from run_workspace.gcsim.settings import (
+    GcsimRunSettings,
+    effective_gcsim_run_settings,
 )
 from run_workspace.perf import log_perf, perf_ms, perf_now
 from ui.utils.filter_button_style import (
@@ -267,6 +278,7 @@ class AppShellController:
     selected_slot_index: int = -1
     external_bonuses_enabled: bool = True
     abyss_fact_dps_multi_target_enabled: bool = False
+    gcsim_boosted_energy_enabled: bool = False
     abyss_timer_states: tuple[AbyssTimerState, ...] = field(
         default_factory=default_abyss_timer_states
     )
@@ -375,6 +387,11 @@ class AppShellController:
         self.abyss_fact_dps_multi_target_enabled = enabled
         self.clear_gcsim_results()
         return True
+
+    def gcsim_run_settings(self) -> GcsimRunSettings:
+        return GcsimRunSettings(
+            boosted_energy_enabled=bool(self.gcsim_boosted_energy_enabled),
+        )
 
     def clear_gcsim_results(self, team_index: int | None = None) -> None:
         if team_index is None:
@@ -771,26 +788,12 @@ class AppShellController:
             previews.append(tuple(team_slots))
         return tuple(previews)
 
-    def gcsim_browser_team_names(self, team_index: int) -> tuple[str, ...]:
+    def gcsim_browser_selected_team(self, team_index: int) -> dict[str, Any]:
         try:
             team = self.state.team(int(team_index))
         except IndexError:
-            return ()
-        names: list[str] = []
-        for slot in team.slots:
-            if slot.character is None:
-                continue
-            details = _mapping(slot.character_details_data)
-            character = _mapping(details.get("account_character")) or slot.character.to_dict()
-            name = (
-                _text(character.get("catalog_english_name"))
-                or _text(character.get("gcsim_character_key"))
-                or _text(character.get("name"))
-                or _text(slot.character.name)
-            )
-            if name:
-                names.append(name)
-        return tuple(names)
+            return {"slot_count": 0, "slots": []}
+        return team.to_dict()
 
     def gcsim_browser_abyss_targets_preview(
         self,
@@ -1320,6 +1323,9 @@ class AppShell(QWidget):
             self.controller.abyss_fact_dps_multi_target_enabled = (
                 is_abyss_fact_dps_multi_target_enabled()
             )
+            self.controller.gcsim_boosted_energy_enabled = (
+                effective_gcsim_run_settings().boosted_energy_enabled
+            )
         self.setWindowTitle(tr("app_shell.title"))
         self.setMinimumSize(APP_SHELL_MIN_WIDTH, APP_SHELL_MIN_HEIGHT)
         self.resize(APP_SHELL_INITIAL_SIZE)
@@ -1364,7 +1370,10 @@ class AppShell(QWidget):
         )
         self._gcsim_browser_run_thread: QThread | None = None
         self._gcsim_browser_run_worker: (
-            GcsimBrowserRunWorker | GcsimBrowserBatchRunWorker | None
+            GcsimBrowserRunWorker
+            | GcsimBrowserBatchRunWorker
+            | GcsimBrowserDpsDummyRunWorker
+            | None
         ) = None
         self._gcsim_browser_run_rotation_text = ""
 
@@ -1665,8 +1674,9 @@ class AppShell(QWidget):
         team_index: int,
         rotation_shell_text: str,
     ) -> None:
-        team_names = self.controller.gcsim_browser_team_names(team_index)
-        if not team_names:
+        normalized_team_index = max(0, min(1, int(team_index)))
+        selected_team = self.controller.gcsim_browser_selected_team(normalized_team_index)
+        if not _selected_team_has_characters(selected_team):
             self.left_host.gcsim_browser_workspace.set_prepare_result_text(
                 "Prepare failed: active team has no characters."
             )
@@ -1677,13 +1687,14 @@ class AppShell(QWidget):
         try:
             run_dir.mkdir(parents=True, exist_ok=True)
             rotation_shell_path.write_text(rotation_shell_text, encoding="utf-8")
-            report = build_account_prepared_full_config_report(
+            report = build_selected_team_full_config_report(
                 db_path=self.controller.equipment_db_path,
-                team_names=team_names,
+                selected_team=selected_team,
+                team_index=normalized_team_index,
                 rotation_shell_path=rotation_shell_path,
                 run_dir=run_dir,
                 write_config=True,
-                run_abyss_smoke=False,
+                run_settings=self.controller.gcsim_run_settings(),
             )
         except Exception as exc:
             self.left_host.gcsim_browser_workspace.set_prepare_result_text(
@@ -1707,12 +1718,40 @@ class AppShell(QWidget):
             )
             return
         normalized_team_index = max(0, min(1, int(team_index)))
-        team_names = self.controller.gcsim_browser_team_names(normalized_team_index)
-        if not team_names:
+        selected_team = self.controller.gcsim_browser_selected_team(normalized_team_index)
+        if not _selected_team_has_characters(selected_team):
             self.left_host.gcsim_browser_workspace.set_prepare_result_text(
                 "Run selected chamber failed: active team has no characters."
             )
             return
+        if self.controller.mode == MODE_DPS_DUMMY:
+            request = GcsimBrowserDpsDummyRunRequest(
+                db_path=str(self.controller.equipment_db_path),
+                selected_team=selected_team,
+                team_index=normalized_team_index,
+                rotation_shell_text=rotation_shell_text,
+                boosted_energy_enabled=(
+                    self.controller.gcsim_run_settings().boosted_energy_enabled
+                ),
+            )
+            worker = GcsimBrowserDpsDummyRunWorker(request)
+            thread = QThread(self)
+            worker.moveToThread(thread)
+            thread.started.connect(worker.run)
+            worker.finished.connect(self._on_gcsim_dps_dummy_finished)
+            worker.finished.connect(thread.quit)
+            worker.finished.connect(worker.deleteLater)
+            thread.finished.connect(thread.deleteLater)
+            thread.finished.connect(self._clear_gcsim_run_worker_refs)
+            self._gcsim_browser_run_worker = worker
+            self._gcsim_browser_run_thread = thread
+            self.left_host.gcsim_browser_workspace.set_actions_busy(
+                True,
+                message=f"Running DPS Dummy: Team {normalized_team_index + 1}...",
+            )
+            thread.start()
+            return
+
         abyss_source_data = self.controller.cached_abyss_source_data()
         if abyss_source_data is None:
             self.left_host.gcsim_browser_workspace.set_prepare_result_text(
@@ -1723,7 +1762,7 @@ class AppShell(QWidget):
         side = 1 if normalized_team_index == 0 else 2
         request = GcsimBrowserRunRequest(
             db_path=str(self.controller.equipment_db_path),
-            team_names=team_names,
+            selected_team=selected_team,
             team_index=normalized_team_index,
             chamber=max(1, min(3, int(chamber))),
             side=side,
@@ -1731,6 +1770,9 @@ class AppShell(QWidget):
             abyss_period_start=abyss_source_data.period.start_date,
             abyss_floor=abyss_source_data.floor,
             target_mode=self.controller.gcsim_target_mode(),
+            boosted_energy_enabled=(
+                self.controller.gcsim_run_settings().boosted_energy_enabled
+            ),
         )
         worker = GcsimBrowserRunWorker(request)
         thread = QThread(self)
@@ -1757,6 +1799,11 @@ class AppShell(QWidget):
             format_gcsim_browser_run_report(dict(payload))
         )
 
+    def _on_gcsim_dps_dummy_finished(self, payload: dict) -> None:
+        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+            format_gcsim_browser_dps_dummy_report(dict(payload))
+        )
+
     def _on_gcsim_run_all_requested(
         self,
         team_index: int,
@@ -1768,8 +1815,16 @@ class AppShell(QWidget):
             )
             return
         normalized_team_index = max(0, min(1, int(team_index)))
-        team_names = self.controller.gcsim_browser_team_names(normalized_team_index)
-        if not team_names:
+        if self.controller.mode == MODE_DPS_DUMMY:
+            self._on_gcsim_run_selected_requested(
+                normalized_team_index,
+                1,
+                rotation_shell_text,
+            )
+            return
+
+        selected_team = self.controller.gcsim_browser_selected_team(normalized_team_index)
+        if not _selected_team_has_characters(selected_team):
             self.left_host.gcsim_browser_workspace.set_prepare_result_text(
                 "Run 3 chambers failed: active team has no characters."
             )
@@ -1784,13 +1839,16 @@ class AppShell(QWidget):
         side = 1 if normalized_team_index == 0 else 2
         request = GcsimBrowserBatchRunRequest(
             db_path=str(self.controller.equipment_db_path),
-            team_names=team_names,
+            selected_team=selected_team,
             team_index=normalized_team_index,
             side=side,
             rotation_shell_text=rotation_shell_text,
             abyss_period_start=abyss_source_data.period.start_date,
             abyss_floor=abyss_source_data.floor,
             target_mode=self.controller.gcsim_target_mode(),
+            boosted_energy_enabled=(
+                self.controller.gcsim_run_settings().boosted_energy_enabled
+            ),
         )
         worker = GcsimBrowserBatchRunWorker(request)
         thread = QThread(self)
@@ -1869,12 +1927,18 @@ class AppShell(QWidget):
             abyss_fact_dps_multi_target_enabled = (
                 self.controller.abyss_fact_dps_multi_target_enabled
             )
+            gcsim_boosted_energy_enabled = (
+                self.controller.gcsim_boosted_energy_enabled
+            )
             controller = AppShellController.empty(
                 equipment_db_path=self.controller.equipment_db_path
             )
             controller.external_bonuses_enabled = external_bonuses_enabled
             controller.abyss_fact_dps_multi_target_enabled = (
                 abyss_fact_dps_multi_target_enabled
+            )
+            controller.gcsim_boosted_energy_enabled = (
+                gcsim_boosted_energy_enabled
             )
             if previous_mode != MODE_ABYSS:
                 controller.set_mode(previous_mode)
@@ -2394,6 +2458,7 @@ def _gcsim_prepare_report_text(payload: dict[str, Any]) -> str:
     for character in team.get("characters") or []:
         row = _mapping(character)
         account_character = _mapping(row.get("account_character"))
+        payload_character = _mapping(row.get("payload_character"))
         weapon = _mapping(row.get("weapon"))
         sets = [
             f"{item.get('set_key') or item.get('set_uid') or item.get('set_name')}:{item.get('count')}"
@@ -2402,12 +2467,17 @@ def _gcsim_prepare_report_text(payload: dict[str, Any]) -> str:
         ]
         lines.append(
             "  - "
-            f"{account_character.get('catalog_english_name') or account_character.get('name') or row.get('requested_name')}: "
+            f"{account_character.get('catalog_english_name') or account_character.get('name') or payload_character.get('display_name')}: "
             f"{row.get('status')} | "
             f"weapon={weapon.get('catalog_english_name') or weapon.get('name') or '-'} "
             f"({row.get('weapon_selection_method') or '-'}) | "
             f"sets={', '.join(sets) if sets else '-'}"
         )
+    summary_text = format_gcsim_readiness_summary(
+        build_gcsim_readiness_summary(payload)
+    )
+    if summary_text:
+        lines.extend(["", summary_text])
     warnings = payload.get("warnings") or []
     if warnings:
         lines.extend(["", "Warnings:", *[f"  - {warning}" for warning in warnings]])
@@ -2415,6 +2485,19 @@ def _gcsim_prepare_report_text(payload: dict[str, Any]) -> str:
     if issues:
         lines.extend(["", "Issues:", *[f"  - {issue}" for issue in issues]])
     return "\n".join(lines)
+
+
+def _selected_team_has_characters(selected_team: dict[str, Any]) -> bool:
+    slots = selected_team.get("slots") if isinstance(selected_team, dict) else []
+    if not isinstance(slots, list):
+        return False
+    for slot in slots:
+        if not isinstance(slot, dict):
+            continue
+        details = _mapping(slot.get("character_details_data"))
+        if slot.get("character") or _mapping(details.get("account_character")):
+            return True
+    return False
 
 
 class RightDockHeader(QWidget):

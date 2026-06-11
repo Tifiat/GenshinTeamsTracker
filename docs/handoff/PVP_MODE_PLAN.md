@@ -2,9 +2,12 @@
 
 Planning date: 2026-06-11
 
-Status: draft handoff, not an implementation contract. This file captures the
-current PvP direction, known contradictions, risks, and decisions needed before
-writing a final PvP v0 development contract.
+Status: planning history. The active PvP v0 implementation contract is now
+`docs/handoff/PVP_V0_CONTRACT.md`. Reference-site findings live in
+`docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`.
+
+This file captures the earlier PvP direction, known contradictions, risks, and
+decisions that led into the final v0 contract.
 
 No runtime code, tests, UI, parser/importer, or network/server implementation
 should be started from this file alone.

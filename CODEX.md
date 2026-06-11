@@ -479,7 +479,12 @@ Important direction:
   `run_workspace/abyss/source_data*.py`.
 - Backend Abyss mechanics parser/report code exists in `hoyolab_export/abyss_mechanics.py`. It parses Fandom enemy-page wikitext snippets into structured fields and UI-warning/bot tags without mixing Normal/Abyss/Local Legend/Stygian stat blocks into one "true" block. Next Abyss work should integrate factual DPS confidence and mechanics warnings into the Run Workspace UI.
 
-PvP/tournament ruleset audit exists at `docs/handoff/PVP_RULESETS_AUDIT.md`.
+Active PvP v0 contract exists at `docs/handoff/PVP_V0_CONTRACT.md`: the first
+implementation target is a full local Hot-seat / Ghost Deck offline loop with
+two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
+weapon assignment, timers, and winner summary. Reference-site findings live in
+`docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`; PvP/tournament ruleset audit exists
+at `docs/handoff/PVP_RULESETS_AUDIT.md`.
 Far-future PvP, analytics, draft bot, support/donation, monetization, and AI
 companion ideas live in `docs/handoff/FAR_FUTURE_TODO.md`; do not load them for
 normal MVP task planning unless the user asks.

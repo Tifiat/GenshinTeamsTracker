@@ -446,6 +446,8 @@ def format_gcsim_browser_run_report(payload: dict[str, Any]) -> str:
             f"spawn_policy={scenario_summary.get('spawn_policy', '-')}"
         )
 
+    _extend_readiness_summary(lines, payload)
+
     failed_buckets = _failed_action_bucket_summary(summary.get("failed_actions") or [])
     if failed_buckets:
         lines.append(f"Failed action buckets: {failed_buckets}")
@@ -464,8 +466,8 @@ def format_gcsim_browser_run_report(payload: dict[str, Any]) -> str:
                 continue
             lines.append("  - " + _character_line(character))
 
-    _extend_readiness_summary(lines, payload)
     _extend_warning_sections(lines, payload.get("warnings") or [])
+    _extend_debug_issue_summary(lines, payload)
     error = str(payload.get("error") or "")
     if error:
         lines.extend(["", f"Error: {error}"])
@@ -489,12 +491,21 @@ def format_gcsim_browser_dps_dummy_report(payload: dict[str, Any]) -> str:
         if isinstance(run_result.get("summary"), dict)
         else {}
     )
+    energy = dps_dummy.get("energy") if isinstance(dps_dummy.get("energy"), dict) else {}
+    dummy_target = (
+        dps_dummy.get("dummy_target")
+        if isinstance(dps_dummy.get("dummy_target"), dict)
+        else {}
+    )
     lines = [
         "Run DPS Dummy",
         f"Team: {selection.get('team_label', '-')}",
         f"Status: {dps_dummy.get('status') or payload.get('status') or '-'}",
         f"Error category: {payload.get('error_category') or '-'}",
         f"Config path: {payload.get('config_path') or '-'}",
+        f"Energy mode: {energy.get('mode') or '-'}",
+        f"Dummy target HP: {dummy_target.get('hp') or '-'}",
+        f"Dummy target resist: {dummy_target.get('resist') or dummy_target.get('source') or '-'}",
         f"DPS mean: {_format_number(summary.get('dps_mean')) or '-'}",
         (
             "Total damage mean: "
@@ -509,6 +520,8 @@ def format_gcsim_browser_dps_dummy_report(payload: dict[str, Any]) -> str:
         "DPS correctness claim: false",
     ]
 
+    _extend_readiness_summary(lines, payload)
+
     team = payload.get("team") if isinstance(payload.get("team"), dict) else {}
     characters = team.get("characters") if isinstance(team.get("characters"), list) else []
     if characters:
@@ -517,8 +530,8 @@ def format_gcsim_browser_dps_dummy_report(payload: dict[str, Any]) -> str:
             if isinstance(character, dict):
                 lines.append("  - " + _character_line(character))
 
-    _extend_readiness_summary(lines, payload)
     _extend_warning_sections(lines, payload.get("warnings") or [])
+    _extend_debug_issue_summary(lines, payload)
     error = str(payload.get("error") or "")
     if error:
         lines.extend(["", f"Error: {error}"])
@@ -550,6 +563,7 @@ def format_gcsim_browser_batch_report(payload: dict[str, Any]) -> str:
         lines.extend(_batch_chamber_lines(chamber_payload))
     _extend_readiness_summary(lines, payload)
     _extend_warning_sections(lines, payload.get("warnings") or [])
+    _extend_debug_issue_summary(lines, payload)
     error = str(payload.get("error") or "")
     if error:
         lines.extend(["", f"Error: {error}"])
@@ -671,6 +685,7 @@ def _batch_chamber_lines(payload: dict[str, Any]) -> list[str]:
 def _extend_warning_sections(lines: list[str], warnings: Any) -> None:
     expected_notes, real_warnings = split_gcsim_browser_warnings(warnings)
     if expected_notes:
+        expected_notes = _cap_text_list(expected_notes)
         lines.extend(
             [
                 "",
@@ -679,6 +694,7 @@ def _extend_warning_sections(lines: list[str], warnings: Any) -> None:
             ]
         )
     if real_warnings:
+        real_warnings = _cap_text_list(real_warnings)
         lines.extend(
             [
                 "",
@@ -686,6 +702,26 @@ def _extend_warning_sections(lines: list[str], warnings: Any) -> None:
                 *[f"  - {warning}" for warning in real_warnings],
             ]
         )
+
+
+def _extend_debug_issue_summary(lines: list[str], payload: dict[str, Any]) -> None:
+    statuses = _issue_statuses(payload)
+    if not statuses:
+        return
+    first_codes = ", ".join(_cap_text_list(list(statuses), limit=8))
+    lines.extend(
+        [
+            "",
+            f"Debug issue count: {len(statuses)}",
+            f"Debug first issue codes: {first_codes}",
+        ]
+    )
+
+
+def _cap_text_list(values: list[str], *, limit: int = 8) -> list[str]:
+    if len(values) <= limit:
+        return values
+    return [*values[:limit], f"... +{len(values) - limit} more"]
 
 
 def _extend_readiness_summary(lines: list[str], payload: dict[str, Any]) -> None:

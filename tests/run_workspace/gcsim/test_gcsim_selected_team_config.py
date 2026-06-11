@@ -12,6 +12,7 @@ from run_workspace.gcsim.readiness_summary import (
 from run_workspace.gcsim.selected_team_config import (
     build_selected_team_full_config_report,
     build_selected_team_payload,
+    run_selected_team_dps_dummy_artifact,
 )
 from run_workspace.gcsim.settings import GcsimRunSettings
 from tests.run_workspace.gcsim.test_gcsim_account_prepared_config import (
@@ -115,6 +116,31 @@ class GcsimSelectedTeamConfigTest(unittest.TestCase):
         self.assertFalse(normal_report.source_notes["energy"]["enabled"])
         self.assertTrue(boosted_report.source_notes["energy"]["enabled"])
 
+    def test_dps_dummy_run_reports_energy_and_dummy_target_metadata(self) -> None:
+        with seeded_account_config_db() as db_path:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                shell_path = _write_shell(Path(temp_dir), active="furina")
+                report = build_selected_team_full_config_report(
+                    db_path=db_path,
+                    selected_team=_selected_team(10000089, "Furina"),
+                    team_index=0,
+                    rotation_shell_path=shell_path,
+                    run_dir=Path(temp_dir) / "run",
+                    artifact_set_registry_source=db_path.artifact_set_registry_source,
+                    run_settings=GcsimRunSettings(boosted_energy_enabled=True),
+                )
+                payload = run_selected_team_dps_dummy_artifact(
+                    report,
+                    run_dir=Path(temp_dir) / "dummy",
+                    artifact_run_func=_fake_artifact_run,
+                )
+
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["energy"]["mode"], "boosted")
+        self.assertEqual(payload["dummy_target"]["hp"], "999999999")
+        self.assertEqual(payload["dummy_target"]["resist"], "0.1")
+        self.assertEqual(payload["scenario_summary"]["dummy_target_hp"], "999999999")
+
     def test_readiness_summary_groups_missing_weapon(self) -> None:
         with seeded_account_config_db() as db_path:
             result = build_selected_team_payload(
@@ -161,6 +187,22 @@ def _write_shell(directory: Path, *, active: str) -> Path:
         encoding="utf-8",
     )
     return shell_path
+
+
+class _FakeArtifactRunResult:
+    success = True
+    status = "run_passed"
+
+    def to_dict(self) -> dict:
+        return {
+            "success": True,
+            "status": "run_passed",
+            "summary": {},
+        }
+
+
+def _fake_artifact_run(*args, **kwargs) -> _FakeArtifactRunResult:
+    return _FakeArtifactRunResult()
 
 
 if __name__ == "__main__":

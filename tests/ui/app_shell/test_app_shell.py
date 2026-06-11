@@ -79,6 +79,7 @@ from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_
 from run_workspace.right_panel_prototype_view_model import (
     FactDpsEnemyTooltipViewModel,
     FactDpsTooltipViewModel,
+    GcsimTooltipViewModel,
     RightPanelChamberRowViewModel,
     RightPanelGcsimChamberResult,
     RightPanelGcsimStatusViewModel,
@@ -656,6 +657,22 @@ class AppShellTest(unittest.TestCase):
                         ),
                         sim_team1="not run",
                         sim_team2="not run",
+                        sim_team1_tooltip=GcsimTooltipViewModel(
+                            title="GCSIM / F12 / C1 / Team side 1",
+                            status="passed",
+                            clear_time_seconds=51.5,
+                            dps_mean=148000,
+                            total_damage_mean=7666000,
+                            scenario_total_hp=4430000,
+                            target_mode="solo",
+                            period_start="2026-06-01",
+                            floor=12,
+                            config_path="C:/repo/config.txt",
+                            scenario_path="C:/repo/scenario.json",
+                            rotation_hash="abcdef123456",
+                            warnings=("runtime_warning",),
+                            issues=("gcsim_runtime_error",),
+                        ),
                         total_seconds=60,
                         timer_editable=True,
                     ),
@@ -705,6 +722,12 @@ class AppShellTest(unittest.TestCase):
             widget._chamber_table._row_labels[(0, 3)].objectName(),
             "FactDpsCell",
         )
+        sim_tooltip_controller = widget._chamber_table._gcsim_tooltips[(0, 5)]
+        sim_tooltip_text = sim_tooltip_controller.text()
+        self.assertIn("<b>GCSIM / F12 / C1 / Team side 1</b>", sim_tooltip_text)
+        self.assertIn("<b>Sim DPS mean</b>: 148000", sim_tooltip_text)
+        self.assertIn("<b>Config path</b>: C:/repo/config.txt", sim_tooltip_text)
+        self.assertIn("DPS correctness claim: false", sim_tooltip_text)
 
     def test_chamber_timer_cell_signal_updates_app_shell_model(self) -> None:
         shell = AppShell()
@@ -958,6 +981,34 @@ class AppShellTest(unittest.TestCase):
                     "abyss_fact_dps_multi_target_enabled"
                 )
             )
+
+    def test_account_page_persists_gcsim_boosted_energy_toggle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            settings_file = Path(tmp) / "settings.json"
+            page = AccountDataPage(settings_file=settings_file)
+            changes: list[bool] = []
+            page.gcsim_boosted_energy_changed.connect(changes.append)
+
+            self.assertFalse(page.gcsim_boosted_energy_switch.isChecked())
+
+            page.gcsim_boosted_energy_switch.setChecked(True)
+            self._app.processEvents()
+
+            self.assertEqual(changes, [True])
+            self.assertTrue(
+                read_app_settings(settings_file).get(
+                    "gcsim_boosted_energy_enabled"
+                )
+            )
+
+    def test_app_shell_gcsim_boosted_energy_change_clears_sim_results(self) -> None:
+        shell = AppShell()
+        shell.controller.gcsim_chamber_results = (_stored_gcsim_result(),)
+
+        shell.right_dock.account_page.gcsim_boosted_energy_changed.emit(True)
+
+        self.assertTrue(shell.controller.gcsim_boosted_energy_enabled)
+        self.assertEqual(shell.controller.gcsim_chamber_results, ())
 
     def test_account_data_refresh_can_reset_app_shell_runtime_team_state(self) -> None:
         shell = AppShell()

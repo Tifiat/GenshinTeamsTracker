@@ -32,6 +32,7 @@ from run_workspace.models import (
 from run_workspace.right_panel_prototype_view_model import (
     FactDpsEnemyTooltipViewModel,
     FactDpsTooltipViewModel,
+    GcsimTooltipViewModel,
     MODE_ABYSS,
     MODE_DPS_DUMMY,
     RightPanelBonusSourceDisplayItem,
@@ -1016,6 +1017,7 @@ class ChamberTableBlockWidget(QFrame):
         self._row_labels: dict[tuple[int, int], QLabel] = {}
         self._timer_cells: dict[tuple[int, int], ChamberTimerCellWidget] = {}
         self._fact_dps_tooltips: dict[tuple[int, int], object] = {}
+        self._gcsim_tooltips: dict[tuple[int, int], object] = {}
         self._total_label: QLabel | None = None
         self._status_label: QLabel | None = None
         self._gcsim_button: QPushButton | None = None
@@ -1067,6 +1069,7 @@ class ChamberTableBlockWidget(QFrame):
         self._row_labels = {}
         self._timer_cells = {}
         self._fact_dps_tooltips = {}
+        self._gcsim_tooltips = {}
 
         grid_container = QWidget()
         grid = QGridLayout(grid_container)
@@ -1106,6 +1109,11 @@ class ChamberTableBlockWidget(QFrame):
                 elif column in (3, 4):
                     label.setObjectName("FactDpsCell")
                     self._fact_dps_tooltips[(model_row_index, column)] = (
+                        install_custom_tooltip(label, "")
+                    )
+                elif column in (5, 6):
+                    label.setObjectName("TableCell")
+                    self._gcsim_tooltips[(model_row_index, column)] = (
                         install_custom_tooltip(label, "")
                     )
                 else:
@@ -1220,6 +1228,22 @@ class ChamberTableBlockWidget(QFrame):
                                 label,
                                 self._fact_dps_tooltips.get((row_index, column)),
                                 _fact_dps_tooltip_html(row.factual_team2_tooltip),
+                            )
+                        )
+                    elif column == 5:
+                        self._gcsim_tooltips[(row_index, column)] = (
+                            _set_custom_tooltip_text(
+                                label,
+                                self._gcsim_tooltips.get((row_index, column)),
+                                _gcsim_tooltip_html(row.sim_team1_tooltip),
+                            )
+                        )
+                    elif column == 6:
+                        self._gcsim_tooltips[(row_index, column)] = (
+                            _set_custom_tooltip_text(
+                                label,
+                                self._gcsim_tooltips.get((row_index, column)),
+                                _gcsim_tooltip_html(row.sim_team2_tooltip),
                             )
                         )
         if self._total_label is not None:
@@ -1367,6 +1391,85 @@ def _fact_dps_tooltip_html(tooltip: FactDpsTooltipViewModel | None) -> str:
 
     parts.append("</qt>")
     return "".join(parts)
+
+
+def _gcsim_tooltip_html(tooltip: GcsimTooltipViewModel | None) -> str:
+    if tooltip is None:
+        return ""
+
+    parts = [
+        "<qt>",
+        f"<b>{html.escape(tooltip.title)}</b><br>",
+        _gcsim_tooltip_line("Status", tooltip.status),
+        _gcsim_tooltip_line(
+            "Sim clear time",
+            _format_optional_number(tooltip.clear_time_seconds, suffix="s"),
+        ),
+        _gcsim_tooltip_line("Sim DPS mean", _format_optional_number(tooltip.dps_mean)),
+        _gcsim_tooltip_line(
+            "Total damage mean",
+            _format_optional_number(tooltip.total_damage_mean),
+        ),
+        _gcsim_tooltip_line(
+            "Scenario total HP",
+            _format_optional_number(tooltip.scenario_total_hp),
+        ),
+        _gcsim_tooltip_line("Target mode", tooltip.target_mode),
+        _gcsim_tooltip_line("Period start", tooltip.period_start),
+        _gcsim_tooltip_line("Floor", str(tooltip.floor or "")),
+        _gcsim_tooltip_line("Config path", tooltip.config_path),
+        _gcsim_tooltip_line("Scenario path", tooltip.scenario_path),
+        _gcsim_tooltip_line("Rotation hash", tooltip.rotation_hash),
+    ]
+    if tooltip.stale_reasons:
+        parts.append("<br><b>Stale reasons</b><br>")
+        parts.extend(
+            f"- {html.escape(reason)}<br>"
+            for reason in _capped_tooltip_items(tooltip.stale_reasons)
+        )
+    if tooltip.warnings:
+        parts.append("<br><b>Warnings</b><br>")
+        parts.extend(
+            f"- {html.escape(warning)}<br>"
+            for warning in _capped_tooltip_items(tooltip.warnings)
+        )
+    if tooltip.issues:
+        parts.append("<br><b>Issues</b><br>")
+        parts.extend(
+            f"- {html.escape(issue)}<br>"
+            for issue in _capped_tooltip_items(tooltip.issues)
+        )
+    if tooltip.notes:
+        parts.append("<br><b>Notes</b><br>")
+        parts.extend(
+            f"- {html.escape(note)}<br>"
+            for note in _capped_tooltip_items(tooltip.notes)
+        )
+    parts.append("</qt>")
+    return "".join(parts)
+
+
+def _gcsim_tooltip_line(label: str, value: str) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    return f"<b>{html.escape(label)}</b>: {html.escape(text)}<br>"
+
+
+def _format_optional_number(value: object, *, suffix: str = "") -> str:
+    if value in (None, ""):
+        return ""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    return f"{number:g}{suffix}"
+
+
+def _capped_tooltip_items(values: tuple[str, ...], *, limit: int = 6) -> tuple[str, ...]:
+    if len(values) <= limit:
+        return values
+    return (*values[:limit], f"... +{len(values) - limit} more")
 
 
 def _fact_dps_match_confidence_text(tooltip: FactDpsTooltipViewModel) -> str:

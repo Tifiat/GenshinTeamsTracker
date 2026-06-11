@@ -188,6 +188,42 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         self.assertNotIn("Real warnings/issues:", text)
         self.assertNotIn("\nWarnings:", text)
 
+    def test_formats_blocked_run_with_readiness_summary_not_raw_issue_wall(self) -> None:
+        payload = {
+            "ready": False,
+            "status": "not_ready",
+            "error_category": ERROR_PREPARE_NOT_READY,
+            "selection": {
+                "team_label": "Team 1",
+                "side": 1,
+                "chamber": 1,
+                "period_start": "2026-06-01",
+                "floor": 12,
+            },
+            "issues": [
+                {
+                    "status": "weapon_missing",
+                    "field": "account_character_equipped_weapons",
+                    "message": "Selected team slot has no current/equipped weapon.",
+                }
+            ],
+            "readiness_summary": {
+                "blocked": True,
+                "groups": {
+                    "missing_weapons": [
+                        "Chasca: Selected team slot has no current/equipped weapon."
+                    ]
+                },
+            },
+        }
+
+        text = format_gcsim_browser_run_report(payload)
+
+        self.assertIn("Readiness summary:", text)
+        self.assertIn("Missing weapons:", text)
+        self.assertIn("Debug issue count: 1", text)
+        self.assertNotIn("{'status': 'weapon_missing'", text)
+
     def test_missing_abyss_source_identity_does_not_use_backend_default(self) -> None:
         payload = run_gcsim_browser_selected_chamber(
             GcsimBrowserRunRequest(
@@ -244,6 +280,12 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
             "selection": {"team_label": "Team 1"},
             "dps_dummy_run": {
                 "status": "run_passed",
+                "energy": {"mode": "boosted"},
+                "dummy_target": {
+                    "hp": "999999999",
+                    "resist": "0.1",
+                    "source": "rotation_shell/config",
+                },
                 "run_result": {
                     "artifact_preflight_status": "ready",
                     "summary": {
@@ -259,6 +301,9 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         self.assertIn("Run DPS Dummy", text)
         self.assertIn("Abyss source: not used", text)
         self.assertIn("History persistence: disabled", text)
+        self.assertIn("Energy mode: boosted", text)
+        self.assertIn("Dummy target HP: 999999999", text)
+        self.assertIn("Dummy target resist: 0.1", text)
         self.assertIn("DPS mean: 12345", text)
 
     def test_formats_batch_report(self) -> None:

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 import sqlite3
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 from localization import tr, tr_for_language
 
@@ -335,6 +335,8 @@ class RightPanelChamberRowViewModel:
     timer_editable: bool = False
     factual_team1_tooltip: "FactDpsTooltipViewModel | None" = None
     factual_team2_tooltip: "FactDpsTooltipViewModel | None" = None
+    sim_team1_tooltip: "GcsimTooltipViewModel | None" = None
+    sim_team2_tooltip: "GcsimTooltipViewModel | None" = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -355,6 +357,12 @@ class RightPanelChamberRowViewModel:
             "factual_team2_tooltip": None
             if self.factual_team2_tooltip is None
             else self.factual_team2_tooltip.to_dict(),
+            "sim_team1_tooltip": None
+            if self.sim_team1_tooltip is None
+            else self.sim_team1_tooltip.to_dict(),
+            "sim_team2_tooltip": None
+            if self.sim_team2_tooltip is None
+            else self.sim_team2_tooltip.to_dict(),
         }
 
 
@@ -405,6 +413,49 @@ class RightPanelGcsimChamberResult:
             "target_mode": self.target_mode,
             "rotation_hash": self.rotation_hash,
             "stale": self.stale,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class GcsimTooltipViewModel:
+    title: str
+    status: str
+    clear_time_seconds: float | None = None
+    dps_mean: float | None = None
+    total_damage_mean: float | None = None
+    scenario_total_hp: float | None = None
+    target_mode: str = ""
+    period_start: str = ""
+    floor: int = 0
+    config_path: str = ""
+    scenario_path: str = ""
+    rotation_hash: str = ""
+    warnings: tuple[str, ...] = ()
+    issues: tuple[str, ...] = ()
+    stale_reasons: tuple[str, ...] = ()
+    notes: tuple[str, ...] = (
+        "DPS correctness claim: false",
+        "History persistence: disabled",
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "title": self.title,
+            "status": self.status,
+            "clear_time_seconds": self.clear_time_seconds,
+            "dps_mean": self.dps_mean,
+            "total_damage_mean": self.total_damage_mean,
+            "scenario_total_hp": self.scenario_total_hp,
+            "target_mode": self.target_mode,
+            "period_start": self.period_start,
+            "floor": self.floor,
+            "config_path": self.config_path,
+            "scenario_path": self.scenario_path,
+            "rotation_hash": self.rotation_hash,
+            "warnings": list(self.warnings),
+            "issues": list(self.issues),
+            "stale_reasons": list(self.stale_reasons),
+            "notes": list(self.notes),
         }
 
 
@@ -1645,14 +1696,16 @@ def _abyss_chamber_row(
         if abyss_source_data is not None
         else 0
     )
+    team1_gcsim_result = _gcsim_result_for_side(gcsim_results, chamber_index, 1)
+    team2_gcsim_result = _gcsim_result_for_side(gcsim_results, chamber_index, 2)
     team1_sim = _format_gcsim_sim_cell(
-        _gcsim_result_for_side(gcsim_results, chamber_index, 1),
+        team1_gcsim_result,
         period_start=period_start,
         floor=floor,
         target_mode=target_mode,
     )
     team2_sim = _format_gcsim_sim_cell(
-        _gcsim_result_for_side(gcsim_results, chamber_index, 2),
+        team2_gcsim_result,
         period_start=period_start,
         floor=floor,
         target_mode=target_mode,
@@ -1685,6 +1738,22 @@ def _abyss_chamber_row(
         ),
         sim_team1=team1_sim,
         sim_team2=team2_sim,
+        sim_team1_tooltip=_build_gcsim_tooltip(
+            result=team1_gcsim_result,
+            chamber_index=chamber_index,
+            side=1,
+            period_start=period_start,
+            floor=floor,
+            target_mode=target_mode,
+        ),
+        sim_team2_tooltip=_build_gcsim_tooltip(
+            result=team2_gcsim_result,
+            chamber_index=chamber_index,
+            side=2,
+            period_start=period_start,
+            floor=floor,
+            target_mode=target_mode,
+        ),
         total_seconds=result.total_elapsed_seconds,
         timer_editable=True,
     )
@@ -1767,6 +1836,90 @@ def _gcsim_result_is_stale(
         or int(result.floor) != int(floor)
         or result.target_mode != target_mode
     )
+
+
+def _build_gcsim_tooltip(
+    *,
+    result: RightPanelGcsimChamberResult | None,
+    chamber_index: int,
+    side: int,
+    period_start: str,
+    floor: int,
+    target_mode: str,
+) -> GcsimTooltipViewModel:
+    title = f"GCSIM / F{int(floor) if floor else '-'} / C{int(chamber_index)} / Team side {int(side)}"
+    if result is None:
+        return GcsimTooltipViewModel(
+            title=title,
+            status="not run",
+            target_mode=target_mode,
+            period_start=period_start,
+            floor=int(floor or 0),
+        )
+
+    stale_reasons = _gcsim_stale_reasons(
+        result,
+        period_start=period_start,
+        floor=floor,
+        target_mode=target_mode,
+    )
+    status = "stale" if stale_reasons else "passed" if result.passed else "failed"
+    return GcsimTooltipViewModel(
+        title=title,
+        status=status,
+        clear_time_seconds=result.clear_time_seconds,
+        dps_mean=result.dps_mean,
+        total_damage_mean=result.total_damage_mean,
+        scenario_total_hp=result.scenario_total_hp,
+        target_mode=result.target_mode or target_mode,
+        period_start=result.period_start or period_start,
+        floor=int(result.floor or floor or 0),
+        config_path=result.config_path,
+        scenario_path=result.scenario_path,
+        rotation_hash=_short_rotation_hash(result.rotation_hash),
+        warnings=tuple(_capped_strings(result.warnings)),
+        issues=tuple(_capped_strings((*result.issues, result.error_category))),
+        stale_reasons=tuple(stale_reasons),
+    )
+
+
+def _gcsim_stale_reasons(
+    result: RightPanelGcsimChamberResult,
+    *,
+    period_start: str,
+    floor: int,
+    target_mode: str,
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    if result.stale:
+        reasons.append("Result was explicitly marked stale.")
+    if result.mode != MODE_ABYSS:
+        reasons.append(f"Mode changed: result={result.mode or '-'} current={MODE_ABYSS}.")
+    if result.period_start != period_start:
+        reasons.append(
+            f"Period changed: result={result.period_start or '-'} current={period_start or '-'}."
+        )
+    if int(result.floor) != int(floor):
+        reasons.append(f"Floor changed: result={int(result.floor)} current={int(floor)}.")
+    if result.target_mode != target_mode:
+        reasons.append(
+            f"Target mode changed: result={result.target_mode or '-'} current={target_mode or '-'}."
+        )
+    return tuple(reasons)
+
+
+def _short_rotation_hash(value: str) -> str:
+    text = _text(value)
+    if len(text) <= 12:
+        return text
+    return text[:12]
+
+
+def _capped_strings(values: Iterable[Any], *, limit: int = 6) -> tuple[str, ...]:
+    texts = [_text(value) for value in values if _text(value)]
+    if len(texts) <= limit:
+        return tuple(texts)
+    return (*texts[:limit], f"... +{len(texts) - limit} more")
 
 
 def _format_compact_seconds(value: float) -> str:

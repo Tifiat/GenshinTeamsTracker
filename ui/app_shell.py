@@ -105,6 +105,7 @@ from ui.gcsim_browser.run_worker import (
     format_gcsim_browser_dps_dummy_report,
     format_gcsim_browser_run_report,
     right_panel_gcsim_results_from_browser_batch_payload,
+    split_gcsim_browser_warnings,
 )
 from ui.right_panel_prototype import (
     RIGHT_PANEL_PROTOTYPE_MIN_WIDTH,
@@ -1356,6 +1357,9 @@ class AppShell(QWidget):
         self.right_dock.account_page.fact_dps_multi_target_changed.connect(
             self._on_fact_dps_multi_target_changed
         )
+        self.right_dock.account_page.gcsim_boosted_energy_changed.connect(
+            self._on_gcsim_boosted_energy_changed
+        )
         self.left_host.gcsim_browser_workspace.prepare_requested.connect(
             self._on_gcsim_prepare_requested
         )
@@ -1956,6 +1960,11 @@ class AppShell(QWidget):
         self.controller.set_abyss_fact_dps_multi_target_enabled(enabled)
         self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
 
+    def _on_gcsim_boosted_energy_changed(self, enabled: bool) -> None:
+        self.controller.gcsim_boosted_energy_enabled = bool(enabled)
+        self.controller.clear_gcsim_results()
+        self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+
     def _on_gcsim_rotation_text_changed(self) -> None:
         if self.controller.gcsim_chamber_results:
             self.controller.clear_gcsim_results()
@@ -2451,9 +2460,14 @@ def _gcsim_prepare_report_text(payload: dict[str, Any]) -> str:
         f"Ready: {payload.get('ready', False)}",
         f"Config path: {payload.get('config_path') or '-'}",
         "GCSIM run: not started",
-        "",
-        "Characters:",
     ]
+    summary_text = format_gcsim_readiness_summary(
+        build_gcsim_readiness_summary(payload)
+    )
+    if summary_text:
+        lines.extend(["", summary_text])
+
+    lines.extend(["", "Characters:"])
     team = _mapping(payload.get("team"))
     for character in team.get("characters") or []:
         row = _mapping(character)
@@ -2473,18 +2487,55 @@ def _gcsim_prepare_report_text(payload: dict[str, Any]) -> str:
             f"({row.get('weapon_selection_method') or '-'}) | "
             f"sets={', '.join(sets) if sets else '-'}"
         )
-    summary_text = format_gcsim_readiness_summary(
-        build_gcsim_readiness_summary(payload)
-    )
-    if summary_text:
-        lines.extend(["", summary_text])
     warnings = payload.get("warnings") or []
     if warnings:
-        lines.extend(["", "Warnings:", *[f"  - {warning}" for warning in warnings]])
-    issues = payload.get("issues") or []
-    if issues:
-        lines.extend(["", "Issues:", *[f"  - {issue}" for issue in issues]])
+        expected_notes, real_warnings = split_gcsim_browser_warnings(warnings)
+        if expected_notes:
+            lines.extend(
+                [
+                    "",
+                    "Expected/dev notes:",
+                    *[f"  - {warning}" for warning in _cap_text_list(expected_notes)],
+                ]
+            )
+        if real_warnings:
+            lines.extend(
+                [
+                    "",
+                    "Real warnings/issues:",
+                    *[f"  - {warning}" for warning in _cap_text_list(real_warnings)],
+                ]
+            )
+    issue_codes = _gcsim_issue_codes(payload)
+    if issue_codes:
+        lines.extend(
+            [
+                "",
+                f"Debug issue count: {len(issue_codes)}",
+                "Debug first issue codes: "
+                + ", ".join(_cap_text_list(list(issue_codes), limit=8)),
+            ]
+        )
     return "\n".join(lines)
+
+
+def _gcsim_issue_codes(payload: dict[str, Any]) -> tuple[str, ...]:
+    codes: list[str] = []
+    for source in (
+        payload,
+        _mapping(payload.get("full_config")),
+        _mapping(payload.get("assembly")),
+    ):
+        for issue in source.get("issues") or []:
+            if isinstance(issue, dict) and issue.get("status"):
+                codes.append(str(issue["status"]))
+    return tuple(codes)
+
+
+def _cap_text_list(values: list[str], *, limit: int = 8) -> list[str]:
+    if len(values) <= limit:
+        return values
+    return [*values[:limit], f"... +{len(values) - limit} more"]
 
 
 def _selected_team_has_characters(selected_team: dict[str, Any]) -> bool:

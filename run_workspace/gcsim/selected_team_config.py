@@ -13,6 +13,7 @@ from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+import re
 import sqlite3
 from typing import Any
 
@@ -82,6 +83,9 @@ WARNING_SLOT_DB_CURRENT_EQUIPMENT_USED = "slot_db_current_equipment_used"
 WARNING_GCSIM_DUMMY_TARGET_FROM_ROTATION_SHELL = (
     "gcsim_dummy_target_from_rotation_shell"
 )
+
+_TARGET_HP_RE = re.compile(r"\bhp\s*=\s*([0-9.]+)", re.IGNORECASE)
+_TARGET_RESIST_RE = re.compile(r"\bresist\s*=\s*([0-9.+-]+)", re.IGNORECASE)
 
 
 ArtifactRunFunc = Any
@@ -472,19 +476,43 @@ def run_selected_team_dps_dummy_artifact(
         run_dir=actual_run_dir,
         timeout_seconds=timeout_seconds,
     )
+    dummy_target = _dummy_target_metadata(report)
     payload = {
         "success": bool(run_result.success),
         "status": "run_passed" if run_result.success else run_result.status,
         "run_result": run_result.to_dict(),
         "target_mode": "dps_dummy",
+        "energy": dict(report.source_notes.get("energy") or {}),
+        "dummy_target": dummy_target,
         "scenario_summary": {
             "mode": "dps_dummy",
             "target_source": "rotation_shell",
+            "dummy_target_hp": dummy_target.get("hp"),
+            "dummy_target_resist": dummy_target.get("resist"),
             "dps_correctness_claim": False,
         },
         "warnings": [WARNING_GCSIM_DUMMY_TARGET_FROM_ROTATION_SHELL],
     }
     return payload
+
+
+def _dummy_target_metadata(report: SelectedTeamFullConfigReport) -> dict[str, Any]:
+    target_lines: tuple[str, ...] = ()
+    shell_audit = report.assembly.shell_audit
+    if shell_audit is not None:
+        target_lines = shell_audit.target_placeholder_lines
+    line = target_lines[0] if target_lines else ""
+    return {
+        "source": "rotation_shell/config" if line else "unknown",
+        "line": line,
+        "hp": _regex_group(_TARGET_HP_RE, line),
+        "resist": _regex_group(_TARGET_RESIST_RE, line),
+    }
+
+
+def _regex_group(pattern: re.Pattern[str], text: str) -> str:
+    match = pattern.search(text)
+    return match.group(1) if match else ""
 
 
 def report_with_smoke(

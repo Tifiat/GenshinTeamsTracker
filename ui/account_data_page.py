@@ -37,6 +37,10 @@ from run_workspace.abyss.fact_dps_settings import (
     is_abyss_fact_dps_multi_target_enabled,
     set_abyss_fact_dps_multi_target_enabled,
 )
+from run_workspace.gcsim.settings import (
+    is_gcsim_boosted_energy_enabled,
+    set_gcsim_boosted_energy_enabled,
+)
 from ui.utils.toggle_switch import ToggleSwitch
 from ui.widgets.loader import HoYoLABLoadingDialog
 from ui.widgets.overlays.login_hint import HoYoLABLoginHintOverlay
@@ -85,6 +89,7 @@ class AccountDataPage(QWidget):
     account_data_changed = Signal(bool)
     language_changed = Signal()
     fact_dps_multi_target_changed = Signal(bool)
+    gcsim_boosted_energy_changed = Signal(bool)
 
     def __init__(
         self,
@@ -208,6 +213,46 @@ class AccountDataPage(QWidget):
         dps_toggle_row.addWidget(self.fact_dps_multi_target_switch)
         dps_layout.addLayout(dps_toggle_row)
         root.addWidget(dps_frame)
+
+        gcsim_frame = QFrame()
+        gcsim_frame.setObjectName("InfoBlock")
+        gcsim_layout = QVBoxLayout(gcsim_frame)
+        gcsim_layout.setContentsMargins(8, 8, 8, 8)
+        gcsim_layout.setSpacing(8)
+
+        self.gcsim_label = QLabel(tr("settings.gcsim.title"))
+        self.gcsim_label.setObjectName("SectionTitle")
+        gcsim_layout.addWidget(self.gcsim_label)
+
+        gcsim_toggle_row = QHBoxLayout()
+        gcsim_toggle_row.setContentsMargins(0, 0, 0, 0)
+        gcsim_toggle_row.setSpacing(8)
+        gcsim_text_col = QVBoxLayout()
+        gcsim_text_col.setContentsMargins(0, 0, 0, 0)
+        gcsim_text_col.setSpacing(2)
+        self.gcsim_boosted_energy_label = QLabel(
+            tr("settings.gcsim.boosted_energy")
+        )
+        self.gcsim_boosted_energy_description = QLabel(
+            tr("settings.gcsim.boosted_energy.description")
+        )
+        self.gcsim_boosted_energy_description.setWordWrap(True)
+        gcsim_text_col.addWidget(self.gcsim_boosted_energy_label)
+        gcsim_text_col.addWidget(self.gcsim_boosted_energy_description)
+        self.gcsim_boosted_energy_switch = ToggleSwitch()
+        self.gcsim_boosted_energy_switch.setChecked(
+            is_gcsim_boosted_energy_enabled(settings_file=self._settings_file)
+        )
+        self.gcsim_boosted_energy_switch.toggled.connect(
+            self.on_gcsim_boosted_energy_changed
+        )
+        gcsim_toggle_row.addLayout(gcsim_text_col, 1)
+        gcsim_toggle_row.addWidget(self.gcsim_boosted_energy_switch)
+        gcsim_layout.addLayout(gcsim_toggle_row)
+        tooltip = tr("settings.gcsim.boosted_energy.description")
+        self.gcsim_boosted_energy_label.setToolTip(tooltip)
+        self.gcsim_boosted_energy_switch.setToolTip(tooltip)
+        root.addWidget(gcsim_frame)
         root.addStretch(1)
 
     def _dialog_parent(self) -> QWidget:
@@ -627,6 +672,13 @@ class AccountDataPage(QWidget):
         )
         self.fact_dps_multi_target_changed.emit(bool(enabled))
 
+    def on_gcsim_boosted_energy_changed(self, enabled: bool) -> None:
+        set_gcsim_boosted_energy_enabled(
+            bool(enabled),
+            settings_file=self._settings_file,
+        )
+        self.gcsim_boosted_energy_changed.emit(bool(enabled))
+
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.account.title"))
         self.hoyolab_label.setText(tr("common.hoyolab"))
@@ -639,6 +691,16 @@ class AccountDataPage(QWidget):
         self.fact_dps_multi_target_label.setText(
             tr("settings.dps.multi_target_hp")
         )
+        self.gcsim_label.setText(tr("settings.gcsim.title"))
+        self.gcsim_boosted_energy_label.setText(
+            tr("settings.gcsim.boosted_energy")
+        )
+        self.gcsim_boosted_energy_description.setText(
+            tr("settings.gcsim.boosted_energy.description")
+        )
+        tooltip = tr("settings.gcsim.boosted_energy.description")
+        self.gcsim_boosted_energy_label.setToolTip(tooltip)
+        self.gcsim_boosted_energy_switch.setToolTip(tooltip)
         self._sync_language_combo()
         if self._hoyolab_loader is not None:
             self._hoyolab_loader.retranslate_ui()

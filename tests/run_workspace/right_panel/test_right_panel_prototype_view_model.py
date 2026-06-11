@@ -416,12 +416,33 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
                     floor=12,
                     clear_time_seconds=51.5,
                     dps_mean=148000,
+                    total_damage_mean=7666000,
+                    scenario_total_hp=4430000,
+                    config_path="C:/repo/config.txt",
+                    scenario_path="C:/repo/scenario.json",
+                    rotation_hash="abcdef1234567890",
                 ),
             ),
         )
 
         self.assertEqual(rows[0].sim_team1, "52s / 148k")
         self.assertEqual(rows[0].sim_team2, "not run")
+        tooltip = rows[0].sim_team1_tooltip
+        self.assertIsNotNone(tooltip)
+        assert tooltip is not None
+        self.assertEqual(tooltip.status, "passed")
+        self.assertEqual(tooltip.title, "GCSIM / F12 / C1 / Team side 1")
+        self.assertEqual(tooltip.dps_mean, 148000)
+        self.assertEqual(tooltip.total_damage_mean, 7666000)
+        self.assertEqual(tooltip.scenario_total_hp, 4430000)
+        self.assertEqual(tooltip.config_path, "C:/repo/config.txt")
+        self.assertEqual(tooltip.scenario_path, "C:/repo/scenario.json")
+        self.assertEqual(tooltip.rotation_hash, "abcdef123456")
+        self.assertIn("DPS correctness claim: false", tooltip.notes)
+        self.assertIn("History persistence: disabled", tooltip.notes)
+        self.assertIsNotNone(rows[0].sim_team2_tooltip)
+        assert rows[0].sim_team2_tooltip is not None
+        self.assertEqual(rows[0].sim_team2_tooltip.status, "not run")
 
     def test_abyss_chamber_rows_show_team2_gcsim_result_only_in_team2_sim_cell(self) -> None:
         source_data = _simple_source_data()
@@ -468,6 +489,11 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
 
         self.assertEqual(rows[0].sim_team1, "failed")
         self.assertEqual(rows[0].sim_team2, "not run")
+        tooltip = rows[0].sim_team1_tooltip
+        self.assertIsNotNone(tooltip)
+        assert tooltip is not None
+        self.assertEqual(tooltip.status, "failed")
+        self.assertIn("gcsim_runtime_error", tooltip.issues)
 
     def test_abyss_chamber_rows_show_stale_gcsim_result_on_target_mode_mismatch(self) -> None:
         source_data = _simple_source_data()
@@ -492,6 +518,13 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
 
         self.assertEqual(rows[0].sim_team1, "stale")
         self.assertEqual(rows[0].sim_team2, "not run")
+        tooltip = rows[0].sim_team1_tooltip
+        self.assertIsNotNone(tooltip)
+        assert tooltip is not None
+        self.assertEqual(tooltip.status, "stale")
+        self.assertTrue(
+            any("Target mode changed" in reason for reason in tooltip.stale_reasons)
+        )
 
     def test_abyss_chamber_rows_can_use_multi_target_hp_mode(self) -> None:
         source_data = load_abyss_floor12_source_data(
@@ -1441,7 +1474,12 @@ def _gcsim_result(
     error_category: str = "",
     clear_time_seconds: float | None = None,
     dps_mean: float | None = None,
+    total_damage_mean: float | None = None,
+    scenario_total_hp: float | None = None,
     target_mode: str = FACT_DPS_HP_MODE_SOLO,
+    config_path: str = "",
+    scenario_path: str = "",
+    rotation_hash: str = "",
 ) -> RightPanelGcsimChamberResult:
     return RightPanelGcsimChamberResult(
         chamber=chamber,
@@ -1451,9 +1489,14 @@ def _gcsim_result(
         error_category=error_category,
         clear_time_seconds=clear_time_seconds,
         dps_mean=dps_mean,
+        total_damage_mean=total_damage_mean,
+        scenario_total_hp=scenario_total_hp,
+        config_path=config_path,
+        scenario_path=scenario_path,
         period_start=period_start,
         floor=floor,
         target_mode=target_mode,
+        rotation_hash=rotation_hash,
     )
 
 

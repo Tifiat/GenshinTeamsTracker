@@ -375,7 +375,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 11. GCSIM Integration
 
-- GCSIM is now partially implemented as backend/dev infrastructure and an AppShell Browser MVP path. It is no longer only a later idea, but production packaging, mapping coverage, saved-result persistence/history policy, and final UI polish remain future work.
+- GCSIM now has backend/dev infrastructure plus an AppShell Browser backend-MVP product path for selected runtime teams. It is usable for current Browser prepare/run diagnostics and runtime right-panel Sim DPS rows, but production packaging, mapping coverage, saved-result persistence/history policy, no-code rotations, and final UI polish remain future work.
 - Read before GCSIM work:
   - `docs/handoff/GCSIM.md` for upstream research and CLI/result behavior;
   - `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md` for the current GTT engine lifecycle, patch stack, Browser MVP, cleanup/retention policy, and production-readiness sequence;
@@ -383,19 +383,20 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Implemented enough to rely on:
   - transactional local engine-store/update prototype with source acquisition, ordered patch backends, runtime probe/build-artifact checks, and active/rollback metadata;
   - patch stack and `-gtt-info` capability validation owned by the dedicated GCSIM handoff rather than this root TODO;
-  - active-artifact runner plus backend/dev config readiness, key mapping reports, account-prepared config bridge, selected-runtime-team config adapter, and Abyss wave scenario bridge;
+  - active-artifact runner plus backend/dev config readiness, key mapping reports, account-prepared config bridge, selected-runtime-team config adapter, and Abyss wave scenario bridge; `account_prepared_config.py` remains a dev/smoke bridge, not the Browser product team source;
   - AppShell GCSIM Browser workspace prepares/runs from the current selected TeamBuilder/AppShell team state, not localized-name `team_names`; missing characters/weapons/artifact sets/artifacts/talents/levels/refinement/rotation errors produce grouped readiness summaries;
-  - Abyss Browser runs still require the current cached Abyss source identity and never fall back to backend smoke defaults; DPS Dummy has a minimal backend run path that uses the selected team and manual rotation shell without Abyss identity, history persistence, or no-code rotation support;
+  - Abyss Browser selected-chamber and `Run 3 chambers` actions require the current cached Abyss source identity and never fall back to backend smoke defaults; both write runtime-only right-panel Sim DPS rows for matching team/chamber/side when a run result exists;
+  - DPS Dummy has a diagnostic backend run path that uses the selected team and manual rotation shell without Abyss identity, history persistence, no-code rotation support, or damage-correctness claims;
   - GCSIM boosted/infinite energy is an explicit Account/GCSIM setting (`gcsim_boosted_energy_enabled`) that injects/replaces `energy every interval=480,720 amount=100;` only when enabled and clears stale runtime Sim DPS results when changed; dev CLI energy override remains in `account_prepared_config.py`;
-  - AppShell GCSIM Browser can surface compact right-panel Sim DPS results for successful Abyss batch runs; Sim DPS cells have runtime-only tooltips with status, source/config paths, target mode, stale reasons, warnings/issues, and explicit no-DPS-correctness/no-history notes; Browser runtime results are not saved history;
-  - normal GCSIM Browser blocked-run output is compact/readiness-first with debug issue counts/codes instead of raw issue dict walls; `Prepare config` remains a temporary debug action;
-  - DPS Dummy reports energy mode and dummy target HP/resist/source for diagnostics, but damage correctness remains unclaimed;
+  - Sim DPS cells have runtime-only tooltips with status, clear time, DPS, average total damage per sim run, source/config paths, target mode, stale reasons, warnings/issues, and explicit no-DPS-correctness/no-history notes; Browser runtime results are not saved history;
+  - normal GCSIM Browser blocked-run output is compact/readiness-first with debug issue counts/codes instead of raw issue dict walls; `Debug: prepare config` remains a temporary debug action;
+  - DPS Dummy reports energy mode and dummy target HP/resist/source for diagnostics;
   - generated GCSIM engines are retention-pruned to active + one previous successful + one latest failed; `.go/build-cache` is rebuildable and cleaned after successful probe/build unless explicitly kept; `.go/pkg/mod` remains as the small module cache; manual cleanup dry-run command is `python -m run_workspace.gcsim.cleanup`.
 - Real next work:
   - create/curate production project-id-to-GCSIM mappings for characters, weapons, artifact sets, and enemy type overrides where automatic registry matching is insufficient;
   - decide production packaging/shipped fallback artifact policy and release validation for `gtt-gcsim.exe`;
   - connect GCSIM results to typed run/session state and immutable saved snapshots/history instead of treating Browser runs as durable results;
-  - finish production mapping coverage, user-facing readiness/error polish, rotation editing policy, run retention/debug keep-artifacts controls, cancellation/progress, and final AppShell integration polish.
+  - finish production mapping coverage, user-facing readiness/error polish, no-code rotation editing policy, run retention/debug keep-artifacts controls, cancellation/progress, and final AppShell/GCSIM UI polish.
 
 ## 12. KQM / Standard Builds Research
 

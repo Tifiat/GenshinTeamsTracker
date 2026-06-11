@@ -104,6 +104,7 @@ from ui.gcsim_browser.run_worker import (
     format_gcsim_browser_batch_report,
     format_gcsim_browser_dps_dummy_report,
     format_gcsim_browser_run_report,
+    right_panel_gcsim_result_from_browser_selected_payload,
     right_panel_gcsim_results_from_browser_batch_payload,
     split_gcsim_browser_warnings,
 )
@@ -405,6 +406,27 @@ class AppShellController:
             if int(result.team_index) != normalized_team_index
         )
 
+    def clear_gcsim_chamber_result(
+        self,
+        *,
+        team_index: int,
+        chamber: int,
+        side: int,
+    ) -> None:
+        normalized_team_index = int(team_index)
+        normalized_chamber = int(chamber)
+        normalized_side = int(side)
+        self.gcsim_chamber_results = tuple(
+            result
+            for result in self.gcsim_chamber_results
+            if not _same_gcsim_result_slot(
+                result,
+                team_index=normalized_team_index,
+                chamber=normalized_chamber,
+                side=normalized_side,
+            )
+        )
+
     def store_gcsim_browser_batch_payload(
         self,
         payload: dict[str, Any],
@@ -428,6 +450,38 @@ class AppShellController:
             if int(result.team_index) != team_index
         )
         self.gcsim_chamber_results = (*retained, *results)
+        return True
+
+    def store_gcsim_browser_selected_payload(
+        self,
+        payload: dict[str, Any],
+        *,
+        rotation_shell_text: str,
+    ) -> bool:
+        result = right_panel_gcsim_result_from_browser_selected_payload(
+            payload,
+            rotation_hash=_gcsim_rotation_hash(rotation_shell_text),
+            target_mode=self.gcsim_target_mode(),
+        )
+        if result is None:
+            return False
+        retained = []
+        for existing in self.gcsim_chamber_results:
+            if _same_gcsim_result_slot(
+                existing,
+                team_index=result.team_index,
+                chamber=result.chamber,
+                side=result.side,
+            ):
+                continue
+            if (
+                int(existing.team_index) == int(result.team_index)
+                and int(existing.side) == int(result.side)
+                and not _compatible_gcsim_chamber_result(existing, result)
+            ):
+                continue
+            retained.append(existing)
+        self.gcsim_chamber_results = (*retained, result)
         return True
 
     def _gcsim_status_view_model(self) -> RightPanelGcsimStatusViewModel:
@@ -1789,6 +1843,13 @@ class AppShell(QWidget):
         thread.finished.connect(self._clear_gcsim_run_worker_refs)
         self._gcsim_browser_run_worker = worker
         self._gcsim_browser_run_thread = thread
+        self._gcsim_browser_run_rotation_text = rotation_shell_text
+        self.controller.clear_gcsim_chamber_result(
+            team_index=normalized_team_index,
+            chamber=request.chamber,
+            side=side,
+        )
+        self._refresh_right_panel()
         self.left_host.gcsim_browser_workspace.set_actions_busy(
             True,
             message=(
@@ -1799,9 +1860,16 @@ class AppShell(QWidget):
         thread.start()
 
     def _on_gcsim_run_selected_finished(self, payload: dict) -> None:
-        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
-            format_gcsim_browser_run_report(dict(payload))
+        payload_dict = dict(payload)
+        stored = self.controller.store_gcsim_browser_selected_payload(
+            payload_dict,
+            rotation_shell_text=self._gcsim_browser_run_rotation_text,
         )
+        self.left_host.gcsim_browser_workspace.set_prepare_result_text(
+            format_gcsim_browser_run_report(payload_dict)
+        )
+        if stored:
+            self._refresh_right_panel()
 
     def _on_gcsim_dps_dummy_finished(self, payload: dict) -> None:
         self.left_host.gcsim_browser_workspace.set_prepare_result_text(
@@ -3958,6 +4026,33 @@ def _text(value: Any) -> str:
 
 def _gcsim_rotation_hash(text: str) -> str:
     return hashlib.sha256(str(text or "").encode("utf-8")).hexdigest()
+
+
+def _same_gcsim_result_slot(
+    result: RightPanelGcsimChamberResult,
+    *,
+    team_index: int,
+    chamber: int,
+    side: int,
+) -> bool:
+    return (
+        int(result.team_index) == int(team_index)
+        and int(result.chamber) == int(chamber)
+        and int(result.side) == int(side)
+    )
+
+
+def _compatible_gcsim_chamber_result(
+    current: RightPanelGcsimChamberResult,
+    incoming: RightPanelGcsimChamberResult,
+) -> bool:
+    return (
+        current.mode == incoming.mode
+        and current.period_start == incoming.period_start
+        and int(current.floor) == int(incoming.floor)
+        and current.target_mode == incoming.target_mode
+        and current.rotation_hash == incoming.rotation_hash
+    )
 
 
 def _dedupe(values: list[str]) -> list[str]:

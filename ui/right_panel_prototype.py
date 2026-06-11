@@ -1407,7 +1407,7 @@ def _gcsim_tooltip_html(tooltip: GcsimTooltipViewModel | None) -> str:
         ),
         _gcsim_tooltip_line("Sim DPS mean", _format_optional_number(tooltip.dps_mean)),
         _gcsim_tooltip_line(
-            "Total damage mean",
+            "Avg total damage/run",
             _format_optional_number(tooltip.total_damage_mean),
         ),
         _gcsim_tooltip_line(

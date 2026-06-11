@@ -15,6 +15,7 @@ from ui.gcsim_browser.run_worker import (
     format_gcsim_browser_batch_report,
     format_gcsim_browser_dps_dummy_report,
     format_gcsim_browser_run_report,
+    right_panel_gcsim_result_from_browser_selected_payload,
     right_panel_gcsim_results_from_browser_batch_payload,
     run_gcsim_browser_dps_dummy,
     run_gcsim_browser_three_chambers,
@@ -127,6 +128,8 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         self.assertIn("Team: Team 2 / Side 2 / C3", text)
         self.assertIn("Abyss source: period_start=2026-06-01 floor=12", text)
         self.assertIn("Observed clear time: 51.5", text)
+        self.assertIn("Avg total damage/run: 7.666e+06", text)
+        self.assertNotIn("Total damage mean", text)
         self.assertIn("total_hp=4.43e+06", text)
         self.assertIn("Enemy mapping methods: exact_normalized_name:5", text)
         self.assertIn("Failed action buckets: 1:skill_cd", text)
@@ -305,6 +308,8 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         self.assertIn("Dummy target HP: 999999999", text)
         self.assertIn("Dummy target resist: 0.1", text)
         self.assertIn("DPS mean: 12345", text)
+        self.assertIn("Avg total damage/run: 67890", text)
+        self.assertNotIn("Total damage mean", text)
 
     def test_formats_batch_report(self) -> None:
         payload = {
@@ -338,6 +343,8 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         self.assertIn("Batch status: partial_failed", text)
         self.assertIn("C1: status=run_passed", text)
         self.assertIn("C2: status=run_failed error_category=gcsim_runtime_error", text)
+        self.assertIn("avg_total_damage_per_run=4.43e+06", text)
+        self.assertNotIn("total_damage=", text)
         self.assertIn("scenario_hp=4.43e+06", text)
         self.assertIn("DPS correctness claim: false", text)
 
@@ -428,6 +435,42 @@ class GcsimBrowserRunWorkerTest(unittest.TestCase):
         self.assertEqual(results[1].floor, 12)
         self.assertEqual(results[1].target_mode, "solo")
         self.assertEqual(results[1].rotation_hash, "rotation-hash")
+
+    def test_selected_payload_converts_to_right_panel_runtime_result(self) -> None:
+        payload = _chamber_payload(2, success=True, status="run_passed")
+        payload["selection"]["team_index"] = 1
+        payload["selection"]["side"] = 2
+        payload["selection"]["target_mode"] = "multi"
+
+        result = right_panel_gcsim_result_from_browser_selected_payload(
+            payload,
+            rotation_hash="rotation-hash",
+            target_mode="solo",
+        )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result.chamber, 2)
+        self.assertEqual(result.team_index, 1)
+        self.assertEqual(result.side, 2)
+        self.assertEqual(result.status, "run_passed")
+        self.assertEqual(result.clear_time_seconds, 52)
+        self.assertEqual(result.dps_mean, 100002)
+        self.assertEqual(result.total_damage_mean, 4430000)
+        self.assertEqual(result.target_mode, "multi")
+        self.assertEqual(result.rotation_hash, "rotation-hash")
+
+    def test_selected_payload_without_smoke_does_not_convert_to_runtime_result(self) -> None:
+        payload = _chamber_payload(1, success=False, status="run_failed")
+        payload.pop("smoke")
+
+        result = right_panel_gcsim_result_from_browser_selected_payload(
+            payload,
+            rotation_hash="rotation-hash",
+            target_mode="solo",
+        )
+
+        self.assertIsNone(result)
 
 
 def _chamber_payload(

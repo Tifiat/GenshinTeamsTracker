@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import closing
+import hashlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -488,6 +489,120 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(model.chamber_rows[0].sim_team1, "not run")
         self.assertEqual(model.chamber_rows[0].sim_team2, "52s / 148k")
 
+    def test_app_shell_selected_gcsim_result_replaces_only_matching_slot(self) -> None:
+        source_data = _simple_abyss_source_data_for_gcsim_writeback()
+        controller = AppShellController.empty()
+        rotation = "active chasca;"
+        rotation_hash = _test_rotation_hash(rotation)
+        controller.gcsim_chamber_results = (
+            _stored_gcsim_result(
+                chamber=1,
+                team_index=0,
+                side=1,
+                dps_mean=111000,
+                rotation_hash=rotation_hash,
+            ),
+            _stored_gcsim_result(
+                chamber=2,
+                team_index=0,
+                side=1,
+                dps_mean=222000,
+                rotation_hash=rotation_hash,
+            ),
+            _stored_gcsim_result(
+                chamber=1,
+                team_index=1,
+                side=2,
+                dps_mean=333000,
+                rotation_hash="other-team-rotation",
+            ),
+        )
+        payload = _gcsim_selected_payload(
+            team_index=0,
+            side=1,
+            chamber=1,
+            duration=41.2,
+            dps=160000,
+        )
+
+        stored = controller.store_gcsim_browser_selected_payload(
+            payload,
+            rotation_shell_text=rotation,
+        )
+
+        with patch(
+            "ui.app_shell.load_current_cached_abyss_floor_source_data",
+            return_value=source_data,
+        ):
+            model = controller.right_panel_model()
+
+        self.assertTrue(stored)
+        self.assertEqual(len(controller.gcsim_chamber_results), 3)
+        self.assertEqual(model.chamber_rows[0].sim_team1, "41s / 160k")
+        self.assertEqual(model.chamber_rows[1].sim_team1, "52s / 222k")
+        self.assertEqual(model.chamber_rows[0].sim_team2, "52s / 333k")
+
+    def test_app_shell_selected_gcsim_result_drops_incompatible_same_team_rows(
+        self,
+    ) -> None:
+        controller = AppShellController.empty()
+        controller.gcsim_chamber_results = (
+            _stored_gcsim_result(
+                chamber=2,
+                team_index=0,
+                side=1,
+                rotation_hash="old-rotation",
+            ),
+            _stored_gcsim_result(
+                chamber=1,
+                team_index=1,
+                side=2,
+                rotation_hash="other-team-rotation",
+            ),
+        )
+
+        stored = controller.store_gcsim_browser_selected_payload(
+            _gcsim_selected_payload(
+                team_index=0,
+                side=1,
+                chamber=1,
+                duration=41.2,
+                dps=160000,
+            ),
+            rotation_shell_text="active chasca;",
+        )
+
+        self.assertTrue(stored)
+        self.assertEqual(
+            [
+                (result.team_index, result.side, result.chamber)
+                for result in controller.gcsim_chamber_results
+            ],
+            [(1, 2, 1), (0, 1, 1)],
+        )
+
+    def test_app_shell_selected_gcsim_not_ready_payload_does_not_store_result(self) -> None:
+        controller = AppShellController.empty()
+        controller.gcsim_chamber_results = (_stored_gcsim_result(),)
+        payload = _gcsim_selected_payload(
+            team_index=0,
+            side=1,
+            chamber=1,
+            duration=41.2,
+            dps=160000,
+        )
+        payload.pop("smoke")
+        payload["ready"] = False
+        payload["status"] = "not_ready"
+
+        stored = controller.store_gcsim_browser_selected_payload(
+            payload,
+            rotation_shell_text="active chasca;",
+        )
+
+        self.assertFalse(stored)
+        self.assertEqual(controller.gcsim_chamber_results, (_stored_gcsim_result(),))
+
     def test_app_shell_gcsim_results_clear_on_team_source_and_target_mode_change(self) -> None:
         controller = AppShellController.empty()
         controller.gcsim_chamber_results = (_stored_gcsim_result(),)
@@ -726,6 +841,8 @@ class AppShellTest(unittest.TestCase):
         sim_tooltip_text = sim_tooltip_controller.text()
         self.assertIn("<b>GCSIM / F12 / C1 / Team side 1</b>", sim_tooltip_text)
         self.assertIn("<b>Sim DPS mean</b>: 148000", sim_tooltip_text)
+        self.assertIn("<b>Avg total damage/run</b>: 7.666e+06", sim_tooltip_text)
+        self.assertNotIn("Total damage mean", sim_tooltip_text)
         self.assertIn("<b>Config path</b>: C:/repo/config.txt", sim_tooltip_text)
         self.assertIn("DPS correctness claim: false", sim_tooltip_text)
 
@@ -1009,6 +1126,31 @@ class AppShellTest(unittest.TestCase):
 
         self.assertTrue(shell.controller.gcsim_boosted_energy_enabled)
         self.assertEqual(shell.controller.gcsim_chamber_results, ())
+
+    def test_app_shell_selected_gcsim_finish_stores_and_refreshes_right_panel(self) -> None:
+        shell = AppShell()
+        shell._gcsim_browser_run_rotation_text = "active chasca;"
+        payload = _gcsim_selected_payload(
+            team_index=0,
+            side=1,
+            chamber=1,
+            duration=41.2,
+            dps=160000,
+        )
+
+        with patch.object(
+            shell.controller,
+            "store_gcsim_browser_selected_payload",
+            return_value=True,
+        ) as store:
+            with patch.object(shell, "_refresh_right_panel") as refresh:
+                shell._on_gcsim_run_selected_finished(payload)
+
+        store.assert_called_once_with(
+            payload,
+            rotation_shell_text="active chasca;",
+        )
+        refresh.assert_called_once_with()
 
     def test_account_data_refresh_can_reset_app_shell_runtime_team_state(self) -> None:
         shell = AppShell()
@@ -3885,6 +4027,25 @@ def _gcsim_batch_payload(*, team_index: int, side: int) -> dict:
     }
 
 
+def _gcsim_selected_payload(
+    *,
+    team_index: int,
+    side: int,
+    chamber: int,
+    duration: float,
+    dps: float,
+) -> dict:
+    payload = _gcsim_chamber_payload(
+        chamber,
+        side=side,
+        duration=duration,
+        dps=dps,
+    )
+    payload["selection"]["team_index"] = team_index
+    payload["selection"]["team_label"] = f"Team {team_index + 1}"
+    return payload
+
+
 def _gcsim_chamber_payload(
     chamber: int,
     *,
@@ -3922,17 +4083,34 @@ def _gcsim_chamber_payload(
     }
 
 
-def _stored_gcsim_result() -> RightPanelGcsimChamberResult:
+def _stored_gcsim_result(
+    *,
+    chamber: int = 1,
+    team_index: int = 0,
+    side: int = 1,
+    clear_time_seconds: float = 51.5,
+    dps_mean: float = 148000,
+    period_start: str = "2026-06-01",
+    floor: int = 12,
+    target_mode: str = "solo",
+    rotation_hash: str = "",
+) -> RightPanelGcsimChamberResult:
     return RightPanelGcsimChamberResult(
-        chamber=1,
-        team_index=0,
-        side=1,
+        chamber=chamber,
+        team_index=team_index,
+        side=side,
         status="run_passed",
-        clear_time_seconds=51.5,
-        dps_mean=148000,
-        period_start="2026-06-01",
-        floor=12,
+        clear_time_seconds=clear_time_seconds,
+        dps_mean=dps_mean,
+        period_start=period_start,
+        floor=floor,
+        target_mode=target_mode,
+        rotation_hash=rotation_hash,
     )
+
+
+def _test_rotation_hash(text: str) -> str:
+    return hashlib.sha256(str(text or "").encode("utf-8")).hexdigest()
 
 
 def _weapon_asset(

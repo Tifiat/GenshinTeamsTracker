@@ -11,6 +11,7 @@
   "settings.gcsim.title": "GCSIM",
   "settings.gcsim.boosted_energy": "Boosted energy",
   "settings.gcsim.boosted_energy.description": "When enabled, generated GCSIM shells use the high-particle energy line. When disabled, runs keep normal GCSIM energy behavior.",
+  "gcsim.browser.prepare": "Debug: prepare config",
   "right_panel.mode.abyss": "Abyss",
   "right_panel.mode.dps_dummy": "DPS Dummy",
   "common.error": "Error",

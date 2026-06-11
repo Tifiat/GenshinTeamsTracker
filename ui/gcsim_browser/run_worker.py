@@ -420,7 +420,7 @@ def format_gcsim_browser_run_report(payload: dict[str, Any]) -> str:
         ),
         f"DPS mean: {_format_number(summary.get('dps_mean')) or '-'}",
         (
-            "Total damage mean: "
+            "Avg total damage/run: "
             f"{_format_number(summary.get('total_damage_mean')) or '-'}"
         ),
         (
@@ -508,7 +508,7 @@ def format_gcsim_browser_dps_dummy_report(payload: dict[str, Any]) -> str:
         f"Dummy target resist: {dummy_target.get('resist') or dummy_target.get('source') or '-'}",
         f"DPS mean: {_format_number(summary.get('dps_mean')) or '-'}",
         (
-            "Total damage mean: "
+            "Avg total damage/run: "
             f"{_format_number(summary.get('total_damage_mean')) or '-'}"
         ),
         (
@@ -588,58 +588,99 @@ def right_panel_gcsim_results_from_browser_batch_payload(
     for chamber_payload in chambers:
         if not isinstance(chamber_payload, dict):
             continue
-        chamber_selection = (
-            chamber_payload.get("selection")
-            if isinstance(chamber_payload.get("selection"), dict)
-            else {}
+        result = _right_panel_gcsim_result_from_browser_chamber_payload(
+            chamber_payload,
+            fallback_team_index=team_index,
+            fallback_side=side,
+            fallback_period_start=period_start,
+            fallback_floor=floor,
+            rotation_hash=rotation_hash,
+            target_mode=target_mode,
         )
-        chamber = _optional_int(chamber_selection.get("chamber"))
-        chamber_side = _optional_int(chamber_selection.get("side")) or side
-        if chamber is None or chamber_side not in (1, 2):
-            continue
-        smoke = (
-            chamber_payload.get("smoke")
-            if isinstance(chamber_payload.get("smoke"), dict)
-            else {}
-        )
-        run_result = (
-            smoke.get("run_result")
-            if isinstance(smoke.get("run_result"), dict)
-            else {}
-        )
-        summary = (
-            run_result.get("summary")
-            if isinstance(run_result.get("summary"), dict)
-            else {}
-        )
-        scenario = (
-            smoke.get("scenario_summary")
-            if isinstance(smoke.get("scenario_summary"), dict)
-            else {}
-        )
-        results.append(
-            RightPanelGcsimChamberResult(
-                chamber=chamber,
-                team_index=team_index,
-                side=chamber_side,
-                status=str(smoke.get("status") or chamber_payload.get("status") or ""),
-                error_category=str(chamber_payload.get("error_category") or ""),
-                clear_time_seconds=_optional_float(summary.get("duration_mean")),
-                dps_mean=_optional_float(summary.get("dps_mean")),
-                total_damage_mean=_optional_float(summary.get("total_damage_mean")),
-                scenario_total_hp=_optional_float(scenario.get("total_hp")),
-                warnings=tuple(str(warning) for warning in chamber_payload.get("warnings") or []),
-                issues=_issue_strings(chamber_payload.get("issues") or []),
-                config_path=str(chamber_payload.get("config_path") or ""),
-                scenario_path=str(smoke.get("scenario_path") or ""),
-                mode=MODE_ABYSS,
-                period_start=period_start,
-                floor=floor,
-                target_mode=target_mode,
-                rotation_hash=rotation_hash,
-            )
-        )
+        if result is not None:
+            results.append(result)
     return tuple(sorted(results, key=lambda result: (result.chamber, result.side)))
+
+
+def right_panel_gcsim_result_from_browser_selected_payload(
+    payload: dict[str, Any],
+    *,
+    rotation_hash: str = "",
+    target_mode: str = FACT_DPS_HP_MODE_SOLO,
+) -> RightPanelGcsimChamberResult | None:
+    selection = payload.get("selection") if isinstance(payload.get("selection"), dict) else {}
+    team_index = _optional_int(selection.get("team_index"))
+    side = _optional_int(selection.get("side")) or 0
+    if team_index is None:
+        team_index = max(0, side - 1) if side else 0
+    return _right_panel_gcsim_result_from_browser_chamber_payload(
+        payload,
+        fallback_team_index=team_index,
+        fallback_side=side,
+        fallback_period_start=str(selection.get("period_start") or ""),
+        fallback_floor=_optional_int(selection.get("floor")) or 0,
+        rotation_hash=rotation_hash,
+        target_mode=str(selection.get("target_mode") or target_mode),
+        require_smoke=True,
+    )
+
+
+def _right_panel_gcsim_result_from_browser_chamber_payload(
+    payload: dict[str, Any],
+    *,
+    fallback_team_index: int,
+    fallback_side: int,
+    fallback_period_start: str,
+    fallback_floor: int,
+    rotation_hash: str,
+    target_mode: str,
+    require_smoke: bool = False,
+) -> RightPanelGcsimChamberResult | None:
+    chamber_selection = (
+        payload.get("selection") if isinstance(payload.get("selection"), dict) else {}
+    )
+    chamber = _optional_int(chamber_selection.get("chamber"))
+    side = _optional_int(chamber_selection.get("side")) or int(fallback_side)
+    if chamber is None or side not in (1, 2):
+        return None
+    smoke = payload.get("smoke") if isinstance(payload.get("smoke"), dict) else {}
+    if require_smoke and not smoke:
+        return None
+    run_result = (
+        smoke.get("run_result")
+        if isinstance(smoke.get("run_result"), dict)
+        else {}
+    )
+    summary = (
+        run_result.get("summary")
+        if isinstance(run_result.get("summary"), dict)
+        else {}
+    )
+    scenario = (
+        smoke.get("scenario_summary")
+        if isinstance(smoke.get("scenario_summary"), dict)
+        else {}
+    )
+    return RightPanelGcsimChamberResult(
+        chamber=chamber,
+        team_index=int(fallback_team_index),
+        side=side,
+        status=str(smoke.get("status") or payload.get("status") or ""),
+        error_category=str(payload.get("error_category") or ""),
+        clear_time_seconds=_optional_float(summary.get("duration_mean")),
+        dps_mean=_optional_float(summary.get("dps_mean")),
+        total_damage_mean=_optional_float(summary.get("total_damage_mean")),
+        scenario_total_hp=_optional_float(scenario.get("total_hp")),
+        warnings=tuple(str(warning) for warning in payload.get("warnings") or []),
+        issues=_issue_strings(payload.get("issues") or []),
+        config_path=str(payload.get("config_path") or ""),
+        scenario_path=str(smoke.get("scenario_path") or ""),
+        mode=MODE_ABYSS,
+        period_start=str(chamber_selection.get("period_start") or fallback_period_start),
+        floor=_optional_int(chamber_selection.get("floor")) or int(fallback_floor),
+        target_mode=target_mode,
+        rotation_hash=rotation_hash,
+    )
 
 
 def _batch_chamber_lines(payload: dict[str, Any]) -> list[str]:
@@ -663,7 +704,7 @@ def _batch_chamber_lines(payload: dict[str, Any]) -> list[str]:
             f"error_category={payload.get('error_category') or '-'} "
             f"clear_time={_format_number(summary.get('duration_mean')) or '-'} "
             f"dps={_format_number(summary.get('dps_mean')) or '-'} "
-            f"total_damage={_format_number(summary.get('total_damage_mean')) or '-'} "
+            f"avg_total_damage_per_run={_format_number(summary.get('total_damage_mean')) or '-'} "
             f"scenario_hp={_format_number(scenario.get('total_hp')) or '-'} "
             f"waves={scenario.get('wave_count', '-')} "
             f"targets={scenario.get('target_count', '-')}"

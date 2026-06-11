@@ -292,7 +292,7 @@ class GcsimBrowserWorkspace(QWidget):
             _fallback("gcsim.browser.rotation", "Rotation code")
         )
         self.prepare_button.setText(
-            _fallback("gcsim.browser.prepare", "Prepare config")
+            _fallback("gcsim.browser.prepare", "Debug: prepare config")
         )
         self.run_selected_button.setText(
             _fallback("gcsim.browser.run_selected", "Run selected chamber")

@@ -18,6 +18,7 @@ Current maps:
 - `GCSIM.md` - GCSIM research and integration notes.
 - `GCSIM_ENGINE_INTEGRATION_PLAN.md` - working implementation-direction plan for GTT-modified GCSIM engine updates, local patching, sequential Abyss waves, resource budgeting, and UI result boundaries.
 - `FAR_FUTURE_TODO.md` - non-MVP PvP, analytics, draft bot, support/donation, monetization, and optional AI companion ideas.
+- `PVP_MODE_PLAN.md` - PvP mode planning draft for local hot-seat Free Draft, deck JSON, future relay lobby, roadmap, risks, and open questions.
 - `PVP_RULESETS_AUDIT.md` - PvP/tournament ruleset source audit.
 - `STAT_NORMALIZATION.md` - stat normalization and GCSIM stat-key mapping handoff.
 - `MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md` - audit and staged plan for replacing the legacy main-window right panel with fixed Right Panel Prototype v6 plus left workspaces.

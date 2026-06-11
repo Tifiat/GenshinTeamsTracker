@@ -29,12 +29,6 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   touched subsystem, while preserving a cheap full-smoke option.
 - When adding/changing persistent structures, source/cache formats, domain models, raw payload discoveries, UI prototype contracts, or long-lived research, update the relevant project map in `docs/handoff/` and keep root docs as concise entrypoint pointers.
 - Obsidian map maintenance: The Obsidian vault is stored in `docs/obsidian/GTT/`. `docs/obsidian/GTT/GenshinTeamsTracker.canvas` is the human project navigation map. `docs/obsidian/GTT/DataFlow.canvas` is the human data-flow map. `docs/obsidian/GTT/SourceBoundaries.canvas` is the human source/runtime boundary map for avoiding data-owner confusion. These maps do not replace `CODEX.md`/`TODO.md` or detailed handoff files. After meaningful structural changes, update the maps together with handoff files when the change affects human understanding of the project layout: new major subsystem, renamed/moved important folder, changed data flow, changed current priority, changed architecture direction, or an important feature moving from planned to active/done. Do not update maps for tiny bugfixes, one-line styling changes, or internal refactors that do not affect the project map.
-- Do not bring Known Bugs into planning/discussion unless the user explicitly asks about bugs or the affected area.
-
-## Known Bugs
-
-- [ ] Editing the timer for one room does not adjust overlapping room timers, so impossible totals can appear, for example room 1 ends at 9:50 (10s), room 2 ends at 9:56 (-6s), total 4s.
-- [ ] After dragging a character into a team slot, the same character remains available in the character grid; characters already placed in slots cannot be moved to another slot or another team's slot.
 
 ## Current Artifact Browser State
 
@@ -784,11 +778,13 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 14. Offline Profile
 
-- Current profile import/export should eventually become full offline profile import/export, not partial character/profile data.
+- Current profile import/export covers account characters, weapons, character
+  details, account language, crop manifest, allowed account assets, and artifact
+  DB. It should eventually become full offline profile import/export, not only
+  the current account/artifact snapshot.
 - Future full profile should include, where safe: account characters, weapons, artifacts DB, build presets, run history, settings/local state needed for offline use, and relevant local catalog/cache data if appropriate.
 - It must not include cookies, auth tokens, browser profile/session data, or private debug dumps.
 - Use versioned profile format and safe restore/backup semantics.
-- When improving offline profile export/import, include `data/hoyolab/account_language.json` alongside account details, characters, weapons, and crop manifest.
 
 ## 15. Tournament / PvP
 

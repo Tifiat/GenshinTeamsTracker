@@ -498,18 +498,12 @@ Main window current behavior:
 Offline profile export/import:
 
 - ZIP based.
-- Includes allowlisted current JSON/assets/artifact DB only.
+- Includes allowlisted current JSON/assets/artifact DB only, including
+  `account_language.json` with account characters, weapons, details, and crop
+  manifest.
 - Excludes HoYoLAB browser profile, cookies, sessions, debug, downloads.
 - Uses SQLite backup snapshot for `data/artifacts.db`.
 - Writes local export-state marker so sign-out can warn if current data may not be saved.
-
-Known TODO:
-
-- When improving offline profile export/import, include `data/hoyolab/account_language.json` alongside:
-  - `account_character_details.json`
-  - `account_characters.json`
-  - `account_weapons.json`
-  - `crop_manifest.json`
 
 ## Localization
 

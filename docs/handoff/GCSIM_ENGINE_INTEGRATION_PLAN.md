@@ -49,9 +49,9 @@ Guarantee target:
 
 - If upstream GCSIM areas touched by GTT patches remain compatible, patches should apply and the new local GTT engine should become usable automatically.
 - If upstream changes conflict with GTT patches or break smoke checks, the app must not activate the new engine.
-- Older working engine folders must remain selectable/rollback-capable.
+- Older working engine folders must remain selectable/rollback-capable through the bounded local engine-store retention policy.
 
-A small local engine stack is acceptable, for example two or three known-good engine folders plus optional failed/debug folders. Engine folder size is not currently considered a blocker.
+A small retained local engine stack is acceptable, for example active plus one previous known-good engine and one latest failed/debug engine. Generated engine folders should stay bounded by retention; unbounded accumulated full source/engine copies are a size problem, not a desired cache.
 
 ### Shipped engine and dependency UX contract
 

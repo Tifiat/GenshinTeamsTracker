@@ -32,6 +32,7 @@ PROFILE_EXPORT_STATE_FILE = HOYOLAB_DATA_DIR / "offline_export_state.json"
 RUNS_HISTORY_PATH = PROJECT_ROOT / "runs_history.json"
 
 PROFILE_DATA_FILES = (
+    HOYOLAB_DATA_DIR / "account_language.json",
     HOYOLAB_DATA_DIR / "account_characters.json",
     HOYOLAB_DATA_DIR / "account_weapons.json",
     HOYOLAB_DATA_DIR / "crop_manifest.json",
@@ -43,6 +44,7 @@ PROFILE_ASSET_DIRS = (
     HOYOLAB_ARTIFACT_ASSETS_DIR,
 )
 RESTORABLE_FILES = {
+    "data/hoyolab/account_language.json",
     "data/hoyolab/account_characters.json",
     "data/hoyolab/account_weapons.json",
     "data/hoyolab/crop_manifest.json",

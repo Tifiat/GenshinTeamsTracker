@@ -521,6 +521,38 @@ history window.
 
 v0 can produce an in-memory/session result summary only.
 
+## Current Backend Implementation Status
+
+Implemented on 2026-06-11:
+
+- `run_workspace/pvp/deck.py`: v0 deck dataclasses, strict JSON
+  root/schema/kind loading, and stable `to_dict()` roundtrip.
+- `run_workspace/pvp/validation.py`: `DeckValidationReport`, stable issue
+  codes, Free Draft v0 character-count validation, conservative Traveler
+  rejection for known account Traveler ids / English Traveler names, and weapon
+  stack/count validation.
+- `run_workspace/pvp/schedule.py`: data-driven default Free Draft v0 schedule
+  and expected per-seat pick/ban counts.
+- `run_workspace/pvp/session.py`: deterministic local reducer, append-only
+  accepted action log, replay helper, state hash, and backend-only post-draft
+  team/weapon assignment validators.
+- `run_workspace/pvp/match_result.py`: room/chamber timer totals, lower-time
+  winner calculation, draw state, and technical-loss result state.
+- `run_workspace/pvp/full_loop_smoke.py`: deterministic backend-only full-loop
+  smoke/dev harness. Command: `python -m run_workspace.pvp.full_loop_smoke`.
+  It loads the synthetic sample decks, validates them, applies the default
+  schedule with a scripted action log, validates teams/weapons, records fixture
+  timers, verifies replay/state hash, and prints a compact report.
+- `samples/pvp/`: synthetic deck fixtures for tests only; ids are not
+  production catalog ids. Current fixtures have 12 distinct characters per
+  player and enough per-player weapon stack counts for the scripted full-loop
+  smoke.
+- `tests/run_workspace/pvp/`: focused backend tests for the above contracts.
+
+Still not implemented: UI, AppShell/right-panel integration, online transport,
+deck builder/exporter UI, richer ruleset execution, full localized Traveler
+detection/support, GCSIM scoring, and PvP History.
+
 ## Testing Strategy
 
 When implementation starts, add tests before or alongside UI:
@@ -562,6 +594,7 @@ Stage B: backend data contracts.
 - `DraftSessionState`
 - `DraftAction`
 - `MatchResult`
+- Status: implemented as backend-only foundation in `run_workspace/pvp/`.
 
 Stage C: deck JSON import and sample deck fixtures.
 
@@ -569,17 +602,22 @@ Stage C: deck JSON import and sample deck fixtures.
 - Allow development flow where Player 2 receives a copied/manually edited deck
   JSON.
 - Do not require deck builder UI before reducer work.
+- Status: JSON loading and synthetic sample fixtures are implemented; deck
+  builder/exporter UI remains future work.
 
 Stage D: Free Draft v0 reducer/action log.
 
 - Default schedule above.
 - Ban/pick validation.
 - Picked pool output.
+- Status: implemented for local deterministic reducer/replay/action log.
 
 Stage E: team and weapon assignment backend.
 
 - Two teams of four per player.
 - Weapon type and stack-count validation.
+- Status: implemented as backend validators without mutating normal TeamBuilder
+  or AppShell state.
 
 Stage F: local hot-seat UI.
 

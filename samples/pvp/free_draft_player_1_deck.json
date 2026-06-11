@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "kind": "gtt.pvp_deck",
+  "deck_name": "Free Draft v0 Player 1 Test Fixture",
+  "ruleset_ref": {
+    "ruleset_id": "free_draft_v0",
+    "ruleset_name": "Free Draft v0"
+  },
+  "player": {
+    "nickname": "player-one-fixture"
+  },
+  "source": {
+    "app": "GenshinTeamsTracker",
+    "language": "en",
+    "exported_at_utc": "2026-06-11T00:00:00Z",
+    "test_fixture": true,
+    "notes": "Synthetic test ids only; not production catalog ids."
+  },
+  "characters": [
+    {"character_id": "test_p1_char_01", "display_name": "P1 Sword 01", "element": "PYRO", "weapon_type": "SWORD", "rarity": 5, "level": 90, "constellation": 0, "cost": null},
+    {"character_id": "test_p1_char_02", "display_name": "P1 Bow 02", "element": "HYDRO", "weapon_type": "BOW", "rarity": 5, "level": 90, "constellation": 0, "cost": null},
+    {"character_id": "test_p1_char_03", "display_name": "P1 Polearm 03", "element": "ANEMO", "weapon_type": "POLEARM", "rarity": 4, "level": 90, "constellation": 6, "cost": null},
+    {"character_id": "test_p1_char_04", "display_name": "P1 Claymore 04", "element": "GEO", "weapon_type": "CLAYMORE", "rarity": 4, "level": 90, "constellation": 6, "cost": null},
+    {"character_id": "test_p1_char_05", "display_name": "P1 Catalyst 05", "element": "ELECTRO", "weapon_type": "CATALYST", "rarity": 5, "level": 90, "constellation": 0, "cost": null},
+    {"character_id": "test_p1_char_06", "display_name": "P1 Sword 06", "element": "CRYO", "weapon_type": "SWORD", "rarity": 4, "level": 90, "constellation": 6, "cost": null},
+    {"character_id": "test_p1_char_07", "display_name": "P1 Bow 07", "element": "DENDRO", "weapon_type": "BOW", "rarity": 4, "level": 90, "constellation": 6, "cost": null},
+    {"character_id": "test_p1_char_08", "display_name": "P1 Polearm 08", "element": "PYRO", "weapon_type": "POLEARM", "rarity": 5, "level": 90, "constellation": 0, "cost": null},
+    {"character_id": "test_p1_char_09", "display_name": "P1 Claymore 09", "element": "HYDRO", "weapon_type": "CLAYMORE", "rarity": 4, "level": 80, "constellation": 4, "cost": null},
+    {"character_id": "test_p1_char_10", "display_name": "P1 Catalyst 10", "element": "ANEMO", "weapon_type": "CATALYST", "rarity": 4, "level": 80, "constellation": 4, "cost": null},
+    {"character_id": "test_p1_char_11", "display_name": "P1 Sword 11", "element": "GEO", "weapon_type": "SWORD", "rarity": 5, "level": 90, "constellation": 0, "cost": null},
+    {"character_id": "test_p1_char_12", "display_name": "P1 Bow 12", "element": "ELECTRO", "weapon_type": "BOW", "rarity": 4, "level": 80, "constellation": 4, "cost": null}
+  ],
+  "weapons": [
+    {"weapon_id": "test_weapon_sword_01", "display_name": "Fixture Sword", "weapon_type": "SWORD", "rarity": 4, "level": 90, "refinement": 5, "count": 2, "cost": null},
+    {"weapon_id": "test_weapon_bow_01", "display_name": "Fixture Bow", "weapon_type": "BOW", "rarity": 4, "level": 90, "refinement": 5, "count": 2, "cost": null},
+    {"weapon_id": "test_weapon_polearm_01", "display_name": "Fixture Polearm", "weapon_type": "POLEARM", "rarity": 4, "level": 90, "refinement": 5, "count": 2, "cost": null},
+    {"weapon_id": "test_weapon_claymore_01", "display_name": "Fixture Claymore", "weapon_type": "CLAYMORE", "rarity": 4, "level": 90, "refinement": 5, "count": 2, "cost": null},
+    {"weapon_id": "test_weapon_catalyst_01", "display_name": "Fixture Catalyst", "weapon_type": "CATALYST", "rarity": 4, "level": 90, "refinement": 5, "count": 2, "cost": null}
+  ]
+}

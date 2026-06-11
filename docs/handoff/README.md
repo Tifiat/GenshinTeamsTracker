@@ -28,6 +28,15 @@ Current maps:
 - `RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` - Run Workspace session/snapshot contract
   for durable history, GCSIM result attachment, and the future `main.py` switch.
 
+Durable backend modules:
+
+- `run_workspace/pvp/` - backend-only PvP v0 foundation for deck JSON,
+  `DeckValidationReport`, Free Draft v0 schedule/reducer/action log,
+  post-draft team and weapon assignment validation, and match timer/result
+  summaries. The deterministic full-loop dev smoke command is `python -m
+  run_workspace.pvp.full_loop_smoke`. Fixtures and tests live in
+  `samples/pvp/` and `tests/run_workspace/pvp/`.
+
 Rules:
 
 - When adding or changing a persistent structure, source format, data model, or

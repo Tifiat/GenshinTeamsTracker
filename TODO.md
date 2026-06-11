@@ -437,7 +437,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 - Far-future PvP/tournament, analytics, draft bot, donation/support, monetization, optional AI companion, and similar speculative ideas live in `docs/handoff/FAR_FUTURE_TODO.md`.
 - Do not load those ideas into normal MVP task planning unless the user asks about them or wants to add/update a far-future idea.
-- Active PvP v0 contract lives in `docs/handoff/PVP_V0_CONTRACT.md`: build a full local Hot-seat / Ghost Deck offline loop with two deck JSON inputs, characters + weapons, default pick/ban schedule, team assignment, weapon assignment, timers, and winner summary. Online relay and PvP History remain later stages.
+- Active PvP v0 contract lives in `docs/handoff/PVP_V0_CONTRACT.md`: backend-only foundation now exists in `run_workspace/pvp/` with deck JSON, deck validation, Free Draft schedule/reducer/action log, post-draft team/weapon assignment validation, timer/result summaries, and a deterministic full-loop dev smoke (`python -m run_workspace.pvp.full_loop_smoke`). Next PvP product step is the first local hot-seat UI/dev panel around this backend. Online relay, deck builder/exporter UI, richer rulesets, Traveler support, and PvP History remain later stages.
 - PvP reference-site findings live in `docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`; planning history remains in `docs/handoff/PVP_MODE_PLAN.md`.
 - PvP/tournament source audit remains in `docs/handoff/PVP_RULESETS_AUDIT.md`; backend ruleset parser/report code exists, but it is parked research/prototype context until adapted into the PvP contract.
 

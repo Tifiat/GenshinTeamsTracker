@@ -21,6 +21,10 @@ Mirror the primary project owner under `tests/`:
   runtime fixture/cache behavior.
 - `tests/run_workspace/gcsim/` - backend GCSIM lifecycle, config generation,
   mapping, wave scenarios, cleanup, artifact runner.
+- `tests/run_workspace/pvp/` - backend PvP deck validation, Free Draft
+  schedule/reducer/action log, team/weapon assignment validation, and
+  timer/result behavior. Manual backend smoke command: `python -m
+  run_workspace.pvp.full_loop_smoke`.
 - `tests/run_workspace/team/` - team-builder state and team-card data/view
   models.
 - `tests/run_workspace/right_panel/` - right-panel view-model behavior owned by
@@ -44,6 +48,7 @@ Prefer the narrowest suite that covers the touched ownership area:
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests\ui\artifact_browser -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\gcsim -t . -p "test_*.py"
+.\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\pvp -t .
 .\.venv\Scripts\python.exe -m unittest tests.hoyolab_export.account.test_offline_profile
 ```
 

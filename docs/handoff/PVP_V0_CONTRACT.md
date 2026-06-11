@@ -72,6 +72,8 @@ Reference findings:
 - Both sites treat characters and weapons as first-class PvP data.
 
 Detailed research lives in `docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`.
+The current source/applicability matrix lives in
+`docs/handoff/PVP_RULESET_SOURCE_MATRIX.md`.
 
 ## Core Boundaries
 
@@ -471,13 +473,17 @@ Existing files:
 
 - `hoyolab_export/tournament_ruleset.py`
 - `hoyolab_export/tournament_ruleset_report.py`
+- `run_workspace/pvp/ruleset_applicability.py`
+- `run_workspace/pvp/ruleset_costs.py`
 - `tests/hoyolab_export/tournament/test_tournament_ruleset.py`
 - `samples/rulesets/minimal_ruleset.json`
+- `samples/pvp/rulesets/`
 
 Current role:
 
 - parked parser/report prototype for ruleset source data;
 - useful evidence for costs/tiers/Gentor-like fields;
+- PvP-side applicability and cost-preview reports for research fixtures;
 - not the PvP engine;
 - not deck validation;
 - not draft schedule execution.
@@ -543,14 +549,30 @@ Implemented on 2026-06-11:
   It loads the synthetic sample decks, validates them, applies the default
   schedule with a scripted action log, validates teams/weapons, records fixture
   timers, verifies replay/state hash, and prints a compact report.
+- `run_workspace/pvp/ruleset_applicability.py`: report-only bridge from parsed
+  `TournamentRulesetV1` source data into current PvP v0 capability flags and
+  blockers. It is separate from `RulesetValidationReport` and
+  `DeckValidationReport`.
+- `run_workspace/pvp/ruleset_costs.py`: deck cost-preview helper for
+  `TournamentRulesetV1` character/weapon costs. It uses ids first, reports
+  display-name fallback as a mapping gap, supports level 95/100 extras, and
+  supports character-specific weapon overrides for assigned weapon previews.
+- `run_workspace/pvp/ruleset_applicability_smoke.py`: deterministic
+  backend-only ruleset applicability/cost smoke. Command: `python -m
+  run_workspace.pvp.ruleset_applicability_smoke`.
 - `samples/pvp/`: synthetic deck fixtures for tests only; ids are not
   production catalog ids. Current fixtures have 12 distinct characters per
   player and enough per-player weapon stack counts for the scripted full-loop
   smoke.
+- `samples/pvp/rulesets/`: tiny synthetic ruleset fixtures only. One fixture
+  aligns ids with the PvP sample deck for clean cost previews; one sanitized
+  Gentor-like fixture intentionally has source-local ids so name fallback is
+  reported.
 - `tests/run_workspace/pvp/`: focused backend tests for the above contracts.
 
 Still not implemented: UI, AppShell/right-panel integration, online transport,
-deck builder/exporter UI, richer ruleset execution, full localized Traveler
+deck builder/exporter UI, real Gentor/Abyss importer, richer ruleset execution,
+automatic schedule derivation from public rulesets, full localized Traveler
 detection/support, GCSIM scoring, and PvP History.
 
 ## Testing Strategy

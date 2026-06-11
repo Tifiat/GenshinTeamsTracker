@@ -2,6 +2,18 @@
 
 Research date: 2026-06-11
 
+Follow-up check on 2026-06-11:
+
+- `https://gentor.com.br/planilha` returned HTTP 200 JSON with paginated
+  rulesheet summaries.
+- `https://gentor.com.br/planilha/3` returned HTTP 200 JSON with `armas`,
+  `configuracao`, `personagens`, and `tiers`.
+- Plain Python `urllib` requests to `https://abyss.darte.gg/` and `/drafts`
+  returned 403, while earlier browser-based research captures still show public
+  UI routes and client chunks. No parseable unauthenticated Abyss ruleset JSON
+  is confirmed in repo.
+- Detailed current mapping status lives in `PVP_RULESET_SOURCE_MATRIX.md`.
+
 Scope: lightweight architecture research for the PvP v0 contract. This pass
 used public pages, public API responses, Playwright/Chrome page probes, and
 client bundle inspection. No GTT runtime code, app startup, local account data,

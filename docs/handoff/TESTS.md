@@ -23,8 +23,10 @@ Mirror the primary project owner under `tests/`:
   mapping, wave scenarios, cleanup, artifact runner.
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Free Draft
   schedule/reducer/action log, team/weapon assignment validation, and
-  timer/result behavior. Manual backend smoke command: `python -m
-  run_workspace.pvp.full_loop_smoke`.
+  timer/result behavior, plus report-only ruleset applicability and cost-preview
+  tests. Manual backend smoke commands: `python -m
+  run_workspace.pvp.full_loop_smoke` and `python -m
+  run_workspace.pvp.ruleset_applicability_smoke`.
 - `tests/run_workspace/team/` - team-builder state and team-card data/view
   models.
 - `tests/run_workspace/right_panel/` - right-panel view-model behavior owned by
@@ -50,6 +52,7 @@ Prefer the narrowest suite that covers the touched ownership area:
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\gcsim -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\pvp -t .
 .\.venv\Scripts\python.exe -m unittest tests.hoyolab_export.account.test_offline_profile
+.\.venv\Scripts\python.exe -m run_workspace.pvp.ruleset_applicability_smoke
 ```
 
 Full-suite command:

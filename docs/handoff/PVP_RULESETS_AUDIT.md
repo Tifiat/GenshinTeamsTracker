@@ -2,6 +2,8 @@
 
 Research date: 2026-05-19
 
+Implementation follow-up: 2026-06-11
+
 Scope: docs-only research notes. No app code, app startup, HoYoLAB import,
 local account data, artifact DB, generated/private files, or tests were used.
 
@@ -22,6 +24,17 @@ Confirmed:
   character-specific weapon costs, tiers, tier restrictions, deck point config,
   weapon-ban config, challenge type, and optional custom TypeScript draft
   script.
+- Backend-only applicability/cost research now exists under
+  `run_workspace/pvp/`:
+  - `ruleset_applicability.py` reports which parsed `TournamentRulesetV1`
+    fields are usable by PvP v0 and which require future adapters.
+  - `ruleset_costs.py` calculates deck cost previews by id first and reports
+    display-name fallback as a mapping gap.
+  - `ruleset_applicability_smoke.py` runs the deterministic local smoke.
+- Current conclusion: Gentor-like data is parseable enough for costs/config
+  research, but not enough for executable schedule derivation without a
+  source-specific adapter. Abyss Draft has no confirmed public parseable
+  ruleset payload in this repo.
 
 MVP recommendation:
 
@@ -310,14 +323,16 @@ A flexible import should accept these logical tables:
 
 ## Recommended Next Step
 
-Add a docs/schema-only `TournamentRulesetV1` design or a pure backend parser
-prototype for a tiny local CSV/JSON sample:
+Next backend step, after local PvP UI/dev-panel work or when ruleset import
+becomes active, is a source-specific adapter design:
 
 - no UI;
 - no networking;
 - no tournament lobby;
 - no draft engine execution;
-- validation-first report with matched/unmatched characters and weapons.
+- validation/applicability-first report with matched/unmatched characters and
+  weapons, explicit id mapping gaps, and an explicit `DraftSchedule` only when
+  the source provides enough declarative flow.
 
 Website importers, Gentor API import, and Google Sheet scraping should come only
 after the internal schema and validation report are useful.

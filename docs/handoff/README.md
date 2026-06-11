@@ -22,6 +22,8 @@ Current maps:
 - `PVP_REFERENCE_SITE_AUDIT.md` - Abyss Draft and Gentor reference-site findings used by the PvP v0 contract.
 - `PVP_MODE_PLAN.md` - PvP planning history for local hot-seat Free Draft, deck JSON, future relay lobby, roadmap, risks, and resolved/open questions.
 - `PVP_RULESETS_AUDIT.md` - PvP/tournament ruleset source audit.
+- `PVP_RULESET_SOURCE_MATRIX.md` - current public/source matrix for mapping
+  Gentor/Abyss/manual rulesets onto the PvP backend.
 - `STAT_NORMALIZATION.md` - stat normalization and GCSIM stat-key mapping handoff.
 - `MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md` - audit and staged plan for replacing the legacy main-window right panel with fixed Right Panel Prototype v6 plus left workspaces.
 - `APP_SHELL_WORKSPACE_PLAN.md` - target AppShell architecture: left workspace host plus fixed right operations dock, with staged migration notes.
@@ -33,8 +35,10 @@ Durable backend modules:
 - `run_workspace/pvp/` - backend-only PvP v0 foundation for deck JSON,
   `DeckValidationReport`, Free Draft v0 schedule/reducer/action log,
   post-draft team and weapon assignment validation, and match timer/result
-  summaries. The deterministic full-loop dev smoke command is `python -m
-  run_workspace.pvp.full_loop_smoke`. Fixtures and tests live in
+  summaries. It also contains report-only ruleset applicability and deck
+  cost-preview research helpers. Deterministic dev smoke commands: `python -m
+  run_workspace.pvp.full_loop_smoke` and `python -m
+  run_workspace.pvp.ruleset_applicability_smoke`. Fixtures and tests live in
   `samples/pvp/` and `tests/run_workspace/pvp/`.
 
 Rules:

@@ -122,9 +122,11 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `ui/artifact_browser/`: isolated Artifact Browser module.
 - `run_workspace/pvp/`: isolated backend-only PvP v0 foundation for deck JSON,
   deck validation, Free Draft schedule/reducer/action log, post-draft team and
-  weapon assignment validation, timer/result summaries, and a deterministic
-  full-loop dev smoke (`python -m run_workspace.pvp.full_loop_smoke`). It does
-  not touch AppShell, the legacy right panel, online transport, or History.
+  weapon assignment validation, timer/result summaries, report-only ruleset
+  applicability/cost-preview helpers, and deterministic dev smokes (`python -m
+  run_workspace.pvp.full_loop_smoke`, `python -m
+  run_workspace.pvp.ruleset_applicability_smoke`). It does not touch AppShell,
+  the legacy right panel, online transport, or History.
 - `run_workspace/gcsim/`: isolated backend/dev foundation for local GCSIM engine
   lifecycle, patching, artifact builds, cleanup, and Browser MVP runs. The
   update path prunes generated engines to active + one previous successful +
@@ -489,9 +491,10 @@ implementation target is a full local Hot-seat / Ghost Deck offline loop with
 two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
 weapon assignment, timers, and winner summary. Reference-site findings live in
 `docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`; PvP/tournament ruleset audit exists
-at `docs/handoff/PVP_RULESETS_AUDIT.md`. Backend foundation now lives under
-`run_workspace/pvp/`; focused tests and synthetic deck fixtures live under
-`tests/run_workspace/pvp/` and `samples/pvp/`.
+at `docs/handoff/PVP_RULESETS_AUDIT.md`, with the current source/applicability
+matrix at `docs/handoff/PVP_RULESET_SOURCE_MATRIX.md`. Backend foundation now
+lives under `run_workspace/pvp/`; focused tests and synthetic deck/ruleset
+fixtures live under `tests/run_workspace/pvp/` and `samples/pvp/`.
 Far-future PvP, analytics, draft bot, support/donation, monetization, and AI
 companion ideas live in `docs/handoff/FAR_FUTURE_TODO.md`; do not load them for
 normal MVP task planning unless the user asks.

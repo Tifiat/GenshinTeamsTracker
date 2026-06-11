@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "nome": "Sanitized Gentor-like PvP Ruleset Fixture",
+  "source": "gentor_like_sanitized_fixture",
+  "source_url": "https://gentor.com.br/planilha/3",
+  "language": "pt-br",
+  "notes": "Hand-written tiny fixture based on documented Gentor field names; not a raw API payload.",
+  "personagens": [
+    {
+      "id": "row-character-1",
+      "personagem": {
+        "id": "gentor-char-01",
+        "nome": "P1 Sword 01",
+        "elemento": "PYRO",
+        "raridade": 5,
+        "arma": "SWORD"
+      },
+      "valorC0": 10,
+      "valorC1": 11,
+      "valorC2": 12,
+      "valorC3": 13,
+      "valorC4": 14,
+      "valorC5": 15,
+      "valorC6": 16,
+      "contarParaDeck": true,
+      "custoAdicionalNivel95": 2,
+      "custoAdicionalNivel100": 4
+    },
+    {
+      "id": "row-character-2",
+      "personagem": {
+        "id": "gentor-char-02",
+        "nome": "P1 Bow 02",
+        "elemento": "HYDRO",
+        "raridade": 5,
+        "arma": "BOW"
+      },
+      "valorC0": 10,
+      "valorC1": 11,
+      "valorC2": 12,
+      "valorC3": 13,
+      "valorC4": 14,
+      "valorC5": 15,
+      "valorC6": 16,
+      "contarParaDeck": true
+    }
+  ],
+  "armas": [
+    {
+      "id": "row-weapon-1",
+      "arma": {
+        "id": "gentor-weapon-sword",
+        "nome": "Fixture Sword",
+        "tipo": "SWORD",
+        "raridade": 4
+      },
+      "valorR1": 1,
+      "valorR2": 2,
+      "valorR3": 3,
+      "valorR4": 4,
+      "valorR5": 5,
+      "personagens": [
+        {
+          "personagem": {"id": "gentor-char-01", "nome": "P1 Sword 01"},
+          "valorR1": 3,
+          "valorR2": 4,
+          "valorR3": 5,
+          "valorR4": 7,
+          "valorR5": 9
+        }
+      ]
+    },
+    {
+      "id": "row-weapon-2",
+      "arma": {
+        "id": "gentor-weapon-bow",
+        "nome": "Fixture Bow",
+        "tipo": "BOW",
+        "raridade": 4
+      },
+      "valorR1": 1,
+      "valorR2": 2,
+      "valorR3": 3,
+      "valorR4": 4,
+      "valorR5": 5
+    }
+  ],
+  "tiers": [
+    {
+      "nome": "A",
+      "pontuacaoInicio": 0,
+      "pontuacaoFim": 160,
+      "restricoes": [
+        {
+          "tipo": "SOMA_EQUIVALENTE",
+          "tierComparacao": {"nome": "A"},
+          "valorComparacao": 2,
+          "valorBase": 0
+        }
+      ]
+    }
+  ],
+  "configuracao": {
+    "desafio": "ABISMO",
+    "limitePontosPersonagens": 160,
+    "baseBansIniciais": 3,
+    "intervaloPontos": 60,
+    "intervaloJoker": 20,
+    "maxJokers": 1,
+    "localBanArma": "SEM_BAN",
+    "quantidadeBansArma": 0,
+    "script": {
+      "codigo": "function getDraftConfiguration(matchInformation) { return { picks: 8 }; }"
+    }
+  }
+}

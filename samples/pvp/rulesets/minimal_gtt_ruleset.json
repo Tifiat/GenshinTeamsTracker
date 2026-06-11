@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "name": "Minimal GTT PvP Ruleset Fixture",
+  "source": "manual_gtt_fixture",
+  "source_url": "",
+  "language": "en-us",
+  "notes": "Synthetic offline fixture for PvP ruleset applicability and cost tests.",
+  "characters": [
+    {
+      "character_id": "test_p1_char_01",
+      "name": "P1 Sword 01",
+      "element": "PYRO",
+      "rarity": 5,
+      "weapon_type": "SWORD",
+      "costs_by_constellation": {"0": 10, "1": 11, "2": 12, "3": 13, "4": 14, "5": 15, "6": 16},
+      "level_95_extra_cost": 2,
+      "level_100_extra_cost": 4
+    },
+    {
+      "character_id": "test_p1_char_02",
+      "name": "P1 Bow 02",
+      "element": "HYDRO",
+      "rarity": 5,
+      "weapon_type": "BOW",
+      "costs_by_constellation": {"0": 10, "1": 11, "2": 12, "3": 13, "4": 14, "5": 15, "6": 16}
+    },
+    {
+      "character_id": "test_p1_char_03",
+      "name": "P1 Polearm 03",
+      "element": "ANEMO",
+      "rarity": 4,
+      "weapon_type": "POLEARM",
+      "costs_by_constellation": {"0": 4, "1": 4, "2": 5, "3": 5, "4": 6, "5": 6, "6": 7}
+    },
+    {
+      "character_id": "test_p1_char_04",
+      "name": "P1 Claymore 04",
+      "element": "GEO",
+      "rarity": 4,
+      "weapon_type": "CLAYMORE",
+      "costs_by_constellation": {"0": 4, "1": 4, "2": 5, "3": 5, "4": 6, "5": 6, "6": 7}
+    },
+    {
+      "character_id": "test_p1_char_05",
+      "name": "P1 Catalyst 05",
+      "element": "ELECTRO",
+      "rarity": 5,
+      "weapon_type": "CATALYST",
+      "costs_by_constellation": {"0": 10, "1": 11, "2": 12, "3": 13, "4": 14, "5": 15, "6": 16}
+    },
+    {
+      "character_id": "test_p1_char_06",
+      "name": "P1 Sword 06",
+      "element": "CRYO",
+      "rarity": 4,
+      "weapon_type": "SWORD",
+      "costs_by_constellation": {"0": 4, "1": 4, "2": 5, "3": 5, "4": 6, "5": 6, "6": 7}
+    },
+    {
+      "character_id": "test_p1_char_07",
+      "name": "P1 Bow 07",
+      "element": "DENDRO",
+      "rarity": 4,
+      "weapon_type": "BOW",
+      "costs_by_constellation": {"0": 4, "1": 4, "2": 5, "3": 5, "4": 6, "5": 6, "6": 7}
+    },
+    {
+      "character_id": "test_p1_char_08",
+      "name": "P1 Polearm 08",
+      "element": "PYRO",
+      "rarity": 5,
+      "weapon_type": "POLEARM",
+      "costs_by_constellation": {"0": 10, "1": 11, "2": 12, "3": 13, "4": 14, "5": 15, "6": 16}
+    },
+    {
+      "character_id": "test_p1_char_09",
+      "name": "P1 Claymore 09",
+      "element": "HYDRO",
+      "rarity": 4,
+      "weapon_type": "CLAYMORE",
+      "costs_by_constellation": {"0": 4, "1": 4, "2": 5, "3": 5, "4": 6, "5": 6, "6": 7}
+    },
+    {
+      "character_id": "test_p1_char_10",
+      "name": "P1 Catalyst 10",
+      "element": "ANEMO",
+      "rarity": 4,
+      "weapon_type": "CATALYST",
+      "costs_by_constellation": {"0": 4, "1": 4, "2": 5, "3": 5, "4": 6, "5": 6, "6": 7}
+    },
+    {
+      "character_id": "test_p1_char_11",
+      "name": "P1 Sword 11",
+      "element": "GEO",
+      "rarity": 5,
+      "weapon_type": "SWORD",
+      "costs_by_constellation": {"0": 10, "1": 11, "2": 12, "3": 13, "4": 14, "5": 15, "6": 16}
+    },
+    {
+      "character_id": "test_p1_char_12",
+      "name": "P1 Bow 12",
+      "element": "ELECTRO",
+      "rarity": 4,
+      "weapon_type": "BOW",
+      "costs_by_constellation": {"0": 4, "1": 4, "2": 5, "3": 5, "4": 6, "5": 6, "6": 7}
+    }
+  ],
+  "weapons": [
+    {
+      "weapon_id": "test_weapon_sword_01",
+      "name": "Fixture Sword",
+      "weapon_type": "SWORD",
+      "rarity": 4,
+      "costs_by_refinement": {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5}
+    },
+    {
+      "weapon_id": "test_weapon_bow_01",
+      "name": "Fixture Bow",
+      "weapon_type": "BOW",
+      "rarity": 4,
+      "costs_by_refinement": {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5}
+    },
+    {
+      "weapon_id": "test_weapon_polearm_01",
+      "name": "Fixture Polearm",
+      "weapon_type": "POLEARM",
+      "rarity": 4,
+      "costs_by_refinement": {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5}
+    },
+    {
+      "weapon_id": "test_weapon_claymore_01",
+      "name": "Fixture Claymore",
+      "weapon_type": "CLAYMORE",
+      "rarity": 4,
+      "costs_by_refinement": {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5}
+    },
+    {
+      "weapon_id": "test_weapon_catalyst_01",
+      "name": "Fixture Catalyst",
+      "weapon_type": "CATALYST",
+      "rarity": 4,
+      "costs_by_refinement": {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5}
+    }
+  ],
+  "weapon_overrides": [
+    {
+      "weapon_name": "Fixture Sword",
+      "character_name": "P1 Sword 01",
+      "costs_by_refinement": {"1": 3, "2": 4, "3": 5, "4": 7, "5": 9}
+    }
+  ],
+  "tiers": [
+    {
+      "name": "Fixture Tier 0",
+      "points_start": 0,
+      "points_end": 160,
+      "restrictions": []
+    }
+  ],
+  "draft_config": {
+    "challenge_type": "ABISMO",
+    "deck_point_limit": 160,
+    "initial_bans": 3,
+    "extra_ban_interval": 60,
+    "joker_interval": 20,
+    "joker_limit": 1,
+    "weapon_ban_location": "SEM_BAN",
+    "weapon_ban_count": 0
+  }
+}

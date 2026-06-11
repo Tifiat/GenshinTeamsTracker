@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -146,6 +147,52 @@ class GcsimEngineStoreTest(unittest.TestCase):
             self.assertTrue(active.path.exists())
             self.assertEqual((active.path / "engine.txt").read_text(encoding="utf-8"), "gtt-v1")
 
+    def test_prune_generated_state_keeps_active_previous_and_latest_failed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store = GcsimEngineStore(root / "store")
+            for index, engine_id in enumerate(("engine-old", "engine-prev", "engine-active")):
+                source = _make_source_tree(root / f"source-{index}", version=engine_id)
+                result = store.prepare_engine_update(
+                    source_dir=source,
+                    source_label=engine_id,
+                    engine_id=engine_id,
+                )
+                self.assertTrue(result.success)
+                _touch_dir(store.engines_dir / engine_id, 100 + index)
+
+            for index, engine_id in enumerate(("failed-old", "failed-new")):
+                failed_dir = store.failed_dir / engine_id
+                failed_dir.mkdir(parents=True)
+                (failed_dir / "engine.txt").write_text(engine_id, encoding="utf-8")
+                _touch_dir(failed_dir, 200 + index)
+
+            dry_run = store.prune_generated_state(
+                keep_successful=2,
+                keep_failed=1,
+                dry_run=True,
+            )
+            self.assertIn(str(store.engines_dir / "engine-old"), dry_run.deleted_paths)
+            self.assertIn(str(store.failed_dir / "failed-old"), dry_run.deleted_paths)
+            self.assertTrue((store.engines_dir / "engine-old").exists())
+
+            result = store.prune_generated_state(
+                keep_successful=2,
+                keep_failed=1,
+            )
+
+            self.assertEqual(result.active_engine_id, "engine-active")
+            self.assertEqual(
+                result.kept_successful_engine_ids,
+                ("engine-active", "engine-prev"),
+            )
+            self.assertEqual(result.kept_failed_engine_ids, ("failed-new",))
+            self.assertFalse((store.engines_dir / "engine-old").exists())
+            self.assertTrue((store.engines_dir / "engine-prev").exists())
+            self.assertTrue((store.engines_dir / "engine-active").exists())
+            self.assertFalse((store.failed_dir / "failed-old").exists())
+            self.assertTrue((store.failed_dir / "failed-new").exists())
+
 
 def _make_source_tree(path: Path, *, version: str) -> Path:
     path.mkdir(parents=True)
@@ -159,6 +206,10 @@ def _make_patch_stack(path: Path, *, version: str) -> Path:
     path.mkdir(parents=True)
     (path / "engine.txt").write_text(version, encoding="utf-8")
     return path
+
+
+def _touch_dir(path: Path, timestamp: int) -> None:
+    os.utime(path, (timestamp, timestamp))
 
 
 if __name__ == "__main__":

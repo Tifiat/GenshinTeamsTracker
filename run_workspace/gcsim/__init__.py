@@ -31,6 +31,7 @@ from .enemy_type_registry import (
 )
 from .engine_store import (
     GCSIM_ENGINE_MANIFEST_SCHEMA_VERSION,
+    GcsimEngineStorePruneResult,
     GcsimEngineInstallation,
     GcsimEngineManifest,
     GcsimEngineStore,
@@ -39,7 +40,12 @@ from .engine_store import (
     OverlayPatchBackend,
     PatchBackend,
 )
-from .runtime_probe import GcsimRuntimeProbeResult, run_gcsim_runtime_probe
+from .runtime_probe import (
+    GcsimGoBuildCacheCleanupResult,
+    GcsimRuntimeProbeResult,
+    cleanup_go_build_cache,
+    run_gcsim_runtime_probe,
+)
 from .patch_backends import GitApplyPatchBackend
 
 __all__ = [
@@ -48,8 +54,10 @@ __all__ = [
     "GcsimBuildArtifactResult",
     "GcsimEngineInstallation",
     "GcsimEngineManifest",
+    "GcsimEngineStorePruneResult",
     "GcsimEngineStore",
     "GcsimEngineUpdateResult",
+    "GcsimGoBuildCacheCleanupResult",
     "GcsimPatchResult",
     "GcsimResultSummary",
     "OverlayPatchBackend",
@@ -75,6 +83,7 @@ __all__ = [
     "normalize_gcsim_enemy_name",
     "parse_gcsim_result_payload",
     "run_active_gcsim_artifact",
+    "cleanup_go_build_cache",
     "run_gcsim_runtime_probe",
     "write_abyss_wave_scenario_payload",
     "build_gcsim_artifact",

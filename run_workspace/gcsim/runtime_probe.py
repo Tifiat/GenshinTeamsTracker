@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 from typing import Callable, Mapping, Sequence
 
@@ -58,6 +59,24 @@ class GcsimRuntimeProbeResult:
             "runtime_probe_stdout": self.stdout,
             "runtime_probe_stderr": self.stderr,
             "runtime_probe_error": self.error,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class GcsimGoBuildCacheCleanupResult:
+    status: str
+    path: str
+    deleted_bytes: int = 0
+    dry_run: bool = False
+    error: str = ""
+
+    def to_dict(self) -> dict:
+        return {
+            "status": self.status,
+            "path": self.path,
+            "deleted_bytes": self.deleted_bytes,
+            "dry_run": self.dry_run,
+            "error": self.error,
         }
 
 
@@ -208,6 +227,46 @@ def run_gcsim_runtime_probe(
     )
 
 
+def cleanup_go_build_cache(
+    *,
+    go_work_dir: str | Path | None = None,
+    dry_run: bool = False,
+) -> GcsimGoBuildCacheCleanupResult:
+    go_root = Path(go_work_dir) if go_work_dir is not None else DEFAULT_GO_WORK_DIR
+    cache_dir = go_root / "build-cache"
+    if not cache_dir.exists():
+        return GcsimGoBuildCacheCleanupResult(
+            status="missing",
+            path=str(cache_dir),
+            dry_run=bool(dry_run),
+        )
+    if not cache_dir.is_dir():
+        return GcsimGoBuildCacheCleanupResult(
+            status="invalid_path",
+            path=str(cache_dir),
+            dry_run=bool(dry_run),
+            error="Go build cache path exists but is not a directory.",
+        )
+    deleted_bytes = _directory_size(cache_dir)
+    if not dry_run:
+        try:
+            _safe_remove_tree(cache_dir, root=go_root)
+        except (OSError, RuntimeError) as exc:
+            return GcsimGoBuildCacheCleanupResult(
+                status="failed",
+                path=str(cache_dir),
+                deleted_bytes=0,
+                dry_run=False,
+                error=str(exc),
+            )
+    return GcsimGoBuildCacheCleanupResult(
+        status="dry_run" if dry_run else "deleted",
+        path=str(cache_dir),
+        deleted_bytes=deleted_bytes,
+        dry_run=bool(dry_run),
+    )
+
+
 def _subprocess_runner(
     command: Sequence[str],
     cwd: Path | None,
@@ -234,6 +293,26 @@ def _go_sandbox_env(go_root: Path) -> dict[str, str]:
     for key in ("GOMODCACHE", "GOCACHE", "GOBIN"):
         Path(env[key]).mkdir(parents=True, exist_ok=True)
     return env
+
+
+def _directory_size(path: Path) -> int:
+    total = 0
+    for item in path.rglob("*"):
+        if not item.is_file():
+            continue
+        try:
+            total += item.stat().st_size
+        except OSError:
+            continue
+    return total
+
+
+def _safe_remove_tree(path: Path, *, root: Path) -> None:
+    resolved_path = path.resolve()
+    resolved_root = root.resolve()
+    if resolved_path == resolved_root or resolved_root not in resolved_path.parents:
+        raise RuntimeError(f"Refusing to remove path outside Go work dir: {path}")
+    shutil.rmtree(path)
 
 
 def _parse_go_version(text: str) -> tuple[str, str, str] | None:

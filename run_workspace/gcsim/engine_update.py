@@ -8,7 +8,7 @@ build a local executable artifact. It does not integrate GCSIM into UI.
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 from pathlib import Path
 from typing import Callable
@@ -35,6 +35,7 @@ from .runtime_probe import (
     DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
     GcsimRuntimeProbeResult,
     GoRunner,
+    cleanup_go_build_cache as cleanup_go_build_cache_dir,
     run_gcsim_runtime_probe,
 )
 
@@ -109,6 +110,14 @@ class GcsimOfficialEngineUpdateReport:
     gtt_info_stdout: str
     gtt_info_stderr: str
     error: str = ""
+    engine_cleanup_status: str = "not_requested"
+    engine_cleanup_deleted_paths: tuple[str, ...] = ()
+    engine_cleanup_deleted_bytes: int = 0
+    engine_cleanup_error: str = ""
+    go_build_cache_cleanup_status: str = "not_requested"
+    go_build_cache_cleanup_path: str = ""
+    go_build_cache_cleanup_deleted_bytes: int = 0
+    go_build_cache_cleanup_error: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -171,6 +180,16 @@ class GcsimOfficialEngineUpdateReport:
             "gtt_info_stdout": self.gtt_info_stdout,
             "gtt_info_stderr": self.gtt_info_stderr,
             "error": self.error,
+            "engine_cleanup_status": self.engine_cleanup_status,
+            "engine_cleanup_deleted_paths": list(self.engine_cleanup_deleted_paths),
+            "engine_cleanup_deleted_bytes": self.engine_cleanup_deleted_bytes,
+            "engine_cleanup_error": self.engine_cleanup_error,
+            "go_build_cache_cleanup_status": self.go_build_cache_cleanup_status,
+            "go_build_cache_cleanup_path": self.go_build_cache_cleanup_path,
+            "go_build_cache_cleanup_deleted_bytes": (
+                self.go_build_cache_cleanup_deleted_bytes
+            ),
+            "go_build_cache_cleanup_error": self.go_build_cache_cleanup_error,
         }
 
 
@@ -191,6 +210,8 @@ def prepare_official_gcsim_engine_update(
     go_executable: str = "go",
     go_work_dir: str | Path | None = None,
     runtime_probe_timeout_seconds: int = DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
+    prune_engine_store: bool = True,
+    clean_go_build_cache: bool = False,
 ) -> GcsimOfficialEngineUpdateReport:
     store = GcsimEngineStore(store_dir)
     previous_active = store.active_engine_id()
@@ -306,7 +327,7 @@ def prepare_official_gcsim_engine_update(
             require_gtt_marker=require_gtt_marker,
         ),
     )
-    return _report_from_update_result(
+    report = _report_from_update_result(
         release=release,
         store=store,
         acquisition=acquisition,
@@ -317,6 +338,14 @@ def prepare_official_gcsim_engine_update(
         runtime_probe_result=runtime_probe_state["result"],
         build_artifact=build_artifact,
         artifact_build_result=artifact_build_state["result"],
+    )
+    return _apply_post_update_cleanup(
+        report,
+        store=store,
+        prune_engine_store=prune_engine_store,
+        clean_go_build_cache=clean_go_build_cache,
+        go_work_dir=go_work_dir,
+        go_cleanup_allowed=probe_runtime or build_artifact,
     )
 
 
@@ -685,6 +714,49 @@ def _gtt_capabilities_for_report(metadata: dict[str, str]) -> tuple[str, ...]:
     return tuple(str(item) for item in data)
 
 
+def _apply_post_update_cleanup(
+    report: GcsimOfficialEngineUpdateReport,
+    *,
+    store: GcsimEngineStore,
+    prune_engine_store: bool,
+    clean_go_build_cache: bool,
+    go_work_dir: str | Path | None,
+    go_cleanup_allowed: bool,
+) -> GcsimOfficialEngineUpdateReport:
+    updated = report
+    if prune_engine_store:
+        try:
+            prune_result = store.prune_generated_state()
+        except Exception as exc:  # noqa: BLE001 - cleanup must not break activation.
+            updated = replace(
+                updated,
+                engine_cleanup_status="failed",
+                engine_cleanup_error=str(exc),
+            )
+        else:
+            updated = replace(
+                updated,
+                engine_cleanup_status="pruned",
+                engine_cleanup_deleted_paths=tuple(prune_result.deleted_paths),
+                engine_cleanup_deleted_bytes=prune_result.deleted_bytes,
+            )
+    if clean_go_build_cache and updated.success and go_cleanup_allowed:
+        cleanup_result = cleanup_go_build_cache_dir(go_work_dir=go_work_dir)
+        updated = replace(
+            updated,
+            go_build_cache_cleanup_status=cleanup_result.status,
+            go_build_cache_cleanup_path=cleanup_result.path,
+            go_build_cache_cleanup_deleted_bytes=cleanup_result.deleted_bytes,
+            go_build_cache_cleanup_error=cleanup_result.error,
+        )
+    elif clean_go_build_cache and not go_cleanup_allowed:
+        updated = replace(
+            updated,
+            go_build_cache_cleanup_status="skipped_no_go_check",
+        )
+    return updated
+
+
 def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
     lines = [
         "GCSIM engine source update",
@@ -734,6 +806,13 @@ def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
             f"capabilities={','.join(report.gtt_capabilities)} "
             f"sequential_waves={report.gtt_sequential_waves or ''}"
         ),
+        (
+            "cleanup="
+            f"engine_status={report.engine_cleanup_status} "
+            f"engine_deleted_bytes={report.engine_cleanup_deleted_bytes} "
+            f"go_build_cache_status={report.go_build_cache_cleanup_status} "
+            f"go_build_cache_deleted_bytes={report.go_build_cache_cleanup_deleted_bytes}"
+        ),
     ]
     if report.runtime_probe_stdout:
         lines.append(f"probe_stdout={report.runtime_probe_stdout}")
@@ -753,6 +832,17 @@ def _format_report_text(report: GcsimOfficialEngineUpdateReport) -> str:
         lines.append(f"gtt_info_stderr={report.gtt_info_stderr}")
     if report.patch_files:
         lines.append("patch_files=" + ", ".join(report.patch_files))
+    if report.engine_cleanup_deleted_paths:
+        lines.append(
+            "engine_cleanup_deleted="
+            + ", ".join(report.engine_cleanup_deleted_paths)
+        )
+    if report.engine_cleanup_error:
+        lines.append(f"engine_cleanup_error={report.engine_cleanup_error}")
+    if report.go_build_cache_cleanup_error:
+        lines.append(
+            f"go_build_cache_cleanup_error={report.go_build_cache_cleanup_error}"
+        )
     if report.error:
         lines.append(f"error={report.error}")
     return "\n".join(lines)
@@ -815,6 +905,24 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
         help="Timeout in seconds for each Go probe command.",
     )
+    parser.add_argument(
+        "--no-prune-engine-store",
+        action="store_true",
+        help=(
+            "Do not prune old generated engine folders after the update. "
+            "By default the command keeps the active engine, one previous "
+            "successful engine, and one latest failed engine."
+        ),
+    )
+    parser.add_argument(
+        "--keep-go-build-cache",
+        action="store_true",
+        help=(
+            "Keep the project-local .go/build-cache after a successful Go "
+            "probe/build. By default it is deleted because it is rebuildable "
+            "and can grow to several GB."
+        ),
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     args = parser.parse_args(argv)
 
@@ -830,6 +938,10 @@ def main(argv: list[str] | None = None) -> int:
         go_executable=args.go_executable,
         go_work_dir=args.go_work_dir,
         runtime_probe_timeout_seconds=args.runtime_probe_timeout,
+        prune_engine_store=not args.no_prune_engine_store,
+        clean_go_build_cache=(
+            not args.keep_go_build_cache and (args.probe_runtime or args.build_artifact)
+        ),
     )
     if args.format == "json":
         print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False, sort_keys=True))

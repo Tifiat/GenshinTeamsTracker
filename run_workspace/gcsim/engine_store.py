@@ -28,6 +28,8 @@ GCSIM_ENGINE_MANIFEST_SCHEMA_VERSION = 1
 GCSIM_ENGINE_STATE_SCHEMA_VERSION = 1
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_GCSIM_ENGINE_STORE_DIR = PROJECT_ROOT / "data" / "gcsim" / "engines"
+DEFAULT_SUCCESSFUL_ENGINE_KEEP_COUNT = 2
+DEFAULT_FAILED_ENGINE_KEEP_COUNT = 1
 MANIFEST_FILE_NAME = "gtt_engine_manifest.json"
 ACTIVE_ENGINE_FILE_NAME = "active_engine.json"
 ENGINE_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -174,6 +176,26 @@ class GcsimEngineUpdateResult:
     previous_active_engine_id: str | None = None
     failed_engine_path: Path | None = None
     error: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class GcsimEngineStorePruneResult:
+    dry_run: bool
+    deleted_paths: tuple[str, ...] = ()
+    deleted_bytes: int = 0
+    kept_successful_engine_ids: tuple[str, ...] = ()
+    kept_failed_engine_ids: tuple[str, ...] = ()
+    active_engine_id: str | None = None
+
+    def to_dict(self) -> dict:
+        return {
+            "dry_run": self.dry_run,
+            "deleted_paths": list(self.deleted_paths),
+            "deleted_bytes": self.deleted_bytes,
+            "kept_successful_engine_ids": list(self.kept_successful_engine_ids),
+            "kept_failed_engine_ids": list(self.kept_failed_engine_ids),
+            "active_engine_id": self.active_engine_id,
+        }
 
 
 class PatchBackend(Protocol):
@@ -390,6 +412,60 @@ class GcsimEngineStore:
             manifest=load_engine_manifest(engine_dir),
         )
 
+    def prune_generated_state(
+        self,
+        *,
+        keep_successful: int = DEFAULT_SUCCESSFUL_ENGINE_KEEP_COUNT,
+        keep_failed: int = DEFAULT_FAILED_ENGINE_KEEP_COUNT,
+        dry_run: bool = False,
+    ) -> GcsimEngineStorePruneResult:
+        """Prune old generated engine copies without touching the active engine."""
+
+        self._ensure_dirs()
+        active_engine_id = self.active_engine_id()
+        successful_entries = _engine_dir_entries(self.engines_dir)
+        failed_entries = _engine_dir_entries(self.failed_dir)
+
+        kept_successful = _kept_successful_engine_ids(
+            successful_entries,
+            active_engine_id=active_engine_id,
+            keep_successful=keep_successful,
+        )
+        kept_failed = _kept_failed_engine_ids(
+            failed_entries,
+            keep_failed=keep_failed,
+        )
+        delete_dirs: list[Path] = []
+        delete_dirs.extend(
+            entry
+            for entry in successful_entries
+            if entry.name not in set(kept_successful)
+        )
+        delete_dirs.extend(
+            entry
+            for entry in failed_entries
+            if entry.name not in set(kept_failed)
+        )
+        delete_dirs.extend(_engine_dir_entries(self.staging_dir))
+
+        deleted_paths: list[str] = []
+        deleted_bytes = 0
+        for path in delete_dirs:
+            size = _directory_size(path)
+            deleted_paths.append(str(path))
+            deleted_bytes += size
+            if not dry_run:
+                _safe_remove_tree(path, root=self.root_dir)
+
+        return GcsimEngineStorePruneResult(
+            dry_run=bool(dry_run),
+            deleted_paths=tuple(deleted_paths),
+            deleted_bytes=deleted_bytes,
+            kept_successful_engine_ids=kept_successful,
+            kept_failed_engine_ids=kept_failed,
+            active_engine_id=active_engine_id,
+        )
+
     def _ensure_dirs(self) -> None:
         self.engines_dir.mkdir(parents=True, exist_ok=True)
         self.staging_dir.mkdir(parents=True, exist_ok=True)
@@ -440,6 +516,72 @@ def _directory_sha256(path: Path) -> str:
         digest.update(item.read_bytes())
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def _directory_size(path: Path) -> int:
+    total = 0
+    for item in path.rglob("*"):
+        if not item.is_file():
+            continue
+        try:
+            total += item.stat().st_size
+        except OSError:
+            continue
+    return total
+
+
+def _engine_dir_entries(path: Path) -> tuple[Path, ...]:
+    if not path.exists():
+        return ()
+    return tuple(item for item in path.iterdir() if item.is_dir())
+
+
+def _kept_successful_engine_ids(
+    entries: tuple[Path, ...],
+    *,
+    active_engine_id: str | None,
+    keep_successful: int,
+) -> tuple[str, ...]:
+    keep_count = max(1, int(keep_successful))
+    by_name = {entry.name: entry for entry in entries}
+    kept: list[str] = []
+    if active_engine_id and active_engine_id in by_name:
+        kept.append(active_engine_id)
+    newest = sorted(
+        entries,
+        key=lambda item: _path_mtime(item),
+        reverse=True,
+    )
+    for entry in newest:
+        if entry.name in kept:
+            continue
+        if len(kept) >= keep_count:
+            break
+        kept.append(entry.name)
+    return tuple(kept)
+
+
+def _kept_failed_engine_ids(
+    entries: tuple[Path, ...],
+    *,
+    keep_failed: int,
+) -> tuple[str, ...]:
+    keep_count = max(0, int(keep_failed))
+    if keep_count <= 0:
+        return ()
+    newest = sorted(
+        entries,
+        key=lambda item: _path_mtime(item),
+        reverse=True,
+    )
+    return tuple(entry.name for entry in newest[:keep_count])
+
+
+def _path_mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return 0.0
 
 
 def _default_engine_id(source_label: str) -> str:

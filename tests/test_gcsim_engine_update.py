@@ -194,6 +194,37 @@ class GcsimEngineUpdateTest(unittest.TestCase):
             self.assertIn("GOMODCACHE", runner.calls[0]["env"])
             self.assertIn(str(go_work), runner.calls[0]["env"]["GOMODCACHE"])
 
+    def test_successful_go_probe_can_clean_project_local_go_build_cache(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store_dir = root / "store"
+            archive = _write_fake_gcsim_archive(root / "gcsim.zip")
+            go_work = root / ".go-test"
+            build_cache = go_work / "build-cache"
+            build_cache.mkdir(parents=True)
+            (build_cache / "cached-object").write_bytes(b"cache")
+            runner = FakeGoRunner(
+                _completed(stdout="go version go1.22.0 windows/amd64\n"),
+                _completed(stdout="gcsim version test\n"),
+            )
+
+            report = prepare_official_gcsim_engine_update(
+                release="v-test",
+                store_dir=store_dir,
+                source_cache_dir=root / "sources",
+                source_acquirer=_archive_acquirer(archive, tag="v-test"),
+                probe_runtime=True,
+                runtime_probe_runner=runner,
+                go_work_dir=go_work,
+                clean_go_build_cache=True,
+            )
+
+            self.assertTrue(report.success)
+            self.assertEqual(report.go_build_cache_cleanup_status, "deleted")
+            self.assertEqual(report.go_build_cache_cleanup_path, str(build_cache))
+            self.assertEqual(report.go_build_cache_cleanup_deleted_bytes, 5)
+            self.assertFalse(build_cache.exists())
+
     def test_git_patch_backend_and_runtime_probe_pass_together(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

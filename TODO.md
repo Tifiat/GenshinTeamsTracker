@@ -385,7 +385,14 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `--probe-runtime` to additionally require local Go `windows/amd64` and
   `go run ./cmd/gcsim -version`; this marks `runtime_ready=true` only when the
   probe passes and keeps the old active engine on Go/probe failure. Go cache/bin
-  paths are sandboxed under ignored `.go/`. `--patch-backend git` now applies
+  paths are sandboxed under ignored `.go/`; the rebuildable `.go/build-cache`
+  is deleted after successful `--probe-runtime`/`--build-artifact` unless
+  `--keep-go-build-cache` is passed, while `.go/pkg/mod` is kept as the small
+  module cache. Generated engine-store cleanup now keeps the active engine,
+  one previous successful rollback engine, and one latest failed engine; older
+  generated engines/staging folders are pruned. Manual cleanup/dry-run command:
+  `python -m run_workspace.gcsim.cleanup` (`--apply` to delete).
+  `--patch-backend git` now applies
   ordered `.patch` stacks with `git apply --check` then `git apply`; it isolates
   patch application from the parent GTT repository so generated `data/gcsim/...`
   engine trees are patched as plain source folders. Overlay remains the

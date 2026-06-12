@@ -75,14 +75,13 @@ Right panel:
 - Expand the selected preset in-place inside its row; the expanded block pushes
   lower rows down and contains compact info/actions instead of a separate form.
 - Selected preset info owns:
-  - name;
   - ruleset/cost system selector;
   - initially only `No rules / Free Draft`;
   - character count;
   - weapon count;
-  - validation/status;
+  - automatic compact validation/status;
   - future character/weapon cost summary;
-  - edit, validate, and disabled `Start local draft` skeleton actions;
+  - edit actions;
   - later export actions.
 - The ruleset/cost selector belongs inside expanded deck preset info, not as an
   unrelated global control.
@@ -242,7 +241,9 @@ Implemented in:
 Current Decks v0 scope:
 
 - Decks replaces the former `PvP Control` placeholder in the right header.
-- Presets persist under `data/pvp/decks/` as `gtt.pvp_deck_preset` JSON.
+- Presets persist under root `data/pvp/decks/` as `gtt.pvp_deck_preset`
+  JSON. The path is resolved from the repository root, not current working
+  directory; the accidental `ui/data/pvp/decks/` path was removed.
 - New deck drafts start from all current account characters/weapons and are not
   saved until Save is pressed.
 - View mode shows only selected deck members without extra deck-selection
@@ -251,12 +252,17 @@ Current Decks v0 scope:
 - The left browser uses the same weapons-first/characters-second grid order,
   filters, card sizing, and spacing as the normal Characters/Weapons browser.
 - The right panel uses compact preset rows, in-row expansion, inline
-  edit/delete/save/cancel icons, and compact validation/start-placeholder
-  actions modeled on the Artifact Browser preset flow.
-- Save/cancel are explicit; Enter/Esc are supported on the right panel.
-- Validation uses the existing backend `DraftDeck` validator.
-- `Start local draft` is intentionally disabled until Play/setup and board
-  wiring exist.
+  edit/delete/save/cancel icons, and compact validation/info modeled on the
+  Artifact Browser preset flow.
+- Save/cancel are explicit; Enter/Esc are scoped to active create/edit on the
+  right panel and left deck editor.
+- Validation is automatic compact expanded-row status through the existing
+  backend `DraftDeck` validator; there is no manual `Validate` button in v0.
+- Edit/create mode uses Artifact Browser-style edit viewport styling: the
+  weapon/character card grid viewports get the blue edit background, selected
+  deck cards get the gold edit-selection border, unselected cards are dimmed,
+  and labels/filter rows outside the card viewports must not be tinted.
+- `Start local draft` is not part of Decks; Play/setup owns that action later.
 
 Next implementation task:
 

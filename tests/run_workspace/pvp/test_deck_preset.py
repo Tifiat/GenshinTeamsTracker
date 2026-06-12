@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
 
+from hoyolab_export.paths import PROJECT_ROOT
 from run_workspace.pvp.deck_preset import (
+    DEFAULT_PVP_DECK_PRESET_DIR,
     DeckPresetError,
     PVP_DECK_PRESET_KIND,
     PVP_DECK_PRESET_SCHEMA_VERSION,
@@ -15,6 +18,7 @@ from run_workspace.pvp.deck_preset import (
     delete_deck_preset,
     load_deck_presets,
     rename_deck_preset,
+    resolve_deck_preset_dir,
     save_deck_preset,
     weapon_ref_from_asset,
 )
@@ -144,6 +148,19 @@ class PvpDeckPresetTests(unittest.TestCase):
     def test_empty_account_does_not_create_fake_deck(self) -> None:
         with self.assertRaises(DeckPresetError):
             create_deck_preset_from_account_assets([], [], name="Empty")
+
+    def test_default_preset_dir_is_project_data_not_cwd_relative(self) -> None:
+        original_cwd = Path.cwd()
+        try:
+            os.chdir(PROJECT_ROOT / "ui")
+            resolved = resolve_deck_preset_dir()
+        finally:
+            os.chdir(original_cwd)
+
+        expected = PROJECT_ROOT / "data" / "pvp" / "decks"
+        self.assertEqual(DEFAULT_PVP_DECK_PRESET_DIR, expected)
+        self.assertEqual(resolved, expected)
+        self.assertNotIn(PROJECT_ROOT / "ui", resolved.parents)
 
 
 def _character_asset(

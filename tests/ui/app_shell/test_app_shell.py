@@ -12,7 +12,7 @@ from ui.utils.app_scaling import configure_startup_ui_scale
 configure_startup_ui_scale()
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QKeyEvent, QPixmap, QWheelEvent
-from PySide6.QtWidgets import QApplication, QStyleOptionButton, QWidget
+from PySide6.QtWidgets import QApplication, QPushButton, QStyleOptionButton, QWidget
 
 from hoyolab_export.account_equipment import (
     equip_artifact,
@@ -306,7 +306,7 @@ class AppShellTest(unittest.TestCase):
             self.assertFalse(workspace.create_deck("Empty"))
             self.assertEqual(workspace.presets, [])
 
-    def test_pvp_decks_right_panel_start_draft_disabled(self) -> None:
+    def test_pvp_decks_right_panel_has_no_start_draft_action(self) -> None:
         characters = [_character_asset("10000089", "Furina", weapon_type=1)]
         weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -320,12 +320,191 @@ class AppShellTest(unittest.TestCase):
             panel = PvpDecksRightPanel(workspace)
 
             self.assertIn(workspace.selected_deck_id, panel.deck_row_frames)
-            self.assertFalse(panel.start_draft_button.isEnabled())
             self.assertFalse(panel.ruleset_button.isEnabled())
+            self.assertFalse(
+                [
+                    button
+                    for button in panel.findChildren(QPushButton)
+                    if button.text() == "Start local draft"
+                ]
+            )
             self.assertEqual(
                 panel.selected_info_labels["counts"].text(),
                 tr("app_shell.pvp.decks.counts").format(characters=1, weapons=1),
             )
+
+    def test_pvp_decks_right_panel_shortcuts_save_and_cancel_edits(self) -> None:
+        characters = [
+            _character_asset("10000050", "Thoma"),
+            _character_asset("10000089", "Furina", weapon_type=1),
+        ]
+        weapons = [
+            _weapon_asset("13407", "Favonius Lance", weapon_type=13),
+            _weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword"),
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpDecksWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: characters,
+                weapon_assets_provider=lambda: weapons,
+            )
+            panel = PvpDecksRightPanel(workspace)
+
+            panel.create_name_edit.setText("Draft")
+            panel.create_button.click()
+            self.assertTrue(workspace.is_new_deck_edit)
+            self._send_key(panel.create_name_edit, Qt.Key.Key_Return)
+            self.assertFalse(workspace.is_editing)
+            self.assertEqual(workspace.selected_preset().name, "Draft")
+
+            panel.create_name_edit.setText("Discard")
+            panel.create_button.click()
+            self.assertTrue(workspace.is_new_deck_edit)
+            self._send_key(panel.create_name_edit, Qt.Key.Key_Escape)
+            self.assertFalse(workspace.is_editing)
+            self.assertEqual([preset.name for preset in workspace.presets], ["Draft"])
+
+            self.assertTrue(workspace.begin_edit())
+            panel.edit_name_edit.setText("Renamed")
+            self._send_key(panel.edit_name_edit, Qt.Key.Key_Return)
+            self.assertFalse(workspace.is_editing)
+            self.assertEqual(workspace.selected_preset().name, "Renamed")
+
+            self.assertTrue(workspace.begin_edit())
+            panel.edit_name_edit.setText("Reverted")
+            workspace.character_cards_by_id["10000050"].clicked.emit(characters[0])
+            self.assertEqual(workspace.selected_counts(), (1, 2))
+            self._send_key(panel.edit_name_edit, Qt.Key.Key_Escape)
+            self.assertFalse(workspace.is_editing)
+            self.assertEqual(workspace.selected_preset().name, "Renamed")
+            self.assertEqual(workspace.selected_counts(), (2, 2))
+
+    def test_pvp_decks_workspace_shortcut_signal_saves_after_card_toggle(self) -> None:
+        characters = [
+            _character_asset("10000050", "Thoma"),
+            _character_asset("10000089", "Furina", weapon_type=1),
+        ]
+        weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpDecksWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: characters,
+                weapon_assets_provider=lambda: weapons,
+            )
+            panel = PvpDecksRightPanel(workspace)
+            self.assertTrue(workspace.create_deck("Preset"))
+            self.assertTrue(workspace.save_edit(name="Preset"))
+
+            self.assertTrue(workspace.begin_edit())
+            panel.edit_name_edit.setText("Left Save")
+            workspace.character_cards_by_id["10000050"].clicked.emit(characters[0])
+            self.assertTrue(all(shortcut.isEnabled() for shortcut in workspace._edit_shortcuts))
+
+            workspace._emit_save_edit_requested()
+
+            self.assertFalse(workspace.is_editing)
+            self.assertEqual(workspace.selected_preset().name, "Left Save")
+            self.assertEqual(workspace.selected_counts(), (1, 1))
+
+    def test_pvp_decks_right_panel_compact_info_validation_without_manual_validate(
+        self,
+    ) -> None:
+        characters = [
+            _character_asset(str(20000000 + index), f"Char {index}", weapon_type=1)
+            for index in range(11)
+        ]
+        weapons = [
+            _weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword"),
+            _weapon_asset("13407", "Lance", weapon_type=13),
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpDecksWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: characters,
+                weapon_assets_provider=lambda: weapons,
+            )
+            self.assertTrue(workspace.create_deck("Ready"))
+            self.assertTrue(workspace.save_edit(name="Ready"))
+            panel = PvpDecksRightPanel(workspace)
+
+            self.assertNotIn("name", panel.selected_info_labels)
+            self.assertNotIn(
+                "Ready",
+                [label.text() for label in panel.selected_info_labels.values()],
+            )
+            self.assertEqual(
+                panel.selected_info_labels["validation"].text(),
+                tr("app_shell.pvp.decks.validation_ready").format(issues=0),
+            )
+            self.assertFalse(
+                any(
+                    button.text() == "Validate"
+                    for button in panel.findChildren(QPushButton)
+                )
+            )
+
+    def test_pvp_decks_edit_mode_exposes_selected_card_markers(self) -> None:
+        characters = [
+            _character_asset("10000050", "Thoma"),
+            _character_asset("10000089", "Furina", weapon_type=1),
+        ]
+        weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpDecksWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: characters,
+                weapon_assets_provider=lambda: weapons,
+            )
+            self.assertFalse(workspace.property("pvpDeckEditMode"))
+            self.assertFalse(workspace.weapon_area.property("deckEditMode"))
+            self.assertFalse(workspace.weapon_widget.property("deckEditMode"))
+            self.assertFalse(workspace.character_area.property("deckEditMode"))
+            self.assertFalse(workspace.character_widget.property("deckEditMode"))
+
+            self.assertTrue(workspace.create_deck("Preset"))
+            self.assertTrue(workspace.property("pvpDeckEditMode"))
+            self.assertTrue(workspace.weapon_area.property("deckEditMode"))
+            self.assertTrue(workspace.weapon_widget.property("deckEditMode"))
+            self.assertTrue(workspace.character_area.property("deckEditMode"))
+            self.assertTrue(workspace.character_widget.property("deckEditMode"))
+            self.assertTrue(
+                workspace.character_cards_by_id["10000050"].property("deckEditSelected")
+            )
+            self.assertTrue(workspace.save_edit(name="Preset"))
+            self.assertFalse(workspace.property("pvpDeckEditMode"))
+            self.assertFalse(workspace.weapon_area.property("deckEditMode"))
+            self.assertFalse(workspace.weapon_widget.property("deckEditMode"))
+            self.assertFalse(workspace.character_area.property("deckEditMode"))
+            self.assertFalse(workspace.character_widget.property("deckEditMode"))
+            self.assertFalse(
+                workspace.character_cards_by_id["10000050"].property("deckEditSelected")
+            )
+
+            panel = PvpDecksRightPanel(workspace)
+            self.assertIn(workspace.selected_deck_id, panel.deck_row_frames)
+
+            self.assertTrue(workspace.begin_edit())
+            self.assertTrue(workspace.property("pvpDeckEditMode"))
+            self.assertTrue(workspace.weapon_area.property("deckEditMode"))
+            self.assertTrue(workspace.character_area.property("deckEditMode"))
+            self.assertTrue(
+                workspace.character_cards_by_id["10000050"].property("deckEditSelected")
+            )
+            workspace.character_cards_by_id["10000050"].clicked.emit(characters[0])
+            self.assertFalse(
+                workspace.character_cards_by_id["10000050"].property("deckEditSelected")
+            )
+            self.assertTrue(
+                workspace.character_cards_by_id["10000050"].property("deckInactive")
+            )
+            self.assertTrue(
+                workspace.character_cards_by_id["10000089"].property("deckEditSelected")
+            )
+
+            workspace.cancel_edit()
+            self.assertFalse(workspace.property("pvpDeckEditMode"))
+            self.assertFalse(workspace.weapon_area.property("deckEditMode"))
+            self.assertFalse(workspace.character_area.property("deckEditMode"))
 
     def test_perf_logging_is_disabled_by_default(self) -> None:
         with patch.dict("os.environ", {"GTT_PERF_LOG": ""}):
@@ -1207,6 +1386,18 @@ class AppShellTest(unittest.TestCase):
             shell.controller.abyss_timer_states[0],
             AbyssTimerState(team1_left_seconds=600, team2_left_seconds=600),
         )
+
+    @staticmethod
+    def _send_key(widget, key: Qt.Key) -> None:
+        QApplication.sendEvent(
+            widget,
+            QKeyEvent(
+                QEvent.Type.KeyPress,
+                key,
+                Qt.KeyboardModifier.NoModifier,
+            ),
+        )
+        QApplication.processEvents()
 
     @staticmethod
     def _send_key_text(edit, key: Qt.Key, text: str) -> None:
@@ -4290,6 +4481,7 @@ def _weapon_asset(
     weapon_type: int = 13,
     weapon_type_name: str = "Polearm",
     rarity: int = 4,
+    known_count: int = 1,
     weapon_fingerprint: str | None = None,
 ) -> dict:
     fingerprint = weapon_fingerprint or f"fingerprint-{weapon_id}"
@@ -4297,6 +4489,7 @@ def _weapon_asset(
         "path": "weapon.png",
         "filename": "weapon.png",
         "metadata": {
+            "known_count": known_count,
             "weapon": {
                 "id": weapon_id,
                 "name": name,
@@ -4309,6 +4502,7 @@ def _weapon_asset(
                 "icon_path": "fav.png",
                 "source_key": fingerprint,
                 "weapon_fingerprint": fingerprint,
+                "known_count": known_count,
             }
         },
     }

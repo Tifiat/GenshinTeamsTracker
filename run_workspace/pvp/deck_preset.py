@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from hoyolab_export.paths import PROJECT_ROOT
+
 from .deck import (
     DRAFT_DECK_KIND,
     DRAFT_DECK_SCHEMA_VERSION,
@@ -23,7 +25,7 @@ from .deck import (
 
 PVP_DECK_PRESET_SCHEMA_VERSION = 1
 PVP_DECK_PRESET_KIND = "gtt.pvp_deck_preset"
-DEFAULT_PVP_DECK_PRESET_DIR = Path("data") / "pvp" / "decks"
+DEFAULT_PVP_DECK_PRESET_DIR = PROJECT_ROOT / "data" / "pvp" / "decks"
 
 
 class DeckPresetError(ValueError):
@@ -183,7 +185,7 @@ def load_deck_preset(path: str | Path) -> PvpDeckPreset:
 def load_deck_presets(
     directory: str | Path = DEFAULT_PVP_DECK_PRESET_DIR,
 ) -> list[PvpDeckPreset]:
-    root = Path(directory)
+    root = resolve_deck_preset_dir(directory)
     if not root.exists():
         return []
     presets: list[PvpDeckPreset] = []
@@ -204,7 +206,7 @@ def save_deck_preset(
     deck_id = _safe_deck_id(preset.deck_id)
     if not deck_id:
         raise DeckPresetError("Deck preset deck_id is required.")
-    root = Path(directory)
+    root = resolve_deck_preset_dir(directory)
     root.mkdir(parents=True, exist_ok=True)
     path = root / f"{deck_id}.json"
     path.write_text(deck_preset_to_json_text(preset), encoding="utf-8")
@@ -218,12 +220,21 @@ def delete_deck_preset(
     safe_id = _safe_deck_id(deck_id)
     if not safe_id:
         return False
-    path = Path(directory) / f"{safe_id}.json"
+    path = resolve_deck_preset_dir(directory) / f"{safe_id}.json"
     try:
         path.unlink()
     except FileNotFoundError:
         return False
     return True
+
+
+def resolve_deck_preset_dir(
+    directory: str | Path = DEFAULT_PVP_DECK_PRESET_DIR,
+) -> Path:
+    path = Path(directory)
+    if path.is_absolute():
+        return path
+    return PROJECT_ROOT / path
 
 
 def deck_preset_to_json_text(preset: PvpDeckPreset, *, indent: int = 2) -> str:

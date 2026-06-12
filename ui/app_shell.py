@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from PySide6.QtCore import QEvent, QRect, QSize, QThread, QTimer, Qt, Signal
-from PySide6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap
+from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -82,6 +82,7 @@ from run_workspace.pvp.deck_preset import (
     delete_deck_preset,
     load_deck_presets,
     rename_deck_preset,
+    resolve_deck_preset_dir,
     save_deck_preset,
     update_deck_preset_selection,
     weapon_ref_from_asset,
@@ -3711,6 +3712,7 @@ class PvpDeckAssetIconLabel(AssetIconLabel):
         asset: dict[str, Any] | None = None,
         deck_selected: bool = False,
         deck_inactive: bool = False,
+        deck_editing: bool = False,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(
@@ -3722,13 +3724,27 @@ class PvpDeckAssetIconLabel(AssetIconLabel):
         )
         self.deck_selected = bool(deck_selected)
         self.deck_inactive = bool(deck_inactive)
-        self.set_deck_state(selected=deck_selected, inactive=deck_inactive)
+        self.deck_editing = bool(deck_editing)
+        self.set_deck_state(
+            selected=deck_selected,
+            inactive=deck_inactive,
+            editing=deck_editing,
+        )
 
-    def set_deck_state(self, *, selected: bool, inactive: bool) -> None:
+    def set_deck_state(
+        self,
+        *,
+        selected: bool,
+        inactive: bool,
+        editing: bool,
+    ) -> None:
         self.deck_selected = bool(selected)
         self.deck_inactive = bool(inactive)
+        self.deck_editing = bool(editing)
         self.setProperty("deckSelected", self.deck_selected)
         self.setProperty("deckInactive", self.deck_inactive)
+        self.setProperty("deckEditing", self.deck_editing)
+        self.setProperty("deckEditSelected", self.deck_editing and self.deck_selected)
         self.update()
 
     def paintEvent(self, event) -> None:
@@ -3740,12 +3756,44 @@ class PvpDeckAssetIconLabel(AssetIconLabel):
                 fill = QColor("#0f172a")
                 fill.setAlpha(132)
                 painter.fillRect(self.rect(), fill)
+            if self.deck_editing and self.deck_selected:
+                painter.setPen(QPen(QColor("#d6b15d"), 2))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.drawRoundedRect(self.rect().adjusted(1, 1, -2, -2), 4, 4)
         finally:
             painter.end()
 
 
+PVP_DECKS_WORKSPACE_STYLE = """
+QFrame#pvp_deck_editor_frame {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+QScrollArea#pvp_deck_grid_area {
+    background: transparent;
+    border: none;
+}
+QScrollArea#pvp_deck_grid_area[deckEditMode="true"] {
+    background: #203861;
+    border: 1px solid #4f8ee8;
+    border-radius: 8px;
+}
+QWidget#pvp_deck_grid_viewport,
+QWidget#pvp_deck_grid_container {
+    background: transparent;
+}
+QWidget#pvp_deck_grid_viewport[deckEditMode="true"],
+QWidget#pvp_deck_grid_container[deckEditMode="true"] {
+    background: #203861;
+}
+"""
+
+
 class PvpDecksWorkspace(QWidget):
     state_changed = Signal()
+    save_edit_requested = Signal()
+    cancel_edit_requested = Signal()
 
     def __init__(
         self,
@@ -3758,11 +3806,15 @@ class PvpDecksWorkspace(QWidget):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("PvpDecksWorkspace")
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setStyleSheet(PVP_DECKS_WORKSPACE_STYLE)
+        self.setProperty("pvpDeckEditMode", False)
         self.db_path = db_path
-        self.deck_dir = Path(deck_dir)
+        self.deck_dir = resolve_deck_preset_dir(deck_dir)
         self._character_assets_provider = character_assets_provider
         self._weapon_assets_provider = weapon_assets_provider
         self._resize_timer: QTimer | None = None
+        self._last_refresh_viewport_widths: tuple[int, int] | None = None
         self.character_assets: list[dict[str, Any]] = []
         self.weapon_assets: list[dict[str, Any]] = []
         self.presets: list[PvpDeckPreset] = []
@@ -3781,6 +3833,7 @@ class PvpDecksWorkspace(QWidget):
         self._weapon_type_filters: set[str] = set()
         self._weapon_rarity_filters: set[int] = set()
         self._weapon_type_buttons: dict[str, QPushButton] = {}
+        self._edit_shortcuts: list[QShortcut] = []
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -3792,10 +3845,17 @@ class PvpDecksWorkspace(QWidget):
         self.empty_label.setObjectName("small_muted")
         root.addWidget(self.empty_label)
 
+        self.deck_editor_frame = QFrame()
+        self.deck_editor_frame.setObjectName("pvp_deck_editor_frame")
+        root.addWidget(self.deck_editor_frame, 1)
+        editor = QVBoxLayout(self.deck_editor_frame)
+        editor.setContentsMargins(4, 4, 4, 4)
+        editor.setSpacing(0)
+
         self.weapon_title_label = QLabel()
-        root.addWidget(self.weapon_title_label)
-        root.addSpacing(6)
-        root.addLayout(
+        editor.addWidget(self.weapon_title_label)
+        editor.addSpacing(6)
+        editor.addLayout(
             self._build_filter_row(
                 (
                     (WEAPON_TYPE_FILTERS, self._weapon_type_filters, self.refresh_view),
@@ -3804,13 +3864,13 @@ class PvpDecksWorkspace(QWidget):
             )
         )
         self.weapon_area, self.weapon_widget, self.weapon_grid = self._make_grid_area()
-        root.addWidget(self.weapon_area, 1)
+        editor.addWidget(self.weapon_area, 1)
 
-        root.addSpacing(6)
+        editor.addSpacing(6)
         self.character_title_label = QLabel()
-        root.addWidget(self.character_title_label)
-        root.addSpacing(6)
-        root.addLayout(
+        editor.addWidget(self.character_title_label)
+        editor.addSpacing(6)
+        editor.addLayout(
             self._build_filter_row(
                 (
                     (ELEMENT_FILTERS, self._character_element_filters, self.refresh_view),
@@ -3829,12 +3889,13 @@ class PvpDecksWorkspace(QWidget):
                 trailing_widgets=(self._make_standard_filter_button(),),
             )
         )
-        root.addSpacing(6)
+        editor.addSpacing(6)
         self.character_area, self.character_widget, self.character_grid = (
             self._make_grid_area()
         )
-        root.addWidget(self.character_area, 3)
+        editor.addWidget(self.character_area, 3)
 
+        self._init_edit_shortcuts()
         self.refresh_account_data(reload_presets=True, emit_signal=False)
         self.retranslate_ui()
 
@@ -4039,6 +4100,8 @@ class PvpDecksWorkspace(QWidget):
             vertical_safe_top_margin=CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN,
         )
         self._sync_empty_state()
+        self._sync_edit_state()
+        self._last_refresh_viewport_widths = self._current_viewport_widths()
 
     def retranslate_ui(self) -> None:
         self.character_title_label.setText(tr("app_shell.pvp.decks.characters"))
@@ -4054,7 +4117,11 @@ class PvpDecksWorkspace(QWidget):
         if self._resize_timer is None:
             self._resize_timer = QTimer(self)
             self._resize_timer.setSingleShot(True)
-            self._resize_timer.timeout.connect(self.refresh_view)
+            self._resize_timer.timeout.connect(
+                self._refresh_view_if_viewport_widths_changed
+            )
+        if self._current_viewport_widths() == self._last_refresh_viewport_widths:
+            return
         self._resize_timer.start(75)
 
     def _load_character_assets(self) -> list[dict[str, Any]]:
@@ -4160,6 +4227,7 @@ class PvpDecksWorkspace(QWidget):
                 asset=asset,
                 deck_selected=selected,
                 deck_inactive=self.is_editing and not selected,
+                deck_editing=self.is_editing,
             )
             tooltip = asset.get("tooltip")
             if tooltip:
@@ -4177,6 +4245,7 @@ class PvpDecksWorkspace(QWidget):
     def _on_character_card_clicked(self, asset: dict[str, Any]) -> None:
         if self._editing_preset is None:
             return
+        self.setFocus(Qt.FocusReason.MouseFocusReason)
         character_id = character_id_from_asset(asset)
         if not character_id:
             return
@@ -4196,6 +4265,7 @@ class PvpDecksWorkspace(QWidget):
     def _on_weapon_card_clicked(self, asset: dict[str, Any]) -> None:
         if self._editing_preset is None:
             return
+        self.setFocus(Qt.FocusReason.MouseFocusReason)
         ref = weapon_ref_from_asset(asset)
         if ref is None or not ref.key:
             return
@@ -4227,14 +4297,84 @@ class PvpDecksWorkspace(QWidget):
         self.empty_label.setText(text)
         self.empty_label.setVisible(bool(text))
 
+    def _current_viewport_widths(self) -> tuple[int, int]:
+        return (
+            self.weapon_area.viewport().width() or self.weapon_area.width(),
+            self.character_area.viewport().width() or self.character_area.width(),
+        )
+
+    def _refresh_view_if_viewport_widths_changed(self) -> None:
+        if self._current_viewport_widths() == self._last_refresh_viewport_widths:
+            return
+        self.refresh_view()
+
+    def _init_edit_shortcuts(self) -> None:
+        for key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            shortcut = QShortcut(QKeySequence(key), self)
+            shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+            shortcut.activated.connect(self._emit_save_edit_requested)
+            shortcut.setEnabled(False)
+            self._edit_shortcuts.append(shortcut)
+
+        cancel_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
+        cancel_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        cancel_shortcut.activated.connect(self._emit_cancel_edit_requested)
+        cancel_shortcut.setEnabled(False)
+        self._edit_shortcuts.append(cancel_shortcut)
+
+    def _sync_edit_state(self) -> None:
+        editing = self.is_editing
+        if self.property("pvpDeckEditMode") != editing:
+            self.setProperty("pvpDeckEditMode", editing)
+            self.style().unpolish(self)
+            self.style().polish(self)
+            self.update()
+        self._sync_grid_edit_state(self.weapon_area, self.weapon_widget, editing)
+        self._sync_grid_edit_state(self.character_area, self.character_widget, editing)
+        for shortcut in self._edit_shortcuts:
+            shortcut.setEnabled(editing)
+
+    def _sync_grid_edit_state(
+        self,
+        area: QScrollArea,
+        container: QWidget,
+        editing: bool,
+    ) -> None:
+        viewport = area.viewport()
+        changed = False
+        for widget in (area, viewport, container):
+            if widget.property("deckEditMode") == editing:
+                continue
+            widget.setProperty("deckEditMode", editing)
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
+            widget.update()
+            changed = True
+        if changed:
+            area.update()
+
+    def _emit_save_edit_requested(self) -> None:
+        if self.is_editing:
+            self.save_edit_requested.emit()
+
+    def _emit_cancel_edit_requested(self) -> None:
+        if self.is_editing:
+            self.cancel_edit_requested.emit()
+
     def _default_new_deck_name(self) -> str:
         return f"{tr('app_shell.pvp.decks.default_name')} {len(self.presets) + 1}"
 
     def _make_grid_area(self) -> tuple[QScrollArea, QWidget, QGridLayout]:
         area = OverlayVerticalScrollArea(auto_hide_ms=850)
+        area.setObjectName("pvp_deck_grid_area")
+        area.setProperty("deckEditMode", False)
         area.setWidgetResizable(True)
         area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        area.viewport().setObjectName("pvp_deck_grid_viewport")
+        area.viewport().setProperty("deckEditMode", False)
         container = QWidget()
+        container.setObjectName("pvp_deck_grid_container")
+        container.setProperty("deckEditMode", False)
         grid = QGridLayout(container)
         grid.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         area.setWidget(container)
@@ -4403,7 +4543,6 @@ QPushButton#row_cancel_button {{
 QPushButton#row_cancel_button:hover {{
     background: #5c2d32;
 }}
-QPushButton#pvp_compact_action,
 QPushButton#pvp_ruleset_chip {{
     min-height: 24px;
     padding: 2px 7px;
@@ -4413,10 +4552,6 @@ QPushButton#pvp_ruleset_chip {{
     color: {UI_TEXT_SECONDARY};
     font-weight: 700;
 }}
-QPushButton#pvp_compact_action:hover {{
-    background: {UI_BG_BUTTON_HOVER};
-}}
-QPushButton#pvp_compact_action:disabled,
 QPushButton#pvp_ruleset_chip:disabled {{
     color: #798291;
     background: {UI_BG_BUTTON};
@@ -4438,8 +4573,9 @@ class PvpDecksRightPanel(QWidget):
         self.selected_info_labels: dict[str, QLabel] = {}
         self.edit_name_edit: QLineEdit | None = None
         self.ruleset_button: QPushButton | None = None
-        self.validate_button: QPushButton | None = None
-        self.start_draft_button: QPushButton | None = None
+        self._edit_shortcuts: list[QShortcut] = []
+        self._preserved_edit_deck_id = ""
+        self._preserved_edit_name = ""
         self.setObjectName("RightPanelPrototypeContent")
         self.setStyleSheet(PVP_DECKS_RIGHT_PANEL_STYLE)
 
@@ -4490,18 +4626,23 @@ class PvpDecksRightPanel(QWidget):
         self.status_label.setWordWrap(True)
         root.addWidget(self.status_label)
 
+        self._init_edit_shortcuts()
         self.create_name_edit.returnPressed.connect(self._on_create_clicked)
         self.workspace.state_changed.connect(self.refresh)
+        self.workspace.save_edit_requested.connect(self._save_active_edit)
+        self.workspace.cancel_edit_requested.connect(self._cancel_active_edit)
         self.retranslate_ui()
         self.refresh()
 
     def refresh(self) -> None:
+        self._capture_existing_edit_name()
         self._clear_stale_pending_delete()
         self._refresh_create_controls()
         self._rebuild_deck_list()
         status = self.workspace._last_status
         self.status_label.setText(status)
         self.status_label.setVisible(bool(status))
+        self._sync_edit_shortcuts()
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.decks.title"))
@@ -4517,6 +4658,13 @@ class PvpDecksRightPanel(QWidget):
 
     def eventFilter(self, watched, event) -> bool:
         if watched is self.create_name_edit and event.type() == QEvent.Type.KeyPress:
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                if self.workspace.is_editing:
+                    self._save_active_edit()
+                else:
+                    self._on_create_clicked()
+                event.accept()
+                return True
             if event.key() == Qt.Key.Key_Escape:
                 if self.workspace.is_new_deck_edit:
                     self._on_cancel_new_clicked()
@@ -4533,7 +4681,7 @@ class PvpDecksRightPanel(QWidget):
                 event.accept()
                 return True
             if event.key() == Qt.Key.Key_Escape:
-                self.workspace.cancel_edit()
+                self._cancel_active_edit()
                 event.accept()
                 return True
         return super().eventFilter(watched, event)
@@ -4547,7 +4695,7 @@ class PvpDecksRightPanel(QWidget):
             event.accept()
             return
         if self.workspace.is_editing and event.key() == Qt.Key.Key_Escape:
-            self.workspace.cancel_edit()
+            self._cancel_active_edit()
             event.accept()
             return
         if self.pending_delete_deck_id:
@@ -4560,6 +4708,36 @@ class PvpDecksRightPanel(QWidget):
                 event.accept()
                 return
         super().keyPressEvent(event)
+
+    def _init_edit_shortcuts(self) -> None:
+        for key in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            shortcut = QShortcut(QKeySequence(key), self)
+            shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+            shortcut.activated.connect(self._save_active_edit)
+            shortcut.setEnabled(False)
+            self._edit_shortcuts.append(shortcut)
+
+        cancel_shortcut = QShortcut(QKeySequence(Qt.Key.Key_Escape), self)
+        cancel_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        cancel_shortcut.activated.connect(self._cancel_active_edit)
+        cancel_shortcut.setEnabled(False)
+        self._edit_shortcuts.append(cancel_shortcut)
+
+    def _sync_edit_shortcuts(self) -> None:
+        editing = self.workspace.is_editing
+        for shortcut in self._edit_shortcuts:
+            shortcut.setEnabled(editing)
+
+    def _capture_existing_edit_name(self) -> None:
+        self._preserved_edit_deck_id = ""
+        self._preserved_edit_name = ""
+        if not self.workspace.is_editing or self.workspace.is_new_deck_edit:
+            return
+        active_preset = self.workspace.active_preset()
+        if active_preset is None or self.edit_name_edit is None:
+            return
+        self._preserved_edit_deck_id = active_preset.deck_id
+        self._preserved_edit_name = self.edit_name_edit.text()
 
     def _refresh_create_controls(self) -> None:
         new_edit = self.workspace.is_new_deck_edit
@@ -4593,8 +4771,6 @@ class PvpDecksRightPanel(QWidget):
         self.selected_info_labels.clear()
         self.edit_name_edit = None
         self.ruleset_button = None
-        self.validate_button = None
-        self.start_draft_button = None
 
         if not self.workspace.presets:
             if not self.workspace.is_new_deck_edit:
@@ -4635,7 +4811,14 @@ class PvpDecksRightPanel(QWidget):
 
         if editing_this_row:
             name_input = QLineEdit()
-            name_input.setText(self.workspace.active_preset().name)
+            active_preset = self.workspace.active_preset()
+            name_text = active_preset.name if active_preset is not None else ""
+            if (
+                active_preset is not None
+                and self._preserved_edit_deck_id == active_preset.deck_id
+            ):
+                name_text = self._preserved_edit_name
+            name_input.setText(name_text)
             name_input.setPlaceholderText(tr("app_shell.pvp.decks.create_placeholder"))
             name_input.installEventFilter(self)
             name_input.returnPressed.connect(lambda: self._save_existing_from(name_input))
@@ -4680,7 +4863,7 @@ class PvpDecksRightPanel(QWidget):
 
             cancel_button = self._row_icon_button("x", tr("artifact.build.cancel"))
             cancel_button.setObjectName("row_cancel_button")
-            cancel_button.clicked.connect(self.workspace.cancel_edit)
+            cancel_button.clicked.connect(self._cancel_active_edit)
             self._prepare_row_action_button(cancel_button)
             top.addWidget(cancel_button)
         else:
@@ -4716,10 +4899,6 @@ class PvpDecksRightPanel(QWidget):
         layout.setContentsMargins(6, 6, 6, 6)
         layout.setSpacing(4)
 
-        name_label = self._info_label(preset.name)
-        layout.addWidget(name_label)
-        self.selected_info_labels["name"] = name_label
-
         self.ruleset_button = QPushButton(tr("app_shell.pvp.decks.ruleset_free"))
         self.ruleset_button.setObjectName("pvp_ruleset_chip")
         self.ruleset_button.setEnabled(False)
@@ -4738,26 +4917,6 @@ class PvpDecksRightPanel(QWidget):
         validation_label.setWordWrap(True)
         layout.addWidget(validation_label)
         self.selected_info_labels["validation"] = validation_label
-
-        action_row = QHBoxLayout()
-        action_row.setContentsMargins(0, 0, 0, 0)
-        action_row.setSpacing(5)
-
-        self.validate_button = QPushButton(tr("app_shell.pvp.decks.validate"))
-        self.validate_button.setObjectName("pvp_compact_action")
-        self.validate_button.setIcon(self._ui_icon("check"))
-        self.validate_button.clicked.connect(self.refresh)
-        action_row.addWidget(self.validate_button, 1)
-
-        self.start_draft_button = QPushButton(tr("app_shell.pvp.decks.start_draft"))
-        self.start_draft_button.setObjectName("pvp_compact_action")
-        self.start_draft_button.setEnabled(False)
-        self._install_button_tooltip(
-            self.start_draft_button,
-            tr("app_shell.pvp.decks.start_disabled"),
-        )
-        action_row.addWidget(self.start_draft_button, 1)
-        layout.addLayout(action_row)
 
         outer.addWidget(info)
 
@@ -4786,7 +4945,7 @@ class PvpDecksRightPanel(QWidget):
             )
         return tr("app_shell.pvp.decks.validation_invalid").format(
             issues=len(codes),
-            codes=code_text,
+            codes=f": {code_text}" if code_text else "",
         )
 
     def _on_create_clicked(self) -> None:
@@ -4811,10 +4970,16 @@ class PvpDecksRightPanel(QWidget):
 
     def _save_active_edit(self) -> None:
         if self.workspace.is_new_deck_edit:
-            self.workspace.save_edit(name=self.create_name_edit.text())
-            self.create_name_edit.clear()
+            if self.workspace.save_edit(name=self.create_name_edit.text()):
+                self.create_name_edit.clear()
         elif self.edit_name_edit is not None:
             self.workspace.save_edit(name=self.edit_name_edit.text())
+
+    def _cancel_active_edit(self) -> None:
+        if self.workspace.is_new_deck_edit:
+            self._on_cancel_new_clicked()
+        else:
+            self.workspace.cancel_edit()
 
     def _request_delete_deck(self, deck_id: str) -> None:
         if self.workspace.is_editing:

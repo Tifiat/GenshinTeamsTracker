@@ -22,7 +22,8 @@ Mirror the primary project owner under `tests/`:
 - `tests/run_workspace/gcsim/` - backend GCSIM lifecycle, config generation,
   mapping, wave scenarios, cleanup, artifact runner.
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Decks UI preset
-  persistence/conversion (`test_deck_preset.py`), Free Draft
+  persistence/conversion and root-resolved default path coverage
+  (`test_deck_preset.py`), Free Draft
   schedule/reducer/action log, team/weapon assignment validation, and
   timer/result behavior, local-account deck export provider/report behavior,
   draft-system registry behavior, deterministic Free Draft planner/account
@@ -47,8 +48,12 @@ Mirror the primary project owner under `tests/`:
   `run_workspace`.
 - `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests,
   including PvP Decks workspace/right-panel create, edit, save/cancel, header,
-  corrected Artifact Browser-style preset rows/expanded info, and
-  disabled-start skeleton behavior.
+  corrected Artifact Browser-style preset rows/expanded info, Enter/Esc
+  create/edit shortcuts, automatic validation status without manual Validate,
+  card-grid viewport edit tint, selected-card edit markers, and no Decks-local draft start action. PvP
+  offscreen smoke should also verify the default deck path, first/second
+  activation timing, and that edit tint is scoped to the card grid viewports
+  when this area changes.
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.

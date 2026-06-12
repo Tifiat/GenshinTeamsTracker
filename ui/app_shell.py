@@ -154,7 +154,8 @@ from ui.utils.hidpi_pixmap import (
     load_hidpi_pixmap,
     logical_pixmap_size,
 )
-from ui.utils.icon_utils import tinted_svg_pixmap
+from ui.utils.icon_utils import auto_contrast_svg_icon, tinted_svg_pixmap
+from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.owner_icon_badge import (
     make_owner_icon_badge_background,
@@ -165,12 +166,22 @@ from ui.utils.tooltips import install_custom_tooltip
 from ui.utils.ui_palette import (
     UI_ACCENT_TEAM_1,
     UI_ACCENT_TEAM_2,
+    UI_BG_BUTTON,
+    UI_BG_BUTTON_HOVER,
     UI_EQUIPPED_WEAPON_ACCENT,
+    UI_BG_PANEL,
+    UI_BG_PANEL_RAISED,
+    UI_BORDER_DEFAULT,
+    UI_BORDER_PANEL,
     UI_SELECTION_BADGE_FILL_ALPHA,
     UI_SELECTION_NEUTRAL_FILL,
     UI_SELECTION_NEUTRAL_FILL_ALPHA,
     UI_SELECTION_OUTLINE_ALPHA,
     UI_BG_APP,
+    UI_STATE_DANGER,
+    UI_STATE_SUCCESS,
+    UI_TEXT_MUTED,
+    UI_TEXT_PRIMARY,
     UI_TEXT_SECONDARY,
     UI_TEXT_ON_ACCENT,
 )
@@ -245,6 +256,9 @@ GRID_SELECTION_BADGE_HEIGHT = 20
 GRID_SELECTION_BADGE_MARGIN = 4
 WEAPON_PICKER_OCCUPIED_FILL_COLOR = UI_SELECTION_NEUTRAL_FILL
 WEAPON_PICKER_OCCUPIED_FILL_ALPHA = UI_SELECTION_NEUTRAL_FILL_ALPHA
+PVP_DECK_ROW_ACTION_SIZE = 24
+PVP_DECK_UI_ICON_SIZE = 24
+PVP_DECK_UI_ICON_BACKGROUND = UI_BG_PANEL_RAISED
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
     10: "catalyst",
@@ -3726,14 +3740,6 @@ class PvpDeckAssetIconLabel(AssetIconLabel):
                 fill = QColor("#0f172a")
                 fill.setAlpha(132)
                 painter.fillRect(self.rect(), fill)
-            if self.deck_selected:
-                _draw_selection_frame(
-                    painter,
-                    _selection_frame_rect(QRect(0, 0, self.width(), self.height())),
-                    UI_ACCENT_TEAM_1,
-                    fill_color=UI_SELECTION_NEUTRAL_FILL,
-                    fill_alpha=48,
-                )
         finally:
             painter.end()
 
@@ -3762,41 +3768,72 @@ class PvpDecksWorkspace(QWidget):
         self.presets: list[PvpDeckPreset] = []
         self.selected_deck_id = ""
         self._editing_preset: PvpDeckPreset | None = None
+        self._editing_is_new_deck = False
+        self._selected_deck_id_before_new_edit = ""
         self._last_status = ""
         self.character_cards_by_id: dict[str, PvpDeckAssetIconLabel] = {}
         self.weapon_cards_by_key: dict[str, PvpDeckAssetIconLabel] = {}
+        self._character_element_filters: set[str] = set()
+        self._character_weapon_filters: set[str] = set()
+        self._character_rarity_filters: set[int] = set()
+        self._character_trait_filters: set[str] = set()
+        self._character_standard_filter = STANDARD_FILTER_ALL
+        self._weapon_type_filters: set[str] = set()
+        self._weapon_rarity_filters: set[int] = set()
+        self._weapon_type_buttons: dict[str, QPushButton] = {}
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(6)
-
-        header = QHBoxLayout()
-        header.setContentsMargins(0, 0, 0, 0)
-        header.setSpacing(8)
-        self.title_label = QLabel()
-        self.title_label.setObjectName("SectionTitle")
-        header.addWidget(self.title_label)
-        self.mode_label = QLabel()
-        self.mode_label.setObjectName("small_muted")
-        header.addWidget(self.mode_label, 1)
-        root.addLayout(header)
+        root.setSpacing(0)
 
         self.empty_label = QLabel()
         self.empty_label.setWordWrap(True)
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_label.setObjectName("small_muted")
         root.addWidget(self.empty_label)
 
+        self.weapon_title_label = QLabel()
+        root.addWidget(self.weapon_title_label)
+        root.addSpacing(6)
+        root.addLayout(
+            self._build_filter_row(
+                (
+                    (WEAPON_TYPE_FILTERS, self._weapon_type_filters, self.refresh_view),
+                    (WEAPON_RARITY_FILTERS, self._weapon_rarity_filters, self.refresh_view),
+                )
+            )
+        )
+        self.weapon_area, self.weapon_widget, self.weapon_grid = self._make_grid_area()
+        root.addWidget(self.weapon_area, 1)
+
+        root.addSpacing(6)
         self.character_title_label = QLabel()
         root.addWidget(self.character_title_label)
+        root.addSpacing(6)
+        root.addLayout(
+            self._build_filter_row(
+                (
+                    (ELEMENT_FILTERS, self._character_element_filters, self.refresh_view),
+                    (WEAPON_TYPE_FILTERS, self._character_weapon_filters, self.refresh_view),
+                    (
+                        CHARACTER_RARITY_FILTERS,
+                        self._character_rarity_filters,
+                        self.refresh_view,
+                    ),
+                    (
+                        CHARACTER_TRAIT_FILTERS,
+                        self._character_trait_filters,
+                        self.refresh_view,
+                    ),
+                ),
+                trailing_widgets=(self._make_standard_filter_button(),),
+            )
+        )
+        root.addSpacing(6)
         self.character_area, self.character_widget, self.character_grid = (
             self._make_grid_area()
         )
         root.addWidget(self.character_area, 3)
-
-        self.weapon_title_label = QLabel()
-        root.addWidget(self.weapon_title_label)
-        self.weapon_area, self.weapon_widget, self.weapon_grid = self._make_grid_area()
-        root.addWidget(self.weapon_area, 2)
 
         self.refresh_account_data(reload_presets=True, emit_signal=False)
         self.retranslate_ui()
@@ -3804,6 +3841,10 @@ class PvpDecksWorkspace(QWidget):
     @property
     def is_editing(self) -> bool:
         return self._editing_preset is not None
+
+    @property
+    def is_new_deck_edit(self) -> bool:
+        return self.is_editing and self._editing_is_new_deck
 
     def selected_preset(self) -> PvpDeckPreset | None:
         for preset in self.presets:
@@ -3840,6 +3881,8 @@ class PvpDecksWorkspace(QWidget):
             self.state_changed.emit()
 
     def create_deck(self, name: str = "") -> bool:
+        if self.is_editing:
+            return False
         self.refresh_account_data(reload_presets=False, emit_signal=False)
         try:
             preset = create_deck_preset_from_account_assets(
@@ -3847,15 +3890,15 @@ class PvpDecksWorkspace(QWidget):
                 self.weapon_assets,
                 name=name or self._default_new_deck_name(),
             )
-            save_deck_preset(preset, self.deck_dir)
         except DeckPresetError as exc:
             self._last_status = str(exc)
             self.refresh_view()
             self.state_changed.emit()
             return False
-        self._editing_preset = None
-        self.selected_deck_id = preset.deck_id
-        self.reload_presets(emit_signal=False)
+        self._last_status = ""
+        self._selected_deck_id_before_new_edit = self.selected_deck_id
+        self._editing_preset = preset
+        self._editing_is_new_deck = True
         self.selected_deck_id = preset.deck_id
         self.refresh_view()
         self.state_changed.emit()
@@ -3870,10 +3913,14 @@ class PvpDecksWorkspace(QWidget):
             self.state_changed.emit()
 
     def begin_edit(self) -> bool:
+        if self.is_editing:
+            return False
         preset = self.selected_preset()
         if preset is None:
             return False
         self._editing_preset = preset
+        self._editing_is_new_deck = False
+        self._selected_deck_id_before_new_edit = ""
         self.refresh_view()
         self.state_changed.emit()
         return True
@@ -3892,6 +3939,8 @@ class PvpDecksWorkspace(QWidget):
             return False
         self.selected_deck_id = preset.deck_id
         self._editing_preset = None
+        self._editing_is_new_deck = False
+        self._selected_deck_id_before_new_edit = ""
         self.reload_presets(emit_signal=False)
         self.selected_deck_id = preset.deck_id
         self.refresh_view()
@@ -3901,7 +3950,20 @@ class PvpDecksWorkspace(QWidget):
     def cancel_edit(self) -> None:
         if self._editing_preset is None:
             return
+        was_new = self._editing_is_new_deck
+        previous_deck_id = self._selected_deck_id_before_new_edit
         self._editing_preset = None
+        self._editing_is_new_deck = False
+        self._selected_deck_id_before_new_edit = ""
+        if was_new:
+            if previous_deck_id and any(
+                preset.deck_id == previous_deck_id for preset in self.presets
+            ):
+                self.selected_deck_id = previous_deck_id
+            elif self.presets:
+                self.selected_deck_id = self.presets[0].deck_id
+            else:
+                self.selected_deck_id = ""
         self.refresh_view()
         self.state_changed.emit()
 
@@ -3909,8 +3971,14 @@ class PvpDecksWorkspace(QWidget):
         preset = self.selected_preset()
         if preset is None or self.is_editing:
             return False
-        deleted = delete_deck_preset(preset.deck_id, self.deck_dir)
-        self.selected_deck_id = ""
+        return self.delete_deck(preset.deck_id)
+
+    def delete_deck(self, deck_id: str) -> bool:
+        if self.is_editing:
+            return False
+        deleted = delete_deck_preset(deck_id, self.deck_dir)
+        if self.selected_deck_id == deck_id:
+            self.selected_deck_id = ""
         self.reload_presets(emit_signal=False)
         self.refresh_view()
         self.state_changed.emit()
@@ -3942,33 +4010,37 @@ class PvpDecksWorkspace(QWidget):
         weapon_assets = self._visible_weapon_assets(weapon_keys, editing)
 
         self._reload_deck_grid(
-            character_assets,
-            self.character_grid,
-            self.character_widget,
-            self.character_area,
-            icon_size=72,
-            spacing=4,
-            selected_keys=character_ids,
-            key_for_asset=character_id_from_asset,
-            clicked=self._on_character_card_clicked,
-            registry=self.character_cards_by_id,
-        )
-        self._reload_deck_grid(
             weapon_assets,
             self.weapon_grid,
             self.weapon_widget,
             self.weapon_area,
-            icon_size=54,
+            icon_size=WEAPON_PICKER_ICON_SIZE,
             spacing=6,
             selected_keys=weapon_keys,
             key_for_asset=self._weapon_key_for_asset,
             clicked=self._on_weapon_card_clicked,
             registry=self.weapon_cards_by_key,
+            vertical_safe_margin=WEAPON_PICKER_SAFE_MARGIN,
+            vertical_safe_top_margin=(
+                WEAPON_PICKER_SAFE_MARGIN + WEAPON_PICKER_VIEWPORT_TOP_EXTENSION
+            ),
+        )
+        self._reload_deck_grid(
+            character_assets,
+            self.character_grid,
+            self.character_widget,
+            self.character_area,
+            icon_size=72,
+            spacing=3,
+            selected_keys=character_ids,
+            key_for_asset=character_id_from_asset,
+            clicked=self._on_character_card_clicked,
+            registry=self.character_cards_by_id,
+            vertical_safe_top_margin=CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN,
         )
         self._sync_empty_state()
 
     def retranslate_ui(self) -> None:
-        self.title_label.setText(tr("app_shell.pvp.decks.title"))
         self.character_title_label.setText(tr("app_shell.pvp.decks.characters"))
         self.weapon_title_label.setText(tr("app_shell.pvp.decks.weapons"))
         self._sync_empty_state()
@@ -4008,7 +4080,18 @@ class PvpDecksWorkspace(QWidget):
         selected_ids: set[str],
         editing: bool,
     ) -> list[dict[str, Any]]:
-        assets = list(self.character_assets)
+        assets = [
+            asset
+            for asset in self.character_assets
+            if character_matches_filters(
+                asset,
+                self._character_element_filters,
+                self._character_weapon_filters,
+                self._character_rarity_filters,
+                trait_filters=self._character_trait_filters,
+                standard_filter=self._character_standard_filter,
+            )
+        ]
         assets.sort(key=character_sort_key)
         if editing:
             return assets
@@ -4019,7 +4102,7 @@ class PvpDecksWorkspace(QWidget):
         selected_keys: set[str],
         editing: bool,
     ) -> list[dict[str, Any]]:
-        assets = list(self.weapon_assets)
+        assets = [asset for asset in self.weapon_assets if self._weapon_matches_filters(asset)]
         assets.sort(key=_pvp_weapon_sort_key)
         if editing:
             return assets
@@ -4038,6 +4121,8 @@ class PvpDecksWorkspace(QWidget):
         key_for_asset,
         clicked,
         registry: dict[str, PvpDeckAssetIconLabel],
+        vertical_safe_margin: int = 0,
+        vertical_safe_top_margin: int | None = None,
     ) -> None:
         registry.clear()
         _clear_grid(grid)
@@ -4053,7 +4138,13 @@ class PvpDecksWorkspace(QWidget):
         total_grid_width = cols * icon_size + max(0, cols - 1) * spacing
         left_margin = max(0, (available_width - total_grid_width) // 2)
         right_margin = max(0, available_width - total_grid_width - left_margin)
-        grid.setContentsMargins(left_margin, 4, right_margin, 4)
+        safe_margin = max(0, int(vertical_safe_margin))
+        safe_top_margin = (
+            safe_margin
+            if vertical_safe_top_margin is None
+            else max(0, int(vertical_safe_top_margin))
+        )
+        grid.setContentsMargins(left_margin, safe_top_margin, right_margin, safe_margin)
         grid.setHorizontalSpacing(spacing)
         grid.setVerticalSpacing(spacing)
         for column in range(cols):
@@ -4131,16 +4222,10 @@ class PvpDecksWorkspace(QWidget):
             text = self._last_status or tr("app_shell.pvp.decks.empty_account")
         elif preset is None:
             text = tr("app_shell.pvp.decks.no_deck_selected")
-        elif self.is_editing:
-            text = tr("app_shell.pvp.decks.edit_mode")
         else:
-            text = tr("app_shell.pvp.decks.view_mode")
+            text = ""
         self.empty_label.setText(text)
-        self.mode_label.setText(
-            tr("app_shell.pvp.decks.mode_edit")
-            if self.is_editing
-            else tr("app_shell.pvp.decks.mode_view")
-        )
+        self.empty_label.setVisible(bool(text))
 
     def _default_new_deck_name(self) -> str:
         return f"{tr('app_shell.pvp.decks.default_name')} {len(self.presets) + 1}"
@@ -4160,6 +4245,185 @@ class PvpDecksWorkspace(QWidget):
         ref = weapon_ref_from_asset(asset)
         return ref.key if ref is not None else ""
 
+    def _make_filter_button(
+        self,
+        value: Any,
+        icon_name: str,
+        active_set: set,
+        update_callback,
+    ) -> QPushButton:
+        button = QPushButton("")
+        button.setObjectName("app_shell_filter_button")
+        button.setCheckable(True)
+        button.setFixedSize(FILTER_BUTTON_SIZE, FILTER_BUTTON_SIZE)
+        button.setIconSize(QSize(FILTER_BUTTON_ICON_SIZE, FILTER_BUTTON_ICON_SIZE))
+        button.setStyleSheet(FILTER_BUTTON_STYLE)
+
+        icon_path = FILTER_ASSETS_DIR / icon_name
+        if icon_path.exists():
+            button.setIcon(QIcon(str(icon_path)))
+        else:
+            button.setText(str(value))
+
+        def toggle_filter(checked: bool, *, filter_value=value, filters=active_set) -> None:
+            if checked:
+                filters.add(filter_value)
+            else:
+                filters.discard(filter_value)
+            update_callback()
+
+        button.clicked.connect(toggle_filter)
+        return button
+
+    def _build_filter_row(self, filter_groups, *, trailing_widgets=None) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(3)
+        for filters, active_set, update_callback in filter_groups:
+            for value, icon_name, _tooltip_key in filters:
+                button = self._make_filter_button(
+                    value,
+                    icon_name,
+                    active_set,
+                    update_callback,
+                )
+                if active_set is self._weapon_type_filters:
+                    self._weapon_type_buttons[_text(value)] = button
+                row.addWidget(button)
+        for widget in trailing_widgets or ():
+            row.addWidget(widget)
+        row.addStretch()
+        return row
+
+    def _make_standard_filter_button(self) -> QPushButton:
+        _value, _icon_name, _tooltip_key = CHARACTER_STANDARD_FILTER
+        button = QPushButton("")
+        button.setObjectName("app_shell_filter_button")
+        button.setCheckable(False)
+        button.setFixedSize(FILTER_BUTTON_SIZE, FILTER_BUTTON_SIZE)
+        button.setIconSize(QSize(FILTER_BUTTON_ICON_SIZE, FILTER_BUTTON_ICON_SIZE))
+        button.setStyleSheet(FILTER_BUTTON_STYLE)
+        button.setIcon(standard_character_filter_icon(STANDARD_FILTER_ALL, size=FILTER_BUTTON_ICON_SIZE))
+        button.setProperty("standardOnly", False)
+
+        def cycle_standard_filter() -> None:
+            if self._character_standard_filter == STANDARD_FILTER_ALL:
+                self._character_standard_filter = STANDARD_FILTER_ONLY
+            elif self._character_standard_filter == STANDARD_FILTER_ONLY:
+                self._character_standard_filter = STANDARD_FILTER_EXCLUDE
+            else:
+                self._character_standard_filter = STANDARD_FILTER_ALL
+            button.setProperty(
+                "standardOnly",
+                self._character_standard_filter == STANDARD_FILTER_ONLY,
+            )
+            button.style().unpolish(button)
+            button.style().polish(button)
+            button.setIcon(
+                standard_character_filter_icon(
+                    self._character_standard_filter,
+                    size=FILTER_BUTTON_ICON_SIZE,
+                )
+            )
+            button.repaint()
+            self.refresh_view()
+
+        button.clicked.connect(cycle_standard_filter)
+        return button
+
+    def _weapon_matches_filters(self, asset: dict[str, Any]) -> bool:
+        metadata = asset.get("metadata") or {}
+        weapon = metadata.get("weapon") or {}
+        weapon_type_keys = _weapon_type_filter_keys(weapon)
+        rarity = metadata_int(weapon.get("rarity"))
+        if self._weapon_type_filters and not (
+            weapon_type_keys & self._weapon_type_filters
+        ):
+            return False
+        if self._weapon_rarity_filters and rarity not in self._weapon_rarity_filters:
+            return False
+        return True
+
+
+PVP_DECKS_RIGHT_PANEL_STYLE = f"""
+QLineEdit {{
+    min-height: 28px;
+    padding: 4px 8px;
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 6px;
+    background: {UI_BG_APP};
+    color: {UI_TEXT_PRIMARY};
+}}
+QFrame#build_slot_row {{
+    border: 1px solid #343b49;
+    border-radius: 7px;
+    background: {UI_BG_PANEL_RAISED};
+}}
+QFrame#build_slot_row[selectedDeck="true"] {{
+    border-color: #d6b35f;
+    background: #3a3224;
+}}
+QFrame#pvp_deck_expanded_info {{
+    border: 1px solid {UI_BORDER_PANEL};
+    border-radius: 6px;
+    background: {UI_BG_PANEL};
+}}
+QLabel#small_muted {{
+    color: {UI_TEXT_MUTED};
+    font-size: 12px;
+}}
+QLabel#pvp_deck_info_line {{
+    color: {UI_TEXT_SECONDARY};
+    background: transparent;
+    border: none;
+    padding: 0px;
+    font-size: 12px;
+    font-weight: 600;
+}}
+QPushButton#icon_button,
+QPushButton#row_save_button,
+QPushButton#row_cancel_button {{
+    min-width: {PVP_DECK_ROW_ACTION_SIZE}px;
+    max-width: {PVP_DECK_ROW_ACTION_SIZE}px;
+    min-height: {PVP_DECK_ROW_ACTION_SIZE}px;
+    max-height: {PVP_DECK_ROW_ACTION_SIZE}px;
+    padding: 2px;
+}}
+QPushButton#row_save_button {{
+    border-color: {UI_STATE_SUCCESS};
+    background: #24452d;
+}}
+QPushButton#row_save_button:hover {{
+    background: #2d5938;
+}}
+QPushButton#row_cancel_button {{
+    border-color: {UI_STATE_DANGER};
+    background: #4a2529;
+}}
+QPushButton#row_cancel_button:hover {{
+    background: #5c2d32;
+}}
+QPushButton#pvp_compact_action,
+QPushButton#pvp_ruleset_chip {{
+    min-height: 24px;
+    padding: 2px 7px;
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 6px;
+    background: {UI_BG_BUTTON};
+    color: {UI_TEXT_SECONDARY};
+    font-weight: 700;
+}}
+QPushButton#pvp_compact_action:hover {{
+    background: {UI_BG_BUTTON_HOVER};
+}}
+QPushButton#pvp_compact_action:disabled,
+QPushButton#pvp_ruleset_chip:disabled {{
+    color: #798291;
+    background: {UI_BG_BUTTON};
+    border-color: #343b49;
+}}
+"""
+
 
 class PvpDecksRightPanel(QWidget):
     def __init__(
@@ -4169,7 +4433,15 @@ class PvpDecksRightPanel(QWidget):
     ) -> None:
         super().__init__(parent)
         self.workspace = workspace
+        self.pending_delete_deck_id = ""
+        self.deck_row_frames: dict[str, QFrame] = {}
+        self.selected_info_labels: dict[str, QLabel] = {}
+        self.edit_name_edit: QLineEdit | None = None
+        self.ruleset_button: QPushButton | None = None
+        self.validate_button: QPushButton | None = None
+        self.start_draft_button: QPushButton | None = None
         self.setObjectName("RightPanelPrototypeContent")
+        self.setStyleSheet(PVP_DECKS_RIGHT_PANEL_STYLE)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(8, 8, 8, 8)
@@ -4179,163 +4451,320 @@ class PvpDecksRightPanel(QWidget):
         self.title_label.setObjectName("SectionTitle")
         root.addWidget(self.title_label)
 
-        create_frame = QFrame()
-        create_frame.setObjectName("InfoBlock")
-        create_layout = QHBoxLayout(create_frame)
-        create_layout.setContentsMargins(8, 8, 8, 8)
+        self.create_row_widget = QWidget()
+        create_layout = QHBoxLayout(self.create_row_widget)
+        create_layout.setContentsMargins(0, 0, 0, 0)
         create_layout.setSpacing(6)
         self.create_name_edit = QLineEdit()
-        self.create_button = QPushButton("+")
-        self.create_button.setObjectName("icon_button")
-        self.create_button.setFixedWidth(36)
+        self.create_name_edit.installEventFilter(self)
         create_layout.addWidget(self.create_name_edit, 1)
+
+        self.create_button = QPushButton()
+        self.create_button.setObjectName("icon_button")
+        self.create_button.setIcon(self._ui_icon("plus"))
+        self.create_button.clicked.connect(self._on_create_clicked)
         create_layout.addWidget(self.create_button)
-        root.addWidget(create_frame)
 
-        list_frame = QFrame()
-        list_frame.setObjectName("InfoBlock")
-        self.deck_list_layout = QVBoxLayout(list_frame)
-        self.deck_list_layout.setContentsMargins(8, 8, 8, 8)
-        self.deck_list_layout.setSpacing(6)
-        root.addWidget(list_frame, 1)
+        self.cancel_new_deck_button = QPushButton()
+        self.cancel_new_deck_button.setObjectName("row_cancel_button")
+        self.cancel_new_deck_button.setIcon(self._ui_icon("x"))
+        self.cancel_new_deck_button.clicked.connect(self._on_cancel_new_clicked)
+        create_layout.addWidget(self.cancel_new_deck_button)
+        root.addWidget(self.create_row_widget)
 
-        details_frame = QFrame()
-        details_frame.setObjectName("InfoBlock")
-        details_layout = QVBoxLayout(details_frame)
-        details_layout.setContentsMargins(8, 8, 8, 8)
-        details_layout.setSpacing(6)
-        self.selected_label = QLabel()
-        self.selected_label.setObjectName("SectionTitle")
-        details_layout.addWidget(self.selected_label)
-        self.edit_name_edit = QLineEdit()
-        details_layout.addWidget(self.edit_name_edit)
-        self.ruleset_button = QPushButton()
-        self.ruleset_button.setEnabled(False)
-        details_layout.addWidget(self.ruleset_button)
-        self.counts_label = QLabel()
-        details_layout.addWidget(self.counts_label)
-        self.validation_label = QLabel()
-        self.validation_label.setWordWrap(True)
-        details_layout.addWidget(self.validation_label)
-
-        action_row = QHBoxLayout()
-        action_row.setContentsMargins(0, 0, 0, 0)
-        action_row.setSpacing(6)
-        self.edit_button = QPushButton()
-        self.save_button = QPushButton()
-        self.cancel_button = QPushButton()
-        self.validate_button = QPushButton()
-        self.delete_button = QPushButton()
-        for button in (
-            self.edit_button,
-            self.save_button,
-            self.cancel_button,
-            self.validate_button,
-            self.delete_button,
-        ):
-            action_row.addWidget(button)
-        details_layout.addLayout(action_row)
-
-        self.start_draft_button = QPushButton()
-        self.start_draft_button.setEnabled(False)
-        self._start_draft_tooltip = install_custom_tooltip(self.start_draft_button)
-        details_layout.addWidget(self.start_draft_button)
-        root.addWidget(details_frame)
+        self.deck_list_scroll = OverlayVerticalScrollArea()
+        self.deck_list_scroll.setWidgetResizable(True)
+        self.deck_list_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.deck_list_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        list_content = QWidget()
+        self.deck_list_layout = QVBoxLayout(list_content)
+        self.deck_list_layout.setContentsMargins(0, 0, 0, 0)
+        self.deck_list_layout.setSpacing(5)
+        self.deck_list_scroll.setWidget(list_content)
+        root.addWidget(self.deck_list_scroll, 1)
 
         self.status_label = QLabel()
+        self.status_label.setObjectName("small_muted")
         self.status_label.setWordWrap(True)
         root.addWidget(self.status_label)
 
-        self.create_button.clicked.connect(self._on_create_clicked)
         self.create_name_edit.returnPressed.connect(self._on_create_clicked)
-        self.edit_button.clicked.connect(self.workspace.begin_edit)
-        self.save_button.clicked.connect(self._on_save_clicked)
-        self.edit_name_edit.returnPressed.connect(self._on_save_clicked)
-        self.cancel_button.clicked.connect(self.workspace.cancel_edit)
-        self.validate_button.clicked.connect(self.refresh)
-        self.delete_button.clicked.connect(self.workspace.delete_selected)
         self.workspace.state_changed.connect(self.refresh)
         self.retranslate_ui()
         self.refresh()
 
     def refresh(self) -> None:
+        self._clear_stale_pending_delete()
+        self._refresh_create_controls()
         self._rebuild_deck_list()
-        preset = self.workspace.active_preset()
-        editing = self.workspace.is_editing
-        has_preset = preset is not None
-        if has_preset:
-            self.selected_label.setText(preset.name)
-            if self.edit_name_edit.text() != preset.name:
-                self.edit_name_edit.setText(preset.name)
-        else:
-            self.selected_label.setText(tr("app_shell.pvp.decks.no_deck_title"))
-            self.edit_name_edit.setText("")
-        self.edit_name_edit.setEnabled(editing)
-        self.edit_button.setEnabled(has_preset and not editing)
-        self.save_button.setEnabled(editing)
-        self.cancel_button.setEnabled(editing)
-        self.validate_button.setEnabled(has_preset)
-        self.delete_button.setEnabled(has_preset and not editing)
-
-        character_count, weapon_count = self.workspace.selected_counts()
-        self.counts_label.setText(
-            tr("app_shell.pvp.decks.counts").format(
-                characters=character_count,
-                weapons=weapon_count,
-            )
-        )
-        self.validation_label.setText(self._validation_text())
-        self.status_label.setText(self._status_text())
+        status = self.workspace._last_status
+        self.status_label.setText(status)
+        self.status_label.setVisible(bool(status))
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.decks.title"))
         self.create_name_edit.setPlaceholderText(
             tr("app_shell.pvp.decks.create_placeholder")
         )
-        self.ruleset_button.setText(tr("app_shell.pvp.decks.ruleset_free"))
-        self.edit_button.setText(tr("app_shell.pvp.decks.edit"))
-        self.save_button.setText(tr("app_shell.pvp.decks.save"))
-        self.cancel_button.setText(tr("app_shell.pvp.decks.cancel"))
-        self.validate_button.setText(tr("app_shell.pvp.decks.validate"))
-        self.delete_button.setText(tr("app_shell.pvp.decks.delete"))
-        self.start_draft_button.setText(tr("app_shell.pvp.decks.start_draft"))
-        self._start_draft_tooltip.set_text(tr("app_shell.pvp.decks.start_disabled"))
-        self.start_draft_button.setToolTip("")
+        self._install_button_tooltip(self.create_button, tr("artifact.build.new"))
+        self._install_button_tooltip(
+            self.cancel_new_deck_button,
+            tr("artifact.build.cancel"),
+        )
         self.refresh()
+
+    def eventFilter(self, watched, event) -> bool:
+        if watched is self.create_name_edit and event.type() == QEvent.Type.KeyPress:
+            if event.key() == Qt.Key.Key_Escape:
+                if self.workspace.is_new_deck_edit:
+                    self._on_cancel_new_clicked()
+                else:
+                    self.create_name_edit.clear()
+                event.accept()
+                return True
+        if (
+            watched is self.edit_name_edit
+            and event.type() == QEvent.Type.KeyPress
+        ):
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self._save_existing_from(watched)
+                event.accept()
+                return True
+            if event.key() == Qt.Key.Key_Escape:
+                self.workspace.cancel_edit()
+                event.accept()
+                return True
+        return super().eventFilter(watched, event)
 
     def keyPressEvent(self, event) -> None:
         if self.workspace.is_editing and event.key() in (
             Qt.Key.Key_Return,
             Qt.Key.Key_Enter,
         ):
-            self._on_save_clicked()
+            self._save_active_edit()
             event.accept()
             return
         if self.workspace.is_editing and event.key() == Qt.Key.Key_Escape:
             self.workspace.cancel_edit()
             event.accept()
             return
+        if self.pending_delete_deck_id:
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                self._confirm_delete_deck(self.pending_delete_deck_id)
+                event.accept()
+                return
+            if event.key() == Qt.Key.Key_Escape:
+                self._cancel_delete_deck()
+                event.accept()
+                return
         super().keyPressEvent(event)
+
+    def _refresh_create_controls(self) -> None:
+        new_edit = self.workspace.is_new_deck_edit
+        existing_edit = self.workspace.is_editing and not new_edit
+        if new_edit:
+            preset = self.workspace.active_preset()
+            if preset is not None and not self.create_name_edit.text().strip():
+                self.create_name_edit.setText(preset.name)
+        elif not self.workspace.is_editing:
+            if self.create_button.objectName() == "row_save_button":
+                self.create_name_edit.clear()
+
+        self.create_name_edit.setEnabled(not existing_edit)
+        self.create_button.setEnabled(not existing_edit)
+        self.create_button.setObjectName("row_save_button" if new_edit else "icon_button")
+        self.create_button.setIcon(self._ui_icon("save" if new_edit else "plus"))
+        self._install_button_tooltip(
+            self.create_button,
+            tr("artifact.build.save") if new_edit else tr("artifact.build.new"),
+        )
+        self.cancel_new_deck_button.setVisible(new_edit)
+        for button in (self.create_button, self.cancel_new_deck_button):
+            button.style().unpolish(button)
+            button.style().polish(button)
+            button.ensurePolished()
+            button.sizeHint()
 
     def _rebuild_deck_list(self) -> None:
         _clear_layout(self.deck_list_layout)
+        self.deck_row_frames.clear()
+        self.selected_info_labels.clear()
+        self.edit_name_edit = None
+        self.ruleset_button = None
+        self.validate_button = None
+        self.start_draft_button = None
+
         if not self.workspace.presets:
-            label = QLabel(tr("app_shell.pvp.decks.list_empty"))
-            label.setWordWrap(True)
-            self.deck_list_layout.addWidget(label)
+            if not self.workspace.is_new_deck_edit:
+                label = QLabel(tr("app_shell.pvp.decks.list_empty"))
+                label.setObjectName("small_muted")
+                label.setWordWrap(True)
+                self.deck_list_layout.addWidget(label)
             self.deck_list_layout.addStretch(1)
             return
+
         for preset in self.workspace.presets:
-            button = QPushButton(preset.name)
-            button.setCheckable(True)
-            button.setChecked(preset.deck_id == self.workspace.selected_deck_id)
-            button.setEnabled(not self.workspace.is_editing)
-            button.setProperty("selectedDeck", button.isChecked())
-            button.clicked.connect(
+            row = self._make_deck_row(preset)
+            self.deck_list_layout.addWidget(row)
+            self.deck_row_frames[preset.deck_id] = row
+        self.deck_list_layout.addStretch(1)
+
+    def _make_deck_row(self, preset: PvpDeckPreset) -> QFrame:
+        selected = preset.deck_id == self.workspace.selected_deck_id
+        pending = self.pending_delete_deck_id == preset.deck_id
+        editing_this_row = (
+            self.workspace.is_editing
+            and not self.workspace.is_new_deck_edit
+            and self.workspace.active_preset() is not None
+            and self.workspace.active_preset().deck_id == preset.deck_id
+        )
+
+        row = QFrame()
+        row.setObjectName("build_slot_row")
+        row.setProperty("selectedDeck", selected or editing_this_row)
+        outer = QVBoxLayout(row)
+        outer.setContentsMargins(6, 4, 6, 4)
+        outer.setSpacing(5)
+
+        top = QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 0)
+        top.setSpacing(5)
+        outer.addLayout(top)
+
+        if editing_this_row:
+            name_input = QLineEdit()
+            name_input.setText(self.workspace.active_preset().name)
+            name_input.setPlaceholderText(tr("app_shell.pvp.decks.create_placeholder"))
+            name_input.installEventFilter(self)
+            name_input.returnPressed.connect(lambda: self._save_existing_from(name_input))
+            top.addWidget(name_input, 1)
+            self.edit_name_edit = name_input
+        else:
+            select_button = MarqueeButton(preset.name)
+            select_button.setCheckable(True)
+            select_button.setChecked(selected)
+            select_button.setEnabled(not self.workspace.is_editing)
+            select_button.clicked.connect(
                 lambda _checked=False, deck_id=preset.deck_id: self.workspace.select_deck(deck_id)
             )
-            self.deck_list_layout.addWidget(button)
-        self.deck_list_layout.addStretch(1)
+            top.addWidget(select_button, 1)
+
+        if pending:
+            confirm_label = QLabel(tr("artifact.build.delete_confirm_short"))
+            confirm_label.setObjectName("small_muted")
+            top.addWidget(confirm_label)
+
+            confirm_button = self._row_icon_button("check", tr("artifact.build.delete"))
+            confirm_button.setObjectName("row_save_button")
+            confirm_button.clicked.connect(
+                lambda _checked=False, deck_id=preset.deck_id: self._confirm_delete_deck(deck_id)
+            )
+            self._prepare_row_action_button(confirm_button)
+            top.addWidget(confirm_button)
+
+            cancel_button = self._row_icon_button("x", tr("common.cancel"))
+            cancel_button.setObjectName("row_cancel_button")
+            cancel_button.clicked.connect(self._cancel_delete_deck)
+            self._prepare_row_action_button(cancel_button)
+            top.addWidget(cancel_button)
+            return row
+
+        if editing_this_row:
+            save_button = self._row_icon_button("save", tr("artifact.build.save"))
+            save_button.setObjectName("row_save_button")
+            save_button.clicked.connect(lambda _checked=False: self._save_existing_from(name_input))
+            self._prepare_row_action_button(save_button)
+            top.addWidget(save_button)
+
+            cancel_button = self._row_icon_button("x", tr("artifact.build.cancel"))
+            cancel_button.setObjectName("row_cancel_button")
+            cancel_button.clicked.connect(self.workspace.cancel_edit)
+            self._prepare_row_action_button(cancel_button)
+            top.addWidget(cancel_button)
+        else:
+            count_label = QLabel(f"({len(preset.character_ids) + len(preset.weapon_refs)})")
+            count_label.setObjectName("small_muted")
+            top.addWidget(count_label)
+
+            edit_button = self._row_icon_button("edit", tr("artifact.build.edit"))
+            edit_button.clicked.connect(self.workspace.begin_edit)
+            top.addWidget(edit_button)
+
+            delete_button = self._row_icon_button("delete", tr("artifact.build.delete"))
+            delete_button.clicked.connect(
+                lambda _checked=False, deck_id=preset.deck_id: self._request_delete_deck(deck_id)
+            )
+            top.addWidget(delete_button)
+
+        if selected or editing_this_row:
+            self._add_expanded_deck_info(outer, preset if not editing_this_row else self.workspace.active_preset())
+
+        return row
+
+    def _add_expanded_deck_info(
+        self,
+        outer: QVBoxLayout,
+        preset: PvpDeckPreset | None,
+    ) -> None:
+        if preset is None:
+            return
+        info = QFrame()
+        info.setObjectName("pvp_deck_expanded_info")
+        layout = QVBoxLayout(info)
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.setSpacing(4)
+
+        name_label = self._info_label(preset.name)
+        layout.addWidget(name_label)
+        self.selected_info_labels["name"] = name_label
+
+        self.ruleset_button = QPushButton(tr("app_shell.pvp.decks.ruleset_free"))
+        self.ruleset_button.setObjectName("pvp_ruleset_chip")
+        self.ruleset_button.setEnabled(False)
+        layout.addWidget(self.ruleset_button)
+
+        counts_label = self._info_label(
+            tr("app_shell.pvp.decks.counts").format(
+                characters=len(preset.character_ids),
+                weapons=len(preset.weapon_refs),
+            )
+        )
+        layout.addWidget(counts_label)
+        self.selected_info_labels["counts"] = counts_label
+
+        validation_label = self._info_label(self._validation_text())
+        validation_label.setWordWrap(True)
+        layout.addWidget(validation_label)
+        self.selected_info_labels["validation"] = validation_label
+
+        action_row = QHBoxLayout()
+        action_row.setContentsMargins(0, 0, 0, 0)
+        action_row.setSpacing(5)
+
+        self.validate_button = QPushButton(tr("app_shell.pvp.decks.validate"))
+        self.validate_button.setObjectName("pvp_compact_action")
+        self.validate_button.setIcon(self._ui_icon("check"))
+        self.validate_button.clicked.connect(self.refresh)
+        action_row.addWidget(self.validate_button, 1)
+
+        self.start_draft_button = QPushButton(tr("app_shell.pvp.decks.start_draft"))
+        self.start_draft_button.setObjectName("pvp_compact_action")
+        self.start_draft_button.setEnabled(False)
+        self._install_button_tooltip(
+            self.start_draft_button,
+            tr("app_shell.pvp.decks.start_disabled"),
+        )
+        action_row.addWidget(self.start_draft_button, 1)
+        layout.addLayout(action_row)
+
+        outer.addWidget(info)
+
+    def _info_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("pvp_deck_info_line")
+        return label
 
     def _validation_text(self) -> str:
         preset = self.workspace.active_preset()
@@ -4360,17 +4789,83 @@ class PvpDecksRightPanel(QWidget):
             codes=code_text,
         )
 
-    def _status_text(self) -> str:
-        if self.workspace.is_editing:
-            return tr("app_shell.pvp.decks.status_editing")
-        return tr("app_shell.pvp.decks.start_disabled")
-
     def _on_create_clicked(self) -> None:
+        if self.workspace.is_new_deck_edit:
+            if self.workspace.save_edit(name=self.create_name_edit.text()):
+                self.create_name_edit.clear()
+            return
+        if self.workspace.is_editing:
+            return
         if self.workspace.create_deck(self.create_name_edit.text()):
-            self.create_name_edit.clear()
+            preset = self.workspace.active_preset()
+            if preset is not None:
+                self.create_name_edit.setText(preset.name)
 
-    def _on_save_clicked(self) -> None:
-        self.workspace.save_edit(name=self.edit_name_edit.text())
+    def _on_cancel_new_clicked(self) -> None:
+        if self.workspace.is_new_deck_edit:
+            self.workspace.cancel_edit()
+        self.create_name_edit.clear()
+
+    def _save_existing_from(self, name_input: QLineEdit) -> None:
+        self.workspace.save_edit(name=name_input.text())
+
+    def _save_active_edit(self) -> None:
+        if self.workspace.is_new_deck_edit:
+            self.workspace.save_edit(name=self.create_name_edit.text())
+            self.create_name_edit.clear()
+        elif self.edit_name_edit is not None:
+            self.workspace.save_edit(name=self.edit_name_edit.text())
+
+    def _request_delete_deck(self, deck_id: str) -> None:
+        if self.workspace.is_editing:
+            return
+        self.pending_delete_deck_id = deck_id
+        self.refresh()
+
+    def _cancel_delete_deck(self) -> None:
+        self.pending_delete_deck_id = ""
+        self.refresh()
+
+    def _confirm_delete_deck(self, deck_id: str) -> None:
+        if self.pending_delete_deck_id != deck_id:
+            return
+        self.pending_delete_deck_id = ""
+        self.workspace.delete_deck(deck_id)
+
+    def _clear_stale_pending_delete(self) -> None:
+        if not self.pending_delete_deck_id:
+            return
+        if any(preset.deck_id == self.pending_delete_deck_id for preset in self.workspace.presets):
+            return
+        self.pending_delete_deck_id = ""
+
+    def _row_icon_button(self, icon_name: str, tooltip: str) -> QPushButton:
+        button = QPushButton()
+        button.setObjectName("icon_button")
+        button.setIcon(self._ui_icon(icon_name))
+        self._install_button_tooltip(button, tooltip)
+        self._prepare_row_action_button(button)
+        return button
+
+    def _ui_icon(self, name: str) -> QIcon:
+        return auto_contrast_svg_icon(
+            name,
+            PVP_DECK_UI_ICON_SIZE,
+            PVP_DECK_UI_ICON_BACKGROUND,
+        )
+
+    def _install_button_tooltip(self, button: QPushButton, text: str) -> None:
+        controller = button.property("_custom_tooltip_controller")
+        if controller is None:
+            controller = install_custom_tooltip(button)
+            button.setProperty("_custom_tooltip_controller", controller)
+        controller.set_text(text)
+        button.setToolTip("")
+
+    def _prepare_row_action_button(self, button: QPushButton) -> None:
+        button.ensurePolished()
+        button.sizeHint()
+        button.minimumSizeHint()
 
 
 def _selection_frame_rect(card_rect: QRect) -> QRect:

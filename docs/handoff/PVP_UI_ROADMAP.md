@@ -12,8 +12,10 @@ remains in `PVP_BACKEND_STATUS.md`.
   Abyss / DPS Dummy.
 - Account remains a global shell action in the right header.
 - Decks v0 is implemented as `PvpDecksWorkspace` plus `PvpDecksRightPanel`.
-  It persists local deck presets, shows account characters/weapons, supports
-  view/edit mode, and validates through the existing backend deck validator.
+  The corrected UI follows the existing Characters/Weapons browser grid on the
+  left and the Artifact Browser preset-row/list/edit pattern on the right. It
+  persists local deck presets, supports explicit view/edit/save/cancel, and
+  validates through the existing backend deck validator.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
 - The real draft board, pick/ban clicks, and live `FreeDraftController` UI
@@ -50,6 +52,9 @@ Left/main area:
 
 - Base the visual and asset-data approach on the existing Characters / Weapons
   browser.
+- Use the same section order and grid feel as the existing browser: weapons
+  first, then characters, with the same filter rows, card sizes, spacing, and
+  overlay-scroll behavior.
 - Show characters and weapons from account browser/runtime data.
 - View mode shows only members of the active deck preset.
 - Edit mode shows all account characters and weapons.
@@ -62,10 +67,13 @@ Left/main area:
 Right panel:
 
 - The Decks tab/control replaces the former placeholder `PvP Control`.
-- Create deck preset.
-- List deck presets.
-- Expand the selected preset into info, similar in spirit to Artifact Browser
-  preset/sidebar behavior.
+- Create deck preset through the same conceptual flow as Artifact Browser build
+  presets: plus creates a draft from all current account characters/weapons,
+  the left browser enters edit mode, Save commits, and Cancel discards.
+- List deck presets as compact Artifact Browser-style rows with inline
+  edit/delete icons.
+- Expand the selected preset in-place inside its row; the expanded block pushes
+  lower rows down and contains compact info/actions instead of a separate form.
 - Selected preset info owns:
   - name;
   - ruleset/cost system selector;
@@ -220,7 +228,9 @@ Use reference sites to decide information placement, not to copy styling.
 
 Completed Decks v0 task:
 
-> PvP Decks mode v0: persistent deck presets + main browser view/edit skeleton.
+> PvP Decks mode v0: persistent deck presets + corrected
+> Characters/Weapons-style browser and Artifact Browser-style preset list/edit
+> flow.
 
 Implemented in:
 
@@ -233,9 +243,16 @@ Current Decks v0 scope:
 
 - Decks replaces the former `PvP Control` placeholder in the right header.
 - Presets persist under `data/pvp/decks/` as `gtt.pvp_deck_preset` JSON.
-- New decks start from all current account characters/weapons.
-- View mode shows only selected deck members.
+- New deck drafts start from all current account characters/weapons and are not
+  saved until Save is pressed.
+- View mode shows only selected deck members without extra deck-selection
+  outlines on every card.
 - Edit mode shows all account characters/weapons, with unselected items dimmed.
+- The left browser uses the same weapons-first/characters-second grid order,
+  filters, card sizing, and spacing as the normal Characters/Weapons browser.
+- The right panel uses compact preset rows, in-row expansion, inline
+  edit/delete/save/cancel icons, and compact validation/start-placeholder
+  actions modeled on the Artifact Browser preset flow.
 - Save/cancel are explicit; Enter/Esc are supported on the right panel.
 - Validation uses the existing backend `DraftDeck` validator.
 - `Start local draft` is intentionally disabled until Play/setup and board

@@ -267,9 +267,15 @@ class AppShellTest(unittest.TestCase):
             )
 
             self.assertTrue(workspace.create_deck("Preset"))
-            self.assertFalse(workspace.is_editing)
+            self.assertTrue(workspace.is_editing)
+            self.assertTrue(workspace.is_new_deck_edit)
             self.assertEqual(workspace.selected_counts(), (2, 2))
             self.assertEqual(set(workspace.character_cards_by_id), {"10000050", "10000089"})
+            workspace.cancel_edit()
+            self.assertFalse(workspace.presets)
+
+            self.assertTrue(workspace.create_deck("Preset"))
+            self.assertTrue(workspace.save_edit(name="Preset"))
 
             self.assertTrue(workspace.begin_edit())
             workspace.character_cards_by_id["10000050"].clicked.emit(characters[0])
@@ -310,11 +316,16 @@ class AppShellTest(unittest.TestCase):
                 weapon_assets_provider=lambda: weapons,
             )
             self.assertTrue(workspace.create_deck("Preset"))
+            self.assertTrue(workspace.save_edit(name="Preset"))
             panel = PvpDecksRightPanel(workspace)
 
+            self.assertIn(workspace.selected_deck_id, panel.deck_row_frames)
             self.assertFalse(panel.start_draft_button.isEnabled())
             self.assertFalse(panel.ruleset_button.isEnabled())
-            self.assertIn("Characters: 1", panel.counts_label.text())
+            self.assertEqual(
+                panel.selected_info_labels["counts"].text(),
+                tr("app_shell.pvp.decks.counts").format(characters=1, weapons=1),
+            )
 
     def test_perf_logging_is_disabled_by_default(self) -> None:
         with patch.dict("os.environ", {"GTT_PERF_LOG": ""}):

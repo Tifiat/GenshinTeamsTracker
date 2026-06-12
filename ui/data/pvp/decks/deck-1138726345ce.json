@@ -1,0 +1,595 @@
+{
+  "schema_version": 1,
+  "kind": "gtt.pvp_deck_preset",
+  "deck_id": "deck-1138726345ce",
+  "name": "New Deck 1",
+  "ruleset_id": "free_draft_v0",
+  "character_ids": [
+    "10000121",
+    "10000014",
+    "10000032",
+    "10000024",
+    "10000111",
+    "10000055",
+    "10000003",
+    "10000039",
+    "10000068",
+    "10000123",
+    "10000060",
+    "10000110",
+    "10000127",
+    "10000092",
+    "10000072",
+    "10000100",
+    "10000061",
+    "10000067",
+    "10000015",
+    "10000074",
+    "10000108",
+    "10000006",
+    "10000130",
+    "10000106",
+    "10000080",
+    "10000041",
+    "10000091",
+    "10000073",
+    "10000034",
+    "10000105",
+    "10000007",
+    "10000045",
+    "10000020",
+    "10000056",
+    "10000043",
+    "10000053",
+    "10000097",
+    "10000025",
+    "10000065",
+    "10000107",
+    "10000023",
+    "10000093",
+    "10000069",
+    "10000050",
+    "10000031",
+    "10000120",
+    "10000085",
+    "10000089",
+    "10000059",
+    "10000104",
+    "10000036",
+    "10000088",
+    "10000090",
+    "10000103",
+    "10000099",
+    "10000064",
+    "10000124",
+    "10000116",
+    "10000101",
+    "10000119"
+  ],
+  "weapon_refs": [
+    {
+      "weapon_fingerprint": "2ab04a51da7fba3b63e1268c3d50892f015d9c31611dfe53602ba54ea39700e8",
+      "weapon_id": "15508",
+      "weapon_type": "12",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "672c25f12d6d7dcbab68a1dc41abef0bc2d6a06ba13d3f3546e4ca308d4c7386",
+      "weapon_id": "15514",
+      "weapon_type": "12",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "4ddb4fa9e80278904a97121c9e37384d8b18f40424efc26d75bb278fd6186b86",
+      "weapon_id": "14517",
+      "weapon_type": "10",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "9c12aa1c624350fc9b6a637d45852d38bd222e0f4d91ff62d03cf94638767384",
+      "weapon_id": "15516",
+      "weapon_type": "12",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "efbe2825a563f71e3827171437da96d714809463897f535000c5c55a51c24660",
+      "weapon_id": "12513",
+      "weapon_type": "11",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "c987367e15216fdf39d6d994e1f34adb16e90ddc19111d8a0f60d6095349852f",
+      "weapon_id": "14502",
+      "weapon_type": "10",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "f91c04c9485c51f8865e2776e1fbce6cf725926ab2ff4f5ed0fb91f3fd999769",
+      "weapon_id": "14501",
+      "weapon_type": "10",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "e48a5ad3b880194035ac5de3f99cf4dae3a249989b3dab7bedbea707ec09c4a0",
+      "weapon_id": "14519",
+      "weapon_type": "10",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "1a3dd195d871b6bfda2c5dd8c8ecf6191606d6a96edf09a797ed21e75c5510eb",
+      "weapon_id": "11516",
+      "weapon_type": "1",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "4496589b5539717ea716a49bda9382a975387c38bff7ae8947611b6e40aadb69",
+      "weapon_id": "13515",
+      "weapon_type": "13",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "15b7b28d7ff96063f58443edc422a07f131a5b27648a49a297b7721e4d9f22fb",
+      "weapon_id": "12514",
+      "weapon_type": "11",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "0a90fc1f14fc7f1c02b42d1e51f172bb3e0808862bc5532648d3be1a59a63b7e",
+      "weapon_id": "13513",
+      "weapon_type": "13",
+      "rarity": 5,
+      "level": 90,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "5691194607220557dc518a123bced66e81173f46c6ac134e8b8baae83487d229",
+      "weapon_id": "13415",
+      "weapon_type": "13",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "0450a0f8f7b23151ef4ed335d3e69d321154b42ff396f3b3231f0aca9da4edb5",
+      "weapon_id": "15402",
+      "weapon_type": "12",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "37f2e8107f228585a40cc69086affdc797be0c8ab52ab13ffe9264f6d67413c9",
+      "weapon_id": "15401",
+      "weapon_type": "12",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "45872b552686d4b5925297857b63d67b54e28e05c23b02e7c92a8f5a6b279ef0",
+      "weapon_id": "11424",
+      "weapon_type": "1",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "6f1e51496a1b78d547ec858b60d563ed5dce9b8e6618cfda68732fa7487a6e70",
+      "weapon_id": "12432",
+      "weapon_type": "11",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "65efc14c9ce17087c54f6ff226f301e62e482d17f40fbea9815a7222448081a7",
+      "weapon_id": "15426",
+      "weapon_type": "12",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "3bdfbc974e65859e33e3e3cc7a7088b771cef5b54aa2284d3b30c77d44264ff1",
+      "weapon_id": "12401",
+      "weapon_type": "11",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "5907d36cb921477bbc5a4d224d668566e83ed694178c014207959deb2a005b6b",
+      "weapon_id": "11417",
+      "weapon_type": "1",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 3,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "d6defa1404f7ba2fc7fdece9544c05d5a4b36833a0a49eecc32ddc0c07167fa2",
+      "weapon_id": "14424",
+      "weapon_type": "10",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 2,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "b1b48abc4a9e415bdb814576d377aab59f541ec7a371ed98e2088ff4ca88e167",
+      "weapon_id": "14401",
+      "weapon_type": "10",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "9ee91628dc89351e1efb8056e33ee29ea8298e74b7ad5c8afebd3a08d4908852",
+      "weapon_id": "13407",
+      "weapon_type": "13",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "b71a5df4ce094fdf3208b9763d52e6f3f8a02f843954cd462d17754ee23f952e",
+      "weapon_id": "14432",
+      "weapon_type": "10",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "1edba17c67a3b2b3a604c91522d7c30a371842126a351771799d8100c8948478",
+      "weapon_id": "11401",
+      "weapon_type": "1",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 2,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "c8c205965b593ca144be84bc96b357dc191426ca86d64f1867fe53764abbd775",
+      "weapon_id": "11401",
+      "weapon_type": "1",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "43d598b146ba490843deb3145664ab459b85bac4bf2406b071a355c112a7b182",
+      "weapon_id": "12409",
+      "weapon_type": "11",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "b93fb320f2d344aa22913a667a3ec6c364d9107331e5de45be2dadc89e270198",
+      "weapon_id": "11426",
+      "weapon_type": "1",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "54abf71497c311bfc7d44d8dcfb3c5565fd2ba579d9c528da4914babd697b4b7",
+      "weapon_id": "14402",
+      "weapon_type": "10",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "99b08d2e0a733e3271e1f2c060a3489d43fe4bd44af68d63dc8010b8ab85a660",
+      "weapon_id": "12430",
+      "weapon_type": "11",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 3,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "76c1ba1a1096cddb956ac0a23faff9fc958f8e2cd3ae531e0566a968110f3911",
+      "weapon_id": "14416",
+      "weapon_type": "10",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 4,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "90991104c28c9724545641adf9d5e5a2a56820dd2ee7fe4c3b01bf2d05008a2b",
+      "weapon_id": "13431",
+      "weapon_type": "13",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 4,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "acdcbc0b67d8767345612f70314a3744af0cc287d6deef5ce5c27850307c0783",
+      "weapon_id": "13405",
+      "weapon_type": "13",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "275f78901b17fc86abbb4498c580779b84807cc3f868cb4f92e5951fd27a5b1d",
+      "weapon_id": "15434",
+      "weapon_type": "12",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "e937dec191872f6f2dab045a8bd89a3b150db05ac89c9ea2553e7cf7d142ad45",
+      "weapon_id": "13432",
+      "weapon_type": "13",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "23edcc8fb09ce6c0a94d9933c340be0328dd3228a339f5ab76b11d0cf521d970",
+      "weapon_id": "14403",
+      "weapon_type": "10",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "7f63945967f56a0c3ec3f34f21fe28059ea83a7c12b534cf0506baa5ef607423",
+      "weapon_id": "11403",
+      "weapon_type": "1",
+      "rarity": 4,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "970f5140832caff3906c852788fa6b660fabc801d1633492af450ae367525223",
+      "weapon_id": "11428",
+      "weapon_type": "1",
+      "rarity": 4,
+      "level": 80,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "3d2ccab5f493fbc20111501eca464d1a4766c3fd4bb001f294deaad7b1b3a3ab",
+      "weapon_id": "13407",
+      "weapon_type": "13",
+      "rarity": 4,
+      "level": 70,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "32d4fd3632af3e45f24d4d8fb4671fb433a479cf4eef3285148b0eecbb11880b",
+      "weapon_id": "12403",
+      "weapon_type": "11",
+      "rarity": 4,
+      "level": 60,
+      "refinement": 3,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "2488cf595b5b875e2ba29e9db9714aa49f5331b06e9b41938592acbebd227435",
+      "weapon_id": "15403",
+      "weapon_type": "12",
+      "rarity": 4,
+      "level": 60,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "bc4beaa6eedcaeaf76880069e75cc310ee60ddfdfaa08261ba2be1c3d53ead91",
+      "weapon_id": "15432",
+      "weapon_type": "12",
+      "rarity": 4,
+      "level": 50,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "3340ab218e1df46fd625c58b090f3eeee22b2f0318795735b11cc83acd9632bc",
+      "weapon_id": "13407",
+      "weapon_type": "13",
+      "rarity": 4,
+      "level": 50,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "2fc24a98bf6405e89a2ba59abaee29f78aff43c37f29b29f136690da3b18fbe0",
+      "weapon_id": "15410",
+      "weapon_type": "12",
+      "rarity": 4,
+      "level": 40,
+      "refinement": 3,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "3251872c2ea4d1f7482093e01ee97fbf22227d26931e6b17938f1d7e8e497e85",
+      "weapon_id": "14427",
+      "weapon_type": "10",
+      "rarity": 4,
+      "level": 20,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "13fd43d135a49610ea0b50a31280e2b0ac80c69b879ce22aa9ecf92063db8803",
+      "weapon_id": "11432",
+      "weapon_type": "1",
+      "rarity": 4,
+      "level": 1,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "ce674307bb7d37f2e07e00a7edc2e636aeca77081d3a1f5ef6fdb86bf687980c",
+      "weapon_id": "12401",
+      "weapon_type": "11",
+      "rarity": 4,
+      "level": 1,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "f4bf654ad5b72b2037fb7a49fdc647a750050800a5eac78b7a88de02e02d5bcd",
+      "weapon_id": "12401",
+      "weapon_type": "11",
+      "rarity": 4,
+      "level": 1,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "171c57058da280f08bf159a8dcea13989fa8972bbcf425f7c5ba1c8fccf6fe0e",
+      "weapon_id": "11416",
+      "weapon_type": "1",
+      "rarity": 4,
+      "level": 1,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "bae4fef61c9141100577f28ec17b17581f9dc085dc4120eff31aaabdb9b1e77d",
+      "weapon_id": "13430",
+      "weapon_type": "13",
+      "rarity": 4,
+      "level": 1,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "1084e7cb1e0bf779ba24e84db9c516706929133b5126eb89545c5ddb6c2892e8",
+      "weapon_id": "15304",
+      "weapon_type": "12",
+      "rarity": 3,
+      "level": 90,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "64aa27602ed9e0e99e70c42260e69cb5d083b30711d07cd2f7e1335623e67b6d",
+      "weapon_id": "11304",
+      "weapon_type": "1",
+      "rarity": 3,
+      "level": 90,
+      "refinement": 2,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "dff0b8e0227d9a4ee208d353a4e6e0fec41cc99c2a644c26be14a2774e140c0a",
+      "weapon_id": "14302",
+      "weapon_type": "10",
+      "rarity": 3,
+      "level": 70,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "3d07824b49f24f2f99c6692a1f8341ea5ab9d03f18b94827b929d5a261068f84",
+      "weapon_id": "13303",
+      "weapon_type": "13",
+      "rarity": 3,
+      "level": 60,
+      "refinement": 5,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "3c5017eb817542c189baa661180eff1f486566f98bc755c9f36e96686bb35d70",
+      "weapon_id": "12305",
+      "weapon_type": "11",
+      "rarity": 3,
+      "level": 1,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "87c06c942b30588ecc6964b5389c2c3e1b237c327d89d900b8e3e7bb5afe47e5",
+      "weapon_id": "12301",
+      "weapon_type": "11",
+      "rarity": 3,
+      "level": 1,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "f143e5c9e7ab0303fefb76fe1cf124633a2b3469546001e83b3b545fc7648711",
+      "weapon_id": "12302",
+      "weapon_type": "11",
+      "rarity": 3,
+      "level": 1,
+      "refinement": 1,
+      "count": 1
+    },
+    {
+      "weapon_fingerprint": "8f592e1ec5f4bc63e452fce44f60998ce6913f6f009fd39735593811db332fa3",
+      "weapon_id": "11306",
+      "weapon_type": "1",
+      "rarity": 3,
+      "level": 1,
+      "refinement": 1,
+      "count": 1
+    }
+  ],
+  "created_at_utc": "2026-06-12T17:54:12Z",
+  "updated_at_utc": "2026-06-12T18:49:16Z"
+}

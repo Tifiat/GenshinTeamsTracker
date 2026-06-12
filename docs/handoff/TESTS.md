@@ -47,7 +47,8 @@ Mirror the primary project owner under `tests/`:
   `run_workspace`.
 - `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests,
   including PvP Decks workspace/right-panel create, edit, save/cancel, header,
-  and disabled-start skeleton behavior.
+  corrected Artifact Browser-style preset rows/expanded info, and
+  disabled-start skeleton behavior.
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.

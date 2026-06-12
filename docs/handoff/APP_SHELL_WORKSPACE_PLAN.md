@@ -87,8 +87,8 @@ right column patched in place.
 - The old main window's right half is not migrated into this workspace.
 - It should update typed TeamBuilder/run state, not legacy image-path slots.
 - Current left workspace ids are stable internal ids: `characters_weapons`,
-  `artifacts`, `gcsim`, and `pvp`. They are routing ids, not localized display
-  labels.
+  `artifacts`, `gcsim`, `history`, and `pvp`. They are routing ids, not
+  localized display labels.
 
 ### Artifact Browser Workspace
 
@@ -176,12 +176,14 @@ right column patched in place.
 
 ### History Workspace
 
-- Future replacement for legacy history.
+- Placeholder left workspace exists with stable id `history`.
 - Legacy `runs_history.json` / image-path history UI is obsolete and should not
   become the long-term design.
-- History browsing belongs on the left as a workspace/tab once immutable run
-  snapshots exist. The right dock may expose a compact History command, but it
-  should route to the left workspace and active run type, not open the old
+- The current page is intentionally inert and only explains that real saved-run
+  browsing waits for typed immutable run snapshots.
+- Real History browsing belongs on the left as a workspace/tab once immutable
+  run snapshots exist. The right dock may expose a compact History command, but
+  it should route to the left workspace and active run type, not open the old
   floating history window as the final behavior.
 
 ## Right Operations Dock
@@ -655,9 +657,9 @@ Sizing note:
 
 - `LeftWorkspaceHost` uses a `QStackedWidget` and small workspace nav.
 - Current workspaces: default Character/Weapon, lazy-created Artifacts, GCSIM
-  Browser, and the PvP placeholder.
+  Browser, inert History placeholder, and the PvP placeholder.
 - Navigation uses stable workspace ids requested through root AppShell so later
-  History or real PvP workspace stages can coordinate right-dock policies
+  real History browsing or real PvP workspace stages can coordinate right-dock policies
   without directly mutating the dock.
 
 ### Stage 4: Embedded Artifact Browser (Implemented)
@@ -677,8 +679,9 @@ Sizing note:
   Continue that work without treating Browser runtime output as saved history.
 - Add typed run/session ownership for reset/save/history commands and immutable
   snapshot persistence before any GCSIM result becomes a durable saved result.
-- Add a new History workspace based on immutable saved run snapshots, routed
-  from the right-dock History command according to active run type.
+- Replace the inert History placeholder with browsing based on immutable saved
+  run snapshots, routed from the right-dock History command according to active
+  run type.
 - Attach GCSIM results to current session/snapshots as `sim DPS` metadata, kept
   separate from factual HP/time DPS.
 - Production switch still depends on the correct AppShell/session/snapshot

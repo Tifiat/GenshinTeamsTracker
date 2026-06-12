@@ -169,6 +169,7 @@ RIGHT_DOCK_ACCOUNT_ICON_SIZE = 18
 LEFT_WORKSPACE_CHARACTERS_WEAPONS = "characters_weapons"
 LEFT_WORKSPACE_ARTIFACTS = "artifacts"
 LEFT_WORKSPACE_GCSIM = "gcsim"
+LEFT_WORKSPACE_HISTORY = "history"
 LEFT_WORKSPACE_PVP = "pvp"
 
 # Calibrated global shell minimum for the embedded Artifact Browser footprint.
@@ -2388,6 +2389,12 @@ class LeftWorkspaceHost(QWidget):
             "GCSIM",
             self.gcsim_browser_workspace,
         )
+        self.history_workspace = HistoryWorkspacePlaceholder()
+        self.history_button = self.add_workspace(
+            LEFT_WORKSPACE_HISTORY,
+            tr("app_shell.workspace.history"),
+            self.history_workspace,
+        )
         self.pvp_workspace = PvpWorkspacePlaceholder()
         self.pvp_button = self.add_workspace(
             LEFT_WORKSPACE_PVP,
@@ -2515,9 +2522,11 @@ class LeftWorkspaceHost(QWidget):
         )
         self.artifact_browser_button.setText(tr("app_shell.workspace.artifacts"))
         self.gcsim_browser_button.setText("GCSIM")
+        self.history_button.setText(tr("app_shell.workspace.history"))
         self.pvp_button.setText(tr("app_shell.workspace.pvp"))
         self.character_weapon_workspace.retranslate_ui()
         self.gcsim_browser_workspace.retranslate_ui()
+        self.history_workspace.retranslate_ui()
         self.pvp_workspace.retranslate_ui()
         if self.artifact_browser_workspace is None:
             self.artifact_browser_placeholder_label.setText(
@@ -2839,6 +2848,45 @@ class PvpWorkspacePlaceholder(QFrame):
         self.subtitle_label.setText(tr("app_shell.pvp.placeholder.subtitle"))
         self.note_label.setText(tr("app_shell.pvp.placeholder.note"))
         self.sample_label.setText(tr("app_shell.pvp.placeholder.sample"))
+
+
+class HistoryWorkspacePlaceholder(QFrame):
+    """Temporary left-workspace placeholder until immutable snapshots exist."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("HistoryWorkspacePlaceholder")
+        root = QVBoxLayout(self)
+        root.setContentsMargins(32, 32, 32, 32)
+        root.setSpacing(8)
+        root.addStretch(1)
+
+        self.title_label = QLabel()
+        self.title_label.setObjectName("SectionTitle")
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self.title_label)
+
+        self.subtitle_label = QLabel()
+        self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self.subtitle_label)
+
+        self.note_label = QLabel()
+        self.note_label.setWordWrap(True)
+        self.note_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self.note_label)
+
+        self.legacy_note_label = QLabel()
+        self.legacy_note_label.setWordWrap(True)
+        self.legacy_note_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self.legacy_note_label)
+        root.addStretch(2)
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        self.title_label.setText(tr("app_shell.history.placeholder.title"))
+        self.subtitle_label.setText(tr("app_shell.history.placeholder.subtitle"))
+        self.note_label.setText(tr("app_shell.history.placeholder.note"))
+        self.legacy_note_label.setText(tr("app_shell.history.placeholder.legacy_note"))
 
 
 class PvpRightDockPlaceholder(QWidget):
@@ -4237,7 +4285,9 @@ __all__ = [
     "LEFT_WORKSPACE_ARTIFACTS",
     "LEFT_WORKSPACE_CHARACTERS_WEAPONS",
     "LEFT_WORKSPACE_GCSIM",
+    "LEFT_WORKSPACE_HISTORY",
     "LEFT_WORKSPACE_PVP",
+    "HistoryWorkspacePlaceholder",
     "LeftWorkspaceHost",
     "PvpRightDockPlaceholder",
     "PvpWorkspacePlaceholder",

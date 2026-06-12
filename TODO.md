@@ -381,7 +381,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 11. GCSIM Integration
 
-- GCSIM now has backend/dev infrastructure plus an AppShell Browser backend-MVP product path for selected runtime teams. It is usable for current Browser prepare/run diagnostics and runtime right-panel Sim DPS rows, but production packaging, mapping coverage, saved-result persistence/history policy, no-code rotations, and final UI polish remain future work.
+- GCSIM now has backend/dev infrastructure plus an AppShell Browser backend-MVP product path for selected runtime teams. It is usable for current Browser prepare/run diagnostics and runtime right-panel Sim DPS rows; the Browser has a first compact UI pass with context/rotation tabs/run summary, while production packaging, mapping coverage, saved-result persistence/history policy, no-code rotations, and final polish remain future work.
 - Read before GCSIM work:
   - `docs/handoff/GCSIM.md` for upstream research and CLI/result behavior;
   - `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md` for the current GTT engine lifecycle, patch stack, Browser MVP, cleanup/retention policy, and production-readiness sequence;
@@ -395,7 +395,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - DPS Dummy has a diagnostic backend run path that uses the selected team and manual rotation shell without Abyss identity, history persistence, no-code rotation support, or damage-correctness claims;
   - GCSIM boosted/infinite energy is an explicit Account/GCSIM setting (`gcsim_boosted_energy_enabled`) that injects/replaces `energy every interval=480,720 amount=100;` only when enabled and clears stale runtime Sim DPS results when changed; dev CLI energy override remains in `account_prepared_config.py`;
   - Sim DPS cells have runtime-only tooltips with status, clear time, DPS, average total damage per sim run, source/config paths, target mode, stale reasons, warnings/issues, and explicit no-DPS-correctness/no-history notes; Browser runtime results are not saved history;
-  - normal GCSIM Browser blocked-run output is compact/readiness-first with debug issue counts/codes instead of raw issue dict walls; `Debug: prepare config` remains a temporary debug action;
+  - normal GCSIM Browser blocked-run output is compact/readiness-first with debug issue counts/codes instead of raw issue dict walls; the prepare/preflight path is exposed as `Check readiness`, with raw diagnostics kept behind Advanced/Debug UI;
   - DPS Dummy reports energy mode and dummy target HP/resist/source for diagnostics;
   - generated GCSIM engines are retention-pruned to active + one previous successful + one latest failed; `.go/build-cache` is rebuildable and cleaned after successful probe/build unless explicitly kept; `.go/pkg/mod` remains as the small module cache; manual cleanup dry-run command is `python -m run_workspace.gcsim.cleanup`.
 - Real next work:

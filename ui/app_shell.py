@@ -1731,6 +1731,9 @@ class AppShell(QWidget):
             team_previews=self.controller.gcsim_browser_team_previews(),
             target_mode_label=target_mode_label,
             targets_preview_by_team=targets_preview_by_team,
+            energy_mode_label=_gcsim_browser_energy_mode_label(
+                self.controller.gcsim_run_settings().boosted_energy_enabled
+            ),
         )
 
     def _on_gcsim_prepare_requested(
@@ -2037,6 +2040,7 @@ class AppShell(QWidget):
     def _on_gcsim_boosted_energy_changed(self, enabled: bool) -> None:
         self.controller.gcsim_boosted_energy_enabled = bool(enabled)
         self.controller.clear_gcsim_results()
+        self._sync_gcsim_browser_context()
         self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
 
     def _on_gcsim_rotation_text_changed(self) -> None:
@@ -2529,6 +2533,7 @@ class LeftWorkspaceHost(QWidget):
         team_previews: tuple[tuple[GcsimBrowserTeamSlotPreview, ...], ...],
         target_mode_label: str = "",
         targets_preview_by_team: tuple[tuple[str, ...], ...] = ((), ()),
+        energy_mode_label: str = "",
     ) -> None:
         self.gcsim_browser_workspace.set_mode(mode)
         for team_index, slots in enumerate(team_previews):
@@ -2539,6 +2544,7 @@ class LeftWorkspaceHost(QWidget):
         self.gcsim_browser_workspace.set_abyss_targets_preview(
             target_mode_label=target_mode_label,
             preview_by_team=targets_preview_by_team,
+            energy_mode_label=energy_mode_label,
         )
 
 
@@ -2605,6 +2611,16 @@ def _gcsim_prepare_report_text(payload: dict[str, Any]) -> str:
             ]
         )
     return "\n".join(lines)
+
+
+def _gcsim_browser_energy_mode_label(boosted_energy_enabled: bool) -> str:
+    key = (
+        "gcsim.browser.context_energy_boosted"
+        if boosted_energy_enabled
+        else "gcsim.browser.context_energy_normal"
+    )
+    fallback = "Energy: boosted" if boosted_energy_enabled else "Energy: normal"
+    return tr(key) if tr(key) != key else fallback
 
 
 def _gcsim_issue_codes(payload: dict[str, Any]) -> tuple[str, ...]:

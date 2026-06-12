@@ -545,6 +545,12 @@ TeamBuilder ref helpers. UI asset helpers in `ui/character_assets.py` convert
 these runtime records into the legacy grid asset-item shape without reading
 `crop_manifest.json` at runtime.
 
+PvP account deck export also uses this read-adapter boundary. The production
+provider in `run_workspace/pvp/account_deck_export.py` reads
+`list_account_characters(conn)` and `list_account_weapon_observed_stacks(conn)`
+to build Free Draft `DraftDeck` JSON without importing PySide/UI modules,
+reading raw account JSON, or exposing local SQLite row ids/paths.
+
 For current equipment, use `hoyolab_export/account_equipment.py` helpers such as
 `equip_artifact`, `equip_weapon`, `list_equipped_artifacts_for_character`,
 `get_equipped_weapon_for_character`, and owner read models. AppShell uses these

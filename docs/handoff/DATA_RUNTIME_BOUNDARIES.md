@@ -57,7 +57,10 @@ Readers:
 - runtime/UI account loaders through `hoyolab_export/account_storage.py` read
   adapters;
 - `ui/character_assets.py` converts adapter records into legacy visual grid
-  asset items.
+  asset items;
+- `run_workspace/pvp/account_deck_export.py` reads the same adapters to build a
+  backend-only Free Draft `DraftDeck` from owned characters and observed weapon
+  stacks.
 
 Meaning:
 
@@ -94,6 +97,29 @@ Important limits:
   not belong in account SQLite.
 
 Detailed contract: `docs/handoff/ACCOUNT_SQLITE_STORAGE.md`.
+
+## PvP Deck Export Output
+
+Default generated/private write path:
+
+- `data/pvp/decks/`
+
+Role:
+
+- optional output for `python -m run_workspace.pvp.account_deck_export_smoke
+  --write`;
+- contains PvP `DraftDeck` JSON built from current local account SQLite runtime
+  data.
+
+Rules:
+
+- default account deck export smoke is dry-run and writes no JSON;
+- generated deck JSON may contain stable ids, localized display names, levels,
+  constellations, weapon refinements, and stack counts;
+- deck JSON must not contain artifacts, artifact stats, HoYoLAB auth/cookies,
+  raw account dumps, local paths, SQLite row ids, or generated/private storage
+  internals;
+- `data/pvp/` is ignored and should not be committed.
 
 ## Account Character Visual Assets
 

@@ -529,7 +529,7 @@ v0 can produce an in-memory/session result summary only.
 
 ## Current Backend Implementation Status
 
-Implemented on 2026-06-11:
+Implemented through 2026-06-12:
 
 - `run_workspace/pvp/deck.py`: v0 deck dataclasses, strict JSON
   root/schema/kind loading, and stable `to_dict()` roundtrip.
@@ -560,6 +560,20 @@ Implemented on 2026-06-11:
 - `run_workspace/pvp/ruleset_applicability_smoke.py`: deterministic
   backend-only ruleset applicability/cost smoke. Command: `python -m
   run_workspace.pvp.ruleset_applicability_smoke`.
+- `run_workspace/pvp/account_deck_export.py`: backend-only Free Draft deck
+  exporter from current local account SQLite runtime data. The production
+  provider reads `account_characters` and `account_weapon_observed_stacks`
+  through `hoyolab_export.account_storage` adapters; fake providers are used by
+  tests. It exports stable character/weapon ids, display names, element, weapon
+  type, rarity, character level/constellation, weapon level/refinement/count,
+  Free Draft ruleset metadata, and privacy-safe source metadata. It excludes
+  artifacts, auth/cookies, raw account dumps, local paths, SQLite row ids, and
+  generated/private storage internals.
+- `run_workspace/pvp/account_deck_export_smoke.py`: dry-run local account export
+  smoke. Command: `python -m run_workspace.pvp.account_deck_export_smoke`.
+  Default mode prints a compact summary and writes no deck JSON. `--write`
+  writes under generated/private `data/pvp/decks/` unless `--output` is given.
+  Traveler is skipped by the same conservative v0 policy as deck validation.
 - `samples/pvp/`: synthetic deck fixtures for tests only; ids are not
   production catalog ids. Current fixtures have 12 distinct characters per
   player and enough per-player weapon stack counts for the scripted full-loop
@@ -573,7 +587,8 @@ Implemented on 2026-06-11:
 Still not implemented: UI, AppShell/right-panel integration, online transport,
 deck builder/exporter UI, real Gentor/Abyss importer, richer ruleset execution,
 automatic schedule derivation from public rulesets, full localized Traveler
-detection/support, GCSIM scoring, and PvP History.
+detection/support, account deck full-loop auto-scripting, GCSIM scoring, and
+PvP History.
 
 ## Testing Strategy
 
@@ -624,8 +639,9 @@ Stage C: deck JSON import and sample deck fixtures.
 - Allow development flow where Player 2 receives a copied/manually edited deck
   JSON.
 - Do not require deck builder UI before reducer work.
-- Status: JSON loading and synthetic sample fixtures are implemented; deck
-  builder/exporter UI remains future work.
+- Status: JSON loading, synthetic sample fixtures, and backend local-account
+  Free Draft export are implemented; deck builder/exporter UI remains future
+  work.
 
 Stage D: Free Draft v0 reducer/action log.
 
@@ -654,6 +670,7 @@ Stage G: deck builder/exporter UI.
 - Build a deck from the existing imported account characters/weapons.
 - Validate under Free Draft and later rulesets.
 - Export deck JSON.
+- Status: backend account export exists; no UI/deck-builder surface is wired.
 
 Stage H: iterate toward offline PvP MVP.
 

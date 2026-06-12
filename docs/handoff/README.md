@@ -34,11 +34,13 @@ Durable backend modules:
 
 - `run_workspace/pvp/` - backend-only PvP v0 foundation for deck JSON,
   `DeckValidationReport`, Free Draft v0 schedule/reducer/action log,
-  post-draft team and weapon assignment validation, and match timer/result
-  summaries. It also contains report-only ruleset applicability and deck
+  post-draft team and weapon assignment validation, match timer/result
+  summaries, and local-account Free Draft deck export from SQLite runtime
+  account data. It also contains report-only ruleset applicability and deck
   cost-preview research helpers. Deterministic dev smoke commands: `python -m
-  run_workspace.pvp.full_loop_smoke` and `python -m
-  run_workspace.pvp.ruleset_applicability_smoke`. Fixtures and tests live in
+  run_workspace.pvp.full_loop_smoke`, `python -m
+  run_workspace.pvp.ruleset_applicability_smoke`, and `python -m
+  run_workspace.pvp.account_deck_export_smoke`. Fixtures and tests live in
   `samples/pvp/` and `tests/run_workspace/pvp/`.
 
 Rules:

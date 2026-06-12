@@ -123,9 +123,11 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `run_workspace/pvp/`: isolated backend-only PvP v0 foundation for deck JSON,
   deck validation, Free Draft schedule/reducer/action log, post-draft team and
   weapon assignment validation, timer/result summaries, report-only ruleset
-  applicability/cost-preview helpers, and deterministic dev smokes (`python -m
+  applicability/cost-preview helpers, local-account Free Draft deck export from
+  SQLite runtime data, and deterministic dev smokes (`python -m
   run_workspace.pvp.full_loop_smoke`, `python -m
-  run_workspace.pvp.ruleset_applicability_smoke`). It does not touch AppShell,
+  run_workspace.pvp.ruleset_applicability_smoke`, `python -m
+  run_workspace.pvp.account_deck_export_smoke`). It does not touch AppShell,
   the legacy right panel, online transport, or History.
 - `run_workspace/gcsim/`: isolated backend/dev foundation for local GCSIM engine
   lifecycle, patching, artifact builds, cleanup, and Browser MVP runs. The
@@ -495,6 +497,9 @@ at `docs/handoff/PVP_RULESETS_AUDIT.md`, with the current source/applicability
 matrix at `docs/handoff/PVP_RULESET_SOURCE_MATRIX.md`. Backend foundation now
 lives under `run_workspace/pvp/`; focused tests and synthetic deck/ruleset
 fixtures live under `tests/run_workspace/pvp/` and `samples/pvp/`.
+Current local-account deck export entrypoint is
+`python -m run_workspace.pvp.account_deck_export_smoke`; default mode is dry-run,
+and explicit `--write` writes generated/private deck JSON under `data/pvp/decks/`.
 Far-future PvP, analytics, draft bot, support/donation, monetization, and AI
 companion ideas live in `docs/handoff/FAR_FUTURE_TODO.md`; do not load them for
 normal MVP task planning unless the user asks.

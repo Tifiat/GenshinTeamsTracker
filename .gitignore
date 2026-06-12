@@ -22,6 +22,7 @@ tests/probe_layout_output/
 
 data/hoyolab/
 data/gcsim/
+data/pvp/
 data/artifacts.db*
 assets/hoyolab/
 

@@ -483,8 +483,7 @@ Important direction:
 - GCSIM should not be crammed into the small TeamCard. The right panel should show only compact factual/sim DPS summary and a readable GCSIM button/status; detailed GCSIM/rotation editing should open as a larger overlay/drawer around the right panel area. If GCSIM lacks a character/reaction implementation, show a clear unavailable status.
 - Abyss enemy data audit exists at `docs/handoff/ABYSS_ENEMY_DATA.md`; the original prompt is `docs/handoff/ABYSS_ENEMY_DATA_AUDIT_TASK.md`.
 - Audit result: no single reliable source currently provides current Abyss lineup + monster ids + waves/positions + ready HP totals + resists. MVP should use a resilient source join: current period/lineup/wave notes from Fandom, source-like monster ids/stats/icons/resists from AnimeGameData/GCSIM/Yatta/Ambr where available, and Fandom enemy/level-scaling pages as fallback/cross-check for floor HP multipliers, enemy HP tables, Abyss-specific resist states, and mechanics notes.
-- Factual Abyss DPS should use confidence states. Prefer source-like/period-specific HP multipliers; if those are missing but enemy ids/counts/levels/base HP are matched, a Fandom general floor-multiplier estimate may be shown with an explicit `estimated_from_floor_multiplier` warning. If core inputs are missing/ambiguous, produce no-data/warning states instead of guessed DPS.
-- Near the end of right-panel development, surface factual Abyss DPS source/confidence near the DPS value, for example `source_like_period_multiplier`, `fandom_period_note`, `fandom_floor_scaling_estimate`, or `unavailable`. Do not present weak/estimated enemy HP DPS as exact; detailed source research lives in `docs/handoff/ABYSS_ENEMY_DATA.md`.
+- Factual Abyss DPS should use confidence states. Prefer source-like/period-specific HP multipliers; if those are missing but enemy ids/counts/levels/base HP are matched, a Fandom general floor-multiplier estimate may be shown with an explicit `estimated_from_floor_multiplier` warning. If core inputs are missing/ambiguous, produce no-data/warning states instead of guessed DPS. The accepted Fact DPS tooltip already exposes source/match confidence details; do not add separate near-cell source UI unless a later product decision asks for it.
 - Historical Floor 12 HP fixture notes live in `docs/handoff/ABYSS_HP_FIXTURE.md`.
   They cover the `2026-05-16` research/debug fixture and parser risks; current
   AppShell factual DPS should use the production source-data cache from
@@ -494,7 +493,7 @@ Important direction:
   `hoyolab_export/abyss_fixture_report.py` for reproducing that research path;
   production-style source refresh/runtime paths live under
   `run_workspace/abyss/source_data*.py`.
-- Backend Abyss mechanics parser/report code exists in `hoyolab_export/abyss_mechanics.py`. It parses Fandom enemy-page wikitext snippets into structured fields and UI-warning/bot tags without mixing Normal/Abyss/Local Legend/Stygian stat blocks into one "true" block. Next Abyss work should integrate factual DPS confidence and mechanics warnings into the Run Workspace UI.
+- Backend Abyss mechanics parser/report code exists in `hoyolab_export/abyss_mechanics.py`. It parses Fandom enemy-page wikitext snippets into structured fields and UI-warning/bot tags without mixing Normal/Abyss/Local Legend/Stygian stat blocks into one "true" block. Future Abyss UI work is mechanics-warning integration only, not another Fact DPS tooltip/source-summary redesign.
 
 Active PvP v0 contract exists at `docs/handoff/PVP_V0_CONTRACT.md`; current
 backend implementation status exists at `docs/handoff/PVP_BACKEND_STATUS.md`.

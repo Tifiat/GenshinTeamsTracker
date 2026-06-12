@@ -328,13 +328,13 @@ MVP recommendation:
   triggers this best-effort source-data refresh after successful import; refresh
   failure remains non-fatal and is reported as an import warning/status. Fact
   DPS cells now carry tooltip-ready view-model payloads and use the project's
-  custom tooltip surface. The current first pass is compact HTML/text: enemies
-  and waves appear first, then selected HP mode, elapsed time, calculated DPS,
-  and a short source/match summary. The payload preserves cached monster icon
-  paths for a future richer custom tooltip card. Native Qt/system tooltips are
-  not acceptable for this user-facing surface. A richer custom card
-  implementation remains future work. Account/Data has a persistent DPS setting
-  for multi-target HP mode; default is off/solo-target.
+  custom tooltip surface. The accepted compact HTML/text tooltip groups enemies
+  by wave and shows monster icons, enemy names/levels/target mode/HP,
+  calculation mode, HP/sec, DPS result/reason, and source summary including
+  composition/name/count source, HP source, and match method/confidence. Native
+  Qt/system tooltips are not acceptable for this user-facing surface.
+  Account/Data has a persistent DPS setting for multi-target HP mode; default
+  is off/solo-target.
 - Manual/debug period switching utility exists at
   `tools/future/abyss_period_switch.py`. It points AppShell at an existing
   cached period by rewriting only
@@ -355,9 +355,11 @@ MVP recommendation:
   comparable baseline for GCSIM-style DPS. Multi-target mode counts all matched
   enemy HP by Fandom count and is useful for teams whose real value depends on
   simultaneous enemies.
-- Mark HP totals with explicit source/confidence: `nanoka_resolved_hp`,
-  `fandom_enemy_page_fallback`, `source_estimate`, or `unavailable`.
+- Fact DPS tooltip/source data exposes explicit HP source/confidence states:
+  `nanoka_resolved_hp`, `fandom_enemy_page_fallback`, `source_estimate`, or
+  `unavailable`.
 - Prefer Nanoka resolved HP when available. If not, allow a lower-confidence
+  fallback only with explicit source/confidence warning.
 - Preserve source metadata and uncertainty flags per enemy so the model can be
   upgraded later without rewriting saved runs.
 

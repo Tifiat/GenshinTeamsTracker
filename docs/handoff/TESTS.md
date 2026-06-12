@@ -21,7 +21,8 @@ Mirror the primary project owner under `tests/`:
   runtime fixture/cache behavior.
 - `tests/run_workspace/gcsim/` - backend GCSIM lifecycle, config generation,
   mapping, wave scenarios, cleanup, artifact runner.
-- `tests/run_workspace/pvp/` - backend PvP deck validation, Free Draft
+- `tests/run_workspace/pvp/` - backend PvP deck validation, Decks UI preset
+  persistence/conversion (`test_deck_preset.py`), Free Draft
   schedule/reducer/action log, team/weapon assignment validation, and
   timer/result behavior, local-account deck export provider/report behavior,
   draft-system registry behavior, deterministic Free Draft planner/account
@@ -44,7 +45,9 @@ Mirror the primary project owner under `tests/`:
   models.
 - `tests/run_workspace/right_panel/` - right-panel view-model behavior owned by
   `run_workspace`.
-- `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests.
+- `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests,
+  including PvP Decks workspace/right-panel create, edit, save/cancel, header,
+  and disabled-start skeleton behavior.
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.

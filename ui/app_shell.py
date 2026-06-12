@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -70,6 +71,22 @@ from run_workspace.models import (
     clamp_abyss_timer_edit_seconds,
     default_abyss_timer_states,
 )
+from run_workspace.pvp.deck_preset import (
+    DEFAULT_PVP_DECK_PRESET_DIR,
+    DeckPresetError,
+    PvpDeckPreset,
+    PvpDeckPresetWeaponRef,
+    character_id_from_asset,
+    create_deck_preset_from_account_assets,
+    deck_preset_to_draft_deck,
+    delete_deck_preset,
+    load_deck_presets,
+    rename_deck_preset,
+    save_deck_preset,
+    update_deck_preset_selection,
+    weapon_ref_from_asset,
+)
+from run_workspace.pvp.validation import validate_draft_deck
 from run_workspace.team_builder import TeamBuilderState, create_empty_team_builder_state
 from ui.character_assets import (
     CHARACTER_RARITY_FILTERS,
@@ -1404,7 +1421,7 @@ class AppShell(QWidget):
             self.controller.right_panel_model(),
             show_mode_tabs=False,
         )
-        self.pvp_right_panel = PvpRightDockPlaceholder()
+        self.pvp_right_panel = PvpDecksRightPanel(self.left_host.pvp_workspace)
         self.right_dock = RightOperationsDock(
             self.right_panel,
             pvp_operation_widget=self.pvp_right_panel,
@@ -2395,7 +2412,7 @@ class LeftWorkspaceHost(QWidget):
             tr("app_shell.workspace.history"),
             self.history_workspace,
         )
-        self.pvp_workspace = PvpWorkspacePlaceholder()
+        self.pvp_workspace = PvpDecksWorkspace(db_path=self.artifact_db_path)
         self.pvp_button = self.add_workspace(
             LEFT_WORKSPACE_PVP,
             tr("app_shell.workspace.pvp"),
@@ -2511,6 +2528,7 @@ class LeftWorkspaceHost(QWidget):
         workspace.refresh_asset_cache()
         if workspace._initial_grid_built:
             workspace.update_grids()
+        self.pvp_workspace.refresh_account_data()
         if self.artifact_browser_workspace is not None:
             self.artifact_browser_workspace.refresh_account_data(
                 workspace.character_asset_items_snapshot()
@@ -2686,7 +2704,7 @@ class RightDockHeader(QWidget):
         layout.addWidget(self.run_mode_tabs, 2)
 
         self.pvp_control_button = make_mode_tab_button(
-            tr("app_shell.right_dock.pvp_control")
+            tr("app_shell.right_dock.pvp_decks")
         )
         self.pvp_control_button.clicked.connect(
             lambda _checked=False: self.pvp_control_requested.emit()
@@ -2735,7 +2753,7 @@ class RightDockHeader(QWidget):
 
     def retranslate_ui(self) -> None:
         self.run_mode_tabs.retranslate_ui()
-        self.pvp_control_button.setText(tr("app_shell.right_dock.pvp_control"))
+        self.pvp_control_button.setText(tr("app_shell.right_dock.pvp_decks"))
         self.account_button.setText(tr("app_shell.right_dock.account"))
 
 
@@ -2922,7 +2940,7 @@ class PvpRightDockPlaceholder(QWidget):
         self.retranslate_ui()
 
     def retranslate_ui(self) -> None:
-        self.title_label.setText(tr("app_shell.right_dock.pvp_control"))
+        self.title_label.setText(tr("app_shell.right_dock.pvp_decks"))
         self.body_label.setText(tr("app_shell.pvp.control.placeholder"))
         self.sample_label.setText(tr("app_shell.pvp.placeholder.sample"))
 
@@ -3670,6 +3688,691 @@ class AssetIconLabel(QLabel):
         super().mousePressEvent(event)
 
 
+class PvpDeckAssetIconLabel(AssetIconLabel):
+    def __init__(
+        self,
+        image_path: str,
+        size: int,
+        *,
+        asset: dict[str, Any] | None = None,
+        deck_selected: bool = False,
+        deck_inactive: bool = False,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(
+            image_path,
+            size,
+            asset=asset,
+            paint_selection_marker=False,
+            parent=parent,
+        )
+        self.deck_selected = bool(deck_selected)
+        self.deck_inactive = bool(deck_inactive)
+        self.set_deck_state(selected=deck_selected, inactive=deck_inactive)
+
+    def set_deck_state(self, *, selected: bool, inactive: bool) -> None:
+        self.deck_selected = bool(selected)
+        self.deck_inactive = bool(inactive)
+        self.setProperty("deckSelected", self.deck_selected)
+        self.setProperty("deckInactive", self.deck_inactive)
+        self.update()
+
+    def paintEvent(self, event) -> None:
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        try:
+            if self.deck_inactive:
+                fill = QColor("#0f172a")
+                fill.setAlpha(132)
+                painter.fillRect(self.rect(), fill)
+            if self.deck_selected:
+                _draw_selection_frame(
+                    painter,
+                    _selection_frame_rect(QRect(0, 0, self.width(), self.height())),
+                    UI_ACCENT_TEAM_1,
+                    fill_color=UI_SELECTION_NEUTRAL_FILL,
+                    fill_alpha=48,
+                )
+        finally:
+            painter.end()
+
+
+class PvpDecksWorkspace(QWidget):
+    state_changed = Signal()
+
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        db_path: str | Path = ARTIFACT_DB_PATH,
+        deck_dir: str | Path = DEFAULT_PVP_DECK_PRESET_DIR,
+        character_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
+        weapon_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("PvpDecksWorkspace")
+        self.db_path = db_path
+        self.deck_dir = Path(deck_dir)
+        self._character_assets_provider = character_assets_provider
+        self._weapon_assets_provider = weapon_assets_provider
+        self._resize_timer: QTimer | None = None
+        self.character_assets: list[dict[str, Any]] = []
+        self.weapon_assets: list[dict[str, Any]] = []
+        self.presets: list[PvpDeckPreset] = []
+        self.selected_deck_id = ""
+        self._editing_preset: PvpDeckPreset | None = None
+        self._last_status = ""
+        self.character_cards_by_id: dict[str, PvpDeckAssetIconLabel] = {}
+        self.weapon_cards_by_key: dict[str, PvpDeckAssetIconLabel] = {}
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(6)
+
+        header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(8)
+        self.title_label = QLabel()
+        self.title_label.setObjectName("SectionTitle")
+        header.addWidget(self.title_label)
+        self.mode_label = QLabel()
+        self.mode_label.setObjectName("small_muted")
+        header.addWidget(self.mode_label, 1)
+        root.addLayout(header)
+
+        self.empty_label = QLabel()
+        self.empty_label.setWordWrap(True)
+        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self.empty_label)
+
+        self.character_title_label = QLabel()
+        root.addWidget(self.character_title_label)
+        self.character_area, self.character_widget, self.character_grid = (
+            self._make_grid_area()
+        )
+        root.addWidget(self.character_area, 3)
+
+        self.weapon_title_label = QLabel()
+        root.addWidget(self.weapon_title_label)
+        self.weapon_area, self.weapon_widget, self.weapon_grid = self._make_grid_area()
+        root.addWidget(self.weapon_area, 2)
+
+        self.refresh_account_data(reload_presets=True, emit_signal=False)
+        self.retranslate_ui()
+
+    @property
+    def is_editing(self) -> bool:
+        return self._editing_preset is not None
+
+    def selected_preset(self) -> PvpDeckPreset | None:
+        for preset in self.presets:
+            if preset.deck_id == self.selected_deck_id:
+                return preset
+        return None
+
+    def active_preset(self) -> PvpDeckPreset | None:
+        return self._editing_preset or self.selected_preset()
+
+    def refresh_account_data(
+        self,
+        *,
+        reload_presets: bool = False,
+        emit_signal: bool = True,
+    ) -> None:
+        self.character_assets = self._load_character_assets()
+        self.weapon_assets = self._load_weapon_assets()
+        if reload_presets:
+            self.reload_presets(emit_signal=False)
+        self.refresh_view()
+        if emit_signal:
+            self.state_changed.emit()
+
+    def reload_presets(self, *, emit_signal: bool = True) -> None:
+        self.presets = load_deck_presets(self.deck_dir)
+        if self.selected_deck_id and not any(
+            preset.deck_id == self.selected_deck_id for preset in self.presets
+        ):
+            self.selected_deck_id = ""
+        if not self.selected_deck_id and self.presets:
+            self.selected_deck_id = self.presets[0].deck_id
+        if emit_signal:
+            self.state_changed.emit()
+
+    def create_deck(self, name: str = "") -> bool:
+        self.refresh_account_data(reload_presets=False, emit_signal=False)
+        try:
+            preset = create_deck_preset_from_account_assets(
+                self.character_assets,
+                self.weapon_assets,
+                name=name or self._default_new_deck_name(),
+            )
+            save_deck_preset(preset, self.deck_dir)
+        except DeckPresetError as exc:
+            self._last_status = str(exc)
+            self.refresh_view()
+            self.state_changed.emit()
+            return False
+        self._editing_preset = None
+        self.selected_deck_id = preset.deck_id
+        self.reload_presets(emit_signal=False)
+        self.selected_deck_id = preset.deck_id
+        self.refresh_view()
+        self.state_changed.emit()
+        return True
+
+    def select_deck(self, deck_id: str) -> None:
+        if self.is_editing:
+            return
+        if any(preset.deck_id == deck_id for preset in self.presets):
+            self.selected_deck_id = deck_id
+            self.refresh_view()
+            self.state_changed.emit()
+
+    def begin_edit(self) -> bool:
+        preset = self.selected_preset()
+        if preset is None:
+            return False
+        self._editing_preset = preset
+        self.refresh_view()
+        self.state_changed.emit()
+        return True
+
+    def save_edit(self, *, name: str = "") -> bool:
+        preset = self._editing_preset
+        if preset is None:
+            return False
+        if name:
+            preset = rename_deck_preset(preset, name)
+        try:
+            save_deck_preset(preset, self.deck_dir)
+        except DeckPresetError as exc:
+            self._last_status = str(exc)
+            self.state_changed.emit()
+            return False
+        self.selected_deck_id = preset.deck_id
+        self._editing_preset = None
+        self.reload_presets(emit_signal=False)
+        self.selected_deck_id = preset.deck_id
+        self.refresh_view()
+        self.state_changed.emit()
+        return True
+
+    def cancel_edit(self) -> None:
+        if self._editing_preset is None:
+            return
+        self._editing_preset = None
+        self.refresh_view()
+        self.state_changed.emit()
+
+    def delete_selected(self) -> bool:
+        preset = self.selected_preset()
+        if preset is None or self.is_editing:
+            return False
+        deleted = delete_deck_preset(preset.deck_id, self.deck_dir)
+        self.selected_deck_id = ""
+        self.reload_presets(emit_signal=False)
+        self.refresh_view()
+        self.state_changed.emit()
+        return deleted
+
+    def validation_report(self):
+        preset = self.active_preset()
+        if preset is None:
+            return None
+        draft_deck = deck_preset_to_draft_deck(
+            preset,
+            self.character_assets,
+            self.weapon_assets,
+        )
+        return validate_draft_deck(draft_deck)
+
+    def selected_counts(self) -> tuple[int, int]:
+        preset = self.active_preset()
+        if preset is None:
+            return (0, 0)
+        return (len(preset.character_ids), len(preset.weapon_refs))
+
+    def refresh_view(self) -> None:
+        preset = self.active_preset()
+        editing = self.is_editing
+        character_ids = set(preset.character_ids) if preset is not None else set()
+        weapon_keys = {ref.key for ref in preset.weapon_refs} if preset is not None else set()
+        character_assets = self._visible_character_assets(character_ids, editing)
+        weapon_assets = self._visible_weapon_assets(weapon_keys, editing)
+
+        self._reload_deck_grid(
+            character_assets,
+            self.character_grid,
+            self.character_widget,
+            self.character_area,
+            icon_size=72,
+            spacing=4,
+            selected_keys=character_ids,
+            key_for_asset=character_id_from_asset,
+            clicked=self._on_character_card_clicked,
+            registry=self.character_cards_by_id,
+        )
+        self._reload_deck_grid(
+            weapon_assets,
+            self.weapon_grid,
+            self.weapon_widget,
+            self.weapon_area,
+            icon_size=54,
+            spacing=6,
+            selected_keys=weapon_keys,
+            key_for_asset=self._weapon_key_for_asset,
+            clicked=self._on_weapon_card_clicked,
+            registry=self.weapon_cards_by_key,
+        )
+        self._sync_empty_state()
+
+    def retranslate_ui(self) -> None:
+        self.title_label.setText(tr("app_shell.pvp.decks.title"))
+        self.character_title_label.setText(tr("app_shell.pvp.decks.characters"))
+        self.weapon_title_label.setText(tr("app_shell.pvp.decks.weapons"))
+        self._sync_empty_state()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self.refresh_view()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if self._resize_timer is None:
+            self._resize_timer = QTimer(self)
+            self._resize_timer.setSingleShot(True)
+            self._resize_timer.timeout.connect(self.refresh_view)
+        self._resize_timer.start(75)
+
+    def _load_character_assets(self) -> list[dict[str, Any]]:
+        try:
+            if self._character_assets_provider is not None:
+                return list(self._character_assets_provider())
+            return list(load_account_character_asset_items(db_path=self.db_path))
+        except Exception as exc:
+            self._last_status = str(exc)
+            return []
+
+    def _load_weapon_assets(self) -> list[dict[str, Any]]:
+        try:
+            if self._weapon_assets_provider is not None:
+                return list(self._weapon_assets_provider())
+            return list(load_account_weapon_stack_asset_items(db_path=self.db_path))
+        except Exception as exc:
+            self._last_status = str(exc)
+            return []
+
+    def _visible_character_assets(
+        self,
+        selected_ids: set[str],
+        editing: bool,
+    ) -> list[dict[str, Any]]:
+        assets = list(self.character_assets)
+        assets.sort(key=character_sort_key)
+        if editing:
+            return assets
+        return [asset for asset in assets if character_id_from_asset(asset) in selected_ids]
+
+    def _visible_weapon_assets(
+        self,
+        selected_keys: set[str],
+        editing: bool,
+    ) -> list[dict[str, Any]]:
+        assets = list(self.weapon_assets)
+        assets.sort(key=_pvp_weapon_sort_key)
+        if editing:
+            return assets
+        return [asset for asset in assets if self._weapon_key_for_asset(asset) in selected_keys]
+
+    def _reload_deck_grid(
+        self,
+        assets: list[dict[str, Any]],
+        grid: QGridLayout,
+        container: QWidget,
+        area: QScrollArea,
+        *,
+        icon_size: int,
+        spacing: int,
+        selected_keys: set[str],
+        key_for_asset,
+        clicked,
+        registry: dict[str, PvpDeckAssetIconLabel],
+    ) -> None:
+        registry.clear()
+        _clear_grid(grid)
+        _reset_grid_columns(grid)
+        if not assets:
+            grid.setContentsMargins(0, 0, 0, 0)
+            container.adjustSize()
+            return
+
+        available_width = area.viewport().width() or area.width() or 320
+        cell_width = icon_size + spacing
+        cols = max(1, (available_width + spacing) // cell_width)
+        total_grid_width = cols * icon_size + max(0, cols - 1) * spacing
+        left_margin = max(0, (available_width - total_grid_width) // 2)
+        right_margin = max(0, available_width - total_grid_width - left_margin)
+        grid.setContentsMargins(left_margin, 4, right_margin, 4)
+        grid.setHorizontalSpacing(spacing)
+        grid.setVerticalSpacing(spacing)
+        for column in range(cols):
+            grid.setColumnMinimumWidth(column, icon_size)
+            grid.setColumnStretch(column, 0)
+
+        for index, asset in enumerate(assets):
+            key = _text(key_for_asset(asset))
+            selected = bool(key and key in selected_keys)
+            card = PvpDeckAssetIconLabel(
+                _text(asset.get("path")),
+                icon_size,
+                asset=asset,
+                deck_selected=selected,
+                deck_inactive=self.is_editing and not selected,
+            )
+            tooltip = asset.get("tooltip")
+            if tooltip:
+                card.setToolTip(_text(tooltip))
+            card.clicked.connect(clicked)
+            grid.addWidget(card, index // cols, index % cols)
+            if key:
+                registry[key] = card
+
+        container.adjustSize()
+        container.updateGeometry()
+        area.horizontalScrollBar().setValue(0)
+        area.viewport().update()
+
+    def _on_character_card_clicked(self, asset: dict[str, Any]) -> None:
+        if self._editing_preset is None:
+            return
+        character_id = character_id_from_asset(asset)
+        if not character_id:
+            return
+        character_ids = list(self._editing_preset.character_ids)
+        if character_id in character_ids:
+            character_ids.remove(character_id)
+        else:
+            character_ids.append(character_id)
+        self._editing_preset = update_deck_preset_selection(
+            self._editing_preset,
+            character_ids=character_ids,
+            weapon_refs=self._editing_preset.weapon_refs,
+        )
+        self.refresh_view()
+        self.state_changed.emit()
+
+    def _on_weapon_card_clicked(self, asset: dict[str, Any]) -> None:
+        if self._editing_preset is None:
+            return
+        ref = weapon_ref_from_asset(asset)
+        if ref is None or not ref.key:
+            return
+        refs = list(self._editing_preset.weapon_refs)
+        existing_index = next(
+            (index for index, item in enumerate(refs) if item.key == ref.key),
+            None,
+        )
+        if existing_index is None:
+            refs.append(ref)
+        else:
+            refs.pop(existing_index)
+        self._editing_preset = update_deck_preset_selection(
+            self._editing_preset,
+            character_ids=self._editing_preset.character_ids,
+            weapon_refs=refs,
+        )
+        self.refresh_view()
+        self.state_changed.emit()
+
+    def _sync_empty_state(self) -> None:
+        preset = self.active_preset()
+        if not self.character_assets and not self.weapon_assets:
+            text = self._last_status or tr("app_shell.pvp.decks.empty_account")
+        elif preset is None:
+            text = tr("app_shell.pvp.decks.no_deck_selected")
+        elif self.is_editing:
+            text = tr("app_shell.pvp.decks.edit_mode")
+        else:
+            text = tr("app_shell.pvp.decks.view_mode")
+        self.empty_label.setText(text)
+        self.mode_label.setText(
+            tr("app_shell.pvp.decks.mode_edit")
+            if self.is_editing
+            else tr("app_shell.pvp.decks.mode_view")
+        )
+
+    def _default_new_deck_name(self) -> str:
+        return f"{tr('app_shell.pvp.decks.default_name')} {len(self.presets) + 1}"
+
+    def _make_grid_area(self) -> tuple[QScrollArea, QWidget, QGridLayout]:
+        area = OverlayVerticalScrollArea(auto_hide_ms=850)
+        area.setWidgetResizable(True)
+        area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        container = QWidget()
+        grid = QGridLayout(container)
+        grid.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        area.setWidget(container)
+        return area, container, grid
+
+    @staticmethod
+    def _weapon_key_for_asset(asset: dict[str, Any]) -> str:
+        ref = weapon_ref_from_asset(asset)
+        return ref.key if ref is not None else ""
+
+
+class PvpDecksRightPanel(QWidget):
+    def __init__(
+        self,
+        workspace: PvpDecksWorkspace,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.workspace = workspace
+        self.setObjectName("RightPanelPrototypeContent")
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(8, 8, 8, 8)
+        root.setSpacing(8)
+
+        self.title_label = QLabel()
+        self.title_label.setObjectName("SectionTitle")
+        root.addWidget(self.title_label)
+
+        create_frame = QFrame()
+        create_frame.setObjectName("InfoBlock")
+        create_layout = QHBoxLayout(create_frame)
+        create_layout.setContentsMargins(8, 8, 8, 8)
+        create_layout.setSpacing(6)
+        self.create_name_edit = QLineEdit()
+        self.create_button = QPushButton("+")
+        self.create_button.setObjectName("icon_button")
+        self.create_button.setFixedWidth(36)
+        create_layout.addWidget(self.create_name_edit, 1)
+        create_layout.addWidget(self.create_button)
+        root.addWidget(create_frame)
+
+        list_frame = QFrame()
+        list_frame.setObjectName("InfoBlock")
+        self.deck_list_layout = QVBoxLayout(list_frame)
+        self.deck_list_layout.setContentsMargins(8, 8, 8, 8)
+        self.deck_list_layout.setSpacing(6)
+        root.addWidget(list_frame, 1)
+
+        details_frame = QFrame()
+        details_frame.setObjectName("InfoBlock")
+        details_layout = QVBoxLayout(details_frame)
+        details_layout.setContentsMargins(8, 8, 8, 8)
+        details_layout.setSpacing(6)
+        self.selected_label = QLabel()
+        self.selected_label.setObjectName("SectionTitle")
+        details_layout.addWidget(self.selected_label)
+        self.edit_name_edit = QLineEdit()
+        details_layout.addWidget(self.edit_name_edit)
+        self.ruleset_button = QPushButton()
+        self.ruleset_button.setEnabled(False)
+        details_layout.addWidget(self.ruleset_button)
+        self.counts_label = QLabel()
+        details_layout.addWidget(self.counts_label)
+        self.validation_label = QLabel()
+        self.validation_label.setWordWrap(True)
+        details_layout.addWidget(self.validation_label)
+
+        action_row = QHBoxLayout()
+        action_row.setContentsMargins(0, 0, 0, 0)
+        action_row.setSpacing(6)
+        self.edit_button = QPushButton()
+        self.save_button = QPushButton()
+        self.cancel_button = QPushButton()
+        self.validate_button = QPushButton()
+        self.delete_button = QPushButton()
+        for button in (
+            self.edit_button,
+            self.save_button,
+            self.cancel_button,
+            self.validate_button,
+            self.delete_button,
+        ):
+            action_row.addWidget(button)
+        details_layout.addLayout(action_row)
+
+        self.start_draft_button = QPushButton()
+        self.start_draft_button.setEnabled(False)
+        self._start_draft_tooltip = install_custom_tooltip(self.start_draft_button)
+        details_layout.addWidget(self.start_draft_button)
+        root.addWidget(details_frame)
+
+        self.status_label = QLabel()
+        self.status_label.setWordWrap(True)
+        root.addWidget(self.status_label)
+
+        self.create_button.clicked.connect(self._on_create_clicked)
+        self.create_name_edit.returnPressed.connect(self._on_create_clicked)
+        self.edit_button.clicked.connect(self.workspace.begin_edit)
+        self.save_button.clicked.connect(self._on_save_clicked)
+        self.edit_name_edit.returnPressed.connect(self._on_save_clicked)
+        self.cancel_button.clicked.connect(self.workspace.cancel_edit)
+        self.validate_button.clicked.connect(self.refresh)
+        self.delete_button.clicked.connect(self.workspace.delete_selected)
+        self.workspace.state_changed.connect(self.refresh)
+        self.retranslate_ui()
+        self.refresh()
+
+    def refresh(self) -> None:
+        self._rebuild_deck_list()
+        preset = self.workspace.active_preset()
+        editing = self.workspace.is_editing
+        has_preset = preset is not None
+        if has_preset:
+            self.selected_label.setText(preset.name)
+            if self.edit_name_edit.text() != preset.name:
+                self.edit_name_edit.setText(preset.name)
+        else:
+            self.selected_label.setText(tr("app_shell.pvp.decks.no_deck_title"))
+            self.edit_name_edit.setText("")
+        self.edit_name_edit.setEnabled(editing)
+        self.edit_button.setEnabled(has_preset and not editing)
+        self.save_button.setEnabled(editing)
+        self.cancel_button.setEnabled(editing)
+        self.validate_button.setEnabled(has_preset)
+        self.delete_button.setEnabled(has_preset and not editing)
+
+        character_count, weapon_count = self.workspace.selected_counts()
+        self.counts_label.setText(
+            tr("app_shell.pvp.decks.counts").format(
+                characters=character_count,
+                weapons=weapon_count,
+            )
+        )
+        self.validation_label.setText(self._validation_text())
+        self.status_label.setText(self._status_text())
+
+    def retranslate_ui(self) -> None:
+        self.title_label.setText(tr("app_shell.pvp.decks.title"))
+        self.create_name_edit.setPlaceholderText(
+            tr("app_shell.pvp.decks.create_placeholder")
+        )
+        self.ruleset_button.setText(tr("app_shell.pvp.decks.ruleset_free"))
+        self.edit_button.setText(tr("app_shell.pvp.decks.edit"))
+        self.save_button.setText(tr("app_shell.pvp.decks.save"))
+        self.cancel_button.setText(tr("app_shell.pvp.decks.cancel"))
+        self.validate_button.setText(tr("app_shell.pvp.decks.validate"))
+        self.delete_button.setText(tr("app_shell.pvp.decks.delete"))
+        self.start_draft_button.setText(tr("app_shell.pvp.decks.start_draft"))
+        self._start_draft_tooltip.set_text(tr("app_shell.pvp.decks.start_disabled"))
+        self.start_draft_button.setToolTip("")
+        self.refresh()
+
+    def keyPressEvent(self, event) -> None:
+        if self.workspace.is_editing and event.key() in (
+            Qt.Key.Key_Return,
+            Qt.Key.Key_Enter,
+        ):
+            self._on_save_clicked()
+            event.accept()
+            return
+        if self.workspace.is_editing and event.key() == Qt.Key.Key_Escape:
+            self.workspace.cancel_edit()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def _rebuild_deck_list(self) -> None:
+        _clear_layout(self.deck_list_layout)
+        if not self.workspace.presets:
+            label = QLabel(tr("app_shell.pvp.decks.list_empty"))
+            label.setWordWrap(True)
+            self.deck_list_layout.addWidget(label)
+            self.deck_list_layout.addStretch(1)
+            return
+        for preset in self.workspace.presets:
+            button = QPushButton(preset.name)
+            button.setCheckable(True)
+            button.setChecked(preset.deck_id == self.workspace.selected_deck_id)
+            button.setEnabled(not self.workspace.is_editing)
+            button.setProperty("selectedDeck", button.isChecked())
+            button.clicked.connect(
+                lambda _checked=False, deck_id=preset.deck_id: self.workspace.select_deck(deck_id)
+            )
+            self.deck_list_layout.addWidget(button)
+        self.deck_list_layout.addStretch(1)
+
+    def _validation_text(self) -> str:
+        preset = self.workspace.active_preset()
+        if preset is None:
+            return tr("app_shell.pvp.decks.validation_none")
+        try:
+            report = self.workspace.validation_report()
+        except Exception as exc:
+            return tr("app_shell.pvp.decks.validation_error").format(error=str(exc))
+        if report is None:
+            return tr("app_shell.pvp.decks.validation_none")
+        codes = list(report.issue_codes())
+        code_text = ", ".join(codes[:4])
+        if len(codes) > 4:
+            code_text += ", ..."
+        if report.ready:
+            return tr("app_shell.pvp.decks.validation_ready").format(
+                issues=len(codes),
+            )
+        return tr("app_shell.pvp.decks.validation_invalid").format(
+            issues=len(codes),
+            codes=code_text,
+        )
+
+    def _status_text(self) -> str:
+        if self.workspace.is_editing:
+            return tr("app_shell.pvp.decks.status_editing")
+        return tr("app_shell.pvp.decks.start_disabled")
+
+    def _on_create_clicked(self) -> None:
+        if self.workspace.create_deck(self.create_name_edit.text()):
+            self.create_name_edit.clear()
+
+    def _on_save_clicked(self) -> None:
+        self.workspace.save_edit(name=self.edit_name_edit.text())
+
+
 def _selection_frame_rect(card_rect: QRect) -> QRect:
     return card_rect.adjusted(
         -GRID_SELECTION_OUTLINE_OVERHANG,
@@ -3979,6 +4682,17 @@ def _clear_grid(grid: QGridLayout) -> None:
             widget.deleteLater()
 
 
+def _clear_layout(layout) -> None:
+    while layout.count():
+        item = layout.takeAt(0)
+        child_layout = item.layout()
+        widget = item.widget()
+        if child_layout is not None:
+            _clear_layout(child_layout)
+        if widget is not None:
+            widget.deleteLater()
+
+
 def _reset_grid_columns(grid: QGridLayout) -> None:
     for column in range(grid.columnCount()):
         grid.setColumnMinimumWidth(column, 0)
@@ -4216,6 +4930,16 @@ def _weapon_matches_character(
     return True
 
 
+def _pvp_weapon_sort_key(asset: dict[str, Any]):
+    metadata = asset.get("metadata") or {}
+    weapon = metadata.get("weapon") or {}
+    rarity = metadata_int(weapon.get("rarity"))
+    level = metadata_int(weapon.get("level"))
+    name = _text(weapon.get("name") or metadata.get("name") or asset.get("filename"))
+    key = _text(weapon.get("source_key") or weapon.get("weapon_fingerprint"))
+    return (-rarity, -level, name.casefold(), key)
+
+
 def _mapping(value: Any) -> dict[str, Any]:
     return dict(value) if isinstance(value, dict) else {}
 
@@ -4289,6 +5013,9 @@ __all__ = [
     "LEFT_WORKSPACE_PVP",
     "HistoryWorkspacePlaceholder",
     "LeftWorkspaceHost",
+    "PvpDeckAssetIconLabel",
+    "PvpDecksRightPanel",
+    "PvpDecksWorkspace",
     "PvpRightDockPlaceholder",
     "PvpWorkspacePlaceholder",
     "RIGHT_DOCK_PAGE_ACCOUNT",

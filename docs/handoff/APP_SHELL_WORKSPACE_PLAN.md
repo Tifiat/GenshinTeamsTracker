@@ -32,9 +32,9 @@ Terms:
   form one visually continuous row of same-style buttons with the ordinary
   inter-button spacing only. Do not add a visual divider, stretch gap, or
   page-specific duplicate of a global action.
-- Current normal run page-specific controls are Abyss / DPS Dummy. The first
-  PvP AppShell step replaces those controls with a `PvP Control` placeholder
-  when the `pvp` workspace is active. The current global action is Account.
+- Current normal run page-specific controls are Abyss / DPS Dummy. The PvP
+  AppShell policy replaces those controls with `Decks` when the `pvp`
+  workspace is active. The current global action is Account.
   Account opens a compact localized Account / Data page in the same fixed dock
   without changing the left workspace. The page reuses the existing HoYoLAB
   import/update behavior, offline profile save/load/sign-out actions, and
@@ -54,7 +54,7 @@ Terms:
   operation target. Returning from a non-RUN page must update the requested
   controller mode and right-panel model before exposing RUN content so the
   previous run-mode model cannot paint as a stale intermediate frame.
-- The PvP placeholder is the first workspace-driven right-dock policy: it
+- The PvP Decks page is the first workspace-driven right-dock policy: it
   replaces the normal run control host while the global action host stays
   present. Future empty-database startup should auto-open Account / Data setup,
   and later onboarding may highlight the Account action. A compact
@@ -163,16 +163,17 @@ right column patched in place.
 
 ### PvP Workspace
 
-- The first PvP AppShell integration exists as a placeholder left workspace with
-  stable id `pvp`.
-- When `pvp` is active, root AppShell switches the right operations dock to a
-  `PvP Control` placeholder page. Abyss / DPS Dummy controls and normal
-  TeamBuilder mutations are hidden while this page is active.
+- The first real PvP AppShell integration is Decks v0 with stable id `pvp`.
+- When `pvp` is active, root AppShell switches the right operations dock to the
+  `Decks` page. Abyss / DPS Dummy controls and normal TeamBuilder mutations are
+  hidden while this page is active.
 - Account / Data remains the global right-dock action in the same header
   position. Opening Account from PvP preserves the PvP right-dock policy until a
   normal workspace is selected again.
-- The placeholder does not wire `FreeDraftController`, does not render the real
-  draft board, and does not mutate normal TeamBuilder/Run state.
+- `PvpDecksWorkspace` shows account characters/weapons, supports deck
+  view/edit mode, and persists presets through `run_workspace/pvp/deck_preset.py`.
+- Decks v0 does not wire `FreeDraftController`, does not render the real draft
+  board, and does not mutate normal TeamBuilder/Run state.
 - Detailed PvP UI mode/stage direction lives in `PVP_UI_ROADMAP.md`; this
   AppShell plan owns only the shell/workspace/right-dock coordination boundary.
 
@@ -193,7 +194,7 @@ right column patched in place.
 Near-term default:
 
 - Build/Run Panel based on `ui.right_panel_prototype.RightPanelPrototypeWidget`.
-- PvP Control placeholder for the `pvp` left workspace.
+- PvP Decks page for the `pvp` left workspace.
 - Fixed width.
 - Always visible in the normal app shell.
 
@@ -306,14 +307,14 @@ durable saved results must later attach through explicit session/snapshot data.
 
 ## PvP Direction
 
-- PvP now has an AppShell placeholder workspace/right-dock policy, not a
-  separate first window.
-- Detailed PvP UI roadmap and next Decks-first implementation scope live in
+- PvP now has an AppShell Decks workspace/right-dock policy, not a separate
+  first window.
+- Detailed PvP UI roadmap and the next Play/local setup scope live in
   `PVP_UI_ROADMAP.md`.
 - During draft/deck/opponent phases, showing the normal build panel can be
   misleading because builds may not be editable yet.
-- The right operations dock currently shows a `PvP Control` placeholder and can
-  later show PvP-specific controls for those phases.
+- The right operations dock currently shows Decks controls and can later show
+  Play/Draft/assignment/result controls for those phases.
 - Once draft/pool/team is ready, the build panel can be reused against the PvP
   pool/team instead of the full account roster.
 - PvP training runs can later save history scoped to the current deck/PvP mode.
@@ -661,7 +662,7 @@ Sizing note:
 
 - `LeftWorkspaceHost` uses a `QStackedWidget` and small workspace nav.
 - Current workspaces: default Character/Weapon, lazy-created Artifacts, GCSIM
-  Browser, inert History placeholder, and the PvP placeholder.
+  Browser, inert History placeholder, and PvP Decks v0.
 - Navigation uses stable workspace ids requested through root AppShell so later
   real History browsing or real PvP workspace stages can coordinate right-dock policies
   without directly mutating the dock.
@@ -703,6 +704,6 @@ Sizing note:
 - Do not save future runs from live widgets or image paths.
 - Do not make Artifact Browser equip/apply anything without an explicit selected
   build target.
-- Do not expand a narrow AppShell/PvP placeholder patch into real draft UI,
+- Do not expand a narrow AppShell/PvP Decks patch into real draft UI,
   GCSIM, History, or legacy cleanup unless the user explicitly asks for that
   stage.

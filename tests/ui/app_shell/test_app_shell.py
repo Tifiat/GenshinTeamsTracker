@@ -39,8 +39,8 @@ from ui.app_shell import (
     LEFT_WORKSPACE_CHARACTERS_WEAPONS,
     LEFT_WORKSPACE_GCSIM,
     LEFT_WORKSPACE_PVP,
-    PvpRightDockPlaceholder,
-    PvpWorkspacePlaceholder,
+    PvpDecksRightPanel,
+    PvpDecksWorkspace,
     RIGHT_OPERATIONS_DOCK_WIDTH,
     RIGHT_DOCK_PAGE_ACCOUNT,
     RIGHT_DOCK_PAGE_PVP,
@@ -127,9 +127,9 @@ class AppShellTest(unittest.TestCase):
             CharacterWeaponWorkspace,
         )
         self.assertEqual(shell.left_host.stack.currentIndex(), 0)
-        self.assertEqual(shell.left_host.stack.count(), 4)
+        self.assertEqual(shell.left_host.stack.count(), 5)
         self.assertIsNone(shell.left_host.artifact_browser_workspace)
-        self.assertIsInstance(shell.left_host.pvp_workspace, PvpWorkspacePlaceholder)
+        self.assertIsInstance(shell.left_host.pvp_workspace, PvpDecksWorkspace)
         self.assertEqual(
             shell.active_left_workspace_id,
             LEFT_WORKSPACE_CHARACTERS_WEAPONS,
@@ -169,7 +169,11 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
         self.assertIsInstance(
             shell.right_dock.content_stack.currentWidget(),
-            PvpRightDockPlaceholder,
+            PvpDecksRightPanel,
+        )
+        self.assertEqual(
+            shell.right_dock.header.pvp_control_button.text(),
+            tr("app_shell.right_dock.pvp_decks"),
         )
         self.assertEqual(shell.controller.mode, selected_mode)
         self.assertEqual(shell.right_panel._model.mode, selected_mode)
@@ -245,6 +249,72 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
         self.assertEqual(shell.controller.mode_states, before)
+
+    def test_pvp_decks_workspace_create_view_edit_save_cancel(self) -> None:
+        characters = [
+            _character_asset("10000050", "Thoma"),
+            _character_asset("10000089", "Furina", weapon_type=1),
+        ]
+        weapons = [
+            _weapon_asset("13407", "Favonius Lance", weapon_type=13),
+            _weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword"),
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpDecksWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: characters,
+                weapon_assets_provider=lambda: weapons,
+            )
+
+            self.assertTrue(workspace.create_deck("Preset"))
+            self.assertFalse(workspace.is_editing)
+            self.assertEqual(workspace.selected_counts(), (2, 2))
+            self.assertEqual(set(workspace.character_cards_by_id), {"10000050", "10000089"})
+
+            self.assertTrue(workspace.begin_edit())
+            workspace.character_cards_by_id["10000050"].clicked.emit(characters[0])
+            self.assertTrue(
+                workspace.character_cards_by_id["10000050"].property("deckInactive")
+            )
+            workspace.cancel_edit()
+            self.assertEqual(workspace.selected_counts(), (2, 2))
+
+            self.assertTrue(workspace.begin_edit())
+            workspace.character_cards_by_id["10000050"].clicked.emit(characters[0])
+            self.assertTrue(workspace.save_edit(name="Edited"))
+
+            self.assertFalse(workspace.is_editing)
+            self.assertEqual(workspace.selected_counts(), (1, 2))
+            self.assertEqual(workspace.selected_preset().name, "Edited")
+            self.assertNotIn("10000050", workspace.character_cards_by_id)
+            self.assertIn("10000089", workspace.character_cards_by_id)
+
+    def test_pvp_decks_workspace_empty_account_does_not_create_fake_deck(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpDecksWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: [],
+                weapon_assets_provider=lambda: [],
+            )
+
+            self.assertFalse(workspace.create_deck("Empty"))
+            self.assertEqual(workspace.presets, [])
+
+    def test_pvp_decks_right_panel_start_draft_disabled(self) -> None:
+        characters = [_character_asset("10000089", "Furina", weapon_type=1)]
+        weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpDecksWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: characters,
+                weapon_assets_provider=lambda: weapons,
+            )
+            self.assertTrue(workspace.create_deck("Preset"))
+            panel = PvpDecksRightPanel(workspace)
+
+            self.assertFalse(panel.start_draft_button.isEnabled())
+            self.assertFalse(panel.ruleset_button.isEnabled())
+            self.assertIn("Characters: 1", panel.counts_label.text())
 
     def test_perf_logging_is_disabled_by_default(self) -> None:
         with patch.dict("os.environ", {"GTT_PERF_LOG": ""}):

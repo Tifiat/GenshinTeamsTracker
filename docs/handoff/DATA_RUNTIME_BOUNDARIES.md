@@ -98,7 +98,7 @@ Important limits:
 
 Detailed contract: `docs/handoff/ACCOUNT_SQLITE_STORAGE.md`.
 
-## PvP Deck Export Output
+## PvP Deck Presets / Export Output
 
 Default generated/private write path:
 
@@ -106,19 +106,24 @@ Default generated/private write path:
 
 Role:
 
+- primary local output for AppShell PvP Decks v0 presets:
+  `kind = "gtt.pvp_deck_preset"`;
 - optional output for `python -m run_workspace.pvp.account_deck_export_smoke
-  --write`;
-- contains PvP `DraftDeck` JSON built from current local account SQLite runtime
-  data.
+  --write`: backend `kind = "gtt.pvp_deck"` JSON built from current local
+  account SQLite runtime data.
 
 Rules:
 
 - default account deck export smoke is dry-run and writes no JSON;
-- generated deck JSON may contain stable ids, localized display names, levels,
-  constellations, weapon refinements, and stack counts;
-- deck JSON must not contain artifacts, artifact stats, HoYoLAB auth/cookies,
-  raw account dumps, local paths, SQLite row ids, or generated/private storage
-  internals;
+- UI preset JSON stores stable `character_ids` and observed weapon-stack refs;
+  it must not store localized display names or image/local machine paths as
+  identity;
+- backend `DraftDeck` export JSON may contain stable ids, localized display
+  names, levels, constellations, weapon refinements, and stack counts;
+- PvP deck/preset JSON must not contain artifacts, artifact stats, HoYoLAB
+  auth/cookies, raw account dumps, local paths, SQLite row ids, or
+  generated/private storage internals;
+- AppShell preset loading skips backend `gtt.pvp_deck` files in the same folder;
 - `data/pvp/` is ignored and should not be committed.
 
 ## PvP Session Bundle Output

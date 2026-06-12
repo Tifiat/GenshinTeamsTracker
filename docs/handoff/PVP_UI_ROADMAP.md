@@ -8,12 +8,16 @@ remains in `PVP_BACKEND_STATUS.md`.
 
 - A `PvP` workspace tab exists beside Characters / Weapons, Artifacts, and
   GCSIM.
-- When PvP is active, the right dock uses PvP-specific controls instead of
+- When PvP is active, the right dock uses PvP Decks controls instead of
   Abyss / DPS Dummy.
 - Account remains a global shell action in the right header.
-- The current PvP workspace and right panel are placeholders only.
+- Decks v0 is implemented as `PvpDecksWorkspace` plus `PvpDecksRightPanel`.
+  It persists local deck presets, shows account characters/weapons, supports
+  view/edit mode, and validates through the existing backend deck validator.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
+- The real draft board, pick/ban clicks, and live `FreeDraftController` UI
+  wiring are still not implemented.
 
 ## Core Model
 
@@ -38,10 +42,9 @@ implemented. Do not add empty Draft, Result, or Match tabs.
 
 ## Decks Mode
 
-UI label: RU `Колоды`, EN `Decks`.
+UI label: EN `Decks`, RU `Kolody`.
 
-Decks is the next real PvP UI task after the placeholder and is the entry point
-into PvP.
+Decks is the current real PvP entry point.
 
 Left/main area:
 
@@ -58,7 +61,7 @@ Left/main area:
 
 Right panel:
 
-- The Decks tab/control replaces the placeholder `PvP Control` when implemented.
+- The Decks tab/control replaces the former placeholder `PvP Control`.
 - Create deck preset.
 - List deck presets.
 - Expand the selected preset into info, similar in spirit to Artifact Browser
@@ -71,14 +74,14 @@ Right panel:
   - weapon count;
   - validation/status;
   - future character/weapon cost summary;
-  - later edit, validate, start local draft, and export actions.
+  - edit, validate, and disabled `Start local draft` skeleton actions;
+  - later export actions.
 - The ruleset/cost selector belongs inside expanded deck preset info, not as an
   unrelated global control.
 
 ## Deck Preset Persistence
 
-Use `data/pvp/decks/` for local PvP deck presets. The first Decks UI task may
-implement this persistence.
+Use `data/pvp/decks/` for local PvP deck presets.
 
 Persistence rules:
 
@@ -91,9 +94,9 @@ Persistence rules:
   metadata. Existing `DraftDeck` v1 serializes observed stack fields rather than
   fake instance ids, so UI persistence must convert without inventing a second
   weapon identity model.
-- Persistence must either reuse/convert to the existing `DraftDeck` backend
-  contract or clearly define a thin UI preset wrapper that converts to
-  `DraftDeck`.
+- Persistence uses a thin UI preset wrapper, `gtt.pvp_deck_preset`, implemented
+  in `run_workspace/pvp/deck_preset.py`. It converts to the existing backend
+  `DraftDeck` contract for validation.
 - Avoid creating a second incompatible deck format.
 
 Existing backend deck contract:
@@ -106,17 +109,22 @@ Existing backend deck contract:
 - `weapons[]` as observed weapon stacks;
 - no artifacts, auth/cookies, raw account dumps, local paths, or SQLite row ids.
 
-Suggested UI preset fields to verify before implementation:
+Current UI preset fields:
 
 - `schema_version`;
 - `deck_id`;
 - `name`;
 - `ruleset_id`, initially `free_draft_v0` / no-rules;
-- `characters`;
-- `weapons`;
-- `created_at`;
-- `updated_at`;
-- optional `notes` / `dev_source`.
+- `character_ids`;
+- `weapon_refs`;
+- `created_at_utc`;
+- `updated_at_utc`;
+
+Remaining identity follow-up:
+
+- Factor the temporary weapon identity extraction into a shared
+  `Weapon observed stack identity contract/helper` before more PvP screens or
+  account-equipment UI start depending on the same stack-key rules.
 
 ## Cost / Ruleset Roadmap
 
@@ -208,26 +216,41 @@ Stable conclusions from Gentor/Abyss review:
 
 Use reference sites to decide information placement, not to copy styling.
 
-## Next Implementation Task
+## Current Implementation Status
 
-Next implementation task:
+Completed Decks v0 task:
 
 > PvP Decks mode v0: persistent deck presets + main browser view/edit skeleton.
 
-Scope:
+Implemented in:
 
-- replace `PvP Control` placeholder with Decks right panel;
-- add deck preset persistence in `data/pvp/decks/`;
-- show account characters/weapons in the PvP Decks workspace;
-- implement view/edit mode;
-- show selected/unselected visual state;
-- validate through existing backend where possible.
+- `run_workspace/pvp/deck_preset.py`;
+- `ui/app_shell.py` (`PvpDecksWorkspace`, `PvpDecksRightPanel`);
+- `tests/run_workspace/pvp/test_deck_preset.py`;
+- `tests/ui/app_shell/test_app_shell.py`.
 
-Out of scope:
+Current Decks v0 scope:
+
+- Decks replaces the former `PvP Control` placeholder in the right header.
+- Presets persist under `data/pvp/decks/` as `gtt.pvp_deck_preset` JSON.
+- New decks start from all current account characters/weapons.
+- View mode shows only selected deck members.
+- Edit mode shows all account characters/weapons, with unselected items dimmed.
+- Save/cancel are explicit; Enter/Esc are supported on the right panel.
+- Validation uses the existing backend `DraftDeck` validator.
+- `Start local draft` is intentionally disabled until Play/setup and board
+  wiring exist.
+
+Next implementation task:
+
+> PvP Play / local match setup v0: choose Player 1/Player 2 local deck presets
+> or ghost copy and prepare the inputs needed to start a local Free Draft.
+
+Still out of scope:
 
 - draft board;
 - pick/ban clicks;
-- live `FreeDraftController` wiring;
+- live `FreeDraftController` UI action wiring;
 - online;
 - History;
 - ruleset cost rendering;

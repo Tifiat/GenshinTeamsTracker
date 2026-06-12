@@ -18,12 +18,15 @@ Current maps:
 - `GCSIM.md` - GCSIM research and integration notes.
 - `GCSIM_ENGINE_INTEGRATION_PLAN.md` - working implementation-direction plan for GTT-modified GCSIM engine updates, local patching, sequential Abyss waves, resource budgeting, and UI result boundaries.
 - `FAR_FUTURE_TODO.md` - non-MVP PvP, analytics, draft bot, support/donation, monetization, and optional AI companion ideas.
-- `PVP_V0_CONTRACT.md` - active PvP v0 development contract for the full offline hot-seat loop: deck JSON, pick/ban, teams, weapons, timers, and winner summary.
+- `PVP_V0_CONTRACT.md` - stable PvP v0 product/backend contract for the full offline hot-seat loop: deck JSON, pick/ban, teams, weapons, timers, and winner summary.
+- `PVP_BACKEND_STATUS.md` - implementation-oriented PvP backend status:
+  modules, smoke commands, generated/private paths, tests, and known gaps.
 - `PVP_REFERENCE_SITE_AUDIT.md` - Abyss Draft and Gentor reference-site findings used by the PvP v0 contract.
 - `PVP_MODE_PLAN.md` - PvP planning history for local hot-seat Free Draft, deck JSON, future relay lobby, roadmap, risks, and resolved/open questions.
 - `PVP_RULESETS_AUDIT.md` - PvP/tournament ruleset source audit.
 - `PVP_RULESET_SOURCE_MATRIX.md` - current public/source matrix for mapping
-  Gentor/Abyss/manual rulesets onto the PvP backend.
+  Gentor/Abyss/manual rulesets onto the PvP backend. Ruleset mapping is paused
+  until real usable tournament files exist.
 - `STAT_NORMALIZATION.md` - stat normalization and GCSIM stat-key mapping handoff.
 - `MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md` - audit and staged plan for replacing the legacy main-window right panel with fixed Right Panel Prototype v6 plus left workspaces.
 - `APP_SHELL_WORKSPACE_PLAN.md` - target AppShell architecture: left workspace host plus fixed right operations dock, with staged migration notes.
@@ -37,11 +40,12 @@ Durable backend modules:
   post-draft team and weapon assignment validation, match timer/result
   summaries, and local-account Free Draft deck export from SQLite runtime
   account data. It also contains the deterministic Free Draft smoke planner,
-  draft-system registry, session bundle snapshot/verifier, local-account
-  full-loop smoke, and report-only ruleset applicability/deck cost-preview/
-  ruleset-balance application research helpers. Deterministic dev smoke
-  commands: `python -m
+  draft-system registry, local Free Draft controller/projection API, session
+  bundle snapshot/verifier, local-account full-loop smoke, and report-only
+  ruleset applicability/deck cost-preview/ruleset-balance application research
+  helpers. Deterministic dev smoke commands: `python -m
   run_workspace.pvp.full_loop_smoke`, `python -m
+  run_workspace.pvp.free_draft_controller_smoke`, `python -m
   run_workspace.pvp.ruleset_applicability_smoke`, `python -m
   run_workspace.pvp.account_deck_export_smoke`, `python -m
   run_workspace.pvp.account_full_loop_smoke`, `python -m

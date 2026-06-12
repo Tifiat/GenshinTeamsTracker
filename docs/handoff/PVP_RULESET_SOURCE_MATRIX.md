@@ -5,6 +5,11 @@ Last checked: 2026-06-11.
 Scope: backend/research handoff only. No UI, no importer product surface, no
 script execution, no saved raw public payloads.
 
+Current direction update (2026-06-12): active PvP work is the no-rules Free
+Draft v0 controller/projection path and the next minimal local hot-seat UI
+around it. Ruleset mapping/import work is paused until real usable tournament
+files are provided.
+
 ## Draft System vs Ruleset Data
 
 - A draft system/pipeline is a GTT adapter/template that defines executable
@@ -56,3 +61,7 @@ research, config inspection, and report-only deck application summaries, but
 not enough to execute a PvP draft schedule without an explicit GTT draft-system
 adapter or source-specific adapter. Real Abyss Draft rulesets cannot currently
 be parsed from confirmed public data in this repo.
+
+Do not start alias/import/schedule-derivation work from this matrix alone. Keep
+these modules report-only until the user provides real tournament Excel/Sheets,
+Discord docs, JSON examples, or equivalent usable files.

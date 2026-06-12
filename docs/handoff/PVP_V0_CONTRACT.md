@@ -529,107 +529,14 @@ history window.
 
 v0 can produce an in-memory/session result summary only.
 
-## Current Backend Implementation Status
+## Backend Status
 
-Implemented through 2026-06-12:
+Current implementation details, module inventory, smoke commands,
+generated/private paths, test commands, and known backend gaps live in
+`docs/handoff/PVP_BACKEND_STATUS.md`.
 
-- `run_workspace/pvp/deck.py`: v0 deck dataclasses, strict JSON
-  root/schema/kind loading, and stable `to_dict()` roundtrip.
-- `run_workspace/pvp/validation.py`: `DeckValidationReport`, stable issue
-  codes, Free Draft v0 character-count validation, conservative Traveler
-  rejection for known account Traveler ids / English Traveler names, and weapon
-  stack/count validation.
-- `run_workspace/pvp/schedule.py`: data-driven default Free Draft v0 schedule
-  and expected per-seat pick/ban counts.
-- `run_workspace/pvp/draft_system.py`: backend-only draft-system registry /
-  adapter boundary. `free_draft_v0` is registered as executable GTT flow
-  version `1`; imported ruleset/balance data remains separate from this flow.
-- `run_workspace/pvp/session.py`: deterministic local reducer, append-only
-  accepted action log, replay helper, state hash, and backend-only post-draft
-  team/weapon assignment validators.
-- `run_workspace/pvp/match_result.py`: room/chamber timer totals, lower-time
-  winner calculation, draw state, and technical-loss result state.
-- `run_workspace/pvp/full_loop_smoke.py`: deterministic backend-only full-loop
-  smoke/dev harness. Command: `python -m run_workspace.pvp.full_loop_smoke`.
-  It loads the synthetic sample decks, validates them, applies the default
-  schedule with a scripted action log, validates teams/weapons, records fixture
-  timers, verifies replay/state hash, and prints a compact report.
-- `run_workspace/pvp/ruleset_applicability.py`: report-only bridge from parsed
-  `TournamentRulesetV1` source data into current PvP v0 capability flags and
-  blockers. It is separate from `RulesetValidationReport` and
-  `DeckValidationReport`.
-- `run_workspace/pvp/ruleset_costs.py`: deck cost-preview helper for
-  `TournamentRulesetV1` character/weapon costs. It uses ids first, reports
-  display-name fallback as a mapping gap, supports level 95/100 extras, and
-  supports character-specific weapon overrides for assigned weapon previews.
-- `run_workspace/pvp/ruleset_balance.py`: backend-only report layer that applies
-  parsed ruleset/balance data to a `DraftDeck` or `PvpSessionBundle` summary.
-  It reports id vs display-name fallback matches, unmatched entries, character
-  and weapon costs, assignment override gaps, unsupported features, and
-  report-only restrictions. It deliberately does not execute schedules, run
-  source scripts, mutate draft-system definitions, or enforce features that need
-  a future adapter.
-- `run_workspace/pvp/ruleset_applicability_smoke.py`: deterministic
-  backend-only ruleset applicability/cost smoke. Command: `python -m
-  run_workspace.pvp.ruleset_applicability_smoke`.
-- `run_workspace/pvp/ruleset_balance_smoke.py`: deterministic backend-only
-  ruleset/balance application smoke. Command: `python -m
-  run_workspace.pvp.ruleset_balance_smoke`. `--json` prints the compact
-  structured report, `--account` explicitly uses local account data, and
-  `--session-bundle` attaches a compact balance summary to a synthetic bundle
-  without turning it into PvP History.
-- `run_workspace/pvp/account_deck_export.py`: backend-only Free Draft deck
-  exporter from current local account SQLite runtime data. The production
-  provider reads `account_characters` and `account_weapon_observed_stacks`
-  through `hoyolab_export.account_storage` adapters; fake providers are used by
-  tests. It exports stable character/weapon ids, display names, element, weapon
-  type, rarity, character level/constellation, weapon level/refinement/count,
-  Free Draft ruleset metadata, and privacy-safe source metadata. It excludes
-  artifacts, auth/cookies, raw account dumps, local paths, SQLite row ids, and
-  generated/private storage internals.
-- `run_workspace/pvp/account_deck_export_smoke.py`: dry-run local account export
-  smoke. Command: `python -m run_workspace.pvp.account_deck_export_smoke`.
-  Default mode prints a compact summary and writes no deck JSON. `--write`
-  writes under generated/private `data/pvp/decks/` unless `--output` is given.
-  Traveler is skipped by the same conservative v0 policy as deck validation.
-- `run_workspace/pvp/free_draft_planner.py`: deterministic backend-only
-  smoke/autoplay helper. It asks the existing reducer to accept each Free Draft
-  v0 ban/pick, then builds simple team and weapon assignments for validation.
-  This is not a product draft bot or optimizer.
-- `run_workspace/pvp/account_full_loop_smoke.py`: backend-only local-account
-  full-loop smoke using the account deck exporter. Command: `python -m
-  run_workspace.pvp.account_full_loop_smoke`. It copies the exported account
-  deck into an independent player 2 scope, plans a reducer-accepted Free Draft,
-  verifies replay/state hash, validates teams/weapons, and records fixture
-  timers/results. Default mode writes no files; `--json` prints a compact
-  structured report without dumping the full deck.
-- `run_workspace/pvp/session_bundle.py`: backend-only PvP session bundle
-  snapshot contract (`kind: gtt.pvp_session_bundle`, schema version `1`) and
-  verifier. Bundles embed both decks, draft-system ref, optional ruleset/balance
-  refs, schedule snapshot/hash, accepted action log, final/replay hashes,
-  team/weapon assignments, timer/result data, and compact reports. They are
-  debug/session artifacts, not PvP History persistence.
-- `run_workspace/pvp/session_bundle_smoke.py`: deterministic session bundle
-  roundtrip/replay smoke. Command: `python -m
-  run_workspace.pvp.session_bundle_smoke`. Default mode uses synthetic decks and
-  writes no files. `--json` prints a compact report, `--account` explicitly uses
-  local account data, and `--write` writes ignored generated/private JSON under
-  `data/pvp/sessions/`.
-- `samples/pvp/`: synthetic deck fixtures for tests only; ids are not
-  production catalog ids. Current fixtures have 12 distinct characters per
-  player and enough per-player weapon stack counts for the scripted full-loop
-  smoke.
-- `samples/pvp/rulesets/`: tiny synthetic ruleset fixtures only. One fixture
-  aligns ids with the PvP sample deck for clean cost previews; one sanitized
-  Gentor-like fixture intentionally has source-local ids so name fallback is
-  reported.
-- `tests/run_workspace/pvp/`: focused backend tests for the above contracts.
-
-Still not implemented: UI, AppShell/right-panel integration, online transport,
-deck builder/exporter UI, real Gentor/Abyss importer, richer ruleset execution,
-automatic schedule derivation from public rulesets, full localized Traveler
-detection/support, GCSIM scoring, enforcement of report-only/unsupported
-ruleset features, and PvP History.
+This contract remains the stable product/backend boundary. Do not keep a
+file-by-file implementation log here.
 
 ## Testing Strategy
 
@@ -705,7 +612,16 @@ Stage E: team and weapon assignment backend.
 - Status: implemented as backend validators without mutating normal TeamBuilder
   or AppShell state.
 
-Stage F: local hot-seat UI.
+Stage F: Free Draft controller/projection backend.
+
+- Stable backend API for future local UI.
+- Create hot-seat/ghost sessions from decks, explicit account export, or bundle.
+- Project current requirement, progress, legal targets, draft state,
+  assignments, timers/result, and issue codes as JSON-friendly data.
+- Status: implemented as backend-only controller; details live in
+  `PVP_BACKEND_STATUS.md`.
+
+Stage G: local hot-seat UI.
 
 - Setup.
 - Draft board.
@@ -713,17 +629,18 @@ Stage F: local hot-seat UI.
 - Team/weapon assignment.
 - Timer/result summary.
 
-Stage G: deck builder/exporter UI.
+Stage H: deck builder/exporter UI.
 
 - Build a deck from the existing imported account characters/weapons.
 - Validate under Free Draft and later rulesets.
 - Export deck JSON.
 - Status: backend account export exists; no UI/deck-builder surface is wired.
 
-Stage H: iterate toward offline PvP MVP.
+Stage I: iterate toward offline PvP MVP.
 
 - Improve UX.
-- Add richer ruleset adapters.
+- Add richer ruleset adapters only after real usable tournament source files
+  exist.
 - Decide when to pull existing `TournamentRulesetV1` forward.
 
 Online relay and History remain later major stages after the offline PvP loop is

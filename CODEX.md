@@ -125,9 +125,11 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   weapon assignment validation, timer/result summaries, report-only ruleset
   applicability/cost-preview/ruleset-balance application helpers, local-account
   Free Draft deck export from SQLite runtime data, deterministic Free Draft
-  smoke planning, local-account full-loop smoke, draft-system registry, session
-  bundle snapshot/verifier, and deterministic dev smokes (`python -m
+  smoke planning, local-account full-loop smoke, draft-system registry, local
+  Free Draft controller/projection API, session bundle snapshot/verifier, and
+  deterministic dev smokes (`python -m
   run_workspace.pvp.full_loop_smoke`, `python -m
+  run_workspace.pvp.free_draft_controller_smoke`, `python -m
   run_workspace.pvp.ruleset_applicability_smoke`, `python -m
   run_workspace.pvp.account_deck_export_smoke`, `python -m
   run_workspace.pvp.account_full_loop_smoke`, `python -m
@@ -493,7 +495,9 @@ Important direction:
   `run_workspace/abyss/source_data*.py`.
 - Backend Abyss mechanics parser/report code exists in `hoyolab_export/abyss_mechanics.py`. It parses Fandom enemy-page wikitext snippets into structured fields and UI-warning/bot tags without mixing Normal/Abyss/Local Legend/Stygian stat blocks into one "true" block. Next Abyss work should integrate factual DPS confidence and mechanics warnings into the Run Workspace UI.
 
-Active PvP v0 contract exists at `docs/handoff/PVP_V0_CONTRACT.md`: the first
+Active PvP v0 contract exists at `docs/handoff/PVP_V0_CONTRACT.md`; current
+backend implementation status exists at `docs/handoff/PVP_BACKEND_STATUS.md`.
+The first
 implementation target is a full local Hot-seat / Ghost Deck offline loop with
 two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
 weapon assignment, timers, and winner summary. Reference-site findings live in
@@ -508,6 +512,11 @@ and explicit `--write` writes generated/private deck JSON under `data/pvp/decks/
 Current local-account full-loop smoke entrypoint is
 `python -m run_workspace.pvp.account_full_loop_smoke`; default mode writes no
 files and `--json` prints a compact structured report.
+Current Free Draft controller smoke entrypoint is
+`python -m run_workspace.pvp.free_draft_controller_smoke`; default mode uses
+synthetic deck fixtures and writes no files, `--json` prints compact structured
+projection/report output, `--account` explicitly uses local account data, and
+`--step-demo` prints the first few manual controller transitions.
 Current PvP session bundle smoke entrypoint is
 `python -m run_workspace.pvp.session_bundle_smoke`; default mode uses synthetic
 fixtures and writes no files, `--account` explicitly uses local account data,

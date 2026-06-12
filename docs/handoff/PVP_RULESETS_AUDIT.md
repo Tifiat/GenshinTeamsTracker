@@ -7,6 +7,13 @@ Implementation follow-up: 2026-06-11
 Scope: docs-only research notes. No app code, app startup, HoYoLAB import,
 local account data, artifact DB, generated/private files, or tests were used.
 
+Current direction update (2026-06-12): ruleset import/mapping is paused until
+the user provides real usable tournament files, such as Excel/Sheets, Discord
+docs, JSON examples, or equivalent source material. Active PvP work continues
+through the no-rules Free Draft v0 controller/projection path and a future
+minimal local hot-seat UI around that controller. Keep this audit as source
+research only.
+
 ## Summary
 
 Confirmed:
@@ -36,7 +43,7 @@ Confirmed:
   source-specific adapter. Abyss Draft has no confirmed public parseable
   ruleset payload in this repo.
 
-MVP recommendation:
+Historical recommendation for when ruleset work resumes:
 
 - Start with manual XLSX/CSV/JSON ruleset import in GenshinTeamsTracker.
 - Treat website/API scraping/import as a later source adapter after one stable

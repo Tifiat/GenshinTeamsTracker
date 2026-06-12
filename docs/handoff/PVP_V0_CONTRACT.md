@@ -574,6 +574,17 @@ Implemented through 2026-06-12:
   Default mode prints a compact summary and writes no deck JSON. `--write`
   writes under generated/private `data/pvp/decks/` unless `--output` is given.
   Traveler is skipped by the same conservative v0 policy as deck validation.
+- `run_workspace/pvp/free_draft_planner.py`: deterministic backend-only
+  smoke/autoplay helper. It asks the existing reducer to accept each Free Draft
+  v0 ban/pick, then builds simple team and weapon assignments for validation.
+  This is not a product draft bot or optimizer.
+- `run_workspace/pvp/account_full_loop_smoke.py`: backend-only local-account
+  full-loop smoke using the account deck exporter. Command: `python -m
+  run_workspace.pvp.account_full_loop_smoke`. It copies the exported account
+  deck into an independent player 2 scope, plans a reducer-accepted Free Draft,
+  verifies replay/state hash, validates teams/weapons, and records fixture
+  timers/results. Default mode writes no files; `--json` prints a compact
+  structured report without dumping the full deck.
 - `samples/pvp/`: synthetic deck fixtures for tests only; ids are not
   production catalog ids. Current fixtures have 12 distinct characters per
   player and enough per-player weapon stack counts for the scripted full-loop
@@ -587,8 +598,7 @@ Implemented through 2026-06-12:
 Still not implemented: UI, AppShell/right-panel integration, online transport,
 deck builder/exporter UI, real Gentor/Abyss importer, richer ruleset execution,
 automatic schedule derivation from public rulesets, full localized Traveler
-detection/support, account deck full-loop auto-scripting, GCSIM scoring, and
-PvP History.
+detection/support, GCSIM scoring, and PvP History.
 
 ## Testing Strategy
 
@@ -607,6 +617,8 @@ When implementation starts, add tests before or alongside UI:
 - team assignment requires two teams of four;
 - timer total and winner calculation;
 - action log replay.
+- local-account full-loop smoke uses fake providers in tests and real account
+  data only in the manual smoke command.
 
 Likely test owner:
 

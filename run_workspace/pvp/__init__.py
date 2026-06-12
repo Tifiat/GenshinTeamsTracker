@@ -33,6 +33,15 @@ from .account_deck_export import (
     export_free_draft_deck_from_local_account,
     write_account_draft_deck,
 )
+from .free_draft_planner import (
+    FreeDraftActionPlanReport,
+    FreeDraftPlannerIssue,
+    FreeDraftTeamPlanReport,
+    FreeDraftWeaponPlanReport,
+    plan_free_draft_actions,
+    plan_free_draft_team_assignment,
+    plan_free_draft_weapon_assignment,
+)
 from .match_result import (
     MATCH_STATUS_DRAW,
     MATCH_STATUS_FINISHED,
@@ -77,7 +86,12 @@ from .session import (
     validate_team_assignment,
     validate_weapon_assignment,
 )
-from .validation import DeckValidationReport, SimpleValidationReport, ValidationIssue, validate_draft_deck
+from .validation import (
+    DeckValidationReport,
+    SimpleValidationReport,
+    ValidationIssue,
+    validate_draft_deck,
+)
 
 __all__ = [
     "ACTION_ASSIGN_TEAM_SLOT",
@@ -124,7 +138,11 @@ __all__ = [
     "DraftSessionState",
     "DraftWeaponStack",
     "FakeAccountDeckDataProvider",
+    "FreeDraftActionPlanReport",
+    "FreeDraftPlannerIssue",
+    "FreeDraftTeamPlanReport",
     "FreeDraftV0Config",
+    "FreeDraftWeaponPlanReport",
     "LocalAccountSQLiteDeckDataProvider",
     "MatchResult",
     "PlayerMatchTimers",
@@ -146,6 +164,9 @@ __all__ = [
     "export_free_draft_deck_from_local_account",
     "load_draft_deck",
     "load_draft_deck_from_json_text",
+    "plan_free_draft_actions",
+    "plan_free_draft_team_assignment",
+    "plan_free_draft_weapon_assignment",
     "replay_draft_actions",
     "validate_draft_deck",
     "validate_team_assignment",

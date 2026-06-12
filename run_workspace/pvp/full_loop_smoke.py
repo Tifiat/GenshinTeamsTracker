@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .deck import DraftDeck, load_draft_deck
+from .draft_system import DRAFT_SYSTEM_FREE_DRAFT_V0, require_draft_system
 from .match_result import (
     ChamberTimer,
     MatchResult,
@@ -27,7 +28,6 @@ from .schedule import (
     ACTION_PICK_CHARACTER,
     SEAT_PLAYER_1,
     SEAT_PLAYER_2,
-    build_default_free_draft_v0_schedule,
 )
 from .session import (
     CharacterWeaponAssignment,
@@ -127,7 +127,8 @@ def run_default_full_loop_smoke(
     _require_ready_deck(SEAT_PLAYER_1, player_1_validation)
     _require_ready_deck(SEAT_PLAYER_2, player_2_validation)
 
-    schedule = build_default_free_draft_v0_schedule()
+    draft_system = require_draft_system(DRAFT_SYSTEM_FREE_DRAFT_V0)
+    schedule = draft_system.build_schedule()
     initial_state = create_draft_session(
         player_1_deck,
         player_2_deck,

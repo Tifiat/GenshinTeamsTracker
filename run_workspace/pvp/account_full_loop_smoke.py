@@ -22,6 +22,11 @@ from .account_deck_export import (
     export_free_draft_deck_from_account,
 )
 from .deck import DraftDeck, DraftDeckPlayer, DraftDeckSource
+from .draft_system import (
+    DRAFT_SYSTEM_FREE_DRAFT_V0,
+    DraftSystemDefinition,
+    require_draft_system,
+)
 from .free_draft_planner import (
     FreeDraftActionPlanReport,
     FreeDraftTeamPlanReport,
@@ -279,6 +284,8 @@ def run_account_full_loop_smoke(
     provider: AccountDeckDataProvider | None = None,
     options: AccountDeckExportOptions | None = None,
     schedule: DraftSchedule | None = None,
+    draft_system: DraftSystemDefinition | None = None,
+    system_id: str = DRAFT_SYSTEM_FREE_DRAFT_V0,
 ) -> AccountFullLoopSmokeReport:
     export = export_free_draft_deck_from_account(
         provider or LocalAccountSQLiteDeckDataProvider(),
@@ -331,10 +338,12 @@ def run_account_full_loop_smoke(
             issues=tuple(issues),
         )
 
+    draft_system = draft_system or require_draft_system(system_id)
     action_plan = plan_free_draft_actions(
         player_1_deck,
         player_2_deck,
         schedule=schedule,
+        draft_system=draft_system,
     )
     if not action_plan.ready:
         issues.append(

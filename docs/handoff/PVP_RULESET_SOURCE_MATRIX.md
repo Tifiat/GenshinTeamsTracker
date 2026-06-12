@@ -32,6 +32,9 @@ script execution, no saved raw public payloads.
 
 ## Current Backend Entry Points
 
+- `run_workspace/pvp/draft_system.py`: executable draft-system registry. This
+  is the GTT adapter boundary that keeps draft flow separate from imported
+  ruleset/balance data.
 - `run_workspace/pvp/ruleset_applicability.py`: report-only bridge from
   `TournamentRulesetV1` to PvP v0 capabilities and blockers.
 - `run_workspace/pvp/ruleset_costs.py`: deck cost preview using ids first,

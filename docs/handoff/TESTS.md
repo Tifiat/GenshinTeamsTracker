@@ -24,12 +24,14 @@ Mirror the primary project owner under `tests/`:
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Free Draft
   schedule/reducer/action log, team/weapon assignment validation, and
   timer/result behavior, local-account deck export provider/report behavior,
-  deterministic Free Draft planner/account full-loop smoke behavior, plus
-  report-only ruleset applicability and cost-preview tests. Manual backend
+  draft-system registry behavior, deterministic Free Draft planner/account
+  full-loop smoke behavior, PvP session bundle roundtrip/replay verification,
+  plus report-only ruleset applicability and cost-preview tests. Manual backend
   smoke commands: `python -m run_workspace.pvp.full_loop_smoke`, `python -m
   run_workspace.pvp.ruleset_applicability_smoke`, `python -m
-  run_workspace.pvp.account_deck_export_smoke`, and `python -m
-  run_workspace.pvp.account_full_loop_smoke`.
+  run_workspace.pvp.account_deck_export_smoke`, `python -m
+  run_workspace.pvp.account_full_loop_smoke`, and `python -m
+  run_workspace.pvp.session_bundle_smoke`.
 - `tests/run_workspace/team/` - team-builder state and team-card data/view
   models.
 - `tests/run_workspace/right_panel/` - right-panel view-model behavior owned by
@@ -58,6 +60,7 @@ Prefer the narrowest suite that covers the touched ownership area:
 .\.venv\Scripts\python.exe -m run_workspace.pvp.ruleset_applicability_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.account_deck_export_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.account_full_loop_smoke
+.\.venv\Scripts\python.exe -m run_workspace.pvp.session_bundle_smoke
 ```
 
 Full-suite command:

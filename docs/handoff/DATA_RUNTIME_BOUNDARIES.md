@@ -121,6 +121,27 @@ Rules:
   internals;
 - `data/pvp/` is ignored and should not be committed.
 
+## PvP Session Bundle Output
+
+Default generated/private write path:
+
+- `data/pvp/sessions/`
+
+Role:
+
+- optional output for `python -m run_workspace.pvp.session_bundle_smoke --write`;
+- contains backend/debug PvP session bundle JSON for replay/validation.
+
+Rules:
+
+- default session bundle smoke is dry-run and writes no JSON;
+- `--account` is required before the smoke reads local account data;
+- bundles may embed account-derived PvP deck data when account mode is explicit;
+- bundles must not contain artifacts, artifact stats, HoYoLAB auth/cookies, raw
+  account dumps, local paths, SQLite row ids, or huge raw ruleset payloads;
+- session bundles are not PvP History persistence;
+- `data/pvp/` is ignored and should not be committed.
+
 ## Account Character Visual Assets
 
 Sources/paths:

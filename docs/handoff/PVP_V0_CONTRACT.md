@@ -539,6 +539,9 @@ Implemented through 2026-06-12:
   stack/count validation.
 - `run_workspace/pvp/schedule.py`: data-driven default Free Draft v0 schedule
   and expected per-seat pick/ban counts.
+- `run_workspace/pvp/draft_system.py`: backend-only draft-system registry /
+  adapter boundary. `free_draft_v0` is registered as executable GTT flow
+  version `1`; imported ruleset/balance data remains separate from this flow.
 - `run_workspace/pvp/session.py`: deterministic local reducer, append-only
   accepted action log, replay helper, state hash, and backend-only post-draft
   team/weapon assignment validators.
@@ -585,6 +588,18 @@ Implemented through 2026-06-12:
   verifies replay/state hash, validates teams/weapons, and records fixture
   timers/results. Default mode writes no files; `--json` prints a compact
   structured report without dumping the full deck.
+- `run_workspace/pvp/session_bundle.py`: backend-only PvP session bundle
+  snapshot contract (`kind: gtt.pvp_session_bundle`, schema version `1`) and
+  verifier. Bundles embed both decks, draft-system ref, optional ruleset/balance
+  refs, schedule snapshot/hash, accepted action log, final/replay hashes,
+  team/weapon assignments, timer/result data, and compact reports. They are
+  debug/session artifacts, not PvP History persistence.
+- `run_workspace/pvp/session_bundle_smoke.py`: deterministic session bundle
+  roundtrip/replay smoke. Command: `python -m
+  run_workspace.pvp.session_bundle_smoke`. Default mode uses synthetic decks and
+  writes no files. `--json` prints a compact report, `--account` explicitly uses
+  local account data, and `--write` writes ignored generated/private JSON under
+  `data/pvp/sessions/`.
 - `samples/pvp/`: synthetic deck fixtures for tests only; ids are not
   production catalog ids. Current fixtures have 12 distinct characters per
   player and enough per-player weapon stack counts for the scripted full-loop
@@ -619,6 +634,8 @@ When implementation starts, add tests before or alongside UI:
 - action log replay.
 - local-account full-loop smoke uses fake providers in tests and real account
   data only in the manual smoke command.
+- session bundle JSON roundtrip and verifier replay checks for tampered actions,
+  hashes, missing decks, and unknown draft systems.
 
 Likely test owner:
 

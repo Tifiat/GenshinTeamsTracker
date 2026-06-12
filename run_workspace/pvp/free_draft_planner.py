@@ -11,6 +11,11 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from .deck import DraftCharacter, DraftDeck, DraftWeaponStack
+from .draft_system import (
+    DRAFT_SYSTEM_FREE_DRAFT_V0,
+    DraftSystemDefinition,
+    require_draft_system,
+)
 from .schedule import (
     ACTION_BAN_CHARACTER,
     ACTION_PICK_CHARACTER,
@@ -184,10 +189,14 @@ def plan_free_draft_actions(
     player_2_deck: DraftDeck,
     *,
     schedule: DraftSchedule | None = None,
+    draft_system: DraftSystemDefinition | None = None,
+    system_id: str = DRAFT_SYSTEM_FREE_DRAFT_V0,
 ) -> FreeDraftActionPlanReport:
     """Autoplay the current Free Draft schedule through reducer-accepted actions."""
 
     try:
+        if schedule is None:
+            schedule = (draft_system or require_draft_system(system_id)).build_schedule()
         initial_state = create_draft_session(
             player_1_deck,
             player_2_deck,

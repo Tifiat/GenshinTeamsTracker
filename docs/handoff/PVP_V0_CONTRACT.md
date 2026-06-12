@@ -618,7 +618,15 @@ Stage F: Free Draft controller/projection backend.
 - Create hot-seat/ghost sessions from decks, explicit account export, or bundle.
 - Project current requirement, progress, legal targets, draft state,
   assignments, timers/result, and issue codes as JSON-friendly data.
-- Status: implemented as backend-only controller; details live in
+- Status: implemented as backend-only controller plus board/read-model bridge.
+  The UI-facing board projection lives at `run_workspace/pvp/free_draft_board.py`
+  and is exposed by controller methods `to_board_projection(debug=False)` and
+  `to_board_dict(debug=False)`. It includes draft-system/status/current
+  requirement, progress, per-seat deck summaries and card statuses, global
+  pools, action-log rows, timeline rows, and compact assignment/result summary.
+  Stable card statuses are `available`, `legal_target`, `globally_banned`,
+  `picked_by_self`, `picked_by_opponent`, `blocked_by_opponent_pick`,
+  `unavailable`, `invalid`, and `unsupported_traveler`; details live in
   `PVP_BACKEND_STATUS.md`.
 
 Stage G: local hot-seat UI.

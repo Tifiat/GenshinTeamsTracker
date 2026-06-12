@@ -15,7 +15,7 @@ The active backend direction is no-rules Free Draft v0:
 - two `DraftDeck` payloads;
 - registered `free_draft_v0` draft system;
 - reducer/action log/replay;
-- controller/projection API for a future simple UI;
+- controller plus board/read-model projection API for a future simple UI;
 - post-draft team/weapon/timer/result summaries;
 - session bundle snapshot/verifier.
 
@@ -41,7 +41,14 @@ or JSON examples exist.
   deck files/mappings, explicit account export, or session bundles; computes
   legal targets by probing the existing reducer; applies manual actions through
   `apply_draft_action`; stores post-draft assignments/timers; and builds
-  verifiable session bundles.
+  verifiable session bundles. It exposes the UI-facing board projection through
+  `to_board_projection(debug=False)` / `to_board_dict(debug=False)` while
+  keeping the older compact `to_projection()` contract available.
+- `run_workspace/pvp/free_draft_board.py`: backend-only Free Draft board/read
+  model. It derives per-seat card statuses and legal target markers from the
+  controller/reducer state, plus global pools, action-log rows, schedule
+  timeline rows, and compact assignment/result summaries. Compact mode is the
+  default; debug mode can add reducer excluded-target reason codes.
 - `run_workspace/pvp/free_draft_planner.py`: deterministic smoke/dev helper
   that chooses first reducer-accepted actions and simple team/weapon
   assignments. It is not a product bot or optimizer.
@@ -82,6 +89,13 @@ python -m run_workspace.pvp.ruleset_applicability_smoke
 python -m run_workspace.pvp.ruleset_balance_smoke
 ```
 
+`free_draft_controller_smoke` now prints a board/controller summary: draft
+system, current requirement, legal target count, first card statuses, status
+after two actions, final pools, assignment/result summary, and action-log row
+count. `--json` prints compact projection/board reports instead of full card
+lists; direct controller callers should use `to_board_dict()` for the complete
+board read model.
+
 Commands with local account access:
 
 - `account_deck_export_smoke`
@@ -103,7 +117,8 @@ artifacts, not PvP History persistence.
 
 ## Tests
 
-Focused PvP backend tests live under `tests/run_workspace/pvp/`.
+Focused PvP backend tests live under `tests/run_workspace/pvp/`, including the
+Free Draft board/read-model projection tests in `test_free_draft_board.py`.
 
 Recommended local checks:
 

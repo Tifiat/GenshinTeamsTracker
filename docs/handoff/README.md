@@ -40,8 +40,9 @@ Durable backend modules:
   post-draft team and weapon assignment validation, match timer/result
   summaries, and local-account Free Draft deck export from SQLite runtime
   account data. It also contains the deterministic Free Draft smoke planner,
-  draft-system registry, local Free Draft controller/projection API, session
-  bundle snapshot/verifier, local-account full-loop smoke, and report-only
+  draft-system registry, local Free Draft controller/projection API, the
+  UI-facing board/read-model projection bridge, session bundle
+  snapshot/verifier, local-account full-loop smoke, and report-only
   ruleset applicability/deck cost-preview/ruleset-balance application research
   helpers. Deterministic dev smoke commands: `python -m
   run_workspace.pvp.full_loop_smoke`, `python -m

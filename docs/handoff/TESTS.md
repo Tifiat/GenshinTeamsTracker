@@ -25,10 +25,11 @@ Mirror the primary project owner under `tests/`:
   schedule/reducer/action log, team/weapon assignment validation, and
   timer/result behavior, local-account deck export provider/report behavior,
   draft-system registry behavior, deterministic Free Draft planner/account
-  full-loop smoke behavior, Free Draft controller/projection behavior, PvP
-  session bundle roundtrip/replay verification, plus report-only ruleset
-  applicability, cost-preview, and ruleset/balance application tests. Manual
-  backend smoke commands: `python -m
+  full-loop smoke behavior, Free Draft controller/projection behavior, Free
+  Draft board/read-model projection behavior, PvP session bundle
+  roundtrip/replay verification, plus report-only ruleset applicability,
+  cost-preview, and ruleset/balance application tests. Manual backend smoke
+  commands: `python -m
   run_workspace.pvp.full_loop_smoke`, `python -m
   run_workspace.pvp.free_draft_controller_smoke`, `python -m
   run_workspace.pvp.ruleset_applicability_smoke`, `python -m

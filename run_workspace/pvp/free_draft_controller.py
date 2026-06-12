@@ -662,6 +662,17 @@ class FreeDraftController:
             issue_codes=self.issue_codes(),
         )
 
+    def to_board_projection(self, *, debug: bool = False):
+        from .free_draft_board import build_free_draft_board_projection
+
+        return build_free_draft_board_projection(self, debug=debug)
+
+    def get_board_projection(self, *, debug: bool = False):
+        return self.to_board_projection(debug=debug)
+
+    def to_board_dict(self, *, debug: bool = False) -> dict[str, Any]:
+        return self.to_board_projection(debug=debug).to_dict()
+
     def _append_issue(self, issue: FreeDraftControllerIssue) -> None:
         self.state = replace(self.state, issues=self.state.issues + (issue,))
 

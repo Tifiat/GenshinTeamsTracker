@@ -126,8 +126,8 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   applicability/cost-preview/ruleset-balance application helpers, local-account
   Free Draft deck export from SQLite runtime data, deterministic Free Draft
   smoke planning, local-account full-loop smoke, draft-system registry, local
-  Free Draft controller/projection API, session bundle snapshot/verifier, and
-  deterministic dev smokes (`python -m
+  Free Draft controller/projection API, UI-facing board/read-model projection,
+  session bundle snapshot/verifier, and deterministic dev smokes (`python -m
   run_workspace.pvp.full_loop_smoke`, `python -m
   run_workspace.pvp.free_draft_controller_smoke`, `python -m
   run_workspace.pvp.ruleset_applicability_smoke`, `python -m
@@ -515,8 +515,11 @@ files and `--json` prints a compact structured report.
 Current Free Draft controller smoke entrypoint is
 `python -m run_workspace.pvp.free_draft_controller_smoke`; default mode uses
 synthetic deck fixtures and writes no files, `--json` prints compact structured
-projection/report output, `--account` explicitly uses local account data, and
-`--step-demo` prints the first few manual controller transitions.
+projection/board reports, `--account` explicitly uses local account data, and
+`--step-demo` prints the first few manual controller transitions. The UI-facing
+Free Draft board projection lives in `run_workspace/pvp/free_draft_board.py`
+and is exposed by `FreeDraftController.to_board_projection()` /
+`to_board_dict()`.
 Current PvP session bundle smoke entrypoint is
 `python -m run_workspace.pvp.session_bundle_smoke`; default mode uses synthetic
 fixtures and writes no files, `--account` explicitly uses local account data,

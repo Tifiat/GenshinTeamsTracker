@@ -11,9 +11,10 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from typing import Any, Mapping
 
+from .account_deck_copy import copy_deck_for_player_2
 from .account_deck_export import (
     AccountDeckDataProvider,
     AccountDeckExportOptions,
@@ -21,7 +22,6 @@ from .account_deck_export import (
     LocalAccountSQLiteDeckDataProvider,
     export_free_draft_deck_from_account,
 )
-from .deck import DraftDeck, DraftDeckPlayer, DraftDeckSource
 from .draft_system import (
     DRAFT_SYSTEM_FREE_DRAFT_V0,
     DraftSystemDefinition,
@@ -244,39 +244,6 @@ class AccountFullLoopSmokeReport:
             ),
             weapon_stack_usage=weapon_plan.stack_usage if weapon_plan else {},
         )
-
-
-def copy_deck_for_player_2(deck: DraftDeck) -> DraftDeck:
-    source_extra = {
-        **dict(deck.source.extra),
-        "copied_for_account_full_loop_smoke": True,
-        "copied_from_seat": SEAT_PLAYER_1,
-    }
-    player_extra = {
-        **dict(deck.player.extra),
-        "copied_for_account_full_loop_smoke": True,
-    }
-    nickname = (
-        f"{deck.player.nickname} (P2 Copy)"
-        if deck.player.nickname
-        else "account-copy-player-2"
-    )
-    return replace(
-        deck,
-        deck_name=f"{deck.deck_name} (Player 2 Copy)",
-        player=DraftDeckPlayer(
-            nickname=nickname,
-            extra=player_extra,
-        ),
-        source=DraftDeckSource(
-            app=deck.source.app,
-            language=deck.source.language,
-            exported_at_utc=deck.source.exported_at_utc,
-            extra=source_extra,
-        ),
-        characters=tuple(deck.characters),
-        weapons=tuple(deck.weapons),
-    )
 
 
 def run_account_full_loop_smoke(

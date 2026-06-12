@@ -627,7 +627,11 @@ Stage F: Free Draft controller/projection backend.
   Stable card statuses are `available`, `legal_target`, `globally_banned`,
   `picked_by_self`, `picked_by_opponent`, `blocked_by_opponent_pick`,
   `unavailable`, `invalid`, and `unsupported_traveler`; details live in
-  `PVP_BACKEND_STATUS.md`.
+  `PVP_BACKEND_STATUS.md`. A committed UI-contract sample lives at
+  `samples/pvp/ui_contract/free_draft_board_projection_sample.json`, with
+  initial, after-two-actions, and final/result board states. Board projection
+  dictionaries can be checked with
+  `validate_free_draft_board_projection_dict(...)`.
 
 Stage G: local hot-seat UI.
 

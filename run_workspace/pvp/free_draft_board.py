@@ -56,6 +56,46 @@ TIMELINE_STATUS_PENDING = "pending"
 TIMELINE_STATUS_ACTIVE = "active"
 TIMELINE_STATUS_COMPLETE = "complete"
 
+CARD_STATUS_VALUES = (
+    CARD_STATUS_AVAILABLE,
+    CARD_STATUS_LEGAL_TARGET,
+    CARD_STATUS_GLOBALLY_BANNED,
+    CARD_STATUS_PICKED_BY_SELF,
+    CARD_STATUS_PICKED_BY_OPPONENT,
+    CARD_STATUS_BLOCKED_BY_OPPONENT_PICK,
+    CARD_STATUS_UNAVAILABLE,
+    CARD_STATUS_INVALID,
+    CARD_STATUS_UNSUPPORTED_TRAVELER,
+)
+TIMELINE_STATUS_VALUES = (
+    TIMELINE_STATUS_PENDING,
+    TIMELINE_STATUS_ACTIVE,
+    TIMELINE_STATUS_COMPLETE,
+)
+REQUIRED_BOARD_PROJECTION_KEYS = (
+    "variant",
+    "draft_system",
+    "status",
+    "current_requirement",
+    "progress",
+    "seats",
+    "global_pools",
+    "action_log",
+    "timeline",
+    "summary",
+    "issue_codes",
+)
+FORBIDDEN_BOARD_PROJECTION_TOKENS = (
+    "artifact",
+    "auth",
+    "cookie",
+    "local_path",
+    "raw_account",
+    "raw_dump",
+    "row_id",
+    "sqlite",
+)
+
 
 @dataclass(frozen=True, slots=True)
 class FreeDraftBoardCard:
@@ -269,6 +309,46 @@ def build_free_draft_board_projection(
         summary=_summary_dict(controller),
         issue_codes=controller.issue_codes(),
     )
+
+
+def validate_free_draft_board_projection_dict(
+    payload: Mapping[str, Any],
+) -> tuple[str, ...]:
+    issues: list[str] = []
+    for key in REQUIRED_BOARD_PROJECTION_KEYS:
+        if key not in payload:
+            issues.append(f"missing_top_level:{key}")
+
+    seats = payload.get("seats")
+    if isinstance(seats, Mapping):
+        for seat, seat_payload in seats.items():
+            if not isinstance(seat_payload, Mapping):
+                issues.append(f"seat_not_object:{seat}")
+                continue
+            cards = seat_payload.get("cards")
+            if not isinstance(cards, list):
+                issues.append(f"seat_cards_not_list:{seat}")
+                continue
+            for index, card in enumerate(cards):
+                if not isinstance(card, Mapping):
+                    issues.append(f"card_not_object:{seat}:{index}")
+                    continue
+                status = card.get("status")
+                if status not in CARD_STATUS_VALUES:
+                    issues.append(f"unknown_card_status:{seat}:{index}:{status}")
+
+    timeline = payload.get("timeline")
+    if isinstance(timeline, list):
+        for index, step in enumerate(timeline):
+            if not isinstance(step, Mapping):
+                issues.append(f"timeline_step_not_object:{index}")
+                continue
+            status = step.get("status")
+            if status not in TIMELINE_STATUS_VALUES:
+                issues.append(f"unknown_timeline_status:{index}:{status}")
+
+    _append_forbidden_token_issues(payload, "$", issues)
+    return tuple(dict.fromkeys(issues))
 
 
 def _draft_system_dict(controller: "FreeDraftController") -> dict[str, Any]:
@@ -750,6 +830,32 @@ def _plain_mapping(value: Mapping[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def _append_forbidden_token_issues(
+    value: Any,
+    path: str,
+    issues: list[str],
+) -> None:
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            key_text = str(key)
+            key_path = f"{path}.{key_text}"
+            normalized_key = key_text.strip().casefold()
+            for token in FORBIDDEN_BOARD_PROJECTION_TOKENS:
+                if token in normalized_key:
+                    issues.append(f"forbidden_key:{token}:{key_path}")
+            _append_forbidden_token_issues(item, key_path, issues)
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _append_forbidden_token_issues(item, f"{path}[{index}]", issues)
+        return
+    if isinstance(value, str):
+        normalized_value = value.strip().casefold()
+        for token in FORBIDDEN_BOARD_PROJECTION_TOKENS:
+            if token in normalized_value:
+                issues.append(f"forbidden_value:{token}:{path}")
+
+
 __all__ = [
     "CARD_STATUS_AVAILABLE",
     "CARD_STATUS_BLOCKED_BY_OPPONENT_PICK",
@@ -758,15 +864,20 @@ __all__ = [
     "CARD_STATUS_LEGAL_TARGET",
     "CARD_STATUS_PICKED_BY_OPPONENT",
     "CARD_STATUS_PICKED_BY_SELF",
+    "CARD_STATUS_VALUES",
     "CARD_STATUS_UNAVAILABLE",
     "CARD_STATUS_UNSUPPORTED_TRAVELER",
+    "FORBIDDEN_BOARD_PROJECTION_TOKENS",
+    "REQUIRED_BOARD_PROJECTION_KEYS",
     "TIMELINE_STATUS_ACTIVE",
     "TIMELINE_STATUS_COMPLETE",
     "TIMELINE_STATUS_PENDING",
+    "TIMELINE_STATUS_VALUES",
     "FreeDraftActionLogRow",
     "FreeDraftBoardCard",
     "FreeDraftBoardProjection",
     "FreeDraftBoardSeat",
     "FreeDraftTimelineStep",
     "build_free_draft_board_projection",
+    "validate_free_draft_board_projection_dict",
 ]

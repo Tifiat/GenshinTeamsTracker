@@ -3,16 +3,24 @@ from __future__ import annotations
 import io
 import json
 import unittest
+from copy import deepcopy
 from contextlib import redirect_stdout
+from pathlib import Path
 
 from run_workspace.pvp.free_draft_board import (
     CARD_STATUS_BLOCKED_BY_OPPONENT_PICK,
     CARD_STATUS_GLOBALLY_BANNED,
     CARD_STATUS_LEGAL_TARGET,
     CARD_STATUS_PICKED_BY_SELF,
+    CARD_STATUS_VALUES,
     TIMELINE_STATUS_ACTIVE,
     TIMELINE_STATUS_COMPLETE,
     TIMELINE_STATUS_PENDING,
+    TIMELINE_STATUS_VALUES,
+    validate_free_draft_board_projection_dict,
+)
+from run_workspace.pvp.free_draft_board_sample import (
+    build_free_draft_board_contract_sample,
 )
 from run_workspace.pvp.free_draft_controller import (
     FreeDraftController,
@@ -50,6 +58,28 @@ class FreeDraftBoardProjectionTests(unittest.TestCase):
         self.assertNotIn("cookies", text.casefold())
         self.assertNotIn("artifacts", text.casefold())
         self.assertNotIn("source", payload["seats"][SEAT_PLAYER_1]["deck"])
+        self.assertEqual(validate_free_draft_board_projection_dict(payload), ())
+
+    def test_board_projection_contract_validator_rejects_invalid_shape(self) -> None:
+        board = deepcopy(_sample_controller().to_board_dict())
+
+        board["seats"][SEAT_PLAYER_1]["deck"]["local_path"] = (
+            "C:/Users/user/private.sqlite"
+        )
+        board["seats"][SEAT_PLAYER_1]["cards"][0]["status"] = "mystery_status"
+        board["timeline"][0]["status"] = "mystery_timeline_status"
+        issues = validate_free_draft_board_projection_dict(board)
+
+        self.assertIn(
+            "unknown_card_status:player_1:0:mystery_status",
+            issues,
+        )
+        self.assertIn(
+            "unknown_timeline_status:0:mystery_timeline_status",
+            issues,
+        )
+        self.assertTrue(any(issue.startswith("forbidden_key:local_path") for issue in issues))
+        self.assertTrue(any(issue.startswith("forbidden_value:sqlite") for issue in issues))
 
     def test_initial_requirement_and_legal_markers_are_exposed(self) -> None:
         board = _sample_controller().to_board_dict()
@@ -222,6 +252,73 @@ class FreeDraftBoardProjectionTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertTrue(payload["final_board"]["status"]["bundle_ready"])
         self.assertIn("after_actions_board", payload)
+        self.assertLess(len(stdout.getvalue()), 30_000)
+        self.assertNotIn('"cards"', stdout.getvalue())
+
+    def test_committed_ui_contract_sample_parses_and_matches_contract_shape(self) -> None:
+        sample_path = (
+            Path(__file__).resolve().parents[3]
+            / "samples"
+            / "pvp"
+            / "ui_contract"
+            / "free_draft_board_projection_sample.json"
+        )
+
+        sample = json.loads(sample_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(sample["kind"], "gtt.pvp.free_draft_board_contract_sample")
+        self.assertEqual(sample["schema_version"], 1)
+        self.assertEqual(
+            set(sample["sections"]),
+            {"initial", "after_two_actions", "final"},
+        )
+        for section_name, section in sample["sections"].items():
+            with self.subTest(section=section_name):
+                self.assertEqual(validate_free_draft_board_projection_dict(section), ())
+                self.assertIn(
+                    section["timeline"][0]["status"],
+                    TIMELINE_STATUS_VALUES,
+                )
+                self.assertIn(
+                    section["seats"][SEAT_PLAYER_1]["cards"][0]["status"],
+                    CARD_STATUS_VALUES,
+                )
+
+        initial = sample["sections"]["initial"]
+        after_two_actions = sample["sections"]["after_two_actions"]
+        final = sample["sections"]["final"]
+        self.assertEqual(initial["current_requirement"]["active_seat"], SEAT_PLAYER_1)
+        self.assertEqual(
+            initial["current_requirement"]["expected_action_type"],
+            ACTION_BAN_CHARACTER,
+        )
+        self.assertEqual(initial["progress"]["actions_accepted"], 0)
+        self.assertEqual(after_two_actions["progress"]["actions_accepted"], 2)
+        self.assertTrue(final["status"]["draft_finished"])
+        self.assertTrue(final["status"]["bundle_ready"])
+        self.assertEqual(final["summary"]["result"]["winner_seat"], SEAT_PLAYER_1)
+        self.assertEqual(final["summary"]["result"]["seconds_difference"], 30)
+
+    def test_generated_contract_sample_shape_matches_committed_sections(self) -> None:
+        sample_path = (
+            Path(__file__).resolve().parents[3]
+            / "samples"
+            / "pvp"
+            / "ui_contract"
+            / "free_draft_board_projection_sample.json"
+        )
+        committed = json.loads(sample_path.read_text(encoding="utf-8"))
+        generated = build_free_draft_board_contract_sample()
+
+        self.assertEqual(generated["kind"], committed["kind"])
+        self.assertEqual(generated["schema_version"], committed["schema_version"])
+        self.assertEqual(generated["source"], committed["source"])
+        for section_name in ("initial", "after_two_actions", "final"):
+            with self.subTest(section=section_name):
+                self.assertEqual(
+                    _sample_section_metrics(generated["sections"][section_name]),
+                    _sample_section_metrics(committed["sections"][section_name]),
+                )
 
 
 PVP_SEATS = (SEAT_PLAYER_1, SEAT_PLAYER_2)
@@ -249,6 +346,22 @@ def _card(board: dict[str, object], seat: str, character_id: str) -> dict[str, o
         if card["character_id"] == character_id:
             return card
     raise AssertionError(f"{seat} card not found: {character_id}")
+
+
+def _sample_section_metrics(section: dict[str, object]) -> dict[str, object]:
+    progress = section["progress"]  # type: ignore[index]
+    status = section["status"]  # type: ignore[index]
+    summary = section["summary"]  # type: ignore[index]
+    result = summary["result"]  # type: ignore[index]
+    current_requirement = section["current_requirement"]
+    return {
+        "current_requirement": current_requirement,
+        "actions_accepted": progress["actions_accepted"],
+        "legal_target_count": progress["legal_target_count"],
+        "draft_finished": status["draft_finished"],
+        "bundle_ready": status["bundle_ready"],
+        "result": result,
+    }
 
 
 if __name__ == "__main__":

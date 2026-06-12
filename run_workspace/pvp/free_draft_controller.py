@@ -18,7 +18,7 @@ from .account_deck_export import (
     LocalAccountSQLiteDeckDataProvider,
     export_free_draft_deck_from_account,
 )
-from .account_full_loop_smoke import copy_deck_for_player_2
+from .account_deck_copy import copy_deck_for_player_2
 from .deck import (
     DraftCharacter,
     DraftDeck,

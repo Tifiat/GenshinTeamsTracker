@@ -26,12 +26,15 @@ Mirror the primary project owner under `tests/`:
   timer/result behavior, local-account deck export provider/report behavior,
   draft-system registry behavior, deterministic Free Draft planner/account
   full-loop smoke behavior, Free Draft controller/projection behavior, Free
-  Draft board/read-model projection behavior, PvP session bundle
-  roundtrip/replay verification, plus report-only ruleset applicability,
-  cost-preview, and ruleset/balance application tests. Manual backend smoke
+  Draft board/read-model projection behavior, board projection validator and
+  committed UI-contract sample behavior, PvP session bundle roundtrip/replay
+  verification, plus report-only ruleset applicability, cost-preview, and
+  ruleset/balance application tests. Manual backend smoke
   commands: `python -m
   run_workspace.pvp.full_loop_smoke`, `python -m
   run_workspace.pvp.free_draft_controller_smoke`, `python -m
+  run_workspace.pvp.free_draft_controller_smoke --json`, `python -m
+  run_workspace.pvp.free_draft_controller_smoke --step-demo`, `python -m
   run_workspace.pvp.ruleset_applicability_smoke`, `python -m
   run_workspace.pvp.account_deck_export_smoke`, `python -m
   run_workspace.pvp.account_full_loop_smoke`, `python -m
@@ -63,6 +66,8 @@ Prefer the narrowest suite that covers the touched ownership area:
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\pvp -t .
 .\.venv\Scripts\python.exe -m unittest tests.hoyolab_export.account.test_offline_profile
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke
+.\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke --json
+.\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke --step-demo
 .\.venv\Scripts\python.exe -m run_workspace.pvp.ruleset_applicability_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.account_deck_export_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.account_full_loop_smoke

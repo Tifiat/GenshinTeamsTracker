@@ -1,0 +1,2415 @@
+{
+  "kind": "gtt.pvp.free_draft_board_contract_sample",
+  "schema_version": 1,
+  "source": {
+    "mode": "synthetic",
+    "player_1_deck": "samples/pvp/free_draft_player_1_deck.json",
+    "player_2_deck": "samples/pvp/free_draft_player_2_deck.json"
+  },
+  "sections": {
+    "initial": {
+      "variant": "compact",
+      "draft_system": {
+        "system_id": "free_draft_v0",
+        "version": "1",
+        "display_name": "Free Draft v0"
+      },
+      "status": {
+        "setup_ready": true,
+        "draft_started": false,
+        "draft_finished": false,
+        "assignments_ready": false,
+        "result_ready": false,
+        "bundle_ready": false,
+        "issue_codes": []
+      },
+      "current_requirement": {
+        "phase": "preban",
+        "step_index": 0,
+        "action_index": 0,
+        "active_seat": "player_1",
+        "expected_action_type": "ban_character",
+        "step_actions_total": 1,
+        "step_actions_done": 0
+      },
+      "progress": {
+        "schedule_steps_total": 14,
+        "current_step_number": 1,
+        "actions_total_expected": 22,
+        "actions_accepted": 0,
+        "legal_target_count": 24,
+        "per_seat": {
+          "player_1": {
+            "expected_bans": 3,
+            "actual_bans": 0,
+            "expected_picks": 8,
+            "actual_picks": 0
+          },
+          "player_2": {
+            "expected_bans": 3,
+            "actual_bans": 0,
+            "expected_picks": 8,
+            "actual_picks": 0
+          }
+        }
+      },
+      "seats": {
+        "player_1": {
+          "seat": "player_1",
+          "nickname": "player-one-fixture",
+          "deck": {
+            "deck_name": "Free Draft v0 Player 1 Test Fixture",
+            "character_count": 12,
+            "weapon_stack_count": 5,
+            "validation_status": "ready",
+            "validation_issue_codes": []
+          },
+          "cards": [
+            {
+              "character_id": "test_p1_char_01",
+              "display_name": "P1 Sword 01",
+              "element": "PYRO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_02",
+              "display_name": "P1 Bow 02",
+              "element": "HYDRO",
+              "weapon_type": "BOW",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_03",
+              "display_name": "P1 Polearm 03",
+              "element": "ANEMO",
+              "weapon_type": "POLEARM",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_04",
+              "display_name": "P1 Claymore 04",
+              "element": "GEO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_05",
+              "display_name": "P1 Catalyst 05",
+              "element": "ELECTRO",
+              "weapon_type": "CATALYST",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_06",
+              "display_name": "P1 Sword 06",
+              "element": "CRYO",
+              "weapon_type": "SWORD",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_07",
+              "display_name": "P1 Bow 07",
+              "element": "DENDRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_08",
+              "display_name": "P1 Polearm 08",
+              "element": "PYRO",
+              "weapon_type": "POLEARM",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_09",
+              "display_name": "P1 Claymore 09",
+              "element": "HYDRO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_10",
+              "display_name": "P1 Catalyst 10",
+              "element": "ANEMO",
+              "weapon_type": "CATALYST",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_11",
+              "display_name": "P1 Sword 11",
+              "element": "GEO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_12",
+              "display_name": "P1 Bow 12",
+              "element": "ELECTRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            }
+          ]
+        },
+        "player_2": {
+          "seat": "player_2",
+          "nickname": "player-two-fixture",
+          "deck": {
+            "deck_name": "Free Draft v0 Player 2 Test Fixture",
+            "character_count": 12,
+            "weapon_stack_count": 5,
+            "validation_status": "ready",
+            "validation_issue_codes": []
+          },
+          "cards": [
+            {
+              "character_id": "test_p2_char_01",
+              "display_name": "P2 Sword 01",
+              "element": "PYRO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_02",
+              "display_name": "P2 Bow 02",
+              "element": "HYDRO",
+              "weapon_type": "BOW",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_03",
+              "display_name": "P2 Polearm 03",
+              "element": "ANEMO",
+              "weapon_type": "POLEARM",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_04",
+              "display_name": "P2 Claymore 04",
+              "element": "GEO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_05",
+              "display_name": "P2 Catalyst 05",
+              "element": "ELECTRO",
+              "weapon_type": "CATALYST",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_06",
+              "display_name": "P2 Sword 06",
+              "element": "CRYO",
+              "weapon_type": "SWORD",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_07",
+              "display_name": "P2 Bow 07",
+              "element": "DENDRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_08",
+              "display_name": "P2 Polearm 08",
+              "element": "PYRO",
+              "weapon_type": "POLEARM",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_09",
+              "display_name": "P2 Claymore 09",
+              "element": "HYDRO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_10",
+              "display_name": "P2 Catalyst 10",
+              "element": "ANEMO",
+              "weapon_type": "CATALYST",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_11",
+              "display_name": "P2 Sword 11",
+              "element": "GEO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_12",
+              "display_name": "P2 Bow 12",
+              "element": "ELECTRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            }
+          ]
+        }
+      },
+      "global_pools": {
+        "banned": [],
+        "player_1_picked_ids": [],
+        "player_2_picked_ids": [],
+        "picked_character_ids_by_seat": {
+          "player_1": [],
+          "player_2": []
+        }
+      },
+      "action_log": [],
+      "timeline": [
+        {
+          "step_index": 0,
+          "phase": "preban",
+          "seat": "player_1",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "active",
+          "actions_done": 0,
+          "actions_total": 1
+        },
+        {
+          "step_index": 1,
+          "phase": "preban",
+          "seat": "player_2",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 1
+        },
+        {
+          "step_index": 2,
+          "phase": "preban",
+          "seat": "player_1",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 1
+        },
+        {
+          "step_index": 3,
+          "phase": "preban",
+          "seat": "player_2",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 1
+        },
+        {
+          "step_index": 4,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 1
+        },
+        {
+          "step_index": 5,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 6,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 7,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 8,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "ban_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 9,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "ban_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 10,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 11,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 12,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 13,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 1
+        }
+      ],
+      "summary": {
+        "assignments": {
+          "player_1": {
+            "seat": "player_1",
+            "team_count": 0,
+            "team_sizes": [],
+            "team_status": "not_set",
+            "team_issue_codes": [],
+            "weapon_assignment_count": 0,
+            "weapon_status": "not_set",
+            "weapon_issue_codes": []
+          },
+          "player_2": {
+            "seat": "player_2",
+            "team_count": 0,
+            "team_sizes": [],
+            "team_status": "not_set",
+            "team_issue_codes": [],
+            "weapon_assignment_count": 0,
+            "weapon_status": "not_set",
+            "weapon_issue_codes": []
+          }
+        },
+        "result": null
+      },
+      "issue_codes": []
+    },
+    "after_two_actions": {
+      "variant": "compact",
+      "draft_system": {
+        "system_id": "free_draft_v0",
+        "version": "1",
+        "display_name": "Free Draft v0"
+      },
+      "status": {
+        "setup_ready": true,
+        "draft_started": true,
+        "draft_finished": false,
+        "assignments_ready": false,
+        "result_ready": false,
+        "bundle_ready": false,
+        "issue_codes": []
+      },
+      "current_requirement": {
+        "phase": "preban",
+        "step_index": 2,
+        "action_index": 0,
+        "active_seat": "player_1",
+        "expected_action_type": "ban_character",
+        "step_actions_total": 1,
+        "step_actions_done": 0
+      },
+      "progress": {
+        "schedule_steps_total": 14,
+        "current_step_number": 3,
+        "actions_total_expected": 22,
+        "actions_accepted": 2,
+        "legal_target_count": 22,
+        "per_seat": {
+          "player_1": {
+            "expected_bans": 3,
+            "actual_bans": 1,
+            "expected_picks": 8,
+            "actual_picks": 0
+          },
+          "player_2": {
+            "expected_bans": 3,
+            "actual_bans": 1,
+            "expected_picks": 8,
+            "actual_picks": 0
+          }
+        }
+      },
+      "seats": {
+        "player_1": {
+          "seat": "player_1",
+          "nickname": "player-one-fixture",
+          "deck": {
+            "deck_name": "Free Draft v0 Player 1 Test Fixture",
+            "character_count": 12,
+            "weapon_stack_count": 5,
+            "validation_status": "ready",
+            "validation_issue_codes": []
+          },
+          "cards": [
+            {
+              "character_id": "test_p1_char_01",
+              "display_name": "P1 Sword 01",
+              "element": "PYRO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "globally_banned",
+              "status_reason_codes": [
+                "character_globally_banned"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": "player_2",
+              "action_index": 1
+            },
+            {
+              "character_id": "test_p1_char_02",
+              "display_name": "P1 Bow 02",
+              "element": "HYDRO",
+              "weapon_type": "BOW",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_03",
+              "display_name": "P1 Polearm 03",
+              "element": "ANEMO",
+              "weapon_type": "POLEARM",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_04",
+              "display_name": "P1 Claymore 04",
+              "element": "GEO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_05",
+              "display_name": "P1 Catalyst 05",
+              "element": "ELECTRO",
+              "weapon_type": "CATALYST",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_06",
+              "display_name": "P1 Sword 06",
+              "element": "CRYO",
+              "weapon_type": "SWORD",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_07",
+              "display_name": "P1 Bow 07",
+              "element": "DENDRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_08",
+              "display_name": "P1 Polearm 08",
+              "element": "PYRO",
+              "weapon_type": "POLEARM",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_09",
+              "display_name": "P1 Claymore 09",
+              "element": "HYDRO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_10",
+              "display_name": "P1 Catalyst 10",
+              "element": "ANEMO",
+              "weapon_type": "CATALYST",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_11",
+              "display_name": "P1 Sword 11",
+              "element": "GEO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_12",
+              "display_name": "P1 Bow 12",
+              "element": "ELECTRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": true,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            }
+          ]
+        },
+        "player_2": {
+          "seat": "player_2",
+          "nickname": "player-two-fixture",
+          "deck": {
+            "deck_name": "Free Draft v0 Player 2 Test Fixture",
+            "character_count": 12,
+            "weapon_stack_count": 5,
+            "validation_status": "ready",
+            "validation_issue_codes": []
+          },
+          "cards": [
+            {
+              "character_id": "test_p2_char_01",
+              "display_name": "P2 Sword 01",
+              "element": "PYRO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "globally_banned",
+              "status_reason_codes": [
+                "character_globally_banned"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": "player_1",
+              "action_index": 0
+            },
+            {
+              "character_id": "test_p2_char_02",
+              "display_name": "P2 Bow 02",
+              "element": "HYDRO",
+              "weapon_type": "BOW",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_03",
+              "display_name": "P2 Polearm 03",
+              "element": "ANEMO",
+              "weapon_type": "POLEARM",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_04",
+              "display_name": "P2 Claymore 04",
+              "element": "GEO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_05",
+              "display_name": "P2 Catalyst 05",
+              "element": "ELECTRO",
+              "weapon_type": "CATALYST",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_06",
+              "display_name": "P2 Sword 06",
+              "element": "CRYO",
+              "weapon_type": "SWORD",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_07",
+              "display_name": "P2 Bow 07",
+              "element": "DENDRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_08",
+              "display_name": "P2 Polearm 08",
+              "element": "PYRO",
+              "weapon_type": "POLEARM",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_09",
+              "display_name": "P2 Claymore 09",
+              "element": "HYDRO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_10",
+              "display_name": "P2 Catalyst 10",
+              "element": "ANEMO",
+              "weapon_type": "CATALYST",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_11",
+              "display_name": "P2 Sword 11",
+              "element": "GEO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_12",
+              "display_name": "P2 Bow 12",
+              "element": "ELECTRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "legal_target",
+              "status_reason_codes": [],
+              "is_current_legal_target": true,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            }
+          ]
+        }
+      },
+      "global_pools": {
+        "banned": [
+          {
+            "character_id": "test_p2_char_01",
+            "seat": "player_1",
+            "action_index": 0,
+            "target_display_name": "P2 Sword 01"
+          },
+          {
+            "character_id": "test_p1_char_01",
+            "seat": "player_2",
+            "action_index": 1,
+            "target_display_name": "P1 Sword 01"
+          }
+        ],
+        "player_1_picked_ids": [],
+        "player_2_picked_ids": [],
+        "picked_character_ids_by_seat": {
+          "player_1": [],
+          "player_2": []
+        }
+      },
+      "action_log": [
+        {
+          "index": 0,
+          "phase": "preban",
+          "seat": "player_1",
+          "action_type": "ban_character",
+          "target_id": "test_p2_char_01",
+          "target_display_name": "P2 Sword 01",
+          "accepted": true,
+          "step_index": 0,
+          "action_index": 0,
+          "sequence": 1
+        },
+        {
+          "index": 1,
+          "phase": "preban",
+          "seat": "player_2",
+          "action_type": "ban_character",
+          "target_id": "test_p1_char_01",
+          "target_display_name": "P1 Sword 01",
+          "accepted": true,
+          "step_index": 1,
+          "action_index": 0,
+          "sequence": 2
+        }
+      ],
+      "timeline": [
+        {
+          "step_index": 0,
+          "phase": "preban",
+          "seat": "player_1",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "complete",
+          "actions_done": 1,
+          "actions_total": 1
+        },
+        {
+          "step_index": 1,
+          "phase": "preban",
+          "seat": "player_2",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "complete",
+          "actions_done": 1,
+          "actions_total": 1
+        },
+        {
+          "step_index": 2,
+          "phase": "preban",
+          "seat": "player_1",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "active",
+          "actions_done": 0,
+          "actions_total": 1
+        },
+        {
+          "step_index": 3,
+          "phase": "preban",
+          "seat": "player_2",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 1
+        },
+        {
+          "step_index": 4,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 1
+        },
+        {
+          "step_index": 5,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 6,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 7,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 8,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "ban_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 9,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "ban_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 10,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 11,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 12,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 2
+        },
+        {
+          "step_index": 13,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character"
+          ],
+          "status": "pending",
+          "actions_done": 0,
+          "actions_total": 1
+        }
+      ],
+      "summary": {
+        "assignments": {
+          "player_1": {
+            "seat": "player_1",
+            "team_count": 0,
+            "team_sizes": [],
+            "team_status": "not_set",
+            "team_issue_codes": [],
+            "weapon_assignment_count": 0,
+            "weapon_status": "not_set",
+            "weapon_issue_codes": []
+          },
+          "player_2": {
+            "seat": "player_2",
+            "team_count": 0,
+            "team_sizes": [],
+            "team_status": "not_set",
+            "team_issue_codes": [],
+            "weapon_assignment_count": 0,
+            "weapon_status": "not_set",
+            "weapon_issue_codes": []
+          }
+        },
+        "result": null
+      },
+      "issue_codes": []
+    },
+    "final": {
+      "variant": "compact",
+      "draft_system": {
+        "system_id": "free_draft_v0",
+        "version": "1",
+        "display_name": "Free Draft v0"
+      },
+      "status": {
+        "setup_ready": true,
+        "draft_started": true,
+        "draft_finished": true,
+        "assignments_ready": true,
+        "result_ready": true,
+        "bundle_ready": true,
+        "issue_codes": []
+      },
+      "current_requirement": null,
+      "progress": {
+        "schedule_steps_total": 14,
+        "current_step_number": 14,
+        "actions_total_expected": 22,
+        "actions_accepted": 22,
+        "legal_target_count": 0,
+        "per_seat": {
+          "player_1": {
+            "expected_bans": 3,
+            "actual_bans": 3,
+            "expected_picks": 8,
+            "actual_picks": 8
+          },
+          "player_2": {
+            "expected_bans": 3,
+            "actual_bans": 3,
+            "expected_picks": 8,
+            "actual_picks": 8
+          }
+        }
+      },
+      "seats": {
+        "player_1": {
+          "seat": "player_1",
+          "nickname": "player-one-fixture",
+          "deck": {
+            "deck_name": "Free Draft v0 Player 1 Test Fixture",
+            "character_count": 12,
+            "weapon_stack_count": 5,
+            "validation_status": "ready",
+            "validation_issue_codes": []
+          },
+          "cards": [
+            {
+              "character_id": "test_p1_char_01",
+              "display_name": "P1 Sword 01",
+              "element": "PYRO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "globally_banned",
+              "status_reason_codes": [
+                "character_globally_banned"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": "player_2",
+              "action_index": 1
+            },
+            {
+              "character_id": "test_p1_char_02",
+              "display_name": "P1 Bow 02",
+              "element": "HYDRO",
+              "weapon_type": "BOW",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "globally_banned",
+              "status_reason_codes": [
+                "character_globally_banned"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": "player_2",
+              "action_index": 3
+            },
+            {
+              "character_id": "test_p1_char_03",
+              "display_name": "P1 Polearm 03",
+              "element": "ANEMO",
+              "weapon_type": "POLEARM",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "globally_banned",
+              "status_reason_codes": [
+                "character_globally_banned"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": "player_2",
+              "action_index": 14
+            },
+            {
+              "character_id": "test_p1_char_04",
+              "display_name": "P1 Claymore 04",
+              "element": "GEO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_1",
+              "banned_by": null,
+              "action_index": 7
+            },
+            {
+              "character_id": "test_p1_char_05",
+              "display_name": "P1 Catalyst 05",
+              "element": "ELECTRO",
+              "weapon_type": "CATALYST",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_1",
+              "banned_by": null,
+              "action_index": 8
+            },
+            {
+              "character_id": "test_p1_char_06",
+              "display_name": "P1 Sword 06",
+              "element": "CRYO",
+              "weapon_type": "SWORD",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_1",
+              "banned_by": null,
+              "action_index": 11
+            },
+            {
+              "character_id": "test_p1_char_07",
+              "display_name": "P1 Bow 07",
+              "element": "DENDRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_1",
+              "banned_by": null,
+              "action_index": 15
+            },
+            {
+              "character_id": "test_p1_char_08",
+              "display_name": "P1 Polearm 08",
+              "element": "PYRO",
+              "weapon_type": "POLEARM",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_1",
+              "banned_by": null,
+              "action_index": 16
+            },
+            {
+              "character_id": "test_p1_char_09",
+              "display_name": "P1 Claymore 09",
+              "element": "HYDRO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_1",
+              "banned_by": null,
+              "action_index": 19
+            },
+            {
+              "character_id": "test_p1_char_10",
+              "display_name": "P1 Catalyst 10",
+              "element": "ANEMO",
+              "weapon_type": "CATALYST",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_1",
+              "banned_by": null,
+              "action_index": 20
+            },
+            {
+              "character_id": "test_p1_char_11",
+              "display_name": "P1 Sword 11",
+              "element": "GEO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "available",
+              "status_reason_codes": [],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p1_char_12",
+              "display_name": "P1 Bow 12",
+              "element": "ELECTRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "available",
+              "status_reason_codes": [],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            }
+          ]
+        },
+        "player_2": {
+          "seat": "player_2",
+          "nickname": "player-two-fixture",
+          "deck": {
+            "deck_name": "Free Draft v0 Player 2 Test Fixture",
+            "character_count": 12,
+            "weapon_stack_count": 5,
+            "validation_status": "ready",
+            "validation_issue_codes": []
+          },
+          "cards": [
+            {
+              "character_id": "test_p2_char_01",
+              "display_name": "P2 Sword 01",
+              "element": "PYRO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "globally_banned",
+              "status_reason_codes": [
+                "character_globally_banned"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": "player_1",
+              "action_index": 0
+            },
+            {
+              "character_id": "test_p2_char_02",
+              "display_name": "P2 Bow 02",
+              "element": "HYDRO",
+              "weapon_type": "BOW",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "globally_banned",
+              "status_reason_codes": [
+                "character_globally_banned"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": "player_1",
+              "action_index": 2
+            },
+            {
+              "character_id": "test_p2_char_03",
+              "display_name": "P2 Polearm 03",
+              "element": "ANEMO",
+              "weapon_type": "POLEARM",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "globally_banned",
+              "status_reason_codes": [
+                "character_globally_banned"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": "player_1",
+              "action_index": 12
+            },
+            {
+              "character_id": "test_p2_char_04",
+              "display_name": "P2 Claymore 04",
+              "element": "GEO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_2",
+              "banned_by": null,
+              "action_index": 6
+            },
+            {
+              "character_id": "test_p2_char_05",
+              "display_name": "P2 Catalyst 05",
+              "element": "ELECTRO",
+              "weapon_type": "CATALYST",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_2",
+              "banned_by": null,
+              "action_index": 9
+            },
+            {
+              "character_id": "test_p2_char_06",
+              "display_name": "P2 Sword 06",
+              "element": "CRYO",
+              "weapon_type": "SWORD",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_2",
+              "banned_by": null,
+              "action_index": 10
+            },
+            {
+              "character_id": "test_p2_char_07",
+              "display_name": "P2 Bow 07",
+              "element": "DENDRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 90,
+              "constellation": 6,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_2",
+              "banned_by": null,
+              "action_index": 13
+            },
+            {
+              "character_id": "test_p2_char_08",
+              "display_name": "P2 Polearm 08",
+              "element": "PYRO",
+              "weapon_type": "POLEARM",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_2",
+              "banned_by": null,
+              "action_index": 17
+            },
+            {
+              "character_id": "test_p2_char_09",
+              "display_name": "P2 Claymore 09",
+              "element": "HYDRO",
+              "weapon_type": "CLAYMORE",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_2",
+              "banned_by": null,
+              "action_index": 18
+            },
+            {
+              "character_id": "test_p2_char_10",
+              "display_name": "P2 Catalyst 10",
+              "element": "ANEMO",
+              "weapon_type": "CATALYST",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "picked_by_self",
+              "status_reason_codes": [
+                "character_picked_by_self"
+              ],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": "player_2",
+              "banned_by": null,
+              "action_index": 21
+            },
+            {
+              "character_id": "test_p2_char_11",
+              "display_name": "P2 Sword 11",
+              "element": "GEO",
+              "weapon_type": "SWORD",
+              "rarity": 5,
+              "level": 90,
+              "constellation": 0,
+              "status": "available",
+              "status_reason_codes": [],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            },
+            {
+              "character_id": "test_p2_char_12",
+              "display_name": "P2 Bow 12",
+              "element": "ELECTRO",
+              "weapon_type": "BOW",
+              "rarity": 4,
+              "level": 80,
+              "constellation": 4,
+              "status": "available",
+              "status_reason_codes": [],
+              "is_current_legal_target": false,
+              "is_active_seat_card": false,
+              "picked_by": null,
+              "banned_by": null,
+              "action_index": null
+            }
+          ]
+        }
+      },
+      "global_pools": {
+        "banned": [
+          {
+            "character_id": "test_p2_char_01",
+            "seat": "player_1",
+            "action_index": 0,
+            "target_display_name": "P2 Sword 01"
+          },
+          {
+            "character_id": "test_p1_char_01",
+            "seat": "player_2",
+            "action_index": 1,
+            "target_display_name": "P1 Sword 01"
+          },
+          {
+            "character_id": "test_p2_char_02",
+            "seat": "player_1",
+            "action_index": 2,
+            "target_display_name": "P2 Bow 02"
+          },
+          {
+            "character_id": "test_p1_char_02",
+            "seat": "player_2",
+            "action_index": 3,
+            "target_display_name": "P1 Bow 02"
+          },
+          {
+            "character_id": "test_p2_char_03",
+            "seat": "player_1",
+            "action_index": 12,
+            "target_display_name": "P2 Polearm 03"
+          },
+          {
+            "character_id": "test_p1_char_03",
+            "seat": "player_2",
+            "action_index": 14,
+            "target_display_name": "P1 Polearm 03"
+          }
+        ],
+        "player_1_picked_ids": [
+          "test_p1_char_03",
+          "test_p1_char_04",
+          "test_p1_char_05",
+          "test_p1_char_06",
+          "test_p1_char_07",
+          "test_p1_char_08",
+          "test_p1_char_09",
+          "test_p1_char_10"
+        ],
+        "player_2_picked_ids": [
+          "test_p2_char_03",
+          "test_p2_char_04",
+          "test_p2_char_05",
+          "test_p2_char_06",
+          "test_p2_char_07",
+          "test_p2_char_08",
+          "test_p2_char_09",
+          "test_p2_char_10"
+        ],
+        "picked_character_ids_by_seat": {
+          "player_1": [
+            "test_p1_char_03",
+            "test_p1_char_04",
+            "test_p1_char_05",
+            "test_p1_char_06",
+            "test_p1_char_07",
+            "test_p1_char_08",
+            "test_p1_char_09",
+            "test_p1_char_10"
+          ],
+          "player_2": [
+            "test_p2_char_03",
+            "test_p2_char_04",
+            "test_p2_char_05",
+            "test_p2_char_06",
+            "test_p2_char_07",
+            "test_p2_char_08",
+            "test_p2_char_09",
+            "test_p2_char_10"
+          ]
+        }
+      },
+      "action_log": [
+        {
+          "index": 0,
+          "phase": "preban",
+          "seat": "player_1",
+          "action_type": "ban_character",
+          "target_id": "test_p2_char_01",
+          "target_display_name": "P2 Sword 01",
+          "accepted": true,
+          "step_index": 0,
+          "action_index": 0,
+          "sequence": 1
+        },
+        {
+          "index": 1,
+          "phase": "preban",
+          "seat": "player_2",
+          "action_type": "ban_character",
+          "target_id": "test_p1_char_01",
+          "target_display_name": "P1 Sword 01",
+          "accepted": true,
+          "step_index": 1,
+          "action_index": 0,
+          "sequence": 2
+        },
+        {
+          "index": 2,
+          "phase": "preban",
+          "seat": "player_1",
+          "action_type": "ban_character",
+          "target_id": "test_p2_char_02",
+          "target_display_name": "P2 Bow 02",
+          "accepted": true,
+          "step_index": 2,
+          "action_index": 0,
+          "sequence": 3
+        },
+        {
+          "index": 3,
+          "phase": "preban",
+          "seat": "player_2",
+          "action_type": "ban_character",
+          "target_id": "test_p1_char_02",
+          "target_display_name": "P1 Bow 02",
+          "accepted": true,
+          "step_index": 3,
+          "action_index": 0,
+          "sequence": 4
+        },
+        {
+          "index": 4,
+          "phase": "pick",
+          "seat": "player_1",
+          "action_type": "pick_character",
+          "target_id": "test_p1_char_03",
+          "target_display_name": "P1 Polearm 03",
+          "accepted": true,
+          "step_index": 4,
+          "action_index": 0,
+          "sequence": 5
+        },
+        {
+          "index": 5,
+          "phase": "pick",
+          "seat": "player_2",
+          "action_type": "pick_character",
+          "target_id": "test_p2_char_03",
+          "target_display_name": "P2 Polearm 03",
+          "accepted": true,
+          "step_index": 5,
+          "action_index": 0,
+          "sequence": 6
+        },
+        {
+          "index": 6,
+          "phase": "pick",
+          "seat": "player_2",
+          "action_type": "pick_character",
+          "target_id": "test_p2_char_04",
+          "target_display_name": "P2 Claymore 04",
+          "accepted": true,
+          "step_index": 5,
+          "action_index": 1,
+          "sequence": 7
+        },
+        {
+          "index": 7,
+          "phase": "pick",
+          "seat": "player_1",
+          "action_type": "pick_character",
+          "target_id": "test_p1_char_04",
+          "target_display_name": "P1 Claymore 04",
+          "accepted": true,
+          "step_index": 6,
+          "action_index": 0,
+          "sequence": 8
+        },
+        {
+          "index": 8,
+          "phase": "pick",
+          "seat": "player_1",
+          "action_type": "pick_character",
+          "target_id": "test_p1_char_05",
+          "target_display_name": "P1 Catalyst 05",
+          "accepted": true,
+          "step_index": 6,
+          "action_index": 1,
+          "sequence": 9
+        },
+        {
+          "index": 9,
+          "phase": "pick",
+          "seat": "player_2",
+          "action_type": "pick_character",
+          "target_id": "test_p2_char_05",
+          "target_display_name": "P2 Catalyst 05",
+          "accepted": true,
+          "step_index": 7,
+          "action_index": 0,
+          "sequence": 10
+        },
+        {
+          "index": 10,
+          "phase": "pick",
+          "seat": "player_2",
+          "action_type": "pick_character",
+          "target_id": "test_p2_char_06",
+          "target_display_name": "P2 Sword 06",
+          "accepted": true,
+          "step_index": 7,
+          "action_index": 1,
+          "sequence": 11
+        },
+        {
+          "index": 11,
+          "phase": "pick",
+          "seat": "player_1",
+          "action_type": "pick_character",
+          "target_id": "test_p1_char_06",
+          "target_display_name": "P1 Sword 06",
+          "accepted": true,
+          "step_index": 8,
+          "action_index": 0,
+          "sequence": 12
+        },
+        {
+          "index": 12,
+          "phase": "pick",
+          "seat": "player_1",
+          "action_type": "ban_character",
+          "target_id": "test_p2_char_03",
+          "target_display_name": "P2 Polearm 03",
+          "accepted": true,
+          "step_index": 8,
+          "action_index": 1,
+          "sequence": 13
+        },
+        {
+          "index": 13,
+          "phase": "pick",
+          "seat": "player_2",
+          "action_type": "pick_character",
+          "target_id": "test_p2_char_07",
+          "target_display_name": "P2 Bow 07",
+          "accepted": true,
+          "step_index": 9,
+          "action_index": 0,
+          "sequence": 14
+        },
+        {
+          "index": 14,
+          "phase": "pick",
+          "seat": "player_2",
+          "action_type": "ban_character",
+          "target_id": "test_p1_char_03",
+          "target_display_name": "P1 Polearm 03",
+          "accepted": true,
+          "step_index": 9,
+          "action_index": 1,
+          "sequence": 15
+        },
+        {
+          "index": 15,
+          "phase": "pick",
+          "seat": "player_1",
+          "action_type": "pick_character",
+          "target_id": "test_p1_char_07",
+          "target_display_name": "P1 Bow 07",
+          "accepted": true,
+          "step_index": 10,
+          "action_index": 0,
+          "sequence": 16
+        },
+        {
+          "index": 16,
+          "phase": "pick",
+          "seat": "player_1",
+          "action_type": "pick_character",
+          "target_id": "test_p1_char_08",
+          "target_display_name": "P1 Polearm 08",
+          "accepted": true,
+          "step_index": 10,
+          "action_index": 1,
+          "sequence": 17
+        },
+        {
+          "index": 17,
+          "phase": "pick",
+          "seat": "player_2",
+          "action_type": "pick_character",
+          "target_id": "test_p2_char_08",
+          "target_display_name": "P2 Polearm 08",
+          "accepted": true,
+          "step_index": 11,
+          "action_index": 0,
+          "sequence": 18
+        },
+        {
+          "index": 18,
+          "phase": "pick",
+          "seat": "player_2",
+          "action_type": "pick_character",
+          "target_id": "test_p2_char_09",
+          "target_display_name": "P2 Claymore 09",
+          "accepted": true,
+          "step_index": 11,
+          "action_index": 1,
+          "sequence": 19
+        },
+        {
+          "index": 19,
+          "phase": "pick",
+          "seat": "player_1",
+          "action_type": "pick_character",
+          "target_id": "test_p1_char_09",
+          "target_display_name": "P1 Claymore 09",
+          "accepted": true,
+          "step_index": 12,
+          "action_index": 0,
+          "sequence": 20
+        },
+        {
+          "index": 20,
+          "phase": "pick",
+          "seat": "player_1",
+          "action_type": "pick_character",
+          "target_id": "test_p1_char_10",
+          "target_display_name": "P1 Catalyst 10",
+          "accepted": true,
+          "step_index": 12,
+          "action_index": 1,
+          "sequence": 21
+        },
+        {
+          "index": 21,
+          "phase": "pick",
+          "seat": "player_2",
+          "action_type": "pick_character",
+          "target_id": "test_p2_char_10",
+          "target_display_name": "P2 Catalyst 10",
+          "accepted": true,
+          "step_index": 13,
+          "action_index": 0,
+          "sequence": 22
+        }
+      ],
+      "timeline": [
+        {
+          "step_index": 0,
+          "phase": "preban",
+          "seat": "player_1",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "complete",
+          "actions_done": 1,
+          "actions_total": 1
+        },
+        {
+          "step_index": 1,
+          "phase": "preban",
+          "seat": "player_2",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "complete",
+          "actions_done": 1,
+          "actions_total": 1
+        },
+        {
+          "step_index": 2,
+          "phase": "preban",
+          "seat": "player_1",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "complete",
+          "actions_done": 1,
+          "actions_total": 1
+        },
+        {
+          "step_index": 3,
+          "phase": "preban",
+          "seat": "player_2",
+          "required_actions": [
+            "ban_character"
+          ],
+          "status": "complete",
+          "actions_done": 1,
+          "actions_total": 1
+        },
+        {
+          "step_index": 4,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character"
+          ],
+          "status": "complete",
+          "actions_done": 1,
+          "actions_total": 1
+        },
+        {
+          "step_index": 5,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "complete",
+          "actions_done": 2,
+          "actions_total": 2
+        },
+        {
+          "step_index": 6,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "complete",
+          "actions_done": 2,
+          "actions_total": 2
+        },
+        {
+          "step_index": 7,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "complete",
+          "actions_done": 2,
+          "actions_total": 2
+        },
+        {
+          "step_index": 8,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "ban_character"
+          ],
+          "status": "complete",
+          "actions_done": 2,
+          "actions_total": 2
+        },
+        {
+          "step_index": 9,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "ban_character"
+          ],
+          "status": "complete",
+          "actions_done": 2,
+          "actions_total": 2
+        },
+        {
+          "step_index": 10,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "complete",
+          "actions_done": 2,
+          "actions_total": 2
+        },
+        {
+          "step_index": 11,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "complete",
+          "actions_done": 2,
+          "actions_total": 2
+        },
+        {
+          "step_index": 12,
+          "phase": "pick",
+          "seat": "player_1",
+          "required_actions": [
+            "pick_character",
+            "pick_character"
+          ],
+          "status": "complete",
+          "actions_done": 2,
+          "actions_total": 2
+        },
+        {
+          "step_index": 13,
+          "phase": "pick",
+          "seat": "player_2",
+          "required_actions": [
+            "pick_character"
+          ],
+          "status": "complete",
+          "actions_done": 1,
+          "actions_total": 1
+        }
+      ],
+      "summary": {
+        "assignments": {
+          "player_1": {
+            "seat": "player_1",
+            "team_count": 2,
+            "team_sizes": [
+              4,
+              4
+            ],
+            "team_status": "ready",
+            "team_issue_codes": [],
+            "weapon_assignment_count": 8,
+            "weapon_status": "ready",
+            "weapon_issue_codes": []
+          },
+          "player_2": {
+            "seat": "player_2",
+            "team_count": 2,
+            "team_sizes": [
+              4,
+              4
+            ],
+            "team_status": "ready",
+            "team_issue_codes": [],
+            "weapon_assignment_count": 8,
+            "weapon_status": "ready",
+            "weapon_issue_codes": []
+          }
+        },
+        "result": {
+          "status": "finished",
+          "winner_seat": "player_1",
+          "seconds_difference": 30,
+          "totals": {
+            "player_1": 315,
+            "player_2": 345
+          },
+          "technical_loss_count": 0
+        }
+      },
+      "issue_codes": []
+    }
+  }
+}

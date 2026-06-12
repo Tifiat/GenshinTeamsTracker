@@ -13,9 +13,9 @@ from run_workspace.pvp.account_deck_export import (
     FakeAccountDeckDataProvider,
     export_free_draft_deck_from_account,
 )
+from run_workspace.pvp.account_deck_copy import copy_deck_for_player_2
 from run_workspace.pvp.account_full_loop_smoke import (
     ISSUE_DRAFT_PLAN_NOT_READY,
-    copy_deck_for_player_2,
     format_account_full_loop_smoke_report,
     main,
     run_account_full_loop_smoke,

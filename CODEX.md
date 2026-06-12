@@ -520,7 +520,14 @@ projection/board reports, `--account` explicitly uses local account data, and
 `--step-demo` prints the first few manual controller transitions. The UI-facing
 Free Draft board projection lives in `run_workspace/pvp/free_draft_board.py`
 and is exposed by `FreeDraftController.to_board_projection()` /
-`to_board_dict()`.
+`to_board_dict()`. The committed frontend-contract fixture is
+`samples/pvp/ui_contract/free_draft_board_projection_sample.json`; it is built
+from synthetic deck fixtures and covers initial, after-two-actions, and
+final/result board states. Validate board projection dictionaries with
+`validate_free_draft_board_projection_dict(...)`. Backend modules that need the
+account-derived Player 2 deck copy should import
+`run_workspace.pvp.account_deck_copy.copy_deck_for_player_2`, not the
+`account_full_loop_smoke` CLI module.
 Current PvP session bundle smoke entrypoint is
 `python -m run_workspace.pvp.session_bundle_smoke`; default mode uses synthetic
 fixtures and writes no files, `--account` explicitly uses local account data,

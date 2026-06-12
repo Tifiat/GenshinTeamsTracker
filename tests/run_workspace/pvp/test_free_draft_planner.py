@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from dataclasses import replace
 
-from run_workspace.pvp.account_full_loop_smoke import copy_deck_for_player_2
+from run_workspace.pvp.account_deck_copy import copy_deck_for_player_2
 from run_workspace.pvp.free_draft_planner import (
     ISSUE_NO_COMPATIBLE_WEAPON_STACK,
     ISSUE_NO_LEGAL_DRAFT_ACTION,

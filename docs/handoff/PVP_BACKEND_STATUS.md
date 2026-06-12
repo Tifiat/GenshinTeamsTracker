@@ -48,7 +48,14 @@ or JSON examples exist.
   model. It derives per-seat card statuses and legal target markers from the
   controller/reducer state, plus global pools, action-log rows, schedule
   timeline rows, and compact assignment/result summaries. Compact mode is the
-  default; debug mode can add reducer excluded-target reason codes.
+  default; debug mode can add reducer excluded-target reason codes. It also
+  owns stable card/timeline status enums and
+  `validate_free_draft_board_projection_dict(...)` for UI-contract sample
+  validation and private-field smoke checks.
+- `run_workspace/pvp/free_draft_board_sample.py`: synthetic UI-contract sample
+  builder for the board/read-model projection. The committed sample fixture is
+  `samples/pvp/ui_contract/free_draft_board_projection_sample.json` and covers
+  initial, after-two-actions, and final/result states.
 - `run_workspace/pvp/free_draft_planner.py`: deterministic smoke/dev helper
   that chooses first reducer-accepted actions and simple team/weapon
   assignments. It is not a product bot or optimizer.
@@ -58,6 +65,9 @@ or JSON examples exist.
   exporter from local account SQLite runtime adapters. It excludes artifacts,
   auth/cookies, raw dumps, local paths, SQLite row ids, and fake weapon
   instance ids.
+- `run_workspace/pvp/account_deck_copy.py`: small backend helper for creating an
+  independent Player 2 copy of an account-derived deck. Stable backend modules
+  should import this helper, not the CLI smoke module.
 - `run_workspace/pvp/account_full_loop_smoke.py`: account export plus copied
   independent player 2 deck, deterministic draft, assignments, replay, timers.
 - `run_workspace/pvp/session_bundle.py`: `gtt.pvp_session_bundle` schema v1,
@@ -96,6 +106,14 @@ count. `--json` prints compact projection/board reports instead of full card
 lists; direct controller callers should use `to_board_dict()` for the complete
 board read model.
 
+Stable UI-contract sample:
+
+- `samples/pvp/ui_contract/free_draft_board_projection_sample.json`
+
+Validation helper:
+
+- `run_workspace.pvp.free_draft_board.validate_free_draft_board_projection_dict`
+
 Commands with local account access:
 
 - `account_deck_export_smoke`
@@ -118,7 +136,8 @@ artifacts, not PvP History persistence.
 ## Tests
 
 Focused PvP backend tests live under `tests/run_workspace/pvp/`, including the
-Free Draft board/read-model projection tests in `test_free_draft_board.py`.
+Free Draft board/read-model projection, validator, compact JSON smoke shape, and
+committed UI-contract sample tests in `test_free_draft_board.py`.
 
 Recommended local checks:
 

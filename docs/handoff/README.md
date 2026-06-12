@@ -38,13 +38,15 @@ Durable backend modules:
   summaries, and local-account Free Draft deck export from SQLite runtime
   account data. It also contains the deterministic Free Draft smoke planner,
   draft-system registry, session bundle snapshot/verifier, local-account
-  full-loop smoke, and report-only ruleset applicability/deck cost-preview
-  research helpers. Deterministic dev smoke commands: `python -m
+  full-loop smoke, and report-only ruleset applicability/deck cost-preview/
+  ruleset-balance application research helpers. Deterministic dev smoke
+  commands: `python -m
   run_workspace.pvp.full_loop_smoke`, `python -m
   run_workspace.pvp.ruleset_applicability_smoke`, `python -m
   run_workspace.pvp.account_deck_export_smoke`, `python -m
-  run_workspace.pvp.account_full_loop_smoke`, and `python -m
-  run_workspace.pvp.session_bundle_smoke`. Fixtures and tests live in
+  run_workspace.pvp.account_full_loop_smoke`, `python -m
+  run_workspace.pvp.session_bundle_smoke`, and `python -m
+  run_workspace.pvp.ruleset_balance_smoke`. Fixtures and tests live in
   `samples/pvp/` and `tests/run_workspace/pvp/`.
 
 Rules:

@@ -33,6 +33,10 @@ ISSUE_WEAPON_MATCHED_BY_DISPLAY_NAME_FALLBACK = (
 ISSUE_CHARACTER_CONSTELLATION_COST_MISSING = (
     "character_constellation_cost_missing"
 )
+ISSUE_CHARACTER_CONSTELLATION_UNKNOWN = "character_constellation_unknown"
+ISSUE_CHARACTER_LEVEL_UNKNOWN_FOR_EXTRA_COST = (
+    "character_level_unknown_for_extra_cost"
+)
 ISSUE_WEAPON_REFINEMENT_COST_MISSING = "weapon_refinement_cost_missing"
 ISSUE_WEAPON_OVERRIDE_NAME_ONLY_MAPPING = "weapon_override_name_only_mapping"
 ISSUE_WEAPON_ASSIGNMENT_CHARACTER_UNKNOWN = "weapon_assignment_character_unknown"
@@ -216,7 +220,20 @@ def _character_entry_cost(
             matched_by=MATCH_NONE,
         )
 
-    constellation = deck_character.constellation or 0
+    if deck_character.constellation is None:
+        issues.append(
+            _issue(
+                ISSUE_CHARACTER_CONSTELLATION_UNKNOWN,
+                "error",
+                "Deck character has no constellation value for ruleset pricing.",
+                path,
+                {
+                    "character_id": deck_character.character_id,
+                    "display_name": deck_character.display_name,
+                },
+            )
+        )
+    constellation = deck_character.constellation if deck_character.constellation is not None else 0
     base_cost = match.rule.costs_by_constellation.get(constellation)
     if base_cost is None:
         issues.append(
@@ -234,6 +251,22 @@ def _character_entry_cost(
         )
         base_cost = 0
 
+    if deck_character.level is None and (
+        match.rule.level_95_extra_cost is not None
+        or match.rule.level_100_extra_cost is not None
+    ):
+        issues.append(
+            _issue(
+                ISSUE_CHARACTER_LEVEL_UNKNOWN_FOR_EXTRA_COST,
+                "warning",
+                "Deck character has no level value, so level extra costs were not applied.",
+                path,
+                {
+                    "character_id": deck_character.character_id,
+                    "display_name": deck_character.display_name,
+                },
+            )
+        )
     level_extra = _level_extra_cost(deck_character, match.rule)
     if not match.rule.count_for_deck:
         base_cost = 0
@@ -363,6 +396,7 @@ def _assigned_weapon_entry_cost(
         return RulesetEntryCost("weapon", stack.weapon_id, stack.display_name, 0)
 
     refinement = stack.refinement or 1
+    base_refinement_cost = weapon_match.rule.costs_by_refinement.get(refinement)
     override = _matching_override(ruleset, character_match.rule, character, weapon_match.rule)
     cost_source = weapon_match.rule.name
     cost_table = weapon_match.rule.costs_by_refinement
@@ -407,7 +441,11 @@ def _assigned_weapon_entry_cost(
         quantity=1,
         matched_by=weapon_match.matched_by,
         source=cost_source,
-        breakdown={"assigned_cost": _round_cost(cost)},
+        breakdown={
+            "assigned_cost": _round_cost(cost),
+            "base_refinement_cost": _round_cost(base_refinement_cost or 0),
+            "override_cost": _round_cost(cost) if override is not None else 0,
+        },
     )
 
 

@@ -475,6 +475,7 @@ Existing files:
 - `hoyolab_export/tournament_ruleset_report.py`
 - `run_workspace/pvp/ruleset_applicability.py`
 - `run_workspace/pvp/ruleset_costs.py`
+- `run_workspace/pvp/ruleset_balance.py`
 - `tests/hoyolab_export/tournament/test_tournament_ruleset.py`
 - `samples/rulesets/minimal_ruleset.json`
 - `samples/pvp/rulesets/`
@@ -483,7 +484,8 @@ Current role:
 
 - parked parser/report prototype for ruleset source data;
 - useful evidence for costs/tiers/Gentor-like fields;
-- PvP-side applicability and cost-preview reports for research fixtures;
+- PvP-side applicability, cost-preview, and report-only deck/session-bundle
+  ruleset/balance application reports for research fixtures;
 - not the PvP engine;
 - not deck validation;
 - not draft schedule execution.
@@ -560,9 +562,22 @@ Implemented through 2026-06-12:
   `TournamentRulesetV1` character/weapon costs. It uses ids first, reports
   display-name fallback as a mapping gap, supports level 95/100 extras, and
   supports character-specific weapon overrides for assigned weapon previews.
+- `run_workspace/pvp/ruleset_balance.py`: backend-only report layer that applies
+  parsed ruleset/balance data to a `DraftDeck` or `PvpSessionBundle` summary.
+  It reports id vs display-name fallback matches, unmatched entries, character
+  and weapon costs, assignment override gaps, unsupported features, and
+  report-only restrictions. It deliberately does not execute schedules, run
+  source scripts, mutate draft-system definitions, or enforce features that need
+  a future adapter.
 - `run_workspace/pvp/ruleset_applicability_smoke.py`: deterministic
   backend-only ruleset applicability/cost smoke. Command: `python -m
   run_workspace.pvp.ruleset_applicability_smoke`.
+- `run_workspace/pvp/ruleset_balance_smoke.py`: deterministic backend-only
+  ruleset/balance application smoke. Command: `python -m
+  run_workspace.pvp.ruleset_balance_smoke`. `--json` prints the compact
+  structured report, `--account` explicitly uses local account data, and
+  `--session-bundle` attaches a compact balance summary to a synthetic bundle
+  without turning it into PvP History.
 - `run_workspace/pvp/account_deck_export.py`: backend-only Free Draft deck
   exporter from current local account SQLite runtime data. The production
   provider reads `account_characters` and `account_weapon_observed_stacks`
@@ -613,7 +628,8 @@ Implemented through 2026-06-12:
 Still not implemented: UI, AppShell/right-panel integration, online transport,
 deck builder/exporter UI, real Gentor/Abyss importer, richer ruleset execution,
 automatic schedule derivation from public rulesets, full localized Traveler
-detection/support, GCSIM scoring, and PvP History.
+detection/support, GCSIM scoring, enforcement of report-only/unsupported
+ruleset features, and PvP History.
 
 ## Testing Strategy
 
@@ -636,6 +652,9 @@ When implementation starts, add tests before or alongside UI:
   data only in the manual smoke command.
 - session bundle JSON roundtrip and verifier replay checks for tampered actions,
   hashes, missing decks, and unknown draft systems.
+- ruleset/balance application reports for id/fallback/unmatched mapping,
+  character and weapon costs, unsupported/report-only ruleset features, and
+  compact session-bundle summaries.
 
 Likely test owner:
 

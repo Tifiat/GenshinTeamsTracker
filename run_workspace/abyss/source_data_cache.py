@@ -12,7 +12,7 @@ from dataclasses import asdict
 from dataclasses import replace
 from datetime import datetime
 from hashlib import sha1
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import unquote, urlparse
@@ -123,7 +123,7 @@ def save_abyss_floor_source_data(
             "floor": data.floor,
         },
         "saved_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-        "data": asdict(data),
+        "data": _portable_source_data_mapping(data, cache_path=path),
     }
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -300,22 +300,39 @@ def _source_data_from_cache_payload(
         )
     data = _require_mapping(payload.get("data"), path, "data")
     try:
-        return _source_data_from_mapping(data)
+        return _source_data_from_mapping(
+            data,
+            cache_path=path,
+            icon_dir=_monster_icon_dir_for_cache_path(path, expected_floor),
+        )
     except (KeyError, TypeError, ValueError) as exc:
         raise AbyssSourceDataCacheError(f"Malformed Abyss source-data cache {path}: {exc}") from exc
 
 
-def _source_data_from_mapping(data: Mapping[str, Any]) -> AbyssFloorSourceData:
+def _source_data_from_mapping(
+    data: Mapping[str, Any],
+    *,
+    cache_path: Path,
+    icon_dir: Path,
+) -> AbyssFloorSourceData:
     floor = _as_int(data["floor"])
     if floor is None:
         raise ValueError("data.floor is missing")
     period = _period_from_mapping(_require_mapping(data["period"], None, "period"))
     enemy_rows = tuple(
-        _enemy_row_from_mapping(_require_mapping(row, None, "enemy_rows[]"))
+        _enemy_row_from_mapping(
+            _require_mapping(row, None, "enemy_rows[]"),
+            cache_path=cache_path,
+            icon_dir=icon_dir,
+        )
         for row in _as_sequence(data.get("enemy_rows"), "enemy_rows")
     )
     side_summaries = tuple(
-        _side_summary_from_mapping(_require_mapping(summary, None, "side_summaries[]"))
+        _side_summary_from_mapping(
+            _require_mapping(summary, None, "side_summaries[]"),
+            cache_path=cache_path,
+            icon_dir=icon_dir,
+        )
         for summary in _as_sequence(data.get("side_summaries"), "side_summaries")
     )
     return AbyssFloorSourceData(
@@ -336,11 +353,18 @@ def _period_from_mapping(data: Mapping[str, Any]) -> AbyssPeriod:
     )
 
 
-def _enemy_row_from_mapping(data: Mapping[str, Any]) -> AbyssEnemySourceRow:
+def _enemy_row_from_mapping(
+    data: Mapping[str, Any],
+    *,
+    cache_path: Path,
+    icon_dir: Path,
+) -> AbyssEnemySourceRow:
     warnings = list(_tuple_of_str(data.get("warnings", ()), "warnings"))
     cached_icon_path = _validated_cached_icon_path(
         data.get("cached_icon_path"),
         warnings,
+        cache_path=cache_path,
+        icon_dir=icon_dir,
     )
     return AbyssEnemySourceRow(
         floor=_required_int(data, "floor"),
@@ -366,11 +390,20 @@ def _enemy_row_from_mapping(data: Mapping[str, Any]) -> AbyssEnemySourceRow:
     )
 
 
-def _wave_from_mapping(data: Mapping[str, Any]) -> AbyssWaveSourceData:
+def _wave_from_mapping(
+    data: Mapping[str, Any],
+    *,
+    cache_path: Path,
+    icon_dir: Path,
+) -> AbyssWaveSourceData:
     return AbyssWaveSourceData(
         wave=_required_int(data, "wave"),
         enemies=tuple(
-            _enemy_row_from_mapping(_require_mapping(row, None, "wave.enemies[]"))
+            _enemy_row_from_mapping(
+                _require_mapping(row, None, "wave.enemies[]"),
+                cache_path=cache_path,
+                icon_dir=icon_dir,
+            )
             for row in _as_sequence(data.get("enemies"), "wave.enemies")
         ),
         solo_target_hp=_optional_int(data.get("solo_target_hp")),
@@ -380,14 +413,23 @@ def _wave_from_mapping(data: Mapping[str, Any]) -> AbyssWaveSourceData:
     )
 
 
-def _side_summary_from_mapping(data: Mapping[str, Any]) -> AbyssChamberSideSourceData:
+def _side_summary_from_mapping(
+    data: Mapping[str, Any],
+    *,
+    cache_path: Path,
+    icon_dir: Path,
+) -> AbyssChamberSideSourceData:
     return AbyssChamberSideSourceData(
         floor=_required_int(data, "floor"),
         chamber=_required_int(data, "chamber"),
         side=_required_int(data, "side"),
         side_name=str(data["side_name"]),
         waves=tuple(
-            _wave_from_mapping(_require_mapping(wave, None, "side.waves[]"))
+            _wave_from_mapping(
+                _require_mapping(wave, None, "side.waves[]"),
+                cache_path=cache_path,
+                icon_dir=icon_dir,
+            )
             for wave in _as_sequence(data.get("waves"), "side.waves")
         ),
         solo_target_hp=_optional_int(data.get("solo_target_hp")),
@@ -441,14 +483,121 @@ def _optional_str(value: Any) -> str | None:
     return text if text else None
 
 
-def _validated_cached_icon_path(value: Any, warnings: list[str]) -> str | None:
+def _validated_cached_icon_path(
+    value: Any,
+    warnings: list[str],
+    *,
+    cache_path: Path,
+    icon_dir: Path,
+) -> str | None:
     text = _optional_str(value)
     if text is None:
         return None
-    if not Path(text).is_file():
-        warnings.append("cached_icon_file_missing")
+    direct_path = Path(text)
+    if direct_path.is_absolute() and direct_path.is_file():
+        return str(direct_path)
+
+    for candidate in _portable_icon_candidates(text, cache_path=cache_path, icon_dir=icon_dir):
+        if candidate.is_file():
+            return str(candidate)
+
+    warnings.append("cached_icon_file_missing")
+    return None
+
+
+def _portable_source_data_mapping(
+    data: AbyssFloorSourceData,
+    *,
+    cache_path: Path,
+) -> dict[str, Any]:
+    payload = asdict(data)
+    _make_cached_icon_paths_portable(
+        payload,
+        icon_dir=_monster_icon_dir_for_cache_path(cache_path, data.floor),
+    )
+    return payload
+
+
+def _make_cached_icon_paths_portable(value: Any, *, icon_dir: Path) -> None:
+    if isinstance(value, dict):
+        if "cached_icon_path" in value:
+            value["cached_icon_path"] = _portable_cached_icon_path(
+                value.get("cached_icon_path"),
+                icon_dir=icon_dir,
+            )
+        for item in value.values():
+            _make_cached_icon_paths_portable(item, icon_dir=icon_dir)
+        return
+    if isinstance(value, (list, tuple)):
+        for item in value:
+            _make_cached_icon_paths_portable(item, icon_dir=icon_dir)
+
+
+def _portable_cached_icon_path(value: Any, *, icon_dir: Path) -> str | None:
+    text = _optional_str(value)
+    if text is None:
         return None
-    return text
+    filename = _path_text_filename(text)
+    if not filename:
+        return None
+    return PurePosixPath(icon_dir.parent.name, icon_dir.name, filename).as_posix()
+
+
+def _monster_icon_dir_for_cache_path(cache_path: Path, floor: int) -> Path:
+    return cache_path.with_name(f"floor_{_normalize_floor(floor)}_assets") / "monster_icons"
+
+
+def _portable_icon_candidates(
+    text: str,
+    *,
+    cache_path: Path,
+    icon_dir: Path,
+) -> tuple[Path, ...]:
+    candidates: list[Path] = []
+    raw_path = Path(text)
+    if not raw_path.is_absolute():
+        candidates.append(cache_path.parent / raw_path)
+        candidates.append(icon_dir / raw_path)
+
+    filename = _path_text_filename(text)
+    if filename:
+        candidates.append(icon_dir / filename)
+
+    safe_candidates: list[Path] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        if not _is_path_inside(candidate, icon_dir):
+            continue
+        key = str(candidate)
+        if key in seen:
+            continue
+        seen.add(key)
+        safe_candidates.append(candidate)
+    return tuple(safe_candidates)
+
+
+def _path_text_filename(text: str) -> str:
+    for candidate in (
+        Path(text).name,
+        PureWindowsPath(text).name,
+        PurePosixPath(text).name,
+    ):
+        if (
+            candidate
+            and candidate not in {".", ".."}
+            and "\\" not in candidate
+            and "/" not in candidate
+        ):
+            return candidate
+    return ""
+
+
+def _is_path_inside(path: Path, parent: Path) -> bool:
+    try:
+        path.resolve().relative_to(parent.resolve())
+    except (OSError, ValueError):
+        return False
+    return True
 
 
 def _cache_icon_for_row(

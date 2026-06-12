@@ -201,6 +201,7 @@ Critical rules:
 - Ordinary HoYoLAB update must preserve existing local HoYoLAB data/assets if it fails early.
 - Ordinary HoYoLAB update must not fetch all HoYoWiki character/weapon detail pages. Character/weapon stats catalogs are refreshed only through the explicit static catalog refresh path.
 - Abyss source-data period refresh uses source priority HoYoLAB -> Fandom latest -> Nanoka live, records fallback metadata in `data/hoyolab/spiral_abyss_period.json`, and must not use local system date as source-data authority.
+- Abyss source-data JSON stores monster icon cache references as cache-file-relative paths and resolves them at load/runtime; do not persist machine-specific absolute `cached_icon_path` values.
 - Destructive profile cleanup belongs to explicit profile sign-out or offline profile restore.
 - The export image stage drives HoYoLAB's share/save-image UI. It waits briefly for visible
   `gt-image--loading` placeholders, retries the save-image click if no browser download event

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import threading
 import time
 import tempfile
@@ -240,6 +241,82 @@ class AbyssSourceDataCacheTest(unittest.TestCase):
             assert cached_path is not None
             self.assertTrue(Path(cached_path).is_file())
 
+    def test_saved_source_data_persists_portable_cached_icon_paths(self) -> None:
+        data = _current_style_source_data()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            result = cache_abyss_floor_monster_icons(
+                data,
+                cache_dir=tmp,
+                icon_fetcher=lambda _url: b"icon",
+            )
+            path = save_abyss_floor_source_data(result.data, cache_dir=tmp)
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            cached_paths = _collect_cached_icon_paths(payload)
+
+            loaded = load_cached_abyss_floor_source_data(
+                "2026-05-16",
+                floor=12,
+                cache_dir=tmp,
+            )
+            self.assertIsNotNone(loaded)
+            assert loaded is not None
+            loaded_path = loaded.enemy_rows[0].cached_icon_path
+            self.assertIsNotNone(loaded_path)
+            assert loaded_path is not None
+            self.assertTrue(Path(loaded_path).is_file())
+
+        self.assertTrue(cached_paths)
+        for cached_path in cached_paths:
+            self.assertFalse(Path(cached_path).is_absolute())
+            self.assertNotIn(str(tmp), cached_path)
+            self.assertTrue(
+                cached_path.startswith("floor_12_assets/monster_icons/"),
+                cached_path,
+            )
+
+    def test_load_resolves_old_absolute_cached_icon_path_by_filename(self) -> None:
+        data = _current_style_source_data()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            result = cache_abyss_floor_monster_icons(
+                data,
+                cache_dir=tmp,
+                icon_fetcher=lambda _url: b"icon",
+            )
+            path = save_abyss_floor_source_data(result.data, cache_dir=tmp)
+            cached_path = result.data.enemy_rows[0].cached_icon_path
+            assert cached_path is not None
+            filename = Path(cached_path).name
+            old_machine_path = (
+                "C:/Users/old-user/Desktop/GenshinTeamsTracker/"
+                "data/cache/abyss/source_data/2026-05-16/"
+                f"floor_12_assets/monster_icons/{filename}"
+            )
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            self.assertTrue(
+                _replace_cached_icon_path(payload, filename, old_machine_path)
+            )
+            path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
+
+            loaded = load_cached_abyss_floor_source_data(
+                "2026-05-16",
+                floor=12,
+                cache_dir=tmp,
+            )
+
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        expected = str(Path(cached_path))
+        self.assertEqual(loaded.enemy_rows[0].cached_icon_path, expected)
+        self.assertEqual(
+            loaded.side_summary(1, 1).waves[0].enemies[0].cached_icon_path,
+            expected,
+        )
+
     def test_missing_cached_icon_file_is_cleared_on_load(self) -> None:
         data = _current_style_source_data()
 
@@ -334,6 +411,38 @@ class AbyssSourceDataCacheTest(unittest.TestCase):
             [entry.row_index for entry in result.entries],
             list(range(10)),
         )
+
+
+def _collect_cached_icon_paths(value: object) -> list[str]:
+    if isinstance(value, dict):
+        result: list[str] = []
+        cached_path = value.get("cached_icon_path")
+        if cached_path:
+            result.append(str(cached_path))
+        for item in value.values():
+            result.extend(_collect_cached_icon_paths(item))
+        return result
+    if isinstance(value, list):
+        result = []
+        for item in value:
+            result.extend(_collect_cached_icon_paths(item))
+        return result
+    return []
+
+
+def _replace_cached_icon_path(value: object, filename: str, replacement: str) -> bool:
+    changed = False
+    if isinstance(value, dict):
+        cached_path = value.get("cached_icon_path")
+        if cached_path and Path(str(cached_path)).name == filename:
+            value["cached_icon_path"] = replacement
+            changed = True
+        for item in value.values():
+            changed = _replace_cached_icon_path(item, filename, replacement) or changed
+    elif isinstance(value, list):
+        for item in value:
+            changed = _replace_cached_icon_path(item, filename, replacement) or changed
+    return changed
 
 
 if __name__ == "__main__":

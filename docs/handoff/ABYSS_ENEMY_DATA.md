@@ -281,11 +281,16 @@ MVP recommendation:
   with `--save-cache`, it also caches monster icons by default under
   `data/cache/abyss/source_data/<period_start>/floor_<floor>_assets/monster_icons/`
   and stores `cached_icon_path` on each `AbyssEnemySourceRow` when available.
-  Asset source priority is Nanoka monster icon URL, then Fandom composition
-  icon URL fallback. Missing/failed icons add warnings but keep source data
-  usable. Icon downloads run with small bounded parallelism and existing
-  URL-hash cache files are reused even during source-data `--force`; force
-  refreshes the source JSON but does not blindly redownload identical icons.
+  Persisted JSON keeps these icon references cache-file-relative
+  (`floor_<floor>_assets/monster_icons/<file>`), not absolute project/user
+  paths. Loading resolves the row value to the current local file path for Qt
+  rendering, and schema-v1 compatibility can recover old absolute entries by
+  filename when the copied file exists in the current period/floor icon asset
+  directory. Asset source priority is Nanoka monster icon URL, then Fandom
+  composition icon URL fallback. Missing/failed icons add warnings but keep
+  source data usable. Icon downloads run with small bounded parallelism and
+  existing URL-hash cache files are reused even during source-data `--force`;
+  force refreshes the source JSON but does not blindly redownload identical icons.
   `--skip-assets` keeps the update as JSON-only. Future tooltip UI should use
   these local cached icons instead of live image URLs.
 - Normal HoYoLAB import now best-effort refreshes this Floor 12 source-data

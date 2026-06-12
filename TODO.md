@@ -195,9 +195,14 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   backend-only there: `--save-cache` downloads icons by default into
   `data/cache/abyss/source_data/<period_start>/floor_<floor>_assets/monster_icons/`
   using Nanoka icon URLs first and Fandom composition icon URLs as fallback,
-  then stores `cached_icon_path` on rows for future tooltip UI. Icon downloads
-  are bounded-parallel and reuse existing URL-hash files even during source-data
-  `--force`; force refreshes source data, not identical already-cached icons.
+  then stores `cached_icon_path` on rows for future tooltip UI. Persisted JSON
+  keeps these icon references cache-file-relative
+  (`floor_<floor>_assets/monster_icons/<file>`), not absolute user/profile
+  paths; the loader resolves them to local paths for Qt and can recover old
+  absolute cache entries by filename when the copied icon file exists under the
+  current period/floor asset directory. Icon downloads are bounded-parallel and
+  reuse existing URL-hash files even during source-data `--force`; force
+  refreshes source data, not identical already-cached icons.
   It does not wire final UI; it supersedes the historical static fixture as the
   runtime source-data path. HP source modes are now
   explicit: `--hp-source auto` uses Nanoka as primary and Fandom enemy-page HP

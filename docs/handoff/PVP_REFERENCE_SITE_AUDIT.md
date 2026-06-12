@@ -14,6 +14,26 @@ Follow-up check on 2026-06-11:
   is confirmed in repo.
 - Detailed current mapping status lives in `PVP_RULESET_SOURCE_MATRIX.md`.
 
+Follow-up UI check on 2026-06-12:
+
+- Browser/Playwright inspection reached Abyss Draft home, `/drafts`, and
+  `/draft-systems`. Public drafts showed an empty draft list plus
+  `SIGN IN TO CREATE DRAFTS`; creating or entering a real draft was not
+  inspected because it requires sign-in. `/draft-systems` showed central
+  draft-system cards summarizing `PHASES`, `BANS`, `IMMUNES`, `PICK TIME`, and
+  `RESERVE TIME`.
+- Browser/Playwright inspection reached Gentor home and `/planilhas`.
+  `/planilhas` is a ruleset/spreadsheet browser with filters and rows for name,
+  creator, begin date, and end date. `/salas` was blank without session/auth;
+  `/partidas` showed only the shell/footer. Direct `/planilhas/3` and
+  `/planilhas/3/decks/novo` did not render usable public detail content in this
+  session. `/planilhas/3/decks/simulacao` rendered a deck simulation page with
+  account search, points, an only-in-deck toggle, and cancel action, but not a
+  live room draft.
+- Temporary Playwright captures were written only under ignored
+  `tools/experiments/pvp_site_audit/captures/` and profiles under ignored
+  `tools/experiments/pvp_site_audit/profiles/`.
+
 Scope: lightweight architecture research for the PvP v0 contract. This pass
 used public pages, public API responses, Playwright/Chrome page probes, and
 client bundle inspection. No GTT runtime code, app startup, local account data,
@@ -181,6 +201,59 @@ Implications for GTT:
   engine.
 - Deck validation and ruleset validation must be different reports.
 - Weapon deck data is first-class, not an optional decoration.
+
+## First GTT PvP UI Recommendation
+
+The first GTT PvP shell should be an AppShell workspace with its own right-dock
+policy:
+
+- left/main workspace: PvP browser/workspace;
+- right operations dock: PvP-specific control page;
+- Account/Data remains the global right-dock action in the same header position;
+- normal Abyss/DPS Dummy TeamBuilder controls are hidden while PvP is active.
+
+Recommended main PvP workspace content for v0:
+
+- setup/deck status for Player 1 and Player 2, including validation readiness;
+- Free Draft/ruleset summary from the current backend contract;
+- current turn banner with active seat, phase, and required action;
+- large draft board/cards for both players, derived from
+  `to_board_dict()` / `free_draft_board.py`;
+- picked and banned pools;
+- action log and schedule/timeline;
+- phase-specific main panels after draft: team assignment, weapon assignment,
+  timer/result entry, and result summary.
+
+Recommended PvP right/control panel content for v0:
+
+- compact current phase/turn summary;
+- local/dev commands such as load sample, start/reset draft, and later undo when
+  the backend contract supports it;
+- selected card/details and legal/rejection reason codes;
+- deck/session issue summary;
+- later ready/confirm, team/weapon/timer/result controls when those phase UIs
+  are wired.
+
+Keep out of the first UI:
+
+- online rooms, invites, spectators, judges, and public lobby behavior;
+- Gentor spreadsheet/ruleset importer and automatic schedule derivation;
+- Abyss Draft/Gentor auth-dependent draft creation flows;
+- full deck builder/exporter UI;
+- GCSIM scoring and PvP History.
+
+Reference split rationale:
+
+- Abyss Draft puts navigation on the side and public draft/draft-system content
+  in the large central area. Its draft-system cards show that phase/bans/immune
+  summaries are useful setup/status content, but actual draft creation is
+  account-gated.
+- Gentor separates rulesets/spreadsheets, rooms, matches, accounts, and deck
+  simulation. Its public deck simulation emphasizes account search/deck points
+  as setup/deck-building tools, not as the live draft control surface.
+- For GTT Free Draft v0, the live board and timeline need the main space; the
+  fixed right dock should remain a control/details surface rather than becoming
+  the whole draft UI.
 
 ## Local Repo Reality Check
 

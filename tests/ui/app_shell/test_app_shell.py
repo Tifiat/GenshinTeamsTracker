@@ -37,8 +37,13 @@ from ui.app_shell import (
     CharacterWeaponWorkspace,
     LEFT_WORKSPACE_ARTIFACTS,
     LEFT_WORKSPACE_CHARACTERS_WEAPONS,
+    LEFT_WORKSPACE_GCSIM,
+    LEFT_WORKSPACE_PVP,
+    PvpRightDockPlaceholder,
+    PvpWorkspacePlaceholder,
     RIGHT_OPERATIONS_DOCK_WIDTH,
     RIGHT_DOCK_PAGE_ACCOUNT,
+    RIGHT_DOCK_PAGE_PVP,
     RIGHT_DOCK_PAGE_RUN,
     RosterSelectionMarker,
     WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR,
@@ -122,8 +127,9 @@ class AppShellTest(unittest.TestCase):
             CharacterWeaponWorkspace,
         )
         self.assertEqual(shell.left_host.stack.currentIndex(), 0)
-        self.assertEqual(shell.left_host.stack.count(), 3)
+        self.assertEqual(shell.left_host.stack.count(), 4)
         self.assertIsNone(shell.left_host.artifact_browser_workspace)
+        self.assertIsInstance(shell.left_host.pvp_workspace, PvpWorkspacePlaceholder)
         self.assertEqual(
             shell.active_left_workspace_id,
             LEFT_WORKSPACE_CHARACTERS_WEAPONS,
@@ -146,6 +152,66 @@ class AppShellTest(unittest.TestCase):
         )
         self.assertIsNotNone(shell.left_host.artifact_browser_workspace)
 
+    def test_pvp_workspace_switches_left_area_and_right_dock_policy(self) -> None:
+        shell = AppShell()
+        selected_mode = shell.controller.mode
+
+        with patch.object(
+            shell.left_host,
+            "activate_workspace",
+            wraps=shell.left_host.activate_workspace,
+        ) as activate:
+            shell.left_host.pvp_button.click()
+
+        activate.assert_called_once_with(LEFT_WORKSPACE_PVP)
+        self.assertEqual(shell.active_left_workspace_id, LEFT_WORKSPACE_PVP)
+        self.assertIs(shell.left_host.stack.currentWidget(), shell.left_host.pvp_workspace)
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
+        self.assertIsInstance(
+            shell.right_dock.content_stack.currentWidget(),
+            PvpRightDockPlaceholder,
+        )
+        self.assertEqual(shell.controller.mode, selected_mode)
+        self.assertEqual(shell.right_panel._model.mode, selected_mode)
+        self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
+        self.assertTrue(shell.right_dock.header.pvp_control_button.isChecked())
+        self.assertFalse(shell.right_dock.header.account_button.isChecked())
+
+    def test_pvp_account_page_keeps_pvp_policy_until_normal_workspace_selected(self) -> None:
+        shell = AppShell()
+        shell._on_mode_requested(MODE_DPS_DUMMY)
+
+        shell.left_host.pvp_button.click()
+        shell.right_dock.header.account_button.click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
+        self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
+        self.assertFalse(shell.right_dock.header.pvp_control_button.isChecked())
+        self.assertTrue(shell.right_dock.header.account_button.isChecked())
+
+        shell.right_dock.header.pvp_control_button.click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
+        self.assertTrue(shell.right_dock.header.pvp_control_button.isChecked())
+
+        shell.left_host.character_weapon_button.click()
+
+        self.assertEqual(
+            shell.active_left_workspace_id,
+            LEFT_WORKSPACE_CHARACTERS_WEAPONS,
+        )
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
+        self.assertFalse(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
+        self.assertTrue(
+            shell.right_dock.header.run_mode_tabs.button_for_mode(
+                MODE_DPS_DUMMY
+            ).isChecked()
+        )
+        self.assertEqual(shell.controller.mode, MODE_DPS_DUMMY)
+
     def test_left_workspace_switch_preserves_global_account_page(self) -> None:
         shell = AppShell()
         shell.right_dock.show_account_page()
@@ -157,6 +223,28 @@ class AppShellTest(unittest.TestCase):
             shell.active_left_workspace_id,
             LEFT_WORKSPACE_ARTIFACTS,
         )
+
+    def test_normal_workspace_switch_after_normal_account_page_preserves_account(self) -> None:
+        shell = AppShell()
+        shell.right_dock.show_account_page()
+
+        shell.left_host.gcsim_browser_button.click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
+        self.assertEqual(shell.active_left_workspace_id, LEFT_WORKSPACE_GCSIM)
+        self.assertFalse(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
+
+    def test_pvp_workspace_blocks_roster_mutation_without_touching_team_state(self) -> None:
+        shell = AppShell()
+        asset = _character_asset("10000050", "Thoma")
+        before = dict(shell.controller.mode_states)
+
+        shell.left_host.pvp_button.click()
+        shell.left_host.character_weapon_workspace.character_clicked.emit(asset)
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
+        self.assertEqual(shell.controller.mode_states, before)
 
     def test_perf_logging_is_disabled_by_default(self) -> None:
         with patch.dict("os.environ", {"GTT_PERF_LOG": ""}):
@@ -174,6 +262,7 @@ class AppShellTest(unittest.TestCase):
 
         self.assertIsNone(shell.right_panel._mode_tabs)
         self.assertEqual(len(shell.right_dock.header.run_mode_tabs.buttons()), 2)
+        self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.account_button.icon().isNull())
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
 

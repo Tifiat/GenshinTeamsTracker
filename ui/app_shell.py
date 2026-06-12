@@ -162,10 +162,14 @@ from ui.utils.ui_palette import (
 RIGHT_OPERATIONS_DOCK_WIDTH = RIGHT_PANEL_PROTOTYPE_MIN_WIDTH
 RIGHT_DOCK_PAGE_RUN = "run"
 RIGHT_DOCK_PAGE_ACCOUNT = "account"
+RIGHT_DOCK_PAGE_PVP = "pvp"
+RIGHT_DOCK_POLICY_RUN = "run"
+RIGHT_DOCK_POLICY_PVP = "pvp"
 RIGHT_DOCK_ACCOUNT_ICON_SIZE = 18
 LEFT_WORKSPACE_CHARACTERS_WEAPONS = "characters_weapons"
 LEFT_WORKSPACE_ARTIFACTS = "artifacts"
 LEFT_WORKSPACE_GCSIM = "gcsim"
+LEFT_WORKSPACE_PVP = "pvp"
 
 # Calibrated global shell minimum for the embedded Artifact Browser footprint.
 # This is intentionally a top-level contract, not a dynamic maximum of current
@@ -1399,8 +1403,10 @@ class AppShell(QWidget):
             self.controller.right_panel_model(),
             show_mode_tabs=False,
         )
+        self.pvp_right_panel = PvpRightDockPlaceholder()
         self.right_dock = RightOperationsDock(
             self.right_panel,
+            pvp_operation_widget=self.pvp_right_panel,
             active_mode=self.controller.mode,
         )
         root.addWidget(self.right_dock, 0)
@@ -2135,7 +2141,13 @@ class AppShell(QWidget):
         self.left_host.activate_workspace(workspace_id)
 
     def _on_workspace_activated(self, workspace_id: str) -> None:
+        previous_workspace_id = self.active_left_workspace_id
         self.active_left_workspace_id = workspace_id
+        if workspace_id == LEFT_WORKSPACE_PVP:
+            self.cancel_pending_right_panel_refresh(reason="pvp_workspace_activate")
+            self.right_dock.show_pvp_page()
+        elif previous_workspace_id == LEFT_WORKSPACE_PVP:
+            self.right_dock.show_run_page(self.controller.mode)
         log_perf(
             "left_workspace_activate",
             workspace=workspace_id,
@@ -2372,6 +2384,12 @@ class LeftWorkspaceHost(QWidget):
             "GCSIM",
             self.gcsim_browser_workspace,
         )
+        self.pvp_workspace = PvpWorkspacePlaceholder()
+        self.pvp_button = self.add_workspace(
+            LEFT_WORKSPACE_PVP,
+            tr("app_shell.workspace.pvp"),
+            self.pvp_workspace,
+        )
         self.stack.currentChanged.connect(self._on_stack_current_changed)
 
     def _make_artifact_browser_placeholder(self) -> QWidget:
@@ -2493,8 +2511,10 @@ class LeftWorkspaceHost(QWidget):
         )
         self.artifact_browser_button.setText(tr("app_shell.workspace.artifacts"))
         self.gcsim_browser_button.setText("GCSIM")
+        self.pvp_button.setText(tr("app_shell.workspace.pvp"))
         self.character_weapon_workspace.retranslate_ui()
         self.gcsim_browser_workspace.retranslate_ui()
+        self.pvp_workspace.retranslate_ui()
         if self.artifact_browser_workspace is None:
             self.artifact_browser_placeholder_label.setText(
                 tr("artifact.browser.title")
@@ -2622,6 +2642,7 @@ def _selected_team_has_characters(selected_team: dict[str, Any]) -> bool:
 class RightDockHeader(QWidget):
     mode_requested = Signal(str)
     account_requested = Signal()
+    pvp_control_requested = Signal()
 
     def __init__(
         self,
@@ -2639,6 +2660,14 @@ class RightDockHeader(QWidget):
         self.run_mode_tabs.mode_requested.connect(self.mode_requested.emit)
         layout.addWidget(self.run_mode_tabs, 2)
 
+        self.pvp_control_button = make_mode_tab_button(
+            tr("app_shell.right_dock.pvp_control")
+        )
+        self.pvp_control_button.clicked.connect(
+            lambda _checked=False: self.pvp_control_requested.emit()
+        )
+        layout.addWidget(self.pvp_control_button, 2)
+
         self.account_button = make_mode_tab_button(
             tr("app_shell.right_dock.account")
         )
@@ -2650,17 +2679,38 @@ class RightDockHeader(QWidget):
             lambda _checked=False: self.account_requested.emit()
         )
         layout.addWidget(self.account_button, 1)
+        self.show_run_mode(active_mode)
 
     def show_run_mode(self, mode: str) -> None:
+        self.run_mode_tabs.setVisible(True)
+        self.pvp_control_button.setVisible(False)
+        self.pvp_control_button.setChecked(False)
         self.account_button.setChecked(False)
         self.run_mode_tabs.set_active_mode(mode)
 
-    def show_account(self) -> None:
+    def show_pvp_control(self) -> None:
+        self.run_mode_tabs.setVisible(False)
         self.run_mode_tabs.set_active_mode(None)
+        self.pvp_control_button.setVisible(True)
+        self.pvp_control_button.setChecked(True)
+        self.account_button.setChecked(False)
+
+    def show_account(self, *, policy: str = RIGHT_DOCK_POLICY_RUN) -> None:
+        if policy == RIGHT_DOCK_POLICY_PVP:
+            self.run_mode_tabs.setVisible(False)
+            self.run_mode_tabs.set_active_mode(None)
+            self.pvp_control_button.setVisible(True)
+            self.pvp_control_button.setChecked(False)
+        else:
+            self.run_mode_tabs.setVisible(True)
+            self.run_mode_tabs.set_active_mode(None)
+            self.pvp_control_button.setVisible(False)
+            self.pvp_control_button.setChecked(False)
         self.account_button.setChecked(True)
 
     def retranslate_ui(self) -> None:
         self.run_mode_tabs.retranslate_ui()
+        self.pvp_control_button.setText(tr("app_shell.right_dock.pvp_control"))
         self.account_button.setText(tr("app_shell.right_dock.account"))
 
 
@@ -2672,11 +2722,14 @@ class RightOperationsDock(QFrame):
         operation_widget: QWidget,
         parent: QWidget | None = None,
         *,
+        pvp_operation_widget: QWidget | None = None,
         active_mode: str = MODE_ABYSS,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("RightOperationsDock")
         self.operation_widget = operation_widget
+        self.pvp_operation_widget = pvp_operation_widget or PvpRightDockPlaceholder()
+        self._operation_policy = RIGHT_DOCK_POLICY_RUN
         self.header = RightDockHeader(active_mode)
         self.account_page = AccountDataPage()
 
@@ -2687,30 +2740,41 @@ class RightOperationsDock(QFrame):
 
         self.content_stack = QStackedWidget()
         self.content_stack.addWidget(self.operation_widget)
+        self.content_stack.addWidget(self.pvp_operation_widget)
         self.content_stack.addWidget(self.account_page)
         layout.addWidget(self.content_stack, 1)
 
         operation_widget.setMinimumWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
+        self.pvp_operation_widget.setMinimumWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
         self.setFixedWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
         self.setStyleSheet(right_panel_stylesheet())
 
         self.header.mode_requested.connect(self._on_mode_requested)
+        self.header.pvp_control_requested.connect(self.show_pvp_page)
         self.header.account_requested.connect(self.show_account_page)
         self.show_run_page(active_mode)
 
     def current_page(self) -> str:
         if self.content_stack.currentWidget() is self.account_page:
             return RIGHT_DOCK_PAGE_ACCOUNT
+        if self.content_stack.currentWidget() is self.pvp_operation_widget:
+            return RIGHT_DOCK_PAGE_PVP
         return RIGHT_DOCK_PAGE_RUN
 
     def show_run_page(self, mode: str) -> None:
+        self._operation_policy = RIGHT_DOCK_POLICY_RUN
         self.content_stack.setCurrentWidget(self.operation_widget)
         self.header.show_run_mode(mode)
 
+    def show_pvp_page(self) -> None:
+        self._operation_policy = RIGHT_DOCK_POLICY_PVP
+        self.content_stack.setCurrentWidget(self.pvp_operation_widget)
+        self.header.show_pvp_control()
+
     def show_account_page(self) -> None:
         self.content_stack.setCurrentWidget(self.account_page)
-        self.header.show_account()
+        self.header.show_account(policy=self._operation_policy)
 
     def _on_mode_requested(self, mode: str) -> None:
         self.mode_requested.emit(mode)
@@ -2718,6 +2782,85 @@ class RightOperationsDock(QFrame):
     def retranslate_ui(self) -> None:
         self.header.retranslate_ui()
         self.account_page.retranslate_ui()
+        if hasattr(self.pvp_operation_widget, "retranslate_ui"):
+            self.pvp_operation_widget.retranslate_ui()
+
+
+class PvpWorkspacePlaceholder(QFrame):
+    """Temporary left-workspace placeholder for the first PvP AppShell step."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("PvpWorkspacePlaceholder")
+        root = QVBoxLayout(self)
+        root.setContentsMargins(32, 32, 32, 32)
+        root.setSpacing(8)
+        root.addStretch(1)
+
+        self.title_label = QLabel()
+        self.title_label.setObjectName("SectionTitle")
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self.title_label)
+
+        self.subtitle_label = QLabel()
+        self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self.subtitle_label)
+
+        self.note_label = QLabel()
+        self.note_label.setWordWrap(True)
+        self.note_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self.note_label)
+
+        self.sample_label = QLabel()
+        self.sample_label.setWordWrap(True)
+        self.sample_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        root.addWidget(self.sample_label)
+        root.addStretch(2)
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        self.title_label.setText(tr("app_shell.pvp.placeholder.title"))
+        self.subtitle_label.setText(tr("app_shell.pvp.placeholder.subtitle"))
+        self.note_label.setText(tr("app_shell.pvp.placeholder.note"))
+        self.sample_label.setText(tr("app_shell.pvp.placeholder.sample"))
+
+
+class PvpRightDockPlaceholder(QWidget):
+    """Temporary right-dock control page for PvP before the draft UI is wired."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("RightPanelPrototypeContent")
+        root = QVBoxLayout(self)
+        root.setContentsMargins(8, 8, 8, 8)
+        root.setSpacing(8)
+
+        frame = QFrame()
+        frame.setObjectName("InfoBlock")
+        frame_layout = QVBoxLayout(frame)
+        frame_layout.setContentsMargins(8, 8, 8, 8)
+        frame_layout.setSpacing(8)
+
+        self.title_label = QLabel()
+        self.title_label.setObjectName("SectionTitle")
+        frame_layout.addWidget(self.title_label)
+
+        self.body_label = QLabel()
+        self.body_label.setWordWrap(True)
+        frame_layout.addWidget(self.body_label)
+
+        self.sample_label = QLabel()
+        self.sample_label.setWordWrap(True)
+        frame_layout.addWidget(self.sample_label)
+
+        root.addWidget(frame)
+        root.addStretch(1)
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        self.title_label.setText(tr("app_shell.right_dock.pvp_control"))
+        self.body_label.setText(tr("app_shell.pvp.control.placeholder"))
+        self.sample_label.setText(tr("app_shell.pvp.placeholder.sample"))
 
 
 def _account_tab_icon() -> QIcon:
@@ -4077,7 +4220,14 @@ __all__ = [
     "CharacterWeaponWorkspace",
     "LEFT_WORKSPACE_ARTIFACTS",
     "LEFT_WORKSPACE_CHARACTERS_WEAPONS",
+    "LEFT_WORKSPACE_GCSIM",
+    "LEFT_WORKSPACE_PVP",
     "LeftWorkspaceHost",
+    "PvpRightDockPlaceholder",
+    "PvpWorkspacePlaceholder",
+    "RIGHT_DOCK_PAGE_ACCOUNT",
+    "RIGHT_DOCK_PAGE_PVP",
+    "RIGHT_DOCK_PAGE_RUN",
     "RosterSelectionMarker",
     "RightOperationsDock",
     "launch_app_shell",

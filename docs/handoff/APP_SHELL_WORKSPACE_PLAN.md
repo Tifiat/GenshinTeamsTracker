@@ -16,7 +16,8 @@ AppShell
     |   |-- page-specific tabs / controls
     |   `-- global actions
     `-- ContentStack
-        |-- current operation widget
+        |-- current run operation widget
+        |-- PvP control page
         `-- Account / Data page
 ```
 
@@ -31,14 +32,16 @@ Terms:
   form one visually continuous row of same-style buttons with the ordinary
   inter-button spacing only. Do not add a visual divider, stretch gap, or
   page-specific duplicate of a global action.
-- Current page-specific controls are Abyss / DPS Dummy. The current global
-  action is Account. Account opens a compact localized Account / Data page in
-  the same fixed dock without changing the left workspace. The page reuses the
-  existing HoYoLAB import/update behavior, offline profile save/load/sign-out
-  actions, and language selector. AppShell refreshes account asset caches after
-  import and clears only its runtime team state when an offline profile is
-  loaded or signed out. Only the currently open dock page is visually active.
-  Run-mode routing uses stable ids, never localized button text.
+- Current normal run page-specific controls are Abyss / DPS Dummy. The first
+  PvP AppShell step replaces those controls with a `PvP Control` placeholder
+  when the `pvp` workspace is active. The current global action is Account.
+  Account opens a compact localized Account / Data page in the same fixed dock
+  without changing the left workspace. The page reuses the existing HoYoLAB
+  import/update behavior, offline profile save/load/sign-out actions, and
+  language selector. AppShell refreshes account asset caches after import and
+  clears only its runtime team state when an offline profile is loaded or signed
+  out. Only the currently open dock page is visually active. Run-mode routing
+  and workspace routing use stable ids, never localized button text.
 - `LeftWorkspaceHost` owns left pages and lazy construction. Left-nav buttons
   request stable workspace ids through root `AppShell`; root AppShell performs
   activation and remains the coordination point for future workspace-driven
@@ -51,12 +54,12 @@ Terms:
   operation target. Returning from a non-RUN page must update the requested
   controller mode and right-panel model before exposing RUN content so the
   previous run-mode model cannot paint as a stale intermediate frame.
-- Future right-dock pages such as PvP may replace the page-specific control host
-  while the global action host stays present. Future empty-database startup
-  should auto-open Account / Data setup, and later onboarding may highlight the
-  Account action. A compact Support/Donate action near Account and a fuller
-  support area inside Account remain optional future directions; do not add
-  them until explicitly requested.
+- The PvP placeholder is the first workspace-driven right-dock policy: it
+  replaces the normal run control host while the global action host stays
+  present. Future empty-database startup should auto-open Account / Data setup,
+  and later onboarding may highlight the Account action. A compact
+  Support/Donate action near Account and a fuller support area inside Account
+  remain optional future directions; do not add them until explicitly requested.
 - Custom overlay scrollbars remain relevant where native scrollbars would shift
   right-panel content or create asymmetric empty space.
 
@@ -83,9 +86,9 @@ right column patched in place.
 - Should be the first/default workspace.
 - The old main window's right half is not migrated into this workspace.
 - It should update typed TeamBuilder/run state, not legacy image-path slots.
-- Current left workspace ids are stable internal ids:
-  `characters_weapons` and `artifacts`. They are routing ids, not localized
-  display labels.
+- Current left workspace ids are stable internal ids: `characters_weapons`,
+  `artifacts`, `gcsim`, and `pvp`. They are routing ids, not localized display
+  labels.
 
 ### Artifact Browser Workspace
 
@@ -158,6 +161,19 @@ right column patched in place.
   are not durable saved history. Treat them as current-session runtime results
   until immutable run snapshots/history are implemented.
 
+### PvP Workspace
+
+- The first PvP AppShell integration exists as a placeholder left workspace with
+  stable id `pvp`.
+- When `pvp` is active, root AppShell switches the right operations dock to a
+  `PvP Control` placeholder page. Abyss / DPS Dummy controls and normal
+  TeamBuilder mutations are hidden while this page is active.
+- Account / Data remains the global right-dock action in the same header
+  position. Opening Account from PvP preserves the PvP right-dock policy until a
+  normal workspace is selected again.
+- The placeholder does not wire `FreeDraftController`, does not render the real
+  draft board, and does not mutate normal TeamBuilder/Run state.
+
 ### History Workspace
 
 - Future replacement for legacy history.
@@ -173,6 +189,7 @@ right column patched in place.
 Near-term default:
 
 - Build/Run Panel based on `ui.right_panel_prototype.RightPanelPrototypeWidget`.
+- PvP Control placeholder for the `pvp` left workspace.
 - Fixed width.
 - Always visible in the normal app shell.
 
@@ -181,7 +198,8 @@ Future operation modes:
 - Account/Data owns HoYoLAB import/update, offline profile actions, language
   selection, and the DPS settings subzone. Current DPS setting: persistent
   Abyss Fact DPS multi-target HP toggle, default off/solo-target.
-- PvP draft/deck/opponent controls.
+- Real PvP draft/deck/opponent controls wired to the Free Draft board/read-model
+  contract.
 - Build panel after PvP draft when a buildable pool/team exists.
 
 The right side is an operations dock, not only a build widget. Future
@@ -284,11 +302,12 @@ durable saved results must later attach through explicit session/snapshot data.
 
 ## PvP Direction
 
-- PvP likely remains a separate window/mode at first.
+- PvP now has an AppShell placeholder workspace/right-dock policy, not a
+  separate first window.
 - During draft/deck/opponent phases, showing the normal build panel can be
   misleading because builds may not be editable yet.
-- The right operations dock can later show PvP-specific controls for those
-  phases.
+- The right operations dock currently shows a `PvP Control` placeholder and can
+  later show PvP-specific controls for those phases.
 - Once draft/pool/team is ready, the build panel can be reused against the PvP
   pool/team instead of the full account roster.
 - PvP training runs can later save history scoped to the current deck/PvP mode.
@@ -635,10 +654,11 @@ Sizing note:
 ### Stage 3: LeftWorkspaceHost (Implemented)
 
 - `LeftWorkspaceHost` uses a `QStackedWidget` and small workspace nav.
-- Current workspaces: default Character/Weapon and lazy-created Artifacts.
+- Current workspaces: default Character/Weapon, lazy-created Artifacts, GCSIM
+  Browser, and the PvP placeholder.
 - Navigation uses stable workspace ids requested through root AppShell so later
-  GCSIM, History, or PvP workspaces can coordinate right-dock policies without
-  directly mutating the dock.
+  History or real PvP workspace stages can coordinate right-dock policies
+  without directly mutating the dock.
 
 ### Stage 4: Embedded Artifact Browser (Implemented)
 
@@ -676,5 +696,6 @@ Sizing note:
 - Do not save future runs from live widgets or image paths.
 - Do not make Artifact Browser equip/apply anything without an explicit selected
   build target.
-- Do not expand a narrow AppShell patch into PvP, GCSIM, History, or legacy
-  cleanup unless the user explicitly asks for that stage.
+- Do not expand a narrow AppShell/PvP placeholder patch into real draft UI,
+  GCSIM, History, or legacy cleanup unless the user explicitly asks for that
+  stage.

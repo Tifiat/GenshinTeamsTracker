@@ -23,6 +23,19 @@ Ruleset/balance modules remain report-only research support. They are not the
 active implementation direction until real tournament Excel/Sheets/Discord docs
 or JSON examples exist.
 
+## AppShell UI Status
+
+The first AppShell integration exists only as a placeholder workspace/policy:
+
+- `LEFT_WORKSPACE_PVP = "pvp"` is registered beside Characters/Weapons,
+  Artifacts, and GCSIM.
+- When PvP is active, the right operations dock keeps Account/Data visible but
+  replaces Abyss/DPS Dummy controls with a `PvP Control` placeholder page.
+- Leaving PvP for a normal workspace restores the normal run right dock and the
+  previously selected Abyss/DPS Dummy mode.
+- The placeholder does not wire `FreeDraftController`, does not render a real
+  draft board, and does not mutate normal TeamBuilder/Run state.
+
 ## Backend Modules
 
 - `run_workspace/pvp/deck.py`: v0 `DraftDeck` JSON dataclasses, strict
@@ -160,7 +173,7 @@ Recommended local checks:
 
 Still out of scope / not implemented:
 
-- UI, AppShell/right-panel integration, and app startup wiring;
+- real PvP draft board UI and controller wiring beyond the AppShell placeholder;
 - online/P2P/relay transport;
 - PvP History persistence;
 - deck builder/exporter UI;

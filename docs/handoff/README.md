@@ -21,6 +21,9 @@ Current maps:
 - `PVP_V0_CONTRACT.md` - stable PvP v0 product/backend contract for the full offline hot-seat loop: deck JSON, pick/ban, teams, weapons, timers, and winner summary.
 - `PVP_BACKEND_STATUS.md` - implementation-oriented PvP backend status:
   modules, smoke commands, generated/private paths, tests, and known gaps.
+- `PVP_UI_ROADMAP.md` - PvP AppShell/UI roadmap: Decks-first direction,
+  left/main vs right-panel split, local Play setup, Draft/assignment/result UI
+  staging, and next implementation scope.
 - `PVP_REFERENCE_SITE_AUDIT.md` - Abyss Draft and Gentor reference-site findings used by the PvP v0 contract.
 - `PVP_MODE_PLAN.md` - PvP planning history for local hot-seat Free Draft, deck JSON, future relay lobby, roadmap, risks, and resolved/open questions.
 - `PVP_RULESETS_AUDIT.md` - PvP/tournament ruleset source audit.

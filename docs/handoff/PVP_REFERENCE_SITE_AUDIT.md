@@ -39,6 +39,9 @@ used public pages, public API responses, Playwright/Chrome page probes, and
 client bundle inspection. No GTT runtime code, app startup, local account data,
 HoYoLAB auth, or tests were used.
 
+Current PvP UI direction now lives in `PVP_UI_ROADMAP.md`; this audit should
+stay focused on reference-site evidence and should not duplicate the roadmap.
+
 Sandbox helper:
 
 - `tools/experiments/pvp_site_audit/pvp_site_probe.py`
@@ -202,58 +205,19 @@ Implications for GTT:
 - Deck validation and ruleset validation must be different reports.
 - Weapon deck data is first-class, not an optional decoration.
 
-## First GTT PvP UI Recommendation
+## UI Placement Evidence
 
-The first GTT PvP shell should be an AppShell workspace with its own right-dock
-policy:
+Detailed GTT PvP UI direction lives in `PVP_UI_ROADMAP.md`. Stable placement
+evidence from the reference sites:
 
-- left/main workspace: PvP browser/workspace;
-- right operations dock: PvP-specific control page;
-- Account/Data remains the global right-dock action in the same header position;
-- normal Abyss/DPS Dummy TeamBuilder controls are hidden while PvP is active.
-
-Recommended main PvP workspace content for v0:
-
-- setup/deck status for Player 1 and Player 2, including validation readiness;
-- Free Draft/ruleset summary from the current backend contract;
-- current turn banner with active seat, phase, and required action;
-- large draft board/cards for both players, derived from
-  `to_board_dict()` / `free_draft_board.py`;
-- picked and banned pools;
-- action log and schedule/timeline;
-- phase-specific main panels after draft: team assignment, weapon assignment,
-  timer/result entry, and result summary.
-
-Recommended PvP right/control panel content for v0:
-
-- compact current phase/turn summary;
-- local/dev commands such as load sample, start/reset draft, and later undo when
-  the backend contract supports it;
-- selected card/details and legal/rejection reason codes;
-- deck/session issue summary;
-- later ready/confirm, team/weapon/timer/result controls when those phase UIs
-  are wired.
-
-Keep out of the first UI:
-
-- online rooms, invites, spectators, judges, and public lobby behavior;
-- Gentor spreadsheet/ruleset importer and automatic schedule derivation;
-- Abyss Draft/Gentor auth-dependent draft creation flows;
-- full deck builder/exporter UI;
-- GCSIM scoring and PvP History.
-
-Reference split rationale:
-
-- Abyss Draft puts navigation on the side and public draft/draft-system content
-  in the large central area. Its draft-system cards show that phase/bans/immune
-  summaries are useful setup/status content, but actual draft creation is
-  account-gated.
-- Gentor separates rulesets/spreadsheets, rooms, matches, accounts, and deck
-  simulation. Its public deck simulation emphasizes account search/deck points
-  as setup/deck-building tools, not as the live draft control surface.
-- For GTT Free Draft v0, the live board and timeline need the main space; the
-  fixed right dock should remain a control/details surface rather than becoming
-  the whole draft UI.
+- Gentor-like deck/profile flows support a large character/weapon grid with
+  account/deck/cost summaries outside the grid.
+- Abyss/Gentor draft flows support a large two-player board plus compact
+  controls/status outside the board.
+- Both products stage setup, pick/ban, team assignment, and timer/result
+  concepts separately.
+- Some draft/create/session routes require auth or are blocked; GTT behavior
+  must not depend on live scraping those routes.
 
 ## Local Repo Reality Check
 

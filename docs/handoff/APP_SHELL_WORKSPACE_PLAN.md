@@ -173,6 +173,8 @@ right column patched in place.
   normal workspace is selected again.
 - The placeholder does not wire `FreeDraftController`, does not render the real
   draft board, and does not mutate normal TeamBuilder/Run state.
+- Detailed PvP UI mode/stage direction lives in `PVP_UI_ROADMAP.md`; this
+  AppShell plan owns only the shell/workspace/right-dock coordination boundary.
 
 ### History Workspace
 
@@ -306,6 +308,8 @@ durable saved results must later attach through explicit session/snapshot data.
 
 - PvP now has an AppShell placeholder workspace/right-dock policy, not a
   separate first window.
+- Detailed PvP UI roadmap and next Decks-first implementation scope live in
+  `PVP_UI_ROADMAP.md`.
 - During draft/deck/opponent phases, showing the normal build panel can be
   misleading because builds may not be editable yet.
 - The right operations dock currently shows a `PvP Control` placeholder and can

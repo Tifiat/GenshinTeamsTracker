@@ -152,6 +152,9 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `docs/handoff/FAR_FUTURE_TODO.md`: non-MVP PvP, analytics, draft bot,
   donation/support, monetization, and optional AI companion ideas. Read only
   when the user asks about far-future ideas.
+- `docs/handoff/PVP_UI_ROADMAP.md`: PvP UI source of truth for the AppShell
+  mini-section, Decks-first direction, local Play setup, Draft/assignment/result
+  staging, and next UI implementation scope.
 - `docs/handoff/DATA_RUNTIME_BOUNDARIES.md`: compact map of raw/source caches, runtime SQLite tables, visual asset caches, static/reference catalogs, and stored-vs-hidden UI rules.
 - `docs/obsidian/GTT/GenshinTeamsTracker.canvas`: human project navigation map for major areas, subsystem status, priorities, and important paths. It is not detailed agent context.
 - `docs/obsidian/GTT/DataFlow.canvas`: human data-flow map from HoYoLAB export through caches/databases to selected-details UI and future Run Workspace.
@@ -498,11 +501,13 @@ Important direction:
 - Backend Abyss mechanics parser/report code exists in `hoyolab_export/abyss_mechanics.py`. It parses Fandom enemy-page wikitext snippets into structured fields and UI-warning/bot tags without mixing Normal/Abyss/Local Legend/Stygian stat blocks into one "true" block. Future Abyss UI work is mechanics-warning integration only, not another Fact DPS tooltip/source-summary redesign.
 
 Active PvP v0 contract exists at `docs/handoff/PVP_V0_CONTRACT.md`; current
-backend implementation status exists at `docs/handoff/PVP_BACKEND_STATUS.md`.
-The first
+backend implementation status exists at `docs/handoff/PVP_BACKEND_STATUS.md`;
+PvP UI direction exists at `docs/handoff/PVP_UI_ROADMAP.md`. The backend
 implementation target is a full local Hot-seat / Ghost Deck offline loop with
 two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
-weapon assignment, timers, and winner summary. Reference-site findings live in
+weapon assignment, timers, and winner summary. The next UI implementation
+target is Decks mode v0: persistent deck presets plus a main browser view/edit
+skeleton, not the draft board. Reference-site findings live in
 `docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`; PvP/tournament ruleset audit exists
 at `docs/handoff/PVP_RULESETS_AUDIT.md`, with the current source/applicability
 matrix at `docs/handoff/PVP_RULESET_SOURCE_MATRIX.md`. Backend foundation now

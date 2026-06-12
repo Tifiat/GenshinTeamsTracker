@@ -7,6 +7,9 @@ The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
 mapping boundaries live in `PVP_RULESET_SOURCE_MATRIX.md` and are paused until
 real usable tournament files are provided.
 
+The PvP UI roadmap is intentionally separate: see `PVP_UI_ROADMAP.md` for the
+AppShell/Decks/Play/Draft/assignment/result UI direction.
+
 ## Active Direction
 
 The active backend direction is no-rules Free Draft v0:
@@ -35,6 +38,8 @@ The first AppShell integration exists only as a placeholder workspace/policy:
   previously selected Abyss/DPS Dummy mode.
 - The placeholder does not wire `FreeDraftController`, does not render a real
   draft board, and does not mutate normal TeamBuilder/Run state.
+- The next UI direction is owned by `PVP_UI_ROADMAP.md`; this file should remain
+  backend/status focused.
 
 ## Backend Modules
 

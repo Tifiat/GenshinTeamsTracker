@@ -39,6 +39,7 @@ Mirror the primary project owner under `tests/`:
   run_workspace.pvp.free_draft_controller_smoke`, `python -m
   run_workspace.pvp.free_draft_controller_smoke --json`, `python -m
   run_workspace.pvp.free_draft_controller_smoke --step-demo`, `python -m
+  run_workspace.pvp.ui_full_flow_smoke`, `python -m
   run_workspace.pvp.ruleset_applicability_smoke`, `python -m
   run_workspace.pvp.account_deck_export_smoke`, `python -m
   run_workspace.pvp.account_full_loop_smoke`, `python -m
@@ -69,7 +70,10 @@ Mirror the primary project owner under `tests/`:
   shared `character_id`, per-seat ownership/constellation markers, legal click
   mapping, illegal no-op behavior, right-panel pick/ban zones, same-deck
   seat-state independence, and a deterministic full Free Draft completion
-  through UI card clicks. PvP offscreen smoke should also verify the default
+  through UI card clicks, plus post-draft Assignment, Weapon assignment,
+  Timers/results, completed result summary, duplicate assignment move behavior,
+  incompatible/exhausted weapon blocking, and active-draft clear/reset state.
+  PvP offscreen smoke should also verify the default
   deck path, first/second activation
   timing, and that edit tint is scoped to the card grid viewports when this area
   changes.
@@ -99,6 +103,7 @@ Prefer the narrowest suite that covers the touched ownership area:
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke --json
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke --step-demo
+.\.venv\Scripts\python.exe -m run_workspace.pvp.ui_full_flow_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.ruleset_applicability_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.account_deck_export_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.account_full_loop_smoke

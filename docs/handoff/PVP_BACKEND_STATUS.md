@@ -1,6 +1,6 @@
 # PvP Backend Status
 
-Last updated: 2026-06-13.
+Last updated: 2026-06-14.
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
@@ -52,6 +52,12 @@ Draft board v0:
 - Draft board v0 is playable through the full local Free Draft schedule and now
   consumes the dedicated backend `unified_pool` projection for the readable
   main pool/right-panel pick-ban zones.
+- Post-draft local flow v0 is implemented in the Draft UI: Assignment, Weapon
+  assignment, Timers/results, and Completed result summary. The UI keeps
+  uncommitted selections in PvP workspace memory, then uses
+  `FreeDraftController.set_team_assignment(...)`,
+  `set_weapon_assignment(...)`, and `set_match_timers(...)` once each stage
+  validates.
 - Decks/Play/Draft v0 do not persist sessions/history and do not mutate normal
   TeamBuilder/Run state.
 - The UI roadmap and stage direction are owned by
@@ -139,6 +145,7 @@ python -m run_workspace.pvp.free_draft_controller_smoke
 python -m run_workspace.pvp.free_draft_controller_smoke --json
 python -m run_workspace.pvp.free_draft_controller_smoke --step-demo
 python -m run_workspace.pvp.free_draft_controller_smoke --account
+python -m run_workspace.pvp.ui_full_flow_smoke
 python -m run_workspace.pvp.account_deck_export_smoke
 python -m run_workspace.pvp.account_full_loop_smoke
 python -m run_workspace.pvp.session_bundle_smoke
@@ -200,6 +207,7 @@ Recommended local checks:
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke --json
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke --step-demo
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke --account
+.\.venv\Scripts\python.exe -m run_workspace.pvp.ui_full_flow_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.ruleset_applicability_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.ruleset_balance_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.account_deck_export_smoke
@@ -211,10 +219,9 @@ Recommended local checks:
 
 Still out of scope / not implemented:
 
-- PvP team assignment UI;
-- timers/results UI;
 - online/P2P/relay transport;
 - PvP History persistence;
+- result PNG/export UI;
 - real Gentor/Abyss importer;
 - XLSX/Google Sheets/Discord importer;
 - ruleset identity mapping / alias layer;

@@ -30,8 +30,10 @@ remains in `PVP_BACKEND_STATUS.md`.
   accepted/rejected actions.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
-- Team assignment, timers/results, online play, ruleset costs, immune picks,
-  and PvP History are still not implemented.
+- Post-draft Assignment, Weapon assignment, Timers/results, and read-only
+  completed result summary v0 are implemented for local hot-seat matches.
+  Online play, ruleset costs, immune picks, export/PNG, and PvP History are
+  still not implemented.
 
 ## Core Model
 
@@ -54,8 +56,10 @@ internal Draft stages, not additional top-level tabs:
 
 1. Draft / pick-ban.
 2. Assignment.
-3. Timers / results.
-4. Export / result.
+3. Weapon assignment.
+4. Timers / results.
+5. Completed result.
+6. Future export / result card.
 
 Permanent right-header tabs should be added only when their real mode is
 implemented. Do not add top-level Team, Timers, Result, or Match tabs.
@@ -284,42 +288,58 @@ Current v0 scope:
   projection.
 - When the schedule completes, pick/ban clicks are disabled and final picks,
   bans, and action-log count remain visible.
-- No team assignment UI, timers/results UI, online mode, ruleset cost rendering,
-  immune picks, session files, or PvP History writes are part of Draft board v0.
+- After completion, the Draft page can continue through internal Assignment,
+  Weapon assignment, Timers/results, and Completed result stages for local
+  hot-seat play.
+- Online mode, ruleset cost rendering, immune picks, session files, PvP History
+  writes, and export are still out of scope.
 
 ## Team Assignment
 
-- After Draft, do not mutate normal TeamBuilder automatically.
-- Team assignment is PvP-owned state.
-- This is an internal Draft stage after pick/ban completion.
-- Left/main area should use a split Player 1 / Player 2 layout.
-- Each side shows only that player's 8 picked characters plus two team/half
-  areas.
-- Weapon assignment belongs in this stage and uses that player's deck weapon
-  pool.
-- No normal character filters, artifact badges, or GCSIM block are needed here.
-- Right panel shows validation, selected slot/card details, ready/continue
-  controls, and later auto-assign/dev controls.
+- Assignment v0 is implemented as an internal Draft stage after pick/ban
+  completion.
+- It keeps PvP-owned in-memory UI state until validation succeeds, then commits
+  through `FreeDraftController.set_team_assignment(...)`.
+- Left/main area uses split Player 1 / Player 2 sections. Each side shows only
+  that player's 8 picked characters and two 4-character team areas.
+- Interaction is simple click-character, click-slot. Re-selecting an already
+  used character moves it instead of duplicating it; slots can be cleared.
+- The right panel shows stage validation and enables the next-stage button only
+  when both players have valid 4+4 assignments.
+- No normal character filters, artifact badges, GCSIM block, or normal
+  TeamBuilder mutation are part of v0.
+
+## Weapon Assignment
+
+- Weapon assignment v0 is implemented as the next internal Draft stage.
+- It commits through `FreeDraftController.set_weapon_assignment(...)` only after
+  backend validation accepts both players.
+- Each assigned character can be selected, then assigned a compatible weapon
+  stack from that player's own deck weapon pool.
+- The UI enforces player ownership, weapon type compatibility, and stack count
+  exhaustion before setting local selection state; backend validation remains
+  the final authority before continuing.
+- Weaponless continuation is blocked by the existing backend contract.
 
 ## Timers / Results
 
-- This is an internal Draft stage after assignment.
-- Reference timer/restart UIs are messy; GTT should make this stage cleaner.
-- Left/main area shows teams, rooms/chambers, and result overview.
-- Right panel shows timers, restarts, manual result controls, and
-  bundle/export actions.
-- Prefer compact horizontal timer rows such as `T1 [09:01]`, `T2 [08:45]`,
-  `T3 [09:12]` for both players, plus total time, factual DPS where available,
-  and winner.
+- Timers/results v0 is implemented as an internal Draft stage after valid team
+  and weapon assignment.
+- The left/main area shows compact read-only team/weapon summaries and three
+  manual timer inputs per player. Inputs accept `mm:ss` or raw seconds and
+  require valid values for both players before finalization.
+- Finalization calls `FreeDraftController.set_match_timers(...)`; lower total
+  time wins and equal totals draw through the backend result model.
+- Factual DPS, restarts, technical-loss UI, bundle/export actions, and GCSIM
+  scoring are still future work.
 
 ## Export / Result
 
-- This is the final internal Draft stage.
-- Show a read-only result card/report preview with players, teams, weapons,
-  chamber times, totals, and winner.
-- Final result should eventually support a clean image/report export.
-- PNG/export is later; do not implement it before the core assignment/timer
-  state exists.
+- Completed result v0 is implemented as a read-only internal Draft stage.
+- It shows status, winner/draw, time difference, per-player totals, chamber
+  timers, and compact Player 1 / Player 2 team + weapon summaries.
+- PNG/export, history persistence, and polished result-card design remain
+  future work.
 
 ## Reference-Site Conclusions
 
@@ -387,18 +407,21 @@ Current Decks v0 scope:
 - Draft board v0 is implemented. It renders the backend `unified_pool`, lets the
   user click legal pick/ban targets through the controller, shows right-panel
   pick/ban zones, and can complete the full Free Draft schedule locally.
+- Post-draft local flow v0 is implemented inside Draft: Assignment, Weapon
+  assignment, Timers/results, and Completed result summary. It reuses
+  controller assignment/timer APIs and remains in-memory/PvP-owned.
 
 Next implementation task:
 
-> Draft polish or Team Assignment v0. Prefer a short polish pass if the unified
-> pool needs visual tuning after manual use; otherwise start Assignment v0.
+> Post-draft polish and result/export planning. The core local flow now reaches
+> completed result; next code work should refine usability, add back/review
+> affordances, or begin export/history only when their contracts are ready.
 
 Still out of scope:
 
-- team assignment UI;
-- timers/results UI;
 - online;
 - History;
+- PNG/export result card;
 - ruleset cost rendering;
 - Gentor/Abyss importer;
 - GCSIM scoring;

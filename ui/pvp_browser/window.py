@@ -45,6 +45,15 @@ from run_workspace.pvp.free_draft_controller import (
     FreeDraftController,
     FreeDraftControllerActionRejected,
 )
+from run_workspace.pvp.match_result import ChamberTimer, PlayerMatchTimers
+from run_workspace.pvp.session import (
+    CharacterWeaponAssignment,
+    PlayerTeamAssignment,
+    PlayerWeaponAssignment,
+    TeamAssignment,
+    validate_team_assignment,
+    validate_weapon_assignment,
+)
 from run_workspace.pvp.validation import DeckValidationReport, validate_draft_deck
 from ui.character_assets import (
     CHARACTER_RARITY_FILTERS,
@@ -109,6 +118,20 @@ _PVP_DECK_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 PVP_PAGE_DECKS = "decks"
 PVP_PAGE_PLAY = "play"
 PVP_PAGE_DRAFT = "draft"
+PVP_DRAFT_STAGE_DRAFT = "draft"
+PVP_DRAFT_STAGE_ASSIGNMENT = "assignment"
+PVP_DRAFT_STAGE_WEAPONS = "weapons"
+PVP_DRAFT_STAGE_TIMERS_RESULTS = "timers_results"
+PVP_DRAFT_STAGE_COMPLETED_RESULT = "completed_result"
+PVP_DRAFT_STAGE_VALUES = (
+    PVP_DRAFT_STAGE_DRAFT,
+    PVP_DRAFT_STAGE_ASSIGNMENT,
+    PVP_DRAFT_STAGE_WEAPONS,
+    PVP_DRAFT_STAGE_TIMERS_RESULTS,
+    PVP_DRAFT_STAGE_COMPLETED_RESULT,
+)
+PVP_SEATS = ("player_1", "player_2")
+PVP_TIMER_CHAMBERS = ("1", "2", "3")
 
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
@@ -1226,6 +1249,13 @@ class PvpDraftUnifiedCardButton(QPushButton):
 
 class PvpDraftWorkspace(QWidget):
     card_clicked = Signal(dict)
+    assignment_character_clicked = Signal(str, str)
+    assignment_slot_clicked = Signal(str, int, int)
+    assignment_slot_clear_clicked = Signal(str, int, int)
+    weapon_character_clicked = Signal(str, str)
+    weapon_stack_clicked = Signal(str, str, str)
+    weapon_clear_clicked = Signal(str, str)
+    timer_text_changed = Signal(str, int, str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -1233,9 +1263,16 @@ class PvpDraftWorkspace(QWidget):
         self.setStyleSheet(PVP_DRAFT_WORKSPACE_STYLE)
         self._active_session: PvpActiveDraftSession | None = None
         self._status_text = ""
+        self._view_state: Mapping[str, Any] = {}
         self.card_buttons_by_character_id: dict[str, PvpDraftUnifiedCardButton] = {}
         self.card_buttons_by_key = self.card_buttons_by_character_id
         self.legal_card_buttons: list[PvpDraftUnifiedCardButton] = []
+        self.assignment_character_buttons_by_key: dict[tuple[str, str], QPushButton] = {}
+        self.assignment_slot_buttons_by_key: dict[tuple[str, int, int], QPushButton] = {}
+        self.weapon_character_buttons_by_key: dict[tuple[str, str], QPushButton] = {}
+        self.weapon_stack_buttons_by_key: dict[tuple[str, str], QPushButton] = {}
+        self.timer_inputs_by_key: dict[tuple[str, int], QLineEdit] = {}
+        self.timer_total_labels_by_seat: dict[str, QLabel] = {}
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 18, 18, 18)
@@ -1320,9 +1357,11 @@ class PvpDraftWorkspace(QWidget):
         session: PvpActiveDraftSession | None,
         *,
         status_text: str = "",
+        view_state: Mapping[str, Any] | None = None,
     ) -> None:
         self._active_session = session
         self._status_text = status_text
+        self._view_state = dict(view_state or {})
         self.refresh()
 
     def refresh(self) -> None:
@@ -1336,6 +1375,12 @@ class PvpDraftWorkspace(QWidget):
         self.status_label.setVisible(bool(self._status_text))
         self.card_buttons_by_key.clear()
         self.legal_card_buttons.clear()
+        self.assignment_character_buttons_by_key.clear()
+        self.assignment_slot_buttons_by_key.clear()
+        self.weapon_character_buttons_by_key.clear()
+        self.weapon_stack_buttons_by_key.clear()
+        self.timer_inputs_by_key.clear()
+        self.timer_total_labels_by_seat.clear()
         _clear_layout(self.scroll_layout)
 
         if session is None:
@@ -1346,14 +1391,24 @@ class PvpDraftWorkspace(QWidget):
 
         board = session.board_dict()
         complete = _draft_is_complete(board)
+        stage = _draft_stage(self._view_state)
         self.board_frame.setProperty("complete", complete)
         _refresh_qss(self.board_frame)
-        self.action_title_label.setText(_draft_action_title(board))
-        self.action_detail_label.setText(_draft_action_detail(board))
+        self.action_title_label.setText(_draft_stage_title(board, stage))
+        self.action_detail_label.setText(_draft_stage_detail(board, stage, self._view_state))
 
-        self.scroll_layout.addWidget(self._build_unified_pool(board, complete))
+        if stage == PVP_DRAFT_STAGE_ASSIGNMENT:
+            self.scroll_layout.addWidget(self._build_assignment_stage(board))
+        elif stage == PVP_DRAFT_STAGE_WEAPONS:
+            self.scroll_layout.addWidget(self._build_weapons_stage(board))
+        elif stage == PVP_DRAFT_STAGE_TIMERS_RESULTS:
+            self.scroll_layout.addWidget(self._build_timers_stage(board))
+        elif stage == PVP_DRAFT_STAGE_COMPLETED_RESULT:
+            self.scroll_layout.addWidget(self._build_result_stage(board))
+        else:
+            self.scroll_layout.addWidget(self._build_unified_pool(board, complete))
         self.scroll_layout.addStretch(1)
-        self._refresh_completed(board)
+        self._refresh_completed(board if stage == PVP_DRAFT_STAGE_DRAFT else None)
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.draft.title"))
@@ -1412,6 +1467,313 @@ class PvpDraftWorkspace(QWidget):
         layout.addWidget(grid_widget)
         return pool_frame
 
+    def _build_assignment_stage(self, board: Mapping[str, Any]) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("pvp_draft_pool_frame")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
+
+        for seat in PVP_SEATS:
+            section = QFrame()
+            section.setObjectName("pvp_draft_result_zone")
+            section_layout = QVBoxLayout(section)
+            section_layout.setContentsMargins(8, 8, 8, 8)
+            section_layout.setSpacing(7)
+            title = QLabel(_seat_label(seat))
+            title.setObjectName("pvp_draft_result_title")
+            section_layout.addWidget(title)
+
+            selected = _selected_assignment_character(self._view_state)
+            selected_text = (
+                _entry_display_name_for_id(board, selected[1])
+                if selected and selected[0] == seat
+                else tr("app_shell.pvp.post.none_selected")
+            )
+            selected_label = QLabel(
+                tr("app_shell.pvp.post.selected_character").format(
+                    character=selected_text,
+                )
+            )
+            selected_label.setObjectName("small_muted")
+            selected_label.setWordWrap(True)
+            section_layout.addWidget(selected_label)
+
+            available_title = QLabel(tr("app_shell.pvp.post.available_picks"))
+            available_title.setObjectName("pvp_deck_info_line")
+            section_layout.addWidget(available_title)
+            available_grid = QGridLayout()
+            available_grid.setContentsMargins(0, 0, 0, 0)
+            available_grid.setHorizontalSpacing(5)
+            available_grid.setVerticalSpacing(5)
+            used = _assigned_character_ids(self._view_state, seat)
+            available = [
+                character_id
+                for character_id in _picked_character_ids(board, seat)
+                if character_id not in used
+            ]
+            if not available:
+                empty = QLabel(tr("app_shell.pvp.post.available_empty"))
+                empty.setObjectName("small_muted")
+                section_layout.addWidget(empty)
+            else:
+                for index, character_id in enumerate(available):
+                    button = QPushButton(_entry_display_name_for_id(board, character_id))
+                    button.setObjectName("pvp_secondary_button")
+                    button.clicked.connect(
+                        lambda _checked=False, s=seat, c=character_id: (
+                            self.assignment_character_clicked.emit(s, c)
+                        )
+                    )
+                    self.assignment_character_buttons_by_key[(seat, character_id)] = button
+                    available_grid.addWidget(button, index // 4, index % 4)
+                section_layout.addLayout(available_grid)
+
+            slots = _assignment_slots(self._view_state, seat)
+            for team_index in range(2):
+                team_title = QLabel(
+                    tr("app_shell.pvp.post.team_title").format(
+                        index=team_index + 1,
+                    )
+                )
+                team_title.setObjectName("pvp_deck_info_line")
+                section_layout.addWidget(team_title)
+                slot_grid = QGridLayout()
+                slot_grid.setContentsMargins(0, 0, 0, 0)
+                slot_grid.setHorizontalSpacing(5)
+                slot_grid.setVerticalSpacing(5)
+                for slot_index in range(4):
+                    character_id = slots[team_index][slot_index]
+                    slot_text = (
+                        _entry_display_name_for_id(board, character_id)
+                        if character_id
+                        else tr("app_shell.pvp.post.empty_slot").format(
+                            index=slot_index + 1,
+                        )
+                    )
+                    slot_button = QPushButton(slot_text)
+                    slot_button.setObjectName("pvp_secondary_button")
+                    slot_button.clicked.connect(
+                        lambda _checked=False, s=seat, t=team_index, i=slot_index: (
+                            self.assignment_slot_clicked.emit(s, t, i)
+                        )
+                    )
+                    key = (seat, team_index, slot_index)
+                    self.assignment_slot_buttons_by_key[key] = slot_button
+                    slot_grid.addWidget(slot_button, slot_index, 0)
+                    clear_button = QPushButton("x")
+                    clear_button.setObjectName("row_cancel_button")
+                    clear_button.setEnabled(bool(character_id))
+                    clear_button.clicked.connect(
+                        lambda _checked=False, s=seat, t=team_index, i=slot_index: (
+                            self.assignment_slot_clear_clicked.emit(s, t, i)
+                        )
+                    )
+                    slot_grid.addWidget(clear_button, slot_index, 1)
+                section_layout.addLayout(slot_grid)
+            layout.addWidget(section)
+        return frame
+
+    def _build_weapons_stage(self, board: Mapping[str, Any]) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("pvp_draft_pool_frame")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
+        session = self._active_session
+        if session is None:
+            return frame
+
+        selected = _selected_weapon_character(self._view_state)
+        for seat in PVP_SEATS:
+            section = QFrame()
+            section.setObjectName("pvp_draft_result_zone")
+            section_layout = QVBoxLayout(section)
+            section_layout.setContentsMargins(8, 8, 8, 8)
+            section_layout.setSpacing(7)
+            title = QLabel(_seat_label(seat))
+            title.setObjectName("pvp_draft_result_title")
+            section_layout.addWidget(title)
+
+            character_ids = _assigned_character_ids(self._view_state, seat)
+            for character_id in character_ids:
+                current_stack_key = _weapon_assignment_map(
+                    self._view_state,
+                    seat,
+                ).get(character_id, "")
+                current_weapon = _weapon_display_name(
+                    session,
+                    seat,
+                    current_stack_key,
+                )
+                text = _entry_display_name_for_id(board, character_id)
+                if current_weapon:
+                    text = f"{text} / {current_weapon}"
+                button = QPushButton(text)
+                button.setObjectName("pvp_secondary_button")
+                button.setProperty(
+                    "selectedWeaponCharacter",
+                    bool(selected == (seat, character_id)),
+                )
+                button.clicked.connect(
+                    lambda _checked=False, s=seat, c=character_id: (
+                        self.weapon_character_clicked.emit(s, c)
+                    )
+                )
+                self.weapon_character_buttons_by_key[(seat, character_id)] = button
+                section_layout.addWidget(button)
+                if current_stack_key:
+                    clear = QPushButton(tr("app_shell.pvp.post.clear_weapon"))
+                    clear.setObjectName("row_cancel_button")
+                    clear.clicked.connect(
+                        lambda _checked=False, s=seat, c=character_id: (
+                            self.weapon_clear_clicked.emit(s, c)
+                        )
+                    )
+                    section_layout.addWidget(clear)
+
+            if selected and selected[0] == seat:
+                weapon_title = QLabel(tr("app_shell.pvp.post.compatible_weapons"))
+                weapon_title.setObjectName("pvp_deck_info_line")
+                section_layout.addWidget(weapon_title)
+                for stack in _compatible_weapon_stacks(
+                    session,
+                    seat,
+                    selected[1],
+                ):
+                    remaining = _weapon_stack_remaining(
+                        session,
+                        self._view_state,
+                        seat,
+                        stack.stack_key,
+                        selected_character_id=selected[1],
+                    )
+                    text = tr("app_shell.pvp.post.weapon_option").format(
+                        weapon=stack.display_name,
+                        count=remaining,
+                    )
+                    button = QPushButton(text)
+                    button.setObjectName("pvp_secondary_button")
+                    button.setEnabled(remaining > 0)
+                    button.clicked.connect(
+                        lambda _checked=False, s=seat, c=selected[1], k=stack.stack_key: (
+                            self.weapon_stack_clicked.emit(s, c, k)
+                        )
+                    )
+                    self.weapon_stack_buttons_by_key[(seat, stack.stack_key)] = button
+                    section_layout.addWidget(button)
+            layout.addWidget(section)
+        return frame
+
+    def _build_timers_stage(self, board: Mapping[str, Any]) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("pvp_draft_pool_frame")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
+        session = self._active_session
+
+        for seat in PVP_SEATS:
+            section = QFrame()
+            section.setObjectName("pvp_draft_result_zone")
+            section_layout = QVBoxLayout(section)
+            section_layout.setContentsMargins(8, 8, 8, 8)
+            section_layout.setSpacing(6)
+            title = QLabel(_seat_label(seat))
+            title.setObjectName("pvp_draft_result_title")
+            section_layout.addWidget(title)
+            if session is not None:
+                summary = QLabel(_post_draft_team_weapon_summary(session, board, seat))
+                summary.setObjectName("small_muted")
+                summary.setWordWrap(True)
+                section_layout.addWidget(summary)
+            for index, chamber_id in enumerate(PVP_TIMER_CHAMBERS):
+                row = QHBoxLayout()
+                label = QLabel(f"T{index + 1}")
+                label.setObjectName("pvp_deck_info_line")
+                row.addWidget(label)
+                line = QLineEdit()
+                line.setPlaceholderText("mm:ss")
+                line.setText(_timer_text(self._view_state, seat, index))
+                line.textChanged.connect(
+                    lambda text, s=seat, i=index: self._on_timer_text_changed(s, i, text)
+                )
+                self.timer_inputs_by_key[(seat, index)] = line
+                row.addWidget(line, 1)
+                section_layout.addLayout(row)
+            total = QLabel(
+                tr("app_shell.pvp.post.timer_total").format(
+                    total=_format_seconds(_timer_total_seconds(self._view_state, seat)),
+                )
+            )
+            total.setObjectName("small_muted")
+            self.timer_total_labels_by_seat[seat] = total
+            section_layout.addWidget(total)
+            layout.addWidget(section)
+        return frame
+
+    def _on_timer_text_changed(self, seat: str, index: int, text: str) -> None:
+        self.timer_text_changed.emit(seat, index, text)
+        total_label = self.timer_total_labels_by_seat.get(seat)
+        if total_label is None:
+            return
+        total = 0
+        for timer_index in range(len(PVP_TIMER_CHAMBERS)):
+            line = self.timer_inputs_by_key.get((seat, timer_index))
+            seconds = _parse_timer_text(line.text() if line is not None else "")
+            if seconds is not None:
+                total += seconds
+        total_label.setText(
+            tr("app_shell.pvp.post.timer_total").format(
+                total=_format_seconds(total),
+            )
+        )
+
+    def _build_result_stage(self, board: Mapping[str, Any]) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("pvp_draft_completed")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(7)
+        session = self._active_session
+        result = session.controller.state.match_result if session is not None else None
+        title = QLabel(tr("app_shell.pvp.post.result_summary_title"))
+        title.setObjectName("pvp_draft_result_title")
+        layout.addWidget(title)
+        if result is not None:
+            payload = result.to_dict()
+            lines = [
+                tr("app_shell.pvp.post.result_status").format(
+                    status=_text(payload.get("status")),
+                    winner=(
+                        _seat_label(_text(payload.get("winner_seat")))
+                        if payload.get("winner_seat")
+                        else tr("app_shell.pvp.draft.none")
+                    ),
+                    diff=int(payload.get("seconds_difference") or 0),
+                ),
+                tr("app_shell.pvp.post.timer_total_line").format(
+                    seat=_seat_label("player_1"),
+                    total=_format_seconds(_mapping(payload.get("totals")).get("player_1")),
+                ),
+                tr("app_shell.pvp.post.timer_total_line").format(
+                    seat=_seat_label("player_2"),
+                    total=_format_seconds(_mapping(payload.get("totals")).get("player_2")),
+                ),
+            ]
+            lines.extend(_result_chamber_timer_lines(payload))
+            for line_text in lines:
+                label = QLabel(line_text)
+                label.setObjectName("pvp_deck_info_line")
+                label.setWordWrap(True)
+                layout.addWidget(label)
+        for seat in PVP_SEATS:
+            label = QLabel(_post_draft_team_weapon_summary(session, board, seat))
+            label.setObjectName("small_muted")
+            label.setWordWrap(True)
+            layout.addWidget(label)
+        return frame
+
     def _refresh_completed(self, board: Mapping[str, Any] | None) -> None:
         visible = bool(board and _draft_is_complete(board))
         self.completed_frame.setVisible(visible)
@@ -1442,6 +1804,18 @@ class PvpWorkspace(QWidget):
         self.active_draft_session: PvpActiveDraftSession | None = None
         self._last_play_status = ""
         self._last_draft_status = ""
+        self.draft_stage = PVP_DRAFT_STAGE_DRAFT
+        self.assignment_slots_by_seat = _empty_assignment_slots_by_seat()
+        self.selected_assignment_character: tuple[str, str] | None = None
+        self.weapon_assignments_by_seat: dict[str, dict[str, str]] = {
+            seat: {}
+            for seat in PVP_SEATS
+        }
+        self.selected_weapon_character: tuple[str, str] | None = None
+        self.timer_texts_by_seat: dict[str, list[str]] = {
+            seat: [""] * len(PVP_TIMER_CHAMBERS)
+            for seat in PVP_SEATS
+        }
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -1462,6 +1836,21 @@ class PvpWorkspace(QWidget):
         self.stack.addWidget(self.draft_workspace)
         self.decks_workspace.state_changed.connect(self._on_decks_state_changed)
         self.draft_workspace.card_clicked.connect(self.apply_draft_card_click)
+        self.draft_workspace.assignment_character_clicked.connect(
+            self.select_assignment_character
+        )
+        self.draft_workspace.assignment_slot_clicked.connect(
+            self.assign_selected_character_to_slot
+        )
+        self.draft_workspace.assignment_slot_clear_clicked.connect(
+            self.clear_assignment_slot
+        )
+        self.draft_workspace.weapon_character_clicked.connect(
+            self.select_weapon_character
+        )
+        self.draft_workspace.weapon_stack_clicked.connect(self.assign_weapon_stack)
+        self.draft_workspace.weapon_clear_clicked.connect(self.clear_weapon_assignment)
+        self.draft_workspace.timer_text_changed.connect(self.set_timer_text)
         self._sync_play_workspace()
         self._sync_draft_workspace()
 
@@ -1653,6 +2042,7 @@ class PvpWorkspace(QWidget):
         )
         self._last_play_status = ""
         self._last_draft_status = ""
+        self._reset_post_draft_state()
         self._sync_play_workspace()
         self._sync_draft_workspace()
         self.set_page(PVP_PAGE_DRAFT)
@@ -1665,6 +2055,7 @@ class PvpWorkspace(QWidget):
             return
         self.active_draft_session = None
         self._last_draft_status = ""
+        self._reset_post_draft_state()
         self._sync_play_workspace()
         self._sync_draft_workspace()
         self.active_draft_changed.emit()
@@ -1714,11 +2105,329 @@ class PvpWorkspace(QWidget):
         self.state_changed.emit()
         return True
 
+    def continue_to_assignment(self) -> bool:
+        session = self.active_draft_session
+        if session is None or not _draft_is_complete(session.board_dict()):
+            self._last_draft_status = tr("app_shell.pvp.post.draft_not_complete")
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
+        self.draft_stage = PVP_DRAFT_STAGE_ASSIGNMENT
+        self._last_draft_status = tr("app_shell.pvp.post.assignment_started")
+        self._sync_draft_workspace()
+        self.state_changed.emit()
+        return True
+
+    def select_assignment_character(self, seat: str, character_id: str) -> None:
+        if seat not in PVP_SEATS or not character_id:
+            return
+        self.selected_assignment_character = (seat, character_id)
+        self._sync_draft_workspace()
+        self.state_changed.emit()
+
+    def assign_selected_character_to_slot(
+        self,
+        seat: str,
+        team_index: int,
+        slot_index: int,
+    ) -> None:
+        if seat not in PVP_SEATS:
+            return
+        slots = self.assignment_slots_by_seat[seat]
+        if not (0 <= team_index < 2 and 0 <= slot_index < 4):
+            return
+        selected = self.selected_assignment_character
+        if selected is None:
+            existing = slots[team_index][slot_index]
+            if existing:
+                self.selected_assignment_character = (seat, existing)
+                self._sync_draft_workspace()
+                self.state_changed.emit()
+            return
+        selected_seat, character_id = selected
+        if selected_seat != seat:
+            return
+        session = self.active_draft_session
+        if session is None or character_id not in _picked_character_ids(
+            session.board_dict(),
+            seat,
+        ):
+            return
+        for team in slots:
+            for index, value in enumerate(team):
+                if value == character_id:
+                    team[index] = None
+        slots[team_index][slot_index] = character_id
+        self.selected_assignment_character = None
+        self._clear_weapon_for_unassigned_characters(seat)
+        self._sync_draft_workspace()
+        self.state_changed.emit()
+
+    def clear_assignment_slot(self, seat: str, team_index: int, slot_index: int) -> None:
+        if seat not in PVP_SEATS:
+            return
+        slots = self.assignment_slots_by_seat[seat]
+        if not (0 <= team_index < 2 and 0 <= slot_index < 4):
+            return
+        slots[team_index][slot_index] = None
+        self._clear_weapon_for_unassigned_characters(seat)
+        self._sync_draft_workspace()
+        self.state_changed.emit()
+
+    def assignment_ready(self) -> bool:
+        session = self.active_draft_session
+        if session is None:
+            return False
+        return all(
+            validate_team_assignment(
+                session.controller.session_state,
+                self._team_assignment_for(seat),
+            ).ready
+            for seat in PVP_SEATS
+        )
+
+    def continue_to_weapons(self) -> bool:
+        session = self.active_draft_session
+        if session is None:
+            return False
+        try:
+            for seat in PVP_SEATS:
+                session.controller.set_team_assignment(self._team_assignment_for(seat))
+        except FreeDraftControllerActionRejected as exc:
+            self._last_draft_status = tr("app_shell.pvp.post.assignment_invalid").format(
+                code=getattr(exc, "code", "") or str(exc),
+            )
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
+        self.draft_stage = PVP_DRAFT_STAGE_WEAPONS
+        self.selected_assignment_character = None
+        self._last_draft_status = tr("app_shell.pvp.post.weapons_started")
+        self._sync_play_workspace()
+        self._sync_draft_workspace()
+        self.active_draft_changed.emit()
+        self.state_changed.emit()
+        return True
+
+    def select_weapon_character(self, seat: str, character_id: str) -> None:
+        if seat not in PVP_SEATS or not character_id:
+            return
+        self.selected_weapon_character = (seat, character_id)
+        self._sync_draft_workspace()
+        self.state_changed.emit()
+
+    def assign_weapon_stack(self, seat: str, character_id: str, stack_key: str) -> None:
+        if seat not in PVP_SEATS or not character_id or not stack_key:
+            return
+        session = self.active_draft_session
+        if session is None:
+            return
+        if not _weapon_stack_is_assignable(
+            session,
+            self._draft_view_state(),
+            seat,
+            character_id,
+            stack_key,
+        ):
+            self._last_draft_status = tr("app_shell.pvp.post.weapon_invalid")
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return
+        self.weapon_assignments_by_seat[seat][character_id] = stack_key
+        self._last_draft_status = ""
+        self._sync_draft_workspace()
+        self.state_changed.emit()
+
+    def clear_weapon_assignment(self, seat: str, character_id: str) -> None:
+        if seat in PVP_SEATS:
+            self.weapon_assignments_by_seat[seat].pop(character_id, None)
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+
+    def weapons_ready(self) -> bool:
+        session = self.active_draft_session
+        if session is None:
+            return False
+        return all(
+            validate_weapon_assignment(
+                session.controller.session_state,
+                self._team_assignment_for(seat),
+                self._weapon_assignment_for(seat),
+            ).ready
+            for seat in PVP_SEATS
+        )
+
+    def continue_to_timers(self) -> bool:
+        session = self.active_draft_session
+        if session is None:
+            return False
+        try:
+            for seat in PVP_SEATS:
+                session.controller.set_weapon_assignment(self._weapon_assignment_for(seat))
+        except FreeDraftControllerActionRejected as exc:
+            self._last_draft_status = tr("app_shell.pvp.post.weapon_invalid_code").format(
+                code=getattr(exc, "code", "") or str(exc),
+            )
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
+        self.draft_stage = PVP_DRAFT_STAGE_TIMERS_RESULTS
+        self.selected_weapon_character = None
+        self._last_draft_status = tr("app_shell.pvp.post.timers_started")
+        self._sync_play_workspace()
+        self._sync_draft_workspace()
+        self.active_draft_changed.emit()
+        self.state_changed.emit()
+        return True
+
+    def set_timer_text(self, seat: str, index: int, text: str) -> None:
+        if seat not in PVP_SEATS or not (0 <= index < len(PVP_TIMER_CHAMBERS)):
+            return
+        self.timer_texts_by_seat[seat][index] = text
+        self.state_changed.emit()
+
+    def timers_ready(self) -> bool:
+        return all(
+            _parse_timer_text(self.timer_texts_by_seat[seat][index]) is not None
+            for seat in PVP_SEATS
+            for index in range(len(PVP_TIMER_CHAMBERS))
+        )
+
+    def finalize_match_result(self) -> bool:
+        session = self.active_draft_session
+        if session is None:
+            return False
+        if not self.weapons_ready():
+            self._last_draft_status = tr("app_shell.pvp.post.weapon_invalid")
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
+        if not self.timers_ready():
+            self._last_draft_status = tr("app_shell.pvp.post.timers_invalid")
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
+        timers = {
+            seat: PlayerMatchTimers(
+                seat=seat,
+                chambers=tuple(
+                    ChamberTimer(
+                        room_id="local",
+                        chamber_id=PVP_TIMER_CHAMBERS[index],
+                        elapsed_seconds=_parse_timer_text(
+                            self.timer_texts_by_seat[seat][index],
+                        )
+                        or 0,
+                    )
+                    for index in range(len(PVP_TIMER_CHAMBERS))
+                ),
+            )
+            for seat in PVP_SEATS
+        }
+        session.controller.set_match_timers(timers["player_1"], timers["player_2"])
+        self.draft_stage = PVP_DRAFT_STAGE_COMPLETED_RESULT
+        self._last_draft_status = tr("app_shell.pvp.post.result_finalized")
+        self._sync_play_workspace()
+        self._sync_draft_workspace()
+        self.active_draft_changed.emit()
+        self.state_changed.emit()
+        return True
+
     def last_play_status(self) -> str:
         return self._last_play_status
 
     def last_draft_status(self) -> str:
         return self._last_draft_status
+
+    def _reset_post_draft_state(self) -> None:
+        self.draft_stage = PVP_DRAFT_STAGE_DRAFT
+        self.assignment_slots_by_seat = _empty_assignment_slots_by_seat()
+        self.selected_assignment_character = None
+        self.weapon_assignments_by_seat = {
+            seat: {}
+            for seat in PVP_SEATS
+        }
+        self.selected_weapon_character = None
+        self.timer_texts_by_seat = {
+            seat: [""] * len(PVP_TIMER_CHAMBERS)
+            for seat in PVP_SEATS
+        }
+
+    def _draft_view_state(self) -> dict[str, Any]:
+        return {
+            "stage": self.draft_stage,
+            "assignment_slots": {
+                seat: [list(team) for team in self.assignment_slots_by_seat[seat]]
+                for seat in PVP_SEATS
+            },
+            "selected_assignment_character": (
+                list(self.selected_assignment_character)
+                if self.selected_assignment_character is not None
+                else None
+            ),
+            "weapon_assignments": {
+                seat: dict(self.weapon_assignments_by_seat[seat])
+                for seat in PVP_SEATS
+            },
+            "selected_weapon_character": (
+                list(self.selected_weapon_character)
+                if self.selected_weapon_character is not None
+                else None
+            ),
+            "timer_texts": {
+                seat: list(self.timer_texts_by_seat[seat])
+                for seat in PVP_SEATS
+            },
+        }
+
+    def _team_assignment_for(self, seat: str) -> PlayerTeamAssignment:
+        slots = self.assignment_slots_by_seat.get(seat, [[None] * 4, [None] * 4])
+        teams = tuple(
+            TeamAssignment(
+                team_index=team_index,
+                character_ids=tuple(
+                    character_id
+                    for character_id in slots[team_index]
+                    if character_id
+                ),
+            )
+            for team_index in range(2)
+        )
+        return PlayerTeamAssignment(seat=seat, teams=teams)
+
+    def _weapon_assignment_for(self, seat: str) -> PlayerWeaponAssignment:
+        assigned = set(
+            character_id
+            for team in self.assignment_slots_by_seat.get(seat, [])
+            for character_id in team
+            if character_id
+        )
+        assignments = tuple(
+            CharacterWeaponAssignment(
+                character_id=character_id,
+                weapon_stack_key=stack_key,
+            )
+            for character_id, stack_key in sorted(
+                self.weapon_assignments_by_seat.get(seat, {}).items()
+            )
+            if character_id in assigned and stack_key
+        )
+        return PlayerWeaponAssignment(seat=seat, assignments=assignments)
+
+    def _clear_weapon_for_unassigned_characters(self, seat: str) -> None:
+        assigned = set(
+            character_id
+            for team in self.assignment_slots_by_seat.get(seat, [])
+            for character_id in team
+            if character_id
+        )
+        current = self.weapon_assignments_by_seat.get(seat, {})
+        for character_id in list(current):
+            if character_id not in assigned:
+                current.pop(character_id, None)
+        selected = self.selected_weapon_character
+        if selected is not None and selected[0] == seat and selected[1] not in assigned:
+            self.selected_weapon_character = None
 
     def _on_decks_state_changed(self) -> None:
         self._sync_play_workspace()
@@ -1731,6 +2440,7 @@ class PvpWorkspace(QWidget):
         self.draft_workspace.set_active_session(
             self.active_draft_session,
             status_text=self._last_draft_status,
+            view_state=self._draft_view_state(),
         )
 
 
@@ -2592,6 +3302,11 @@ class PvpDraftRightPanel(QWidget):
             self.status_labels.append(label)
         root.addWidget(self.status_frame)
 
+        self.stage_button = QPushButton()
+        self.stage_button.setObjectName("pvp_primary_button")
+        self.stage_button.clicked.connect(self._on_stage_button_clicked)
+        root.addWidget(self.stage_button)
+
         self.result_zone_frames: dict[tuple[str, str], QFrame] = {}
         self.result_zone_title_labels: dict[tuple[str, str], QLabel] = {}
         self.result_zone_value_labels: dict[tuple[str, str], QLabel] = {}
@@ -2660,6 +3375,7 @@ class PvpDraftRightPanel(QWidget):
         self.log_title_label.setVisible(has_session)
         self.clear_button.setVisible(has_session)
         self.clear_button.setEnabled(has_session)
+        self.stage_button.setVisible(has_session)
         self.play_button.setVisible(True)
         self.message_label.setText(self.workspace.last_draft_status())
         self.message_label.setVisible(bool(self.message_label.text()))
@@ -2670,15 +3386,23 @@ class PvpDraftRightPanel(QWidget):
                 label.setVisible(False)
             for frame in self.result_zone_frames.values():
                 frame.setVisible(False)
+            self.stage_button.setVisible(False)
             return
 
         board = session.board_dict()
-        status_lines = _draft_panel_status_lines(board)
+        stage = self.workspace.draft_stage
+        status_lines = _draft_panel_status_lines(board, stage=stage, workspace=self.workspace)
         for index, label in enumerate(self.status_labels):
             text = status_lines[index] if index < len(status_lines) else ""
             label.setText(text)
             label.setVisible(bool(text))
 
+        self._refresh_stage_button(board, stage)
+
+        show_draft_summary = stage in {
+            PVP_DRAFT_STAGE_DRAFT,
+            PVP_DRAFT_STAGE_COMPLETED_RESULT,
+        }
         for key, frame in self.result_zone_frames.items():
             seat, zone = key
             self.result_zone_title_labels[key].setText(
@@ -2687,13 +3411,14 @@ class PvpDraftRightPanel(QWidget):
             self.result_zone_value_labels[key].setText(
                 _draft_result_zone_text(board, seat=seat, zone=zone)
             )
-            frame.setVisible(True)
+            frame.setVisible(show_draft_summary)
 
         log_lines = _draft_action_log_lines(board, limit=len(self.log_labels))
+        self.log_title_label.setVisible(show_draft_summary)
         for index, label in enumerate(self.log_labels):
             text = log_lines[index] if index < len(log_lines) else ""
             label.setText(text)
-            label.setVisible(bool(text))
+            label.setVisible(show_draft_summary and bool(text))
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.draft.title"))
@@ -2702,6 +3427,40 @@ class PvpDraftRightPanel(QWidget):
         self.clear_button.setText(tr("app_shell.pvp.draft.abandon"))
         self.play_button.setText(tr("app_shell.pvp.draft.back_to_play"))
         self.refresh()
+
+    def _refresh_stage_button(self, board: Mapping[str, Any], stage: str) -> None:
+        if stage == PVP_DRAFT_STAGE_DRAFT:
+            self.stage_button.setText(tr("app_shell.pvp.post.continue_assignment"))
+            self.stage_button.setVisible(_draft_is_complete(board))
+            self.stage_button.setEnabled(_draft_is_complete(board))
+            return
+        if stage == PVP_DRAFT_STAGE_ASSIGNMENT:
+            self.stage_button.setText(tr("app_shell.pvp.post.continue_weapons"))
+            self.stage_button.setVisible(True)
+            self.stage_button.setEnabled(self.workspace.assignment_ready())
+            return
+        if stage == PVP_DRAFT_STAGE_WEAPONS:
+            self.stage_button.setText(tr("app_shell.pvp.post.continue_timers"))
+            self.stage_button.setVisible(True)
+            self.stage_button.setEnabled(self.workspace.weapons_ready())
+            return
+        if stage == PVP_DRAFT_STAGE_TIMERS_RESULTS:
+            self.stage_button.setText(tr("app_shell.pvp.post.finalize_result"))
+            self.stage_button.setVisible(True)
+            self.stage_button.setEnabled(self.workspace.timers_ready())
+            return
+        self.stage_button.setVisible(False)
+
+    def _on_stage_button_clicked(self) -> None:
+        stage = self.workspace.draft_stage
+        if stage == PVP_DRAFT_STAGE_DRAFT:
+            self.workspace.continue_to_assignment()
+        elif stage == PVP_DRAFT_STAGE_ASSIGNMENT:
+            self.workspace.continue_to_weapons()
+        elif stage == PVP_DRAFT_STAGE_WEAPONS:
+            self.workspace.continue_to_timers()
+        elif stage == PVP_DRAFT_STAGE_TIMERS_RESULTS:
+            self.workspace.finalize_match_result()
 
 
 class PvpRightPanelHost(QWidget):
@@ -2805,7 +3564,114 @@ def _draft_action_detail(board: Mapping[str, Any]) -> str:
     )
 
 
-def _draft_panel_status_lines(board: Mapping[str, Any]) -> list[str]:
+def _draft_panel_status_lines(
+    board: Mapping[str, Any],
+    *,
+    stage: str = PVP_DRAFT_STAGE_DRAFT,
+    workspace: PvpWorkspace | None = None,
+) -> list[str]:
+    if stage == PVP_DRAFT_STAGE_ASSIGNMENT and workspace is not None:
+        selected = workspace.selected_assignment_character
+        selected_text = (
+            f"{_seat_short_label(selected[0])} "
+            f"{_entry_display_name_for_id(board, selected[1])}"
+            if selected is not None
+            else tr("app_shell.pvp.post.none_selected")
+        )
+        return [
+            tr("app_shell.pvp.post.stage_assignment"),
+            tr("app_shell.pvp.post.assignment_panel_status").format(
+                p1=sum(
+                    1
+                    for team in workspace.assignment_slots_by_seat["player_1"]
+                    for character_id in team
+                    if character_id
+                ),
+                p2=sum(
+                    1
+                    for team in workspace.assignment_slots_by_seat["player_2"]
+                    for character_id in team
+                    if character_id
+                ),
+            ),
+            tr("app_shell.pvp.post.selected_character").format(
+                character=selected_text,
+            ),
+            tr("app_shell.pvp.post.ready_status").format(
+                ready=_ready_text(workspace.assignment_ready()),
+            ),
+        ]
+    if stage == PVP_DRAFT_STAGE_WEAPONS and workspace is not None:
+        selected = workspace.selected_weapon_character
+        selected_text = (
+            f"{_seat_short_label(selected[0])} "
+            f"{_entry_display_name_for_id(board, selected[1])}"
+            if selected is not None
+            else tr("app_shell.pvp.post.none_selected")
+        )
+        return [
+            tr("app_shell.pvp.post.stage_weapons"),
+            tr("app_shell.pvp.post.weapon_panel_status").format(
+                p1=len(workspace.weapon_assignments_by_seat["player_1"]),
+                p2=len(workspace.weapon_assignments_by_seat["player_2"]),
+            ),
+            tr("app_shell.pvp.post.selected_character").format(
+                character=selected_text,
+            ),
+            tr("app_shell.pvp.post.ready_status").format(
+                ready=_ready_text(workspace.weapons_ready()),
+            ),
+        ]
+    if stage == PVP_DRAFT_STAGE_TIMERS_RESULTS and workspace is not None:
+        view_state = workspace._draft_view_state()
+        return [
+            tr("app_shell.pvp.post.stage_timers"),
+            tr("app_shell.pvp.post.timer_panel_status").format(
+                p1=_valid_timer_count(view_state, "player_1"),
+                p2=_valid_timer_count(view_state, "player_2"),
+            ),
+            tr("app_shell.pvp.post.timer_total_line").format(
+                seat=_seat_label("player_1"),
+                total=_format_seconds(_timer_total_seconds(view_state, "player_1")),
+            ),
+            tr("app_shell.pvp.post.timer_total_line").format(
+                seat=_seat_label("player_2"),
+                total=_format_seconds(_timer_total_seconds(view_state, "player_2")),
+            ),
+            tr("app_shell.pvp.post.ready_status").format(
+                ready=_ready_text(workspace.timers_ready()),
+            ),
+        ]
+    if stage == PVP_DRAFT_STAGE_COMPLETED_RESULT and workspace is not None:
+        result = (
+            workspace.active_draft_session.controller.state.match_result
+            if workspace.active_draft_session is not None
+            else None
+        )
+        if result is None:
+            return [tr("app_shell.pvp.post.stage_result")]
+        payload = result.to_dict()
+        return [
+            tr("app_shell.pvp.post.stage_result"),
+            tr("app_shell.pvp.post.result_status").format(
+                status=_text(payload.get("status")),
+                winner=(
+                    _seat_label(_text(payload.get("winner_seat")))
+                    if payload.get("winner_seat")
+                    else tr("app_shell.pvp.draft.none")
+                ),
+                diff=int(payload.get("seconds_difference") or 0),
+            ),
+            tr("app_shell.pvp.post.timer_total_line").format(
+                seat=_seat_label("player_1"),
+                total=_format_seconds(_mapping(payload.get("totals")).get("player_1")),
+            ),
+            tr("app_shell.pvp.post.timer_total_line").format(
+                seat=_seat_label("player_2"),
+                total=_format_seconds(_mapping(payload.get("totals")).get("player_2")),
+            ),
+        ]
+
     draft_system = _mapping(board.get("draft_system"))
     progress = _mapping(board.get("progress"))
     requirement = _mapping(board.get("current_requirement"))
@@ -2835,6 +3701,14 @@ def _draft_panel_status_lines(board: Mapping[str, Any]) -> list[str]:
             ),
         ),
     ]
+
+
+def _ready_text(value: bool) -> str:
+    return (
+        tr("app_shell.pvp.post.ready_yes")
+        if value
+        else tr("app_shell.pvp.post.ready_no")
+    )
 
 
 def _draft_action_log_lines(
@@ -3035,6 +3909,364 @@ def _draft_entry_display_name(
     if entry is None:
         return fallback
     return _text(entry.get("display_name")) or fallback
+
+
+def _empty_assignment_slots_by_seat() -> dict[str, list[list[str | None]]]:
+    return {
+        seat: [[None for _slot in range(4)] for _team in range(2)]
+        for seat in PVP_SEATS
+    }
+
+
+def _draft_stage(view_state: Mapping[str, Any]) -> str:
+    stage = _text(view_state.get("stage"))
+    return stage if stage in PVP_DRAFT_STAGE_VALUES else PVP_DRAFT_STAGE_DRAFT
+
+
+def _draft_stage_title(board: Mapping[str, Any], stage: str) -> str:
+    if stage == PVP_DRAFT_STAGE_ASSIGNMENT:
+        return tr("app_shell.pvp.post.assignment_title")
+    if stage == PVP_DRAFT_STAGE_WEAPONS:
+        return tr("app_shell.pvp.post.weapons_title")
+    if stage == PVP_DRAFT_STAGE_TIMERS_RESULTS:
+        return tr("app_shell.pvp.post.timers_title")
+    if stage == PVP_DRAFT_STAGE_COMPLETED_RESULT:
+        return tr("app_shell.pvp.post.result_summary_title")
+    return _draft_action_title(board)
+
+
+def _draft_stage_detail(
+    board: Mapping[str, Any],
+    stage: str,
+    view_state: Mapping[str, Any],
+) -> str:
+    if stage == PVP_DRAFT_STAGE_ASSIGNMENT:
+        return tr("app_shell.pvp.post.assignment_detail").format(
+            p1=len(_assigned_character_ids(view_state, "player_1")),
+            p2=len(_assigned_character_ids(view_state, "player_2")),
+        )
+    if stage == PVP_DRAFT_STAGE_WEAPONS:
+        return tr("app_shell.pvp.post.weapons_detail").format(
+            p1=len(_weapon_assignment_map(view_state, "player_1")),
+            p2=len(_weapon_assignment_map(view_state, "player_2")),
+        )
+    if stage == PVP_DRAFT_STAGE_TIMERS_RESULTS:
+        return tr("app_shell.pvp.post.timers_detail").format(
+            p1=_valid_timer_count(view_state, "player_1"),
+            p2=_valid_timer_count(view_state, "player_2"),
+        )
+    if stage == PVP_DRAFT_STAGE_COMPLETED_RESULT:
+        return tr("app_shell.pvp.post.result_detail")
+    return _draft_action_detail(board)
+
+
+def _selected_assignment_character(
+    view_state: Mapping[str, Any],
+) -> tuple[str, str] | None:
+    return _seat_character_pair(view_state.get("selected_assignment_character"))
+
+
+def _selected_weapon_character(
+    view_state: Mapping[str, Any],
+) -> tuple[str, str] | None:
+    return _seat_character_pair(view_state.get("selected_weapon_character"))
+
+
+def _seat_character_pair(value: Any) -> tuple[str, str] | None:
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        return None
+    seat = _text(value[0])
+    character_id = _text(value[1])
+    if seat not in PVP_SEATS or not character_id:
+        return None
+    return seat, character_id
+
+
+def _assignment_slots(
+    view_state: Mapping[str, Any],
+    seat: str,
+) -> list[list[str | None]]:
+    slots = [[None for _slot in range(4)] for _team in range(2)]
+    source = _mapping(view_state.get("assignment_slots")).get(seat)
+    if not isinstance(source, list):
+        return slots
+    for team_index, team_value in enumerate(source[:2]):
+        if not isinstance(team_value, list):
+            continue
+        for slot_index, character_id in enumerate(team_value[:4]):
+            text = _text(character_id)
+            slots[team_index][slot_index] = text or None
+    return slots
+
+
+def _assigned_character_ids(
+    view_state: Mapping[str, Any],
+    seat: str,
+) -> tuple[str, ...]:
+    return tuple(
+        character_id
+        for team in _assignment_slots(view_state, seat)
+        for character_id in team
+        if character_id
+    )
+
+
+def _picked_character_ids(board: Mapping[str, Any], seat: str) -> tuple[str, ...]:
+    result_zones = _mapping(_unified_pool(board).get("result_zones"))
+    picked = _mapping(result_zones.get(seat)).get("picked")
+    if not isinstance(picked, list):
+        return ()
+    return tuple(_text(character_id) for character_id in picked if _text(character_id))
+
+
+def _entry_display_name_for_id(board: Mapping[str, Any], character_id: str) -> str:
+    return _draft_entry_display_name(
+        _draft_entries_by_id(board).get(character_id),
+        character_id,
+    )
+
+
+def _weapon_assignment_map(
+    view_state: Mapping[str, Any],
+    seat: str,
+) -> dict[str, str]:
+    values = _mapping(_mapping(view_state.get("weapon_assignments")).get(seat))
+    return {
+        _text(character_id): _text(stack_key)
+        for character_id, stack_key in values.items()
+        if _text(character_id) and _text(stack_key)
+    }
+
+
+def _compatible_weapon_stacks(
+    session: PvpActiveDraftSession,
+    seat: str,
+    character_id: str,
+) -> tuple[Any, ...]:
+    try:
+        deck = session.controller.session_state.deck_for(seat)
+    except Exception:
+        return ()
+    character = deck.character_by_id.get(character_id)
+    if character is None:
+        return ()
+    character_weapon_type = _filter_token(character.weapon_type)
+    stacks = [
+        stack
+        for stack in deck.weapons
+        if _filter_token(stack.weapon_type) == character_weapon_type
+    ]
+    return tuple(
+        sorted(
+            stacks,
+            key=lambda stack: (
+                stack.display_name.casefold(),
+                -(stack.rarity or 0),
+                -(stack.level or 0),
+                -(stack.refinement or 0),
+                stack.stack_key,
+            ),
+        )
+    )
+
+
+def _weapon_stack_remaining(
+    session: PvpActiveDraftSession,
+    view_state: Mapping[str, Any],
+    seat: str,
+    stack_key: str,
+    *,
+    selected_character_id: str = "",
+) -> int:
+    try:
+        deck = session.controller.session_state.deck_for(seat)
+    except Exception:
+        return 0
+    stack = deck.weapon_stack_by_key.get(stack_key)
+    if stack is None:
+        return 0
+    available = max(0, int(stack.count or 0))
+    used = sum(
+        1
+        for character_id, assigned_stack_key in _weapon_assignment_map(
+            view_state,
+            seat,
+        ).items()
+        if assigned_stack_key == stack_key and character_id != selected_character_id
+    )
+    return max(0, available - used)
+
+
+def _weapon_stack_is_assignable(
+    session: PvpActiveDraftSession,
+    view_state: Mapping[str, Any],
+    seat: str,
+    character_id: str,
+    stack_key: str,
+) -> bool:
+    if character_id not in set(_assigned_character_ids(view_state, seat)):
+        return False
+    try:
+        deck = session.controller.session_state.deck_for(seat)
+    except Exception:
+        return False
+    character = deck.character_by_id.get(character_id)
+    stack = deck.weapon_stack_by_key.get(stack_key)
+    if character is None or stack is None:
+        return False
+    if _filter_token(character.weapon_type) != _filter_token(stack.weapon_type):
+        return False
+    return _weapon_stack_remaining(
+        session,
+        view_state,
+        seat,
+        stack_key,
+        selected_character_id=character_id,
+    ) > 0
+
+
+def _weapon_display_name(
+    session: PvpActiveDraftSession,
+    seat: str,
+    stack_key: str,
+) -> str:
+    if not stack_key:
+        return ""
+    try:
+        deck = session.controller.session_state.deck_for(seat)
+    except Exception:
+        return ""
+    stack = deck.weapon_stack_by_key.get(stack_key)
+    return stack.display_name if stack is not None else stack_key
+
+
+def _timer_text(view_state: Mapping[str, Any], seat: str, index: int) -> str:
+    values = _mapping(view_state.get("timer_texts")).get(seat)
+    if not isinstance(values, list) or not (0 <= index < len(values)):
+        return ""
+    return _text(values[index])
+
+
+def _parse_timer_text(text: str) -> int | None:
+    value = _text(text)
+    if not value:
+        return None
+    if ":" not in value:
+        try:
+            seconds = int(value)
+        except ValueError:
+            return None
+        return seconds if seconds >= 0 else None
+    parts = value.split(":")
+    if len(parts) != 2:
+        return None
+    minutes_text, seconds_text = parts
+    if not minutes_text.isdigit() or not seconds_text.isdigit():
+        return None
+    minutes = int(minutes_text)
+    seconds = int(seconds_text)
+    if seconds >= 60:
+        return None
+    return minutes * 60 + seconds
+
+
+def _timer_total_seconds(view_state: Mapping[str, Any], seat: str) -> int:
+    total = 0
+    for index in range(len(PVP_TIMER_CHAMBERS)):
+        seconds = _parse_timer_text(_timer_text(view_state, seat, index))
+        if seconds is not None:
+            total += seconds
+    return total
+
+
+def _valid_timer_count(view_state: Mapping[str, Any], seat: str) -> int:
+    return sum(
+        1
+        for index in range(len(PVP_TIMER_CHAMBERS))
+        if _parse_timer_text(_timer_text(view_state, seat, index)) is not None
+    )
+
+
+def _format_seconds(value: Any) -> str:
+    try:
+        seconds = max(0, int(value or 0))
+    except (TypeError, ValueError):
+        seconds = 0
+    minutes, remainder = divmod(seconds, 60)
+    return f"{minutes:02d}:{remainder:02d}"
+
+
+def _post_draft_team_weapon_summary(
+    session: PvpActiveDraftSession | None,
+    board: Mapping[str, Any],
+    seat: str,
+) -> str:
+    if session is None:
+        return ""
+    state = session.controller.state
+    team_assignment = state.team_assignments.get(seat)
+    if team_assignment is None:
+        return tr("app_shell.pvp.post.team_summary_missing").format(
+            seat=_seat_label(seat),
+        )
+    weapon_assignment = state.weapon_assignments.get(seat)
+    weapon_by_character = {
+        assignment.character_id: assignment.weapon_stack_key
+        for assignment in (weapon_assignment.assignments if weapon_assignment else ())
+    }
+    try:
+        deck = session.controller.session_state.deck_for(seat)
+    except Exception:
+        deck = None
+    team_parts: list[str] = []
+    for team in sorted(team_assignment.teams, key=lambda item: item.team_index):
+        character_parts: list[str] = []
+        for character_id in team.character_ids:
+            character_name = _entry_display_name_for_id(board, character_id)
+            stack_key = weapon_by_character.get(character_id, "")
+            weapon_name = ""
+            if deck is not None and stack_key:
+                stack = deck.weapon_stack_by_key.get(stack_key)
+                weapon_name = stack.display_name if stack is not None else stack_key
+            character_parts.append(
+                f"{character_name} ({weapon_name or tr('app_shell.pvp.draft.none')})"
+            )
+        team_parts.append(
+            tr("app_shell.pvp.post.team_summary_team").format(
+                index=team.team_index + 1,
+                characters=", ".join(character_parts)
+                or tr("app_shell.pvp.draft.none"),
+            )
+        )
+    return tr("app_shell.pvp.post.team_summary").format(
+        seat=_seat_label(seat),
+        teams=" | ".join(team_parts),
+    )
+
+
+def _result_chamber_timer_lines(payload: Mapping[str, Any]) -> list[str]:
+    lines: list[str] = []
+    for seat, timer_key in (
+        ("player_1", "player_1_timers"),
+        ("player_2", "player_2_timers"),
+    ):
+        chambers = _mapping(payload.get(timer_key)).get("chambers")
+        if not isinstance(chambers, list):
+            continue
+        for index, chamber_value in enumerate(chambers):
+            chamber = _mapping(chamber_value)
+            chamber_id = _text(chamber.get("chamber_id")) or str(index + 1)
+            seconds = chamber.get("normalized_elapsed_seconds")
+            if seconds is None:
+                seconds = chamber.get("elapsed_seconds")
+            lines.append(
+                tr("app_shell.pvp.post.timer_chamber_line").format(
+                    seat=_seat_label(seat),
+                    chamber=chamber_id,
+                    total=_format_seconds(seconds),
+                )
+            )
+    return lines
 
 
 def _is_legal_card(board: Mapping[str, Any], seat: str, character_id: str) -> bool:

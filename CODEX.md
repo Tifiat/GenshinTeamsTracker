@@ -539,7 +539,8 @@ PvP UI direction exists at `docs/handoff/PVP_UI_ROADMAP.md`. The backend
 implementation target is a full local Hot-seat / Ghost Deck offline loop with
 two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
 weapon assignment, timers, and winner summary. Decks mode v0, Play/local match
-setup v0, and Draft board v0 are implemented with PvP UI widgets owned by
+setup v0, Draft board v0, and local post-draft Assignment/Weapon/Timers/
+Completed result v0 are implemented with PvP UI widgets owned by
 `ui/pvp_browser/`; Decks persists `gtt.pvp_deck_preset` JSON under
 `data/pvp/decks/`, shows account characters/weapons in view/edit mode, and
 validates by converting presets to backend `DraftDeck`. Play chooses Player
@@ -547,8 +548,10 @@ validates by converting presets to backend `DraftDeck`. Play chooses Player
 `FreeDraftController`. Draft consumes the backend `unified_pool`, renders one
 readable character pool, sends legal pick/ban clicks through backend action
 payloads, shows right-panel pick/ban zones, and can complete the full Free
-Draft schedule locally. The next PvP code target is either a short Draft polish
-pass after manual use or Team Assignment v0.
+Draft schedule locally, then continues through assignment, weapon assignment,
+manual timers, and read-only result summary. The next PvP code target is
+post-draft polish/review affordances or export/history only after those
+contracts are ready.
 Shared observed weapon-stack identity for Deck presets and
 future PvP screens lives in `run_workspace/pvp/weapon_identity.py`.
 Reference-site findings live in
@@ -579,6 +582,10 @@ final/result board states. Validate board projection dictionaries with
 account-derived Player 2 deck copy should import
 `run_workspace.pvp.account_deck_copy.copy_deck_for_player_2`, not the
 `account_full_loop_smoke` CLI module.
+Current offscreen PvP UI full-flow smoke entrypoint is
+`python -m run_workspace.pvp.ui_full_flow_smoke`; it creates temp local decks,
+completes pick/ban, assignment, weapon assignment, timers, and result without
+writing sessions/history.
 Current PvP session bundle smoke entrypoint is
 `python -m run_workspace.pvp.session_bundle_smoke`; default mode uses synthetic
 fixtures and writes no files, `--account` explicitly uses local account data,

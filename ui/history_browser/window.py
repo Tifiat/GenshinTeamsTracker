@@ -1,8 +1,8 @@
-"""Minimal History Browser workspace for immutable snapshot rows.
+"""History Browser workspace for immutable snapshot rows and preview cards.
 
 This module owns the first AppShell History left workspace reader/list. It does
-not render export previews or full right-panel snapshot details yet; those
-future product rules live in `docs/handoff/HISTORY_BROWSER.md`.
+not query live account/session/cache data while browsing saved snapshots; future
+product rules live in `docs/handoff/HISTORY_BROWSER.md`.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -25,6 +26,12 @@ from run_workspace.history_snapshot import (
     HISTORY_RUN_TYPE_ABYSS,
     HISTORY_RUN_TYPE_DPS_DUMMY,
     HISTORY_UNKNOWN_ABYSS_PERIOD,
+    HistorySnapshotBundleError,
+    HistorySnapshotBundleStore,
+)
+from run_workspace.history_snapshot_preview import (
+    default_history_snapshot_preview_path,
+    render_history_snapshot_preview,
 )
 from run_workspace.history_snapshot_listing import (
     HistorySnapshotDetailsPayload,
@@ -74,6 +81,8 @@ class HistoryBrowserWorkspace(QFrame):
         self.snapshot_root = Path(snapshot_root) if snapshot_root is not None else None
         self._listing = HistorySnapshotSummaryListing()
         self._selected_bundle_id = ""
+        self._selected_preview_path: Path | None = None
+        self._preview_error_text = ""
         self._summaries_by_bundle_id: dict[str, HistoryRunSummary] = {}
         self._row_widgets_by_bundle_id: dict[str, "HistoryRunRowWidget"] = {}
         root = QVBoxLayout(self)
@@ -102,6 +111,25 @@ class HistoryBrowserWorkspace(QFrame):
         self.error_label.setWordWrap(True)
         self.error_label.setObjectName("WarningLabel")
         root.addWidget(self.error_label)
+
+        self.preview_frame = QFrame()
+        self.preview_frame.setObjectName("InfoBlock")
+        preview_layout = QVBoxLayout(self.preview_frame)
+        preview_layout.setContentsMargins(10, 10, 10, 10)
+        preview_layout.setSpacing(8)
+        self.preview_title_label = QLabel()
+        self.preview_title_label.setObjectName("SectionTitle")
+        preview_layout.addWidget(self.preview_title_label)
+        self.preview_status_label = QLabel()
+        self.preview_status_label.setWordWrap(True)
+        self.preview_status_label.setObjectName("MutedLabel")
+        preview_layout.addWidget(self.preview_status_label)
+        self.preview_image_label = QLabel()
+        self.preview_image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.preview_image_label.setMinimumHeight(120)
+        preview_layout.addWidget(self.preview_image_label)
+        self.preview_frame.setVisible(False)
+        root.addWidget(self.preview_frame, 0)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -137,16 +165,22 @@ class HistoryBrowserWorkspace(QFrame):
         if self._selected_bundle_id:
             self._emit_selected_payload(self._selected_bundle_id)
         else:
+            self._clear_preview()
             self.snapshot_selected.emit(None)
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.history.title"))
         self.refresh_button.setText(tr("app_shell.history.refresh"))
         self.empty_label.setText(tr("app_shell.history.empty"))
+        self.preview_title_label.setText(tr("app_shell.history.preview.title"))
+        self._refresh_preview_status_text()
         self._render_listing()
 
     def selected_bundle_id(self) -> str:
         return self._selected_bundle_id
+
+    def selected_preview_path(self) -> Path | None:
+        return self._selected_preview_path
 
     def row_widget(self, bundle_id: str) -> "HistoryRunRowWidget | None":
         return self._row_widgets_by_bundle_id.get(bundle_id)
@@ -276,6 +310,7 @@ class HistoryBrowserWorkspace(QFrame):
 
     def _emit_selected_payload(self, bundle_id: str) -> None:
         if self.snapshot_root is None:
+            self._clear_preview()
             self.snapshot_selected.emit(None)
             return
         payload = load_history_snapshot_details_payload(
@@ -283,6 +318,74 @@ class HistoryBrowserWorkspace(QFrame):
             bundle_id,
         )
         self.snapshot_selected.emit(payload)
+        self._render_selected_preview(bundle_id)
+
+    def _render_selected_preview(self, bundle_id: str) -> None:
+        summary = self._summaries_by_bundle_id.get(bundle_id)
+        if self.snapshot_root is None or summary is None:
+            self._clear_preview()
+            return
+        output_path = default_history_snapshot_preview_path(summary.bundle_path)
+        if output_path.exists() and _path_is_newer(output_path, summary.bundle_path):
+            if self._show_preview_path(output_path):
+                return
+        try:
+            bundle = HistorySnapshotBundleStore(self.snapshot_root).read_bundle(bundle_id)
+        except HistorySnapshotBundleError as exc:
+            self._show_preview_error(str(exc) or exc.__class__.__name__)
+            return
+        result = render_history_snapshot_preview(bundle, output_path=output_path)
+        if not result.success or result.output_path is None:
+            self._show_preview_error(result.error_text or "preview_render_failed")
+            return
+        if not self._show_preview_path(result.output_path):
+            self._show_preview_error(f"preview_image_unreadable: {result.output_path}")
+
+    def _show_preview_path(self, path: Path) -> bool:
+        pixmap = QPixmap(str(path))
+        if pixmap.isNull():
+            return False
+        width = min(720, pixmap.width())
+        display_pixmap = pixmap.scaledToWidth(
+            width,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self.preview_image_label.setPixmap(display_pixmap)
+        self._selected_preview_path = Path(path)
+        self._preview_error_text = ""
+        self.preview_status_label.setObjectName("MutedLabel")
+        self._refresh_preview_status_text()
+        self.preview_frame.setVisible(True)
+        return True
+
+    def _show_preview_error(self, error_text: str) -> None:
+        self.preview_image_label.clear()
+        self._selected_preview_path = None
+        self._preview_error_text = error_text
+        self.preview_status_label.setObjectName("WarningLabel")
+        self._refresh_preview_status_text()
+        self.preview_frame.setVisible(True)
+
+    def _clear_preview(self) -> None:
+        self.preview_image_label.clear()
+        self._selected_preview_path = None
+        self._preview_error_text = ""
+        if hasattr(self, "preview_frame"):
+            self.preview_frame.setVisible(False)
+
+    def _refresh_preview_status_text(self) -> None:
+        if not hasattr(self, "preview_status_label"):
+            return
+        if self._preview_error_text:
+            self.preview_status_label.setText(
+                tr("app_shell.history.preview.failed").format(
+                    error=self._preview_error_text
+                )
+            )
+        elif self._selected_preview_path is not None:
+            self.preview_status_label.setText(tr("app_shell.history.preview.ready"))
+        else:
+            self.preview_status_label.clear()
 
 
 class HistoryRunRowWidget(QFrame):
@@ -347,6 +450,13 @@ def _clear_layout(layout: QVBoxLayout) -> None:
         if widget is not None:
             widget.setParent(None)
             widget.deleteLater()
+
+
+def _path_is_newer(path: Path, source_path: Path) -> bool:
+    try:
+        return path.stat().st_mtime >= source_path.stat().st_mtime
+    except OSError:
+        return False
 
 
 class HistoryRightPanelPlaceholder(QWidget):

@@ -28,8 +28,9 @@ does not switch `main.py`.
   command now builds and writes immutable `HistorySnapshotBundle` records for
   the active run type, using grouped History storage. A minimal History
   left-workspace reader/list exists; saved rows can select immutable bundles
-  and update a read-only History right-panel viewer v0. Export rendering and
-  History command routing remain future work.
+  and update a read-only History right-panel viewer v0 plus a derived PNG
+  preview v0. Polished export actions and History command routing remain future
+  work.
 - `run_workspace.team_builder` is the typed team composition layer.
 - `run_workspace.models` contains an early legacy Abyss snapshot adapter:
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,
@@ -43,6 +44,9 @@ does not switch `main.py`.
   builds backend-only bundles from explicit `RunSessionState`/right-panel
   view-model inputs. It does not query live account/cache/DB data, copy assets,
   or render previews.
+- `run_workspace.history_snapshot_preview` renders a derived v0 PNG card from a
+  supplied immutable bundle to `<bundle_dir>/preview/history_card.png`. It does
+  not mutate `snapshot.json` and does not query live assets/caches.
 - AppShell now uses live in-memory Abyss timer state for the compact right-dock
   chamber table. T1/T2 timer edits update controller state and the right-panel
   view model immediately. T2 follows T1 until manually edited; if T1 is edited
@@ -400,7 +404,8 @@ Integration rules:
    active run type through `HistorySnapshotBundleStore`.
 7. Done: minimal History left workspace reads immutable snapshots from disk,
    supports saved-row selection, and sends frozen details to a read-only History
-   right-panel viewer v0. Future work should route a History command to that
+   right-panel viewer v0. It also shows a derived PNG preview v0 for the
+   selected snapshot. Future work should route a History command to that
    workspace with the active run type as default.
 8. Attach Browser/GCSIM results to session/snapshot metadata as `sim DPS` and
    keep them separate from factual DPS.

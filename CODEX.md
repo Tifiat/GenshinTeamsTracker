@@ -134,8 +134,8 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `ui/artifact_browser/`: isolated Artifact Browser module.
 - `ui/history_browser/`: isolated AppShell History Browser module for grouped
   saved-bundle rows, saved-row selection, compact Abyss period summaries, and
-  the read-only History right-viewer v0; future product/architecture rules live
-  in `docs/handoff/HISTORY_BROWSER.md`.
+  the read-only History right-viewer v0 plus selected-snapshot PNG preview v0;
+  future product/architecture rules live in `docs/handoff/HISTORY_BROWSER.md`.
 - `ui/character_browser/`: narrow adapters that translate character/weapon
   asset records into reusable generic browser/grid item models.
 - AppShell top-level browser/workspace UI must live in its own `ui/<area>_browser/`
@@ -177,8 +177,10 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   Reset. It is not snapshot persistence or History storage.
 - `run_workspace/history_snapshot.py`: immutable History Snapshot Bundle v1
   schema plus caller-rooted local read/write/list service for supplied bundles.
-  AppShell Save uses grouped History storage; asset copying and export
-  rendering are still future.
+  AppShell Save uses grouped History storage.
+- `run_workspace/history_snapshot_preview.py`: derived PNG preview renderer for
+  immutable History snapshots. Output convention:
+  `<bundle_dir>/preview/history_card.png`; it does not mutate `snapshot.json`.
 - `docs/handoff/`: detailed project maps and research handoffs. Root `TODO.md` and `CODEX.md` remain the entrypoints.
 - `docs/handoff/TESTS.md`: test-suite layout and rules for choosing narrow
   per-area `unittest` runs.
@@ -703,12 +705,14 @@ History:
 - Current AppShell History workspace lives in `ui/history_browser/`: the left
   workspace reads a minimal grouped saved-bundle list, supports saved-row
   selection, shows compact Abyss period summaries, and sends frozen selected
-  snapshot details to the isolated read-only History right-panel viewer v0.
+  snapshot details to the isolated read-only History right-panel viewer v0. It
+  also displays a derived PNG preview v0 for the selected snapshot.
 - Immutable History Snapshot Bundle v1 backend schema/service lives in
   `run_workspace/history_snapshot.py`, with a backend-only builder in
   `run_workspace/history_snapshot_builder.py`. RUN-page Save writes grouped
-  bundles under `data/history/snapshots`; future export preview/card and richer
-  browser rules live in `docs/handoff/HISTORY_BROWSER.md`.
+  bundles under `data/history/snapshots`; v0 preview rendering lives in
+  `run_workspace/history_snapshot_preview.py`, while polished export/card and
+  richer browser rules live in `docs/handoff/HISTORY_BROWSER.md`.
 
 Artifact Browser final UI:
 

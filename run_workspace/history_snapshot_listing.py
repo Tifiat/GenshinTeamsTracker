@@ -1,8 +1,8 @@
 """Minimal read-model for immutable History Snapshot Bundles.
 
 This is the first browsing layer over saved snapshot JSON. It intentionally
-does not render export images, query live account data, or build full snapshot
-detail payloads; UI callers get compact immutable summaries only.
+does not render export images or query live account data; UI callers get
+compact immutable summaries plus read-only selected-snapshot details.
 """
 
 from __future__ import annotations

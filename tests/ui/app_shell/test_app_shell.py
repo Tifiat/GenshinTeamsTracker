@@ -38,6 +38,7 @@ from run_workspace.history_snapshot import (
     HISTORY_RUN_TYPE_DPS_DUMMY,
     HistorySnapshotBundleStore,
 )
+from run_workspace.history_snapshot_preview import HistorySnapshotPreviewResult
 from ui.app_shell import (
     AppShell,
     AppShellController,
@@ -514,8 +515,52 @@ class AppShellTest(unittest.TestCase):
             self.assertIn("Thoma", viewer_text)
             self.assertIn("Team 1", viewer_text)
             self.assertIn("2026-06-01", viewer_text)
+            preview_path = workspace.selected_preview_path()
+            self.assertEqual(
+                preview_path,
+                result.saved_path.parent / "preview" / "history_card.png",
+            )
+            self.assertTrue(preview_path.exists())
+            self.assertEqual(preview_path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
             self.assertFalse(hasattr(viewer, "reset_button"))
             self.assertFalse(hasattr(viewer, "save_button"))
+            self.assertEqual(shell.controller.session.state, before_state)
+
+    def test_history_preview_failure_is_controlled_and_preserves_live_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history" / "snapshots"
+            source_data = _simple_abyss_source_data_for_gcsim_writeback()
+            with patch(
+                "ui.app_shell.load_current_cached_abyss_floor_source_data",
+                return_value=source_data,
+            ):
+                shell = AppShell(history_snapshot_root=root)
+            shell.controller.add_or_replace_character_fast(
+                _character_asset("10000050", "Thoma")
+            )
+            before_state = shell.controller.session.state
+            result = shell.controller.save_current_run_snapshot(history_root=root)
+            self.assertTrue(result.success)
+            shell.left_host.history_button.click()
+            workspace = shell.left_host.history_workspace
+
+            with patch(
+                "ui.history_browser.window.render_history_snapshot_preview",
+                return_value=HistorySnapshotPreviewResult(
+                    success=False,
+                    error_text="render failed",
+                ),
+            ):
+                row = workspace.row_widget(result.bundle_id)
+                self.assertIsNotNone(row)
+                row.click()
+
+            self.assertIsNone(workspace.selected_preview_path())
+            self.assertFalse(workspace.preview_frame.isHidden())
+            self.assertIn("render failed", workspace.preview_status_label.text())
+            viewer_text = "\n".join(_label_texts(shell.right_dock.history_operation_widget))
+            self.assertIn(result.bundle_id, viewer_text)
+            self.assertIn("Thoma", viewer_text)
             self.assertEqual(shell.controller.session.state, before_state)
 
     def test_run_save_controller_writes_dps_dummy_snapshot(self) -> None:

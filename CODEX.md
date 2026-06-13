@@ -173,6 +173,10 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   mode/per-mode team state, selected slot target, external bonus state, Abyss
   timers/T2 follow flags, runtime compact GCSIM chamber results, and active-mode
   Reset. It is not snapshot persistence or History storage.
+- `run_workspace/history_snapshot.py`: immutable History Snapshot Bundle v1
+  schema plus caller-rooted local read/write service for supplied bundles. It
+  is not Save wiring, live-session bundle building, History rows, asset copying,
+  or export rendering.
 - `docs/handoff/`: detailed project maps and research handoffs. Root `TODO.md` and `CODEX.md` remain the entrypoints.
 - `docs/handoff/TESTS.md`: test-suite layout and rules for choosing narrow
   per-area `unittest` runs.
@@ -685,8 +689,9 @@ History:
 
 - Current AppShell History placeholders live in `ui/history_browser/`: the left
   workspace and the isolated empty right-panel viewer.
-- Future History Browser rows, immutable snapshot bundles, export preview/card,
-  and read-only right-panel snapshot viewer rules live in
+- Immutable History Snapshot Bundle v1 backend schema/service lives in
+  `run_workspace/history_snapshot.py`; future builder, History Browser rows,
+  export preview/card, and read-only right-panel snapshot viewer rules live in
   `docs/handoff/HISTORY_BROWSER.md`.
 
 Artifact Browser final UI:

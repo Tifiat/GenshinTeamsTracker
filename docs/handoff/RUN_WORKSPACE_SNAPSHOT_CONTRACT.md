@@ -29,6 +29,10 @@ does not switch `main.py`.
 - `run_workspace.models` contains an early legacy Abyss snapshot adapter:
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,
   and `build_legacy_abyss_run_snapshot(...)`.
+- `run_workspace.history_snapshot` now contains the immutable History Snapshot
+  Bundle v1 schema and a caller-rooted local read/write service for supplied
+  bundles. It does not build snapshots from live session/AppShell state and
+  does not wire Save, History rows, asset copying, preview rendering, or UI.
 - AppShell now uses live in-memory Abyss timer state for the compact right-dock
   chamber table. T1/T2 timer edits update controller state and the right-panel
   view model immediately. T2 follows T1 until manually edited; if T1 is edited
@@ -143,6 +147,15 @@ Saved runs must be immutable structured snapshots. They must not depend on
 later changes to account characters, current equipment, build presets, icon
 crops, or localized display names.
 
+The first concrete backend data contract is
+`run_workspace/history_snapshot.py`: `HistorySnapshotBundle` plus nested
+display/provenance/team/scenario/result/asset/preview dataclasses, JSON
+roundtrip helpers, and `HistorySnapshotBundleStore(root)`. The store writes
+supplied bundles as `<root>/<bundle_id>/snapshot.json` through a temp file in
+the same directory and reads them back without using production `data/`,
+account/profile/cache/DB paths, or real assets. Future work must add the
+builder that converts typed live session/view-model data into this bundle.
+
 Every snapshot should include:
 
 - `schema_version`;
@@ -252,8 +265,8 @@ Implementation direction:
 - never build save snapshots by reading `QSpinBox` or `QLabel` values directly;
 - keep `calculate_abyss_chamber_result(...)` or a compatible pure helper as the
   factual elapsed-time source.
-- do not design saved snapshot models before the current timer/DPS/GCSIM result
-  data is working enough to know what must be preserved.
+- do not wire Save snapshot builders before the current timer/DPS/GCSIM result
+  data is explicit enough to map into `HistorySnapshotBundle`.
 
 ## History Workspace Timing
 
@@ -280,12 +293,14 @@ browsing mode are separate states:
 
 Recommended order:
 
-1. Define snapshot write/read service and tests.
-2. Wire right-dock Save to snapshot creation for the active run type.
-3. Add a minimal History left workspace that reads immutable snapshots.
-4. Route the right-dock History action to activate/select that left workspace
+1. Done: define History Snapshot Bundle v1 schema, local write/read service,
+   and tests.
+2. Build snapshots from typed live session/right-panel view-model data.
+3. Wire right-dock Save to snapshot creation for the active run type.
+4. Add a minimal History left workspace that reads immutable snapshots.
+5. Route the right-dock History action to activate/select that left workspace
    and the relevant default run type section.
-5. Retire the floating legacy `RunHistoryWindow` only after the new workspace
+6. Retire the floating legacy `RunHistoryWindow` only after the new workspace
    can show saved runs.
 
 History is not a global right-dock page. The right dock may contain a command
@@ -351,20 +366,22 @@ Integration rules:
    factual DPS math, and GCSIM result stale/current metadata.
 3. Done: Reset is wired through the session controller so it resets the active
    live run mode, not widgets, and does not wipe the inactive Abyss/DPS mode.
-4. Design immutable saved snapshot dataclasses/services once current timer,
-   factual-DPS, and GCSIM runtime result fields are clear enough to preserve.
-5. Wire Save to snapshot creation for the active run type.
-6. Add a minimal History left workspace that reads immutable snapshots, and route
+4. Done: immutable History Snapshot Bundle v1 dataclasses/services exist under
+   `run_workspace.history_snapshot` with local temp-root tests.
+5. Build a snapshot builder from typed session/right-panel view-model data.
+6. Wire Save to snapshot creation for the active run type.
+7. Add a minimal History left workspace that reads immutable snapshots, and route
    right-dock History to that workspace with the active run type as default.
-7. Attach Browser/GCSIM results to session/snapshot metadata as `sim DPS` and
+8. Attach Browser/GCSIM results to session/snapshot metadata as `sim DPS` and
    keep them separate from factual DPS.
-8. Add DPS Dummy current factual-DPS inputs/results and GCSIM DPS Dummy
+9. Add DPS Dummy current factual-DPS inputs/results and GCSIM DPS Dummy
    integration as separate follow-up work.
 
 ## Non-Goals For The Next Stage
 
 - Do not delete `ui/main_window.py`.
 - Do not migrate the old `runs_history.json` UI as final design.
-- Do not implement saved snapshots before working timer/DPS/GCSIM result data exists.
+- Do not wire Save/History UI before a real builder maps live session data into
+  immutable History Snapshot Bundles.
 - Do not mix factual DPS and sim DPS.
 - Do not make right-panel widgets the source of truth for timers or saved runs.

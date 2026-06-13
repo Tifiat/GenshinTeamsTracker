@@ -2,9 +2,9 @@
 
 Scope: product and architecture contract for the future AppShell History
 Browser. The current implementation is only the inert left-workspace
-placeholder plus an empty isolated right-panel viewer in `ui/history_browser/`;
-real storage, rows, export, filters, and snapshot payload rendering are later
-tasks.
+placeholder plus an empty isolated right-panel viewer in `ui/history_browser/`.
+The backend bundle schema/service exists, but real Save wiring, rows, export,
+filters, and snapshot payload rendering are later tasks.
 
 ## Boundary
 
@@ -19,8 +19,8 @@ tasks.
   History implementation.
 - Opening the `history` workspace immediately switches the fixed right dock to
   the isolated empty History viewer, before any saved run is selected.
-- The current placeholders remain inert until typed run/session state and
-  immutable snapshots exist.
+- The current placeholders remain inert until a builder saves typed
+  run/session data as immutable bundles and History rows can read them.
 
 ## Future Rows
 
@@ -82,6 +82,14 @@ Saved history must be an autonomous immutable snapshot bundle:
 The snapshot bundle must preserve enough structured data for browsing, details,
 export, provenance, and future compatibility. It must not be image-only.
 
+Backend status: `run_workspace/history_snapshot.py` defines
+`HistorySnapshotBundle` v1, nested frozen display/provenance/team/scenario/
+result/asset/preview records, JSON roundtrip helpers, and
+`HistorySnapshotBundleStore(root)` for caller-provided local roots. The store
+writes supplied bundles to `<root>/<bundle_id>/snapshot.json`; it does not copy
+real assets, query account/cache/DB data, or build bundles from live AppShell
+state yet.
+
 ## Export Preview/Card
 
 The expanded History card should become a normal image export surface:
@@ -99,7 +107,7 @@ The expanded History card should become a normal image export surface:
 Recommended sequence after the placeholder/module split:
 
 1. Extract typed `RunSessionState`.
-2. Define snapshot bundle schema v1.
+2. Done: define snapshot bundle schema/service v1.
 3. Build snapshots from typed session/view-model data.
 4. Add fake/sample snapshot rows and preview in History Browser.
 5. Add a History-specific right-panel snapshot viewer.

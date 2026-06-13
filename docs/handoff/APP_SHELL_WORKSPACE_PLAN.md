@@ -680,10 +680,14 @@ Sizing note:
   state, Abyss timers/T2 follow flags, and compact runtime GCSIM chamber
   results. It also owns active-mode Reset. `AppShellController` remains the
   UI/account/equipment adapter and right-panel view-model coordinator.
+- `run_workspace/history_snapshot.py` now owns the backend-only immutable
+  History Snapshot Bundle v1 schema/service for supplied bundles; the live
+  session-to-bundle builder is still future work.
 - Keep smoke presets as debug harness only.
-- Next production-switch adapter work is immutable save snapshots and history
-  opening. Continue richer `CharacterDetailsData` preparation incrementally
-  where selected-details UI still needs it.
+- Next production-switch adapter work is building bundles from typed session
+  data, wiring Save, and then opening/reading History. Continue richer
+  `CharacterDetailsData` preparation incrementally where selected-details UI
+  still needs it.
 
 ### Stage 3: LeftWorkspaceHost (Implemented)
 
@@ -710,9 +714,10 @@ Sizing note:
 
 - Backend/dev GCSIM and the AppShell GCSIM Browser MVP have already started.
   Continue that work without treating Browser runtime output as saved history.
-- Add typed run/session ownership for save/history commands and immutable
-  snapshot persistence before any GCSIM result becomes a durable saved result.
-  Active-mode Reset is already wired through typed live session state.
+- Add typed run/session ownership for save/history commands and build immutable
+  `HistorySnapshotBundle` records from live session/view-model data before any
+  GCSIM result becomes a durable saved result. Active-mode Reset is already
+  wired through typed live session state.
 - Replace the inert History placeholders with browsing based on immutable saved
   run snapshots and a read-only snapshot details viewer, routed from the
   right-dock History command according to active run type; follow the contract

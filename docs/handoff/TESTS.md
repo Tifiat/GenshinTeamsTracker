@@ -47,6 +47,8 @@ Mirror the primary project owner under `tests/`:
   models.
 - `tests/run_workspace/right_panel/` - right-panel view-model behavior owned by
   `run_workspace`.
+- `tests/run_workspace/history/` - immutable History Snapshot Bundle schema and
+  caller-rooted local read/write service behavior.
 - `tests/run_workspace/session/` - typed live Run Session ownership for
   AppShell mode/team/selection/timer/GCSIM runtime state.
 - `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests,
@@ -78,6 +80,7 @@ Prefer the narrowest suite that covers the touched ownership area:
 .\.venv\Scripts\python.exe -m unittest discover -s tests\ui\artifact_browser -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\ui\pvp_browser -t .
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\gcsim -t . -p "test_*.py"
+.\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\history -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\session -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\pvp -t .
 .\.venv\Scripts\python.exe -m unittest tests.hoyolab_export.account.test_offline_profile

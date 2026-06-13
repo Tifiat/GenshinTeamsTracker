@@ -3,8 +3,8 @@
 This is the first narrow extraction from `ui.app_shell.AppShellController`.
 It owns current in-memory run state only: mode, per-mode TeamBuilder state,
 selection, Abyss timers/follow flags, external-bonus toggle state, and compact
-runtime GCSIM chamber results. Durable reset/save/history snapshots remain
-future work in `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`.
+runtime GCSIM chamber results. Durable save/history snapshots remain future
+work in `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`.
 """
 
 from __future__ import annotations
@@ -277,6 +277,21 @@ class RunSessionState:
     def clear_selection(self) -> "RunSessionState":
         return replace(self, selected_team_index=-1, selected_slot_index=-1)
 
+    def reset_active_run(self) -> "RunSessionState":
+        if self.active_mode == MODE_DPS_DUMMY:
+            return replace(
+                self,
+                dps_dummy=DpsDummyRunState(),
+                selected_team_index=-1,
+                selected_slot_index=-1,
+            )
+        return replace(
+            self,
+            abyss=AbyssRunState(),
+            selected_team_index=-1,
+            selected_slot_index=-1,
+        )
+
 
 @dataclass
 class RunSessionController:
@@ -368,6 +383,9 @@ class RunSessionController:
 
     def clear_selection(self) -> None:
         self.state = self.state.clear_selection()
+
+    def reset_active_run(self) -> None:
+        self.state = self.state.reset_active_run()
 
     def set_abyss_timer_seconds(
         self,

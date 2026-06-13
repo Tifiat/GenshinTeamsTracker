@@ -101,6 +101,99 @@ class RunSessionControllerTest(unittest.TestCase):
         session.set_mode(MODE_DPS_DUMMY)
         self.assertFalse(session.set_abyss_timer_seconds(0, 1, 550))
 
+    def test_reset_active_abyss_returns_defaults(self) -> None:
+        session = RunSessionController.empty()
+        session.team_state = session.team_state.set_character(
+            0,
+            0,
+            {"id": "10000050", "name": "Thoma"},
+        )
+        session.set_selection(0, 0)
+        session.set_abyss_timer_seconds(0, 1, 580)
+        session.gcsim_chamber_results = (_gcsim_result(),)
+
+        session.reset_active_run()
+
+        default_session = RunSessionController.empty()
+        self.assertEqual(session.mode, MODE_ABYSS)
+        self.assertEqual(session.team_state, default_session.team_state)
+        self.assertEqual(
+            session.abyss_timer_states,
+            default_session.abyss_timer_states,
+        )
+        self.assertEqual(
+            session.abyss_t2_manual_by_chamber,
+            default_session.abyss_t2_manual_by_chamber,
+        )
+        self.assertEqual(session.gcsim_chamber_results, ())
+        self.assertEqual(session.selected_team_index, -1)
+        self.assertEqual(session.selected_slot_index, -1)
+
+    def test_reset_abyss_preserves_dps_dummy_team_state(self) -> None:
+        session = RunSessionController.empty()
+        session.set_mode(MODE_DPS_DUMMY)
+        session.team_state = session.team_state.set_character(
+            0,
+            0,
+            {"id": "10000089", "name": "Furina"},
+        )
+        dps_state = session.team_state
+        session.set_mode(MODE_ABYSS)
+        session.team_state = session.team_state.set_character(
+            0,
+            0,
+            {"id": "10000050", "name": "Thoma"},
+        )
+        session.set_abyss_timer_seconds(0, 1, 555)
+
+        session.reset_active_run()
+
+        self.assertEqual(session.state.dps_dummy.team_state, dps_state)
+        self.assertTrue(session.state.abyss.team_state.team(0).slot(0).is_empty)
+        self.assertEqual(
+            session.abyss_timer_states,
+            RunSessionController.empty().abyss_timer_states,
+        )
+
+    def test_reset_dps_dummy_preserves_abyss_state(self) -> None:
+        session = RunSessionController.empty()
+        session.team_state = session.team_state.set_character(
+            0,
+            0,
+            {"id": "10000050", "name": "Thoma"},
+        )
+        session.set_abyss_timer_seconds(0, 2, 570)
+        session.gcsim_chamber_results = (_gcsim_result(),)
+        session.set_mode(MODE_DPS_DUMMY)
+        abyss_state = session.state.abyss
+        session.team_state = session.team_state.set_character(
+            0,
+            0,
+            {"id": "10000089", "name": "Furina"},
+        )
+        session.set_selection(0, 0)
+
+        session.reset_active_run()
+
+        self.assertEqual(session.mode, MODE_DPS_DUMMY)
+        self.assertEqual(session.state.abyss, abyss_state)
+        self.assertTrue(session.team_state.team(0).slot(0).is_empty)
+        self.assertEqual(session.selected_team_index, -1)
+        self.assertEqual(session.selected_slot_index, -1)
+
+    def test_abyss_reset_restores_t2_follow_flags_and_timer_defaults(self) -> None:
+        session = RunSessionController.empty()
+        session.set_abyss_timer_seconds(0, 2, 585)
+        self.assertTrue(session.abyss_t2_manual_by_chamber[0])
+
+        session.reset_active_run()
+
+        self.assertEqual(
+            session.abyss_timer_states,
+            RunSessionController.empty().abyss_timer_states,
+        )
+        self.assertEqual(session.abyss_t2_manual_by_chamber, (False, False, False))
+
     def test_gcsim_results_clear_and_replace_at_session_boundary(self) -> None:
         session = RunSessionController.empty()
         team0_old = _gcsim_result(chamber=2, team_index=0, side=1, dps_mean=111000)

@@ -180,6 +180,8 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.controller.mode, selected_mode)
         self.assertEqual(shell.right_panel._model.mode, selected_mode)
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
+        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
         self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertTrue(shell.right_dock.header.pvp_control_button.isChecked())
         self.assertFalse(shell.right_dock.header.account_button.isChecked())
@@ -223,6 +225,8 @@ class AppShellTest(unittest.TestCase):
             before_selected,
         )
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
+        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
         self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.account_button.isChecked())
 
@@ -230,6 +234,8 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
+        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
         self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertTrue(shell.right_dock.header.account_button.isChecked())
 
@@ -247,6 +253,8 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
         self.assertIs(shell.right_dock.content_stack.currentWidget(), shell.right_panel)
+        self.assertFalse(shell.right_dock.header.reset_button.isHidden())
+        self.assertTrue(shell.right_dock.header.reset_button.isEnabled())
         self.assertEqual(shell.controller.state, before_team_state)
         self.assertEqual(shell.controller.abyss_timer_states, before_timer_states)
         self.assertEqual(
@@ -257,6 +265,48 @@ class AppShellTest(unittest.TestCase):
             before_selected,
         )
 
+    def test_run_reset_button_resets_active_run_and_refreshes_right_panel(self) -> None:
+        shell = AppShell()
+        shell._on_mode_requested(MODE_DPS_DUMMY)
+        shell.controller.add_or_replace_character_fast(
+            _character_asset("10000089", "Furina", weapon_type=1)
+        )
+        dps_state = shell.controller.state
+        shell._on_mode_requested(MODE_ABYSS)
+        shell.controller.add_or_replace_character_fast(
+            _character_asset("10000050", "Thoma")
+        )
+        shell.controller.set_abyss_timer_seconds(0, 2, 570)
+        shell.controller.gcsim_chamber_results = (_stored_gcsim_result(),)
+        shell.controller.selected_team_index = 0
+        shell.controller.selected_slot_index = 0
+        shell._sync_artifact_browser_operation_target()
+        shell._refresh_right_panel()
+        self.assertFalse(shell.right_dock.header.reset_button.isHidden())
+        self.assertTrue(shell.right_dock.header.reset_button.isEnabled())
+        self.assertFalse(shell.right_panel._model.teams[0].slots[0].is_empty)
+        self.assertIsNotNone(shell.left_host._pending_artifact_right_panel_target)
+
+        shell.right_dock.header.reset_button.click()
+
+        default_controller = AppShellController.empty()
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
+        self.assertTrue(shell.controller.state.team(0).slot(0).is_empty)
+        self.assertEqual(
+            shell.controller.abyss_timer_states,
+            default_controller.abyss_timer_states,
+        )
+        self.assertEqual(
+            shell.controller.abyss_t2_manual_by_chamber,
+            default_controller.abyss_t2_manual_by_chamber,
+        )
+        self.assertEqual(shell.controller.gcsim_chamber_results, ())
+        self.assertEqual(shell.controller.selected_team_index, -1)
+        self.assertEqual(shell.controller.selected_slot_index, -1)
+        self.assertEqual(shell.controller.session.state.dps_dummy.team_state, dps_state)
+        self.assertIsNone(shell.left_host._pending_artifact_right_panel_target)
+        self.assertTrue(shell.right_panel._model.teams[0].slots[0].is_empty)
+
     def test_pvp_account_page_keeps_pvp_policy_until_normal_workspace_selected(self) -> None:
         shell = AppShell()
         shell._on_mode_requested(MODE_DPS_DUMMY)
@@ -266,6 +316,8 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
+        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
         self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.pvp_control_button.isChecked())
         self.assertTrue(shell.right_dock.header.account_button.isChecked())
@@ -283,6 +335,8 @@ class AppShellTest(unittest.TestCase):
         )
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
         self.assertFalse(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertFalse(shell.right_dock.header.reset_button.isHidden())
+        self.assertTrue(shell.right_dock.header.reset_button.isEnabled())
         self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertTrue(
             shell.right_dock.header.run_mode_tabs.button_for_mode(
@@ -324,6 +378,23 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
         self.assertEqual(shell.controller.mode_states, before)
+        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
+        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
+
+    def test_account_page_hides_reset_and_ignores_programmatic_reset_click(self) -> None:
+        shell = AppShell()
+        shell.controller.add_or_replace_character_fast(
+            _character_asset("10000050", "Thoma")
+        )
+        before = shell.controller.session.state
+
+        shell.right_dock.show_account_page()
+        shell.right_dock.reset_requested.emit()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
+        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
+        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
+        self.assertEqual(shell.controller.session.state, before)
 
     def test_perf_logging_is_disabled_by_default(self) -> None:
         with patch.dict("os.environ", {"GTT_PERF_LOG": ""}):
@@ -341,6 +412,8 @@ class AppShellTest(unittest.TestCase):
 
         self.assertIsNone(shell.right_panel._mode_tabs)
         self.assertEqual(len(shell.right_dock.header.run_mode_tabs.buttons()), 2)
+        self.assertFalse(shell.right_dock.header.reset_button.isHidden())
+        self.assertTrue(shell.right_dock.header.reset_button.isEnabled())
         self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.account_button.icon().isNull())
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
@@ -354,6 +427,8 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
         self.assertEqual(shell.left_host.stack.currentIndex(), left_workspace_index)
         self.assertTrue(shell.right_dock.header.account_button.isChecked())
+        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
+        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
         self.assertFalse(
             any(
                 button.isChecked()
@@ -366,6 +441,8 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
         self.assertEqual(shell.controller.mode, MODE_DPS_DUMMY)
         self.assertFalse(shell.right_dock.header.account_button.isChecked())
+        self.assertFalse(shell.right_dock.header.reset_button.isHidden())
+        self.assertTrue(shell.right_dock.header.reset_button.isEnabled())
         self.assertTrue(
             shell.right_dock.header.run_mode_tabs.button_for_mode(
                 MODE_DPS_DUMMY

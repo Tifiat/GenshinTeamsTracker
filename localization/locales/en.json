@@ -6,6 +6,7 @@
   "app_shell.workspace.history": "History",
   "app_shell.workspace.pvp": "PvP",
   "app_shell.right_dock.account": "Account",
+  "app_shell.right_dock.reset": "Reset",
   "app_shell.right_dock.pvp_control": "PvP Control",
   "app_shell.right_dock.pvp_decks": "Decks",
   "app_shell.account.title": "Account / Data",

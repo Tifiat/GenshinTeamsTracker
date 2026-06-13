@@ -33,8 +33,9 @@ Terms:
   form one visually continuous row of same-style buttons with the ordinary
   inter-button spacing only. Do not add a visual divider, stretch gap, or
   page-specific duplicate of a global action.
-- Current normal run page-specific controls are Abyss / DPS Dummy. The PvP
-  AppShell policy replaces those controls with `Decks` when the `pvp`
+- Current normal run page-specific controls are Abyss / DPS Dummy plus a
+  localized Reset command for the active live run mode. The PvP AppShell policy
+  replaces those controls with `Decks` when the `pvp`
   workspace is active. The current global action is Account.
   Account opens a compact localized Account / Data page in the same fixed dock
   without changing the left workspace. The page reuses the existing HoYoLAB
@@ -298,8 +299,9 @@ Future weapon move/swap rule:
   `calculate_abyss_chamber_result(...)` to derive elapsed seconds and Total.
   T2 follows the same chamber's T1 until T2 is manually edited; if T1 is edited
   below the current T2 value, T2 clamps down to T1 and returns to follow mode.
-  Fact DPS reads cached Abyss source-data and uses Account/Data's solo/multi
-  HP mode setting. Reset, persistence, immutable snapshots, History, and durable
+  Fact DPS reads cached Abyss source-data and uses Account/Data's solo/multi HP
+  mode setting. The RUN Reset command resets the active typed live mode only;
+  persistence, immutable snapshots, History save/open commands, and durable
   saved-result GCSIM integration remain future work.
 - Detailed next-stage contract lives in
   `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. Follow it before coding
@@ -676,13 +678,12 @@ Sizing note:
 - `run_workspace/session.py` now owns the first typed live Run Session slice:
   active mode, per-mode `TeamBuilderState`, selected team/slot, external bonus
   state, Abyss timers/T2 follow flags, and compact runtime GCSIM chamber
-  results. `AppShellController` remains the UI/account/equipment adapter and
-  right-panel view-model coordinator.
+  results. It also owns active-mode Reset. `AppShellController` remains the
+  UI/account/equipment adapter and right-panel view-model coordinator.
 - Keep smoke presets as debug harness only.
-- Next production-switch adapter work is wiring typed reset/default behavior,
-  immutable save snapshots, and history opening. Continue richer
-  `CharacterDetailsData` preparation incrementally where selected-details UI
-  still needs it.
+- Next production-switch adapter work is immutable save snapshots and history
+  opening. Continue richer `CharacterDetailsData` preparation incrementally
+  where selected-details UI still needs it.
 
 ### Stage 3: LeftWorkspaceHost (Implemented)
 
@@ -709,8 +710,9 @@ Sizing note:
 
 - Backend/dev GCSIM and the AppShell GCSIM Browser MVP have already started.
   Continue that work without treating Browser runtime output as saved history.
-- Add typed run/session ownership for reset/save/history commands and immutable
+- Add typed run/session ownership for save/history commands and immutable
   snapshot persistence before any GCSIM result becomes a durable saved result.
+  Active-mode Reset is already wired through typed live session state.
 - Replace the inert History placeholders with browsing based on immutable saved
   run snapshots and a read-only snapshot details viewer, routed from the
   right-dock History command according to active run type; follow the contract

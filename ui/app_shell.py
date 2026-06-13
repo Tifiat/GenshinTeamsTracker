@@ -543,6 +543,9 @@ class AppShellController:
     def clear_selection(self) -> None:
         self.session.clear_selection()
 
+    def reset_active_run(self) -> None:
+        self.session.reset_active_run()
+
     def set_abyss_timer_seconds(
         self,
         chamber_index: int,
@@ -1449,6 +1452,7 @@ class AppShell(QWidget):
         )
 
         self.right_dock.mode_requested.connect(self._on_mode_requested)
+        self.right_dock.reset_requested.connect(self._on_reset_requested)
         self.right_panel.slot_selected.connect(self._on_slot_selected)
         self.right_panel.slot_dropped.connect(self._on_slot_dropped)
         self.right_panel.external_bonuses_toggled.connect(
@@ -2122,6 +2126,32 @@ class AppShell(QWidget):
             **refresh_timings,
         )
 
+    def _on_reset_requested(self) -> None:
+        if self.right_dock.current_page() != RIGHT_DOCK_PAGE_RUN:
+            log_perf(
+                "run_reset_ignored",
+                right_page=self.right_dock.current_page(),
+            )
+            return
+        total_start = perf_now()
+        self.cancel_pending_equipment_hydration()
+        self.cancel_pending_right_panel_refresh(reason="run_reset")
+        self.controller.reset_active_run()
+        marker_timings = self._refresh_character_selection_markers(
+            affected_character_ids=None,
+        )
+        self._sync_artifact_browser_operation_target()
+        self._sync_gcsim_browser_context()
+        self.schedule_weapon_filter_sync(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+        refresh_timings = self._refresh_right_panel()
+        log_perf(
+            "run_reset",
+            mode=self.controller.mode,
+            total=perf_ms(total_start),
+            **marker_timings,
+            **refresh_timings,
+        )
+
     def _on_workspace_requested(self, workspace_id: str) -> None:
         self.left_host.activate_workspace(workspace_id)
 
@@ -2655,6 +2685,7 @@ def _selected_team_has_characters(selected_team: dict[str, Any]) -> bool:
 
 class RightDockHeader(QWidget):
     mode_requested = Signal(str)
+    reset_requested = Signal()
     account_requested = Signal()
     pvp_control_requested = Signal()
 
@@ -2673,6 +2704,13 @@ class RightDockHeader(QWidget):
         self.run_mode_tabs = RunModeTabsWidget(active_mode)
         self.run_mode_tabs.mode_requested.connect(self.mode_requested.emit)
         layout.addWidget(self.run_mode_tabs, 2)
+
+        self.reset_button = make_mode_tab_button(tr("app_shell.right_dock.reset"))
+        self.reset_button.setCheckable(False)
+        self.reset_button.clicked.connect(
+            lambda _checked=False: self.reset_requested.emit()
+        )
+        layout.addWidget(self.reset_button, 1)
 
         self.pvp_control_button = make_mode_tab_button(
             tr("app_shell.right_dock.pvp_decks")
@@ -2697,6 +2735,8 @@ class RightDockHeader(QWidget):
 
     def show_run_mode(self, mode: str) -> None:
         self.run_mode_tabs.setVisible(True)
+        self.reset_button.setVisible(True)
+        self.reset_button.setEnabled(True)
         self.pvp_control_button.setVisible(False)
         self.pvp_control_button.setChecked(False)
         self.account_button.setChecked(False)
@@ -2705,6 +2745,8 @@ class RightDockHeader(QWidget):
     def show_pvp_control(self) -> None:
         self.run_mode_tabs.setVisible(False)
         self.run_mode_tabs.set_active_mode(None)
+        self.reset_button.setVisible(False)
+        self.reset_button.setEnabled(False)
         self.pvp_control_button.setVisible(True)
         self.pvp_control_button.setChecked(True)
         self.account_button.setChecked(False)
@@ -2712,11 +2754,15 @@ class RightDockHeader(QWidget):
     def show_history_viewer(self) -> None:
         self.run_mode_tabs.setVisible(False)
         self.run_mode_tabs.set_active_mode(None)
+        self.reset_button.setVisible(False)
+        self.reset_button.setEnabled(False)
         self.pvp_control_button.setVisible(False)
         self.pvp_control_button.setChecked(False)
         self.account_button.setChecked(False)
 
     def show_account(self, *, policy: str = RIGHT_DOCK_POLICY_RUN) -> None:
+        self.reset_button.setVisible(False)
+        self.reset_button.setEnabled(False)
         if policy == RIGHT_DOCK_POLICY_PVP:
             self.run_mode_tabs.setVisible(False)
             self.run_mode_tabs.set_active_mode(None)
@@ -2736,12 +2782,14 @@ class RightDockHeader(QWidget):
 
     def retranslate_ui(self) -> None:
         self.run_mode_tabs.retranslate_ui()
+        self.reset_button.setText(tr("app_shell.right_dock.reset"))
         self.pvp_control_button.setText(tr("app_shell.right_dock.pvp_decks"))
         self.account_button.setText(tr("app_shell.right_dock.account"))
 
 
 class RightOperationsDock(QFrame):
     mode_requested = Signal(str)
+    reset_requested = Signal()
 
     def __init__(
         self,
@@ -2783,6 +2831,7 @@ class RightOperationsDock(QFrame):
         self.setStyleSheet(right_panel_stylesheet())
 
         self.header.mode_requested.connect(self._on_mode_requested)
+        self.header.reset_requested.connect(self.reset_requested.emit)
         self.header.pvp_control_requested.connect(self.show_pvp_page)
         self.header.account_requested.connect(self.show_account_page)
         self.show_run_page(active_mode)

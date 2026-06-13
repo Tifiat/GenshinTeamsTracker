@@ -21,8 +21,10 @@ does not switch `main.py`.
 - `RightOperationsDock` is the fixed right operation area. Its current
   `RightPanelPrototypeWidget` has live in-memory Abyss timer editing, factual
   DPS rows, and compact GCSIM status/result cells. The old inert bottom
-  `Reset` / `Save Run` / `History` action placeholder has been removed; durable
-  reset/save/history commands are still future typed session-controller work.
+  `Reset` / `Save Run` / `History` action placeholder has been removed. A real
+  localized RUN-page Reset command now routes through `RunSessionController`
+  and resets only the active live mode; durable save/history commands are still
+  future typed session-controller work.
 - `run_workspace.team_builder` is the typed team composition layer.
 - `run_workspace.models` contains an early legacy Abyss snapshot adapter:
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,
@@ -30,15 +32,18 @@ does not switch `main.py`.
 - AppShell now uses live in-memory Abyss timer state for the compact right-dock
   chamber table. T1/T2 timer edits update controller state and the right-panel
   view model immediately. T2 follows T1 until manually edited; if T1 is edited
-  below current T2, T2 clamps to T1 and returns to follow mode. Reset/save/history
-  persistence is still future.
+  below current T2, T2 clamps to T1 and returns to follow mode. The RUN Reset
+  command restores the active mode's teams/selection/timers/GCSIM runtime rows
+  to defaults without touching the inactive mode. Save/history persistence is
+  still future.
 - The current compact editor uses separate minute/second segments inside one
   visual `MM:SS` field per T1/T2 cell. Raw segment input normalizes only on
   commit. Left/Right changes the active segment; mouse wheel and Up/Down step
   the active minute or second segment.
 - Current in-memory Abyss timer/session behavior is owned by the typed session
   boundary and exposed through AppShellController compatibility properties.
-  Reset/save/history commands and immutable snapshots are still future work.
+  Reset is wired through that boundary for the active live run mode. Save/history
+  commands and immutable snapshots are still future work.
 - `ui/widgets/timers.py` contains useful timer editing behavior but must not
   remain the durable owner of run/session state.
 - `ui/run_history_window.py` and `runs_history.json` are legacy image/path
@@ -68,12 +73,13 @@ Required before switch:
 - `RunSessionController` or equivalent coordinator:
   - set/switch mode without losing per-mode team state;
   - accept team mutations from `AppShellController` or replace that layer;
-  - own reset/save commands;
+  - own save commands; Reset is already owned by typed live session state;
   - build immutable run snapshots;
   - expose a right-panel view model without reading widgets;
   - route history opening to the correct left workspace state.
 - Right dock action wiring:
-  - Reset must reset the current run session, not legacy widgets.
+  - Reset now resets the active live run mode through typed session state, not
+    legacy widgets.
   - Save must build and persist an immutable snapshot for the current run type.
   - History must open/select a left History workspace, not a floating legacy
     history window or right-dock-only button.
@@ -264,6 +270,7 @@ browsing mode are separate states:
 - activating the `history` left workspace switches the right dock to the
   isolated empty History viewer before any snapshot is selected;
 - entering History must not reset, clear, or reinitialize the live Run Session;
+- Reset must not be used as a History routing shortcut;
 - opening History from Abyss should default to Abyss history;
 - opening History from DPS Dummy should default to DPS Dummy history;
 - once inside History, the user can switch between Abyss, DPS Dummy, and later
@@ -342,8 +349,8 @@ Integration rules:
    Abyss source data.
 2. Add/keep pure tests for timer/session calculations, reset/default behavior,
    factual DPS math, and GCSIM result stale/current metadata.
-3. Wire Reset through the session controller so it resets the active run
-   session, not widgets.
+3. Done: Reset is wired through the session controller so it resets the active
+   live run mode, not widgets, and does not wipe the inactive Abyss/DPS mode.
 4. Design immutable saved snapshot dataclasses/services once current timer,
    factual-DPS, and GCSIM runtime result fields are clear enough to preserve.
 5. Wire Save to snapshot creation for the active run type.

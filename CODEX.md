@@ -171,8 +171,8 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`.
 - `run_workspace/session.py`: first typed live Run Session owner for AppShell
   mode/per-mode team state, selected slot target, external bonus state, Abyss
-  timers/T2 follow flags, and runtime compact GCSIM chamber results. It is not
-  snapshot persistence or History storage.
+  timers/T2 follow flags, runtime compact GCSIM chamber results, and active-mode
+  Reset. It is not snapshot persistence or History storage.
 - `docs/handoff/`: detailed project maps and research handoffs. Root `TODO.md` and `CODEX.md` remain the entrypoints.
 - `docs/handoff/TESTS.md`: test-suite layout and rules for choosing narrow
   per-area `unittest` runs.

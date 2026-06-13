@@ -86,6 +86,10 @@ right column patched in place.
 - Should be the first/default workspace.
 - The old main window's right half is not migrated into this workspace.
 - It should update typed TeamBuilder/run state, not legacy image-path slots.
+- Character and weapon browser grids use `ui/utils/pixel_icon_grid.py` through
+  the narrow `ui/character_browser/` adapter. The grid is one painted surface
+  with deterministic integer physical-pixel item/gap layout, cached HiDPI
+  pixmaps, custom tooltip support, and stable item-id click signals.
 - Current left workspace ids are stable internal ids: `characters_weapons`,
   `artifacts`, `gcsim`, `history`, and `pvp`. They are routing ids, not
   localized display labels.
@@ -172,6 +176,10 @@ right column patched in place.
   normal workspace is selected again.
 - `PvpDecksWorkspace` shows account characters/weapons, supports deck
   view/edit mode, and persists presets through `run_workspace/pvp/deck_preset.py`.
+- PvP Decks character/weapon selection grids also use the shared painted icon
+  grid. Preserve edit-mode viewport tint, selected outlines, inactive overlay,
+  custom tooltips, overlay scrollbars, and stable test helper handles instead
+  of depending on QLabel child widgets.
 - Decks v0 does not wire `FreeDraftController`, does not render the real draft
   board, and does not mutate normal TeamBuilder/Run state.
 - Detailed PvP UI mode/stage direction lives in `PVP_UI_ROADMAP.md`; this
@@ -494,26 +502,28 @@ Performance audit note, 2026-05-26:
 
 Performance fix status:
 
-- `CharacterWeaponWorkspace` now keeps a stable visible character-card registry
-  keyed by character id. Roster marker-only updates call
-  `AssetIconLabel.set_selection_marker(...)` on affected visible cards instead
-  of calling `reload_characters()`.
-- Full character grid reload remains reserved for real data/filter/layout
-  rebuilds. Mode switches may sync all visible markers, but still iterate
-  existing widgets instead of rereading SQLite or recreating pixmaps.
-- After this change, opt-in perf logs showed normal quick-pick marker refresh at
-  about `0.0-0.2 ms` for one affected card, and mode-switch full marker sync at
-  about `0.7-0.9 ms` for 73 visible cards. `filter_characters` no longer appears
-  in the marker-only click path.
-- Roster clicks now update marker widgets first, request repaint, and schedule a
-  short debounced right-panel refresh. Rapid clicks coalesce into one later
+- `CharacterWeaponWorkspace` now keeps character/weapon browser items in one
+  painted `PixelIconGrid` per grid instead of QWidget-per-card layouts. Roster
+  marker-only updates change item outline state on the grid instead of calling
+  `reload_characters()`.
+- Full grid reload remains reserved for real data/filter/layout rebuilds. Mode
+  switches may sync visible marker item state, but do not reread SQLite or
+  recreate child icon widgets.
+- Earlier opt-in perf logs showed normal quick-pick marker refresh at about
+  `0.0-0.2 ms` for one affected card, and mode-switch full marker sync at about
+  `0.7-0.9 ms` for 73 visible cards. `filter_characters` no longer appears in
+  the marker-only click path. Re-run perf logs if the painted-grid migration is
+  being tuned further.
+- Roster clicks update marker state first, request repaint, and schedule a short
+  debounced right-panel refresh. Rapid clicks coalesce into one later
   `RightPanelPrototypeWidget.set_model(...)` call.
 - Character and weapon asset items are cached for the AppShell session. A future
   import/data refresh can explicitly clear this cache, but ordinary filter
   clicks should not reopen SQLite.
-- `AssetIconLabel` uses a shared scaled pixmap cache keyed by icon path, target
-  size, device pixel ratio, mtime, and file size. Marker-only updates do not
-  reload or rescale pixmaps.
+- `PixelIconGrid` prepares pixmaps through `ui/utils/hidpi_pixmap.py` outside
+  paint events, with cache keys covering source path, target size, physical
+  size, DPR, mtime/size, and visual key parts. Marker-only updates do not reload
+  or rescale pixmaps.
 - High-DPI PNG rendering is an AppShell/current UI contract, not a layout
   contract. Keep widget sizes in logical/design pixels and render raster assets
   at physical `logical_size * effective_dpr`, then set the pixmap DPR. The
@@ -643,9 +653,9 @@ Sizing note:
   the reduced Right Panel Prototype minimum (`660px` at the time of writing).
 - The dock is not user-resizable and must not expand when the outer window gets
   wider; the left workspace receives extra width.
-- The Character/Weapon workspace uses project overlay scroll areas for its
-  character and weapon grids so native vertical scrollbars do not reserve layout
-  width or shift grid content.
+- The Character/Weapon workspace uses project overlay scroll areas around its
+  painted character and weapon grids so native vertical scrollbars do not
+  reserve layout width or shift grid content.
 
 ### Stage 2: Real Controller / Adapter (In Progress)
 

@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QEvent, QSize, QTimer, Qt, Signal
+from PySide6.QtCore import QEvent, QObject, QSize, QTimer, Qt, Signal
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut
 from PySide6.QtWidgets import (
     QFrame,
@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
 from localization import tr
+from ui.character_browser.icon_grid_adapter import build_asset_grid_items
 from run_workspace.pvp.deck_preset import (
     DEFAULT_PVP_DECK_PRESET_DIR,
     DeckPresetError,
@@ -63,6 +64,12 @@ from ui.utils.hidpi_pixmap import load_hidpi_pixmap
 from ui.utils.icon_utils import auto_contrast_svg_icon
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
+from ui.utils.pixel_icon_grid import (
+    PixelIconGrid,
+    PixelIconGridFill,
+    PixelIconGridMetrics,
+    PixelIconGridOutline,
+)
 from ui.utils.tooltips import install_custom_tooltip
 from ui.utils.ui_palette import (
     UI_BG_APP,
@@ -209,6 +216,26 @@ class PvpDeckAssetIconLabel(QLabel):
         super().mousePressEvent(event)
 
 
+class PvpDeckGridItemHandle(QObject):
+    clicked = Signal(dict)
+
+    def __init__(
+        self,
+        grid: PixelIconGrid,
+        item_id: str,
+        asset: dict[str, Any],
+        clicked,
+    ) -> None:
+        super().__init__(grid)
+        self._grid = grid
+        self.item_id = item_id
+        self.asset = dict(asset)
+        self.clicked.connect(lambda asset: clicked(dict(asset)))
+
+    def property(self, name: str) -> Any:
+        return self._grid.item_property(self.item_id, name)
+
+
 PVP_DECKS_WORKSPACE_STYLE = """
 QFrame#pvp_deck_editor_frame {
     background: transparent;
@@ -268,8 +295,10 @@ class PvpDecksWorkspace(QWidget):
         self._editing_is_new_deck = False
         self._selected_deck_id_before_new_edit = ""
         self._last_status = ""
-        self.character_cards_by_id: dict[str, PvpDeckAssetIconLabel] = {}
-        self.weapon_cards_by_key: dict[str, PvpDeckAssetIconLabel] = {}
+        self.character_cards_by_id: dict[str, Any] = {}
+        self.weapon_cards_by_key: dict[str, Any] = {}
+        self._character_grid_assets_by_id: dict[str, dict[str, Any]] = {}
+        self._weapon_grid_assets_by_id: dict[str, dict[str, Any]] = {}
         self._character_element_filters: set[str] = set()
         self._character_weapon_filters: set[str] = set()
         self._character_rarity_filters: set[int] = set()
@@ -309,6 +338,13 @@ class PvpDecksWorkspace(QWidget):
             )
         )
         self.weapon_area, self.weapon_widget, self.weapon_grid = self._make_grid_area()
+        self.weapon_grid.item_clicked.connect(
+            lambda item_id: self._emit_grid_asset_click(
+                self._weapon_grid_assets_by_id,
+                self._on_weapon_card_clicked,
+                item_id,
+            )
+        )
         editor.addWidget(self.weapon_area, 1)
 
         editor.addSpacing(6)
@@ -337,6 +373,13 @@ class PvpDecksWorkspace(QWidget):
         editor.addSpacing(6)
         self.character_area, self.character_widget, self.character_grid = (
             self._make_grid_area()
+        )
+        self.character_grid.item_clicked.connect(
+            lambda item_id: self._emit_grid_asset_click(
+                self._character_grid_assets_by_id,
+                self._on_character_card_clicked,
+                item_id,
+            )
         )
         editor.addWidget(self.character_area, 3)
 
@@ -587,6 +630,17 @@ class PvpDecksWorkspace(QWidget):
             self._last_status = str(exc)
             return []
 
+    def _emit_grid_asset_click(
+        self,
+        assets_by_id: dict[str, dict[str, Any]],
+        clicked,
+        item_id: str,
+    ) -> None:
+        asset = assets_by_id.get(_text(item_id))
+        if asset is None:
+            return
+        clicked(dict(asset))
+
     def _visible_character_assets(
         self,
         selected_ids: set[str],
@@ -623,8 +677,8 @@ class PvpDecksWorkspace(QWidget):
     def _reload_deck_grid(
         self,
         assets: list[dict[str, Any]],
-        grid: QGridLayout,
-        container: QWidget,
+        grid: PixelIconGrid,
+        container: PixelIconGrid,
         area: QScrollArea,
         *,
         icon_size: int,
@@ -632,57 +686,55 @@ class PvpDecksWorkspace(QWidget):
         selected_keys: set[str],
         key_for_asset,
         clicked,
-        registry: dict[str, PvpDeckAssetIconLabel],
+        registry: dict[str, Any],
         vertical_safe_margin: int = 0,
         vertical_safe_top_margin: int | None = None,
     ) -> None:
         registry.clear()
-        _clear_grid(grid)
-        _reset_grid_columns(grid)
-        if not assets:
-            grid.setContentsMargins(0, 0, 0, 0)
-            container.adjustSize()
-            return
-
-        available_width = area.viewport().width() or area.width() or 320
-        cell_width = icon_size + spacing
-        cols = max(1, (available_width + spacing) // cell_width)
-        total_grid_width = cols * icon_size + max(0, cols - 1) * spacing
-        left_margin = max(0, (available_width - total_grid_width) // 2)
-        right_margin = max(0, available_width - total_grid_width - left_margin)
         safe_margin = max(0, int(vertical_safe_margin))
         safe_top_margin = (
             safe_margin
             if vertical_safe_top_margin is None
             else max(0, int(vertical_safe_top_margin))
         )
-        grid.setContentsMargins(left_margin, safe_top_margin, right_margin, safe_margin)
-        grid.setHorizontalSpacing(spacing)
-        grid.setVerticalSpacing(spacing)
-        for column in range(cols):
-            grid.setColumnMinimumWidth(column, icon_size)
-            grid.setColumnStretch(column, 0)
-
-        for index, asset in enumerate(assets):
-            key = _text(key_for_asset(asset))
-            selected = bool(key and key in selected_keys)
-            card = PvpDeckAssetIconLabel(
-                _text(asset.get("path")),
-                icon_size,
-                asset=asset,
-                deck_selected=selected,
-                deck_inactive=self.is_editing and not selected,
-                deck_editing=self.is_editing,
+        grid.set_metrics(
+            PixelIconGridMetrics(
+                item_width=icon_size,
+                gap_x=spacing,
+                margin_top=safe_top_margin,
+                margin_bottom=safe_margin,
             )
-            tooltip = asset.get("tooltip")
-            if tooltip:
-                card.setToolTip(_text(tooltip))
-            card.clicked.connect(clicked)
-            grid.addWidget(card, index // cols, index % cols)
-            if key:
-                registry[key] = card
+        )
+        result = build_asset_grid_items(
+            assets,
+            key_for_asset=key_for_asset,
+            outline_for_asset=lambda asset, key: _pvp_deck_outline(
+                editing=self.is_editing,
+                selected=bool(key and key in selected_keys),
+            ),
+            overlay_fill_for_asset=lambda asset, key: _pvp_deck_inactive_fill(
+                editing=self.is_editing,
+                selected=bool(key and key in selected_keys),
+            ),
+            properties_for_asset=lambda asset, key: _pvp_deck_item_properties(
+                editing=self.is_editing,
+                selected=bool(key and key in selected_keys),
+            ),
+        )
+        grid.set_items(result.items)
+        if grid is self.character_grid:
+            self._character_grid_assets_by_id = result.assets_by_id
+        else:
+            self._weapon_grid_assets_by_id = result.assets_by_id
+        for item in result.items:
+            asset = result.assets_by_id.get(item.item_id, {})
+            registry[item.item_id] = PvpDeckGridItemHandle(
+                grid,
+                item.item_id,
+                asset,
+                clicked,
+            )
 
-        container.adjustSize()
         container.updateGeometry()
         area.horizontalScrollBar().setValue(0)
         area.viewport().update()
@@ -809,7 +861,7 @@ class PvpDecksWorkspace(QWidget):
     def _default_new_deck_name(self) -> str:
         return f"{tr('app_shell.pvp.decks.default_name')} {len(self.presets) + 1}"
 
-    def _make_grid_area(self) -> tuple[QScrollArea, QWidget, QGridLayout]:
+    def _make_grid_area(self) -> tuple[QScrollArea, PixelIconGrid, PixelIconGrid]:
         area = OverlayVerticalScrollArea(auto_hide_ms=850)
         area.setObjectName("pvp_deck_grid_area")
         area.setProperty("deckEditMode", False)
@@ -817,13 +869,11 @@ class PvpDecksWorkspace(QWidget):
         area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         area.viewport().setObjectName("pvp_deck_grid_viewport")
         area.viewport().setProperty("deckEditMode", False)
-        container = QWidget()
+        container = PixelIconGrid(surface="pvp_deck_icon_grid")
         container.setObjectName("pvp_deck_grid_container")
         container.setProperty("deckEditMode", False)
-        grid = QGridLayout(container)
-        grid.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         area.setWidget(container)
-        return area, container, grid
+        return area, container, container
 
     @staticmethod
     def _weapon_key_for_asset(asset: dict[str, Any]) -> str:
@@ -1503,6 +1553,44 @@ def _reset_grid_columns(grid: QGridLayout) -> None:
     for column in range(grid.columnCount()):
         grid.setColumnMinimumWidth(column, 0)
         grid.setColumnStretch(column, 0)
+
+
+def _pvp_deck_outline(
+    *,
+    editing: bool,
+    selected: bool,
+) -> PixelIconGridOutline | None:
+    if not editing or not selected:
+        return None
+    return PixelIconGridOutline(
+        color="#d6b15d",
+        width=2,
+        radius=4,
+        alpha=255,
+    )
+
+
+def _pvp_deck_inactive_fill(
+    *,
+    editing: bool,
+    selected: bool,
+) -> PixelIconGridFill | None:
+    if not editing or selected:
+        return None
+    return PixelIconGridFill(color="#0f172a", alpha=132)
+
+
+def _pvp_deck_item_properties(
+    *,
+    editing: bool,
+    selected: bool,
+) -> dict[str, bool]:
+    return {
+        "deckSelected": bool(selected),
+        "deckInactive": bool(editing and not selected),
+        "deckEditing": bool(editing),
+        "deckEditSelected": bool(editing and selected),
+    }
 
 
 def _weapon_type_filter_keys(weapon: dict[str, Any]) -> set[str]:

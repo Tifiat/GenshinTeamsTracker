@@ -49,6 +49,7 @@ from hoyolab_export.team_card_data import (
     build_current_equipment_artifact_snapshot,
 )
 from localization import tr
+from ui.character_browser.icon_grid_adapter import build_asset_grid_items
 from run_workspace.right_panel_prototype_view_model import (
     FACT_DPS_HP_MODE_MULTI_TARGET,
     FACT_DPS_HP_MODE_SOLO,
@@ -143,6 +144,12 @@ from ui.utils.hidpi_pixmap import (
 from ui.utils.icon_utils import auto_contrast_svg_icon, tinted_svg_pixmap
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
+from ui.utils.pixel_icon_grid import (
+    PixelIconGrid,
+    PixelIconGridMetrics,
+    PixelIconGridOutline,
+    PixelIconGridOverlayIcon,
+)
 from ui.utils.owner_icon_badge import (
     make_owner_icon_badge_background,
     owner_badge_rect_for_icon_rect,
@@ -277,6 +284,31 @@ class CharacterPlacementResult:
     character_id: str = ""
     team_index: int = -1
     slot_index: int = -1
+
+
+class AssetGridItemHandle:
+    """Small compatibility handle for tests and narrow widget adapters."""
+
+    def __init__(
+        self,
+        grid: PixelIconGrid,
+        item_id: str,
+        asset: dict[str, Any],
+        *,
+        selection_marker: RosterSelectionMarker | None = None,
+    ) -> None:
+        self._grid = grid
+        self.item_id = item_id
+        self.asset = dict(asset)
+        self.selection_marker = selection_marker
+        self.base_size = grid.item(item_id).properties.get("base_size", 0) if grid.item(item_id) else 0
+        self.owner_badges = _asset_owner_badges(asset)
+
+    def set_selection_marker(self, marker: RosterSelectionMarker | None) -> None:
+        self.selection_marker = marker
+
+    def property(self, name: str) -> Any:
+        return self._grid.item_property(self.item_id, name)
 
 
 @dataclass
@@ -2903,12 +2935,14 @@ class CharacterWeaponWorkspace(QWidget):
         self._weapon_type_filters: set[str] = set()
         self._weapon_rarity_filters: set[int] = set()
         self._character_selection_markers: dict[str, RosterSelectionMarker] = {}
-        self._character_cards_by_id: dict[str, AssetIconLabel] = {}
+        self._character_cards_by_id: dict[str, Any] = {}
         self._all_character_items: list[dict] | None = None
         self._all_weapon_items: list[dict] | None = None
         self._last_character_grid_keys: tuple[str, ...] = ()
         self._last_weapon_grid_keys: tuple[str, ...] = ()
-        self._weapon_cards_by_key: dict[str, AssetIconLabel] = {}
+        self._weapon_cards_by_key: dict[str, Any] = {}
+        self._character_grid_assets_by_id: dict[str, dict[str, Any]] = {}
+        self._weapon_grid_assets_by_id: dict[str, dict[str, Any]] = {}
         self._weapon_type_buttons: dict[str, QPushButton] = {}
         self._auto_weapon_type_filter: str = ""
 
@@ -2927,7 +2961,16 @@ class CharacterWeaponWorkspace(QWidget):
                 )
             )
         )
-        self.weapon_area, self.weapon_widget, self.weapon_grid = self._make_grid_area()
+        self.weapon_area, self.weapon_widget, self.weapon_grid = self._make_grid_area(
+            surface="app_shell_weapon_grid",
+        )
+        self.weapon_grid.item_clicked.connect(
+            lambda item_id: self._emit_grid_asset_click(
+                self._weapon_grid_assets_by_id,
+                self.weapon_clicked.emit,
+                item_id,
+            )
+        )
         root.addWidget(self.weapon_area, 1)
 
         root.addSpacing(6)
@@ -2954,20 +2997,17 @@ class CharacterWeaponWorkspace(QWidget):
             )
         )
         root.addSpacing(6)
-        self.char_area, self.char_widget, self.char_grid = self._make_grid_area()
+        self.char_area, self.char_widget, self.char_grid = self._make_grid_area(
+            surface="app_shell_character_grid",
+        )
+        self.char_grid.item_clicked.connect(
+            lambda item_id: self._emit_grid_asset_click(
+                self._character_grid_assets_by_id,
+                self.character_clicked.emit,
+                item_id,
+            )
+        )
         root.addWidget(self.char_area, 3)
-        self._character_selection_overlay = CharacterSelectionOverlay(
-            self,
-            self.char_area,
-            lambda: self._character_cards_by_id.values(),
-        )
-        self._weapon_owner_badge_overlay = WeaponOwnerBadgeOverlay(
-            self,
-            self.weapon_area,
-            self.weapon_widget,
-            self.weapon_grid,
-            lambda: self._weapon_cards_by_key.values(),
-        )
 
     def retranslate_ui(self) -> None:
         self.weapon_title_label.setText(tr("asset_panel.weapons"))
@@ -2975,21 +3015,12 @@ class CharacterWeaponWorkspace(QWidget):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
-        self._character_selection_overlay.sync_geometry()
-        self._character_selection_overlay.update()
-        self._weapon_owner_badge_overlay.sync_geometry()
-        self._weapon_owner_badge_overlay.update()
-        self._weapon_owner_badge_overlay.schedule_settle()
         if not self._initial_grid_built:
             self._initial_grid_built = True
             QTimer.singleShot(0, self.update_grids)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
-        self._character_selection_overlay.sync_geometry()
-        self._character_selection_overlay.update()
-        self._weapon_owner_badge_overlay.sync_geometry()
-        self._weapon_owner_badge_overlay.update()
         if self._initial_grid_built:
             self.update_grids_delayed()
 
@@ -3038,6 +3069,17 @@ class CharacterWeaponWorkspace(QWidget):
             )
         return list(self._all_weapon_items), perf_ms(load_start), source
 
+    def _emit_grid_asset_click(
+        self,
+        assets_by_id: dict[str, dict[str, Any]],
+        emit,
+        item_id: str,
+    ) -> None:
+        asset = assets_by_id.get(_text(item_id))
+        if asset is None:
+            return
+        emit(dict(asset))
+
     def set_character_selection_markers(
         self,
         markers: dict[str, RosterSelectionMarker],
@@ -3068,12 +3110,16 @@ class CharacterWeaponWorkspace(QWidget):
 
         updated_count = 0
         for character_id in ids_to_update:
+            marker = markers.get(character_id)
+            grid_updated = self.char_grid.update_item(
+                character_id,
+                outline=_roster_selection_outline(marker),
+            )
             card = self._character_cards_by_id.get(character_id)
-            if card is None:
-                continue
-            card.set_selection_marker(markers.get(character_id))
-            updated_count += 1
-        self._character_selection_overlay.update()
+            if card is not None and hasattr(card, "set_selection_marker"):
+                card.set_selection_marker(marker)
+            if grid_updated or card is not None:
+                updated_count += 1
         log_perf(
             "marker_incremental",
             total=perf_ms(total_start),
@@ -3117,8 +3163,6 @@ class CharacterWeaponWorkspace(QWidget):
             card_registry=self._character_cards_by_id,
             vertical_safe_top_margin=CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN,
         )
-        self._character_selection_overlay.sync_geometry()
-        self._character_selection_overlay.update()
         log_perf(
             "filter_characters",
             total=perf_ms(total_start),
@@ -3157,9 +3201,6 @@ class CharacterWeaponWorkspace(QWidget):
                 WEAPON_PICKER_SAFE_MARGIN + WEAPON_PICKER_VIEWPORT_TOP_EXTENSION
             ),
         )
-        self._weapon_owner_badge_overlay.sync_geometry()
-        self._weapon_owner_badge_overlay.update()
-        self._weapon_owner_badge_overlay.schedule_settle()
         log_perf(
             "filter_weapons",
             total=perf_ms(total_start),
@@ -3195,15 +3236,13 @@ class CharacterWeaponWorkspace(QWidget):
         )
         return changed
 
-    def _make_grid_area(self) -> tuple[QScrollArea, QWidget, QGridLayout]:
+    def _make_grid_area(self, *, surface: str) -> tuple[QScrollArea, PixelIconGrid, PixelIconGrid]:
         area = OverlayVerticalScrollArea(auto_hide_ms=850)
         area.setWidgetResizable(True)
         area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        container = QWidget()
-        grid = QGridLayout(container)
-        grid.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
-        area.setWidget(container)
-        return area, container, grid
+        grid = PixelIconGrid(surface=surface)
+        area.setWidget(grid)
+        return area, grid, grid
 
     def _make_filter_button(
         self,
@@ -3332,8 +3371,8 @@ class CharacterWeaponWorkspace(QWidget):
     def _reload_icon_grid(
         self,
         assets: list[dict],
-        grid: QGridLayout,
-        container: QWidget,
+        grid: PixelIconGrid,
+        container: PixelIconGrid,
         area: QScrollArea,
         *,
         icon_size: int,
@@ -3341,86 +3380,66 @@ class CharacterWeaponWorkspace(QWidget):
         clicked,
         selection_markers: dict[str, RosterSelectionMarker] | None = None,
         grid_name: str = "icons",
-        card_registry: dict[str, "AssetIconLabel"] | None = None,
+        card_registry: dict[str, Any] | None = None,
         vertical_safe_margin: int = 0,
         vertical_safe_top_margin: int | None = None,
     ) -> float:
         total_start = perf_now()
-        _clear_grid(grid)
-        _reset_grid_columns(grid)
-        if not assets:
-            grid.setContentsMargins(0, 0, 0, 0)
-            container.adjustSize()
-            area.horizontalScrollBar().setValue(0)
-            total_ms = perf_ms(total_start)
-            log_perf(
-                "grid_reload",
-                grid=grid_name,
-                total=total_ms,
-                icon_create=0.0,
-                count=0,
-                pixmap_hits=0,
-                pixmap_misses=0,
-            )
-            return total_ms
-
-        available_width = area.viewport().width() or area.width() or 300
-        cell_width = icon_size + spacing
-        cols = max(1, (available_width + spacing) // cell_width)
-        total_grid_width = cols * icon_size + max(0, cols - 1) * spacing
-        left_margin = max(0, (available_width - total_grid_width) // 2)
-        right_margin = max(0, available_width - total_grid_width - left_margin)
         safe_margin = max(0, int(vertical_safe_margin))
         safe_top_margin = (
             safe_margin
             if vertical_safe_top_margin is None
             else max(0, int(vertical_safe_top_margin))
         )
-        grid.setContentsMargins(left_margin, safe_top_margin, right_margin, safe_margin)
-        grid.setHorizontalSpacing(spacing)
-        grid.setVerticalSpacing(spacing)
-        for column in range(cols):
-            grid.setColumnMinimumWidth(column, icon_size)
-            grid.setColumnStretch(column, 0)
-
-        icon_create_ms = 0.0
-        pixmap_hits = 0
-        pixmap_misses = 0
-        for index, asset in enumerate(assets):
-            try:
-                marker = None
-                if selection_markers is not None:
-                    marker = selection_markers.get(_asset_character_id(asset))
-                icon_start = perf_now()
-                icon = AssetIconLabel(
-                    str(asset["path"]),
-                    icon_size,
-                    asset=asset,
-                    selection_marker=marker,
-                    paint_selection_marker=(grid_name != "characters"),
+        grid.set_metrics(
+            PixelIconGridMetrics(
+                item_width=icon_size,
+                gap_x=spacing,
+                margin_top=safe_top_margin,
+                margin_bottom=safe_margin,
+            )
+        )
+        build_start = perf_now()
+        result = build_asset_grid_items(
+            assets,
+            key_for_asset=(
+                _asset_character_id if grid_name == "characters" else _asset_grid_key
+            ),
+            outline_for_asset=lambda asset, item_id: (
+                _roster_selection_outline(
+                    (selection_markers or {}).get(_asset_character_id(asset))
                 )
-                if icon._last_pixmap_cache_hit:
-                    pixmap_hits += 1
-                else:
-                    pixmap_misses += 1
-                icon_create_ms += perf_ms(icon_start)
-                icon.clicked.connect(clicked)
-                tooltip = asset.get("tooltip")
-                if tooltip:
-                    icon.setToolTip(tooltip)
-                grid.addWidget(icon, index // cols, index % cols)
-                if card_registry is not None:
-                    card_key = (
-                        _asset_character_id(asset)
-                        if grid_name == "characters"
-                        else _asset_grid_key(asset)
-                    )
-                    if card_key:
-                        card_registry[card_key] = icon
-            except Exception as exc:
-                print(f"Failed to load {asset.get('filename')}: {exc}")
+                if grid_name == "characters"
+                else _weapon_occupied_outline(asset)
+            ),
+            overlay_icons_for_asset=lambda asset, item_id: (
+                _weapon_owner_overlay_icons(asset) if grid_name != "characters" else ()
+            ),
+            properties_for_asset=lambda asset, item_id: {
+                "base_size": icon_size,
+                "has_owner_badges": bool(_asset_owner_badges(asset)),
+            },
+        )
+        grid.set_items(result.items)
+        build_ms = perf_ms(build_start)
+        if grid_name == "characters":
+            self._character_grid_assets_by_id = result.assets_by_id
+        else:
+            self._weapon_grid_assets_by_id = result.assets_by_id
+        if card_registry is not None:
+            card_registry.clear()
+            for item in result.items:
+                asset = result.assets_by_id.get(item.item_id, {})
+                marker = None
+                if grid_name == "characters" and selection_markers is not None:
+                    marker = selection_markers.get(_asset_character_id(asset))
+                card_registry[item.item_id] = AssetGridItemHandle(
+                    grid,
+                    item.item_id,
+                    asset,
+                    selection_marker=marker,
+                )
 
-        container.adjustSize()
         container.updateGeometry()
         area.horizontalScrollBar().setValue(0)
         area.viewport().update()
@@ -3429,10 +3448,10 @@ class CharacterWeaponWorkspace(QWidget):
             "grid_reload",
             grid=grid_name,
             total=total_ms,
-            icon_create=icon_create_ms,
+            icon_create=build_ms,
             count=len(assets),
-            pixmap_hits=pixmap_hits,
-            pixmap_misses=pixmap_misses,
+            pixmap_hits=0,
+            pixmap_misses=0,
         )
         return total_ms
 
@@ -3448,6 +3467,60 @@ def _scaled_icon_pixmap(image_path: str, size: int, dpr: float) -> tuple[QPixmap
         surface="app_shell_asset_icon",
     )
     return result.pixmap, result.cache_hit
+
+
+def _roster_selection_outline(
+    marker: RosterSelectionMarker | None,
+) -> PixelIconGridOutline | None:
+    if marker is None:
+        return None
+    return PixelIconGridOutline(
+        color=marker.color,
+        width=GRID_SELECTION_OUTLINE_WIDTH,
+        radius=GRID_SELECTION_OUTLINE_RADIUS,
+        overhang=GRID_SELECTION_OUTLINE_OVERHANG,
+        alpha=GRID_SELECTION_OUTLINE_ALPHA,
+        badge_text=str(marker.slot_number),
+        badge_width=GRID_SELECTION_BADGE_WIDTH,
+        badge_height=GRID_SELECTION_BADGE_HEIGHT,
+        badge_margin=GRID_SELECTION_BADGE_MARGIN,
+        badge_fill_alpha=GRID_SELECTION_BADGE_FILL_ALPHA,
+        font_size=10,
+    )
+
+
+def _weapon_occupied_outline(asset: dict[str, Any]) -> PixelIconGridOutline | None:
+    if not _asset_owner_badges(asset):
+        return None
+    return PixelIconGridOutline(
+        color=WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR,
+        width=GRID_SELECTION_OUTLINE_WIDTH,
+        radius=GRID_SELECTION_OUTLINE_RADIUS,
+        overhang=GRID_SELECTION_OUTLINE_OVERHANG,
+        alpha=GRID_SELECTION_OUTLINE_ALPHA,
+        fill_color=WEAPON_PICKER_OCCUPIED_FILL_COLOR,
+        fill_alpha=WEAPON_PICKER_OCCUPIED_FILL_ALPHA,
+    )
+
+
+def _weapon_owner_overlay_icons(
+    asset: dict[str, Any],
+) -> tuple[PixelIconGridOverlayIcon, ...]:
+    badges = _asset_owner_badges(asset)
+    if not badges:
+        return ()
+    side_icon_path = _text(badges[0].get("side_icon_path"))
+    if not side_icon_path:
+        return ()
+    return (
+        PixelIconGridOverlayIcon(
+            icon_path=side_icon_path,
+            size_ratio=WEAPON_PICKER_OWNER_SIDE_ICON_RATIO,
+            right_overhang_ratio=WEAPON_PICKER_OWNER_RIGHT_OVERHANG_RATIO,
+            top_overhang_ratio=WEAPON_PICKER_OWNER_TOP_OVERHANG_RATIO,
+            background_enabled=True,
+        ),
+    )
 
 
 def _owner_badge_icon_pixmap(

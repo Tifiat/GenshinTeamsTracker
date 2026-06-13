@@ -73,6 +73,11 @@ This file is written for future coding agents. Keep it compact, English, and mos
   run the same startup scaling bootstrap before `QApplication` is created.
 - If a layout trace shows different `after` and `settled` geometry, do not trust synchronous `layout.activate()` alone. Prevent the intermediate frame from painting by disabling updates during the model/layout mutation and re-enabling updates on the next event-loop tick after a final layout settle.
 - Avoid many child widgets for non-interactive repeated visual strips. Use baked pixmaps when appropriate, while preserving drag, wheel, and edge-hint behavior for scroll strips.
+- Dense icon grids that must survive fractional startup downscale should use
+  `ui/utils/pixel_icon_grid.py`: one painted surface, integer physical-pixel
+  layout math, cached HiDPI pixmaps, item-id signals, and adapter-owned domain
+  payload routing. Do not reintroduce QWidget-per-card grids for AppShell or
+  PvP icon browsers to hide 1px drift.
 - For dense card/grid panels with vertical overflow, prefer `ui/utils/overlay_scroll.py::OverlayVerticalScrollArea` over native vertical scrollbars when scrollbar appearance would change content width. The overlay scrollbar should not reserve layout width, should appear on scroll/edge hover/drag, and should auto-hide when idle.
 - Build preset row names must use flexible leftover space, not fixed magic widths. Fixed metadata/actions define the right side; long text should clip/marquee instead of expanding rows or reintroducing horizontal scrolling.
 - Reusable pixmap operations belong in `ui/utils`, not inside large window classes. Window classes should resolve data/paths, choose modes, and call helpers rather than owning generic trim/mask/composite/cache logic.
@@ -120,6 +125,8 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `hoyolab_export/`: HoYoLAB auth/export/import pipeline, artifact DB helpers, HoYoWiki catalog/cache helpers.
 - `localization/`: JSON-backed app localization.
 - `ui/artifact_browser/`: isolated Artifact Browser module.
+- `ui/character_browser/`: narrow adapters that translate character/weapon
+  asset records into reusable generic browser/grid item models.
 - AppShell top-level browser/workspace UI must live in its own `ui/<area>_browser/`
   package when it grows beyond shell routing/glue. `ui/app_shell.py` coordinates
   workspace/right-dock policy and may instantiate those widgets, but it should

@@ -3365,7 +3365,7 @@ class AppShellTest(unittest.TestCase):
 
             model = shell.controller.right_panel_model()
 
-        self.assertEqual(model.teams[0].slots[0].portrait_path, str(path))
+        self.assertEqual(model.teams[0].slots[0].portrait_path, str(path.resolve()))
 
     def test_right_panel_uses_visible_asset_path_for_weapon_icon(self) -> None:
         with temp_app_shell_db() as db_path:
@@ -3388,8 +3388,8 @@ class AppShellTest(unittest.TestCase):
 
                 model = shell.controller.right_panel_model()
 
-        self.assertEqual(model.teams[0].slots[0].weapon_image_path, str(path))
-        self.assertEqual(model.selected_details.weapon_icon_path, str(path))
+        self.assertEqual(model.teams[0].slots[0].weapon_image_path, str(path.resolve()))
+        self.assertEqual(model.selected_details.weapon_icon_path, str(path.resolve()))
 
     def test_app_shell_weapon_assignment_loads_passive_tooltip_and_bonus_source(self) -> None:
         with temp_app_shell_db() as db_path:
@@ -3564,8 +3564,9 @@ class AppShellTest(unittest.TestCase):
         sources = {item.source_kind: item for item in model.selected_details.bonus_sources}
         self.assertIn("hexerei", sources)
         self.assertIn("moonsign", sources)
-        self.assertEqual(sources["hexerei"].character_icons[:2], (str(first_path), str(second_path)))
-        self.assertEqual(sources["moonsign"].character_icons[:2], (str(first_path), str(second_path)))
+        expected_paths = (str(first_path.resolve()), str(second_path.resolve()))
+        self.assertEqual(sources["hexerei"].character_icons[:2], expected_paths)
+        self.assertEqual(sources["moonsign"].character_icons[:2], expected_paths)
 
     def test_selected_character_auto_filters_weapons_by_type_and_clears_on_cancel(self) -> None:
         shell = AppShell()
@@ -3880,10 +3881,25 @@ class AppShellTest(unittest.TestCase):
     def test_weapon_occupied_outline_uses_team_one_selection_color(self) -> None:
         self.assertEqual(WEAPON_PICKER_OCCUPIED_OUTLINE_COLOR, UI_ACCENT_TEAM_1)
 
-    def test_character_selection_overlay_uses_workspace_host_above_viewport(self) -> None:
+    def test_character_selection_marker_is_painted_by_grid_item_state(self) -> None:
         workspace = CharacterWeaponWorkspace()
+        marker = RosterSelectionMarker(
+            team_index=0,
+            slot_index=0,
+            slot_number=1,
+            color="#3ed47b",
+        )
+        workspace.set_character_selection_markers({"10000050": marker})
+        with patch(
+            "ui.app_shell.load_account_character_asset_items",
+            return_value=[_character_asset("10000050", "Thoma")],
+        ):
+            workspace.reload_characters()
 
-        self.assertIs(workspace._character_selection_overlay.parentWidget(), workspace)
+        item = workspace.char_grid.item("10000050")
+        self.assertIsNotNone(item)
+        self.assertIsNotNone(item.outline)
+        self.assertEqual(item.outline.badge_text, "1")
 
     def test_weapon_owner_target_rect_moves_predictably_with_overhang(self) -> None:
         weapon_rect = QRect(100, 50, 48, 48)
@@ -3919,20 +3935,28 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(large_target.width(), small_target.width() * 2)
         self.assertEqual(large_target.height(), small_target.height() * 2)
 
-    def test_weapon_owner_overlay_uses_workspace_host_above_viewport(self) -> None:
+    def test_weapon_owner_badge_is_painted_by_grid_item_state(self) -> None:
         workspace = CharacterWeaponWorkspace()
+        asset = _weapon_asset("13407", "Favonius Lance", weapon_type=13)
+        asset["metadata"]["owner_badges"] = [
+            {
+                "character_id": "10000050",
+                "name": "Thoma",
+                "side_icon_path": "side.png",
+            }
+        ]
+        with patch(
+            "ui.app_shell.load_account_weapon_stack_asset_items",
+            return_value=[asset],
+        ):
+            workspace.reload_weapons()
 
-        self.assertIs(workspace._weapon_owner_badge_overlay.parentWidget(), workspace)
-
-    def test_weapon_owner_overlay_can_defer_startup_stack_settle(self) -> None:
-        workspace = CharacterWeaponWorkspace()
-        overlay = workspace._weapon_owner_badge_overlay
-
-        overlay.schedule_settle()
-
-        self.assertTrue(overlay._settle_timer.isActive())
-        self._app.processEvents()
-        self.assertFalse(overlay._settle_timer.isActive())
+        key = next(iter(workspace._weapon_cards_by_key))
+        item = workspace.weapon_grid.item(key)
+        self.assertIsNotNone(item)
+        self.assertIsNotNone(item.outline)
+        self.assertEqual(len(item.overlay_icons), 1)
+        self.assertEqual(item.overlay_icons[0].icon_path, "side.png")
 
     def test_marker_registry_survives_filter_rebuilds(self) -> None:
         workspace = CharacterWeaponWorkspace()

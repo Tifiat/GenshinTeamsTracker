@@ -1,11 +1,12 @@
 # History Browser Contract
 
 Scope: product and architecture contract for the AppShell History Browser.
-The current implementation is a minimal left-workspace reader/list in
-`ui/history_browser/` plus an empty isolated right-panel viewer. RUN-page Save
-creates immutable backend bundles and the History workspace can read/list them,
-but export, filters, row selection side effects, and snapshot payload rendering
-are later tasks.
+The current implementation is a left-workspace reader/list in
+`ui/history_browser/` plus an isolated read-only right-panel snapshot viewer
+v0. RUN-page Save creates immutable backend bundles, History can read/list
+grouped bundles, saved rows are selectable, and the viewer renders compact
+frozen snapshot details. Export, filters, expanded preview cards, and richer
+image rendering are later tasks.
 
 ## Boundary
 
@@ -21,8 +22,9 @@ are later tasks.
 - Opening the `history` workspace reloads the current snapshot root and
   immediately switches the fixed right dock to the isolated empty History
   viewer, before any saved run is selected.
-- The left workspace lists saved immutable bundles from disk. The right viewer
-  remains placeholder-only until frozen snapshot details are implemented.
+- The left workspace lists saved immutable bundles from disk. Selecting a row
+  loads that immutable bundle and sends a frozen read-only details payload to
+  the History viewer.
 
 ## Future Rows
 
@@ -38,12 +40,15 @@ History rows should become Akasha-like compact saved-run rows:
 
 ## Selecting A Run
 
-Clicking a saved run should eventually:
+Clicking a saved run now:
 
 1. Select an immutable saved snapshot.
-2. Expand an export-preview card/image inside the left History workspace.
+2. Visually mark the selected saved row.
 3. Send a frozen read-only snapshot payload to a History-specific right-panel
    viewer.
+
+Expanding an export-preview card/image inside the left History workspace remains
+future work.
 
 History browsing state is separate from the live run mode. Switching filters,
 sections, or selected snapshots in History must not mutate current Abyss, DPS
@@ -53,8 +58,10 @@ Dummy, or later PvP run state.
 
 The History right-panel viewer is not the live Run panel:
 
-- initial state is an empty localized prompt to select a saved run before
-  snapshot details exist;
+- initial state is an empty localized prompt to select a saved run;
+- selected state shows compact frozen snapshot details: run/date/source,
+  Abyss period/floor when present, teams, character/weapon/build labels,
+  chamber timing, factual DPS, sim DPS where present, warnings, and provenance;
 - no ticking timers;
 - no GCSIM execution;
 - no equipment/team mutation;
@@ -104,11 +111,13 @@ export surfaces.
 
 - Abyss History is organized by saved Abyss period key, normally the immutable
   `scenario.abyss.period_start` ISO date.
-- Period groups should eventually show a compact period card with start/end,
-  floor/season label, chamber enemy/boss/HP summary, and later stored
-  boss/enemy image/icon previews if snapshot assets contain them.
-- That period summary must be derived from saved snapshot data, not from the
-  live Abyss cache.
+- Period groups now derive a compact text summary from saved snapshots:
+  start/end, floor/season label, saved run count, chamber labels, and
+  chamber/side enemy/HP lines when the bundle contains them.
+- That period summary is derived from saved snapshot data, not from the live
+  Abyss cache.
+- Richer period card visuals and later stored boss/enemy image/icon previews
+  remain future work.
 - Real image/export rendering remains future work.
 
 ## Export Preview/Card
@@ -132,5 +141,6 @@ Recommended sequence after the placeholder/module split:
 3. Done: build backend-only snapshots from typed session/view-model data.
 4. Done: wire RUN-page Save to persist immutable bundles.
 5. Done: add a minimal History left reader/list for saved bundles.
-6. Add a History-specific right-panel snapshot viewer.
+6. Done: add saved-row selection and a History-specific read-only right-panel
+   snapshot viewer v0.
 7. Add the export renderer/generator.

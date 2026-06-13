@@ -132,9 +132,10 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `hoyolab_export/`: HoYoLAB auth/export/import pipeline, artifact DB helpers, HoYoWiki catalog/cache helpers.
 - `localization/`: JSON-backed app localization.
 - `ui/artifact_browser/`: isolated Artifact Browser module.
-- `ui/history_browser/`: isolated AppShell History Browser placeholder module
-  for the left workspace and empty History right-viewer; future
-  product/architecture rules live in `docs/handoff/HISTORY_BROWSER.md`.
+- `ui/history_browser/`: isolated AppShell History Browser module for grouped
+  saved-bundle rows, saved-row selection, compact Abyss period summaries, and
+  the read-only History right-viewer v0; future product/architecture rules live
+  in `docs/handoff/HISTORY_BROWSER.md`.
 - `ui/character_browser/`: narrow adapters that translate character/weapon
   asset records into reusable generic browser/grid item models.
 - AppShell top-level browser/workspace UI must live in its own `ui/<area>_browser/`
@@ -693,14 +694,14 @@ Debug files are private and ignored.
 History:
 
 - Current AppShell History workspace lives in `ui/history_browser/`: the left
-  workspace reads a minimal grouped saved-bundle list, while the isolated
-  right-panel viewer remains an empty placeholder.
+  workspace reads a minimal grouped saved-bundle list, supports saved-row
+  selection, shows compact Abyss period summaries, and sends frozen selected
+  snapshot details to the isolated read-only History right-panel viewer v0.
 - Immutable History Snapshot Bundle v1 backend schema/service lives in
   `run_workspace/history_snapshot.py`, with a backend-only builder in
   `run_workspace/history_snapshot_builder.py`. RUN-page Save writes grouped
-  bundles under `data/history/snapshots`; future row selection, export
-  preview/card, and read-only right-panel snapshot viewer rules live in
-  `docs/handoff/HISTORY_BROWSER.md`.
+  bundles under `data/history/snapshots`; future export preview/card and richer
+  browser rules live in `docs/handoff/HISTORY_BROWSER.md`.
 
 Artifact Browser final UI:
 

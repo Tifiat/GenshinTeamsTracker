@@ -43,6 +43,8 @@ from run_workspace.history_snapshot import (
     history_snapshot_bundle_to_json_text,
 )
 from run_workspace.history_snapshot_listing import (
+    history_snapshot_details_payload_from_bundle,
+    load_history_snapshot_details_payload,
     load_history_snapshot_summary_listing,
 )
 
@@ -278,6 +280,52 @@ class HistorySnapshotBundleTests(unittest.TestCase):
             self.assertEqual(abyss_group.runs[0].team_character_names[0][0], "Thoma")
             self.assertIn("12-1", abyss_group.runs[0].chamber_summaries[0])
             self.assertIn("60s/100k", abyss_group.runs[0].chamber_summaries[0])
+            self.assertIsNotNone(abyss_group.abyss_period_summary)
+            self.assertEqual(abyss_group.abyss_period_summary.saved_run_count, 1)
+            self.assertEqual(abyss_group.abyss_period_summary.period_start, "2026-06-01")
+            self.assertEqual(abyss_group.abyss_period_summary.period_end, "2026-06-16")
+            self.assertEqual(abyss_group.abyss_period_summary.floor, 12)
+            self.assertIn("12-1", abyss_group.abyss_period_summary.chamber_labels)
+            self.assertIn(
+                "Ruin Guard",
+                "\n".join(abyss_group.abyss_period_summary.chamber_enemy_hp_summaries),
+            )
+            self.assertIn(
+                "HP 6m",
+                "\n".join(abyss_group.abyss_period_summary.chamber_enemy_hp_summaries),
+            )
+            self.assertIsNone(listing.groups[1].abyss_period_summary)
+
+    def test_details_payload_derives_selected_snapshot_data_without_live_sources(self) -> None:
+        bundle = _rich_abyss_bundle(bundle_id="details-abyss")
+
+        payload = history_snapshot_details_payload_from_bundle(bundle)
+
+        self.assertEqual(payload.bundle_id, "details-abyss")
+        self.assertEqual(payload.run_type, HISTORY_RUN_TYPE_ABYSS)
+        self.assertEqual(payload.created_at, "2026-06-13T12:00:00Z")
+        self.assertEqual(payload.source, "unit_test")
+        self.assertEqual(payload.content_language, "en-us")
+        self.assertEqual(payload.floor, 12)
+        self.assertEqual(payload.teams[0].slots[0].character_name, "Thoma")
+        self.assertEqual(payload.teams[0].slots[0].weapon_name, "Favonius Lance")
+        self.assertEqual(
+            payload.teams[0].slots[0].artifact_sets[0].set_name,
+            "Retracing Bolide",
+        )
+        self.assertIn("Fact T1 DPS", "\n".join(payload.factual_dps_summaries))
+        self.assertIn("Ruin Guard", "\n".join(payload.chamber_details[0].enemy_hp_summaries))
+
+    def test_details_loader_returns_none_for_corrupt_snapshot_without_crashing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history-root"
+            corrupt_dir = root / "abyss" / "2026-06-01" / "broken"
+            corrupt_dir.mkdir(parents=True)
+            (corrupt_dir / HISTORY_SNAPSHOT_FILENAME).write_text("{broken", encoding="utf-8")
+
+            payload = load_history_snapshot_details_payload(root, "broken")
+
+            self.assertIsNone(payload)
 
     def test_listing_reads_old_flat_bundles_without_migration(self) -> None:
         bundle = _with_abyss_period(
@@ -375,6 +423,16 @@ def _minimal_abyss_bundle(*, bundle_id: str = "abyss-minimal") -> HistorySnapsho
                                 hp_source="unit_fixture",
                                 target_mode="solo",
                             ),
+                        ),
+                        enemies=(
+                            {
+                                "side": 1,
+                                "wave": 1,
+                                "primary_display_name": "Ruin Guard",
+                                "enemy_count": 1,
+                                "hp_used": 6_000_000,
+                                "hp_source": "unit_fixture",
+                            },
                         ),
                     ),
                 ),

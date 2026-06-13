@@ -495,6 +495,29 @@ class AppShellTest(unittest.TestCase):
             self.assertIn("Thoma", "\n".join(texts))
             self.assertEqual(shell.controller.session.state, before_state)
 
+            row = workspace.row_widget(result.bundle_id)
+            self.assertIsNotNone(row)
+            row.click()
+
+            selected_row = workspace.row_widget(result.bundle_id)
+            self.assertIsNotNone(selected_row)
+            self.assertTrue(selected_row.property("selected"))
+            self.assertEqual(workspace.selected_bundle_id(), result.bundle_id)
+            self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_HISTORY)
+            viewer = shell.right_dock.history_operation_widget
+            viewer_text = "\n".join(_label_texts(viewer))
+            self.assertIs(
+                shell.right_dock.content_stack.currentWidget(),
+                viewer,
+            )
+            self.assertIn(result.bundle_id, viewer_text)
+            self.assertIn("Thoma", viewer_text)
+            self.assertIn("Team 1", viewer_text)
+            self.assertIn("2026-06-01", viewer_text)
+            self.assertFalse(hasattr(viewer, "reset_button"))
+            self.assertFalse(hasattr(viewer, "save_button"))
+            self.assertEqual(shell.controller.session.state, before_state)
+
     def test_run_save_controller_writes_dps_dummy_snapshot(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "history" / "snapshots"

@@ -1522,6 +1522,9 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.rotation_text_changed.connect(
             self._on_gcsim_rotation_text_changed
         )
+        self.left_host.history_workspace.snapshot_selected.connect(
+            self._on_history_snapshot_selected
+        )
         self._gcsim_browser_run_thread: QThread | None = None
         self._gcsim_browser_run_worker: (
             GcsimBrowserRunWorker
@@ -2283,6 +2286,13 @@ class AppShell(QWidget):
 
     def _on_workspace_requested(self, workspace_id: str) -> None:
         self.left_host.activate_workspace(workspace_id)
+
+    def _on_history_snapshot_selected(self, payload: object | None) -> None:
+        viewer = self.right_dock.history_operation_widget
+        if hasattr(viewer, "set_snapshot_details"):
+            viewer.set_snapshot_details(payload)
+        if self.active_left_workspace_id == LEFT_WORKSPACE_HISTORY:
+            self.right_dock.show_history_page()
 
     def _on_workspace_activated(self, workspace_id: str) -> None:
         previous_workspace_id = self.active_left_workspace_id

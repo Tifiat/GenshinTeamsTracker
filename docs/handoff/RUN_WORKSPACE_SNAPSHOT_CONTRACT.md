@@ -27,8 +27,9 @@ does not switch `main.py`.
   and resets only the active live mode. A real localized bottom RUN-page Save
   command now builds and writes immutable `HistorySnapshotBundle` records for
   the active run type, using grouped History storage. A minimal History
-  left-workspace reader/list exists; durable right-panel snapshot details,
-  export rendering, and History command routing remain future work.
+  left-workspace reader/list exists; saved rows can select immutable bundles
+  and update a read-only History right-panel viewer v0. Export rendering and
+  History command routing remain future work.
 - `run_workspace.team_builder` is the typed team composition layer.
 - `run_workspace.models` contains an early legacy Abyss snapshot adapter:
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,
@@ -60,8 +61,9 @@ does not switch `main.py`.
   boundary and exposed through AppShellController compatibility properties.
   Reset is wired through that boundary for the active live run mode. Save is
   wired to build/persist immutable bundles from typed session/view-model data;
-  the minimal History left workspace can read saved rows, while right-panel
-  snapshot viewing and History command routing are still future work.
+  the minimal History left workspace can read saved rows, select saved bundles,
+  and show read-only selected snapshot details in an isolated History viewer v0.
+  History command routing is still future work.
 - `ui/widgets/timers.py` contains useful timer editing behavior but must not
   remain the durable owner of run/session state.
 - `ui/run_history_window.py` and `runs_history.json` are legacy image/path
@@ -301,15 +303,17 @@ browsing mode are separate states:
 - the right-dock run mode may provide the default history section when History is
   opened from a run context;
 - activating the `history` left workspace switches the right dock to the
-  isolated empty History viewer before any snapshot is selected;
+  isolated History viewer; it is empty before selection and read-only after a
+  saved row is selected;
 - entering History must not reset, clear, or reinitialize the live Run Session;
 - Reset must not be used as a History routing shortcut;
 - opening History from Abyss should default to Abyss history;
 - opening History from DPS Dummy should default to DPS Dummy history;
 - once inside History, the user can switch between Abyss, DPS Dummy, and later
   PvP history through explicit controls inside the History workspace;
-- switching History's internal type/filter must not mutate the current right-dock
-  run mode, team selection, or active run/session state.
+- selecting snapshots or switching History's internal type/filter must not
+  mutate the current right-dock run mode, team selection, or active run/session
+  state.
 
 Recommended order:
 
@@ -394,9 +398,10 @@ Integration rules:
    Dummy shapes.
 6. Done: RUN-page Save builds and persists immutable grouped bundles for the
    active run type through `HistorySnapshotBundleStore`.
-7. Done: minimal History left workspace reads immutable snapshots from disk.
-   Future work should route a History command to that workspace with the active
-   run type as default.
+7. Done: minimal History left workspace reads immutable snapshots from disk,
+   supports saved-row selection, and sends frozen details to a read-only History
+   right-panel viewer v0. Future work should route a History command to that
+   workspace with the active run type as default.
 8. Attach Browser/GCSIM results to session/snapshot metadata as `sim DPS` and
    keep them separate from factual DPS.
 9. Add DPS Dummy current factual-DPS inputs/results and GCSIM DPS Dummy

@@ -17,7 +17,7 @@ AppShell
     |   `-- global actions
     `-- ContentStack
         |-- current run operation widget
-        |-- History snapshot viewer / empty placeholder
+        |-- History read-only snapshot viewer
         |-- PvP control page
         `-- Account / Data page
 ```
@@ -57,7 +57,7 @@ Terms:
   operation target. Returning from a non-RUN page must update the requested
   controller mode and right-panel model before exposing RUN content so the
   previous run-mode model cannot paint as a stale intermediate frame.
-- The PvP Decks page and the History empty viewer are workspace-driven
+- The PvP Decks page and the History read-only viewer are workspace-driven
   right-dock policies: they replace the normal run control host while the
   global action host stays present. Future empty-database startup should
   auto-open Account / Data setup, and later onboarding may highlight the
@@ -205,13 +205,16 @@ right column patched in place.
 - Minimal left workspace exists with stable id `history` and is implemented
   through `ui/history_browser/`.
 - `ui/app_shell.py` should only wire/register the History workspace, update its
-  nav label, and choose the History right-dock page. History UI details and the
-  empty right-panel viewer widget belong in the History Browser module.
+  nav label, and choose/update the History right-dock page. History UI details
+  and the read-only right-panel viewer widget belong in the History Browser
+  module.
 - Legacy `runs_history.json` / image-path history UI is obsolete and should not
   become the long-term design.
-- The current left page reads immutable snapshot bundles from disk and shows
-  grouped saved-run rows. Activating History hides the live Run panel and shows
-  an isolated read-only empty viewer; full snapshot details remain future work.
+- The current left page reads immutable snapshot bundles from disk, shows
+  grouped saved-run rows, and supports saved-row selection. Activating History
+  hides the live Run panel and shows an isolated History viewer; selected rows
+  render compact frozen read-only snapshot details. Export cards/images remain
+  future work.
 - Entering History must not reset, clear, or reinitialize live Abyss/DPS/PvP
   session state. Leaving History for a normal workspace restores the live Run
   panel and its previous state.
@@ -219,8 +222,8 @@ right column patched in place.
   may later expose a compact History command, but it should route to the left
   workspace and active run type, not open the old floating history window as
   the final behavior.
-- Detailed future History Browser row, snapshot-bundle, export-preview, and
-  History-specific right-panel viewer rules live in
+- Detailed future History Browser row polish, snapshot-bundle, export-preview,
+  and History-specific right-panel viewer rules live in
   `docs/handoff/HISTORY_BROWSER.md`.
 
 ## Right Operations Dock
@@ -385,8 +388,8 @@ Production-switch blockers:
   DPS rows, and compact GCSIM status/result cells. The old inert bottom action
   label placeholder is removed; typed run/session Reset and immutable RUN Save
   snapshots are wired into the new AppShell/controller path. The History
-  workspace can open/read a minimal saved-bundle list; snapshot details/export
-  and command routing remain future work.
+  workspace can open/read grouped saved-bundle rows and update a read-only
+  selected-snapshot viewer v0; export and command routing remain future work.
 - New run/session persistence and immutable history snapshot flow need the
   typed contract in `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` before
   replacing legacy startup.
@@ -702,17 +705,17 @@ Sizing note:
   typed session/right-panel view-model inputs.
 - Keep smoke presets as debug harness only.
 - RUN-page Save now calls the builder and stores immutable grouped bundles.
-  The History workspace can read/list saved bundles from disk. Next
-  production-switch adapter work is History selection/details/export polish and
-  richer `CharacterDetailsData` preparation where selected-details UI still
-  needs it.
+  The History workspace can read/list saved bundles from disk and selected rows
+  update the isolated read-only History viewer v0. Next production-switch
+  adapter work is History export/right-command polish and richer
+  `CharacterDetailsData` preparation where selected-details UI still needs it.
 
 ### Stage 3: LeftWorkspaceHost (Implemented)
 
 - `LeftWorkspaceHost` uses a `QStackedWidget` and small workspace nav.
 - Current workspaces: default Character/Weapon, lazy-created Artifacts, GCSIM
-  Browser, minimal `ui/history_browser/` saved-bundle list with an isolated
-  empty right-panel viewer, and PvP Decks/Play/Draft v0.
+  Browser, `ui/history_browser/` saved-bundle list/details viewer v0, and PvP
+  Decks/Play/Draft v0.
 - Navigation uses stable workspace ids requested through root AppShell so later
   real History browsing or real PvP workspace stages can coordinate right-dock
   policies without directly mutating the dock.
@@ -733,12 +736,13 @@ Sizing note:
 - Backend/dev GCSIM and the AppShell GCSIM Browser MVP have already started.
   Continue that work without treating Browser runtime output as saved history.
 - RUN-page Save is wired through typed run/session state and immutable grouped
-  `HistorySnapshotBundle` records. The History workspace can open/read minimal
-  grouped rows before any GCSIM result is treated as durable saved history.
+  `HistorySnapshotBundle` records. The History workspace can open/read grouped
+  rows and display compact frozen selected-snapshot details before any GCSIM
+  result is treated as durable saved history.
   Active-mode Reset is already wired through typed live session state.
-- Continue History browsing from the current minimal list toward row selection,
-  a read-only snapshot details viewer, and future right-dock History command
-  routing according to active run type; follow the contract in
+- Continue History browsing from the current list/viewer v0 toward export cards,
+  richer visuals, filters, and future right-dock History command routing
+  according to active run type; follow the contract in
   `docs/handoff/HISTORY_BROWSER.md`.
 - Attach GCSIM results to current session/snapshots as `sim DPS` metadata, kept
   separate from factual HP/time DPS.

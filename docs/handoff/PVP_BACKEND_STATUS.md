@@ -49,9 +49,12 @@ Draft board v0:
   `FreeDraftController.apply_current_action(...)`, refreshes only from backend
   projection after actions, and shows completed picks/bans/action-log summary
   when the Free Draft schedule ends.
+- Draft board v0 is playable through the full local Free Draft schedule, but it
+  is still a per-seat technical board. The next backend/read-model target is a
+  dedicated `unified_pool` projection for the readable Draft UX.
 - Decks/Play/Draft v0 do not persist sessions/history and do not mutate normal
   TeamBuilder/Run state.
-- The UI roadmap and next Team assignment stage are owned by
+- The UI roadmap and stage direction are owned by
   `PVP_UI_ROADMAP.md`; this file should remain backend/status focused.
 
 ## Backend Modules
@@ -82,7 +85,8 @@ Draft board v0:
   default; debug mode can add reducer excluded-target reason codes. It also
   owns stable card/timeline status enums and
   `validate_free_draft_board_projection_dict(...)` for UI-contract sample
-  validation and private-field smoke checks.
+  validation and private-field smoke checks. It does not yet expose the future
+  backend-owned `unified_pool` read-model.
 - `run_workspace/pvp/free_draft_board_sample.py`: synthetic UI-contract sample
   builder for the board/read-model projection. The committed sample fixture is
   `samples/pvp/ui_contract/free_draft_board_projection_sample.json` and covers
@@ -204,6 +208,7 @@ Recommended local checks:
 
 Still out of scope / not implemented:
 
+- backend/read-model `unified_pool` projection for the readable Draft UX;
 - PvP team assignment UI;
 - timers/results UI;
 - online/P2P/relay transport;

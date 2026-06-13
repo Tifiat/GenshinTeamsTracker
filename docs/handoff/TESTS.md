@@ -30,7 +30,8 @@ Mirror the primary project owner under `tests/`:
   draft-system registry behavior, deterministic Free Draft planner/account
   full-loop smoke behavior, Free Draft controller/projection behavior, Free
   Draft board/read-model projection behavior, board projection validator and
-  committed UI-contract sample behavior, PvP session bundle roundtrip/replay
+  committed UI-contract sample behavior, future backend-owned `unified_pool`
+  projection and sample-fixture validation, PvP session bundle roundtrip/replay
   verification, plus report-only ruleset applicability, cost-preview, and
   ruleset/balance application tests. Manual backend smoke
   commands: `python -m
@@ -66,9 +67,13 @@ Mirror the primary project owner under `tests/`:
   active Free Draft controller summary fields, Draft empty state, start-to-Draft
   routing, current action/legal target rendering, legal and illegal card click
   behavior, same-deck seat-state independence, and a deterministic full Free
-  Draft completion through UI card clicks. PvP offscreen smoke should also
-  verify the default deck path, first/second activation timing, and that edit
-  tint is scoped to the card grid viewports when this area changes.
+  Draft completion through UI card clicks. Future unified-pool Draft UI tests
+  should cover one card per shared `character_id`, per-seat ownership/
+  constellation markers, legal click mapping, illegal dim/no-op behavior, right
+  panel pick/ban zones, and same-deck self-vs-self independence. PvP offscreen
+  smoke should also verify the default deck path, first/second activation
+  timing, and that edit tint is scoped to the card grid viewports when this area
+  changes.
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.

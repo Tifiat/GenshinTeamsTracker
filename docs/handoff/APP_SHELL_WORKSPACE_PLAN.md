@@ -185,12 +185,18 @@ right column patched in place.
   deck presets and starts an in-memory `FreeDraftController`; Draft renders the
   backend board projection and sends legal pick/ban card clicks through the
   controller.
+- In the target PvP flow, `Draft` is the active match container. Internal match
+  stages should live inside Draft: pick/ban, Assignment, Timers/results, and
+  Export/result. Do not add top-level Team/Timers/Result PvP header tabs unless
+  a later product decision changes this.
 - PvP Decks character/weapon selection grids also use the shared painted icon
   grid. Preserve edit-mode viewport tint, selected outlines, inactive overlay,
   custom tooltips, overlay scrollbars, and stable test helper handles instead
   of depending on QLabel child widgets.
 - Draft v0 wires the first real local pick/ban board, but normal
   TeamBuilder/Run state is still not mutated.
+- PvP Assignment/Timers/Export stages remain PvP-owned state and must not
+  mutate the normal TeamBuilder/Run state automatically.
 - Detailed PvP UI mode/stage direction lives in `PVP_UI_ROADMAP.md`; this
   AppShell plan owns only the shell/workspace/right-dock coordination boundary.
 
@@ -339,12 +345,14 @@ durable saved results must later attach through explicit session/snapshot data.
 
 - PvP now has AppShell Decks, Play, and Draft workspace/right-dock policy, not a
   separate first window.
-- Detailed PvP UI roadmap and the next Team assignment scope live in
+- Detailed PvP UI roadmap and the next `unified_pool` projection scope live in
   `PVP_UI_ROADMAP.md`.
 - During draft/deck/opponent phases, showing the normal build panel can be
   misleading because builds may not be editable yet.
 - The right operations dock currently shows Decks, Play, and Draft controls and
   can later show assignment/result controls for those phases.
+- Assignment/result controls should be internal Draft-stage controls, not extra
+  top-level right-header pages.
 - Once draft/pool/team is ready, the build panel can be reused against the PvP
   pool/team instead of the full account roster.
 - PvP training runs can later save history scoped to the current deck/PvP mode.

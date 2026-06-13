@@ -26,6 +26,9 @@ remains in `PVP_BACKEND_STATUS.md`.
   hot-seat board over the backend Free Draft board projection. Legal character
   cards are clickable, accepted actions refresh from the backend controller,
   and the completed state shows final picks/bans and action-log summary.
+- Current Draft board v0 is playable but intentionally still an intermediate
+  technical board: it shows two per-seat grids and is not the final readable
+  draft UX.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
 - Team assignment, timers/results, online play, ruleset costs, immune picks,
@@ -41,16 +44,22 @@ PvP is a mini-section inside AppShell, not a single flat screen.
 
 PvP opens into Decks, not directly into Draft.
 
-Internal PvP stages:
+Top-level PvP right-header pages:
 
 - Decks;
 - Play / local match setup;
-- Draft;
-- Team assignment;
-- Timers / result.
+- Draft.
+
+`Draft` is the active match container. Future post-start match stages should be
+internal Draft stages, not additional top-level tabs:
+
+1. Draft / pick-ban.
+2. Assignment.
+3. Timers / results.
+4. Export / result.
 
 Permanent right-header tabs should be added only when their real mode is
-implemented. Do not add empty Draft, Result, or Match tabs.
+implemented. Do not add top-level Team, Timers, Result, or Match tabs.
 
 ## Decks Mode
 
@@ -155,13 +164,21 @@ Current identity status:
   existing HoYoLAB constellation overlay.
 - Do not design final card styling now.
 
-Card identity note:
+Card identity and presentation note:
 
-- Do not rely on one shared character card to represent both players'
-  constellation/cost state during Draft.
-- Prefer separate Player 1 and Player 2 boards because opponent portraits and
-  constellation data may come from the opponent account, and HoYoLAB images may
-  already include constellation overlays.
+- Draft identity is the stable `character_id`; images/icons are optional
+  presentation assets and must never be identity.
+- The earlier risk with one shared visual card was ambiguity, not a rule that
+  opponent images are forbidden. A shared card is acceptable when it has
+  explicit ownership markers and per-seat metadata.
+- If a character belongs to both players, preserve the displayed/base
+  HoYoLAB constellation badge and add the other player's constellation/ownership
+  badge on the opposite corner. Use split/two-color ownership styling or another
+  clear dual-owner marker without hardcoding final colors here.
+- Future local/export/online paths may provide or resolve images by
+  `character_id`, but draft/session logic must work without image paths. Prefer
+  local cache, bundled/common fallback icons, or client-side asset resolution;
+  do not assume a future server hosts images.
 
 ## Play / Local Match Setup
 
@@ -195,9 +212,9 @@ Current v0 scope:
 ## Draft Stage
 
 Draft board v0 is implemented for local manual play through the full Free Draft
-schedule.
+schedule. It remains a working intermediate board, not the target readable UX.
 
-Current Draft belongs mostly in the left/main area:
+Current implemented v0:
 
 - Player 1 board;
 - Player 2 board;
@@ -215,6 +232,41 @@ Right panel remains compact:
 - later room/invite links.
 
 The right panel must not contain the full draft board.
+
+Target readable Draft phase:
+
+- Left/main area shows one unified character pool, not two full duplicated
+  scrolling player boards.
+- Each unique `character_id` should be shown once when possible.
+- Player-only characters use that player's display metadata and a clear
+  ownership marker.
+- Shared characters use one card with per-seat ownership/constellation markers.
+- Current legal targets are visually obvious and clickable.
+- Illegal/unavailable targets are dimmed and non-clickable.
+- Picked and banned characters leave the unified pool and appear in right-panel
+  result zones.
+
+Target right Draft panel:
+
+- current player/action prominently;
+- compact step/progress and legal target count;
+- Player 1 picks;
+- Player 1 bans;
+- Player 2 picks;
+- Player 2 bans;
+- picks are more readable/larger, bans can be compact chips/icons;
+- timeline/action log stays compact/collapsible/later, not the dominant UI.
+
+Backend/read-model direction:
+
+- The durable source of truth for the unified pool should be a dedicated
+  backend board projection section such as `unified_pool`.
+- UI may prototype from existing `seats[*].cards`, but the next code contract
+  task should add backend projection fields first.
+- Future `unified_pool` entries should include stable `character_id`,
+  `owner_seats`, `base_seat`, per-seat display metadata, legal/action data,
+  pool/result zone, picked/banned owner, action index, and optional reason codes.
+- Do not put local image paths into the backend identity/read-model contract.
 
 Current v0 scope:
 
@@ -237,17 +289,35 @@ Current v0 scope:
 
 - After Draft, do not mutate normal TeamBuilder automatically.
 - Team assignment is PvP-owned state.
-- Left/main area shows picked roster and half/team slots.
+- This is an internal Draft stage after pick/ban completion.
+- Left/main area should use a split Player 1 / Player 2 layout.
+- Each side shows only that player's 8 picked characters plus two team/half
+  areas.
+- Weapon assignment belongs in this stage and uses that player's deck weapon
+  pool.
+- No normal character filters, artifact badges, or GCSIM block are needed here.
 - Right panel shows validation, selected slot/card details, ready/continue
   controls, and later auto-assign/dev controls.
 
 ## Timers / Results
 
+- This is an internal Draft stage after assignment.
 - Reference timer/restart UIs are messy; GTT should make this stage cleaner.
-- Left/main area shows teams, rooms, and result overview.
+- Left/main area shows teams, rooms/chambers, and result overview.
 - Right panel shows timers, restarts, manual result controls, and
   bundle/export actions.
+- Prefer compact horizontal timer rows such as `T1 [09:01]`, `T2 [08:45]`,
+  `T3 [09:12]` for both players, plus total time, factual DPS where available,
+  and winner.
+
+## Export / Result
+
+- This is the final internal Draft stage.
+- Show a read-only result card/report preview with players, teams, weapons,
+  chamber times, totals, and winner.
 - Final result should eventually support a clean image/report export.
+- PNG/export is later; do not implement it before the core assignment/timer
+  state exists.
 
 ## Reference-Site Conclusions
 
@@ -255,9 +325,11 @@ Stable conclusions from Gentor/Abyss review:
 
 - Gentor deck/profile screens support the Decks split: main grid for
   characters/weapons, side panel for account/preset/cost summaries.
-- Gentor/Abyss draft screens support a large main board for both players, compact
+- Gentor/Abyss draft screens support a large main draft board, compact
   controls/status outside the board, and staged flow: draft creation/setup,
   pick/ban, team assignment, timers/results.
+- GTT chooses a unified character pool with explicit ownership markers instead
+  of preserving the current duplicated two-board display.
 - Some routes require auth or are blocked. Do not depend on live scraping for
   app behavior.
 
@@ -312,12 +384,14 @@ Current Decks v0 scope:
   in-memory local `FreeDraftController`, and switches to Draft.
 - Draft board v0 is implemented. It renders the backend projection, lets the
   user click legal pick/ban targets through the controller, and can complete the
-  full Free Draft schedule locally.
+  full Free Draft schedule locally. It is an intermediate technical board; the
+  next readable Draft UX target is unified-pool based.
 
 Next implementation task:
 
-> PvP Team assignment v0: use the completed picked pools to build two teams per
-> player without mutating normal TeamBuilder/Run state.
+> Backend/read-model `unified_pool` projection contract for Free Draft board:
+> add tests and update the committed sample fixture before refactoring
+> `PvpDraftWorkspace` to the unified visual pool.
 
 Still out of scope:
 

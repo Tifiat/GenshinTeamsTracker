@@ -216,6 +216,9 @@ evidence from the reference sites:
   controls/status outside the board.
 - Both products stage setup, pick/ban, team assignment, and timer/result
   concepts separately.
+- After the playable GTT Draft board v0 test, GTT's target interpretation is a
+  unified character pool with explicit ownership markers and right-panel
+  pick/ban result zones, not a permanent duplicated two-board display.
 - Some draft/create/session routes require auth or are blocked; GTT behavior
   must not depend on live scraping those routes.
 

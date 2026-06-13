@@ -285,6 +285,31 @@ Rules:
 - exclude artifacts, artifact stats, HoYoLAB auth/cookies, raw account dumps,
   local file paths, and local storage row ids.
 
+## Visual Asset Policy
+
+Character and weapon identity is data-first:
+
+- character identity is the stable `character_id` / game id;
+- weapon identity uses the observed stack identity contract;
+- images, portraits, icons, and badges are optional presentation assets;
+- draft/session logic and validation must work without image paths.
+
+Allowed future presentation paths:
+
+- local v0 can resolve images from the host account/catalog assets;
+- export bundles may later include visual assets or an asset manifest;
+- future online opponent decks may provide optional visual refs/assets;
+- a bundled/common PvP icon pack keyed by `character_id` is allowed.
+
+Do not assume a future server hosts images. Prefer local cache, bundled/common
+fallback assets, or client-side asset resolution unless a later online design
+proves server-hosted media is needed.
+
+The main shared-card risk is visual ambiguity: a HoYoLAB constellation badge on
+one corner can be confused with the other player's constellation. A unified
+draft card is acceptable when it exposes explicit owner markers and places the
+second player's constellation/ownership badge separately.
+
 ## Deck Validation
 
 Define `DeckValidationReport` separately from existing
@@ -374,6 +399,8 @@ Character availability:
 - a player can only pick characters in that player's deck;
 - the same character id in two different player decks represents separate
   ownership but one shared draft identity for ban/non-immune pick blocking.
+- UI read-models should expose that shared draft identity directly instead of
+  forcing every UI to infer it from two duplicated per-seat grids.
 
 Weapon availability:
 
@@ -459,6 +486,32 @@ Required surfaces:
 - weapon assignment for each player;
 - timer/result entry;
 - result summary.
+
+Draft read-model direction:
+
+- The playable Draft board v0 may keep its current per-seat board projection as
+  an intermediate contract.
+- The target readable Draft UX should use one unified pool of unique
+  `character_id` values plus right-panel result zones for picks and bans.
+- The durable board/read-model projection should add a dedicated
+  `unified_pool` section rather than making each UI reconstruct it ad hoc.
+- `unified_pool` entries should include stable `character_id`, `owner_seats`,
+  `base_seat`, per-seat display metadata such as constellation/level/rarity/
+  display name/status, current legal/action data, result zone/status, picked or
+  banned owner, action/schedule index where applicable, and optional reason
+  codes.
+- The backend read model should not include local image paths as identity.
+  Presentation layers can resolve optional icons separately.
+
+Draft result zones:
+
+- Player 1 picks;
+- Player 1 bans;
+- Player 2 picks;
+- Player 2 bans.
+
+Picked and banned characters should be represented in those zones and should
+not remain in the active pool as ordinary available cards.
 
 Do not wire picked characters directly into the normal right panel as a normal
 full-account team. The post-draft pool should behave like a restricted local
@@ -632,12 +685,15 @@ Stage F: Free Draft controller/projection backend.
   initial, after-two-actions, and final/result board states. Board projection
   dictionaries can be checked with
   `validate_free_draft_board_projection_dict(...)`.
+- Next projection contract step: add a backend-owned `unified_pool` read-model
+  for the readable Draft UI before refactoring the Draft workspace.
 
 Stage G: local hot-seat UI.
 
 - Setup.
-- Draft board.
-- Pools.
+- Draft board, currently playable through the full schedule as an intermediate
+  per-seat technical board.
+- Future readable Draft UI: unified character pool plus right-panel picks/bans.
 - Team/weapon assignment.
 - Timer/result summary.
 

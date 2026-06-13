@@ -27,6 +27,8 @@ algorithmic shortcut that should be fixed directly.
   `docs/handoff/performance_measurements/2026-06-13_appshell_perf_probe_baseline_c371ef4_hp_1366.md`.
 - Weak 1366px HP Notebook after the direct optimization pass:
   `docs/handoff/performance_measurements/2026-06-13_appshell_perf_probe_after_optimization_c371ef4_hp_1366.md`.
+- Weak 1366px HP Notebook after the MarqueeButton target-list pass:
+  `docs/handoff/performance_measurements/2026-06-13_artifact_browser_marquee_target_pass_30571b7_hp_1366.md`.
 - Command:
   `.\.venv\Scripts\python.exe tools\experiments\appshell_perf_probe.py --mode all --importtime`.
 - Commit: `c371ef4`.
@@ -88,7 +90,9 @@ algorithmic shortcut that should be fixed directly.
 - Measured cost: `74` target buttons, `_make_build_target_button` `523.8 ms`,
   `_ensure_build_target_buttons` `536.3 ms` on the weak 1366px HP Notebook at
   `c371ef4`. After the direct optimization pass, artifact-only repeats still
-  measured `586.6-752.6 ms`, with icon assignment at `352.3-484.0 ms`.
+  measured `586.6-752.6 ms`, with icon assignment at `352.3-484.0 ms`. After
+  the MarqueeButton inactive-sync reduction, target creation measured
+  `297.6-367.1 ms`, with icon assignment at `229.8-295.8 ms`.
 - Why it lags: first creation still constructs many QWidget buttons and assigns
   portrait icons. In-place updates already avoid repeated filter rebuilds.
 - Why not fixed now: a safe repaint-suppression/logging pass is acceptable, but
@@ -100,9 +104,9 @@ algorithmic shortcut that should be fixed directly.
 
 ### Preset/Edit Control And Text/Marquee Prep
 
-- Measured cost: after the direct optimization pass, Artifact Browser init
-  still reports `ui=1204.2-1640.6 ms`, `presets=22.1-59.4 ms`, and
-  `build_panel=49.3-70.1 ms` on the weak 1366px HP Notebook.
+- Measured cost: after the MarqueeButton target-list pass, Artifact Browser init
+  still reports `ui=1030.5-1037.0 ms`, `presets=35.9-39.5 ms`, and
+  `build_panel=25.0-34.2 ms` on the weak 1366px HP Notebook.
 - Why it lags: edit controls, preset rows, icon/text/marquee helpers, and build
   preview widgets are created during cold Artifact Browser construction.
 - Why not fixed now: only direct duplicate/rebuild bugs should be fixed in the

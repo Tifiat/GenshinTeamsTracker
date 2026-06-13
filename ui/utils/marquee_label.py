@@ -21,20 +21,22 @@ class MarqueeButton(QPushButton):
         self._hovered = False
         self._gap = 28
         self._step = 1
-        self._timer = QTimer(self)
-        self._timer.setInterval(35)
-        self._timer.timeout.connect(self._tick)
+        self._timer: QTimer | None = None
+        self._scroll_sync_enabled = False
 
         self.setMouseTracking(True)
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Fixed,
         )
-        self.setText(text)
+        super().setText(text)
+        self._scroll_sync_enabled = True
 
     def setText(self, text: str) -> None:
+        if text == self.text():
+            return
         super().setText(text)
-        if hasattr(self, "_timer"):
+        if getattr(self, "_scroll_sync_enabled", False):
             self._reset_scroll()
 
     def enterEvent(self, event) -> None:
@@ -172,9 +174,11 @@ class MarqueeButton(QPushButton):
         self.update()
 
     def _reset_scroll(self) -> None:
+        should_update = self._offset != 0 or self._timer_is_active()
         self._offset = 0
         self._sync_timer()
-        self.update()
+        if should_update:
+            self.update()
 
     def _is_active(self) -> bool:
         return self._hovered or self.hasFocus() or self.isChecked()
@@ -224,6 +228,11 @@ class MarqueeButton(QPushButton):
         text_width: int | None = None,
         available_width: int | None = None,
     ) -> None:
+        if not self._is_active():
+            if self._timer_is_active():
+                self._timer.stop()
+            return
+
         text_width = (
             self.fontMetrics().horizontalAdvance(self.text())
             if text_width is None
@@ -237,7 +246,19 @@ class MarqueeButton(QPushButton):
 
         should_run = self._is_active() and text_width > available_width
 
-        if should_run and not self._timer.isActive():
-            self._timer.start()
-        elif not should_run and self._timer.isActive():
+        if should_run:
+            timer = self._ensure_timer()
+            if not timer.isActive():
+                timer.start()
+        elif self._timer_is_active():
             self._timer.stop()
+
+    def _ensure_timer(self) -> QTimer:
+        if self._timer is None:
+            self._timer = QTimer(self)
+            self._timer.setInterval(35)
+            self._timer.timeout.connect(self._tick)
+        return self._timer
+
+    def _timer_is_active(self) -> bool:
+        return self._timer is not None and self._timer.isActive()

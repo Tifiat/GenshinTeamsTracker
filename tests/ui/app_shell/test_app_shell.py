@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import closing
 import hashlib
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -27,6 +28,11 @@ from hoyolab_export.artifact_db import (
     get_artifact_build_slots,
     init_db,
 )
+from hoyolab_export.paths import PROJECT_ROOT
+from run_workspace.pvp.deck_preset import (
+    create_deck_preset_from_account_assets,
+    save_deck_preset,
+)
 from ui.app_shell import (
     AppShell,
     AppShellController,
@@ -40,6 +46,8 @@ from ui.app_shell import (
     LEFT_WORKSPACE_GCSIM,
     LEFT_WORKSPACE_HISTORY,
     LEFT_WORKSPACE_PVP,
+    PVP_PAGE_DECKS,
+    PVP_PAGE_PLAY,
     RIGHT_OPERATIONS_DOCK_WIDTH,
     RIGHT_DOCK_PAGE_ACCOUNT,
     RIGHT_DOCK_PAGE_HISTORY,
@@ -57,7 +65,12 @@ from ui.app_shell import (
 )
 from ui.account_data_page import AccountDataPage
 from ui.history_browser.window import HistoryRightPanelPlaceholder
-from ui.pvp_browser.window import PvpDecksRightPanel, PvpDecksWorkspace
+from ui.pvp_browser.window import (
+    PvpDecksRightPanel,
+    PvpDecksWorkspace,
+    PvpRightPanelHost,
+    PvpWorkspace,
+)
 from ui.artifact_browser.card_delegate import ArtifactCardDelegate, CARD_SIZE, GRID_SIZE
 from ui.artifact_browser.window import (
     ARTIFACT_GRID_FIT_PADDING,
@@ -131,7 +144,11 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.left_host.stack.currentIndex(), 0)
         self.assertEqual(shell.left_host.stack.count(), 5)
         self.assertIsNone(shell.left_host.artifact_browser_workspace)
-        self.assertIsInstance(shell.left_host.pvp_workspace, PvpDecksWorkspace)
+        self.assertIsInstance(shell.left_host.pvp_workspace, PvpWorkspace)
+        self.assertIsInstance(
+            shell.left_host.pvp_workspace.decks_workspace,
+            PvpDecksWorkspace,
+        )
         self.assertEqual(
             shell.active_left_workspace_id,
             LEFT_WORKSPACE_CHARACTERS_WEAPONS,
@@ -199,14 +216,23 @@ class AppShellTest(unittest.TestCase):
         activate.assert_called_once_with(LEFT_WORKSPACE_PVP)
         self.assertEqual(shell.active_left_workspace_id, LEFT_WORKSPACE_PVP)
         self.assertIs(shell.left_host.stack.currentWidget(), shell.left_host.pvp_workspace)
+        self.assertEqual(shell.left_host.pvp_workspace.active_page_id, PVP_PAGE_DECKS)
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
         self.assertIsInstance(
             shell.right_dock.content_stack.currentWidget(),
+            PvpRightPanelHost,
+        )
+        self.assertIsInstance(
+            shell.right_dock.pvp_operation_widget.stack.currentWidget(),
             PvpDecksRightPanel,
         )
         self.assertEqual(
             shell.right_dock.header.pvp_control_button.text(),
             tr("app_shell.right_dock.pvp_decks"),
+        )
+        self.assertEqual(
+            shell.right_dock.header.pvp_play_button.text(),
+            tr("app_shell.right_dock.pvp_play"),
         )
         self.assertEqual(shell.controller.mode, selected_mode)
         self.assertEqual(shell.right_panel._model.mode, selected_mode)
@@ -214,7 +240,9 @@ class AppShellTest(unittest.TestCase):
         self.assertTrue(shell.right_dock.header.reset_button.isHidden())
         self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
         self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
+        self.assertFalse(shell.right_dock.header.pvp_play_button.isHidden())
         self.assertTrue(shell.right_dock.header.pvp_control_button.isChecked())
+        self.assertFalse(shell.right_dock.header.pvp_play_button.isChecked())
         self.assertFalse(shell.right_dock.header.account_button.isChecked())
 
     def test_history_workspace_uses_isolated_right_viewer_without_clearing_live_run_state(
@@ -350,13 +378,16 @@ class AppShellTest(unittest.TestCase):
         self.assertTrue(shell.right_dock.header.reset_button.isHidden())
         self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
         self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
+        self.assertFalse(shell.right_dock.header.pvp_play_button.isHidden())
         self.assertFalse(shell.right_dock.header.pvp_control_button.isChecked())
+        self.assertFalse(shell.right_dock.header.pvp_play_button.isChecked())
         self.assertTrue(shell.right_dock.header.account_button.isChecked())
 
         shell.right_dock.header.pvp_control_button.click()
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
         self.assertTrue(shell.right_dock.header.pvp_control_button.isChecked())
+        self.assertFalse(shell.right_dock.header.pvp_play_button.isChecked())
 
         shell.left_host.character_weapon_button.click()
 
@@ -375,6 +406,119 @@ class AppShellTest(unittest.TestCase):
             ).isChecked()
         )
         self.assertEqual(shell.controller.mode, MODE_DPS_DUMMY)
+
+    def test_pvp_decks_play_switch_does_not_mutate_run_state(self) -> None:
+        shell = AppShell()
+        shell._on_mode_requested(MODE_DPS_DUMMY)
+        before_mode_states = dict(shell.controller.mode_states)
+        before_mode = shell.controller.mode
+
+        shell.left_host.pvp_button.click()
+        shell.right_dock.header.pvp_play_button.click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
+        self.assertEqual(shell.left_host.pvp_workspace.active_page_id, PVP_PAGE_PLAY)
+        self.assertIs(
+            shell.left_host.pvp_workspace.stack.currentWidget(),
+            shell.left_host.pvp_workspace.play_workspace,
+        )
+        self.assertIs(
+            shell.right_dock.pvp_operation_widget.stack.currentWidget(),
+            shell.right_dock.pvp_operation_widget.play_panel,
+        )
+        self.assertFalse(shell.right_dock.header.pvp_control_button.isChecked())
+        self.assertTrue(shell.right_dock.header.pvp_play_button.isChecked())
+        self.assertEqual(shell.controller.mode_states, before_mode_states)
+        self.assertEqual(shell.controller.mode, before_mode)
+
+        shell.right_dock.header.pvp_control_button.click()
+
+        self.assertEqual(shell.left_host.pvp_workspace.active_page_id, PVP_PAGE_DECKS)
+        self.assertIs(
+            shell.left_host.pvp_workspace.stack.currentWidget(),
+            shell.left_host.pvp_workspace.decks_workspace,
+        )
+        self.assertIs(
+            shell.right_dock.pvp_operation_widget.stack.currentWidget(),
+            shell.right_dock.pvp_operation_widget.decks_panel,
+        )
+        self.assertEqual(shell.controller.mode_states, before_mode_states)
+
+    def test_pvp_active_local_draft_survives_workspace_leave_and_return(self) -> None:
+        characters = _valid_pvp_character_assets()
+        weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            preset = create_deck_preset_from_account_assets(
+                characters,
+                weapons,
+                name="Alpha",
+                deck_id="alpha",
+            )
+            save_deck_preset(preset, temp_dir)
+
+            def pvp_workspace_factory(*args, **kwargs):
+                kwargs["deck_dir"] = temp_dir
+                return PvpWorkspace(*args, **kwargs)
+
+            with (
+                patch(
+                    "ui.app_shell.load_account_character_asset_items",
+                    return_value=characters,
+                ),
+                patch(
+                    "ui.app_shell.load_account_weapon_stack_asset_items",
+                    return_value=weapons,
+                ),
+                patch("ui.app_shell.PvpWorkspace", side_effect=pvp_workspace_factory),
+            ):
+                shell = AppShell()
+                shell.left_host.character_weapon_workspace.reload_characters()
+                shell.left_host.character_weapon_workspace.reload_weapons()
+                shell.left_host.pvp_workspace.refresh_account_data(reload_presets=True)
+
+            shell.left_host.pvp_button.click()
+            shell.right_dock.header.pvp_play_button.click()
+            shell.right_dock.pvp_operation_widget.play_panel.start_button.click()
+
+            session = shell.left_host.pvp_workspace.active_draft_session
+            self.assertIsNotNone(session)
+            self.assertIn(
+                "Alpha",
+                "\n".join(
+                    label.text()
+                    for label in shell.left_host.pvp_workspace.play_workspace.summary_labels
+                    if label.text()
+                ),
+            )
+
+            shell.left_host.character_weapon_button.click()
+            self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
+
+            shell.left_host.pvp_button.click()
+
+            self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
+            self.assertEqual(shell.left_host.pvp_workspace.active_page_id, PVP_PAGE_PLAY)
+            self.assertIs(shell.left_host.pvp_workspace.active_draft_session, session)
+            self.assertFalse(
+                shell.right_dock.pvp_operation_widget.play_panel.active_frame.isHidden()
+            )
+
+    def test_pvp_app_shell_does_not_create_ui_data_from_ui_cwd(self) -> None:
+        original_cwd = Path.cwd()
+        ui_data_path = PROJECT_ROOT / "ui" / "data"
+        existed_before = ui_data_path.exists()
+        try:
+            os.chdir(PROJECT_ROOT / "ui")
+            shell = AppShell()
+            shell.left_host.pvp_button.click()
+        finally:
+            os.chdir(original_cwd)
+
+        self.assertEqual(ui_data_path.exists(), existed_before)
+        self.assertNotIn(
+            PROJECT_ROOT / "ui",
+            shell.left_host.pvp_workspace.decks_workspace.deck_dir.parents,
+        )
 
     def test_left_workspace_switch_preserves_global_account_page(self) -> None:
         shell = AppShell()
@@ -3753,8 +3897,6 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(sources["moonsign"].character_icons[:2], expected_paths)
 
     def test_selected_character_auto_filters_weapons_by_type_and_clears_on_cancel(self) -> None:
-        shell = AppShell()
-        workspace = shell.left_host.character_weapon_workspace
         with patch(
             "ui.app_shell.load_account_weapon_stack_asset_items",
             return_value=[
@@ -3762,6 +3904,8 @@ class AppShellTest(unittest.TestCase):
                 _weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword"),
             ],
         ):
+            shell = AppShell()
+            workspace = shell.left_host.character_weapon_workspace
             shell._on_character_clicked(_character_asset("10000050", "Thoma", weapon_type=13))
             shell.flush_pending_weapon_filter_sync()
 
@@ -4272,6 +4416,17 @@ def _character_asset(
             }
         },
     }
+
+
+def _valid_pvp_character_assets() -> list[dict]:
+    return [
+        _character_asset(
+            str(20000000 + index),
+            f"PvP Char {index}",
+            weapon_type=1,
+        )
+        for index in range(11)
+    ]
 
 
 def _simple_abyss_source_data_for_gcsim_writeback():

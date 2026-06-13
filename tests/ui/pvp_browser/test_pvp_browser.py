@@ -12,7 +12,15 @@ from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication, QPushButton
 
 from localization import tr
-from ui.pvp_browser.window import PvpDecksRightPanel, PvpDecksWorkspace
+from ui.pvp_browser.window import (
+    PVP_PAGE_DECKS,
+    PVP_PAGE_PLAY,
+    PvpDecksRightPanel,
+    PvpDecksWorkspace,
+    PvpPlayRightPanel,
+    PvpRightPanelHost,
+    PvpWorkspace,
+)
 
 
 class PvpBrowserTest(unittest.TestCase):
@@ -308,6 +316,134 @@ class PvpBrowserTest(unittest.TestCase):
             self.assertFalse(workspace.weapon_area.property("deckEditMode"))
             self.assertFalse(workspace.character_area.property("deckEditMode"))
 
+    def test_pvp_play_panel_lists_presets_and_uses_decks_selection_default(self) -> None:
+        characters = _valid_character_assets()
+        weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: characters,
+                weapon_assets_provider=lambda: weapons,
+            )
+            self.assertTrue(workspace.decks_workspace.create_deck("Alpha"))
+            self.assertTrue(workspace.decks_workspace.save_edit(name="Alpha"))
+            self.assertTrue(workspace.decks_workspace.create_deck("Beta"))
+            self.assertTrue(workspace.decks_workspace.save_edit(name="Beta"))
+            beta_id = next(
+                preset.deck_id for preset in workspace.presets if preset.name == "Beta"
+            )
+            workspace.decks_workspace.select_deck(beta_id)
+
+            panel = PvpPlayRightPanel(workspace)
+
+            self.assertEqual(panel.player_1_combo.count(), 2)
+            self.assertEqual(
+                [panel.player_1_combo.itemText(index) for index in range(2)],
+                ["Alpha", "Beta"],
+            )
+            self.assertEqual(panel.player_1_deck_id, beta_id)
+            self.assertTrue(panel.start_button.isEnabled())
+
+    def test_pvp_play_start_disabled_without_valid_decks(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: [],
+                weapon_assets_provider=lambda: [],
+            )
+            panel = PvpPlayRightPanel(workspace)
+
+            self.assertFalse(panel.start_button.isEnabled())
+            self.assertFalse(workspace.start_local_draft("", ""))
+            self.assertIsNone(workspace.active_draft_session)
+            self.assertIn(
+                tr("app_shell.pvp.play.start_blocked"),
+                panel.status_label.text(),
+            )
+
+    def test_pvp_play_start_creates_in_memory_controller_summary(self) -> None:
+        characters = _valid_character_assets()
+        weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: characters,
+                weapon_assets_provider=lambda: weapons,
+            )
+            self.assertTrue(workspace.decks_workspace.create_deck("Alpha"))
+            self.assertTrue(workspace.decks_workspace.save_edit(name="Alpha"))
+            self.assertTrue(workspace.decks_workspace.create_deck("Beta"))
+            self.assertTrue(workspace.decks_workspace.save_edit(name="Beta"))
+            panel = PvpPlayRightPanel(workspace)
+            beta_index = panel.player_2_combo.findText("Beta")
+            panel.player_2_combo.setCurrentIndex(beta_index)
+
+            panel.start_button.click()
+
+            self.assertIsNotNone(workspace.active_draft_session)
+            session = workspace.active_draft_session
+            board = session.board_dict()
+            self.assertEqual(board["draft_system"]["system_id"], "free_draft_v0")
+            self.assertIn("current_requirement", board)
+            self.assertGreater(board["progress"]["legal_target_count"], 0)
+            self.assertEqual(len(board["action_log"]), 0)
+            summary_text = "\n".join(
+                label.text() for label in panel.active_summary_labels if label.text()
+            )
+            self.assertIn("Legal targets:", summary_text)
+            self.assertIn("Action log: 0", summary_text)
+            self.assertIn(
+                tr("app_shell.pvp.play.draft_board_not_implemented"),
+                summary_text,
+            )
+
+    def test_pvp_play_same_deck_for_both_players_is_allowed(self) -> None:
+        characters = _valid_character_assets()
+        weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: characters,
+                weapon_assets_provider=lambda: weapons,
+            )
+            self.assertTrue(workspace.decks_workspace.create_deck("Mirror"))
+            self.assertTrue(workspace.decks_workspace.save_edit(name="Mirror"))
+            panel = PvpPlayRightPanel(workspace)
+
+            panel.start_button.click()
+
+            session = workspace.active_draft_session
+            self.assertIsNotNone(session)
+            self.assertEqual(session.player_1_deck_id, session.player_2_deck_id)
+            self.assertIsNot(
+                session.controller.state.player_1_deck,
+                session.controller.state.player_2_deck,
+            )
+            self.assertTrue(session.controller.state.setup_ready)
+
+    def test_pvp_right_panel_host_switches_decks_and_play_pages(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: [],
+                weapon_assets_provider=lambda: [],
+            )
+            host = PvpRightPanelHost(workspace)
+
+            self.assertEqual(host.current_page(), PVP_PAGE_DECKS)
+            self.assertIs(host.stack.currentWidget(), host.decks_panel)
+
+            host.set_page(PVP_PAGE_PLAY)
+
+            self.assertEqual(workspace.active_page_id, PVP_PAGE_PLAY)
+            self.assertIs(workspace.stack.currentWidget(), workspace.play_workspace)
+            self.assertIs(host.stack.currentWidget(), host.play_panel)
+
+            host.set_page(PVP_PAGE_DECKS)
+
+            self.assertIs(workspace.stack.currentWidget(), workspace.decks_workspace)
+            self.assertIs(host.stack.currentWidget(), host.decks_panel)
+
 
     @staticmethod
     def _send_key(widget, key: Qt.Key) -> None:
@@ -381,3 +517,16 @@ def _weapon_asset(
             }
         },
     }
+
+
+def _valid_character_assets() -> list[dict]:
+    return [
+        _character_asset(
+            str(20000000 + index),
+            f"Char {index}",
+            weapon_type=1,
+            weapon_type_name="Sword",
+            rarity=5,
+        )
+        for index in range(11)
+    ]

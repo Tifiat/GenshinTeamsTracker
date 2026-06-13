@@ -28,20 +28,25 @@ or JSON examples exist.
 
 ## AppShell UI Status
 
-The first real PvP AppShell UI is Decks v0:
+The first real PvP AppShell UI stages are Decks v0 plus Play/local setup v0:
 
 - `LEFT_WORKSPACE_PVP = "pvp"` is registered beside Characters/Weapons,
   Artifacts, and GCSIM.
 - When PvP is active, the right operations dock keeps Account/Data visible but
-  replaces Abyss/DPS Dummy controls with the Decks page.
+  replaces Abyss/DPS Dummy controls with real `Decks` and `Play` pages.
 - Leaving PvP for a normal workspace restores the normal run right dock and the
   previously selected Abyss/DPS Dummy mode.
 - Decks v0 persists local presets under `data/pvp/decks/`, shows account
   characters/weapons in view/edit mode, and validates by converting presets to
   backend `DraftDeck`.
+- Play/local setup v0 lists saved deck presets, validates selected Player 1 and
+  Player 2 decks through the same conversion path, creates an in-memory local
+  `FreeDraftController`, and shows a compact board-projection summary.
 - Decks v0 does not wire `FreeDraftController`, does not render a real draft
   board, and does not mutate normal TeamBuilder/Run state.
-- The UI roadmap and next Play/setup stage are owned by `PVP_UI_ROADMAP.md`;
+- Play v0 does not persist sessions/history, render the real board, or mutate
+  normal TeamBuilder/Run state.
+- The UI roadmap and next Draft board stage are owned by `PVP_UI_ROADMAP.md`;
   this file should remain backend/status focused.
 
 ## Backend Modules
@@ -194,10 +199,9 @@ Recommended local checks:
 
 Still out of scope / not implemented:
 
-- real PvP draft board UI and controller wiring beyond Decks v0;
+- real PvP draft board UI and pick/ban action wiring beyond the Play summary;
 - online/P2P/relay transport;
 - PvP History persistence;
-- Play/local match setup UI and deck-to-controller bridge;
 - real Gentor/Abyss importer;
 - XLSX/Google Sheets/Discord importer;
 - ruleset identity mapping / alias layer;

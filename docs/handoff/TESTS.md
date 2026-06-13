@@ -52,15 +52,20 @@ Mirror the primary project owner under `tests/`:
 - `tests/run_workspace/session/` - typed live Run Session ownership for
   AppShell mode/team/selection/timer/GCSIM runtime state.
 - `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests,
-  including workspace/right-dock routing integration for History and PvP.
+  including workspace/right-dock routing integration for History and PvP,
+  PvP `Decks`/`Play` header routing, preservation of normal Run state while
+  switching PvP pages, root deck path coverage that prevents `ui/data`
+  recreation, and active in-memory Play summary preservation after leaving and
+  returning to PvP.
 - `tests/ui/pvp_browser/` - PvP Browser/Decks widget tests, including
   workspace/right-panel create, edit, save/cancel, corrected Artifact
   Browser-style preset rows/expanded info, Enter/Esc create/edit shortcuts,
   automatic validation status without manual Validate, card-grid viewport edit
-  tint, selected-card edit markers, and no Decks-local draft start action. PvP
-  offscreen smoke should also verify the default deck path, first/second
-  activation timing, and that edit tint is scoped to the card grid viewports
-  when this area changes.
+  tint, selected-card edit markers, no Decks-local draft start action, Play
+  deck selectors, disabled/no-op invalid start, same-deck self-vs-self start,
+  and active Free Draft controller summary fields. PvP offscreen smoke should
+  also verify the default deck path, first/second activation timing, and that
+  edit tint is scoped to the card grid viewports when this area changes.
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.

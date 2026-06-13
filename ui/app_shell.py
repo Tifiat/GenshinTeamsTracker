@@ -92,7 +92,12 @@ from ui.character_assets import (
 )
 from ui.account_data_page import AccountDataPage
 from ui.pvp_browser.placeholders import PvpRightDockPlaceholder
-from ui.pvp_browser.window import PvpDecksRightPanel, PvpDecksWorkspace
+from ui.pvp_browser.window import (
+    PVP_PAGE_DECKS,
+    PVP_PAGE_PLAY,
+    PvpRightPanelHost,
+    PvpWorkspace,
+)
 from ui.gcsim_browser.window import (
     GcsimBrowserTeamSlotPreview,
     GcsimBrowserWorkspace,
@@ -1386,7 +1391,7 @@ class AppShell(QWidget):
             self.controller.right_panel_model(),
             show_mode_tabs=False,
         )
-        self.pvp_right_panel = PvpDecksRightPanel(self.left_host.pvp_workspace)
+        self.pvp_right_panel = PvpRightPanelHost(self.left_host.pvp_workspace)
         self.right_dock = RightOperationsDock(
             self.right_panel,
             history_operation_widget=HistoryRightPanelPlaceholder(),
@@ -2410,7 +2415,7 @@ class LeftWorkspaceHost(QWidget):
             tr("app_shell.workspace.history"),
             self.history_workspace,
         )
-        self.pvp_workspace = PvpDecksWorkspace(
+        self.pvp_workspace = PvpWorkspace(
             db_path=self.artifact_db_path,
             character_assets_provider=(
                 self.character_weapon_workspace.character_asset_items_snapshot
@@ -2696,6 +2701,7 @@ class RightDockHeader(QWidget):
     reset_requested = Signal()
     account_requested = Signal()
     pvp_control_requested = Signal()
+    pvp_page_requested = Signal(str)
 
     def __init__(
         self,
@@ -2720,13 +2726,26 @@ class RightDockHeader(QWidget):
         )
         layout.addWidget(self.reset_button, 1)
 
-        self.pvp_control_button = make_mode_tab_button(
+        self.pvp_decks_button = make_mode_tab_button(
             tr("app_shell.right_dock.pvp_decks")
         )
-        self.pvp_control_button.clicked.connect(
-            lambda _checked=False: self.pvp_control_requested.emit()
+        self.pvp_decks_button.clicked.connect(
+            lambda _checked=False: self._request_pvp_page(PVP_PAGE_DECKS)
         )
-        layout.addWidget(self.pvp_control_button, 2)
+        layout.addWidget(self.pvp_decks_button, 1)
+
+        self.pvp_play_button = make_mode_tab_button(
+            tr("app_shell.right_dock.pvp_play")
+        )
+        self.pvp_play_button.clicked.connect(
+            lambda _checked=False: self._request_pvp_page(PVP_PAGE_PLAY)
+        )
+        layout.addWidget(self.pvp_play_button, 1)
+        self.pvp_control_button = self.pvp_decks_button
+        self._pvp_buttons_by_page = {
+            PVP_PAGE_DECKS: self.pvp_decks_button,
+            PVP_PAGE_PLAY: self.pvp_play_button,
+        }
 
         self.account_button = make_mode_tab_button(
             tr("app_shell.right_dock.account")
@@ -2745,18 +2764,16 @@ class RightDockHeader(QWidget):
         self.run_mode_tabs.setVisible(True)
         self.reset_button.setVisible(True)
         self.reset_button.setEnabled(True)
-        self.pvp_control_button.setVisible(False)
-        self.pvp_control_button.setChecked(False)
+        self._show_pvp_buttons(False)
         self.account_button.setChecked(False)
         self.run_mode_tabs.set_active_mode(mode)
 
-    def show_pvp_control(self) -> None:
+    def show_pvp_control(self, active_page: str = PVP_PAGE_DECKS) -> None:
         self.run_mode_tabs.setVisible(False)
         self.run_mode_tabs.set_active_mode(None)
         self.reset_button.setVisible(False)
         self.reset_button.setEnabled(False)
-        self.pvp_control_button.setVisible(True)
-        self.pvp_control_button.setChecked(True)
+        self._show_pvp_buttons(True, active_page=active_page)
         self.account_button.setChecked(False)
 
     def show_history_viewer(self) -> None:
@@ -2764,8 +2781,7 @@ class RightDockHeader(QWidget):
         self.run_mode_tabs.set_active_mode(None)
         self.reset_button.setVisible(False)
         self.reset_button.setEnabled(False)
-        self.pvp_control_button.setVisible(False)
-        self.pvp_control_button.setChecked(False)
+        self._show_pvp_buttons(False)
         self.account_button.setChecked(False)
 
     def show_account(self, *, policy: str = RIGHT_DOCK_POLICY_RUN) -> None:
@@ -2774,25 +2790,36 @@ class RightDockHeader(QWidget):
         if policy == RIGHT_DOCK_POLICY_PVP:
             self.run_mode_tabs.setVisible(False)
             self.run_mode_tabs.set_active_mode(None)
-            self.pvp_control_button.setVisible(True)
-            self.pvp_control_button.setChecked(False)
+            self._show_pvp_buttons(True, active_page=None)
         elif policy == RIGHT_DOCK_POLICY_HISTORY:
             self.run_mode_tabs.setVisible(False)
             self.run_mode_tabs.set_active_mode(None)
-            self.pvp_control_button.setVisible(False)
-            self.pvp_control_button.setChecked(False)
+            self._show_pvp_buttons(False)
         else:
             self.run_mode_tabs.setVisible(True)
             self.run_mode_tabs.set_active_mode(None)
-            self.pvp_control_button.setVisible(False)
-            self.pvp_control_button.setChecked(False)
+            self._show_pvp_buttons(False)
         self.account_button.setChecked(True)
 
     def retranslate_ui(self) -> None:
         self.run_mode_tabs.retranslate_ui()
         self.reset_button.setText(tr("app_shell.right_dock.reset"))
-        self.pvp_control_button.setText(tr("app_shell.right_dock.pvp_decks"))
+        self.pvp_decks_button.setText(tr("app_shell.right_dock.pvp_decks"))
+        self.pvp_play_button.setText(tr("app_shell.right_dock.pvp_play"))
         self.account_button.setText(tr("app_shell.right_dock.account"))
+
+    def _request_pvp_page(self, page_id: str) -> None:
+        self.pvp_page_requested.emit(page_id)
+
+    def _show_pvp_buttons(
+        self,
+        visible: bool,
+        *,
+        active_page: str | None = PVP_PAGE_DECKS,
+    ) -> None:
+        for page_id, button in self._pvp_buttons_by_page.items():
+            button.setVisible(visible)
+            button.setChecked(bool(visible and active_page == page_id))
 
 
 class RightOperationsDock(QFrame):
@@ -2816,6 +2843,7 @@ class RightOperationsDock(QFrame):
         )
         self.pvp_operation_widget = pvp_operation_widget or PvpRightDockPlaceholder()
         self._operation_policy = RIGHT_DOCK_POLICY_RUN
+        self._pvp_page = PVP_PAGE_DECKS
         self.header = RightDockHeader(active_mode)
         self.account_page = AccountDataPage()
 
@@ -2840,7 +2868,10 @@ class RightOperationsDock(QFrame):
 
         self.header.mode_requested.connect(self._on_mode_requested)
         self.header.reset_requested.connect(self.reset_requested.emit)
-        self.header.pvp_control_requested.connect(self.show_pvp_page)
+        self.header.pvp_control_requested.connect(
+            lambda: self.show_pvp_page(PVP_PAGE_DECKS)
+        )
+        self.header.pvp_page_requested.connect(self.show_pvp_page)
         self.header.account_requested.connect(self.show_account_page)
         self.show_run_page(active_mode)
 
@@ -2858,10 +2889,14 @@ class RightOperationsDock(QFrame):
         self.content_stack.setCurrentWidget(self.operation_widget)
         self.header.show_run_mode(mode)
 
-    def show_pvp_page(self) -> None:
+    def show_pvp_page(self, page_id: str | None = None) -> None:
+        if page_id in (PVP_PAGE_DECKS, PVP_PAGE_PLAY):
+            self._pvp_page = page_id
         self._operation_policy = RIGHT_DOCK_POLICY_PVP
+        if hasattr(self.pvp_operation_widget, "set_page"):
+            self.pvp_operation_widget.set_page(self._pvp_page)
         self.content_stack.setCurrentWidget(self.pvp_operation_widget)
-        self.header.show_pvp_control()
+        self.header.show_pvp_control(self._pvp_page)
 
     def show_history_page(self) -> None:
         self._operation_policy = RIGHT_DOCK_POLICY_HISTORY
@@ -4276,6 +4311,8 @@ __all__ = [
     "LEFT_WORKSPACE_HISTORY",
     "LEFT_WORKSPACE_PVP",
     "LeftWorkspaceHost",
+    "PVP_PAGE_DECKS",
+    "PVP_PAGE_PLAY",
     "RIGHT_DOCK_PAGE_ACCOUNT",
     "RIGHT_DOCK_PAGE_HISTORY",
     "RIGHT_DOCK_PAGE_PVP",

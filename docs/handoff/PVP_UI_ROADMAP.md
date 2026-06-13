@@ -8,8 +8,8 @@ remains in `PVP_BACKEND_STATUS.md`.
 
 - A `PvP` workspace tab exists beside Characters / Weapons, Artifacts, and
   GCSIM.
-- When PvP is active, the right dock uses PvP Decks controls instead of
-  Abyss / DPS Dummy.
+- When PvP is active, the right dock shows `Decks`, `Play`, and the global
+  Account action instead of Abyss / DPS Dummy.
 - Account remains a global shell action in the right header.
 - Decks v0 is implemented in `ui/pvp_browser/window.py` as
   `PvpDecksWorkspace` plus `PvpDecksRightPanel`.
@@ -17,10 +17,14 @@ remains in `PVP_BACKEND_STATUS.md`.
   left and the Artifact Browser preset-row/list/edit pattern on the right. It
   persists local deck presets, supports explicit view/edit/save/cancel, and
   validates through the existing backend deck validator.
+- Play/local match setup v0 is implemented in `ui/pvp_browser/window.py` as
+  a `PvpWorkspace` page plus `PvpPlayRightPanel`. It selects Player 1 and
+  Player 2 local deck presets, validates both through backend `DraftDeck`
+  conversion, starts an in-memory `FreeDraftController`, and shows only a
+  compact placeholder/summary.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
-- The real draft board, pick/ban clicks, and live `FreeDraftController` UI
-  wiring are still not implemented.
+- The real draft board and pick/ban clicks are still not implemented.
 
 ## Core Model
 
@@ -158,7 +162,7 @@ Card identity note:
 
 UI label: RU `Играть`, EN `Play`.
 
-- Do not add Play as an empty tab until it is implemented.
+- Play v0 is implemented as a real local setup tab, not an empty placeholder.
 - In v0, only local hot-seat exists.
 - The user may select the local account as both players.
 - Player 2 can be a local hot-seat opponent using the same account and one of
@@ -171,10 +175,21 @@ Suggested v0 flow:
 1. Choose Player 1 deck preset.
 2. Choose Player 2 local/hot-seat deck preset or ghost copy.
 3. Start local draft.
+4. Show an in-memory active draft summary from the backend board projection.
+
+Current v0 scope:
+
+- Uses saved local deck presets from `data/pvp/decks/`.
+- Same-preset/self-vs-self starts with an independent Player 2 backend deck
+  copy in memory only.
+- The left Play page shows setup/active-draft placeholder text and does not
+  duplicate the full form.
+- No session files, PvP history, normal TeamBuilder mutation, or network access
+  are performed by Play v0.
 
 ## Draft Stage
 
-Draft board is not the next implementation target.
+Draft board v0 is the next implementation target.
 
 Future Draft belongs mostly in the left/main area:
 
@@ -269,12 +284,15 @@ Current Decks v0 scope:
   weapon/character card grid viewports get the blue edit background, selected
   deck cards get the gold edit-selection border, unselected cards are dimmed,
   and labels/filter rows outside the card viewports must not be tinted.
-- `Start local draft` is not part of Decks; Play/setup owns that action later.
+- `Start local draft` is not part of Decks; Play/setup owns that action.
+- Play/setup v0 is implemented. It owns `Start local draft`, creates an
+  in-memory local `FreeDraftController`, and shows a compact active-draft
+  summary/placeholder instead of the real board.
 
 Next implementation task:
 
-> PvP Play / local match setup v0: choose Player 1/Player 2 local deck presets
-> or ghost copy and prepare the inputs needed to start a local Free Draft.
+> PvP Draft board v0: render the backend Free Draft board/read-model projection
+> and add the first real pick/ban interaction path.
 
 Still out of scope:
 

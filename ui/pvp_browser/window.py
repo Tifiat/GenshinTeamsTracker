@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -11,9 +12,11 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QComboBox,
     QLineEdit,
     QPushButton,
     QScrollArea,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -36,7 +39,10 @@ from run_workspace.pvp.deck_preset import (
     update_deck_preset_selection,
     weapon_ref_from_asset,
 )
-from run_workspace.pvp.validation import validate_draft_deck
+from run_workspace.pvp.account_deck_copy import copy_deck_for_player_2
+from run_workspace.pvp.deck import DraftDeck
+from run_workspace.pvp.free_draft_controller import FreeDraftController
+from run_workspace.pvp.validation import DeckValidationReport, validate_draft_deck
 from ui.character_assets import (
     CHARACTER_RARITY_FILTERS,
     CHARACTER_STANDARD_FILTER,
@@ -95,6 +101,8 @@ PVP_DECK_UI_ICON_SIZE = 24
 PVP_DECK_UI_ICON_BACKGROUND = UI_BG_PANEL_RAISED
 FILTER_BUTTON_STYLE = filter_button_style("app_shell_filter_button")
 _PVP_DECK_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
+PVP_PAGE_DECKS = "decks"
+PVP_PAGE_PLAY = "play"
 
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
@@ -111,6 +119,28 @@ WEAPON_TYPE_FILTER_ALIASES = {
     "bow": "bow",
     "polearm": "polearm",
 }
+
+
+@dataclass(frozen=True, slots=True)
+class PvpActiveDraftSession:
+    player_1_deck_id: str
+    player_1_deck_name: str
+    player_2_deck_id: str
+    player_2_deck_name: str
+    controller: FreeDraftController
+
+    def board_dict(self) -> dict[str, Any]:
+        return self.controller.to_board_dict()
+
+
+@dataclass(frozen=True, slots=True)
+class PvpDeckStartStatus:
+    preset: PvpDeckPreset | None
+    draft_deck: DraftDeck | None
+    report: DeckValidationReport | None
+    text: str
+    ready: bool
+    issue_codes: tuple[str, ...] = ()
 
 
 class PvpDeckAssetIconLabel(QLabel):
@@ -258,6 +288,23 @@ QWidget#pvp_deck_grid_container {
 QWidget#pvp_deck_grid_viewport[deckEditMode="true"],
 QWidget#pvp_deck_grid_container[deckEditMode="true"] {
     background: #203861;
+}
+QLabel#small_muted {
+    color: #9aa4ad;
+    font-size: 12px;
+}
+QLabel#pvp_deck_info_line {
+    color: #c5ced6;
+    background: transparent;
+    border: none;
+    padding: 0px;
+    font-size: 12px;
+    font-weight: 600;
+}
+QFrame#pvp_deck_expanded_info {
+    border: 1px solid #343b49;
+    border-radius: 6px;
+    background: #181d23;
 }
 """
 
@@ -980,6 +1027,305 @@ class PvpDecksWorkspace(QWidget):
         return True
 
 
+class PvpPlayWorkspace(QWidget):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("PvpPlayWorkspace")
+        self.setStyleSheet(PVP_DECKS_WORKSPACE_STYLE)
+        self._active_session: PvpActiveDraftSession | None = None
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 18, 18, 18)
+        root.setSpacing(8)
+
+        self.title_label = QLabel()
+        self.title_label.setObjectName("SectionTitle")
+        root.addWidget(self.title_label)
+
+        self.mode_label = QLabel()
+        self.mode_label.setObjectName("small_muted")
+        self.mode_label.setWordWrap(True)
+        root.addWidget(self.mode_label)
+
+        self.summary_frame = QFrame()
+        self.summary_frame.setObjectName("pvp_deck_expanded_info")
+        summary_layout = QVBoxLayout(self.summary_frame)
+        summary_layout.setContentsMargins(10, 10, 10, 10)
+        summary_layout.setSpacing(5)
+        self.summary_title_label = QLabel()
+        self.summary_title_label.setObjectName("pvp_deck_info_line")
+        summary_layout.addWidget(self.summary_title_label)
+        self.summary_labels: list[QLabel] = []
+        for _index in range(7):
+            label = QLabel()
+            label.setObjectName("pvp_deck_info_line")
+            label.setWordWrap(True)
+            summary_layout.addWidget(label)
+            self.summary_labels.append(label)
+        root.addWidget(self.summary_frame)
+        root.addStretch(1)
+        self.retranslate_ui()
+
+    def set_active_session(self, session: PvpActiveDraftSession | None) -> None:
+        self._active_session = session
+        self.refresh()
+
+    def refresh(self) -> None:
+        session = self._active_session
+        if session is None:
+            self.summary_title_label.setText(tr("app_shell.pvp.play.left_idle_title"))
+            lines = [tr("app_shell.pvp.play.setup_on_right")]
+        else:
+            self.summary_title_label.setText(tr("app_shell.pvp.play.active_local_draft"))
+            lines = _active_draft_summary_lines(session)
+        for index, label in enumerate(self.summary_labels):
+            text = lines[index] if index < len(lines) else ""
+            label.setText(text)
+            label.setVisible(bool(text))
+
+    def retranslate_ui(self) -> None:
+        self.title_label.setText(tr("app_shell.pvp.play.title"))
+        self.mode_label.setText(tr("app_shell.pvp.play.mode_local_hotseat"))
+        self.refresh()
+
+
+class PvpWorkspace(QWidget):
+    state_changed = Signal()
+    page_changed = Signal(str)
+    active_draft_changed = Signal()
+
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        db_path: str | Path = ARTIFACT_DB_PATH,
+        deck_dir: str | Path = DEFAULT_PVP_DECK_PRESET_DIR,
+        character_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
+        weapon_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("PvpWorkspace")
+        self.active_page_id = PVP_PAGE_DECKS
+        self.active_draft_session: PvpActiveDraftSession | None = None
+        self._last_play_status = ""
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+        self.stack = QStackedWidget()
+        root.addWidget(self.stack, 1)
+
+        self.decks_workspace = PvpDecksWorkspace(
+            db_path=db_path,
+            deck_dir=deck_dir,
+            character_assets_provider=character_assets_provider,
+            weapon_assets_provider=weapon_assets_provider,
+        )
+        self.play_workspace = PvpPlayWorkspace()
+        self.stack.addWidget(self.decks_workspace)
+        self.stack.addWidget(self.play_workspace)
+        self.decks_workspace.state_changed.connect(self._on_decks_state_changed)
+        self._sync_play_workspace()
+
+    @property
+    def character_assets(self) -> list[dict[str, Any]]:
+        return self.decks_workspace.character_assets
+
+    @property
+    def weapon_assets(self) -> list[dict[str, Any]]:
+        return self.decks_workspace.weapon_assets
+
+    @property
+    def presets(self) -> list[PvpDeckPreset]:
+        return self.decks_workspace.presets
+
+    @property
+    def selected_deck_id(self) -> str:
+        return self.decks_workspace.selected_deck_id
+
+    def selected_preset(self) -> PvpDeckPreset | None:
+        return self.decks_workspace.selected_preset()
+
+    def set_page(self, page_id: str) -> None:
+        page_id = page_id if page_id in {PVP_PAGE_DECKS, PVP_PAGE_PLAY} else PVP_PAGE_DECKS
+        previous = self.active_page_id
+        self.active_page_id = page_id
+        self.stack.setCurrentWidget(
+            self.play_workspace if page_id == PVP_PAGE_PLAY else self.decks_workspace
+        )
+        self._sync_play_workspace()
+        if previous != page_id:
+            self.page_changed.emit(page_id)
+
+    def refresh_account_data(
+        self,
+        *,
+        reload_presets: bool = False,
+        emit_signal: bool = True,
+    ) -> None:
+        self.decks_workspace.refresh_account_data(
+            reload_presets=reload_presets,
+            emit_signal=False,
+        )
+        self._sync_play_workspace()
+        if emit_signal:
+            self.state_changed.emit()
+
+    def retranslate_ui(self) -> None:
+        self.decks_workspace.retranslate_ui()
+        self.play_workspace.retranslate_ui()
+        self._sync_play_workspace()
+
+    def preset_by_id(self, deck_id: str) -> PvpDeckPreset | None:
+        for preset in self.decks_workspace.presets:
+            if preset.deck_id == deck_id:
+                return preset
+        return None
+
+    def play_deck_options(self) -> tuple[PvpDeckPreset, ...]:
+        return tuple(self.decks_workspace.presets)
+
+    def default_player_1_deck_id(self) -> str:
+        selected_id = self.decks_workspace.selected_deck_id
+        if selected_id and self.preset_by_id(selected_id) is not None:
+            return selected_id
+        for preset in self.decks_workspace.presets:
+            status = self.deck_start_status(preset.deck_id, player_label="Player 1")
+            if status.ready:
+                return preset.deck_id
+        return self.decks_workspace.presets[0].deck_id if self.decks_workspace.presets else ""
+
+    def default_player_2_deck_id(self, player_1_deck_id: str = "") -> str:
+        presets = self.decks_workspace.presets
+        if not presets:
+            return ""
+        if len(presets) == 1:
+            return player_1_deck_id or presets[0].deck_id
+        return presets[0].deck_id
+
+    def deck_start_status(
+        self,
+        deck_id: str,
+        *,
+        player_label: str,
+    ) -> PvpDeckStartStatus:
+        preset = self.preset_by_id(deck_id)
+        if preset is None:
+            return PvpDeckStartStatus(
+                preset=None,
+                draft_deck=None,
+                report=None,
+                text=tr("app_shell.pvp.play.deck_missing"),
+                ready=False,
+            )
+        try:
+            draft_deck = deck_preset_to_draft_deck(
+                preset,
+                self.decks_workspace.character_assets,
+                self.decks_workspace.weapon_assets,
+                player_nickname=player_label,
+            )
+            report = validate_draft_deck(draft_deck)
+        except Exception as exc:
+            return PvpDeckStartStatus(
+                preset=preset,
+                draft_deck=None,
+                report=None,
+                text=tr("app_shell.pvp.play.deck_error").format(error=str(exc)),
+                ready=False,
+            )
+        codes = tuple(report.issue_codes())
+        if report.ready:
+            text = tr("app_shell.pvp.play.deck_ready")
+        else:
+            text = tr("app_shell.pvp.play.deck_invalid").format(
+                issues=len(codes),
+                codes=_compact_issue_codes(codes),
+            )
+        return PvpDeckStartStatus(
+            preset=preset,
+            draft_deck=draft_deck,
+            report=report,
+            text=text,
+            ready=report.ready,
+            issue_codes=codes,
+        )
+
+    def can_start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str) -> bool:
+        return (
+            self.deck_start_status(player_1_deck_id, player_label="Player 1").ready
+            and self.deck_start_status(player_2_deck_id, player_label="Player 2").ready
+        )
+
+    def start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str) -> bool:
+        player_1_status = self.deck_start_status(
+            player_1_deck_id,
+            player_label="Player 1",
+        )
+        player_2_status = self.deck_start_status(
+            player_2_deck_id,
+            player_label="Player 2",
+        )
+        if (
+            not player_1_status.ready
+            or not player_2_status.ready
+            or player_1_status.draft_deck is None
+            or player_2_status.draft_deck is None
+            or player_1_status.preset is None
+            or player_2_status.preset is None
+        ):
+            self._last_play_status = tr("app_shell.pvp.play.start_blocked")
+            self.state_changed.emit()
+            return False
+
+        player_1_deck = player_1_status.draft_deck
+        player_2_deck = (
+            copy_deck_for_player_2(player_1_deck)
+            if player_1_deck_id == player_2_deck_id
+            else player_2_status.draft_deck
+        )
+        controller = FreeDraftController.from_decks(
+            player_1_deck,
+            player_2_deck,
+            source_mode="local_hot_seat",
+        )
+        if not controller.state.setup_ready:
+            self._last_play_status = tr("app_shell.pvp.play.start_blocked")
+            self.state_changed.emit()
+            return False
+
+        self.active_draft_session = PvpActiveDraftSession(
+            player_1_deck_id=player_1_status.preset.deck_id,
+            player_1_deck_name=player_1_status.preset.name,
+            player_2_deck_id=player_2_status.preset.deck_id,
+            player_2_deck_name=player_2_status.preset.name,
+            controller=controller,
+        )
+        self._last_play_status = ""
+        self._sync_play_workspace()
+        self.active_draft_changed.emit()
+        self.state_changed.emit()
+        return True
+
+    def clear_active_draft(self) -> None:
+        if self.active_draft_session is None:
+            return
+        self.active_draft_session = None
+        self._sync_play_workspace()
+        self.active_draft_changed.emit()
+        self.state_changed.emit()
+
+    def last_play_status(self) -> str:
+        return self._last_play_status
+
+    def _on_decks_state_changed(self) -> None:
+        self._sync_play_workspace()
+        self.state_changed.emit()
+
+    def _sync_play_workspace(self) -> None:
+        self.play_workspace.set_active_session(self.active_draft_session)
+
+
 PVP_DECKS_RIGHT_PANEL_STYLE = f"""
 QLineEdit {{
     min-height: 28px;
@@ -988,6 +1334,18 @@ QLineEdit {{
     border-radius: 6px;
     background: {UI_BG_APP};
     color: {UI_TEXT_PRIMARY};
+}}
+QComboBox {{
+    min-height: 28px;
+    padding: 3px 8px;
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 6px;
+    background: {UI_BG_APP};
+    color: {UI_TEXT_PRIMARY};
+}}
+QComboBox:disabled {{
+    color: {UI_TEXT_MUTED};
+    background: {UI_BG_BUTTON};
 }}
 QFrame#build_slot_row {{
     border: 1px solid #343b49;
@@ -1051,6 +1409,31 @@ QPushButton#pvp_ruleset_chip:disabled {{
     color: #798291;
     background: {UI_BG_BUTTON};
     border-color: #343b49;
+}}
+QPushButton#pvp_primary_button,
+QPushButton#pvp_secondary_button {{
+    min-height: 28px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 800;
+}}
+QPushButton#pvp_primary_button {{
+    border: 1px solid {UI_STATE_SUCCESS};
+    background: #24452d;
+    color: {UI_TEXT_PRIMARY};
+}}
+QPushButton#pvp_primary_button:hover {{
+    background: #2d5938;
+}}
+QPushButton#pvp_primary_button:disabled {{
+    border-color: #343b49;
+    background: {UI_BG_BUTTON};
+    color: {UI_TEXT_MUTED};
+}}
+QPushButton#pvp_secondary_button {{
+    border: 1px solid {UI_BORDER_DEFAULT};
+    background: {UI_BG_BUTTON};
+    color: {UI_TEXT_SECONDARY};
 }}
 """
 
@@ -1530,6 +1913,305 @@ class PvpDecksRightPanel(QWidget):
 
 
 
+class PvpPlayRightPanel(QWidget):
+    def __init__(
+        self,
+        workspace: PvpWorkspace,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.workspace = workspace
+        self.player_1_deck_id = ""
+        self.player_2_deck_id = ""
+        self._refreshing = False
+        self.setObjectName("RightPanelPrototypeContent")
+        self.setStyleSheet(PVP_DECKS_RIGHT_PANEL_STYLE)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(8, 8, 8, 8)
+        root.setSpacing(8)
+
+        self.title_label = QLabel()
+        self.title_label.setObjectName("SectionTitle")
+        root.addWidget(self.title_label)
+
+        self.mode_label = QLabel()
+        self.mode_label.setObjectName("small_muted")
+        self.mode_label.setWordWrap(True)
+        root.addWidget(self.mode_label)
+
+        self.empty_label = QLabel()
+        self.empty_label.setObjectName("small_muted")
+        self.empty_label.setWordWrap(True)
+        root.addWidget(self.empty_label)
+
+        self.player_1_label = QLabel()
+        self.player_1_label.setObjectName("pvp_deck_info_line")
+        root.addWidget(self.player_1_label)
+        self.player_1_combo = QComboBox()
+        self.player_1_combo.currentIndexChanged.connect(
+            lambda _index: self._on_selection_changed()
+        )
+        root.addWidget(self.player_1_combo)
+        self.player_1_status_label = QLabel()
+        self.player_1_status_label.setObjectName("small_muted")
+        self.player_1_status_label.setWordWrap(True)
+        root.addWidget(self.player_1_status_label)
+
+        self.player_2_label = QLabel()
+        self.player_2_label.setObjectName("pvp_deck_info_line")
+        root.addWidget(self.player_2_label)
+        self.player_2_combo = QComboBox()
+        self.player_2_combo.currentIndexChanged.connect(
+            lambda _index: self._on_selection_changed()
+        )
+        root.addWidget(self.player_2_combo)
+        self.player_2_status_label = QLabel()
+        self.player_2_status_label.setObjectName("small_muted")
+        self.player_2_status_label.setWordWrap(True)
+        root.addWidget(self.player_2_status_label)
+
+        self.start_button = QPushButton()
+        self.start_button.setObjectName("pvp_primary_button")
+        self.start_button.clicked.connect(self._on_start_clicked)
+        root.addWidget(self.start_button)
+
+        self.active_frame = QFrame()
+        self.active_frame.setObjectName("pvp_deck_expanded_info")
+        active_layout = QVBoxLayout(self.active_frame)
+        active_layout.setContentsMargins(8, 8, 8, 8)
+        active_layout.setSpacing(4)
+        self.active_title_label = QLabel()
+        self.active_title_label.setObjectName("pvp_deck_info_line")
+        active_layout.addWidget(self.active_title_label)
+        self.active_summary_labels: list[QLabel] = []
+        for _index in range(7):
+            label = QLabel()
+            label.setObjectName("pvp_deck_info_line")
+            label.setWordWrap(True)
+            active_layout.addWidget(label)
+            self.active_summary_labels.append(label)
+        self.clear_button = QPushButton()
+        self.clear_button.setObjectName("pvp_secondary_button")
+        self.clear_button.clicked.connect(self.workspace.clear_active_draft)
+        active_layout.addWidget(self.clear_button)
+        root.addWidget(self.active_frame)
+
+        self.status_label = QLabel()
+        self.status_label.setObjectName("small_muted")
+        self.status_label.setWordWrap(True)
+        root.addWidget(self.status_label)
+        root.addStretch(1)
+
+        self.workspace.state_changed.connect(self.refresh)
+        self.workspace.active_draft_changed.connect(self.refresh)
+        self.retranslate_ui()
+        self.refresh()
+
+    def refresh(self) -> None:
+        if self._refreshing:
+            return
+        self._refreshing = True
+        try:
+            options = self.workspace.play_deck_options()
+            option_ids = {preset.deck_id for preset in options}
+            if self.player_1_deck_id not in option_ids:
+                self.player_1_deck_id = self.workspace.default_player_1_deck_id()
+            if self.player_2_deck_id not in option_ids:
+                self.player_2_deck_id = self.workspace.default_player_2_deck_id(
+                    self.player_1_deck_id
+                )
+            self.player_1_deck_id = self._sync_combo(
+                self.player_1_combo,
+                self.player_1_deck_id,
+                options,
+            )
+            self.player_2_deck_id = self._sync_combo(
+                self.player_2_combo,
+                self.player_2_deck_id,
+                options,
+            )
+
+            has_decks = bool(options)
+            for widget in (
+                self.player_1_label,
+                self.player_1_combo,
+                self.player_1_status_label,
+                self.player_2_label,
+                self.player_2_combo,
+                self.player_2_status_label,
+                self.start_button,
+            ):
+                widget.setVisible(True)
+                widget.setEnabled(has_decks)
+            self.empty_label.setVisible(not has_decks)
+            if not has_decks:
+                self.start_button.setEnabled(False)
+                self.player_1_status_label.setText("")
+                self.player_2_status_label.setText("")
+            else:
+                player_1_status = self.workspace.deck_start_status(
+                    self.player_1_deck_id,
+                    player_label="Player 1",
+                )
+                player_2_status = self.workspace.deck_start_status(
+                    self.player_2_deck_id,
+                    player_label="Player 2",
+                )
+                self.player_1_status_label.setText(player_1_status.text)
+                self.player_2_status_label.setText(player_2_status.text)
+                self.start_button.setEnabled(
+                    player_1_status.ready and player_2_status.ready
+                )
+            self._refresh_active_summary()
+            status = self.workspace.last_play_status()
+            self.status_label.setText(status)
+            self.status_label.setVisible(bool(status))
+        finally:
+            self._refreshing = False
+
+    def retranslate_ui(self) -> None:
+        self.title_label.setText(tr("app_shell.pvp.play.title"))
+        self.mode_label.setText(tr("app_shell.pvp.play.mode_local_hotseat"))
+        self.empty_label.setText(tr("app_shell.pvp.play.no_decks"))
+        self.player_1_label.setText(tr("app_shell.pvp.play.player_1_deck"))
+        self.player_2_label.setText(tr("app_shell.pvp.play.player_2_deck"))
+        self.start_button.setText(tr("app_shell.pvp.play.start_local_draft"))
+        self.active_title_label.setText(tr("app_shell.pvp.play.active_local_draft"))
+        self.clear_button.setText(tr("app_shell.pvp.play.clear_active_draft"))
+        self.refresh()
+
+    def _sync_combo(
+        self,
+        combo: QComboBox,
+        selected_id: str,
+        options: tuple[PvpDeckPreset, ...],
+    ) -> str:
+        combo.blockSignals(True)
+        try:
+            combo.clear()
+            for preset in options:
+                combo.addItem(preset.name, preset.deck_id)
+            if not options:
+                return ""
+            index = combo.findData(selected_id)
+            if index < 0:
+                index = 0
+            combo.setCurrentIndex(index)
+            return _text(combo.currentData())
+        finally:
+            combo.blockSignals(False)
+
+    def _on_selection_changed(self) -> None:
+        if self._refreshing:
+            return
+        self.player_1_deck_id = _text(self.player_1_combo.currentData())
+        self.player_2_deck_id = _text(self.player_2_combo.currentData())
+        self.refresh()
+
+    def _on_start_clicked(self) -> None:
+        if self.workspace.start_local_draft(
+            self.player_1_deck_id,
+            self.player_2_deck_id,
+        ):
+            self.refresh()
+
+    def _refresh_active_summary(self) -> None:
+        session = self.workspace.active_draft_session
+        self.active_frame.setVisible(session is not None)
+        lines = _active_draft_summary_lines(session) if session is not None else []
+        for index, label in enumerate(self.active_summary_labels):
+            text = lines[index] if index < len(lines) else ""
+            label.setText(text)
+            label.setVisible(bool(text))
+
+
+class PvpRightPanelHost(QWidget):
+    def __init__(
+        self,
+        workspace: PvpWorkspace,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.workspace = workspace
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+        self.stack = QStackedWidget()
+        root.addWidget(self.stack, 1)
+        self.decks_panel = PvpDecksRightPanel(workspace.decks_workspace)
+        self.play_panel = PvpPlayRightPanel(workspace)
+        self.stack.addWidget(self.decks_panel)
+        self.stack.addWidget(self.play_panel)
+        self.workspace.page_changed.connect(self._sync_page_from_workspace)
+        self.set_page(workspace.active_page_id)
+
+    def set_page(self, page_id: str) -> None:
+        self.workspace.set_page(page_id)
+        self._sync_page_from_workspace(self.workspace.active_page_id)
+
+    def current_page(self) -> str:
+        return self.workspace.active_page_id
+
+    def retranslate_ui(self) -> None:
+        self.decks_panel.retranslate_ui()
+        self.play_panel.retranslate_ui()
+
+    def _sync_page_from_workspace(self, page_id: str) -> None:
+        self.stack.setCurrentWidget(
+            self.play_panel if page_id == PVP_PAGE_PLAY else self.decks_panel
+        )
+
+
+def _active_draft_summary_lines(
+    session: PvpActiveDraftSession,
+) -> list[str]:
+    board = session.board_dict()
+    draft_system = _mapping(board.get("draft_system"))
+    requirement = board.get("current_requirement")
+    requirement_text = _format_requirement(requirement if isinstance(requirement, Mapping) else None)
+    progress = _mapping(board.get("progress"))
+    action_log = board.get("action_log")
+    action_log_count = len(action_log) if isinstance(action_log, list) else 0
+    return [
+        tr("app_shell.pvp.play.summary_p1").format(name=session.player_1_deck_name),
+        tr("app_shell.pvp.play.summary_p2").format(name=session.player_2_deck_name),
+        tr("app_shell.pvp.play.summary_system").format(
+            system_id=_text(draft_system.get("system_id")),
+        ),
+        tr("app_shell.pvp.play.summary_requirement").format(
+            requirement=requirement_text,
+        ),
+        tr("app_shell.pvp.play.summary_legal_targets").format(
+            count=int(progress.get("legal_target_count") or 0),
+        ),
+        tr("app_shell.pvp.play.summary_action_log").format(
+            count=action_log_count,
+        ),
+        tr("app_shell.pvp.play.draft_board_not_implemented"),
+    ]
+
+
+def _format_requirement(requirement: Mapping[str, Any] | None) -> str:
+    if not requirement:
+        return tr("app_shell.pvp.play.requirement_none")
+    parts = [
+        _text(requirement.get("phase")),
+        _text(requirement.get("active_seat")),
+        _text(requirement.get("expected_action_type")),
+    ]
+    return " / ".join(part for part in parts if part)
+
+
+def _compact_issue_codes(codes: tuple[str, ...]) -> str:
+    if not codes:
+        return ""
+    visible = ", ".join(codes[:4])
+    if len(codes) > 4:
+        visible += ", ..."
+    return f": {visible}"
+
+
 def _clear_grid(grid: QGridLayout) -> None:
     while grid.count():
         item = grid.takeAt(0)
@@ -1638,12 +2320,23 @@ def _optional_int(value: Any) -> int | None:
         return None
 
 
+def _mapping(value: Any) -> dict[str, Any]:
+    return dict(value) if isinstance(value, Mapping) else {}
+
+
 def _text(value: Any) -> str:
     return str(value or "").strip()
 
 
 __all__ = [
+    "PVP_PAGE_DECKS",
+    "PVP_PAGE_PLAY",
+    "PvpActiveDraftSession",
     "PvpDeckAssetIconLabel",
     "PvpDecksRightPanel",
     "PvpDecksWorkspace",
+    "PvpPlayRightPanel",
+    "PvpPlayWorkspace",
+    "PvpRightPanelHost",
+    "PvpWorkspace",
 ]

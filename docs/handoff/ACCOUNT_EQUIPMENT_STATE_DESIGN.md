@@ -116,6 +116,11 @@ Recommended equipment reference:
   helpers need it;
 - do not invent weapon copy ids.
 
+PvP Deck presets mirror this identity through
+`run_workspace/pvp/weapon_identity.py`: one selectable unit is one observed
+stack keyed by `weapon_fingerprint` when available, with `known_count` carried
+as stack count rather than split into fake physical copy ids.
+
 Identical weapon copies inside one stack are indistinguishable. Equipment state
 can know "N characters are using N copies from this stack"; it cannot know which
 physical copy each character owns.

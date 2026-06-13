@@ -120,6 +120,11 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `hoyolab_export/`: HoYoLAB auth/export/import pipeline, artifact DB helpers, HoYoWiki catalog/cache helpers.
 - `localization/`: JSON-backed app localization.
 - `ui/artifact_browser/`: isolated Artifact Browser module.
+- AppShell top-level browser/workspace UI must live in its own `ui/<area>_browser/`
+  package when it grows beyond shell routing/glue. `ui/app_shell.py` coordinates
+  workspace/right-dock policy and may instantiate those widgets, but it should
+  not own feature-specific browser implementations. Current examples:
+  `ui/artifact_browser/`, `ui/gcsim_browser/`, and `ui/pvp_browser/`.
 - `run_workspace/pvp/`: isolated backend-only PvP v0 foundation for deck JSON,
   deck validation, Decks UI preset persistence, Free Draft
   schedule/reducer/action log, post-draft team and weapon assignment
@@ -506,19 +511,21 @@ PvP UI direction exists at `docs/handoff/PVP_UI_ROADMAP.md`. The backend
 implementation target is a full local Hot-seat / Ghost Deck offline loop with
 two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
 weapon assignment, timers, and winner summary. Decks mode v0 is implemented:
-AppShell opens PvP into Decks, persists `gtt.pvp_deck_preset` JSON under
+AppShell opens PvP into Decks, with PvP UI widgets owned by `ui/pvp_browser/`;
+it persists `gtt.pvp_deck_preset` JSON under
 `data/pvp/decks/`, shows account characters/weapons in view/edit mode, and
 validates by converting presets to backend `DraftDeck`. The next UI
 implementation target is Play/local match setup v0: choose Player 1/Player 2
 local deck presets or ghost copy and prepare Free Draft inputs; it is still not
-the draft board. Before broader weapon UI reuse, extract a shared Weapon
-observed stack identity contract/helper from the temporary Decks preset logic.
+the draft board. Shared observed weapon-stack identity for Deck presets and
+future PvP screens lives in `run_workspace/pvp/weapon_identity.py`.
 Reference-site findings live in
 `docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`; PvP/tournament ruleset audit exists
 at `docs/handoff/PVP_RULESETS_AUDIT.md`, with the current source/applicability
 matrix at `docs/handoff/PVP_RULESET_SOURCE_MATRIX.md`. Backend foundation now
-lives under `run_workspace/pvp/`; focused tests and synthetic deck/ruleset
-fixtures live under `tests/run_workspace/pvp/` and `samples/pvp/`.
+lives under `run_workspace/pvp/`; focused UI/backend tests and synthetic
+deck/ruleset fixtures live under `tests/ui/pvp_browser/`,
+`tests/run_workspace/pvp/`, and `samples/pvp/`.
 Current local-account deck export entrypoint is
 `python -m run_workspace.pvp.account_deck_export_smoke`; default mode is dry-run,
 and explicit `--write` writes generated/private deck JSON under `data/pvp/decks/`.

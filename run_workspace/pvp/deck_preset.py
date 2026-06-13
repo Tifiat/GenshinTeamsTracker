@@ -21,6 +21,15 @@ from .deck import (
     DraftDeckSource,
     DraftWeaponStack,
 )
+from .weapon_identity import (
+    WeaponObservedStackRef,
+    dedupe_weapon_observed_stack_refs,
+    draft_weapon_stack_from_observed_ref,
+    weapon_observed_stack_key,
+    weapon_observed_stack_ref_from_asset,
+    weapon_observed_stack_ref_from_mapping,
+    weapon_observed_stack_refs_from_assets,
+)
 
 
 PVP_DECK_PRESET_SCHEMA_VERSION = 1
@@ -32,36 +41,9 @@ class DeckPresetError(ValueError):
     """Raised when a PvP deck preset cannot be created, parsed, or saved."""
 
 
-@dataclass(frozen=True, slots=True)
-class PvpDeckPresetWeaponRef:
-    weapon_fingerprint: str = ""
-    weapon_id: str = ""
-    weapon_type: str = ""
-    rarity: int | None = None
-    level: int | None = None
-    refinement: int | None = None
-    count: int | None = None
-
-    @property
-    def key(self) -> str:
-        return self.weapon_fingerprint or weapon_stack_key(
-            weapon_id=self.weapon_id,
-            weapon_type=self.weapon_type,
-            rarity=self.rarity,
-            level=self.level,
-            refinement=self.refinement,
-        )
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "weapon_fingerprint": self.weapon_fingerprint,
-            "weapon_id": self.weapon_id,
-            "weapon_type": self.weapon_type,
-            "rarity": self.rarity,
-            "level": self.level,
-            "refinement": self.refinement,
-            "count": self.count,
-        }
+PvpDeckPresetWeaponRef = WeaponObservedStackRef
+weapon_ref_from_asset = weapon_observed_stack_ref_from_asset
+weapon_stack_key = weapon_observed_stack_key
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,15 +92,7 @@ def create_deck_preset_from_account_assets(
             if character_id
         )
     )
-    weapon_refs = tuple(
-        {
-            ref.key: ref
-            for ref in (
-                weapon_ref_from_asset(asset) for asset in weapon_assets
-            )
-            if ref is not None and ref.key
-        }.values()
-    )
+    weapon_refs = weapon_observed_stack_refs_from_assets(weapon_assets)
     if not character_ids and not weapon_refs:
         raise DeckPresetError("Cannot create a deck preset from an empty account.")
 
@@ -157,13 +131,7 @@ def update_deck_preset_selection(
     unique_character_ids = tuple(
         dict.fromkeys(_text(item) for item in character_ids if _text(item))
     )
-    unique_weapon_refs = tuple(
-        {
-            ref.key: ref
-            for ref in weapon_refs
-            if isinstance(ref, PvpDeckPresetWeaponRef) and ref.key
-        }.values()
-    )
+    unique_weapon_refs = dedupe_weapon_observed_stack_refs(weapon_refs)
     return replace(
         preset,
         character_ids=unique_character_ids,
@@ -297,21 +265,10 @@ def deck_preset_from_mapping(payload: Mapping[str, Any]) -> PvpDeckPreset:
 
 
 def deck_preset_weapon_ref_from_mapping(value: Any) -> PvpDeckPresetWeaponRef:
-    if not isinstance(value, Mapping):
-        raise DeckPresetError("Deck preset weapon_refs entries must be objects.")
-    return PvpDeckPresetWeaponRef(
-        weapon_fingerprint=_text(
-            value.get("weapon_fingerprint")
-            or value.get("source_key")
-            or value.get("variant_key")
-        ),
-        weapon_id=_text(value.get("weapon_id") or value.get("id")),
-        weapon_type=_text(value.get("weapon_type") or value.get("type_name")),
-        rarity=_optional_int(value.get("rarity")),
-        level=_optional_int(value.get("level")),
-        refinement=_optional_int(value.get("refinement")),
-        count=_optional_int(value.get("count") or value.get("known_count")),
-    )
+    try:
+        return weapon_observed_stack_ref_from_mapping(value)
+    except ValueError as exc:
+        raise DeckPresetError("Deck preset weapon_refs entries must be objects.") from exc
 
 
 def deck_preset_to_draft_deck(
@@ -393,79 +350,11 @@ def draft_weapon_stack_from_asset(
     ref: PvpDeckPresetWeaponRef,
     asset: Mapping[str, Any] | None,
 ) -> DraftWeaponStack:
-    weapon = _asset_mapping(asset, "weapon")
-    metadata = _mapping(asset.get("metadata")) if isinstance(asset, Mapping) else {}
-    return DraftWeaponStack(
-        weapon_id=_text(weapon.get("id") or weapon.get("weapon_id") or ref.weapon_id),
-        display_name=_text(weapon.get("name") or weapon.get("display_name")),
-        weapon_type=_weapon_type_text(weapon) or ref.weapon_type,
-        rarity=_optional_int(weapon.get("rarity")) or ref.rarity,
-        level=_optional_int(weapon.get("level")) or ref.level,
-        refinement=_optional_int(weapon.get("refinement")) or ref.refinement,
-        count=(
-            _optional_int(weapon.get("known_count"))
-            or _optional_int(metadata.get("known_count"))
-            or ref.count
-        ),
-    )
+    return draft_weapon_stack_from_observed_ref(ref=ref, asset=asset)
 
 
 def character_id_from_asset(asset: Mapping[str, Any]) -> str:
     return _text(_asset_mapping(asset, "character").get("id"))
-
-
-def weapon_ref_from_asset(
-    asset: Mapping[str, Any],
-) -> PvpDeckPresetWeaponRef | None:
-    metadata = _mapping(asset.get("metadata"))
-    weapon = _mapping(metadata.get("weapon"))
-    weapon_id = _text(weapon.get("id") or weapon.get("weapon_id"))
-    weapon_fingerprint = _text(
-        weapon.get("weapon_fingerprint")
-        or weapon.get("source_key")
-        or weapon.get("variant_key")
-        or metadata.get("weapon_fingerprint")
-    )
-    weapon_type = _weapon_type_identity_text(weapon)
-    rarity = _optional_int(weapon.get("rarity"))
-    level = _optional_int(weapon.get("level"))
-    refinement = _optional_int(weapon.get("refinement"))
-    count = _optional_int(weapon.get("known_count")) or _optional_int(
-        metadata.get("known_count")
-    )
-    ref = PvpDeckPresetWeaponRef(
-        weapon_fingerprint=weapon_fingerprint,
-        weapon_id=weapon_id,
-        weapon_type=weapon_type,
-        rarity=rarity,
-        level=level,
-        refinement=refinement,
-        count=count,
-    )
-    if not ref.key:
-        return None
-    return ref
-
-
-def weapon_stack_key(
-    *,
-    weapon_id: Any,
-    weapon_type: Any,
-    rarity: Any,
-    level: Any,
-    refinement: Any,
-) -> str:
-    if not _text(weapon_id):
-        return ""
-    return "|".join(
-        (
-            _text(weapon_id),
-            _text(weapon_type).casefold(),
-            _text(rarity),
-            _text(level),
-            _text(refinement),
-        )
-    )
 
 
 def _asset_mapping(
@@ -479,18 +368,6 @@ def _asset_mapping(
 
 def _weapon_type_text(payload: Mapping[str, Any]) -> str:
     for key in ("type_name", "weapon_type_name", "weapon_type", "type"):
-        value = _text(payload.get(key))
-        if value:
-            return value
-    return ""
-
-
-def _weapon_type_identity_text(payload: Mapping[str, Any]) -> str:
-    for key in ("weapon_type", "type"):
-        value = _text(payload.get(key))
-        if value:
-            return value
-    for key in ("type_name", "weapon_type_name"):
         value = _text(payload.get(key))
         if value:
             return value

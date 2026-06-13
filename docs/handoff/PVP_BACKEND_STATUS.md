@@ -1,6 +1,6 @@
 # PvP Backend Status
 
-Last updated: 2026-06-12.
+Last updated: 2026-06-13.
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
@@ -86,10 +86,17 @@ The first real PvP AppShell UI is Decks v0:
   exporter from local account SQLite runtime adapters. It excludes artifacts,
   auth/cookies, raw dumps, local paths, SQLite row ids, and fake weapon
   instance ids.
+- `run_workspace/pvp/weapon_identity.py`: shared PvP observed weapon-stack
+  identity bridge for Deck presets and future PvP screens. It models one
+  selectable account observed stack, prefers `weapon_fingerprint`, uses a
+  structured field fallback without localized names/paths/provenance fields,
+  preserves `known_count` as stack count, and converts refs to backend
+  `DraftWeaponStack` without fake copy ids.
 - `run_workspace/pvp/deck_preset.py`: thin Decks UI preset persistence wrapper
   (`gtt.pvp_deck_preset`) under `data/pvp/decks/`. It stores stable
   `character_ids` and observed weapon-stack refs without localized names or
-  local paths, then converts to `DraftDeck` for backend validation.
+  local paths, delegates weapon identity/conversion to `weapon_identity.py`,
+  then converts to `DraftDeck` for backend validation.
 - `run_workspace/pvp/account_deck_copy.py`: small backend helper for creating an
   independent Player 2 copy of an account-derived deck. Stable backend modules
   should import this helper, not the CLI smoke module.
@@ -162,7 +169,8 @@ artifacts, not PvP History persistence.
 ## Tests
 
 Focused PvP backend tests live under `tests/run_workspace/pvp/`, including the
-Free Draft board/read-model projection, validator, compact JSON smoke shape, and
+weapon observed-stack identity helper tests in `test_weapon_identity.py`, Free
+Draft board/read-model projection, validator, compact JSON smoke shape, and
 committed UI-contract sample tests in `test_free_draft_board.py`.
 
 Recommended local checks:

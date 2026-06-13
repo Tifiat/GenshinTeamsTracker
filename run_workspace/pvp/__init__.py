@@ -64,6 +64,15 @@ from .deck_preset import (
     update_deck_preset_selection,
     weapon_ref_from_asset,
 )
+from .weapon_identity import (
+    WeaponObservedStackRef,
+    dedupe_weapon_observed_stack_refs,
+    draft_weapon_stack_from_observed_ref,
+    weapon_observed_stack_key,
+    weapon_observed_stack_ref_from_asset,
+    weapon_observed_stack_ref_from_mapping,
+    weapon_observed_stack_refs_from_assets,
+)
 from .account_deck_copy import copy_deck_for_player_2
 from .free_draft_planner import (
     FreeDraftActionPlanReport,
@@ -331,6 +340,7 @@ __all__ = [
     "TIMELINE_STATUS_VALUES",
     "UnknownDraftSystemError",
     "ValidationIssue",
+    "WeaponObservedStackRef",
     "apply_draft_action",
     "apply_ruleset_balance_to_bundle",
     "apply_ruleset_balance_to_deck",
@@ -355,8 +365,10 @@ __all__ = [
     "deck_preset_to_draft_deck",
     "deck_preset_to_json_text",
     "delete_deck_preset",
+    "dedupe_weapon_observed_stack_refs",
     "draft_deck_from_mapping",
     "draft_deck_to_json_text",
+    "draft_weapon_stack_from_observed_ref",
     "export_free_draft_deck_from_account",
     "export_free_draft_deck_from_local_account",
     "get_draft_system",
@@ -381,6 +393,10 @@ __all__ = [
     "validate_team_assignment",
     "validate_weapon_assignment",
     "verify_session_bundle",
+    "weapon_observed_stack_key",
+    "weapon_observed_stack_ref_from_asset",
+    "weapon_observed_stack_ref_from_mapping",
+    "weapon_observed_stack_refs_from_assets",
     "weapon_ref_from_asset",
     "write_account_draft_deck",
     "write_session_bundle",

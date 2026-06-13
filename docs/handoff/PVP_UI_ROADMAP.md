@@ -11,7 +11,8 @@ remains in `PVP_BACKEND_STATUS.md`.
 - When PvP is active, the right dock uses PvP Decks controls instead of
   Abyss / DPS Dummy.
 - Account remains a global shell action in the right header.
-- Decks v0 is implemented as `PvpDecksWorkspace` plus `PvpDecksRightPanel`.
+- Decks v0 is implemented in `ui/pvp_browser/window.py` as
+  `PvpDecksWorkspace` plus `PvpDecksRightPanel`.
   The corrected UI follows the existing Characters/Weapons browser grid on the
   left and the Artifact Browser preset-row/list/edit pattern on the right. It
   persists local deck presets, supports explicit view/edit/save/cancel, and
@@ -96,14 +97,15 @@ Persistence rules:
 - Do not store localized display names, image paths, or local machine paths as
   identity.
 - Character identity should be stable `character_id`.
-- Weapon identity should use the account/runtime weapon identity already used by
-  the backend, likely `weapon_fingerprint` plus any needed stable weapon id
-  metadata. Existing `DraftDeck` v1 serializes observed stack fields rather than
-  fake instance ids, so UI persistence must convert without inventing a second
-  weapon identity model.
+- Weapon identity uses the account observed-stack bridge in
+  `run_workspace/pvp/weapon_identity.py`. The UI selects one
+  `WeaponObservedStackRef` per observed stack, preferring
+  `weapon_fingerprint` and falling back only to stable structured weapon fields.
+  `known_count > 1` is a stack count, not fake instance ids.
 - Persistence uses a thin UI preset wrapper, `gtt.pvp_deck_preset`, implemented
-  in `run_workspace/pvp/deck_preset.py`. It converts to the existing backend
-  `DraftDeck` contract for validation.
+  in `run_workspace/pvp/deck_preset.py`. It delegates weapon identity extraction
+  and `DraftWeaponStack` conversion to `weapon_identity.py`, then converts to
+  the existing backend `DraftDeck` contract for validation.
 - Avoid creating a second incompatible deck format.
 
 Existing backend deck contract:
@@ -127,11 +129,11 @@ Current UI preset fields:
 - `created_at_utc`;
 - `updated_at_utc`;
 
-Remaining identity follow-up:
+Current identity status:
 
-- Factor the temporary weapon identity extraction into a shared
-  `Weapon observed stack identity contract/helper` before more PvP screens or
-  account-equipment UI start depending on the same stack-key rules.
+- The shared `Weapon observed stack identity contract/helper` exists in
+  `run_workspace/pvp/weapon_identity.py`; future PvP screens should use it
+  instead of reading raw HoYoLAB/browser weapon fields directly.
 
 ## Cost / Ruleset Roadmap
 
@@ -234,9 +236,14 @@ Completed Decks v0 task:
 Implemented in:
 
 - `run_workspace/pvp/deck_preset.py`;
-- `ui/app_shell.py` (`PvpDecksWorkspace`, `PvpDecksRightPanel`);
+- `run_workspace/pvp/weapon_identity.py`;
+- `ui/pvp_browser/window.py` (`PvpDecksWorkspace`, `PvpDecksRightPanel`);
+- `ui/app_shell.py` as the shell coordinator that instantiates the PvP
+  workspace/right-dock page;
 - `tests/run_workspace/pvp/test_deck_preset.py`;
-- `tests/ui/app_shell/test_app_shell.py`.
+- `tests/run_workspace/pvp/test_weapon_identity.py`;
+- `tests/ui/pvp_browser/test_pvp_browser.py`;
+- `tests/ui/app_shell/test_app_shell.py` for AppShell routing integration.
 
 Current Decks v0 scope:
 

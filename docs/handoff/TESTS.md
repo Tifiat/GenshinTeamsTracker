@@ -23,7 +23,8 @@ Mirror the primary project owner under `tests/`:
   mapping, wave scenarios, cleanup, artifact runner.
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Decks UI preset
   persistence/conversion and root-resolved default path coverage
-  (`test_deck_preset.py`), Free Draft
+  (`test_deck_preset.py`), observed weapon-stack identity helper coverage
+  (`test_weapon_identity.py`), Free Draft
   schedule/reducer/action log, team/weapon assignment validation, and
   timer/result behavior, local-account deck export provider/report behavior,
   draft-system registry behavior, deterministic Free Draft planner/account
@@ -47,10 +48,12 @@ Mirror the primary project owner under `tests/`:
 - `tests/run_workspace/right_panel/` - right-panel view-model behavior owned by
   `run_workspace`.
 - `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests,
-  including PvP Decks workspace/right-panel create, edit, save/cancel, header,
-  corrected Artifact Browser-style preset rows/expanded info, Enter/Esc
-  create/edit shortcuts, automatic validation status without manual Validate,
-  card-grid viewport edit tint, selected-card edit markers, and no Decks-local draft start action. PvP
+  including workspace/right-dock routing integration for PvP.
+- `tests/ui/pvp_browser/` - PvP Browser/Decks widget tests, including
+  workspace/right-panel create, edit, save/cancel, corrected Artifact
+  Browser-style preset rows/expanded info, Enter/Esc create/edit shortcuts,
+  automatic validation status without manual Validate, card-grid viewport edit
+  tint, selected-card edit markers, and no Decks-local draft start action. PvP
   offscreen smoke should also verify the default deck path, first/second
   activation timing, and that edit tint is scoped to the card grid viewports
   when this area changes.
@@ -71,6 +74,7 @@ Prefer the narrowest suite that covers the touched ownership area:
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests\ui\artifact_browser -t . -p "test_*.py"
+.\.venv\Scripts\python.exe -m unittest discover -s tests\ui\pvp_browser -t .
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\gcsim -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\pvp -t .
 .\.venv\Scripts\python.exe -m unittest tests.hoyolab_export.account.test_offline_profile

@@ -9,8 +9,15 @@ does not switch `main.py`.
 
 ## Current State
 
-- `AppShell` is the future root coordinator and already owns independent
-  in-memory `TeamBuilderState` selections for Abyss and DPS Dummy.
+- `AppShell` is the future root coordinator. The first typed live-session
+  extraction now lives in `run_workspace/session.py`: `RunSessionState`,
+  `AbyssRunState`, `DpsDummyRunState`, and `RunSessionController` own active
+  mode, per-mode `TeamBuilderState`, selected slot target, external-bonus
+  toggle state, Abyss timers/T2 follow flags, and compact runtime GCSIM chamber
+  results.
+- `ui.app_shell.AppShellController` is still the UI/account/equipment adapter:
+  it keeps equipment DB/cache/hydration, Abyss source-data cache loading,
+  Account/Data settings, GCSIM worker/payload parsing, and shell routing.
 - `RightOperationsDock` is the fixed right operation area. Its current
   `RightPanelPrototypeWidget` has live in-memory Abyss timer editing, factual
   DPS rows, and compact GCSIM status/result cells. The old inert bottom
@@ -29,10 +36,9 @@ does not switch `main.py`.
   visual `MM:SS` field per T1/T2 cell. Raw segment input normalizes only on
   commit. Left/Right changes the active segment; mouse wheel and Up/Down step
   the active minute or second segment.
-- Current in-memory Abyss timer/session behavior exists inside the AppShell
-  controller path. The next durable implementation step is extracting/owning
-  that state through typed run/session boundaries, then wiring reset/save/history
-  and immutable snapshots.
+- Current in-memory Abyss timer/session behavior is owned by the typed session
+  boundary and exposed through AppShellController compatibility properties.
+  Reset/save/history commands and immutable snapshots are still future work.
 - `ui/widgets/timers.py` contains useful timer editing behavior but must not
   remain the durable owner of run/session state.
 - `ui/run_history_window.py` and `runs_history.json` are legacy image/path
@@ -326,9 +332,11 @@ Integration rules:
 
 ## Next Narrow Implementation Sequence
 
-1. Extract the current AppShell-owned Abyss timer/factual-DPS/GCSIM runtime
-   state into typed run/session ownership (`RunSessionState`, `AbyssRunState`,
-   `DpsDummyRunState` or equivalent) without breaking existing team mutations.
+1. Done for the first live slice: typed session ownership exists for mode,
+   per-mode team state, selected target, external bonus flag, Abyss timers/T2
+   follow flags, and runtime compact GCSIM chamber results. Factual DPS rows
+   still use the existing right-panel view-model builder with AppShell-provided
+   Abyss source data.
 2. Add/keep pure tests for timer/session calculations, reset/default behavior,
    factual DPS math, and GCSIM result stale/current metadata.
 3. Wire Reset through the session controller so it resets the active run

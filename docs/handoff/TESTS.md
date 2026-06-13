@@ -47,6 +47,8 @@ Mirror the primary project owner under `tests/`:
   models.
 - `tests/run_workspace/right_panel/` - right-panel view-model behavior owned by
   `run_workspace`.
+- `tests/run_workspace/session/` - typed live Run Session ownership for
+  AppShell mode/team/selection/timer/GCSIM runtime state.
 - `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests,
   including workspace/right-dock routing integration for PvP.
 - `tests/ui/pvp_browser/` - PvP Browser/Decks widget tests, including
@@ -76,6 +78,7 @@ Prefer the narrowest suite that covers the touched ownership area:
 .\.venv\Scripts\python.exe -m unittest discover -s tests\ui\artifact_browser -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\ui\pvp_browser -t .
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\gcsim -t . -p "test_*.py"
+.\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\session -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\pvp -t .
 .\.venv\Scripts\python.exe -m unittest tests.hoyolab_export.account.test_offline_profile
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke

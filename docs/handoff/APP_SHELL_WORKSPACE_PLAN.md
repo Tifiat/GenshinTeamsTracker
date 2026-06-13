@@ -666,12 +666,14 @@ Sizing note:
 
 ### Stage 2: Real Controller / Adapter (In Progress)
 
-- `AppShellController` maintains typed `TeamBuilderState`, selected team/slot,
-  independent Abyss/DPS Dummy state, persistent equipment hydration, and the
-  right-panel view-model boundary.
+- `run_workspace/session.py` now owns the first typed live Run Session slice:
+  active mode, per-mode `TeamBuilderState`, selected team/slot, external bonus
+  state, Abyss timers/T2 follow flags, and compact runtime GCSIM chamber
+  results. `AppShellController` remains the UI/account/equipment adapter and
+  right-panel view-model coordinator.
 - Keep smoke presets as debug harness only.
-- Next production-switch adapter work is typed run/session behavior for timer
-  editing, reset, immutable save snapshot, and history opening. Continue richer
+- Next production-switch adapter work is wiring typed reset/default behavior,
+  immutable save snapshots, and history opening. Continue richer
   `CharacterDetailsData` preparation incrementally where selected-details UI
   still needs it.
 

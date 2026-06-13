@@ -67,12 +67,11 @@ from run_workspace.abyss.fact_dps_settings import (
 from run_workspace.abyss.source_data_runtime import (
     load_current_cached_abyss_floor_source_data,
 )
-from run_workspace.models import (
-    AbyssTimerState,
-    clamp_abyss_timer_edit_seconds,
-    default_abyss_timer_states,
+from run_workspace.session import (
+    RunSessionController,
+    normalize_run_mode,
 )
-from run_workspace.team_builder import TeamBuilderState, create_empty_team_builder_state
+from run_workspace.team_builder import TeamBuilderState
 from ui.character_assets import (
     CHARACTER_RARITY_FILTERS,
     CHARACTER_STANDARD_FILTER,
@@ -207,10 +206,6 @@ RIGHT_PANEL_REFRESH_DEBOUNCE_MS = 30
 RIGHT_PANEL_FAST_REFRESH_MS = 1
 WEAPON_FILTER_SYNC_DEBOUNCE_MS = 80
 PERSISTENT_EQUIPMENT_HYDRATION_DELAY_MS = 40
-MODE_TEAM_COUNTS = {
-    MODE_ABYSS: 2,
-    MODE_DPS_DUMMY: 1,
-}
 TEAM_MARKER_COLORS = (UI_ACCENT_TEAM_1, UI_ACCENT_TEAM_2)
 _SCALED_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 _OWNER_BADGE_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
@@ -325,21 +320,10 @@ class PersistentEquipmentHydration:
 class AppShellController:
     """Tiny boundary for the separate AppShell prototype."""
 
-    state: TeamBuilderState
+    session: RunSessionController = field(default_factory=RunSessionController.empty)
     equipment_db_path: str | Path = ARTIFACT_DB_PATH
-    mode: str = MODE_ABYSS
-    selected_team_index: int = -1
-    selected_slot_index: int = -1
-    external_bonuses_enabled: bool = True
     abyss_fact_dps_multi_target_enabled: bool = False
     gcsim_boosted_energy_enabled: bool = False
-    abyss_timer_states: tuple[AbyssTimerState, ...] = field(
-        default_factory=default_abyss_timer_states
-    )
-    abyss_t2_manual_by_chamber: tuple[bool, ...] = field(
-        default_factory=lambda: (False, False, False)
-    )
-    mode_states: dict[str, TeamBuilderState] = field(default_factory=dict)
     last_equipment_error: str = ""
     last_weapon_equipment_change_result: EquipmentChangeResult | None = None
     _persistent_equipment_cache: dict[str, PersistentEquipmentHydration] = field(
@@ -347,7 +331,6 @@ class AppShellController:
     )
     _cached_abyss_source_data_loaded: bool = False
     _cached_abyss_source_data: AbyssFloorSourceData | None = None
-    gcsim_chamber_results: tuple[RightPanelGcsimChamberResult, ...] = ()
 
     @classmethod
     def empty(
@@ -355,31 +338,81 @@ class AppShellController:
         *,
         equipment_db_path: str | Path = ARTIFACT_DB_PATH,
     ) -> "AppShellController":
-        abyss_state = _empty_state_for_mode(MODE_ABYSS)
         return cls(
-            state=abyss_state,
+            session=RunSessionController.empty(),
             equipment_db_path=equipment_db_path,
-            mode=MODE_ABYSS,
-            mode_states={
-                MODE_ABYSS: abyss_state,
-                MODE_DPS_DUMMY: _empty_state_for_mode(MODE_DPS_DUMMY),
-            },
         )
 
     def __post_init__(self) -> None:
-        self.mode = _normalize_mode(self.mode)
-        if not self.mode_states:
-            self.mode_states[self.mode] = self.state
-        elif self.mode in self.mode_states:
-            self.state = self.mode_states[self.mode]
-        else:
-            self.mode_states[self.mode] = self.state
-        for mode in MODE_TEAM_COUNTS:
-            self.mode_states.setdefault(mode, _empty_state_for_mode(mode))
-        if len(self.abyss_t2_manual_by_chamber) != len(self.abyss_timer_states):
-            self.abyss_t2_manual_by_chamber = tuple(
-                False for _ in self.abyss_timer_states
-            )
+        if self.session is None:
+            self.session = RunSessionController.empty()
+
+    @property
+    def state(self) -> TeamBuilderState:
+        return self.session.team_state
+
+    @state.setter
+    def state(self, value: TeamBuilderState) -> None:
+        self.session.team_state = value
+
+    @property
+    def mode(self) -> str:
+        return self.session.mode
+
+    @mode.setter
+    def mode(self, value: str) -> None:
+        self.session.set_mode(value)
+
+    @property
+    def selected_team_index(self) -> int:
+        return self.session.selected_team_index
+
+    @selected_team_index.setter
+    def selected_team_index(self, value: int) -> None:
+        self.session.set_selection(value, self.selected_slot_index)
+
+    @property
+    def selected_slot_index(self) -> int:
+        return self.session.selected_slot_index
+
+    @selected_slot_index.setter
+    def selected_slot_index(self, value: int) -> None:
+        self.session.set_selection(self.selected_team_index, value)
+
+    @property
+    def external_bonuses_enabled(self) -> bool:
+        return self.session.external_bonuses_enabled
+
+    @external_bonuses_enabled.setter
+    def external_bonuses_enabled(self, enabled: bool) -> None:
+        self.session.external_bonuses_enabled = bool(enabled)
+
+    @property
+    def abyss_timer_states(self):
+        return self.session.abyss_timer_states
+
+    @property
+    def abyss_t2_manual_by_chamber(self) -> tuple[bool, ...]:
+        return self.session.abyss_t2_manual_by_chamber
+
+    @property
+    def mode_states(self) -> dict[str, TeamBuilderState]:
+        return self.session.mode_states
+
+    @mode_states.setter
+    def mode_states(self, mode_states: dict[str, TeamBuilderState]) -> None:
+        self.session.mode_states = mode_states
+
+    @property
+    def gcsim_chamber_results(self) -> tuple[RightPanelGcsimChamberResult, ...]:
+        return self.session.gcsim_chamber_results
+
+    @gcsim_chamber_results.setter
+    def gcsim_chamber_results(
+        self,
+        results: tuple[RightPanelGcsimChamberResult, ...],
+    ) -> None:
+        self.session.gcsim_chamber_results = tuple(results)
 
     def right_panel_model(self):
         chamber_rows = (
@@ -418,14 +451,7 @@ class AppShellController:
         self.clear_gcsim_results()
 
     def set_mode(self, mode: str) -> None:
-        previous_mode = self.mode
-        self._store_current_mode_state()
-        self.mode = _normalize_mode(mode)
-        self.state = self.mode_states.get(self.mode) or _empty_state_for_mode(self.mode)
-        self.mode_states[self.mode] = self.state
-        self.clear_selection()
-        if previous_mode != self.mode and self.mode != MODE_ABYSS:
-            self.clear_gcsim_results()
+        self.session.set_mode(mode)
 
     def gcsim_target_mode(self) -> str:
         return (
@@ -448,15 +474,7 @@ class AppShellController:
         )
 
     def clear_gcsim_results(self, team_index: int | None = None) -> None:
-        if team_index is None:
-            self.gcsim_chamber_results = ()
-            return
-        normalized_team_index = int(team_index)
-        self.gcsim_chamber_results = tuple(
-            result
-            for result in self.gcsim_chamber_results
-            if int(result.team_index) != normalized_team_index
-        )
+        self.session.clear_gcsim_results(team_index)
 
     def clear_gcsim_chamber_result(
         self,
@@ -465,18 +483,10 @@ class AppShellController:
         chamber: int,
         side: int,
     ) -> None:
-        normalized_team_index = int(team_index)
-        normalized_chamber = int(chamber)
-        normalized_side = int(side)
-        self.gcsim_chamber_results = tuple(
-            result
-            for result in self.gcsim_chamber_results
-            if not _same_gcsim_result_slot(
-                result,
-                team_index=normalized_team_index,
-                chamber=normalized_chamber,
-                side=normalized_side,
-            )
+        self.session.clear_gcsim_chamber_result(
+            team_index=team_index,
+            chamber=chamber,
+            side=side,
         )
 
     def store_gcsim_browser_batch_payload(
@@ -495,13 +505,10 @@ class AppShellController:
         )
         if not results:
             return False
-        team_index = int(results[0].team_index)
-        retained = tuple(
-            result
-            for result in self.gcsim_chamber_results
-            if int(result.team_index) != team_index
+        self.session.replace_gcsim_results_for_team(
+            int(results[0].team_index),
+            results,
         )
-        self.gcsim_chamber_results = (*retained, *results)
         return True
 
     def store_gcsim_browser_selected_payload(
@@ -517,56 +524,19 @@ class AppShellController:
         )
         if result is None:
             return False
-        retained = []
-        for existing in self.gcsim_chamber_results:
-            if _same_gcsim_result_slot(
-                existing,
-                team_index=result.team_index,
-                chamber=result.chamber,
-                side=result.side,
-            ):
-                continue
-            if (
-                int(existing.team_index) == int(result.team_index)
-                and int(existing.side) == int(result.side)
-                and not _compatible_gcsim_chamber_result(existing, result)
-            ):
-                continue
-            retained.append(existing)
-        self.gcsim_chamber_results = (*retained, result)
+        self.session.store_gcsim_chamber_result(result)
         return True
 
     def _gcsim_status_view_model(self) -> RightPanelGcsimStatusViewModel:
-        if self.mode != MODE_ABYSS:
-            return RightPanelGcsimStatusViewModel(status="GCSIM: not configured")
-        if not self.gcsim_chamber_results:
-            return RightPanelGcsimStatusViewModel(status="GCSIM: not run")
-        stale = any(
-            result.target_mode != self.gcsim_target_mode()
-            or result.mode != MODE_ABYSS
-            for result in self.gcsim_chamber_results
+        return self.session.gcsim_status_view_model(
+            target_mode=self.gcsim_target_mode()
         )
-        if stale:
-            return RightPanelGcsimStatusViewModel(status="GCSIM: stale")
-        if all(result.passed for result in self.gcsim_chamber_results):
-            return RightPanelGcsimStatusViewModel(status="GCSIM: complete")
-        if any(result.passed for result in self.gcsim_chamber_results):
-            return RightPanelGcsimStatusViewModel(status="GCSIM: partial")
-        return RightPanelGcsimStatusViewModel(status="GCSIM: failed")
 
     def toggle_slot_selection(self, team_index: int, slot_index: int) -> None:
-        if (
-            self.selected_team_index == int(team_index)
-            and self.selected_slot_index == int(slot_index)
-        ):
-            self.clear_selection()
-            return
-        self.selected_team_index = int(team_index)
-        self.selected_slot_index = int(slot_index)
+        self.session.toggle_slot_selection(team_index, slot_index)
 
     def clear_selection(self) -> None:
-        self.selected_team_index = -1
-        self.selected_slot_index = -1
+        self.session.clear_selection()
 
     def set_abyss_timer_seconds(
         self,
@@ -574,54 +544,11 @@ class AppShellController:
         team_number: int,
         seconds_left: int,
     ) -> bool:
-        if self.mode != MODE_ABYSS:
-            return False
-        index = int(chamber_index)
-        if index < 0 or index >= len(self.abyss_timer_states):
-            return False
-        team = int(team_number)
-        if team not in (1, 2):
-            return False
-        current = self.abyss_timer_states[index]
-        t2_manual = list(self.abyss_t2_manual_by_chamber)
-        if team == 1:
-            seconds = clamp_abyss_timer_edit_seconds(seconds_left)
-            team2_left_seconds = current.team2_left_seconds
-            if t2_manual[index]:
-                if seconds < team2_left_seconds:
-                    team2_left_seconds = seconds
-                    t2_manual[index] = False
-            else:
-                team2_left_seconds = seconds
-            if (
-                current.team1_left_seconds == seconds
-                and current.team2_left_seconds == team2_left_seconds
-                and tuple(t2_manual) == self.abyss_t2_manual_by_chamber
-            ):
-                return False
-            updated = AbyssTimerState(
-                team1_left_seconds=seconds,
-                team2_left_seconds=team2_left_seconds,
-                start_seconds=current.start_seconds,
-            )
-        else:
-            seconds = clamp_abyss_timer_edit_seconds(
-                seconds_left,
-                start_seconds=current.team1_left_seconds,
-            )
-            if current.team2_left_seconds == seconds and t2_manual[index]:
-                return False
-            t2_manual[index] = True
-            updated = AbyssTimerState(
-                team1_left_seconds=current.team1_left_seconds,
-                team2_left_seconds=seconds,
-                start_seconds=current.start_seconds,
-            )
-        states = list(self.abyss_timer_states)
-        states[index] = updated
-        self.abyss_timer_states = tuple(states)
-        self.abyss_t2_manual_by_chamber = tuple(t2_manual)
-        return True
+        return self.session.set_abyss_timer_seconds(
+            chamber_index,
+            team_number,
+            seconds_left,
+        )
 
     def swap_slots(
         self,
@@ -1371,7 +1298,7 @@ class AppShellController:
         }
 
     def _store_current_mode_state(self) -> None:
-        self.mode_states[self.mode] = self.state
+        self.session.team_state = self.state
 
 
 def _apply_current_artifact_snapshot_to_details(
@@ -2165,7 +2092,7 @@ class AppShell(QWidget):
         return timings
 
     def _on_mode_requested(self, mode: str) -> None:
-        mode = _normalize_mode(mode)
+        mode = normalize_run_mode(mode)
         previous_mode = self.controller.mode
         mode_changed = mode != previous_mode
         self.cancel_pending_right_panel_refresh(reason="mode_switch")
@@ -4146,14 +4073,6 @@ def _character_weapon_type_filter_key(character: dict[str, Any]) -> str:
     return ""
 
 
-def _empty_state_for_mode(mode: str) -> TeamBuilderState:
-    return create_empty_team_builder_state(team_count=MODE_TEAM_COUNTS[_normalize_mode(mode)])
-
-
-def _normalize_mode(mode: str) -> str:
-    return MODE_DPS_DUMMY if mode == MODE_DPS_DUMMY else MODE_ABYSS
-
-
 def _weapon_type_filter_keys(weapon: dict[str, Any]) -> set[str]:
     keys: set[str] = set()
     for numeric_key in ("weapon_type", "type"):
@@ -4227,33 +4146,6 @@ def _text(value: Any) -> str:
 
 def _gcsim_rotation_hash(text: str) -> str:
     return hashlib.sha256(str(text or "").encode("utf-8")).hexdigest()
-
-
-def _same_gcsim_result_slot(
-    result: RightPanelGcsimChamberResult,
-    *,
-    team_index: int,
-    chamber: int,
-    side: int,
-) -> bool:
-    return (
-        int(result.team_index) == int(team_index)
-        and int(result.chamber) == int(chamber)
-        and int(result.side) == int(side)
-    )
-
-
-def _compatible_gcsim_chamber_result(
-    current: RightPanelGcsimChamberResult,
-    incoming: RightPanelGcsimChamberResult,
-) -> bool:
-    return (
-        current.mode == incoming.mode
-        and current.period_start == incoming.period_start
-        and int(current.floor) == int(incoming.floor)
-        and current.target_mode == incoming.target_mode
-        and current.rotation_hash == incoming.rotation_hash
-    )
 
 
 def _dedupe(values: list[str]) -> list[str]:

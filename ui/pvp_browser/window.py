@@ -41,7 +41,10 @@ from run_workspace.pvp.deck_preset import (
 )
 from run_workspace.pvp.account_deck_copy import copy_deck_for_player_2
 from run_workspace.pvp.deck import DraftDeck
-from run_workspace.pvp.free_draft_controller import FreeDraftController
+from run_workspace.pvp.free_draft_controller import (
+    FreeDraftController,
+    FreeDraftControllerActionRejected,
+)
 from run_workspace.pvp.validation import DeckValidationReport, validate_draft_deck
 from ui.character_assets import (
     CHARACTER_RARITY_FILTERS,
@@ -103,6 +106,7 @@ FILTER_BUTTON_STYLE = filter_button_style("app_shell_filter_button")
 _PVP_DECK_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
 PVP_PAGE_DECKS = "decks"
 PVP_PAGE_PLAY = "play"
+PVP_PAGE_DRAFT = "draft"
 
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
@@ -306,6 +310,70 @@ QFrame#pvp_deck_expanded_info {
     border-radius: 6px;
     background: #181d23;
 }
+"""
+
+PVP_DRAFT_WORKSPACE_STYLE = PVP_DECKS_WORKSPACE_STYLE + f"""
+QFrame#pvp_draft_banner,
+QFrame#pvp_draft_zone,
+QFrame#pvp_draft_completed,
+QFrame#pvp_draft_empty {{
+    border: 1px solid {UI_BORDER_PANEL};
+    border-radius: 8px;
+    background: {UI_BG_PANEL};
+}}
+QFrame#pvp_draft_banner[complete="true"] {{
+    border-color: {UI_STATE_SUCCESS};
+    background: #18291f;
+}}
+QFrame#pvp_draft_zone[activeSeat="true"] {{
+    border-color: #4f8ee8;
+    background: #182336;
+}}
+QScrollArea#pvp_draft_scroll {{
+    background: transparent;
+    border: none;
+}}
+QWidget#pvp_draft_scroll_viewport,
+QWidget#pvp_draft_scroll_content {{
+    background: transparent;
+}}
+QPushButton#pvp_draft_card {{
+    min-width: 116px;
+    max-width: 116px;
+    min-height: 76px;
+    max-height: 76px;
+    padding: 5px;
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 8px;
+    background: {UI_BG_PANEL_RAISED};
+    color: {UI_TEXT_SECONDARY};
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+}}
+QPushButton#pvp_draft_card[legalTarget="true"] {{
+    border-color: {UI_STATE_SUCCESS};
+    background: #203b28;
+    color: {UI_TEXT_PRIMARY};
+}}
+QPushButton#pvp_draft_card[status="picked_by_self"] {{
+    border-color: {UI_STATE_SUCCESS};
+    background: #24452d;
+    color: {UI_TEXT_PRIMARY};
+}}
+QPushButton#pvp_draft_card[status="globally_banned"] {{
+    border-color: {UI_STATE_DANGER};
+    background: #432126;
+    color: {UI_TEXT_PRIMARY};
+}}
+QPushButton#pvp_draft_card[status="blocked_by_opponent_pick"] {{
+    border-color: #69512d;
+    background: #352a1d;
+    color: {UI_TEXT_SECONDARY};
+}}
+QPushButton#pvp_draft_card:disabled {{
+    color: {UI_TEXT_MUTED};
+}}
 """
 
 
@@ -1089,6 +1157,243 @@ class PvpPlayWorkspace(QWidget):
         self.refresh()
 
 
+class PvpDraftCardButton(QPushButton):
+    card_clicked = Signal(str, str)
+
+    def __init__(
+        self,
+        *,
+        seat: str,
+        card: Mapping[str, Any],
+        draft_complete: bool,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.seat = seat
+        self.character_id = _text(card.get("character_id"))
+        status = _text(card.get("status")) or "available"
+        legal = bool(card.get("is_current_legal_target")) and not draft_complete
+        self.setObjectName("pvp_draft_card")
+        self.setProperty("seat", seat)
+        self.setProperty("characterId", self.character_id)
+        self.setProperty("status", status)
+        self.setProperty("legalTarget", legal)
+        self.setProperty("activeSeat", bool(card.get("is_active_seat_card")))
+        self.setText(_draft_card_text(card))
+        self.setEnabled(legal)
+        self.setCursor(
+            Qt.CursorShape.PointingHandCursor
+            if legal
+            else Qt.CursorShape.ArrowCursor
+        )
+        self.clicked.connect(
+            lambda _checked=False: self.card_clicked.emit(self.seat, self.character_id)
+        )
+        _refresh_qss(self)
+
+
+class PvpDraftWorkspace(QWidget):
+    card_clicked = Signal(str, str)
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("PvpDraftWorkspace")
+        self.setStyleSheet(PVP_DRAFT_WORKSPACE_STYLE)
+        self._active_session: PvpActiveDraftSession | None = None
+        self._status_text = ""
+        self.card_buttons_by_key: dict[tuple[str, str], PvpDraftCardButton] = {}
+        self.legal_card_buttons: list[PvpDraftCardButton] = []
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(18, 18, 18, 18)
+        root.setSpacing(10)
+
+        self.title_label = QLabel()
+        self.title_label.setObjectName("SectionTitle")
+        root.addWidget(self.title_label)
+
+        self.empty_frame = QFrame()
+        self.empty_frame.setObjectName("pvp_draft_empty")
+        empty_layout = QVBoxLayout(self.empty_frame)
+        empty_layout.setContentsMargins(12, 12, 12, 12)
+        empty_layout.setSpacing(6)
+        self.empty_title_label = QLabel()
+        self.empty_title_label.setObjectName("pvp_deck_info_line")
+        empty_layout.addWidget(self.empty_title_label)
+        self.empty_body_label = QLabel()
+        self.empty_body_label.setObjectName("small_muted")
+        self.empty_body_label.setWordWrap(True)
+        empty_layout.addWidget(self.empty_body_label)
+        root.addWidget(self.empty_frame)
+
+        self.board_frame = QFrame()
+        self.board_frame.setObjectName("pvp_draft_banner")
+        board_layout = QVBoxLayout(self.board_frame)
+        board_layout.setContentsMargins(12, 12, 12, 12)
+        board_layout.setSpacing(8)
+
+        self.action_title_label = QLabel()
+        self.action_title_label.setObjectName("pvp_deck_info_line")
+        self.action_title_label.setWordWrap(True)
+        board_layout.addWidget(self.action_title_label)
+
+        self.action_detail_label = QLabel()
+        self.action_detail_label.setObjectName("small_muted")
+        self.action_detail_label.setWordWrap(True)
+        board_layout.addWidget(self.action_detail_label)
+        root.addWidget(self.board_frame)
+
+        self.scroll_area = OverlayVerticalScrollArea()
+        self.scroll_area.setObjectName("pvp_draft_scroll")
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll_area.viewport().setObjectName("pvp_draft_scroll_viewport")
+        self.scroll_content = QWidget()
+        self.scroll_content.setObjectName("pvp_draft_scroll_content")
+        self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
+        self.scroll_layout.setSpacing(10)
+        self.scroll_area.setWidget(self.scroll_content)
+        root.addWidget(self.scroll_area, 1)
+
+        self.completed_frame = QFrame()
+        self.completed_frame.setObjectName("pvp_draft_completed")
+        completed_layout = QVBoxLayout(self.completed_frame)
+        completed_layout.setContentsMargins(10, 10, 10, 10)
+        completed_layout.setSpacing(5)
+        self.completed_title_label = QLabel()
+        self.completed_title_label.setObjectName("pvp_deck_info_line")
+        completed_layout.addWidget(self.completed_title_label)
+        self.completed_labels: list[QLabel] = []
+        for _index in range(5):
+            label = QLabel()
+            label.setObjectName("pvp_deck_info_line")
+            label.setWordWrap(True)
+            completed_layout.addWidget(label)
+            self.completed_labels.append(label)
+        root.addWidget(self.completed_frame)
+
+        self.status_label = QLabel()
+        self.status_label.setObjectName("small_muted")
+        self.status_label.setWordWrap(True)
+        root.addWidget(self.status_label)
+
+        self.retranslate_ui()
+        self.refresh()
+
+    def set_active_session(
+        self,
+        session: PvpActiveDraftSession | None,
+        *,
+        status_text: str = "",
+    ) -> None:
+        self._active_session = session
+        self._status_text = status_text
+        self.refresh()
+
+    def refresh(self) -> None:
+        session = self._active_session
+        has_session = session is not None
+        self.empty_frame.setVisible(not has_session)
+        self.board_frame.setVisible(has_session)
+        self.scroll_area.setVisible(has_session)
+        self.completed_frame.setVisible(has_session)
+        self.status_label.setText(self._status_text)
+        self.status_label.setVisible(bool(self._status_text))
+        self.card_buttons_by_key.clear()
+        self.legal_card_buttons.clear()
+        _clear_layout(self.scroll_layout)
+
+        if session is None:
+            self.board_frame.setProperty("complete", False)
+            _refresh_qss(self.board_frame)
+            self._refresh_completed(None)
+            return
+
+        board = session.board_dict()
+        complete = _draft_is_complete(board)
+        self.board_frame.setProperty("complete", complete)
+        _refresh_qss(self.board_frame)
+        self.action_title_label.setText(_draft_action_title(board))
+        self.action_detail_label.setText(_draft_action_detail(board))
+
+        seats = _mapping(board.get("seats"))
+        for seat in ("player_1", "player_2"):
+            self.scroll_layout.addWidget(self._build_seat_zone(seat, _mapping(seats.get(seat)), complete))
+        self.scroll_layout.addStretch(1)
+        self._refresh_completed(board)
+
+    def retranslate_ui(self) -> None:
+        self.title_label.setText(tr("app_shell.pvp.draft.title"))
+        self.empty_title_label.setText(tr("app_shell.pvp.draft.no_active_title"))
+        self.empty_body_label.setText(tr("app_shell.pvp.draft.no_active_body"))
+        self.completed_title_label.setText(tr("app_shell.pvp.draft.completed_title"))
+        self.refresh()
+
+    def _build_seat_zone(
+        self,
+        seat: str,
+        seat_board: Mapping[str, Any],
+        draft_complete: bool,
+    ) -> QFrame:
+        zone = QFrame()
+        zone.setObjectName("pvp_draft_zone")
+        zone.setProperty("activeSeat", _seat_is_active(seat_board))
+        _refresh_qss(zone)
+        layout = QVBoxLayout(zone)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(7)
+
+        title = QLabel(_seat_title(seat, seat_board))
+        title.setObjectName("pvp_deck_info_line")
+        layout.addWidget(title)
+
+        deck = _mapping(seat_board.get("deck"))
+        info = QLabel(
+            tr("app_shell.pvp.draft.deck_counts").format(
+                characters=int(deck.get("character_count") or 0),
+                weapons=int(deck.get("weapon_stack_count") or 0),
+            )
+        )
+        info.setObjectName("small_muted")
+        layout.addWidget(info)
+
+        grid_widget = QWidget()
+        grid_layout = QGridLayout(grid_widget)
+        grid_layout.setContentsMargins(0, 0, 0, 0)
+        grid_layout.setHorizontalSpacing(6)
+        grid_layout.setVerticalSpacing(6)
+        columns = 4
+        cards = seat_board.get("cards")
+        if not isinstance(cards, list):
+            cards = []
+        for index, card_value in enumerate(cards):
+            card = _mapping(card_value)
+            button = PvpDraftCardButton(
+                seat=seat,
+                card=card,
+                draft_complete=draft_complete,
+            )
+            button.card_clicked.connect(self.card_clicked.emit)
+            key = (seat, button.character_id)
+            self.card_buttons_by_key[key] = button
+            if button.property("legalTarget"):
+                self.legal_card_buttons.append(button)
+            grid_layout.addWidget(button, index // columns, index % columns)
+        layout.addWidget(grid_widget)
+        return zone
+
+    def _refresh_completed(self, board: Mapping[str, Any] | None) -> None:
+        visible = bool(board and _draft_is_complete(board))
+        self.completed_frame.setVisible(visible)
+        lines = _completed_draft_lines(board) if visible and board is not None else []
+        for index, label in enumerate(self.completed_labels):
+            text = lines[index] if index < len(lines) else ""
+            label.setText(text)
+            label.setVisible(bool(text))
+
+
 class PvpWorkspace(QWidget):
     state_changed = Signal()
     page_changed = Signal(str)
@@ -1108,6 +1413,7 @@ class PvpWorkspace(QWidget):
         self.active_page_id = PVP_PAGE_DECKS
         self.active_draft_session: PvpActiveDraftSession | None = None
         self._last_play_status = ""
+        self._last_draft_status = ""
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -1122,10 +1428,14 @@ class PvpWorkspace(QWidget):
             weapon_assets_provider=weapon_assets_provider,
         )
         self.play_workspace = PvpPlayWorkspace()
+        self.draft_workspace = PvpDraftWorkspace()
         self.stack.addWidget(self.decks_workspace)
         self.stack.addWidget(self.play_workspace)
+        self.stack.addWidget(self.draft_workspace)
         self.decks_workspace.state_changed.connect(self._on_decks_state_changed)
+        self.draft_workspace.card_clicked.connect(self.apply_draft_card_click)
         self._sync_play_workspace()
+        self._sync_draft_workspace()
 
     @property
     def character_assets(self) -> list[dict[str, Any]]:
@@ -1147,13 +1457,22 @@ class PvpWorkspace(QWidget):
         return self.decks_workspace.selected_preset()
 
     def set_page(self, page_id: str) -> None:
-        page_id = page_id if page_id in {PVP_PAGE_DECKS, PVP_PAGE_PLAY} else PVP_PAGE_DECKS
+        page_id = (
+            page_id
+            if page_id in {PVP_PAGE_DECKS, PVP_PAGE_PLAY, PVP_PAGE_DRAFT}
+            else PVP_PAGE_DECKS
+        )
         previous = self.active_page_id
         self.active_page_id = page_id
-        self.stack.setCurrentWidget(
-            self.play_workspace if page_id == PVP_PAGE_PLAY else self.decks_workspace
-        )
+        if page_id == PVP_PAGE_PLAY:
+            widget = self.play_workspace
+        elif page_id == PVP_PAGE_DRAFT:
+            widget = self.draft_workspace
+        else:
+            widget = self.decks_workspace
+        self.stack.setCurrentWidget(widget)
         self._sync_play_workspace()
+        self._sync_draft_workspace()
         if previous != page_id:
             self.page_changed.emit(page_id)
 
@@ -1168,13 +1487,16 @@ class PvpWorkspace(QWidget):
             emit_signal=False,
         )
         self._sync_play_workspace()
+        self._sync_draft_workspace()
         if emit_signal:
             self.state_changed.emit()
 
     def retranslate_ui(self) -> None:
         self.decks_workspace.retranslate_ui()
         self.play_workspace.retranslate_ui()
+        self.draft_workspace.retranslate_ui()
         self._sync_play_workspace()
+        self._sync_draft_workspace()
 
     def preset_by_id(self, deck_id: str) -> PvpDeckPreset | None:
         for preset in self.decks_workspace.presets:
@@ -1302,7 +1624,10 @@ class PvpWorkspace(QWidget):
             controller=controller,
         )
         self._last_play_status = ""
+        self._last_draft_status = ""
         self._sync_play_workspace()
+        self._sync_draft_workspace()
+        self.set_page(PVP_PAGE_DRAFT)
         self.active_draft_changed.emit()
         self.state_changed.emit()
         return True
@@ -1311,12 +1636,56 @@ class PvpWorkspace(QWidget):
         if self.active_draft_session is None:
             return
         self.active_draft_session = None
+        self._last_draft_status = ""
         self._sync_play_workspace()
+        self._sync_draft_workspace()
         self.active_draft_changed.emit()
         self.state_changed.emit()
 
+    def apply_draft_card_click(self, seat: str, character_id: str) -> bool:
+        session = self.active_draft_session
+        if session is None:
+            self._last_draft_status = tr("app_shell.pvp.draft.no_active_title")
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
+        board = session.board_dict()
+        if _draft_is_complete(board):
+            self._last_draft_status = tr("app_shell.pvp.draft.already_completed")
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
+        if not _is_legal_card(board, seat, character_id):
+            self._last_draft_status = tr("app_shell.pvp.draft.illegal_target")
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
+        try:
+            action = session.controller.apply_current_action(character_id)
+        except FreeDraftControllerActionRejected as exc:
+            code = getattr(exc, "code", "") or str(exc)
+            self._last_draft_status = tr("app_shell.pvp.draft.action_rejected").format(
+                code=code
+            )
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
+
+        self._last_draft_status = tr("app_shell.pvp.draft.action_accepted").format(
+            action=_draft_action_label(action.action_type),
+            target=character_id,
+        )
+        self._sync_play_workspace()
+        self._sync_draft_workspace()
+        self.active_draft_changed.emit()
+        self.state_changed.emit()
+        return True
+
     def last_play_status(self) -> str:
         return self._last_play_status
+
+    def last_draft_status(self) -> str:
+        return self._last_draft_status
 
     def _on_decks_state_changed(self) -> None:
         self._sync_play_workspace()
@@ -1324,6 +1693,12 @@ class PvpWorkspace(QWidget):
 
     def _sync_play_workspace(self) -> None:
         self.play_workspace.set_active_session(self.active_draft_session)
+
+    def _sync_draft_workspace(self) -> None:
+        self.draft_workspace.set_active_session(
+            self.active_draft_session,
+            status_text=self._last_draft_status,
+        )
 
 
 PVP_DECKS_RIGHT_PANEL_STYLE = f"""
@@ -2126,6 +2501,117 @@ class PvpPlayRightPanel(QWidget):
             label.setVisible(bool(text))
 
 
+class PvpDraftRightPanel(QWidget):
+    def __init__(
+        self,
+        workspace: PvpWorkspace,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.workspace = workspace
+        self.setObjectName("RightPanelPrototypeContent")
+        self.setStyleSheet(PVP_DECKS_RIGHT_PANEL_STYLE)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(8, 8, 8, 8)
+        root.setSpacing(8)
+
+        self.title_label = QLabel()
+        self.title_label.setObjectName("SectionTitle")
+        root.addWidget(self.title_label)
+
+        self.empty_label = QLabel()
+        self.empty_label.setObjectName("small_muted")
+        self.empty_label.setWordWrap(True)
+        root.addWidget(self.empty_label)
+
+        self.status_frame = QFrame()
+        self.status_frame.setObjectName("pvp_deck_expanded_info")
+        status_layout = QVBoxLayout(self.status_frame)
+        status_layout.setContentsMargins(8, 8, 8, 8)
+        status_layout.setSpacing(5)
+        self.status_labels: list[QLabel] = []
+        for _index in range(5):
+            label = QLabel()
+            label.setObjectName("pvp_deck_info_line")
+            label.setWordWrap(True)
+            status_layout.addWidget(label)
+            self.status_labels.append(label)
+        root.addWidget(self.status_frame)
+
+        self.log_title_label = QLabel()
+        self.log_title_label.setObjectName("pvp_deck_info_line")
+        root.addWidget(self.log_title_label)
+
+        self.log_labels: list[QLabel] = []
+        for _index in range(8):
+            label = QLabel()
+            label.setObjectName("small_muted")
+            label.setWordWrap(True)
+            root.addWidget(label)
+            self.log_labels.append(label)
+
+        self.clear_button = QPushButton()
+        self.clear_button.setObjectName("pvp_secondary_button")
+        self.clear_button.clicked.connect(self.workspace.clear_active_draft)
+        root.addWidget(self.clear_button)
+
+        self.play_button = QPushButton()
+        self.play_button.setObjectName("pvp_secondary_button")
+        self.play_button.clicked.connect(lambda: self.workspace.set_page(PVP_PAGE_PLAY))
+        root.addWidget(self.play_button)
+
+        self.message_label = QLabel()
+        self.message_label.setObjectName("small_muted")
+        self.message_label.setWordWrap(True)
+        root.addWidget(self.message_label)
+        root.addStretch(1)
+
+        self.workspace.state_changed.connect(self.refresh)
+        self.workspace.active_draft_changed.connect(self.refresh)
+        self.retranslate_ui()
+        self.refresh()
+
+    def refresh(self) -> None:
+        session = self.workspace.active_draft_session
+        has_session = session is not None
+        self.empty_label.setVisible(not has_session)
+        self.status_frame.setVisible(has_session)
+        self.log_title_label.setVisible(has_session)
+        self.clear_button.setVisible(has_session)
+        self.clear_button.setEnabled(has_session)
+        self.play_button.setVisible(True)
+        self.message_label.setText(self.workspace.last_draft_status())
+        self.message_label.setVisible(bool(self.message_label.text()))
+
+        if session is None:
+            for label in (*self.status_labels, *self.log_labels):
+                label.clear()
+                label.setVisible(False)
+            return
+
+        board = session.board_dict()
+        status_lines = _draft_panel_status_lines(board)
+        for index, label in enumerate(self.status_labels):
+            text = status_lines[index] if index < len(status_lines) else ""
+            label.setText(text)
+            label.setVisible(bool(text))
+
+        log_lines = _draft_action_log_lines(board, limit=len(self.log_labels))
+        for index, label in enumerate(self.log_labels):
+            text = log_lines[index] if index < len(log_lines) else ""
+            label.setText(text)
+            label.setVisible(bool(text))
+
+    def retranslate_ui(self) -> None:
+        self.title_label.setText(tr("app_shell.pvp.draft.title"))
+        self.empty_label.setText(tr("app_shell.pvp.draft.no_active_body"))
+        self.log_title_label.setText(tr("app_shell.pvp.draft.action_log_title"))
+        self.clear_button.setText(tr("app_shell.pvp.draft.abandon"))
+        self.play_button.setText(tr("app_shell.pvp.draft.back_to_play"))
+        self.refresh()
+
+
 class PvpRightPanelHost(QWidget):
     def __init__(
         self,
@@ -2141,8 +2627,10 @@ class PvpRightPanelHost(QWidget):
         root.addWidget(self.stack, 1)
         self.decks_panel = PvpDecksRightPanel(workspace.decks_workspace)
         self.play_panel = PvpPlayRightPanel(workspace)
+        self.draft_panel = PvpDraftRightPanel(workspace)
         self.stack.addWidget(self.decks_panel)
         self.stack.addWidget(self.play_panel)
+        self.stack.addWidget(self.draft_panel)
         self.workspace.page_changed.connect(self._sync_page_from_workspace)
         self.set_page(workspace.active_page_id)
 
@@ -2156,11 +2644,16 @@ class PvpRightPanelHost(QWidget):
     def retranslate_ui(self) -> None:
         self.decks_panel.retranslate_ui()
         self.play_panel.retranslate_ui()
+        self.draft_panel.retranslate_ui()
 
     def _sync_page_from_workspace(self, page_id: str) -> None:
-        self.stack.setCurrentWidget(
-            self.play_panel if page_id == PVP_PAGE_PLAY else self.decks_panel
-        )
+        if page_id == PVP_PAGE_PLAY:
+            widget = self.play_panel
+        elif page_id == PVP_PAGE_DRAFT:
+            widget = self.draft_panel
+        else:
+            widget = self.decks_panel
+        self.stack.setCurrentWidget(widget)
 
 
 def _active_draft_summary_lines(
@@ -2188,8 +2681,215 @@ def _active_draft_summary_lines(
         tr("app_shell.pvp.play.summary_action_log").format(
             count=action_log_count,
         ),
-        tr("app_shell.pvp.play.draft_board_not_implemented"),
+        tr("app_shell.pvp.play.summary_open_draft"),
     ]
+
+
+def _draft_is_complete(board: Mapping[str, Any]) -> bool:
+    status = _mapping(board.get("status"))
+    return bool(status.get("draft_finished")) or board.get("current_requirement") is None
+
+
+def _draft_action_title(board: Mapping[str, Any]) -> str:
+    if _draft_is_complete(board):
+        return tr("app_shell.pvp.draft.completed_title")
+    requirement = _mapping(board.get("current_requirement"))
+    return tr("app_shell.pvp.draft.current_action").format(
+        seat=_seat_label(_text(requirement.get("active_seat"))),
+        action=_draft_action_label(_text(requirement.get("expected_action_type"))),
+    )
+
+
+def _draft_action_detail(board: Mapping[str, Any]) -> str:
+    progress = _mapping(board.get("progress"))
+    action_log = board.get("action_log")
+    action_log_count = len(action_log) if isinstance(action_log, list) else 0
+    return tr("app_shell.pvp.draft.progress_line").format(
+        step=int(progress.get("current_step_number") or 0),
+        total=int(progress.get("schedule_steps_total") or 0),
+        legal=int(progress.get("legal_target_count") or 0),
+        actions=int(progress.get("actions_accepted") or action_log_count),
+        actions_total=int(progress.get("actions_total_expected") or 0),
+    )
+
+
+def _draft_panel_status_lines(board: Mapping[str, Any]) -> list[str]:
+    draft_system = _mapping(board.get("draft_system"))
+    progress = _mapping(board.get("progress"))
+    requirement = _mapping(board.get("current_requirement"))
+    if _draft_is_complete(board):
+        requirement_text = tr("app_shell.pvp.draft.completed_title")
+    else:
+        requirement_text = _format_requirement(requirement)
+    return [
+        tr("app_shell.pvp.play.summary_system").format(
+            system_id=_text(draft_system.get("system_id")),
+        ),
+        tr("app_shell.pvp.play.summary_requirement").format(
+            requirement=requirement_text,
+        ),
+        tr("app_shell.pvp.play.summary_legal_targets").format(
+            count=int(progress.get("legal_target_count") or 0),
+        ),
+        tr("app_shell.pvp.draft.accepted_actions").format(
+            count=int(progress.get("actions_accepted") or 0),
+            total=int(progress.get("actions_total_expected") or 0),
+        ),
+        tr("app_shell.pvp.draft.status").format(
+            status=(
+                tr("app_shell.pvp.draft.completed")
+                if _draft_is_complete(board)
+                else tr("app_shell.pvp.draft.in_progress")
+            ),
+        ),
+    ]
+
+
+def _draft_action_log_lines(
+    board: Mapping[str, Any],
+    *,
+    limit: int,
+) -> list[str]:
+    action_log = board.get("action_log")
+    if not isinstance(action_log, list) or not action_log:
+        return [tr("app_shell.pvp.draft.action_log_empty")]
+    rows = action_log[-limit:]
+    return [
+        tr("app_shell.pvp.draft.action_log_row").format(
+            index=int(_mapping(row).get("sequence") or _mapping(row).get("index") or 0),
+            seat=_seat_label(_text(_mapping(row).get("seat"))),
+            action=_draft_action_label(_text(_mapping(row).get("action_type"))),
+            target=_text(_mapping(row).get("target_display_name"))
+            or _text(_mapping(row).get("target_id")),
+        )
+        for row in rows
+    ]
+
+
+def _completed_draft_lines(board: Mapping[str, Any]) -> list[str]:
+    action_log = board.get("action_log")
+    rows = [_mapping(row) for row in action_log] if isinstance(action_log, list) else []
+    return [
+        tr("app_shell.pvp.draft.final_picks").format(
+            seat=_seat_label("player_1"),
+            items=_joined_action_targets(rows, seat="player_1", action_type="pick_character"),
+        ),
+        tr("app_shell.pvp.draft.final_bans").format(
+            seat=_seat_label("player_1"),
+            items=_joined_action_targets(rows, seat="player_1", action_type="ban_character"),
+        ),
+        tr("app_shell.pvp.draft.final_picks").format(
+            seat=_seat_label("player_2"),
+            items=_joined_action_targets(rows, seat="player_2", action_type="pick_character"),
+        ),
+        tr("app_shell.pvp.draft.final_bans").format(
+            seat=_seat_label("player_2"),
+            items=_joined_action_targets(rows, seat="player_2", action_type="ban_character"),
+        ),
+        tr("app_shell.pvp.play.summary_action_log").format(count=len(rows)),
+    ]
+
+
+def _joined_action_targets(
+    rows: list[dict[str, Any]],
+    *,
+    seat: str,
+    action_type: str,
+) -> str:
+    values = [
+        _text(row.get("target_display_name")) or _text(row.get("target_id"))
+        for row in rows
+        if row.get("seat") == seat and row.get("action_type") == action_type
+    ]
+    return ", ".join(values) if values else tr("app_shell.pvp.draft.none")
+
+
+def _is_legal_card(board: Mapping[str, Any], seat: str, character_id: str) -> bool:
+    seats = _mapping(board.get("seats"))
+    seat_board = _mapping(seats.get(seat))
+    cards = seat_board.get("cards")
+    if not isinstance(cards, list):
+        return False
+    for card_value in cards:
+        card = _mapping(card_value)
+        if _text(card.get("character_id")) == character_id:
+            return bool(card.get("is_current_legal_target"))
+    return False
+
+
+def _draft_card_text(card: Mapping[str, Any]) -> str:
+    name = _text(card.get("display_name")) or _text(card.get("character_id"))
+    meta = " ".join(
+        part
+        for part in (
+            _text(card.get("element")),
+            _text(card.get("weapon_type")),
+            _level_text(card.get("level")),
+            _constellation_text(card.get("constellation")),
+        )
+        if part
+    )
+    status = _draft_card_status_label(_text(card.get("status")))
+    return "\n".join(part for part in (name, meta, status) if part)
+
+
+def _seat_title(seat: str, seat_board: Mapping[str, Any]) -> str:
+    deck = _mapping(seat_board.get("deck"))
+    nickname = _text(seat_board.get("nickname"))
+    deck_name = _text(deck.get("deck_name"))
+    return tr("app_shell.pvp.draft.seat_title").format(
+        seat=_seat_label(seat),
+        nickname=nickname or _seat_label(seat),
+        deck=deck_name,
+    )
+
+
+def _seat_is_active(seat_board: Mapping[str, Any]) -> bool:
+    cards = seat_board.get("cards")
+    if not isinstance(cards, list):
+        return False
+    return any(bool(_mapping(card).get("is_active_seat_card")) for card in cards)
+
+
+def _seat_label(seat: str) -> str:
+    if seat == "player_1":
+        return tr("app_shell.pvp.draft.player_1")
+    if seat == "player_2":
+        return tr("app_shell.pvp.draft.player_2")
+    return seat
+
+
+def _draft_action_label(action_type: str) -> str:
+    if action_type == "pick_character":
+        return tr("app_shell.pvp.draft.pick")
+    if action_type == "ban_character":
+        return tr("app_shell.pvp.draft.ban")
+    return action_type
+
+
+def _draft_card_status_label(status: str) -> str:
+    labels = {
+        "available": tr("app_shell.pvp.draft.available"),
+        "legal_target": tr("app_shell.pvp.draft.legal_target"),
+        "globally_banned": tr("app_shell.pvp.draft.banned"),
+        "picked_by_self": tr("app_shell.pvp.draft.picked"),
+        "picked_by_opponent": tr("app_shell.pvp.draft.picked"),
+        "blocked_by_opponent_pick": tr("app_shell.pvp.draft.blocked"),
+        "unavailable": tr("app_shell.pvp.draft.unavailable"),
+        "invalid": tr("app_shell.pvp.draft.invalid"),
+        "unsupported_traveler": tr("app_shell.pvp.draft.invalid"),
+    }
+    return labels.get(status, status)
+
+
+def _level_text(value: Any) -> str:
+    level = int(value or 0)
+    return f"Lv.{level}" if level else ""
+
+
+def _constellation_text(value: Any) -> str:
+    constellation = int(value or 0)
+    return f"C{constellation}" if constellation else "C0"
 
 
 def _format_requirement(requirement: Mapping[str, Any] | None) -> str:
@@ -2328,10 +3028,20 @@ def _text(value: Any) -> str:
     return str(value or "").strip()
 
 
+def _refresh_qss(widget: QWidget) -> None:
+    widget.style().unpolish(widget)
+    widget.style().polish(widget)
+    widget.update()
+
+
 __all__ = [
     "PVP_PAGE_DECKS",
+    "PVP_PAGE_DRAFT",
     "PVP_PAGE_PLAY",
     "PvpActiveDraftSession",
+    "PvpDraftCardButton",
+    "PvpDraftRightPanel",
+    "PvpDraftWorkspace",
     "PvpDeckAssetIconLabel",
     "PvpDecksRightPanel",
     "PvpDecksWorkspace",

@@ -52,6 +52,7 @@ from ui.app_shell import (
     LEFT_WORKSPACE_HISTORY,
     LEFT_WORKSPACE_PVP,
     PVP_PAGE_DECKS,
+    PVP_PAGE_DRAFT,
     PVP_PAGE_PLAY,
     RIGHT_OPERATIONS_DOCK_WIDTH,
     RIGHT_DOCK_PAGE_ACCOUNT,
@@ -73,6 +74,7 @@ from ui.history_browser.window import HistoryRightPanelPlaceholder
 from ui.pvp_browser.window import (
     PvpDecksRightPanel,
     PvpDecksWorkspace,
+    PvpDraftRightPanel,
     PvpRightPanelHost,
     PvpWorkspace,
 )
@@ -252,14 +254,20 @@ class AppShellTest(unittest.TestCase):
             shell.right_dock.header.pvp_play_button.text(),
             tr("app_shell.right_dock.pvp_play"),
         )
+        self.assertEqual(
+            shell.right_dock.header.pvp_draft_button.text(),
+            tr("app_shell.right_dock.pvp_draft"),
+        )
         self.assertEqual(shell.controller.mode, selected_mode)
         self.assertEqual(shell.right_panel._model.mode, selected_mode)
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
         self.assert_header_has_no_run_actions(shell)
         self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.pvp_play_button.isHidden())
+        self.assertFalse(shell.right_dock.header.pvp_draft_button.isHidden())
         self.assertTrue(shell.right_dock.header.pvp_control_button.isChecked())
         self.assertFalse(shell.right_dock.header.pvp_play_button.isChecked())
+        self.assertFalse(shell.right_dock.header.pvp_draft_button.isChecked())
         self.assertFalse(shell.right_dock.header.account_button.isChecked())
 
     def test_history_workspace_uses_isolated_right_viewer_without_clearing_live_run_state(
@@ -592,8 +600,10 @@ class AppShellTest(unittest.TestCase):
         self.assert_header_has_no_run_actions(shell)
         self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.pvp_play_button.isHidden())
+        self.assertFalse(shell.right_dock.header.pvp_draft_button.isHidden())
         self.assertFalse(shell.right_dock.header.pvp_control_button.isChecked())
         self.assertFalse(shell.right_dock.header.pvp_play_button.isChecked())
+        self.assertFalse(shell.right_dock.header.pvp_draft_button.isChecked())
         self.assertTrue(shell.right_dock.header.account_button.isChecked())
 
         shell.right_dock.header.pvp_control_button.click()
@@ -601,6 +611,7 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
         self.assertTrue(shell.right_dock.header.pvp_control_button.isChecked())
         self.assertFalse(shell.right_dock.header.pvp_play_button.isChecked())
+        self.assertFalse(shell.right_dock.header.pvp_draft_button.isChecked())
 
         shell.left_host.character_weapon_button.click()
 
@@ -619,7 +630,7 @@ class AppShellTest(unittest.TestCase):
         )
         self.assertEqual(shell.controller.mode, MODE_DPS_DUMMY)
 
-    def test_pvp_decks_play_switch_does_not_mutate_run_state(self) -> None:
+    def test_pvp_decks_play_draft_switch_does_not_mutate_run_state(self) -> None:
         shell = AppShell()
         shell._on_mode_requested(MODE_DPS_DUMMY)
         before_mode_states = dict(shell.controller.mode_states)
@@ -640,6 +651,24 @@ class AppShellTest(unittest.TestCase):
         )
         self.assertFalse(shell.right_dock.header.pvp_control_button.isChecked())
         self.assertTrue(shell.right_dock.header.pvp_play_button.isChecked())
+        self.assertFalse(shell.right_dock.header.pvp_draft_button.isChecked())
+        self.assertEqual(shell.controller.mode_states, before_mode_states)
+        self.assertEqual(shell.controller.mode, before_mode)
+
+        shell.right_dock.header.pvp_draft_button.click()
+
+        self.assertEqual(shell.left_host.pvp_workspace.active_page_id, PVP_PAGE_DRAFT)
+        self.assertIs(
+            shell.left_host.pvp_workspace.stack.currentWidget(),
+            shell.left_host.pvp_workspace.draft_workspace,
+        )
+        self.assertIs(
+            shell.right_dock.pvp_operation_widget.stack.currentWidget(),
+            shell.right_dock.pvp_operation_widget.draft_panel,
+        )
+        self.assertFalse(shell.right_dock.header.pvp_control_button.isChecked())
+        self.assertFalse(shell.right_dock.header.pvp_play_button.isChecked())
+        self.assertTrue(shell.right_dock.header.pvp_draft_button.isChecked())
         self.assertEqual(shell.controller.mode_states, before_mode_states)
         self.assertEqual(shell.controller.mode, before_mode)
 
@@ -694,13 +723,10 @@ class AppShellTest(unittest.TestCase):
 
             session = shell.left_host.pvp_workspace.active_draft_session
             self.assertIsNotNone(session)
-            self.assertIn(
-                "Alpha",
-                "\n".join(
-                    label.text()
-                    for label in shell.left_host.pvp_workspace.play_workspace.summary_labels
-                    if label.text()
-                ),
+            self.assertEqual(shell.left_host.pvp_workspace.active_page_id, PVP_PAGE_DRAFT)
+            self.assertIsInstance(
+                shell.right_dock.pvp_operation_widget.stack.currentWidget(),
+                PvpDraftRightPanel,
             )
 
             shell.left_host.character_weapon_button.click()
@@ -709,10 +735,15 @@ class AppShellTest(unittest.TestCase):
             shell.left_host.pvp_button.click()
 
             self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
-            self.assertEqual(shell.left_host.pvp_workspace.active_page_id, PVP_PAGE_PLAY)
+            self.assertEqual(shell.left_host.pvp_workspace.active_page_id, PVP_PAGE_DRAFT)
             self.assertIs(shell.left_host.pvp_workspace.active_draft_session, session)
-            self.assertFalse(
-                shell.right_dock.pvp_operation_widget.play_panel.active_frame.isHidden()
+            self.assertIs(
+                shell.left_host.pvp_workspace.stack.currentWidget(),
+                shell.left_host.pvp_workspace.draft_workspace,
+            )
+            self.assertIsInstance(
+                shell.right_dock.pvp_operation_widget.stack.currentWidget(),
+                PvpDraftRightPanel,
             )
 
     def test_pvp_app_shell_does_not_create_ui_data_from_ui_cwd(self) -> None:

@@ -171,25 +171,26 @@ right column patched in place.
 
 ### PvP Workspace
 
-- The first real PvP AppShell integrations are Decks v0 and Play/local setup v0
-  with stable left workspace id `pvp`.
+- The first real PvP AppShell integrations are Decks v0, Play/local setup v0,
+  and Draft board v0 with stable left workspace id `pvp`.
 - When `pvp` is active, root AppShell switches the right operations dock to
-  `Decks` / `Play` page controls. Abyss / DPS Dummy controls and normal
+  `Decks` / `Play` / `Draft` page controls. Abyss / DPS Dummy controls and normal
   TeamBuilder mutations are hidden while PvP pages are active.
 - Account / Data remains the global right-dock action in the same header
   position. Opening Account from PvP preserves the PvP right-dock policy until a
   normal workspace is selected again.
-- `PvpWorkspace` owns separate Decks and Play pages. `PvpDecksWorkspace` shows
-  account characters/weapons, supports deck view/edit mode, and persists
+- `PvpWorkspace` owns separate Decks, Play, and Draft pages. `PvpDecksWorkspace`
+  shows account characters/weapons, supports deck view/edit mode, and persists
   presets through `run_workspace/pvp/deck_preset.py`; Play selects two local
-  deck presets and starts an in-memory `FreeDraftController` summary only.
+  deck presets and starts an in-memory `FreeDraftController`; Draft renders the
+  backend board projection and sends legal pick/ban card clicks through the
+  controller.
 - PvP Decks character/weapon selection grids also use the shared painted icon
   grid. Preserve edit-mode viewport tint, selected outlines, inactive overlay,
   custom tooltips, overlay scrollbars, and stable test helper handles instead
   of depending on QLabel child widgets.
-- Play v0 wires deck presets to `FreeDraftController` creation, but the real
-  draft board/pick-ban UI is still not rendered and normal TeamBuilder/Run state
-  is not mutated.
+- Draft v0 wires the first real local pick/ban board, but normal
+  TeamBuilder/Run state is still not mutated.
 - Detailed PvP UI mode/stage direction lives in `PVP_UI_ROADMAP.md`; this
   AppShell plan owns only the shell/workspace/right-dock coordination boundary.
 
@@ -336,14 +337,14 @@ durable saved results must later attach through explicit session/snapshot data.
 
 ## PvP Direction
 
-- PvP now has AppShell Decks and Play workspace/right-dock policy, not a
+- PvP now has AppShell Decks, Play, and Draft workspace/right-dock policy, not a
   separate first window.
-- Detailed PvP UI roadmap and the next Draft board scope live in
+- Detailed PvP UI roadmap and the next Team assignment scope live in
   `PVP_UI_ROADMAP.md`.
 - During draft/deck/opponent phases, showing the normal build panel can be
   misleading because builds may not be editable yet.
-- The right operations dock currently shows Decks and Play controls and can
-  later show Draft/assignment/result controls for those phases.
+- The right operations dock currently shows Decks, Play, and Draft controls and
+  can later show assignment/result controls for those phases.
 - Once draft/pool/team is ready, the build panel can be reused against the PvP
   pool/team instead of the full account roster.
 - PvP training runs can later save history scoped to the current deck/PvP mode.
@@ -703,7 +704,7 @@ Sizing note:
 - `LeftWorkspaceHost` uses a `QStackedWidget` and small workspace nav.
 - Current workspaces: default Character/Weapon, lazy-created Artifacts, GCSIM
   Browser, minimal `ui/history_browser/` saved-bundle list with an isolated
-  empty right-panel viewer, and PvP Decks/Play v0.
+  empty right-panel viewer, and PvP Decks/Play/Draft v0.
 - Navigation uses stable workspace ids requested through root AppShell so later
   real History browsing or real PvP workspace stages can coordinate right-dock
   policies without directly mutating the dock.
@@ -748,6 +749,6 @@ Sizing note:
 - Do not save future runs from live widgets or image paths.
 - Do not make Artifact Browser equip/apply anything without an explicit selected
   build target.
-- Do not expand a narrow AppShell/PvP Decks/Play patch into real draft UI,
-  GCSIM, History, or legacy cleanup unless the user explicitly asks for that
-  stage.
+- Do not expand a narrow AppShell/PvP Decks/Play/Draft patch into Team
+  assignment, GCSIM, History, or legacy cleanup unless the user explicitly asks
+  for that stage.

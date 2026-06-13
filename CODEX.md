@@ -160,7 +160,8 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   run_workspace.pvp.session_bundle_smoke`, `python -m
   run_workspace.pvp.ruleset_balance_smoke`). The backend remains isolated from
   the legacy right panel, online transport, and History; AppShell currently has
-  PvP Decks v0 with no real draft board or controller action wiring.
+  PvP Decks/Play/Draft v0, including local manual pick/ban clicks wired through
+  the Free Draft controller.
 - `run_workspace/gcsim/`: isolated backend/dev foundation for local GCSIM engine
   lifecycle, patching, artifact builds, cleanup, and Browser MVP runs. The
   update path prunes generated engines to active + one previous successful +
@@ -536,14 +537,16 @@ backend implementation status exists at `docs/handoff/PVP_BACKEND_STATUS.md`;
 PvP UI direction exists at `docs/handoff/PVP_UI_ROADMAP.md`. The backend
 implementation target is a full local Hot-seat / Ghost Deck offline loop with
 two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
-weapon assignment, timers, and winner summary. Decks mode v0 and Play/local
-match setup v0 are implemented with PvP UI widgets owned by `ui/pvp_browser/`;
-Decks persists `gtt.pvp_deck_preset` JSON under `data/pvp/decks/`, shows
-account characters/weapons in view/edit mode, and validates by converting
-presets to backend `DraftDeck`. Play chooses Player 1/Player 2 local deck
-presets, starts an in-memory local `FreeDraftController`, and shows a compact
-active-draft placeholder/summary. The next UI implementation target is Draft
-board v0. Shared observed weapon-stack identity for Deck presets and
+weapon assignment, timers, and winner summary. Decks mode v0, Play/local match
+setup v0, and Draft board v0 are implemented with PvP UI widgets owned by
+`ui/pvp_browser/`; Decks persists `gtt.pvp_deck_preset` JSON under
+`data/pvp/decks/`, shows account characters/weapons in view/edit mode, and
+validates by converting presets to backend `DraftDeck`. Play chooses Player
+1/Player 2 local deck presets and starts an in-memory local
+`FreeDraftController`. Draft renders the backend board projection, sends legal
+pick/ban clicks through the controller, and can complete the full Free Draft
+schedule locally. The next UI implementation target is Team assignment v0.
+Shared observed weapon-stack identity for Deck presets and
 future PvP screens lives in `run_workspace/pvp/weapon_identity.py`.
 Reference-site findings live in
 `docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`; PvP/tournament ruleset audit exists

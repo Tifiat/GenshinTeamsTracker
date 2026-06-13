@@ -14,9 +14,12 @@ from PySide6.QtWidgets import QApplication, QPushButton
 from localization import tr
 from ui.pvp_browser.window import (
     PVP_PAGE_DECKS,
+    PVP_PAGE_DRAFT,
     PVP_PAGE_PLAY,
     PvpDecksRightPanel,
     PvpDecksWorkspace,
+    PvpDraftRightPanel,
+    PvpDraftWorkspace,
     PvpPlayRightPanel,
     PvpRightPanelHost,
     PvpWorkspace,
@@ -393,9 +396,11 @@ class PvpBrowserTest(unittest.TestCase):
             self.assertIn("Legal targets:", summary_text)
             self.assertIn("Action log: 0", summary_text)
             self.assertIn(
-                tr("app_shell.pvp.play.draft_board_not_implemented"),
+                tr("app_shell.pvp.play.summary_open_draft"),
                 summary_text,
             )
+            self.assertEqual(workspace.active_page_id, PVP_PAGE_DRAFT)
+            self.assertIs(workspace.stack.currentWidget(), workspace.draft_workspace)
 
     def test_pvp_play_same_deck_for_both_players_is_allowed(self) -> None:
         characters = _valid_character_assets()
@@ -421,6 +426,126 @@ class PvpBrowserTest(unittest.TestCase):
             )
             self.assertTrue(session.controller.state.setup_ready)
 
+    def test_pvp_draft_tab_without_active_session_shows_empty_state(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: [],
+                weapon_assets_provider=lambda: [],
+            )
+            host = PvpRightPanelHost(workspace)
+
+            host.set_page(PVP_PAGE_DRAFT)
+
+            self.assertEqual(workspace.active_page_id, PVP_PAGE_DRAFT)
+            self.assertIs(workspace.stack.currentWidget(), workspace.draft_workspace)
+            self.assertIs(host.stack.currentWidget(), host.draft_panel)
+            self.assertFalse(workspace.draft_workspace.empty_frame.isHidden())
+            self.assertIn(
+                tr("app_shell.pvp.draft.no_active_title"),
+                workspace.draft_workspace.empty_title_label.text(),
+            )
+
+    def test_pvp_draft_board_renders_current_action_and_legal_targets(self) -> None:
+        workspace, _panel = self._started_draft_workspace(character_count=12)
+
+        draft = workspace.draft_workspace
+        board = workspace.active_draft_session.board_dict()
+
+        self.assertIsInstance(draft, PvpDraftWorkspace)
+        self.assertIn(tr("app_shell.pvp.draft.ban"), draft.action_title_label.text())
+        self.assertEqual(
+            len({button.character_id for button in draft.legal_card_buttons}),
+            board["progress"]["legal_target_count"],
+        )
+        self.assertGreater(len(draft.legal_card_buttons), 0)
+        self.assertIn(("player_1", "20000000"), draft.card_buttons_by_key)
+        self.assertIn(("player_2", "20000000"), draft.card_buttons_by_key)
+
+    def test_pvp_draft_legal_click_applies_one_backend_action(self) -> None:
+        workspace, _panel = self._started_draft_workspace(character_count=12)
+        draft = workspace.draft_workspace
+        first_legal = draft.legal_card_buttons[0]
+
+        first_legal.click()
+        QApplication.processEvents()
+
+        board = workspace.active_draft_session.board_dict()
+        self.assertEqual(len(board["action_log"]), 1)
+        self.assertEqual(board["progress"]["actions_accepted"], 1)
+        self.assertIn(
+            tr("app_shell.pvp.draft.action_accepted").split("{", 1)[0],
+            workspace.last_draft_status(),
+        )
+
+    def test_pvp_draft_illegal_click_does_not_apply_action(self) -> None:
+        workspace, _panel = self._started_draft_workspace(character_count=12)
+        legal = workspace.draft_workspace.legal_card_buttons[0]
+        legal.click()
+        QApplication.processEvents()
+        before = len(workspace.active_draft_session.board_dict()["action_log"])
+        illegal = next(
+            button
+            for button in workspace.draft_workspace.card_buttons_by_key.values()
+            if not button.property("legalTarget")
+        )
+
+        illegal.click()
+        QApplication.processEvents()
+
+        self.assertEqual(
+            len(workspace.active_draft_session.board_dict()["action_log"]),
+            before,
+        )
+
+    def test_pvp_draft_same_deck_self_vs_self_keeps_seat_state_independent(self) -> None:
+        workspace, _panel = self._started_draft_workspace(
+            character_count=24,
+            deck_names=("Mirror",),
+        )
+
+        while len(workspace.active_draft_session.board_dict()["action_log"]) < 5:
+            workspace.draft_workspace.legal_card_buttons[0].click()
+            QApplication.processEvents()
+
+        board = workspace.active_draft_session.board_dict()
+        pick = board["action_log"][-1]
+        self.assertEqual(pick["action_type"], "pick_character")
+        picked_id = pick["target_id"]
+        p1_card = _board_card(board, "player_1", picked_id)
+        p2_card = _board_card(board, "player_2", picked_id)
+
+        self.assertEqual(p1_card["status"], "picked_by_self")
+        self.assertEqual(p2_card["status"], "blocked_by_opponent_pick")
+
+    def test_pvp_draft_can_complete_full_schedule_through_ui_clicks(self) -> None:
+        workspace, _panel = self._started_draft_workspace(
+            character_count=24,
+            deck_names=("Mirror",),
+        )
+        guard = 0
+
+        while not workspace.active_draft_session.board_dict()["status"]["draft_finished"]:
+            guard += 1
+            self.assertLess(guard, 40)
+            self.assertTrue(workspace.draft_workspace.legal_card_buttons)
+            workspace.draft_workspace.legal_card_buttons[0].click()
+            QApplication.processEvents()
+
+        board = workspace.active_draft_session.board_dict()
+        self.assertEqual(board["progress"]["actions_accepted"], 22)
+        self.assertEqual(len(board["action_log"]), 22)
+        self.assertTrue(board["status"]["draft_finished"])
+        self.assertFalse(workspace.draft_workspace.legal_card_buttons)
+        completed_text = "\n".join(
+            label.text()
+            for label in workspace.draft_workspace.completed_labels
+            if label.text()
+        )
+        self.assertIn(tr("app_shell.pvp.draft.player_1"), completed_text)
+        self.assertIn(tr("app_shell.pvp.draft.player_2"), completed_text)
+        self.assertIn("Action log: 22", completed_text)
+
     def test_pvp_right_panel_host_switches_decks_and_play_pages(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             workspace = PvpWorkspace(
@@ -439,11 +564,46 @@ class PvpBrowserTest(unittest.TestCase):
             self.assertIs(workspace.stack.currentWidget(), workspace.play_workspace)
             self.assertIs(host.stack.currentWidget(), host.play_panel)
 
+            host.set_page(PVP_PAGE_DRAFT)
+
+            self.assertEqual(workspace.active_page_id, PVP_PAGE_DRAFT)
+            self.assertIs(workspace.stack.currentWidget(), workspace.draft_workspace)
+            self.assertIs(host.stack.currentWidget(), host.draft_panel)
+
             host.set_page(PVP_PAGE_DECKS)
 
             self.assertIs(workspace.stack.currentWidget(), workspace.decks_workspace)
             self.assertIs(host.stack.currentWidget(), host.decks_panel)
 
+
+    def _started_draft_workspace(
+        self,
+        *,
+        character_count: int,
+        deck_names: tuple[str, ...] = ("Alpha", "Beta"),
+    ) -> tuple[PvpWorkspace, PvpPlayRightPanel]:
+        characters = _valid_character_assets(character_count)
+        weapons = [_weapon_asset("11401", "Sword", weapon_type=1, weapon_type_name="Sword")]
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        workspace = PvpWorkspace(
+            deck_dir=temp_dir.name,
+            character_assets_provider=lambda: characters,
+            weapon_assets_provider=lambda: weapons,
+        )
+        for name in deck_names:
+            self.assertTrue(workspace.decks_workspace.create_deck(name))
+            self.assertTrue(workspace.decks_workspace.save_edit(name=name))
+        panel = PvpPlayRightPanel(workspace)
+        if len(deck_names) > 1:
+            index = panel.player_2_combo.findText(deck_names[1])
+            panel.player_2_combo.setCurrentIndex(index)
+        panel.start_button.click()
+        QApplication.processEvents()
+        self.assertIsNotNone(workspace.active_draft_session)
+        self.assertEqual(workspace.active_page_id, PVP_PAGE_DRAFT)
+        self.assertIs(workspace.stack.currentWidget(), workspace.draft_workspace)
+        return workspace, panel
 
     @staticmethod
     def _send_key(widget, key: Qt.Key) -> None:
@@ -519,7 +679,7 @@ def _weapon_asset(
     }
 
 
-def _valid_character_assets() -> list[dict]:
+def _valid_character_assets(count: int = 11) -> list[dict]:
     return [
         _character_asset(
             str(20000000 + index),
@@ -528,5 +688,12 @@ def _valid_character_assets() -> list[dict]:
             weapon_type_name="Sword",
             rarity=5,
         )
-        for index in range(11)
+        for index in range(count)
     ]
+
+
+def _board_card(board: dict, seat: str, character_id: str) -> dict:
+    for card in board["seats"][seat]["cards"]:
+        if card["character_id"] == character_id:
+            return card
+    raise AssertionError(f"Missing card {seat}/{character_id}")

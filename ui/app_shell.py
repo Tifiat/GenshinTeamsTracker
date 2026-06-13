@@ -102,6 +102,7 @@ from ui.account_data_page import AccountDataPage
 from ui.pvp_browser.placeholders import PvpRightDockPlaceholder
 from ui.pvp_browser.window import (
     PVP_PAGE_DECKS,
+    PVP_PAGE_DRAFT,
     PVP_PAGE_PLAY,
     PvpRightPanelHost,
     PvpWorkspace,
@@ -2861,10 +2862,19 @@ class RightDockHeader(QWidget):
             lambda _checked=False: self._request_pvp_page(PVP_PAGE_PLAY)
         )
         layout.addWidget(self.pvp_play_button, 1)
+
+        self.pvp_draft_button = make_mode_tab_button(
+            tr("app_shell.right_dock.pvp_draft")
+        )
+        self.pvp_draft_button.clicked.connect(
+            lambda _checked=False: self._request_pvp_page(PVP_PAGE_DRAFT)
+        )
+        layout.addWidget(self.pvp_draft_button, 1)
         self.pvp_control_button = self.pvp_decks_button
         self._pvp_buttons_by_page = {
             PVP_PAGE_DECKS: self.pvp_decks_button,
             PVP_PAGE_PLAY: self.pvp_play_button,
+            PVP_PAGE_DRAFT: self.pvp_draft_button,
         }
 
         self.account_button = make_mode_tab_button(
@@ -2917,6 +2927,7 @@ class RightDockHeader(QWidget):
         self.run_mode_tabs.retranslate_ui()
         self.pvp_decks_button.setText(tr("app_shell.right_dock.pvp_decks"))
         self.pvp_play_button.setText(tr("app_shell.right_dock.pvp_play"))
+        self.pvp_draft_button.setText(tr("app_shell.right_dock.pvp_draft"))
         self.account_button.setText(tr("app_shell.right_dock.account"))
 
     def _request_pvp_page(self, page_id: str) -> None:
@@ -2988,6 +2999,9 @@ class RightOperationsDock(QFrame):
         )
         self.header.pvp_page_requested.connect(self.show_pvp_page)
         self.header.account_requested.connect(self.show_account_page)
+        pvp_workspace = getattr(self.pvp_operation_widget, "workspace", None)
+        if pvp_workspace is not None and hasattr(pvp_workspace, "page_changed"):
+            pvp_workspace.page_changed.connect(self._on_pvp_page_changed)
         self.show_run_page(active_mode)
 
     def current_page(self) -> str:
@@ -3007,8 +3021,10 @@ class RightOperationsDock(QFrame):
 
     def show_pvp_page(self, page_id: str | None = None) -> None:
         self._clear_operation_save_status()
-        if page_id in (PVP_PAGE_DECKS, PVP_PAGE_PLAY):
+        if page_id in (PVP_PAGE_DECKS, PVP_PAGE_PLAY, PVP_PAGE_DRAFT):
             self._pvp_page = page_id
+        elif hasattr(self.pvp_operation_widget, "current_page"):
+            self._pvp_page = self.pvp_operation_widget.current_page()
         self._operation_policy = RIGHT_DOCK_POLICY_PVP
         if hasattr(self.pvp_operation_widget, "set_page"):
             self.pvp_operation_widget.set_page(self._pvp_page)
@@ -3032,6 +3048,13 @@ class RightOperationsDock(QFrame):
     def _clear_operation_save_status(self) -> None:
         if hasattr(self.operation_widget, "clear_save_status"):
             self.operation_widget.clear_save_status()
+
+    def _on_pvp_page_changed(self, page_id: str) -> None:
+        if page_id not in (PVP_PAGE_DECKS, PVP_PAGE_PLAY, PVP_PAGE_DRAFT):
+            return
+        self._pvp_page = page_id
+        if self.current_page() == RIGHT_DOCK_PAGE_PVP:
+            self.header.show_pvp_control(self._pvp_page)
 
     def retranslate_ui(self) -> None:
         self.header.retranslate_ui()
@@ -4458,6 +4481,7 @@ __all__ = [
     "LEFT_WORKSPACE_PVP",
     "LeftWorkspaceHost",
     "PVP_PAGE_DECKS",
+    "PVP_PAGE_DRAFT",
     "PVP_PAGE_PLAY",
     "RIGHT_DOCK_PAGE_ACCOUNT",
     "RIGHT_DOCK_PAGE_HISTORY",

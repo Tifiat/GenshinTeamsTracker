@@ -8,8 +8,8 @@ remains in `PVP_BACKEND_STATUS.md`.
 
 - A `PvP` workspace tab exists beside Characters / Weapons, Artifacts, and
   GCSIM.
-- When PvP is active, the right dock shows `Decks`, `Play`, and the global
-  Account action instead of Abyss / DPS Dummy.
+- When PvP is active, the right dock shows `Decks`, `Play`, `Draft`, and the
+  global Account action instead of Abyss / DPS Dummy.
 - Account remains a global shell action in the right header.
 - Decks v0 is implemented in `ui/pvp_browser/window.py` as
   `PvpDecksWorkspace` plus `PvpDecksRightPanel`.
@@ -20,11 +20,16 @@ remains in `PVP_BACKEND_STATUS.md`.
 - Play/local match setup v0 is implemented in `ui/pvp_browser/window.py` as
   a `PvpWorkspace` page plus `PvpPlayRightPanel`. It selects Player 1 and
   Player 2 local deck presets, validates both through backend `DraftDeck`
-  conversion, starts an in-memory `FreeDraftController`, and shows only a
-  compact placeholder/summary.
+  conversion, starts an in-memory `FreeDraftController`, and switches to the
+  Draft board page.
+- Draft board v0 is implemented in `ui/pvp_browser/window.py` as a local
+  hot-seat board over the backend Free Draft board projection. Legal character
+  cards are clickable, accepted actions refresh from the backend controller,
+  and the completed state shows final picks/bans and action-log summary.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
-- The real draft board and pick/ban clicks are still not implemented.
+- Team assignment, timers/results, online play, ruleset costs, immune picks,
+  and PvP History are still not implemented.
 
 ## Core Model
 
@@ -182,16 +187,17 @@ Current v0 scope:
 - Uses saved local deck presets from `data/pvp/decks/`.
 - Same-preset/self-vs-self starts with an independent Player 2 backend deck
   copy in memory only.
-- The left Play page shows setup/active-draft placeholder text and does not
-  duplicate the full form.
+- Start local draft switches to Draft automatically. The left Play page still
+  shows setup/helper text and does not duplicate the full form.
 - No session files, PvP history, normal TeamBuilder mutation, or network access
   are performed by Play v0.
 
 ## Draft Stage
 
-Draft board v0 is the next implementation target.
+Draft board v0 is implemented for local manual play through the full Free Draft
+schedule.
 
-Future Draft belongs mostly in the left/main area:
+Current Draft belongs mostly in the left/main area:
 
 - Player 1 board;
 - Player 2 board;
@@ -209,6 +215,23 @@ Right panel remains compact:
 - later room/invite links.
 
 The right panel must not contain the full draft board.
+
+Current v0 scope:
+
+- Draft tab appears only because the real board exists.
+- Draft without an active session shows an empty state directing the user back
+  to Play.
+- Starting from Play creates an in-memory `FreeDraftController` and switches to
+  Draft.
+- The board renders cards from `to_board_dict()`, marks legal/available/picked/
+  banned/blocked states, and sends legal clicks through
+  `FreeDraftController.apply_current_action(...)`.
+- After each accepted or rejected action, UI state is rebuilt from the backend
+  projection.
+- When the schedule completes, pick/ban clicks are disabled and final picks,
+  bans, and action-log count remain visible.
+- No team assignment UI, timers/results UI, online mode, ruleset cost rendering,
+  immune picks, session files, or PvP History writes are part of Draft board v0.
 
 ## Team Assignment
 
@@ -286,19 +309,20 @@ Current Decks v0 scope:
   and labels/filter rows outside the card viewports must not be tinted.
 - `Start local draft` is not part of Decks; Play/setup owns that action.
 - Play/setup v0 is implemented. It owns `Start local draft`, creates an
-  in-memory local `FreeDraftController`, and shows a compact active-draft
-  summary/placeholder instead of the real board.
+  in-memory local `FreeDraftController`, and switches to Draft.
+- Draft board v0 is implemented. It renders the backend projection, lets the
+  user click legal pick/ban targets through the controller, and can complete the
+  full Free Draft schedule locally.
 
 Next implementation task:
 
-> PvP Draft board v0: render the backend Free Draft board/read-model projection
-> and add the first real pick/ban interaction path.
+> PvP Team assignment v0: use the completed picked pools to build two teams per
+> player without mutating normal TeamBuilder/Run state.
 
 Still out of scope:
 
-- draft board;
-- pick/ban clicks;
-- live `FreeDraftController` UI action wiring;
+- team assignment UI;
+- timers/results UI;
 - online;
 - History;
 - ruleset cost rendering;

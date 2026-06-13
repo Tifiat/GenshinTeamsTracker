@@ -56,7 +56,7 @@ Durable backend modules:
   run_workspace.pvp.account_full_loop_smoke`, `python -m
   run_workspace.pvp.session_bundle_smoke`, and `python -m
   run_workspace.pvp.ruleset_balance_smoke`. Backend fixtures/tests live in
-  `samples/pvp/` and `tests/run_workspace/pvp/`; PvP Decks UI tests live in
+  `samples/pvp/` and `tests/run_workspace/pvp/`; PvP Browser UI tests live in
   `tests/ui/pvp_browser/`.
 
 Rules:

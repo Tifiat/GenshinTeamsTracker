@@ -28,12 +28,14 @@ or JSON examples exist.
 
 ## AppShell UI Status
 
-The first real PvP AppShell UI stages are Decks v0 plus Play/local setup v0:
+The first real PvP AppShell UI stages are Decks v0, Play/local setup v0, and
+Draft board v0:
 
 - `LEFT_WORKSPACE_PVP = "pvp"` is registered beside Characters/Weapons,
   Artifacts, and GCSIM.
 - When PvP is active, the right operations dock keeps Account/Data visible but
-  replaces Abyss/DPS Dummy controls with real `Decks` and `Play` pages.
+  replaces Abyss/DPS Dummy controls with real `Decks`, `Play`, and `Draft`
+  pages.
 - Leaving PvP for a normal workspace restores the normal run right dock and the
   previously selected Abyss/DPS Dummy mode.
 - Decks v0 persists local presets under `data/pvp/decks/`, shows account
@@ -41,13 +43,16 @@ The first real PvP AppShell UI stages are Decks v0 plus Play/local setup v0:
   backend `DraftDeck`.
 - Play/local setup v0 lists saved deck presets, validates selected Player 1 and
   Player 2 decks through the same conversion path, creates an in-memory local
-  `FreeDraftController`, and shows a compact board-projection summary.
-- Decks v0 does not wire `FreeDraftController`, does not render a real draft
-  board, and does not mutate normal TeamBuilder/Run state.
-- Play v0 does not persist sessions/history, render the real board, or mutate
-  normal TeamBuilder/Run state.
-- The UI roadmap and next Draft board stage are owned by `PVP_UI_ROADMAP.md`;
-  this file should remain backend/status focused.
+  `FreeDraftController`, and switches to Draft.
+- Draft board v0 renders the backend `to_board_dict()` read model in the left
+  PvP workspace, lets legal character cards call
+  `FreeDraftController.apply_current_action(...)`, refreshes only from backend
+  projection after actions, and shows completed picks/bans/action-log summary
+  when the Free Draft schedule ends.
+- Decks/Play/Draft v0 do not persist sessions/history and do not mutate normal
+  TeamBuilder/Run state.
+- The UI roadmap and next Team assignment stage are owned by
+  `PVP_UI_ROADMAP.md`; this file should remain backend/status focused.
 
 ## Backend Modules
 
@@ -199,7 +204,8 @@ Recommended local checks:
 
 Still out of scope / not implemented:
 
-- real PvP draft board UI and pick/ban action wiring beyond the Play summary;
+- PvP team assignment UI;
+- timers/results UI;
 - online/P2P/relay transport;
 - PvP History persistence;
 - real Gentor/Abyss importer;

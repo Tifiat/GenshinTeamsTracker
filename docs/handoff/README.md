@@ -44,8 +44,9 @@ Durable backend modules:
   summaries, and local-account Free Draft deck export from SQLite runtime
   account data. It also contains the deterministic Free Draft smoke planner,
   draft-system registry, local Free Draft controller/projection API, the
-  UI-facing board/read-model projection bridge, committed board contract sample
-  at `samples/pvp/ui_contract/free_draft_board_projection_sample.json`, session
+  UI-facing board/read-model projection bridge with `unified_pool`, committed
+  board contract sample at
+  `samples/pvp/ui_contract/free_draft_board_projection_sample.json`, session
   bundle snapshot/verifier, local-account full-loop smoke, and report-only
   ruleset applicability/deck cost-preview/ruleset-balance application research
   helpers. Deterministic dev smoke commands: `python -m

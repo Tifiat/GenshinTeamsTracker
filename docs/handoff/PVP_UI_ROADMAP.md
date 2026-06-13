@@ -23,12 +23,11 @@ remains in `PVP_BACKEND_STATUS.md`.
   conversion, starts an in-memory `FreeDraftController`, and switches to the
   Draft board page.
 - Draft board v0 is implemented in `ui/pvp_browser/window.py` as a local
-  hot-seat board over the backend Free Draft board projection. Legal character
-  cards are clickable, accepted actions refresh from the backend controller,
-  and the completed state shows final picks/bans and action-log summary.
-- Current Draft board v0 is playable but intentionally still an intermediate
-  technical board: it shows two per-seat grids and is not the final readable
-  draft UX.
+  hot-seat board over the backend Free Draft board projection. It consumes the
+  backend `unified_pool` read model, renders one readable character pool,
+  displays shared ownership markers on one card, moves picked/banned entries
+  into right-panel result zones, and refreshes from the backend controller after
+  accepted/rejected actions.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
 - Team assignment, timers/results, online play, ruleset costs, immune picks,
@@ -259,14 +258,15 @@ Target right Draft panel:
 
 Backend/read-model direction:
 
-- The durable source of truth for the unified pool should be a dedicated
-  backend board projection section such as `unified_pool`.
-- UI may prototype from existing `seats[*].cards`, but the next code contract
-  task should add backend projection fields first.
-- Future `unified_pool` entries should include stable `character_id`,
+- The durable source of truth for the unified pool is the backend board
+  projection section `unified_pool`.
+- Draft UI consumes `unified_pool` instead of reconstructing the readable pool
+  from `seats[*].cards`.
+- `unified_pool` entries include stable `character_id`,
   `owner_seats`, `base_seat`, per-seat display metadata, legal/action data,
   pool/result zone, picked/banned owner, action index, and optional reason codes.
-- Do not put local image paths into the backend identity/read-model contract.
+- Do not put local image paths into the backend identity/read-model contract;
+  the validator rejects visual path/icon/image keys in `unified_pool`.
 
 Current v0 scope:
 
@@ -275,9 +275,11 @@ Current v0 scope:
   to Play.
 - Starting from Play creates an in-memory `FreeDraftController` and switches to
   Draft.
-- The board renders cards from `to_board_dict()`, marks legal/available/picked/
-  banned/blocked states, and sends legal clicks through
-  `FreeDraftController.apply_current_action(...)`.
+- The board renders cards from `to_board_dict()["unified_pool"]["entries"]`,
+  marks legal/available/blocked states, and sends legal clicks through the
+  backend action payload exposed on the entry.
+- Picked/banned entries are omitted from the main pool and rendered in
+  right-panel result zones from `unified_pool.result_zones`.
 - After each accepted or rejected action, UI state is rebuilt from the backend
   projection.
 - When the schedule completes, pick/ban clicks are disabled and final picks,
@@ -382,16 +384,14 @@ Current Decks v0 scope:
 - `Start local draft` is not part of Decks; Play/setup owns that action.
 - Play/setup v0 is implemented. It owns `Start local draft`, creates an
   in-memory local `FreeDraftController`, and switches to Draft.
-- Draft board v0 is implemented. It renders the backend projection, lets the
-  user click legal pick/ban targets through the controller, and can complete the
-  full Free Draft schedule locally. It is an intermediate technical board; the
-  next readable Draft UX target is unified-pool based.
+- Draft board v0 is implemented. It renders the backend `unified_pool`, lets the
+  user click legal pick/ban targets through the controller, shows right-panel
+  pick/ban zones, and can complete the full Free Draft schedule locally.
 
 Next implementation task:
 
-> Backend/read-model `unified_pool` projection contract for Free Draft board:
-> add tests and update the committed sample fixture before refactoring
-> `PvpDraftWorkspace` to the unified visual pool.
+> Draft polish or Team Assignment v0. Prefer a short polish pass if the unified
+> pool needs visual tuning after manual use; otherwise start Assignment v0.
 
 Still out of scope:
 

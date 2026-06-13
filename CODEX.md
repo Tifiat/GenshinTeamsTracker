@@ -543,11 +543,11 @@ setup v0, and Draft board v0 are implemented with PvP UI widgets owned by
 `data/pvp/decks/`, shows account characters/weapons in view/edit mode, and
 validates by converting presets to backend `DraftDeck`. Play chooses Player
 1/Player 2 local deck presets and starts an in-memory local
-`FreeDraftController`. Draft renders the backend board projection, sends legal
-pick/ban clicks through the controller, and can complete the full Free Draft
-schedule locally. The next code target is a backend/read-model `unified_pool`
-projection contract and sample fixture, then a readable unified-pool Draft UI
-refactor; Team assignment follows after that.
+`FreeDraftController`. Draft consumes the backend `unified_pool`, renders one
+readable character pool, sends legal pick/ban clicks through backend action
+payloads, shows right-panel pick/ban zones, and can complete the full Free
+Draft schedule locally. The next PvP code target is either a short Draft polish
+pass after manual use or Team Assignment v0.
 Shared observed weapon-stack identity for Deck presets and
 future PvP screens lives in `run_workspace/pvp/weapon_identity.py`.
 Reference-site findings live in

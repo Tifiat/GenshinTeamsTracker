@@ -81,6 +81,8 @@ from ui.utils.pixel_icon_grid import (
 )
 from ui.utils.tooltips import install_custom_tooltip
 from ui.utils.ui_palette import (
+    UI_ACCENT_TEAM_1,
+    UI_ACCENT_TEAM_2,
     UI_BG_APP,
     UI_BG_BUTTON,
     UI_BG_PANEL,
@@ -314,7 +316,8 @@ QFrame#pvp_deck_expanded_info {
 
 PVP_DRAFT_WORKSPACE_STYLE = PVP_DECKS_WORKSPACE_STYLE + f"""
 QFrame#pvp_draft_banner,
-QFrame#pvp_draft_zone,
+QFrame#pvp_draft_pool_frame,
+QFrame#pvp_draft_result_zone,
 QFrame#pvp_draft_completed,
 QFrame#pvp_draft_empty {{
     border: 1px solid {UI_BORDER_PANEL};
@@ -325,9 +328,9 @@ QFrame#pvp_draft_banner[complete="true"] {{
     border-color: {UI_STATE_SUCCESS};
     background: #18291f;
 }}
-QFrame#pvp_draft_zone[activeSeat="true"] {{
-    border-color: #4f8ee8;
-    background: #182336;
+QFrame#pvp_draft_pool_frame[active="true"] {{
+    border-color: {UI_STATE_SUCCESS};
+    background: #18291f;
 }}
 QScrollArea#pvp_draft_scroll {{
     background: transparent;
@@ -338,11 +341,11 @@ QWidget#pvp_draft_scroll_content {{
     background: transparent;
 }}
 QPushButton#pvp_draft_card {{
-    min-width: 116px;
-    max-width: 116px;
-    min-height: 76px;
-    max-height: 76px;
-    padding: 5px;
+    min-width: 136px;
+    max-width: 136px;
+    min-height: 88px;
+    max-height: 88px;
+    padding: 6px;
     border: 1px solid {UI_BORDER_DEFAULT};
     border-radius: 8px;
     background: {UI_BG_PANEL_RAISED};
@@ -356,23 +359,44 @@ QPushButton#pvp_draft_card[legalTarget="true"] {{
     background: #203b28;
     color: {UI_TEXT_PRIMARY};
 }}
-QPushButton#pvp_draft_card[status="picked_by_self"] {{
-    border-color: {UI_STATE_SUCCESS};
-    background: #24452d;
-    color: {UI_TEXT_PRIMARY};
+QPushButton#pvp_draft_card[ownerP1="true"] {{
+    border-left: 4px solid {UI_ACCENT_TEAM_1};
 }}
-QPushButton#pvp_draft_card[status="globally_banned"] {{
-    border-color: {UI_STATE_DANGER};
-    background: #432126;
-    color: {UI_TEXT_PRIMARY};
+QPushButton#pvp_draft_card[ownerP2="true"] {{
+    border-right: 4px solid {UI_ACCENT_TEAM_2};
 }}
-QPushButton#pvp_draft_card[status="blocked_by_opponent_pick"] {{
+QPushButton#pvp_draft_card[sharedOwner="true"] {{
+    border-color: #d6b35f;
+    background: #2d2d28;
+}}
+QPushButton#pvp_draft_card[status="blocked"],
+QPushButton#pvp_draft_card[status="invalid"] {{
     border-color: #69512d;
     background: #352a1d;
     color: {UI_TEXT_SECONDARY};
 }}
 QPushButton#pvp_draft_card:disabled {{
     color: {UI_TEXT_MUTED};
+}}
+QLabel#pvp_draft_pool_empty {{
+    color: {UI_TEXT_MUTED};
+    padding: 10px;
+    font-size: 12px;
+}}
+QLabel#pvp_draft_result_title {{
+    color: {UI_TEXT_PRIMARY};
+    font-size: 12px;
+    font-weight: 800;
+}}
+QLabel#pvp_draft_result_picks {{
+    color: {UI_TEXT_PRIMARY};
+    font-size: 12px;
+    font-weight: 700;
+}}
+QLabel#pvp_draft_result_bans {{
+    color: {UI_TEXT_SECONDARY};
+    font-size: 11px;
+    font-weight: 600;
 }}
 """
 
@@ -1157,29 +1181,37 @@ class PvpPlayWorkspace(QWidget):
         self.refresh()
 
 
-class PvpDraftCardButton(QPushButton):
-    card_clicked = Signal(str, str)
+class PvpDraftUnifiedCardButton(QPushButton):
+    card_clicked = Signal(dict)
 
     def __init__(
         self,
         *,
-        seat: str,
-        card: Mapping[str, Any],
+        entry: Mapping[str, Any],
         draft_complete: bool,
         parent: QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        self.seat = seat
-        self.character_id = _text(card.get("character_id"))
-        status = _text(card.get("status")) or "available"
-        legal = bool(card.get("is_current_legal_target")) and not draft_complete
+        self.character_id = _text(entry.get("character_id"))
+        self.owner_seats = tuple(_owner_seats(entry))
+        status = _text(entry.get("status")) or "available"
+        zone = _text(entry.get("zone")) or "pool"
+        action = entry.get("action")
+        self.action_payload = dict(action) if isinstance(action, Mapping) else {}
+        legal = (
+            bool(entry.get("is_current_legal_target"))
+            and bool(self.action_payload)
+            and not draft_complete
+        )
         self.setObjectName("pvp_draft_card")
-        self.setProperty("seat", seat)
         self.setProperty("characterId", self.character_id)
         self.setProperty("status", status)
+        self.setProperty("zone", zone)
         self.setProperty("legalTarget", legal)
-        self.setProperty("activeSeat", bool(card.get("is_active_seat_card")))
-        self.setText(_draft_card_text(card))
+        self.setProperty("ownerP1", "player_1" in self.owner_seats)
+        self.setProperty("ownerP2", "player_2" in self.owner_seats)
+        self.setProperty("sharedOwner", len(self.owner_seats) > 1)
+        self.setText(_draft_unified_card_text(entry))
         self.setEnabled(legal)
         self.setCursor(
             Qt.CursorShape.PointingHandCursor
@@ -1187,13 +1219,13 @@ class PvpDraftCardButton(QPushButton):
             else Qt.CursorShape.ArrowCursor
         )
         self.clicked.connect(
-            lambda _checked=False: self.card_clicked.emit(self.seat, self.character_id)
+            lambda _checked=False: self.card_clicked.emit(dict(self.action_payload))
         )
         _refresh_qss(self)
 
 
 class PvpDraftWorkspace(QWidget):
-    card_clicked = Signal(str, str)
+    card_clicked = Signal(dict)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -1201,8 +1233,9 @@ class PvpDraftWorkspace(QWidget):
         self.setStyleSheet(PVP_DRAFT_WORKSPACE_STYLE)
         self._active_session: PvpActiveDraftSession | None = None
         self._status_text = ""
-        self.card_buttons_by_key: dict[tuple[str, str], PvpDraftCardButton] = {}
-        self.legal_card_buttons: list[PvpDraftCardButton] = []
+        self.card_buttons_by_character_id: dict[str, PvpDraftUnifiedCardButton] = {}
+        self.card_buttons_by_key = self.card_buttons_by_character_id
+        self.legal_card_buttons: list[PvpDraftUnifiedCardButton] = []
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 18, 18, 18)
@@ -1318,9 +1351,7 @@ class PvpDraftWorkspace(QWidget):
         self.action_title_label.setText(_draft_action_title(board))
         self.action_detail_label.setText(_draft_action_detail(board))
 
-        seats = _mapping(board.get("seats"))
-        for seat in ("player_1", "player_2"):
-            self.scroll_layout.addWidget(self._build_seat_zone(seat, _mapping(seats.get(seat)), complete))
+        self.scroll_layout.addWidget(self._build_unified_pool(board, complete))
         self.scroll_layout.addStretch(1)
         self._refresh_completed(board)
 
@@ -1331,58 +1362,55 @@ class PvpDraftWorkspace(QWidget):
         self.completed_title_label.setText(tr("app_shell.pvp.draft.completed_title"))
         self.refresh()
 
-    def _build_seat_zone(
+    def _build_unified_pool(
         self,
-        seat: str,
-        seat_board: Mapping[str, Any],
+        board: Mapping[str, Any],
         draft_complete: bool,
     ) -> QFrame:
-        zone = QFrame()
-        zone.setObjectName("pvp_draft_zone")
-        zone.setProperty("activeSeat", _seat_is_active(seat_board))
-        _refresh_qss(zone)
-        layout = QVBoxLayout(zone)
+        pool_frame = QFrame()
+        pool_frame.setObjectName("pvp_draft_pool_frame")
+        pool_frame.setProperty("active", not draft_complete)
+        _refresh_qss(pool_frame)
+        layout = QVBoxLayout(pool_frame)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(7)
 
-        title = QLabel(_seat_title(seat, seat_board))
+        title = QLabel(tr("app_shell.pvp.draft.unified_pool_title"))
         title.setObjectName("pvp_deck_info_line")
         layout.addWidget(title)
 
-        deck = _mapping(seat_board.get("deck"))
-        info = QLabel(
-            tr("app_shell.pvp.draft.deck_counts").format(
-                characters=int(deck.get("character_count") or 0),
-                weapons=int(deck.get("weapon_stack_count") or 0),
-            )
-        )
+        entries = _draft_main_pool_entries(board)
+        info = QLabel(_draft_unified_pool_summary(board, entries))
         info.setObjectName("small_muted")
+        info.setWordWrap(True)
         layout.addWidget(info)
+
+        if not entries:
+            empty = QLabel(tr("app_shell.pvp.draft.pool_empty"))
+            empty.setObjectName("pvp_draft_pool_empty")
+            empty.setWordWrap(True)
+            layout.addWidget(empty)
+            return pool_frame
 
         grid_widget = QWidget()
         grid_layout = QGridLayout(grid_widget)
         grid_layout.setContentsMargins(0, 0, 0, 0)
         grid_layout.setHorizontalSpacing(6)
         grid_layout.setVerticalSpacing(6)
-        columns = 4
-        cards = seat_board.get("cards")
-        if not isinstance(cards, list):
-            cards = []
-        for index, card_value in enumerate(cards):
-            card = _mapping(card_value)
-            button = PvpDraftCardButton(
-                seat=seat,
-                card=card,
+        columns = 5
+        for index, entry_value in enumerate(entries):
+            entry = _mapping(entry_value)
+            button = PvpDraftUnifiedCardButton(
+                entry=entry,
                 draft_complete=draft_complete,
             )
             button.card_clicked.connect(self.card_clicked.emit)
-            key = (seat, button.character_id)
-            self.card_buttons_by_key[key] = button
+            self.card_buttons_by_character_id[button.character_id] = button
             if button.property("legalTarget"):
                 self.legal_card_buttons.append(button)
             grid_layout.addWidget(button, index // columns, index % columns)
         layout.addWidget(grid_widget)
-        return zone
+        return pool_frame
 
     def _refresh_completed(self, board: Mapping[str, Any] | None) -> None:
         visible = bool(board and _draft_is_complete(board))
@@ -1642,7 +1670,7 @@ class PvpWorkspace(QWidget):
         self.active_draft_changed.emit()
         self.state_changed.emit()
 
-    def apply_draft_card_click(self, seat: str, character_id: str) -> bool:
+    def apply_draft_card_click(self, action_payload: Mapping[str, Any]) -> bool:
         session = self.active_draft_session
         if session is None:
             self._last_draft_status = tr("app_shell.pvp.draft.no_active_title")
@@ -1655,13 +1683,18 @@ class PvpWorkspace(QWidget):
             self._sync_draft_workspace()
             self.state_changed.emit()
             return False
-        if not _is_legal_card(board, seat, character_id):
+        action_request = _draft_action_from_unified_pool(board, action_payload)
+        if action_request is None:
             self._last_draft_status = tr("app_shell.pvp.draft.illegal_target")
             self._sync_draft_workspace()
             self.state_changed.emit()
             return False
+        action_type, character_id = action_request
         try:
-            action = session.controller.apply_current_action(character_id)
+            action = session.controller.apply_current_action(
+                character_id,
+                expected_action_type=action_type,
+            )
         except FreeDraftControllerActionRejected as exc:
             code = getattr(exc, "code", "") or str(exc)
             self._last_draft_status = tr("app_shell.pvp.draft.action_rejected").format(
@@ -1746,6 +1779,26 @@ QLabel#pvp_deck_info_line {{
     border: none;
     padding: 0px;
     font-size: 12px;
+    font-weight: 600;
+}}
+QFrame#pvp_draft_result_zone {{
+    border: 1px solid {UI_BORDER_PANEL};
+    border-radius: 6px;
+    background: {UI_BG_PANEL};
+}}
+QLabel#pvp_draft_result_title {{
+    color: {UI_TEXT_PRIMARY};
+    font-size: 12px;
+    font-weight: 800;
+}}
+QLabel#pvp_draft_result_picks {{
+    color: {UI_TEXT_PRIMARY};
+    font-size: 12px;
+    font-weight: 700;
+}}
+QLabel#pvp_draft_result_bans {{
+    color: {UI_TEXT_SECONDARY};
+    font-size: 11px;
     font-weight: 600;
 }}
 QPushButton#icon_button,
@@ -2539,12 +2592,39 @@ class PvpDraftRightPanel(QWidget):
             self.status_labels.append(label)
         root.addWidget(self.status_frame)
 
+        self.result_zone_frames: dict[tuple[str, str], QFrame] = {}
+        self.result_zone_title_labels: dict[tuple[str, str], QLabel] = {}
+        self.result_zone_value_labels: dict[tuple[str, str], QLabel] = {}
+        for seat in ("player_1", "player_2"):
+            for zone in ("picked", "banned"):
+                frame = QFrame()
+                frame.setObjectName("pvp_draft_result_zone")
+                frame_layout = QVBoxLayout(frame)
+                frame_layout.setContentsMargins(8, 7, 8, 7)
+                frame_layout.setSpacing(3)
+                title = QLabel()
+                title.setObjectName("pvp_draft_result_title")
+                frame_layout.addWidget(title)
+                value = QLabel()
+                value.setObjectName(
+                    "pvp_draft_result_picks"
+                    if zone == "picked"
+                    else "pvp_draft_result_bans"
+                )
+                value.setWordWrap(True)
+                frame_layout.addWidget(value)
+                root.addWidget(frame)
+                key = (seat, zone)
+                self.result_zone_frames[key] = frame
+                self.result_zone_title_labels[key] = title
+                self.result_zone_value_labels[key] = value
+
         self.log_title_label = QLabel()
         self.log_title_label.setObjectName("pvp_deck_info_line")
         root.addWidget(self.log_title_label)
 
         self.log_labels: list[QLabel] = []
-        for _index in range(8):
+        for _index in range(5):
             label = QLabel()
             label.setObjectName("small_muted")
             label.setWordWrap(True)
@@ -2588,6 +2668,8 @@ class PvpDraftRightPanel(QWidget):
             for label in (*self.status_labels, *self.log_labels):
                 label.clear()
                 label.setVisible(False)
+            for frame in self.result_zone_frames.values():
+                frame.setVisible(False)
             return
 
         board = session.board_dict()
@@ -2596,6 +2678,16 @@ class PvpDraftRightPanel(QWidget):
             text = status_lines[index] if index < len(status_lines) else ""
             label.setText(text)
             label.setVisible(bool(text))
+
+        for key, frame in self.result_zone_frames.items():
+            seat, zone = key
+            self.result_zone_title_labels[key].setText(
+                _draft_result_zone_title(seat, zone)
+            )
+            self.result_zone_value_labels[key].setText(
+                _draft_result_zone_text(board, seat=seat, zone=zone)
+            )
+            frame.setVisible(True)
 
         log_lines = _draft_action_log_lines(board, limit=len(self.log_labels))
         for index, label in enumerate(self.log_labels):
@@ -2772,19 +2864,19 @@ def _completed_draft_lines(board: Mapping[str, Any]) -> list[str]:
     return [
         tr("app_shell.pvp.draft.final_picks").format(
             seat=_seat_label("player_1"),
-            items=_joined_action_targets(rows, seat="player_1", action_type="pick_character"),
+            items=_draft_result_zone_text(board, seat="player_1", zone="picked"),
         ),
         tr("app_shell.pvp.draft.final_bans").format(
             seat=_seat_label("player_1"),
-            items=_joined_action_targets(rows, seat="player_1", action_type="ban_character"),
+            items=_draft_result_zone_text(board, seat="player_1", zone="banned"),
         ),
         tr("app_shell.pvp.draft.final_picks").format(
             seat=_seat_label("player_2"),
-            items=_joined_action_targets(rows, seat="player_2", action_type="pick_character"),
+            items=_draft_result_zone_text(board, seat="player_2", zone="picked"),
         ),
         tr("app_shell.pvp.draft.final_bans").format(
             seat=_seat_label("player_2"),
-            items=_joined_action_targets(rows, seat="player_2", action_type="ban_character"),
+            items=_draft_result_zone_text(board, seat="player_2", zone="banned"),
         ),
         tr("app_shell.pvp.play.summary_action_log").format(count=len(rows)),
     ]
@@ -2802,6 +2894,147 @@ def _joined_action_targets(
         if row.get("seat") == seat and row.get("action_type") == action_type
     ]
     return ", ".join(values) if values else tr("app_shell.pvp.draft.none")
+
+
+def _unified_pool(board: Mapping[str, Any]) -> Mapping[str, Any]:
+    return _mapping(board.get("unified_pool"))
+
+
+def _unified_pool_entries(board: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    entries = _unified_pool(board).get("entries")
+    if not isinstance(entries, list):
+        return []
+    return [_mapping(entry) for entry in entries]
+
+
+def _draft_main_pool_entries(board: Mapping[str, Any]) -> list[Mapping[str, Any]]:
+    return [
+        entry
+        for entry in _unified_pool_entries(board)
+        if _text(entry.get("zone")) == "pool"
+    ]
+
+
+def _draft_entries_by_id(board: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+    return {
+        _text(entry.get("character_id")): entry
+        for entry in _unified_pool_entries(board)
+        if _text(entry.get("character_id"))
+    }
+
+
+def _owner_seats(entry: Mapping[str, Any]) -> tuple[str, ...]:
+    seats = entry.get("owner_seats")
+    if not isinstance(seats, list):
+        return ()
+    return tuple(_text(seat) for seat in seats if _text(seat))
+
+
+def _draft_unified_pool_summary(
+    board: Mapping[str, Any],
+    entries: list[Mapping[str, Any]],
+) -> str:
+    progress = _mapping(board.get("progress"))
+    shared_count = sum(1 for entry in entries if len(_owner_seats(entry)) > 1)
+    return tr("app_shell.pvp.draft.unified_pool_summary").format(
+        pool=len(entries),
+        shared=shared_count,
+        legal=int(progress.get("legal_target_count") or 0),
+    )
+
+
+def _draft_unified_card_text(entry: Mapping[str, Any]) -> str:
+    name = _text(entry.get("display_name")) or _text(entry.get("character_id"))
+    meta = " ".join(
+        part
+        for part in (
+            _text(entry.get("element")),
+            _text(entry.get("weapon_type")),
+            _level_text(entry.get("level")),
+        )
+        if part
+    )
+    ownership = _draft_ownership_text(entry)
+    status = _draft_card_status_label(_text(entry.get("status")))
+    return "\n".join(part for part in (name, meta, ownership, status) if part)
+
+
+def _draft_ownership_text(entry: Mapping[str, Any]) -> str:
+    per_seat = _mapping(entry.get("per_seat"))
+    parts: list[str] = []
+    for seat in _owner_seats(entry):
+        metadata = _mapping(per_seat.get(seat))
+        parts.append(
+            f"{_seat_short_label(seat)} {_constellation_text(metadata.get('constellation'))}"
+        )
+    return " | ".join(parts)
+
+
+def _seat_short_label(seat: str) -> str:
+    if seat == "player_1":
+        return "P1"
+    if seat == "player_2":
+        return "P2"
+    return seat
+
+
+def _draft_action_from_unified_pool(
+    board: Mapping[str, Any],
+    action_payload: Mapping[str, Any],
+) -> tuple[str, str] | None:
+    action_type = _text(action_payload.get("type"))
+    target_type = _text(action_payload.get("target_type"))
+    character_id = _text(action_payload.get("character_id"))
+    if (
+        action_type not in {"ban_character", "pick_character"}
+        or target_type != "character"
+        or not character_id
+    ):
+        return None
+    entry = _draft_entries_by_id(board).get(character_id)
+    if not entry or not bool(entry.get("is_current_legal_target")):
+        return None
+    entry_action = _mapping(entry.get("action"))
+    if (
+        _text(entry_action.get("type")) != action_type
+        or _text(entry_action.get("target_type")) != target_type
+        or _text(entry_action.get("character_id")) != character_id
+    ):
+        return None
+    return action_type, character_id
+
+
+def _draft_result_zone_title(seat: str, zone: str) -> str:
+    label = tr("app_shell.pvp.draft.picked") if zone == "picked" else tr("app_shell.pvp.draft.banned")
+    return f"{_seat_label(seat)} · {label}"
+
+
+def _draft_result_zone_text(
+    board: Mapping[str, Any],
+    *,
+    seat: str,
+    zone: str,
+) -> str:
+    result_zones = _mapping(_unified_pool(board).get("result_zones"))
+    seat_zones = _mapping(result_zones.get(seat))
+    character_ids = seat_zones.get(zone)
+    if not isinstance(character_ids, list) or not character_ids:
+        return tr("app_shell.pvp.draft.none")
+    entries_by_id = _draft_entries_by_id(board)
+    labels = [
+        _draft_entry_display_name(entries_by_id.get(_text(character_id)), _text(character_id))
+        for character_id in character_ids
+    ]
+    return ", ".join(label for label in labels if label) or tr("app_shell.pvp.draft.none")
+
+
+def _draft_entry_display_name(
+    entry: Mapping[str, Any] | None,
+    fallback: str,
+) -> str:
+    if entry is None:
+        return fallback
+    return _text(entry.get("display_name")) or fallback
 
 
 def _is_legal_card(board: Mapping[str, Any], seat: str, character_id: str) -> bool:
@@ -2875,6 +3108,9 @@ def _draft_card_status_label(status: str) -> str:
         "picked_by_self": tr("app_shell.pvp.draft.picked"),
         "picked_by_opponent": tr("app_shell.pvp.draft.picked"),
         "blocked_by_opponent_pick": tr("app_shell.pvp.draft.blocked"),
+        "picked": tr("app_shell.pvp.draft.picked"),
+        "banned": tr("app_shell.pvp.draft.banned"),
+        "blocked": tr("app_shell.pvp.draft.blocked"),
         "unavailable": tr("app_shell.pvp.draft.unavailable"),
         "invalid": tr("app_shell.pvp.draft.invalid"),
         "unsupported_traveler": tr("app_shell.pvp.draft.invalid"),
@@ -3034,12 +3270,16 @@ def _refresh_qss(widget: QWidget) -> None:
     widget.update()
 
 
+PvpDraftCardButton = PvpDraftUnifiedCardButton
+
+
 __all__ = [
     "PVP_PAGE_DECKS",
     "PVP_PAGE_DRAFT",
     "PVP_PAGE_PLAY",
     "PvpActiveDraftSession",
     "PvpDraftCardButton",
+    "PvpDraftUnifiedCardButton",
     "PvpDraftRightPanel",
     "PvpDraftWorkspace",
     "PvpDeckAssetIconLabel",

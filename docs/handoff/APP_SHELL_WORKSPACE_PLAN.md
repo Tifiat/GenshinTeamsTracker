@@ -345,8 +345,8 @@ durable saved results must later attach through explicit session/snapshot data.
 
 - PvP now has AppShell Decks, Play, and Draft workspace/right-dock policy, not a
   separate first window.
-- Detailed PvP UI roadmap and the next `unified_pool` projection scope live in
-  `PVP_UI_ROADMAP.md`.
+- Detailed PvP UI roadmap and the next unified-pool Draft UI refactor scope live
+  in `PVP_UI_ROADMAP.md`.
 - During draft/deck/opponent phases, showing the normal build panel can be
   misleading because builds may not be editable yet.
 - The right operations dock currently shows Decks, Play, and Draft controls and

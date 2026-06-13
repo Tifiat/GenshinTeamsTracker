@@ -72,6 +72,35 @@ TIMELINE_STATUS_VALUES = (
     TIMELINE_STATUS_ACTIVE,
     TIMELINE_STATUS_COMPLETE,
 )
+
+UNIFIED_POOL_ZONE_POOL = "pool"
+UNIFIED_POOL_ZONE_PICKED = "picked"
+UNIFIED_POOL_ZONE_BANNED = "banned"
+UNIFIED_POOL_ZONE_BLOCKED = "blocked"
+UNIFIED_POOL_ZONE_INVALID = "invalid"
+
+UNIFIED_POOL_STATUS_AVAILABLE = "available"
+UNIFIED_POOL_STATUS_LEGAL_TARGET = "legal_target"
+UNIFIED_POOL_STATUS_BLOCKED = "blocked"
+UNIFIED_POOL_STATUS_PICKED = "picked"
+UNIFIED_POOL_STATUS_BANNED = "banned"
+UNIFIED_POOL_STATUS_INVALID = "invalid"
+
+UNIFIED_POOL_ZONE_VALUES = (
+    UNIFIED_POOL_ZONE_POOL,
+    UNIFIED_POOL_ZONE_PICKED,
+    UNIFIED_POOL_ZONE_BANNED,
+    UNIFIED_POOL_ZONE_BLOCKED,
+    UNIFIED_POOL_ZONE_INVALID,
+)
+UNIFIED_POOL_STATUS_VALUES = (
+    UNIFIED_POOL_STATUS_AVAILABLE,
+    UNIFIED_POOL_STATUS_LEGAL_TARGET,
+    UNIFIED_POOL_STATUS_BLOCKED,
+    UNIFIED_POOL_STATUS_PICKED,
+    UNIFIED_POOL_STATUS_BANNED,
+    UNIFIED_POOL_STATUS_INVALID,
+)
 REQUIRED_BOARD_PROJECTION_KEYS = (
     "variant",
     "draft_system",
@@ -80,6 +109,7 @@ REQUIRED_BOARD_PROJECTION_KEYS = (
     "progress",
     "seats",
     "global_pools",
+    "unified_pool",
     "action_log",
     "timeline",
     "summary",
@@ -94,6 +124,16 @@ FORBIDDEN_BOARD_PROJECTION_TOKENS = (
     "raw_dump",
     "row_id",
     "sqlite",
+)
+FORBIDDEN_UNIFIED_POOL_VISUAL_KEY_TOKENS = (
+    "asset",
+    "crop",
+    "filename",
+    "icon",
+    "image",
+    "path",
+    "portrait",
+    "screenshot",
 )
 
 
@@ -146,6 +186,86 @@ class FreeDraftBoardSeat:
             "nickname": self.nickname,
             "deck": dict(self.deck),
             "cards": [card.to_dict() for card in self.cards],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class FreeDraftUnifiedPoolEntry:
+    character_id: str
+    owner_seats: tuple[str, ...]
+    base_seat: str
+    zone: str
+    status: str
+    is_current_legal_target: bool
+    active_seat: str | None
+    expected_action_type: str | None
+    action: Mapping[str, Any] | None
+    display_name: str
+    element: str
+    weapon_type: str
+    rarity: int | None
+    level: int | None
+    constellation: int | None
+    cost: float | None
+    per_seat: Mapping[str, Mapping[str, Any]]
+    picked_by: str | None = None
+    banned_by: str | None = None
+    action_index: int | None = None
+    reason_codes: tuple[str, ...] = ()
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "character_id": self.character_id,
+            "owner_seats": list(self.owner_seats),
+            "base_seat": self.base_seat,
+            "zone": self.zone,
+            "status": self.status,
+            "is_current_legal_target": self.is_current_legal_target,
+            "active_seat": self.active_seat,
+            "expected_action_type": self.expected_action_type,
+            "action": (
+                _plain_mapping(self.action)
+                if self.action is not None
+                else None
+            ),
+            "display_name": self.display_name,
+            "element": self.element,
+            "weapon_type": self.weapon_type,
+            "rarity": self.rarity,
+            "level": self.level,
+            "constellation": self.constellation,
+            "cost": self.cost,
+            "per_seat": {
+                seat: _plain_mapping(metadata)
+                for seat, metadata in self.per_seat.items()
+            },
+            "picked_by": self.picked_by,
+            "banned_by": self.banned_by,
+            "action_index": self.action_index,
+            "reason_codes": list(self.reason_codes),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class FreeDraftUnifiedPool:
+    entries: tuple[FreeDraftUnifiedPoolEntry, ...]
+    zones: Mapping[str, tuple[str, ...]]
+    result_zones: Mapping[str, Mapping[str, tuple[str, ...]]]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "entries": [entry.to_dict() for entry in self.entries],
+            "zones": {
+                zone: list(character_ids)
+                for zone, character_ids in self.zones.items()
+            },
+            "result_zones": {
+                seat: {
+                    zone: list(character_ids)
+                    for zone, character_ids in zones.items()
+                }
+                for seat, zones in self.result_zones.items()
+            },
         }
 
 
@@ -208,6 +328,7 @@ class FreeDraftBoardProjection:
     progress: Mapping[str, Any]
     seats: Mapping[str, FreeDraftBoardSeat]
     global_pools: Mapping[str, Any]
+    unified_pool: FreeDraftUnifiedPool
     action_log: tuple[FreeDraftActionLogRow, ...]
     timeline: tuple[FreeDraftTimelineStep, ...]
     summary: Mapping[str, Any]
@@ -229,6 +350,7 @@ class FreeDraftBoardProjection:
                 for seat, board_seat in self.seats.items()
             },
             "global_pools": _plain_mapping(self.global_pools),
+            "unified_pool": self.unified_pool.to_dict(),
             "action_log": [row.to_dict() for row in self.action_log],
             "timeline": [step.to_dict() for step in self.timeline],
             "summary": _plain_mapping(self.summary),
@@ -304,6 +426,13 @@ def build_free_draft_board_projection(
         progress=progress,
         seats=seats,
         global_pools=_global_pools_dict(state, banned_meta_by_id),
+        unified_pool=_unified_pool(
+            state,
+            decks,
+            seats,
+            banned_meta_by_id=banned_meta_by_id,
+            pick_meta_by_seat=pick_meta_by_seat,
+        ),
         action_log=tuple(_action_log_row(item) for item in action_metas),
         timeline=_timeline(state),
         summary=_summary_dict(controller),
@@ -347,8 +476,179 @@ def validate_free_draft_board_projection_dict(
             if status not in TIMELINE_STATUS_VALUES:
                 issues.append(f"unknown_timeline_status:{index}:{status}")
 
+    _validate_unified_pool(payload, issues)
     _append_forbidden_token_issues(payload, "$", issues)
     return tuple(dict.fromkeys(issues))
+
+
+def _validate_unified_pool(
+    payload: Mapping[str, Any],
+    issues: list[str],
+) -> None:
+    unified_pool = payload.get("unified_pool")
+    if not isinstance(unified_pool, Mapping):
+        issues.append("unified_pool_not_object")
+        return
+
+    entries = unified_pool.get("entries")
+    entry_ids: set[str] = set()
+    if not isinstance(entries, list):
+        issues.append("unified_pool_entries_not_list")
+    else:
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, Mapping):
+                issues.append(f"unified_pool_entry_not_object:{index}")
+                continue
+            character_id = entry.get("character_id")
+            if not isinstance(character_id, str) or not character_id:
+                issues.append(f"unified_pool_entry_missing_character_id:{index}")
+            else:
+                entry_ids.add(character_id)
+            _validate_unified_pool_entry(entry, index, issues)
+
+    zones = unified_pool.get("zones")
+    if not isinstance(zones, Mapping):
+        issues.append("unified_pool_zones_not_object")
+    else:
+        _validate_unified_pool_zones(zones, entry_ids, issues)
+
+    result_zones = unified_pool.get("result_zones")
+    if not isinstance(result_zones, Mapping):
+        issues.append("unified_pool_result_zones_not_object")
+    else:
+        _validate_unified_pool_result_zones(result_zones, entry_ids, issues)
+
+    _append_unified_pool_visual_identity_issues(
+        unified_pool,
+        "$.unified_pool",
+        issues,
+    )
+
+
+def _validate_unified_pool_entry(
+    entry: Mapping[str, Any],
+    index: int,
+    issues: list[str],
+) -> None:
+    character_id = entry.get("character_id")
+    owner_seats = entry.get("owner_seats")
+    valid_owner_seats: set[str] = set()
+    if not isinstance(owner_seats, list) or not owner_seats:
+        issues.append(f"unified_pool_entry_owner_seats_invalid:{index}")
+    else:
+        for seat in owner_seats:
+            if seat not in PVP_SEATS:
+                issues.append(f"unified_pool_entry_owner_seat_unknown:{index}:{seat}")
+            else:
+                valid_owner_seats.add(str(seat))
+        if len(valid_owner_seats) != len(owner_seats):
+            issues.append(f"unified_pool_entry_owner_seats_duplicate:{index}")
+
+    base_seat = entry.get("base_seat")
+    if base_seat not in PVP_SEATS:
+        issues.append(f"unified_pool_entry_base_seat_unknown:{index}:{base_seat}")
+    elif valid_owner_seats and base_seat not in valid_owner_seats:
+        issues.append(f"unified_pool_entry_base_seat_not_owner:{index}:{base_seat}")
+
+    active_seat = entry.get("active_seat")
+    if active_seat is not None and active_seat not in PVP_SEATS:
+        issues.append(f"unified_pool_entry_active_seat_unknown:{index}:{active_seat}")
+
+    zone = entry.get("zone")
+    if zone not in UNIFIED_POOL_ZONE_VALUES:
+        issues.append(f"unknown_unified_pool_zone:{index}:{zone}")
+    status = entry.get("status")
+    if status not in UNIFIED_POOL_STATUS_VALUES:
+        issues.append(f"unknown_unified_pool_status:{index}:{status}")
+
+    per_seat = entry.get("per_seat")
+    if not isinstance(per_seat, Mapping):
+        issues.append(f"unified_pool_entry_per_seat_not_object:{index}")
+    else:
+        for seat in valid_owner_seats:
+            if not isinstance(per_seat.get(seat), Mapping):
+                issues.append(f"unified_pool_entry_missing_seat_metadata:{index}:{seat}")
+
+    is_legal = bool(entry.get("is_current_legal_target"))
+    action = entry.get("action")
+    if is_legal:
+        if zone != UNIFIED_POOL_ZONE_POOL:
+            issues.append(f"unified_pool_legal_entry_not_in_pool:{index}:{zone}")
+        if status != UNIFIED_POOL_STATUS_LEGAL_TARGET:
+            issues.append(f"unified_pool_legal_entry_status_mismatch:{index}:{status}")
+        if not isinstance(action, Mapping):
+            issues.append(f"unified_pool_legal_entry_missing_action:{index}")
+        else:
+            _validate_unified_pool_entry_action(
+                action,
+                index,
+                character_id,
+                issues,
+            )
+    elif action is not None:
+        issues.append(f"unified_pool_illegal_entry_has_action:{index}")
+
+
+def _validate_unified_pool_entry_action(
+    action: Mapping[str, Any],
+    index: int,
+    character_id: Any,
+    issues: list[str],
+) -> None:
+    action_type = action.get("type")
+    if action_type not in {ACTION_BAN_CHARACTER, ACTION_PICK_CHARACTER}:
+        issues.append(f"unified_pool_action_type_unknown:{index}:{action_type}")
+    if action.get("target_type") != "character":
+        issues.append(
+            f"unified_pool_action_target_type_invalid:{index}:"
+            f"{action.get('target_type')}"
+        )
+    if action.get("character_id") != character_id:
+        issues.append(f"unified_pool_action_character_id_mismatch:{index}")
+
+
+def _validate_unified_pool_zones(
+    zones: Mapping[str, Any],
+    entry_ids: set[str],
+    issues: list[str],
+) -> None:
+    for zone in UNIFIED_POOL_ZONE_VALUES:
+        character_ids = zones.get(zone)
+        if not isinstance(character_ids, list):
+            issues.append(f"unified_pool_zone_not_list:{zone}")
+            continue
+        for character_id in character_ids:
+            if character_id not in entry_ids:
+                issues.append(f"unified_pool_zone_unknown_character:{zone}:{character_id}")
+    for zone in zones:
+        if zone not in UNIFIED_POOL_ZONE_VALUES:
+            issues.append(f"unknown_unified_pool_zone_key:{zone}")
+
+
+def _validate_unified_pool_result_zones(
+    result_zones: Mapping[str, Any],
+    entry_ids: set[str],
+    issues: list[str],
+) -> None:
+    for seat in PVP_SEATS:
+        seat_zones = result_zones.get(seat)
+        if not isinstance(seat_zones, Mapping):
+            issues.append(f"unified_pool_result_zones_seat_not_object:{seat}")
+            continue
+        for zone in (UNIFIED_POOL_ZONE_PICKED, UNIFIED_POOL_ZONE_BANNED):
+            character_ids = seat_zones.get(zone)
+            if not isinstance(character_ids, list):
+                issues.append(f"unified_pool_result_zone_not_list:{seat}:{zone}")
+                continue
+            for character_id in character_ids:
+                if character_id not in entry_ids:
+                    issues.append(
+                        "unified_pool_result_zone_unknown_character:"
+                        f"{seat}:{zone}:{character_id}"
+                    )
+    for seat in result_zones:
+        if seat not in PVP_SEATS:
+            issues.append(f"unified_pool_result_zones_seat_unknown:{seat}")
 
 
 def _draft_system_dict(controller: "FreeDraftController") -> dict[str, Any]:
@@ -565,6 +865,262 @@ def _global_pools_dict(
             SEAT_PLAYER_2: list(state.player_2_picked_character_ids),
         },
     }
+
+
+def _unified_pool(
+    state: DraftSessionState,
+    decks: Mapping[str, DraftDeck],
+    seats: Mapping[str, FreeDraftBoardSeat],
+    *,
+    banned_meta_by_id: Mapping[str, _ActionMeta],
+    pick_meta_by_seat: Mapping[str, Mapping[str, _ActionMeta]],
+) -> FreeDraftUnifiedPool:
+    cards_by_seat = {
+        seat: {
+            card.character_id: card
+            for card in board_seat.cards
+        }
+        for seat, board_seat in seats.items()
+    }
+    entries = tuple(
+        _unified_pool_entry(
+            state,
+            decks,
+            character_id,
+            cards_by_seat=cards_by_seat,
+            banned_meta_by_id=banned_meta_by_id,
+            pick_meta_by_seat=pick_meta_by_seat,
+        )
+        for character_id in _unified_pool_character_ids(seats)
+    )
+    zones: dict[str, list[str]] = {
+        zone: []
+        for zone in UNIFIED_POOL_ZONE_VALUES
+    }
+    for entry in entries:
+        zones.setdefault(entry.zone, []).append(entry.character_id)
+
+    return FreeDraftUnifiedPool(
+        entries=entries,
+        zones={
+            zone: tuple(zones.get(zone, ()))
+            for zone in UNIFIED_POOL_ZONE_VALUES
+        },
+        result_zones={
+            seat: {
+                UNIFIED_POOL_ZONE_PICKED: state.picked_character_ids_for(seat),
+                UNIFIED_POOL_ZONE_BANNED: state.banned_character_ids_for(seat),
+            }
+            for seat in PVP_SEATS
+        },
+    )
+
+
+def _unified_pool_character_ids(
+    seats: Mapping[str, FreeDraftBoardSeat],
+) -> tuple[str, ...]:
+    seen: set[str] = set()
+    character_ids: list[str] = []
+    for seat in PVP_SEATS:
+        board_seat = seats.get(seat)
+        if board_seat is None:
+            continue
+        for card in board_seat.cards:
+            if card.character_id in seen:
+                continue
+            seen.add(card.character_id)
+            character_ids.append(card.character_id)
+    return tuple(character_ids)
+
+
+def _unified_pool_entry(
+    state: DraftSessionState,
+    decks: Mapping[str, DraftDeck],
+    character_id: str,
+    *,
+    cards_by_seat: Mapping[str, Mapping[str, FreeDraftBoardCard]],
+    banned_meta_by_id: Mapping[str, _ActionMeta],
+    pick_meta_by_seat: Mapping[str, Mapping[str, _ActionMeta]],
+) -> FreeDraftUnifiedPoolEntry:
+    owner_seats = tuple(
+        seat
+        for seat in PVP_SEATS
+        if character_id in cards_by_seat.get(seat, {})
+    )
+    base_seat = _unified_pool_base_seat(state, owner_seats)
+    base_card = cards_by_seat[base_seat][character_id]
+    base_character = decks[base_seat].character_by_id.get(character_id)
+    ban_meta = banned_meta_by_id.get(character_id)
+    pick_meta = _picked_action_meta(character_id, pick_meta_by_seat)
+    picked_by = pick_meta.seat if pick_meta is not None else None
+    banned_by = ban_meta.seat if ban_meta is not None else None
+    action_index = None
+    if ban_meta is not None:
+        action_index = ban_meta.log_index
+    elif pick_meta is not None:
+        action_index = pick_meta.log_index
+
+    is_legal = any(
+        cards_by_seat[seat][character_id].is_current_legal_target
+        for seat in owner_seats
+    )
+    zone, status = _unified_pool_zone_status(
+        state,
+        owner_seats,
+        cards_by_seat,
+        character_id,
+        is_legal=is_legal,
+        ban_meta=ban_meta,
+        pick_meta=pick_meta,
+    )
+    action = _unified_pool_action(state, character_id, is_legal=is_legal)
+    return FreeDraftUnifiedPoolEntry(
+        character_id=character_id,
+        owner_seats=owner_seats,
+        base_seat=base_seat,
+        zone=zone,
+        status=status,
+        is_current_legal_target=is_legal,
+        active_seat=state.current_seat,
+        expected_action_type=(
+            state.current_requirement.action_type
+            if state.current_requirement is not None
+            else None
+        ),
+        action=action,
+        display_name=base_card.display_name,
+        element=base_card.element,
+        weapon_type=base_card.weapon_type,
+        rarity=base_card.rarity,
+        level=base_card.level,
+        constellation=base_card.constellation,
+        cost=base_character.cost if base_character is not None else None,
+        per_seat={
+            seat: _unified_pool_per_seat_metadata(
+                cards_by_seat[seat][character_id],
+                decks[seat].character_by_id.get(character_id),
+            )
+            for seat in owner_seats
+        },
+        picked_by=picked_by,
+        banned_by=banned_by,
+        action_index=action_index,
+        reason_codes=_unified_pool_reason_codes(
+            character_id,
+            owner_seats,
+            cards_by_seat,
+        ),
+    )
+
+
+def _unified_pool_base_seat(
+    state: DraftSessionState,
+    owner_seats: tuple[str, ...],
+) -> str:
+    if state.current_seat in owner_seats:
+        return state.current_seat
+    for seat in PVP_SEATS:
+        if seat in owner_seats:
+            return seat
+    return SEAT_PLAYER_1
+
+
+def _picked_action_meta(
+    character_id: str,
+    pick_meta_by_seat: Mapping[str, Mapping[str, _ActionMeta]],
+) -> _ActionMeta | None:
+    for seat in PVP_SEATS:
+        meta = pick_meta_by_seat.get(seat, {}).get(character_id)
+        if meta is not None:
+            return meta
+    return None
+
+
+def _unified_pool_zone_status(
+    state: DraftSessionState,
+    owner_seats: tuple[str, ...],
+    cards_by_seat: Mapping[str, Mapping[str, FreeDraftBoardCard]],
+    character_id: str,
+    *,
+    is_legal: bool,
+    ban_meta: _ActionMeta | None,
+    pick_meta: _ActionMeta | None,
+) -> tuple[str, str]:
+    if _unified_pool_entry_is_invalid(owner_seats, cards_by_seat, character_id):
+        return UNIFIED_POOL_ZONE_INVALID, UNIFIED_POOL_STATUS_INVALID
+    if ban_meta is not None:
+        return UNIFIED_POOL_ZONE_BANNED, UNIFIED_POOL_STATUS_BANNED
+    if pick_meta is not None:
+        return UNIFIED_POOL_ZONE_PICKED, UNIFIED_POOL_STATUS_PICKED
+    if is_legal:
+        return UNIFIED_POOL_ZONE_POOL, UNIFIED_POOL_STATUS_LEGAL_TARGET
+    if state.current_requirement is None or state.current_seat not in owner_seats:
+        return UNIFIED_POOL_ZONE_BLOCKED, UNIFIED_POOL_STATUS_BLOCKED
+    return UNIFIED_POOL_ZONE_POOL, UNIFIED_POOL_STATUS_AVAILABLE
+
+
+def _unified_pool_entry_is_invalid(
+    owner_seats: tuple[str, ...],
+    cards_by_seat: Mapping[str, Mapping[str, FreeDraftBoardCard]],
+    character_id: str,
+) -> bool:
+    invalid_statuses = {
+        CARD_STATUS_INVALID,
+        CARD_STATUS_UNSUPPORTED_TRAVELER,
+    }
+    return any(
+        cards_by_seat[seat][character_id].status in invalid_statuses
+        for seat in owner_seats
+    )
+
+
+def _unified_pool_action(
+    state: DraftSessionState,
+    character_id: str,
+    *,
+    is_legal: bool,
+) -> dict[str, str] | None:
+    requirement = state.current_requirement
+    if (
+        not is_legal
+        or requirement is None
+        or requirement.action_type not in {ACTION_BAN_CHARACTER, ACTION_PICK_CHARACTER}
+    ):
+        return None
+    return {
+        "type": requirement.action_type,
+        "target_type": "character",
+        "character_id": character_id,
+    }
+
+
+def _unified_pool_per_seat_metadata(
+    card: FreeDraftBoardCard,
+    character: DraftCharacter | None,
+) -> dict[str, Any]:
+    return {
+        "display_name": card.display_name,
+        "element": card.element,
+        "weapon_type": card.weapon_type,
+        "rarity": card.rarity,
+        "level": card.level,
+        "constellation": card.constellation,
+        "cost": character.cost if character is not None else None,
+        "card_status": card.status,
+        "is_active_seat_card": card.is_active_seat_card,
+    }
+
+
+def _unified_pool_reason_codes(
+    character_id: str,
+    owner_seats: tuple[str, ...],
+    cards_by_seat: Mapping[str, Mapping[str, FreeDraftBoardCard]],
+) -> tuple[str, ...]:
+    reasons: list[str] = []
+    for seat in owner_seats:
+        card = cards_by_seat[seat][character_id]
+        reasons.extend(card.status_reason_codes)
+    return tuple(dict.fromkeys(reason for reason in reasons if reason))
 
 
 def _timeline(state: DraftSessionState) -> tuple[FreeDraftTimelineStep, ...]:
@@ -856,6 +1412,42 @@ def _append_forbidden_token_issues(
                 issues.append(f"forbidden_value:{token}:{path}")
 
 
+def _append_unified_pool_visual_identity_issues(
+    value: Any,
+    path: str,
+    issues: list[str],
+) -> None:
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            key_text = str(key)
+            key_path = f"{path}.{key_text}"
+            normalized_key = key_text.strip().casefold()
+            for token in FORBIDDEN_UNIFIED_POOL_VISUAL_KEY_TOKENS:
+                if token in normalized_key:
+                    issues.append(
+                        f"forbidden_unified_pool_visual_key:{token}:{key_path}"
+                    )
+            _append_unified_pool_visual_identity_issues(item, key_path, issues)
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _append_unified_pool_visual_identity_issues(
+                item,
+                f"{path}[{index}]",
+                issues,
+            )
+        return
+    if isinstance(value, str):
+        normalized_value = value.strip().casefold()
+        image_extensions = (".avif", ".jpeg", ".jpg", ".png", ".webp")
+        if (
+            any(normalized_value.endswith(extension) for extension in image_extensions)
+            or ":\\" in normalized_value
+            or ":/" in normalized_value
+        ):
+            issues.append(f"forbidden_unified_pool_visual_value:{path}")
+
+
 __all__ = [
     "CARD_STATUS_AVAILABLE",
     "CARD_STATUS_BLOCKED_BY_OPPONENT_PICK",
@@ -873,11 +1465,26 @@ __all__ = [
     "TIMELINE_STATUS_COMPLETE",
     "TIMELINE_STATUS_PENDING",
     "TIMELINE_STATUS_VALUES",
+    "UNIFIED_POOL_STATUS_AVAILABLE",
+    "UNIFIED_POOL_STATUS_BANNED",
+    "UNIFIED_POOL_STATUS_BLOCKED",
+    "UNIFIED_POOL_STATUS_INVALID",
+    "UNIFIED_POOL_STATUS_LEGAL_TARGET",
+    "UNIFIED_POOL_STATUS_PICKED",
+    "UNIFIED_POOL_STATUS_VALUES",
+    "UNIFIED_POOL_ZONE_BANNED",
+    "UNIFIED_POOL_ZONE_BLOCKED",
+    "UNIFIED_POOL_ZONE_INVALID",
+    "UNIFIED_POOL_ZONE_PICKED",
+    "UNIFIED_POOL_ZONE_POOL",
+    "UNIFIED_POOL_ZONE_VALUES",
     "FreeDraftActionLogRow",
     "FreeDraftBoardCard",
     "FreeDraftBoardProjection",
     "FreeDraftBoardSeat",
     "FreeDraftTimelineStep",
+    "FreeDraftUnifiedPool",
+    "FreeDraftUnifiedPoolEntry",
     "build_free_draft_board_projection",
     "validate_free_draft_board_projection_dict",
 ]

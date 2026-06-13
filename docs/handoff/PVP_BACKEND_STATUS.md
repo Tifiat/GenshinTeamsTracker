@@ -49,9 +49,9 @@ Draft board v0:
   `FreeDraftController.apply_current_action(...)`, refreshes only from backend
   projection after actions, and shows completed picks/bans/action-log summary
   when the Free Draft schedule ends.
-- Draft board v0 is playable through the full local Free Draft schedule, but it
-  is still a per-seat technical board. The next backend/read-model target is a
-  dedicated `unified_pool` projection for the readable Draft UX.
+- Draft board v0 is playable through the full local Free Draft schedule and now
+  consumes the dedicated backend `unified_pool` projection for the readable
+  main pool/right-panel pick-ban zones.
 - Decks/Play/Draft v0 do not persist sessions/history and do not mutate normal
   TeamBuilder/Run state.
 - The UI roadmap and stage direction are owned by
@@ -80,13 +80,14 @@ Draft board v0:
   keeping the older compact `to_projection()` contract available.
 - `run_workspace/pvp/free_draft_board.py`: backend-only Free Draft board/read
   model. It derives per-seat card statuses and legal target markers from the
-  controller/reducer state, plus global pools, action-log rows, schedule
-  timeline rows, and compact assignment/result summaries. Compact mode is the
-  default; debug mode can add reducer excluded-target reason codes. It also
-  owns stable card/timeline status enums and
+  controller/reducer state, plus global pools, a backend-owned `unified_pool`
+  for unique character ids/result zones, action-log rows, schedule timeline
+  rows, and compact assignment/result summaries. Compact mode is the default;
+  debug mode can add reducer excluded-target reason codes. It also owns stable
+  card/timeline/unified-pool status enums and
   `validate_free_draft_board_projection_dict(...)` for UI-contract sample
-  validation and private-field smoke checks. It does not yet expose the future
-  backend-owned `unified_pool` read-model.
+  validation and private-field smoke checks, including rejection of local
+  image/path identity in the unified pool.
 - `run_workspace/pvp/free_draft_board_sample.py`: synthetic UI-contract sample
   builder for the board/read-model projection. The committed sample fixture is
   `samples/pvp/ui_contract/free_draft_board_projection_sample.json` and covers
@@ -155,6 +156,8 @@ board read model.
 Stable UI-contract sample:
 
 - `samples/pvp/ui_contract/free_draft_board_projection_sample.json`
+  includes initial, after-two-actions, and final/result board states with the
+  `unified_pool` contract.
 
 Validation helper:
 
@@ -208,7 +211,6 @@ Recommended local checks:
 
 Still out of scope / not implemented:
 
-- backend/read-model `unified_pool` projection for the readable Draft UX;
 - PvP team assignment UI;
 - timers/results UI;
 - online/P2P/relay transport;

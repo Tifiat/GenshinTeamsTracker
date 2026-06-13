@@ -5,6 +5,7 @@ import json
 import unittest
 from copy import deepcopy
 from contextlib import redirect_stdout
+from dataclasses import replace
 from pathlib import Path
 
 from run_workspace.pvp.free_draft_board import (
@@ -17,6 +18,14 @@ from run_workspace.pvp.free_draft_board import (
     TIMELINE_STATUS_COMPLETE,
     TIMELINE_STATUS_PENDING,
     TIMELINE_STATUS_VALUES,
+    UNIFIED_POOL_STATUS_BANNED,
+    UNIFIED_POOL_STATUS_LEGAL_TARGET,
+    UNIFIED_POOL_STATUS_PICKED,
+    UNIFIED_POOL_STATUS_VALUES,
+    UNIFIED_POOL_ZONE_BANNED,
+    UNIFIED_POOL_ZONE_PICKED,
+    UNIFIED_POOL_ZONE_POOL,
+    UNIFIED_POOL_ZONE_VALUES,
     validate_free_draft_board_projection_dict,
 )
 from run_workspace.pvp.free_draft_board_sample import (
@@ -104,6 +113,56 @@ class FreeDraftBoardProjectionTests(unittest.TestCase):
         self.assertEqual(active_seat_card["status"], CARD_STATUS_LEGAL_TARGET)
         self.assertTrue(active_seat_card["is_active_seat_card"])
 
+    def test_initial_unified_pool_exposes_unique_legal_entries(self) -> None:
+        board = _sample_controller().to_board_dict()
+        unified_pool = board["unified_pool"]
+
+        self.assertEqual(len(unified_pool["entries"]), 24)
+        self.assertEqual(
+            len({entry["character_id"] for entry in unified_pool["entries"]}),
+            24,
+        )
+        self.assertEqual(
+            set(unified_pool["zones"][UNIFIED_POOL_ZONE_POOL]),
+            {entry["character_id"] for entry in unified_pool["entries"]},
+        )
+        for seat in PVP_SEATS:
+            self.assertEqual(
+                unified_pool["result_zones"][seat][UNIFIED_POOL_ZONE_PICKED],
+                [],
+            )
+            self.assertEqual(
+                unified_pool["result_zones"][seat][UNIFIED_POOL_ZONE_BANNED],
+                [],
+            )
+
+        entry = _unified_entry(board, "test_p2_char_01")
+        self.assertEqual(entry["owner_seats"], [SEAT_PLAYER_2])
+        self.assertEqual(entry["base_seat"], SEAT_PLAYER_2)
+        self.assertEqual(entry["zone"], UNIFIED_POOL_ZONE_POOL)
+        self.assertEqual(entry["status"], UNIFIED_POOL_STATUS_LEGAL_TARGET)
+        self.assertTrue(entry["is_current_legal_target"])
+        self.assertEqual(entry["action"]["type"], ACTION_BAN_CHARACTER)
+        self.assertEqual(entry["action"]["target_type"], "character")
+        self.assertEqual(entry["action"]["character_id"], "test_p2_char_01")
+        self.assertIn(SEAT_PLAYER_2, entry["per_seat"])
+
+    def test_unified_pool_merges_shared_character_with_per_seat_metadata(self) -> None:
+        controller = _shared_constellation_controller()
+        board = controller.to_board_dict()
+
+        entry = _unified_entry(board, "shared_char")
+
+        self.assertEqual(entry["owner_seats"], [SEAT_PLAYER_1, SEAT_PLAYER_2])
+        self.assertEqual(entry["base_seat"], SEAT_PLAYER_1)
+        self.assertEqual(entry["display_name"], "Shared P1")
+        self.assertEqual(entry["per_seat"][SEAT_PLAYER_1]["constellation"], 1)
+        self.assertEqual(entry["per_seat"][SEAT_PLAYER_1]["cost"], 3.0)
+        self.assertEqual(entry["per_seat"][SEAT_PLAYER_2]["display_name"], "Shared P2")
+        self.assertEqual(entry["per_seat"][SEAT_PLAYER_2]["constellation"], 6)
+        self.assertEqual(entry["per_seat"][SEAT_PLAYER_2]["cost"], 5.0)
+        self.assertEqual(entry["action"]["type"], ACTION_BAN_CHARACTER)
+
     def test_ban_marks_character_globally_on_both_boards(self) -> None:
         controller = _shared_controller()
 
@@ -120,6 +179,21 @@ class FreeDraftBoardProjectionTests(unittest.TestCase):
                 REJECT_CHARACTER_GLOBALLY_BANNED,
                 card["status_reason_codes"],
             )
+
+        entry = _unified_entry(board, "shared_char")
+        self.assertEqual(entry["zone"], UNIFIED_POOL_ZONE_BANNED)
+        self.assertEqual(entry["status"], UNIFIED_POOL_STATUS_BANNED)
+        self.assertEqual(entry["banned_by"], SEAT_PLAYER_1)
+        self.assertEqual(entry["action_index"], 0)
+        self.assertFalse(entry["is_current_legal_target"])
+        self.assertIsNone(entry["action"])
+        self.assertIn("shared_char", board["unified_pool"]["zones"][UNIFIED_POOL_ZONE_BANNED])
+        self.assertIn(
+            "shared_char",
+            board["unified_pool"]["result_zones"][SEAT_PLAYER_1][
+                UNIFIED_POOL_ZONE_BANNED
+            ],
+        )
 
     def test_rejected_action_leaves_board_unchanged(self) -> None:
         controller = _sample_controller()
@@ -150,6 +224,21 @@ class FreeDraftBoardProjectionTests(unittest.TestCase):
         self.assertIn(
             REJECT_CHARACTER_UNAVAILABLE_TO_OPPONENT,
             opponent_card["status_reason_codes"],
+        )
+
+        entry = _unified_entry(board, "shared_char")
+        self.assertEqual(entry["zone"], UNIFIED_POOL_ZONE_PICKED)
+        self.assertEqual(entry["status"], UNIFIED_POOL_STATUS_PICKED)
+        self.assertEqual(entry["picked_by"], SEAT_PLAYER_1)
+        self.assertEqual(entry["action_index"], 4)
+        self.assertFalse(entry["is_current_legal_target"])
+        self.assertIsNone(entry["action"])
+        self.assertIn("shared_char", board["unified_pool"]["zones"][UNIFIED_POOL_ZONE_PICKED])
+        self.assertIn(
+            "shared_char",
+            board["unified_pool"]["result_zones"][SEAT_PLAYER_1][
+                UNIFIED_POOL_ZONE_PICKED
+            ],
         )
 
     def test_timeline_marks_complete_active_and_pending_steps(self) -> None:
@@ -208,7 +297,55 @@ class FreeDraftBoardProjectionTests(unittest.TestCase):
             )
         )
         self.assertTrue(
+            all(
+                not entry["is_current_legal_target"] and entry["action"] is None
+                for entry in board["unified_pool"]["entries"]
+            )
+        )
+        self.assertEqual(
+            len(board["unified_pool"]["result_zones"][SEAT_PLAYER_1][UNIFIED_POOL_ZONE_PICKED]),
+            8,
+        )
+        self.assertEqual(
+            len(board["unified_pool"]["result_zones"][SEAT_PLAYER_2][UNIFIED_POOL_ZONE_PICKED]),
+            8,
+        )
+        self.assertEqual(
+            len(board["unified_pool"]["result_zones"][SEAT_PLAYER_1][UNIFIED_POOL_ZONE_BANNED]),
+            3,
+        )
+        self.assertEqual(
+            len(board["unified_pool"]["result_zones"][SEAT_PLAYER_2][UNIFIED_POOL_ZONE_BANNED]),
+            3,
+        )
+        self.assertTrue(
             all(step["status"] == TIMELINE_STATUS_COMPLETE for step in board["timeline"])
+        )
+
+    def test_unified_pool_contract_validator_rejects_invalid_entries(self) -> None:
+        board = deepcopy(_sample_controller().to_board_dict())
+        entry = board["unified_pool"]["entries"][0]
+        entry["zone"] = "mystery_zone"
+        entry["status"] = "mystery_status"
+        entry["action"]["character_id"] = "wrong_character"
+        entry["icon_path"] = "C:/Users/user/private/portrait.png"
+
+        issues = validate_free_draft_board_projection_dict(board)
+
+        self.assertIn("unknown_unified_pool_zone:0:mystery_zone", issues)
+        self.assertIn("unknown_unified_pool_status:0:mystery_status", issues)
+        self.assertIn("unified_pool_action_character_id_mismatch:0", issues)
+        self.assertTrue(
+            any(
+                issue.startswith("forbidden_unified_pool_visual_key:path")
+                for issue in issues
+            )
+        )
+        self.assertTrue(
+            any(
+                issue.startswith("forbidden_unified_pool_visual_value")
+                for issue in issues
+            )
         )
 
     def test_post_draft_assignment_and_result_summary_is_compact(self) -> None:
@@ -283,6 +420,14 @@ class FreeDraftBoardProjectionTests(unittest.TestCase):
                     section["seats"][SEAT_PLAYER_1]["cards"][0]["status"],
                     CARD_STATUS_VALUES,
                 )
+                self.assertIn(
+                    section["unified_pool"]["entries"][0]["status"],
+                    UNIFIED_POOL_STATUS_VALUES,
+                )
+                self.assertIn(
+                    section["unified_pool"]["entries"][0]["zone"],
+                    UNIFIED_POOL_ZONE_VALUES,
+                )
 
         initial = sample["sections"]["initial"]
         after_two_actions = sample["sections"]["after_two_actions"]
@@ -335,6 +480,33 @@ def _shared_controller() -> FreeDraftController:
     )
 
 
+def _shared_constellation_controller() -> FreeDraftController:
+    player_1_deck = synthetic_deck("p1", shared_character_ids=("shared_char",))
+    player_2_deck = synthetic_deck("p2", shared_character_ids=("shared_char",))
+    player_1_shared = replace(
+        player_1_deck.characters[0],
+        display_name="Shared P1",
+        constellation=1,
+        cost=3.0,
+    )
+    player_2_shared = replace(
+        player_2_deck.characters[0],
+        display_name="Shared P2",
+        constellation=6,
+        cost=5.0,
+    )
+    return FreeDraftController.from_decks(
+        replace(
+            player_1_deck,
+            characters=(player_1_shared,) + player_1_deck.characters[1:],
+        ),
+        replace(
+            player_2_deck,
+            characters=(player_2_shared,) + player_2_deck.characters[1:],
+        ),
+    )
+
+
 def _play_prebans_without_shared_character(controller: FreeDraftController) -> None:
     for target_id in ("p2_char_12", "p1_char_12", "p2_char_11", "p1_char_11"):
         controller.apply_ban_character(target_id)
@@ -348,16 +520,40 @@ def _card(board: dict[str, object], seat: str, character_id: str) -> dict[str, o
     raise AssertionError(f"{seat} card not found: {character_id}")
 
 
+def _unified_entry(
+    board: dict[str, object],
+    character_id: str,
+) -> dict[str, object]:
+    unified_pool = board["unified_pool"]  # type: ignore[index]
+    for entry in unified_pool["entries"]:
+        if entry["character_id"] == character_id:
+            return entry
+    raise AssertionError(f"unified pool entry not found: {character_id}")
+
+
 def _sample_section_metrics(section: dict[str, object]) -> dict[str, object]:
     progress = section["progress"]  # type: ignore[index]
     status = section["status"]  # type: ignore[index]
     summary = section["summary"]  # type: ignore[index]
     result = summary["result"]  # type: ignore[index]
     current_requirement = section["current_requirement"]
+    unified_pool = section["unified_pool"]  # type: ignore[index]
     return {
         "current_requirement": current_requirement,
         "actions_accepted": progress["actions_accepted"],
         "legal_target_count": progress["legal_target_count"],
+        "unified_entry_count": len(unified_pool["entries"]),
+        "unified_zone_counts": {
+            zone: len(unified_pool["zones"][zone])
+            for zone in UNIFIED_POOL_ZONE_VALUES
+        },
+        "unified_result_counts": {
+            seat: {
+                zone: len(unified_pool["result_zones"][seat][zone])
+                for zone in (UNIFIED_POOL_ZONE_PICKED, UNIFIED_POOL_ZONE_BANNED)
+            }
+            for seat in PVP_SEATS
+        },
         "draft_finished": status["draft_finished"],
         "bundle_ready": status["bundle_ready"],
         "result": result,

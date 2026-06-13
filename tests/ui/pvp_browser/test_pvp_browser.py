@@ -9,7 +9,7 @@ from ui.utils.app_scaling import configure_startup_ui_scale
 configure_startup_ui_scale()
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QKeyEvent
-from PySide6.QtWidgets import QApplication, QPushButton
+from PySide6.QtWidgets import QApplication, QFrame, QPushButton
 
 from localization import tr
 from ui.pvp_browser.window import (
@@ -451,16 +451,32 @@ class PvpBrowserTest(unittest.TestCase):
 
         draft = workspace.draft_workspace
         board = workspace.active_draft_session.board_dict()
+        pool_entries = [
+            entry
+            for entry in board["unified_pool"]["entries"]
+            if entry["zone"] == "pool"
+        ]
 
         self.assertIsInstance(draft, PvpDraftWorkspace)
         self.assertIn(tr("app_shell.pvp.draft.ban"), draft.action_title_label.text())
+        self.assertFalse(
+            [
+                frame
+                for frame in draft.findChildren(QFrame)
+                if frame.objectName() == "pvp_draft_zone"
+            ]
+        )
+        self.assertEqual(len(draft.card_buttons_by_character_id), len(pool_entries))
         self.assertEqual(
             len({button.character_id for button in draft.legal_card_buttons}),
             board["progress"]["legal_target_count"],
         )
         self.assertGreater(len(draft.legal_card_buttons), 0)
-        self.assertIn(("player_1", "20000000"), draft.card_buttons_by_key)
-        self.assertIn(("player_2", "20000000"), draft.card_buttons_by_key)
+        self.assertIn("20000000", draft.card_buttons_by_character_id)
+        shared_button = draft.card_buttons_by_character_id["20000000"]
+        self.assertTrue(shared_button.property("sharedOwner"))
+        self.assertIn("P1 C6", shared_button.text())
+        self.assertIn("P2 C6", shared_button.text())
 
     def test_pvp_draft_legal_click_applies_one_backend_action(self) -> None:
         workspace, _panel = self._started_draft_workspace(character_count=12)
@@ -480,17 +496,17 @@ class PvpBrowserTest(unittest.TestCase):
 
     def test_pvp_draft_illegal_click_does_not_apply_action(self) -> None:
         workspace, _panel = self._started_draft_workspace(character_count=12)
-        legal = workspace.draft_workspace.legal_card_buttons[0]
-        legal.click()
-        QApplication.processEvents()
         before = len(workspace.active_draft_session.board_dict()["action_log"])
-        illegal = next(
-            button
-            for button in workspace.draft_workspace.card_buttons_by_key.values()
-            if not button.property("legalTarget")
-        )
 
-        illegal.click()
+        self.assertFalse(
+            workspace.apply_draft_card_click(
+                {
+                    "type": "ban_character",
+                    "target_type": "character",
+                    "character_id": "not_a_legal_entry",
+                }
+            )
+        )
         QApplication.processEvents()
 
         self.assertEqual(
@@ -498,10 +514,47 @@ class PvpBrowserTest(unittest.TestCase):
             before,
         )
 
+    def test_pvp_draft_result_entries_leave_main_pool_and_right_panel_zones_update(self) -> None:
+        workspace, _panel = self._started_draft_workspace(character_count=12)
+        draft_panel = PvpDraftRightPanel(workspace)
+        first_legal = workspace.draft_workspace.legal_card_buttons[0]
+        banned_id = first_legal.character_id
+
+        first_legal.click()
+        QApplication.processEvents()
+
+        board = workspace.active_draft_session.board_dict()
+        self.assertEqual(len(board["action_log"]), 1)
+        self.assertNotIn(banned_id, workspace.draft_workspace.card_buttons_by_character_id)
+        self.assertIn(
+            banned_id,
+            board["unified_pool"]["result_zones"]["player_1"]["banned"],
+        )
+        self.assertIn(
+            _board_entry(board, banned_id)["display_name"],
+            draft_panel.result_zone_value_labels[("player_1", "banned")].text(),
+        )
+        self.assertEqual(
+            draft_panel.result_zone_value_labels[("player_1", "picked")].text(),
+            tr("app_shell.pvp.draft.none"),
+        )
+
     def test_pvp_draft_same_deck_self_vs_self_keeps_seat_state_independent(self) -> None:
         workspace, _panel = self._started_draft_workspace(
             character_count=24,
             deck_names=("Mirror",),
+        )
+
+        initial_entries = workspace.active_draft_session.board_dict()["unified_pool"]["entries"]
+        self.assertEqual(len(workspace.draft_workspace.card_buttons_by_character_id), 24)
+        self.assertEqual(
+            sum(1 for entry in initial_entries if entry["character_id"] == "20000000"),
+            1,
+        )
+        self.assertTrue(
+            workspace.draft_workspace.card_buttons_by_character_id["20000000"].property(
+                "sharedOwner"
+            )
         )
 
         while len(workspace.active_draft_session.board_dict()["action_log"]) < 5:
@@ -517,12 +570,14 @@ class PvpBrowserTest(unittest.TestCase):
 
         self.assertEqual(p1_card["status"], "picked_by_self")
         self.assertEqual(p2_card["status"], "blocked_by_opponent_pick")
+        self.assertEqual(_board_entry(board, picked_id)["zone"], "picked")
 
     def test_pvp_draft_can_complete_full_schedule_through_ui_clicks(self) -> None:
         workspace, _panel = self._started_draft_workspace(
             character_count=24,
             deck_names=("Mirror",),
         )
+        draft_panel = PvpDraftRightPanel(workspace)
         guard = 0
 
         while not workspace.active_draft_session.board_dict()["status"]["draft_finished"]:
@@ -537,6 +592,20 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertEqual(len(board["action_log"]), 22)
         self.assertTrue(board["status"]["draft_finished"])
         self.assertFalse(workspace.draft_workspace.legal_card_buttons)
+        self.assertTrue(
+            all(
+                not button.property("legalTarget")
+                for button in workspace.draft_workspace.card_buttons_by_character_id.values()
+            )
+        )
+        self.assertNotEqual(
+            draft_panel.result_zone_value_labels[("player_1", "picked")].text(),
+            tr("app_shell.pvp.draft.none"),
+        )
+        self.assertNotEqual(
+            draft_panel.result_zone_value_labels[("player_2", "picked")].text(),
+            tr("app_shell.pvp.draft.none"),
+        )
         completed_text = "\n".join(
             label.text()
             for label in workspace.draft_workspace.completed_labels
@@ -697,3 +766,10 @@ def _board_card(board: dict, seat: str, character_id: str) -> dict:
         if card["character_id"] == character_id:
             return card
     raise AssertionError(f"Missing card {seat}/{character_id}")
+
+
+def _board_entry(board: dict, character_id: str) -> dict:
+    for entry in board["unified_pool"]["entries"]:
+        if entry["character_id"] == character_id:
+            return entry
+    raise AssertionError(f"Missing unified entry {character_id}")

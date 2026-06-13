@@ -493,15 +493,17 @@ Draft read-model direction:
   an intermediate contract.
 - The target readable Draft UX should use one unified pool of unique
   `character_id` values plus right-panel result zones for picks and bans.
-- The durable board/read-model projection should add a dedicated
-  `unified_pool` section rather than making each UI reconstruct it ad hoc.
-- `unified_pool` entries should include stable `character_id`, `owner_seats`,
+- The durable board/read-model projection has a dedicated `unified_pool`
+  section so UIs do not reconstruct it ad hoc.
+- `unified_pool` entries include stable `character_id`, `owner_seats`,
   `base_seat`, per-seat display metadata such as constellation/level/rarity/
   display name/status, current legal/action data, result zone/status, picked or
   banned owner, action/schedule index where applicable, and optional reason
   codes.
 - The backend read model should not include local image paths as identity.
-  Presentation layers can resolve optional icons separately.
+  Presentation layers can resolve optional icons separately; the board
+  projection validator rejects visual path/icon/image identity keys in
+  `unified_pool`.
 
 Draft result zones:
 
@@ -676,17 +678,18 @@ Stage F: Free Draft controller/projection backend.
   and is exposed by controller methods `to_board_projection(debug=False)` and
   `to_board_dict(debug=False)`. It includes draft-system/status/current
   requirement, progress, per-seat deck summaries and card statuses, global
-  pools, action-log rows, timeline rows, and compact assignment/result summary.
-  Stable card statuses are `available`, `legal_target`, `globally_banned`,
-  `picked_by_self`, `picked_by_opponent`, `blocked_by_opponent_pick`,
-  `unavailable`, `invalid`, and `unsupported_traveler`; details live in
+  pools, backend-owned `unified_pool` entries/result zones, action-log rows,
+  timeline rows, and compact assignment/result summary. Stable card statuses
+  are `available`, `legal_target`, `globally_banned`, `picked_by_self`,
+  `picked_by_opponent`, `blocked_by_opponent_pick`, `unavailable`, `invalid`,
+  and `unsupported_traveler`; unified-pool statuses/zones are documented in
   `PVP_BACKEND_STATUS.md`. A committed UI-contract sample lives at
   `samples/pvp/ui_contract/free_draft_board_projection_sample.json`, with
   initial, after-two-actions, and final/result board states. Board projection
   dictionaries can be checked with
   `validate_free_draft_board_projection_dict(...)`.
-- Next projection contract step: add a backend-owned `unified_pool` read-model
-  for the readable Draft UI before refactoring the Draft workspace.
+- Next UI step: refactor the Draft workspace to consume `unified_pool` for the
+  readable visual pool and right-panel pick/ban zones.
 
 Stage G: local hot-seat UI.
 

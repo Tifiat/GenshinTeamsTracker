@@ -98,6 +98,7 @@ from ui.gcsim_browser.window import (
     GcsimBrowserTeamSlotPreview,
     GcsimBrowserWorkspace,
 )
+from ui.history_browser.window import HistoryBrowserWorkspace
 from ui.gcsim_browser.run_worker import (
     GcsimBrowserBatchRunRequest,
     GcsimBrowserBatchRunWorker,
@@ -2435,7 +2436,7 @@ class LeftWorkspaceHost(QWidget):
             "GCSIM",
             self.gcsim_browser_workspace,
         )
-        self.history_workspace = HistoryWorkspacePlaceholder()
+        self.history_workspace = HistoryBrowserWorkspace()
         self.history_button = self.add_workspace(
             LEFT_WORKSPACE_HISTORY,
             tr("app_shell.workspace.history"),
@@ -2856,45 +2857,6 @@ class RightOperationsDock(QFrame):
         self.account_page.retranslate_ui()
         if hasattr(self.pvp_operation_widget, "retranslate_ui"):
             self.pvp_operation_widget.retranslate_ui()
-
-
-class HistoryWorkspacePlaceholder(QFrame):
-    """Temporary left-workspace placeholder until immutable snapshots exist."""
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setObjectName("HistoryWorkspacePlaceholder")
-        root = QVBoxLayout(self)
-        root.setContentsMargins(32, 32, 32, 32)
-        root.setSpacing(8)
-        root.addStretch(1)
-
-        self.title_label = QLabel()
-        self.title_label.setObjectName("SectionTitle")
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        root.addWidget(self.title_label)
-
-        self.subtitle_label = QLabel()
-        self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        root.addWidget(self.subtitle_label)
-
-        self.note_label = QLabel()
-        self.note_label.setWordWrap(True)
-        self.note_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        root.addWidget(self.note_label)
-
-        self.legacy_note_label = QLabel()
-        self.legacy_note_label.setWordWrap(True)
-        self.legacy_note_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        root.addWidget(self.legacy_note_label)
-        root.addStretch(2)
-        self.retranslate_ui()
-
-    def retranslate_ui(self) -> None:
-        self.title_label.setText(tr("app_shell.history.placeholder.title"))
-        self.subtitle_label.setText(tr("app_shell.history.placeholder.subtitle"))
-        self.note_label.setText(tr("app_shell.history.placeholder.note"))
-        self.legacy_note_label.setText(tr("app_shell.history.placeholder.legacy_note"))
 
 
 def _account_tab_icon() -> QIcon:
@@ -4319,7 +4281,6 @@ __all__ = [
     "LEFT_WORKSPACE_GCSIM",
     "LEFT_WORKSPACE_HISTORY",
     "LEFT_WORKSPACE_PVP",
-    "HistoryWorkspacePlaceholder",
     "LeftWorkspaceHost",
     "RIGHT_DOCK_PAGE_ACCOUNT",
     "RIGHT_DOCK_PAGE_PVP",

@@ -56,7 +56,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the compact chamber/action area has live in-memory Abyss timer and factual-DPS behavior, but typed reset/save/history persistence is not wired, and the approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
   - keep the reduced fixed-width right operations dock around `RightPanelPrototypeWidget`; it must not be user-resizable or expand with the window;
   - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, a painted pixel-aligned icon grid via `ui/utils/pixel_icon_grid.py`, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
-  - AppShell left workspace navigation exists with Character/Weapon, lazy-created Artifacts, GCSIM Browser, inert History placeholder, and PvP Decks v0 workspaces. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; real History browsing still waits for typed immutable run snapshots;
+  - AppShell left workspace navigation exists with Character/Weapon, lazy-created Artifacts, GCSIM Browser, inert `ui/history_browser/` History placeholder, and PvP Decks v0 workspaces. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; real History browsing still waits for typed immutable run snapshots and the contract in `docs/handoff/HISTORY_BROWSER.md`;
   - continue the production adapter: next production-switch work starts with current in-memory run/session behavior for the right dock (reset, elapsed-time and factual-DPS results) without reviving legacy widget ownership. AppShell already has live in-memory Abyss T1/T2 timer editing in the compact chamber table, with elapsed seconds and Total derived from controller timer state; the compact editor uses separate minute/second segments inside one visual `MM:SS` field, with commit-time normalization and segment-aware wheel/arrow stepping; T2 follows T1 until manually edited, and if T1 drops below T2 then T2 clamps to T1 and returns to follow mode. Immutable saved snapshots, snapshot persistence, and History opening come later, after working timer/DPS/GCSIM result data exists. Richer `CharacterDetailsData` preparation can continue incrementally where the selected-details UI still needs it;
   - keep roster clicks as quick-pick add/remove and right-panel slot clicks as selected build/details target toggle;
   - AppShell quick-pick marker latency is fixed with incremental visible-card marker updates; roster clicks now update markers immediately and defer/coalesce right-panel refreshes through a short scheduler;
@@ -155,28 +155,18 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Later/post-release: add recommended artifact stat filters per character. Examples: Varesa should rank Electro DMG goblets higher, Ineffa should rank ATK goblets higher. This likely needs imported guide/recommendation data from external sources; do not implement it in the current equipment-flow work.
 - Future weapon panel move/swap UI: when all known copies of a `weapon_fingerprint` are assigned, require an explicit current owner/source choice before moving or swapping. Do not silently steal an exhausted assigned weapon by fingerprint.
 
-## 6. Abyss History / Seasons
+## 6. History Browser
 
-- Redesign history around shared RunCard/TeamCard components. The old history grid is not final and will not scale once weapons, set bonuses, simulator values, filters, and metadata are added.
-- History should become a left workspace/tab after typed immutable snapshots exist. The right dock may keep a compact History command, but browsing and filtering saved runs belongs on the left.
-- Future visual direction: use Akasha-like compact saved-run rows. Abyss rows can be paired/double team rows with character icons, weapon icons, set/build icons, room times, factual DPS, and sim DPS; hover over a character should show a rich build tooltip, and expanding the row should show full RunCard/export-ready detail.
-- Abyss history structure:
-  - top-level tab: Abyss;
-  - inside: seasons/periods;
-  - each season page shows period/timestamp, floors/chambers/enemies when known, total HP when known, saved runs, filters/sorting, and export.
-- Previous seasons can be read-only or mostly read-only.
-- New saved Abyss runs go into the current season.
-- Saved run history must be immutable snapshots, not live references to current account/build state.
+- History is an AppShell left workspace with placeholder UI owned by
+  `ui/history_browser/`; `ui/app_shell.py` should only wire the stable
+  `history` workspace id/nav/routing.
+- Future saved-run browsing, autonomous immutable snapshot bundles, Akasha-like
+  rows, expanded export image/card, and the read-only History-specific
+  right-panel viewer are contracted in `docs/handoff/HISTORY_BROWSER.md`.
+- Do not develop `ui/run_history_window.py` or `runs_history.json` as the final
+  History model.
 
-## 7. DPS Dummy History
-
-- DPS Dummy history should use the same visual language as Abyss history but simpler.
-- One team per result.
-- Future visual direction: one compact team row with character icons, weapon icons, set/build icons, factual DPS, sim DPS, hover build tooltips, and expandable export-ready detail.
-- Store dummy/target setup if available, factual DPS, sim DPS later, filters/sorting, and export.
-- The DPS Dummy history button should open when the Run Workspace is in DPS Dummy mode.
-
-## 8. Abyss Data Updater and Enemy Model
+## 7. Abyss Data Updater and Enemy Model
 
 - First production Abyss source-data boundary exists in
   `run_workspace/abyss/source_data.py`. It converts Fandom-shaped composition
@@ -293,7 +283,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   summons/adds, elemental/reaction requirements, and mode-specific stat blocks.
 - Backend Abyss mechanics parser/report code exists in `hoyolab_export/abyss_mechanics.py`. It parses Fandom enemy-page wikitext snippets into structured fields and warning tags such as `shield_check`, `ward_or_barrier`, `phase_invulnerability`, `state_res_override`, `paralyze_window`, `true_damage_hp_event`, `summons_or_adds`, `elemental_requirement`, `reaction_requirement`, `lunar_requirement`, `high_mobility`, and `mode_specific_stats`. Future Abyss UI work is mechanics-warning integration only, not another broad audit or Fact DPS tooltip/source-summary redesign.
 
-## 9. Stats / Resonance / Static Catalogs
+## 8. Stats / Resonance / Static Catalogs
 
 - Team selection UI should eventually display current stats for each character.
 - Stats may need character base stats by level/ascension, weapon base stats/substats, weapon level/refinement, artifact main/sub stats, static artifact set bonuses, and resonances.
@@ -371,7 +361,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Standard 5-star filter exists with `assets/filters/standard.png` and tri-state behavior: show all / only Standard 5-star / exclude Standard 5-star. Membership is stored as static trait `standard_5_star` in `character_identity`; HoYoWiki entry `2952` is the source context, while the current API payload is not a clean structured character list, so the 5-star standard character membership is seeded by explicit HoYoWiki character entry ids. Traveler is intentionally included in this trait and must stay included when the dedicated Traveler model is implemented.
 - Future storage audit/refactor: account character/weapon runtime tables are started; next audits should decide which remaining generated JSON/cache files should stay as small rebuildable source caches or seeds and which should be normalized into SQLite/catalog DB tables. Prefer DB storage only for runtime-critical data that is frequently joined, mapped, filtered, queried, reported, or used by stat calculator/UI. Remaining likely candidates include HoYoWiki character stats, weapon stats, character traits, character region catalog, mapping reports / alias override tables, and other large generated account/catalog JSON files after usage audit. A two-layer model is acceptable: raw/source JSON cache for fetched HoYoWiki/HoYoLAB data plus normalized DB tables for lookup, mappings, aliases, reports, UI, and stat calculation.
 
-## 10. Export
+## 9. Export
 
 - Abyss history and DPS Dummy history need export.
 - Target formats: PNG/image for visual sharing and XLSX for analysis/comparison. CSV/HTML can be optional fallback later.
@@ -379,7 +369,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - XLSX should be data-oriented and include season/period, date, run type, chamber/side, team, characters, weapons, artifact set bonuses, timers, factual DPS if available, sim DPS if available, notes/warnings.
 - Do not prioritize import of history as a separate feature. Later full offline profile import/export can include history.
 
-## 11. GCSIM Integration
+## 10. GCSIM Integration
 
 - GCSIM now has backend/dev infrastructure plus an AppShell Browser backend-MVP product path for selected runtime teams. It is usable for current Browser prepare/run diagnostics and runtime right-panel Sim DPS rows; the Browser has a first compact UI pass with context/rotation tabs/run summary, while production packaging, mapping coverage, saved-result persistence/history policy, no-code rotations, and final polish remain future work.
 - Read before GCSIM work:
@@ -404,14 +394,14 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - connect GCSIM results to typed run/session state and immutable saved snapshots/history instead of treating Browser runs as durable results;
   - finish production mapping coverage, user-facing readiness/error polish, no-code rotation editing policy, run retention/debug keep-artifacts controls, cancellation/progress, and final AppShell/GCSIM UI polish.
 
-## 12. KQM / Standard Builds Research
+## 11. KQM / Standard Builds Research
 
 - Investigate where GCSIM gets default/standard character builds.
 - Do not hardcode "KQM standards" until source, license, and data format are verified.
 - Research whether this data is actually KQM standards, where it is stored, whether it can be used legally/technically, and what it contains: artifacts, talents, weapons, rotations, assumptions.
 - Future uses: simulator fallback, draft bot, account-independent team estimates, comparing user builds to standard baseline.
 
-## 13. Artifact Optimizer
+## 12. Artifact Optimizer
 
 - Future advanced feature: find the strongest build on the account for a selected team and rotation.
 - Target DPS Dummy / simulator workspace first. Do not attempt full Abyss optimization initially.
@@ -429,7 +419,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Investigate whether current GCSIM already has usable optimizer-like functionality.
 - Keep the user's simplified idea for research: use default standards, test set templates quickly, identify promising configurations, apply filters, then search best artifacts matching the configuration.
 
-## 14. Offline Profile
+## 13. Offline Profile
 
 - Current profile import/export covers account characters, weapons, character
   details, account language, crop manifest, allowed account assets, and artifact
@@ -439,7 +429,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - It must not include cookies, auth tokens, browser profile/session data, or private debug dumps.
 - Use versioned profile format and safe restore/backup semantics.
 
-## 15. Far Future / Non-MVP Ideas
+## 14. Far Future / Non-MVP Ideas
 
 - Far-future PvP/tournament, analytics, draft bot, donation/support, monetization, optional AI companion, and similar speculative ideas live in `docs/handoff/FAR_FUTURE_TODO.md`.
 - Do not load those ideas into normal MVP task planning unless the user asks about them or wants to add/update a far-future idea.

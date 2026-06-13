@@ -125,13 +125,16 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `hoyolab_export/`: HoYoLAB auth/export/import pipeline, artifact DB helpers, HoYoWiki catalog/cache helpers.
 - `localization/`: JSON-backed app localization.
 - `ui/artifact_browser/`: isolated Artifact Browser module.
+- `ui/history_browser/`: isolated AppShell History Browser placeholder module;
+  future product/architecture rules live in `docs/handoff/HISTORY_BROWSER.md`.
 - `ui/character_browser/`: narrow adapters that translate character/weapon
   asset records into reusable generic browser/grid item models.
 - AppShell top-level browser/workspace UI must live in its own `ui/<area>_browser/`
   package when it grows beyond shell routing/glue. `ui/app_shell.py` coordinates
   workspace/right-dock policy and may instantiate those widgets, but it should
   not own feature-specific browser implementations. Current examples:
-  `ui/artifact_browser/`, `ui/gcsim_browser/`, and `ui/pvp_browser/`.
+  `ui/artifact_browser/`, `ui/gcsim_browser/`, `ui/history_browser/`, and
+  `ui/pvp_browser/`.
 - `run_workspace/pvp/`: isolated backend-only PvP v0 foundation for deck JSON,
   deck validation, Decks UI preset persistence, Free Draft
   schedule/reducer/action log, post-draft team and weapon assignment
@@ -668,9 +671,10 @@ Debug files are private and ignored.
 
 History:
 
-- Current history window exists.
-- Future history should support Abyss and Stygian Onslaught tabs.
-- Future records should include team composition and timer data by version/cycle.
+- Current AppShell History placeholder lives in `ui/history_browser/`.
+- Future History Browser rows, immutable snapshot bundles, export preview/card,
+  and read-only right-panel snapshot viewer rules live in
+  `docs/handoff/HISTORY_BROWSER.md`.
 
 Artifact Browser final UI:
 

@@ -245,6 +245,9 @@ Implementation direction:
 ## History Workspace Timing
 
 History should become a left workspace/tab after typed snapshots exist.
+Detailed History Browser browsing, export-preview, autonomous snapshot-bundle,
+and History-specific right-panel viewer rules live in
+`docs/handoff/HISTORY_BROWSER.md`.
 
 History owns its own browsing state. Current run mode and history browsing mode
 are separate states:

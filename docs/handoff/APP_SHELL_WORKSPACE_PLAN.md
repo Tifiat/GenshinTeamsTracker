@@ -187,7 +187,10 @@ right column patched in place.
 
 ### History Workspace
 
-- Placeholder left workspace exists with stable id `history`.
+- Placeholder left workspace exists with stable id `history` and is implemented
+  through `ui/history_browser/`.
+- `ui/app_shell.py` should only wire/register the History workspace and update
+  its nav label; History UI details belong in the History Browser module.
 - Legacy `runs_history.json` / image-path history UI is obsolete and should not
   become the long-term design.
 - The current page is intentionally inert and only explains that real saved-run
@@ -196,6 +199,9 @@ right column patched in place.
   run snapshots exist. The right dock may expose a compact History command, but
   it should route to the left workspace and active run type, not open the old
   floating history window as the final behavior.
+- Detailed future History Browser row, snapshot-bundle, export-preview, and
+  History-specific right-panel viewer rules live in
+  `docs/handoff/HISTORY_BROWSER.md`.
 
 ## Right Operations Dock
 
@@ -672,10 +678,10 @@ Sizing note:
 
 - `LeftWorkspaceHost` uses a `QStackedWidget` and small workspace nav.
 - Current workspaces: default Character/Weapon, lazy-created Artifacts, GCSIM
-  Browser, inert History placeholder, and PvP Decks v0.
+  Browser, inert `ui/history_browser/` History placeholder, and PvP Decks v0.
 - Navigation uses stable workspace ids requested through root AppShell so later
-  real History browsing or real PvP workspace stages can coordinate right-dock policies
-  without directly mutating the dock.
+  real History browsing or real PvP workspace stages can coordinate right-dock
+  policies without directly mutating the dock.
 
 ### Stage 4: Embedded Artifact Browser (Implemented)
 
@@ -696,7 +702,7 @@ Sizing note:
   snapshot persistence before any GCSIM result becomes a durable saved result.
 - Replace the inert History placeholder with browsing based on immutable saved
   run snapshots, routed from the right-dock History command according to active
-  run type.
+  run type; follow the contract in `docs/handoff/HISTORY_BROWSER.md`.
 - Attach GCSIM results to current session/snapshots as `sim DPS` metadata, kept
   separate from factual HP/time DPS.
 - Production switch still depends on the correct AppShell/session/snapshot

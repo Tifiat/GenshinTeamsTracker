@@ -86,9 +86,11 @@ Backend status: `run_workspace/history_snapshot.py` defines
 `HistorySnapshotBundle` v1, nested frozen display/provenance/team/scenario/
 result/asset/preview records, JSON roundtrip helpers, and
 `HistorySnapshotBundleStore(root)` for caller-provided local roots. The store
-writes supplied bundles to `<root>/<bundle_id>/snapshot.json`; it does not copy
-real assets, query account/cache/DB data, or build bundles from live AppShell
-state yet.
+writes supplied bundles to `<root>/<bundle_id>/snapshot.json`.
+`run_workspace.history_snapshot_builder` can build backend-only bundles from
+explicit typed session/right-panel view-model data. These backend pieces do not
+copy real assets, query account/cache/DB data, wire Save, or render History
+rows/viewers/export surfaces.
 
 ## Export Preview/Card
 
@@ -108,7 +110,7 @@ Recommended sequence after the placeholder/module split:
 
 1. Extract typed `RunSessionState`.
 2. Done: define snapshot bundle schema/service v1.
-3. Build snapshots from typed session/view-model data.
+3. Done: build backend-only snapshots from typed session/view-model data.
 4. Add fake/sample snapshot rows and preview in History Browser.
 5. Add a History-specific right-panel snapshot viewer.
 6. Add the export renderer/generator.

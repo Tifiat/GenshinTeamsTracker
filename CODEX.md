@@ -690,9 +690,10 @@ History:
 - Current AppShell History placeholders live in `ui/history_browser/`: the left
   workspace and the isolated empty right-panel viewer.
 - Immutable History Snapshot Bundle v1 backend schema/service lives in
-  `run_workspace/history_snapshot.py`; future builder, History Browser rows,
-  export preview/card, and read-only right-panel snapshot viewer rules live in
-  `docs/handoff/HISTORY_BROWSER.md`.
+  `run_workspace/history_snapshot.py`, with a backend-only builder in
+  `run_workspace/history_snapshot_builder.py`. Future Save wiring, History
+  Browser rows, export preview/card, and read-only right-panel snapshot viewer
+  rules live in `docs/handoff/HISTORY_BROWSER.md`.
 
 Artifact Browser final UI:
 

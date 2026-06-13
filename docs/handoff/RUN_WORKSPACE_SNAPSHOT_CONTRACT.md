@@ -29,9 +29,10 @@ does not switch `main.py`.
 - `run_workspace.models` contains an early legacy Abyss snapshot adapter:
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,
   and `build_legacy_abyss_run_snapshot(...)`.
-- `run_workspace.history_snapshot` now contains the immutable History Snapshot
+- `run_workspace.history_snapshot` contains the immutable History Snapshot
   Bundle v1 schema and a caller-rooted local read/write service for supplied
-  bundles. It does not build snapshots from live session/AppShell state and
+  bundles. `run_workspace.history_snapshot_builder` now builds backend-only
+  bundles from explicit `RunSessionState`/right-panel view-model inputs. It
   does not wire Save, History rows, asset copying, preview rendering, or UI.
 - AppShell now uses live in-memory Abyss timer state for the compact right-dock
   chamber table. T1/T2 timer edits update controller state and the right-panel
@@ -154,7 +155,8 @@ roundtrip helpers, and `HistorySnapshotBundleStore(root)`. The store writes
 supplied bundles as `<root>/<bundle_id>/snapshot.json` through a temp file in
 the same directory and reads them back without using production `data/`,
 account/profile/cache/DB paths, or real assets. Future work must add the
-builder that converts typed live session/view-model data into this bundle.
+Save command/storage wiring that calls the backend builder for the active run
+type.
 
 Every snapshot should include:
 
@@ -265,8 +267,9 @@ Implementation direction:
 - never build save snapshots by reading `QSpinBox` or `QLabel` values directly;
 - keep `calculate_abyss_chamber_result(...)` or a compatible pure helper as the
   factual elapsed-time source.
-- do not wire Save snapshot builders before the current timer/DPS/GCSIM result
-  data is explicit enough to map into `HistorySnapshotBundle`.
+- Save wiring must call the backend builder from explicit typed
+  session/view-model data and then write immutable `HistorySnapshotBundle`
+  records through a store boundary.
 
 ## History Workspace Timing
 
@@ -295,7 +298,8 @@ Recommended order:
 
 1. Done: define History Snapshot Bundle v1 schema, local write/read service,
    and tests.
-2. Build snapshots from typed live session/right-panel view-model data.
+2. Done: build backend-only snapshots from explicit typed live
+   session/right-panel view-model data.
 3. Wire right-dock Save to snapshot creation for the active run type.
 4. Add a minimal History left workspace that reads immutable snapshots.
 5. Route the right-dock History action to activate/select that left workspace
@@ -368,7 +372,9 @@ Integration rules:
    live run mode, not widgets, and does not wipe the inactive Abyss/DPS mode.
 4. Done: immutable History Snapshot Bundle v1 dataclasses/services exist under
    `run_workspace.history_snapshot` with local temp-root tests.
-5. Build a snapshot builder from typed session/right-panel view-model data.
+5. Done: backend-only builder maps supplied typed session/right-panel
+   view-model data into `HistorySnapshotBundle` records for Abyss and DPS
+   Dummy shapes.
 6. Wire Save to snapshot creation for the active run type.
 7. Add a minimal History left workspace that reads immutable snapshots, and route
    right-dock History to that workspace with the active run type as default.
@@ -381,7 +387,8 @@ Integration rules:
 
 - Do not delete `ui/main_window.py`.
 - Do not migrate the old `runs_history.json` UI as final design.
-- Do not wire Save/History UI before a real builder maps live session data into
-  immutable History Snapshot Bundles.
+- Do not wire Save/History UI without calling the backend builder from typed
+  session state and writing immutable History Snapshot Bundles through an
+  explicit store boundary.
 - Do not mix factual DPS and sim DPS.
 - Do not make right-panel widgets the source of truth for timers or saved runs.

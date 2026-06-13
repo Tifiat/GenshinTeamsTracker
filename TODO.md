@@ -463,6 +463,14 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   right-panel selected-details/bonus-strip rendering for equipped characters
   (`~50-66 ms` refresh spikes) as a possible loader/cache target if it becomes
   visible again.
+- AppShell/Artifact Browser performance measurement on the weak 1366px HP
+  laptop is recorded in
+  `docs/handoff/performance_measurements/2026-06-13_appshell_artifact_browser_hp_1366.md`.
+  Follow-up optimization should reduce total work first: avoid full
+  `PixelIconGrid` pixmap refreshes for outline-only updates, avoid redundant
+  show-time pixmap preparation, remove duplicated account SQLite loads between
+  Character/Weapon and PvP workspaces, and profile Artifact Browser target
+  button creation before moving any work under a future loader.
 - Pre-release packaging/size audit: the current dev `.venv` is about `767 MB`,
   mostly `PySide6` (`~628 MB`) plus `playwright` (`~104 MB`). PySide6 includes
   large unused-looking pieces such as `Qt6WebEngineCore.dll`, `resources`,

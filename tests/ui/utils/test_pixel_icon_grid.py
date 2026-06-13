@@ -49,6 +49,41 @@ class PixelIconGridLayoutTest(unittest.TestCase):
             for left, right in zip(row_rects, row_rects[1:]):
                 self.assertEqual(right.left() - left.right() - 1, layout.gap_x)
 
+    def test_short_rows_align_to_left_edge_of_centered_capacity_grid(self) -> None:
+        metrics = PixelIconGridMetrics(item_width=50, gap_x=10)
+        layout = build_pixel_icon_grid_layout(
+            2,
+            220,
+            metrics,
+            dpr=1.0,
+        )
+
+        self.assertEqual(layout.columns, 3)
+        self.assertEqual(layout.margin_left, 25)
+        self.assertEqual(layout.margin_right, 25)
+        self.assertEqual(layout.rects[0].x(), 25)
+        self.assertEqual(layout.rects[1].x(), 85)
+
+    def test_layout_recomputes_columns_when_width_shrinks(self) -> None:
+        metrics = PixelIconGridMetrics(item_width=50, gap_x=10)
+        wide = build_pixel_icon_grid_layout(2, 220, metrics, dpr=1.0)
+        narrow = build_pixel_icon_grid_layout(2, 50, metrics, dpr=1.0)
+
+        self.assertEqual(wide.rects[1].y(), 0)
+        self.assertGreater(narrow.rects[1].y(), 0)
+
+    def test_widget_minimum_width_does_not_pin_previous_viewport_width(self) -> None:
+        grid = PixelIconGrid(metrics=PixelIconGridMetrics(item_width=50, gap_x=10))
+        grid.set_items(
+            [
+                PixelIconGridItem(item_id="a", icon_path=""),
+                PixelIconGridItem(item_id="b", icon_path=""),
+            ]
+        )
+        grid.resize(220, 100)
+
+        self.assertEqual(grid.minimumSizeHint().width(), 1)
+
     def test_hit_testing_uses_item_rects(self) -> None:
         grid = PixelIconGrid(metrics=PixelIconGridMetrics(item_width=20, gap_x=2))
         grid.resize(100, 100)

@@ -153,7 +153,6 @@ def build_pixel_icon_grid_layout(
 
     pitch_x = item_width + gap_x
     columns = max(1, (available_width + gap_x) // max(1, pitch_x))
-    columns = min(columns, count)
     rows = int(math.ceil(count / columns))
     grid_width = columns * item_width + max(0, columns - 1) * gap_x
     margin_left = max(0, (available_width - grid_width) // 2)
@@ -308,10 +307,10 @@ class PixelIconGrid(QWidget):
 
     def sizeHint(self) -> QSize:
         height = _logical_extent(self._layout.content_height, self._layout.dpr)
-        return QSize(max(1, self.width()), max(1, height))
+        return QSize(1, max(1, height))
 
     def minimumSizeHint(self) -> QSize:
-        return self.sizeHint()
+        return QSize(1, max(1, _logical_extent(self._layout.content_height, self._layout.dpr)))
 
     def resizeEvent(self, event) -> None:  # noqa: N802 - Qt override
         super().resizeEvent(event)
@@ -353,6 +352,7 @@ class PixelIconGrid(QWidget):
             return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         try:
             visible = _physical_rect_for_logical(self.rect(), self._layout.dpr)
             for index, item in enumerate(self._items):

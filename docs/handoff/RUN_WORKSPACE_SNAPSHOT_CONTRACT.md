@@ -256,11 +256,14 @@ Detailed History Browser browsing, export-preview, autonomous snapshot-bundle,
 and History-specific right-panel viewer rules live in
 `docs/handoff/HISTORY_BROWSER.md`.
 
-History owns its own browsing state. Current run mode and history browsing mode
-are separate states:
+History owns its own browsing/viewing state. Current run mode and history
+browsing mode are separate states:
 
 - the right-dock run mode may provide the default history section when History is
   opened from a run context;
+- activating the `history` left workspace switches the right dock to the
+  isolated empty History viewer before any snapshot is selected;
+- entering History must not reset, clear, or reinitialize the live Run Session;
 - opening History from Abyss should default to Abyss history;
 - opening History from DPS Dummy should default to DPS Dummy history;
 - once inside History, the user can switch between Abyss, DPS Dummy, and later

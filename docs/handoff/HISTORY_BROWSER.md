@@ -2,19 +2,24 @@
 
 Scope: product and architecture contract for the future AppShell History
 Browser. The current implementation is only the inert left-workspace
-placeholder in `ui/history_browser/`; real storage, rows, export, filters, and
-right-panel snapshot viewing are later tasks.
+placeholder plus an empty isolated right-panel viewer in `ui/history_browser/`;
+real storage, rows, export, filters, and snapshot payload rendering are later
+tasks.
 
 ## Boundary
 
-- History is a left workspace/browser in AppShell.
-- History is not a floating legacy window and not a right-dock page.
+- History browsing is a left workspace/browser in AppShell.
+- History browsing is not a floating legacy window and not a right-dock-only
+  page.
 - `ui/app_shell.py` owns only stable workspace id/routing/nav wiring for
-  `history`; History UI belongs under `ui/history_browser/`.
+  `history` and the workspace-driven right-dock selection. History UI belongs
+  under `ui/history_browser/`.
 - `ui/run_history_window.py` and `runs_history.json` are legacy. Do not develop
   them as the final History model, and do not migrate them as the first real
   History implementation.
-- The current placeholder remains inert until typed run/session state and
+- Opening the `history` workspace immediately switches the fixed right dock to
+  the isolated empty History viewer, before any saved run is selected.
+- The current placeholders remain inert until typed run/session state and
   immutable snapshots exist.
 
 ## Future Rows
@@ -46,11 +51,14 @@ Dummy, or later PvP run state.
 
 The History right-panel viewer is not the live Run panel:
 
+- initial state is an empty localized prompt to select a saved run before
+  snapshot details exist;
 - no ticking timers;
 - no GCSIM execution;
 - no equipment/team mutation;
 - no save/reset live commands;
 - no dependency on the current account, profile, cache, or settings;
+- no reset/clear of live Run Session state as a shortcut for entering History;
 - current live Abyss, DPS Dummy, and PvP state must remain intact when leaving
   History.
 

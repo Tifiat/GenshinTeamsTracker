@@ -132,8 +132,9 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `hoyolab_export/`: HoYoLAB auth/export/import pipeline, artifact DB helpers, HoYoWiki catalog/cache helpers.
 - `localization/`: JSON-backed app localization.
 - `ui/artifact_browser/`: isolated Artifact Browser module.
-- `ui/history_browser/`: isolated AppShell History Browser placeholder module;
-  future product/architecture rules live in `docs/handoff/HISTORY_BROWSER.md`.
+- `ui/history_browser/`: isolated AppShell History Browser placeholder module
+  for the left workspace and empty History right-viewer; future
+  product/architecture rules live in `docs/handoff/HISTORY_BROWSER.md`.
 - `ui/character_browser/`: narrow adapters that translate character/weapon
   asset records into reusable generic browser/grid item models.
 - AppShell top-level browser/workspace UI must live in its own `ui/<area>_browser/`
@@ -682,7 +683,8 @@ Debug files are private and ignored.
 
 History:
 
-- Current AppShell History placeholder lives in `ui/history_browser/`.
+- Current AppShell History placeholders live in `ui/history_browser/`: the left
+  workspace and the isolated empty right-panel viewer.
 - Future History Browser rows, immutable snapshot bundles, export preview/card,
   and read-only right-panel snapshot viewer rules live in
   `docs/handoff/HISTORY_BROWSER.md`.

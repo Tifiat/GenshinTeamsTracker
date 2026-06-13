@@ -38,9 +38,11 @@ from ui.app_shell import (
     LEFT_WORKSPACE_ARTIFACTS,
     LEFT_WORKSPACE_CHARACTERS_WEAPONS,
     LEFT_WORKSPACE_GCSIM,
+    LEFT_WORKSPACE_HISTORY,
     LEFT_WORKSPACE_PVP,
     RIGHT_OPERATIONS_DOCK_WIDTH,
     RIGHT_DOCK_PAGE_ACCOUNT,
+    RIGHT_DOCK_PAGE_HISTORY,
     RIGHT_DOCK_PAGE_PVP,
     RIGHT_DOCK_PAGE_RUN,
     RosterSelectionMarker,
@@ -54,6 +56,7 @@ from ui.app_shell import (
     _weapon_owner_target_rect,
 )
 from ui.account_data_page import AccountDataPage
+from ui.history_browser.window import HistoryRightPanelPlaceholder
 from ui.pvp_browser.window import PvpDecksRightPanel, PvpDecksWorkspace
 from ui.artifact_browser.card_delegate import ArtifactCardDelegate, CARD_SIZE, GRID_SIZE
 from ui.artifact_browser.window import (
@@ -180,6 +183,79 @@ class AppShellTest(unittest.TestCase):
         self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertTrue(shell.right_dock.header.pvp_control_button.isChecked())
         self.assertFalse(shell.right_dock.header.account_button.isChecked())
+
+    def test_history_workspace_uses_isolated_right_viewer_without_clearing_live_run_state(
+        self,
+    ) -> None:
+        shell = AppShell()
+        shell.left_host.character_weapon_workspace.character_clicked.emit(
+            _character_asset("10000050", "Thoma")
+        )
+        shell.flush_pending_right_panel_refresh()
+        shell._on_abyss_timer_changed(0, 1, 555)
+        before_team_state = shell.controller.state
+        before_timer_states = shell.controller.abyss_timer_states
+        before_selected = (
+            shell.controller.selected_team_index,
+            shell.controller.selected_slot_index,
+        )
+
+        shell.left_host.history_button.click()
+
+        self.assertEqual(shell.active_left_workspace_id, LEFT_WORKSPACE_HISTORY)
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_HISTORY)
+        self.assertIs(
+            shell.left_host.stack.currentWidget(),
+            shell.left_host.history_workspace,
+        )
+        self.assertIsNot(shell.right_dock.content_stack.currentWidget(), shell.right_panel)
+        self.assertIsInstance(
+            shell.right_dock.content_stack.currentWidget(),
+            HistoryRightPanelPlaceholder,
+        )
+        self.assertEqual(shell.controller.state, before_team_state)
+        self.assertEqual(shell.controller.abyss_timer_states, before_timer_states)
+        self.assertEqual(
+            (
+                shell.controller.selected_team_index,
+                shell.controller.selected_slot_index,
+            ),
+            before_selected,
+        )
+        self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
+        self.assertFalse(shell.right_dock.header.account_button.isChecked())
+
+        shell.right_dock.header.account_button.click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
+        self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
+        self.assertTrue(shell.right_dock.header.account_button.isChecked())
+
+        shell.left_host.history_button.click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_HISTORY)
+        self.assertIsInstance(
+            shell.right_dock.content_stack.currentWidget(),
+            HistoryRightPanelPlaceholder,
+        )
+        self.assertEqual(shell.controller.state, before_team_state)
+        self.assertEqual(shell.controller.abyss_timer_states, before_timer_states)
+
+        shell.left_host.character_weapon_button.click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
+        self.assertIs(shell.right_dock.content_stack.currentWidget(), shell.right_panel)
+        self.assertEqual(shell.controller.state, before_team_state)
+        self.assertEqual(shell.controller.abyss_timer_states, before_timer_states)
+        self.assertEqual(
+            (
+                shell.controller.selected_team_index,
+                shell.controller.selected_slot_index,
+            ),
+            before_selected,
+        )
 
     def test_pvp_account_page_keeps_pvp_policy_until_normal_workspace_selected(self) -> None:
         shell = AppShell()

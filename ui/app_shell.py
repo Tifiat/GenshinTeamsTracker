@@ -97,7 +97,10 @@ from ui.gcsim_browser.window import (
     GcsimBrowserTeamSlotPreview,
     GcsimBrowserWorkspace,
 )
-from ui.history_browser.window import HistoryBrowserWorkspace
+from ui.history_browser.window import (
+    HistoryBrowserWorkspace,
+    HistoryRightPanelPlaceholder,
+)
 from ui.gcsim_browser.run_worker import (
     GcsimBrowserBatchRunRequest,
     GcsimBrowserBatchRunWorker,
@@ -183,8 +186,10 @@ from ui.utils.ui_palette import (
 RIGHT_OPERATIONS_DOCK_WIDTH = RIGHT_PANEL_PROTOTYPE_MIN_WIDTH
 RIGHT_DOCK_PAGE_RUN = "run"
 RIGHT_DOCK_PAGE_ACCOUNT = "account"
+RIGHT_DOCK_PAGE_HISTORY = "history"
 RIGHT_DOCK_PAGE_PVP = "pvp"
 RIGHT_DOCK_POLICY_RUN = "run"
+RIGHT_DOCK_POLICY_HISTORY = "history"
 RIGHT_DOCK_POLICY_PVP = "pvp"
 RIGHT_DOCK_ACCOUNT_ICON_SIZE = 18
 LEFT_WORKSPACE_CHARACTERS_WEAPONS = "characters_weapons"
@@ -1381,6 +1386,7 @@ class AppShell(QWidget):
         self.pvp_right_panel = PvpDecksRightPanel(self.left_host.pvp_workspace)
         self.right_dock = RightOperationsDock(
             self.right_panel,
+            history_operation_widget=HistoryRightPanelPlaceholder(),
             pvp_operation_widget=self.pvp_right_panel,
             active_mode=self.controller.mode,
         )
@@ -2125,7 +2131,12 @@ class AppShell(QWidget):
         if workspace_id == LEFT_WORKSPACE_PVP:
             self.cancel_pending_right_panel_refresh(reason="pvp_workspace_activate")
             self.right_dock.show_pvp_page()
-        elif previous_workspace_id == LEFT_WORKSPACE_PVP:
+        elif workspace_id == LEFT_WORKSPACE_HISTORY:
+            self.cancel_pending_right_panel_refresh(
+                reason="history_workspace_activate"
+            )
+            self.right_dock.show_history_page()
+        elif previous_workspace_id in (LEFT_WORKSPACE_PVP, LEFT_WORKSPACE_HISTORY):
             self.right_dock.show_run_page(self.controller.mode)
         log_perf(
             "left_workspace_activate",
@@ -2422,10 +2433,13 @@ class LeftWorkspaceHost(QWidget):
         index = self._workspace_indices_by_id.get(workspace_id)
         if index is None:
             return
+        current_index = self.stack.currentIndex()
         self.stack.setCurrentIndex(index)
         button = self._workspace_buttons_by_id.get(workspace_id)
         if button is not None:
             button.setChecked(True)
+        if index == current_index:
+            self.workspace_activated.emit(workspace_id)
 
     def active_workspace_id(self) -> str:
         return self._workspace_ids_by_index.get(self.stack.currentIndex(), "")
@@ -2695,11 +2709,23 @@ class RightDockHeader(QWidget):
         self.pvp_control_button.setChecked(True)
         self.account_button.setChecked(False)
 
+    def show_history_viewer(self) -> None:
+        self.run_mode_tabs.setVisible(False)
+        self.run_mode_tabs.set_active_mode(None)
+        self.pvp_control_button.setVisible(False)
+        self.pvp_control_button.setChecked(False)
+        self.account_button.setChecked(False)
+
     def show_account(self, *, policy: str = RIGHT_DOCK_POLICY_RUN) -> None:
         if policy == RIGHT_DOCK_POLICY_PVP:
             self.run_mode_tabs.setVisible(False)
             self.run_mode_tabs.set_active_mode(None)
             self.pvp_control_button.setVisible(True)
+            self.pvp_control_button.setChecked(False)
+        elif policy == RIGHT_DOCK_POLICY_HISTORY:
+            self.run_mode_tabs.setVisible(False)
+            self.run_mode_tabs.set_active_mode(None)
+            self.pvp_control_button.setVisible(False)
             self.pvp_control_button.setChecked(False)
         else:
             self.run_mode_tabs.setVisible(True)
@@ -2722,12 +2748,16 @@ class RightOperationsDock(QFrame):
         operation_widget: QWidget,
         parent: QWidget | None = None,
         *,
+        history_operation_widget: QWidget | None = None,
         pvp_operation_widget: QWidget | None = None,
         active_mode: str = MODE_ABYSS,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("RightOperationsDock")
         self.operation_widget = operation_widget
+        self.history_operation_widget = (
+            history_operation_widget or HistoryRightPanelPlaceholder()
+        )
         self.pvp_operation_widget = pvp_operation_widget or PvpRightDockPlaceholder()
         self._operation_policy = RIGHT_DOCK_POLICY_RUN
         self.header = RightDockHeader(active_mode)
@@ -2740,11 +2770,13 @@ class RightOperationsDock(QFrame):
 
         self.content_stack = QStackedWidget()
         self.content_stack.addWidget(self.operation_widget)
+        self.content_stack.addWidget(self.history_operation_widget)
         self.content_stack.addWidget(self.pvp_operation_widget)
         self.content_stack.addWidget(self.account_page)
         layout.addWidget(self.content_stack, 1)
 
         operation_widget.setMinimumWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
+        self.history_operation_widget.setMinimumWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
         self.pvp_operation_widget.setMinimumWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
         self.setFixedWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
@@ -2758,6 +2790,8 @@ class RightOperationsDock(QFrame):
     def current_page(self) -> str:
         if self.content_stack.currentWidget() is self.account_page:
             return RIGHT_DOCK_PAGE_ACCOUNT
+        if self.content_stack.currentWidget() is self.history_operation_widget:
+            return RIGHT_DOCK_PAGE_HISTORY
         if self.content_stack.currentWidget() is self.pvp_operation_widget:
             return RIGHT_DOCK_PAGE_PVP
         return RIGHT_DOCK_PAGE_RUN
@@ -2772,6 +2806,11 @@ class RightOperationsDock(QFrame):
         self.content_stack.setCurrentWidget(self.pvp_operation_widget)
         self.header.show_pvp_control()
 
+    def show_history_page(self) -> None:
+        self._operation_policy = RIGHT_DOCK_POLICY_HISTORY
+        self.content_stack.setCurrentWidget(self.history_operation_widget)
+        self.header.show_history_viewer()
+
     def show_account_page(self) -> None:
         self.content_stack.setCurrentWidget(self.account_page)
         self.header.show_account(policy=self._operation_policy)
@@ -2782,6 +2821,8 @@ class RightOperationsDock(QFrame):
     def retranslate_ui(self) -> None:
         self.header.retranslate_ui()
         self.account_page.retranslate_ui()
+        if hasattr(self.history_operation_widget, "retranslate_ui"):
+            self.history_operation_widget.retranslate_ui()
         if hasattr(self.pvp_operation_widget, "retranslate_ui"):
             self.pvp_operation_widget.retranslate_ui()
 
@@ -4175,6 +4216,7 @@ __all__ = [
     "LEFT_WORKSPACE_PVP",
     "LeftWorkspaceHost",
     "RIGHT_DOCK_PAGE_ACCOUNT",
+    "RIGHT_DOCK_PAGE_HISTORY",
     "RIGHT_DOCK_PAGE_PVP",
     "RIGHT_DOCK_PAGE_RUN",
     "RosterSelectionMarker",

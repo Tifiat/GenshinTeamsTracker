@@ -56,7 +56,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the compact chamber/result area has live in-memory Abyss timer and factual-DPS behavior, but typed reset/save/history persistence is not wired, and the approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
   - keep the reduced fixed-width right operations dock around `RightPanelPrototypeWidget`; it must not be user-resizable or expand with the window;
   - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, a painted pixel-aligned icon grid via `ui/utils/pixel_icon_grid.py`, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
-  - AppShell left workspace navigation exists with Character/Weapon, lazy-created Artifacts, GCSIM Browser, inert `ui/history_browser/` History placeholder, and PvP Decks v0 workspaces. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; real History browsing still waits for typed immutable run snapshots and the contract in `docs/handoff/HISTORY_BROWSER.md`;
+  - AppShell left workspace navigation exists with Character/Weapon, lazy-created Artifacts, GCSIM Browser, inert `ui/history_browser/` History placeholder, and PvP Decks v0 workspaces. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; activating History hides the live Run panel behind an isolated empty History right-viewer without clearing live session state, and real History browsing still waits for typed immutable run snapshots and the contract in `docs/handoff/HISTORY_BROWSER.md`;
   - continue the production adapter: first typed live-session ownership now lives in `run_workspace/session.py` for mode/per-mode team state, selected target, external bonus state, Abyss timers/T2 follow flags, and compact runtime GCSIM chamber results. AppShellController remains the UI/account/equipment adapter, and immutable saved snapshots, snapshot persistence, Reset/Save/History routing, and durable GCSIM history attachment remain future work;
   - keep roster clicks as quick-pick add/remove and right-panel slot clicks as selected build/details target toggle;
   - AppShell quick-pick marker latency is fixed with incremental visible-card marker updates; roster clicks now update markers immediately and defer/coalesce right-panel refreshes through a short scheduler;
@@ -159,7 +159,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 - History is an AppShell left workspace with placeholder UI owned by
   `ui/history_browser/`; `ui/app_shell.py` should only wire the stable
-  `history` workspace id/nav/routing.
+  `history` workspace id/nav/routing and select the isolated empty History
+  right-viewer.
 - Future saved-run browsing, autonomous immutable snapshot bundles, Akasha-like
   rows, expanded export image/card, and the read-only History-specific
   right-panel viewer are contracted in `docs/handoff/HISTORY_BROWSER.md`.

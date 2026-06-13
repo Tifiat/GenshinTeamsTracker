@@ -50,3 +50,41 @@ class HistoryBrowserWorkspace(QFrame):
         self.subtitle_label.setText(tr("app_shell.history.placeholder.subtitle"))
         self.note_label.setText(tr("app_shell.history.placeholder.note"))
         self.legacy_note_label.setText(tr("app_shell.history.placeholder.legacy_note"))
+
+
+class HistoryRightPanelPlaceholder(QWidget):
+    """Empty read-only History viewer until immutable snapshot payloads exist."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("RightPanelPrototypeContent")
+        root = QVBoxLayout(self)
+        root.setContentsMargins(8, 8, 8, 8)
+        root.setSpacing(8)
+
+        frame = QFrame()
+        frame.setObjectName("InfoBlock")
+        frame_layout = QVBoxLayout(frame)
+        frame_layout.setContentsMargins(8, 8, 8, 8)
+        frame_layout.setSpacing(8)
+
+        self.title_label = QLabel()
+        self.title_label.setObjectName("SectionTitle")
+        frame_layout.addWidget(self.title_label)
+
+        self.empty_label = QLabel()
+        self.empty_label.setWordWrap(True)
+        frame_layout.addWidget(self.empty_label)
+
+        self.note_label = QLabel()
+        self.note_label.setWordWrap(True)
+        frame_layout.addWidget(self.note_label)
+
+        root.addWidget(frame)
+        root.addStretch(1)
+        self.retranslate_ui()
+
+    def retranslate_ui(self) -> None:
+        self.title_label.setText(tr("app_shell.history.viewer.title"))
+        self.empty_label.setText(tr("app_shell.history.viewer.empty"))
+        self.note_label.setText(tr("app_shell.history.viewer.note"))

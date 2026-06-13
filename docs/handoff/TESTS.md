@@ -50,7 +50,7 @@ Mirror the primary project owner under `tests/`:
 - `tests/run_workspace/session/` - typed live Run Session ownership for
   AppShell mode/team/selection/timer/GCSIM runtime state.
 - `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests,
-  including workspace/right-dock routing integration for PvP.
+  including workspace/right-dock routing integration for History and PvP.
 - `tests/ui/pvp_browser/` - PvP Browser/Decks widget tests, including
   workspace/right-panel create, edit, save/cancel, corrected Artifact
   Browser-style preset rows/expanded info, Enter/Esc create/edit shortcuts,

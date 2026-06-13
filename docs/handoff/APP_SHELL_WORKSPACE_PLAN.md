@@ -357,9 +357,10 @@ team builders into the production shell path.
 
 Production-switch blockers:
 
-- `RightPanelPrototypeWidget` has live in-memory Abyss timer editing, but action
-  labels remain display-only. Typed run/session reset, immutable save snapshot,
-  and history opening behavior are not yet wired into the new
+- `RightPanelPrototypeWidget` has live in-memory Abyss timer editing, factual
+  DPS rows, and compact GCSIM status/result cells. The old inert bottom action
+  label placeholder is removed; typed run/session reset, immutable save
+  snapshot, and history opening behavior are not yet wired into the new
   AppShell/controller path.
 - New run/session persistence and immutable history snapshot flow need the
   typed contract in `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` before

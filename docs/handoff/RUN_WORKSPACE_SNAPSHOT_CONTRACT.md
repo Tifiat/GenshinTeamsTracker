@@ -13,8 +13,9 @@ does not switch `main.py`.
   in-memory `TeamBuilderState` selections for Abyss and DPS Dummy.
 - `RightOperationsDock` is the fixed right operation area. Its current
   `RightPanelPrototypeWidget` has live in-memory Abyss timer editing, factual
-  DPS rows, and compact GCSIM status/result cells, but reset/save/history
-  commands are not yet durable run/session operations.
+  DPS rows, and compact GCSIM status/result cells. The old inert bottom
+  `Reset` / `Save Run` / `History` action placeholder has been removed; durable
+  reset/save/history commands are still future typed session-controller work.
 - `run_workspace.team_builder` is the typed team composition layer.
 - `run_workspace.models` contains an early legacy Abyss snapshot adapter:
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,

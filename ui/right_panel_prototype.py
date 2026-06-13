@@ -18,7 +18,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QPushButton,
     QSizePolicy,
-    QStyle,
     QToolTip,
     QVBoxLayout,
     QWidget,
@@ -247,8 +246,6 @@ class RightPanelPrototypeWidget(QWidget):
         )
         self._layout.addWidget(self._details_frame)
 
-        self._actions = ActionBarPrototypeWidget(model.action_labels)
-        self._layout.addWidget(self._actions)
         self._layout.addStretch(1)
 
         self.setStyleSheet(right_panel_stylesheet())
@@ -292,9 +289,6 @@ class RightPanelPrototypeWidget(QWidget):
         details_start = perf_now()
         self._details_frame.set_details(model.selected_details)
         details_ms = perf_ms(details_start)
-        actions_start = perf_now()
-        self._actions.set_labels(model.action_labels)
-        actions_ms = perf_ms(actions_start)
         self._settle_content_layout()
         log_perf(
             "right_panel_set_model_widget",
@@ -304,7 +298,6 @@ class RightPanelPrototypeWidget(QWidget):
             teams_mode=teams_mode,
             chamber=chamber_ms,
             details=details_ms,
-            actions=actions_ms,
         )
         if updates_were_enabled:
             QTimer.singleShot(0, self._finish_deferred_update)
@@ -2144,40 +2137,6 @@ def _tooltip_compare_key(value: str) -> str:
     return str(value or "").strip().rstrip(".;:").strip().casefold()
 
 
-class ActionBarPrototypeWidget(QFrame):
-    def __init__(
-        self,
-        labels: tuple[str, ...],
-        parent: QWidget | None = None,
-    ):
-        super().__init__(parent)
-        self.setObjectName("ActionBar")
-        self._labels: tuple[str, ...] | None = None
-        self._layout = QHBoxLayout(self)
-        self._layout.setContentsMargins(0, 0, 0, 0)
-        self._layout.setSpacing(8)
-        self.set_labels(labels)
-
-    def set_labels(self, labels: tuple[str, ...]) -> None:
-        labels = tuple(labels)
-        if labels == self._labels:
-            return
-        self._labels = labels
-        _clear_layout(self._layout)
-        standard_icons = [
-            QStyle.StandardPixmap.SP_BrowserReload,
-            QStyle.StandardPixmap.SP_DialogSaveButton,
-            QStyle.StandardPixmap.SP_FileDialogDetailedView,
-        ]
-        style = QApplication.style()
-        for index, label in enumerate(labels):
-            button = QPushButton(label)
-            button.setObjectName("ActionButton")
-            if index < len(standard_icons):
-                button.setIcon(style.standardIcon(standard_icons[index]))
-            self._layout.addWidget(button)
-
-
 def _detail_row_layout(
     row: RightPanelDetailRowViewModel,
     *,
@@ -2961,8 +2920,5 @@ def right_panel_stylesheet() -> str:
         font-size: 11px;
         font-weight: 700;
         padding: 4px 8px;
-    }
-    #ActionBar {
-        background: transparent;
     }
     """

@@ -552,7 +552,9 @@ class RightPanelPrototypeViewModel:
     total_seconds: int
     gcsim_status: RightPanelGcsimStatusViewModel
     external_bonuses_enabled: bool = True
-    action_labels: tuple[str, ...] = ("Reset", "Save Run", "History")
+    # Deprecated compatibility field. Real Reset/Save/History commands belong
+    # to future typed session-controller actions and are not rendered here.
+    action_labels: tuple[str, ...] = ()
     schema_version: int = RIGHT_PANEL_PROTOTYPE_SCHEMA_VERSION
 
     def to_dict(self) -> dict[str, Any]:

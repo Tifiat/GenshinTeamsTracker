@@ -33,9 +33,10 @@ Terms:
   form one visually continuous row of same-style buttons with the ordinary
   inter-button spacing only. Do not add a visual divider, stretch gap, or
   page-specific duplicate of a global action.
-- Current normal run page-specific controls are Abyss / DPS Dummy plus a
-  localized Reset command for the active live run mode. The PvP AppShell policy
-  replaces those controls with `Decks` when the `pvp`
+- Current normal run page-specific controls are Abyss / DPS Dummy plus
+  localized Reset and Save commands for the active live run mode. Save writes
+  immutable backend snapshot bundles only; it does not open History. The PvP
+  AppShell policy replaces those controls with `Decks` / `Play` when the `pvp`
   workspace is active. The current global action is Account.
   Account opens a compact localized Account / Data page in the same fixed dock
   without changing the left workspace. The page reuses the existing HoYoLAB
@@ -305,8 +306,9 @@ Future weapon move/swap rule:
   below the current T2 value, T2 clamps down to T1 and returns to follow mode.
   Fact DPS reads cached Abyss source-data and uses Account/Data's solo/multi HP
   mode setting. The RUN Reset command resets the active typed live mode only;
-  persistence, immutable snapshots, History save/open commands, and durable
-  saved-result GCSIM integration remain future work.
+  the RUN Save command persists immutable snapshot bundles for the active run
+  type. History browsing/opening commands and durable saved-result GCSIM
+  integration remain future work.
 - Detailed next-stage contract lives in
   `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. Follow it before coding
   History or GCSIM.
@@ -372,9 +374,9 @@ Production-switch blockers:
 
 - `RightPanelPrototypeWidget` has live in-memory Abyss timer editing, factual
   DPS rows, and compact GCSIM status/result cells. The old inert bottom action
-  label placeholder is removed; typed run/session reset, immutable save
-  snapshot, and history opening behavior are not yet wired into the new
-  AppShell/controller path.
+  label placeholder is removed; typed run/session Reset and immutable RUN Save
+  snapshots are wired into the new AppShell/controller path. History
+  opening/reading behavior is not yet wired.
 - New run/session persistence and immutable history snapshot flow need the
   typed contract in `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` before
   replacing legacy startup.
@@ -689,8 +691,8 @@ Sizing note:
   `run_workspace/history_snapshot_builder.py` builds bundles from explicit
   typed session/right-panel view-model inputs.
 - Keep smoke presets as debug harness only.
-- Next production-switch adapter work is wiring Save to call the builder and
-  store bundles, then opening/reading History. Continue richer
+- RUN-page Save now calls the builder and stores immutable bundles. Next
+  production-switch adapter work is opening/reading History. Continue richer
   `CharacterDetailsData` preparation incrementally where selected-details UI
   still needs it.
 
@@ -719,11 +721,10 @@ Sizing note:
 
 - Backend/dev GCSIM and the AppShell GCSIM Browser MVP have already started.
   Continue that work without treating Browser runtime output as saved history.
-- Wire save/history commands through typed run/session state and immutable
-  `HistorySnapshotBundle` records before any GCSIM result becomes a durable
-  saved result. Active-mode Reset is already wired through typed live session
-  state, and backend bundle building from supplied session/view-model data
-  exists.
+- RUN-page Save is wired through typed run/session state and immutable
+  `HistorySnapshotBundle` records. Add History opening/reading before treating
+  any GCSIM result as durable saved history. Active-mode Reset is already wired
+  through typed live session state.
 - Replace the inert History placeholders with browsing based on immutable saved
   run snapshots and a read-only snapshot details viewer, routed from the
   right-dock History command according to active run type; follow the contract

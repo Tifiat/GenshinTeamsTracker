@@ -17,14 +17,17 @@ does not switch `main.py`.
   results.
 - `ui.app_shell.AppShellController` is still the UI/account/equipment adapter:
   it keeps equipment DB/cache/hydration, Abyss source-data cache loading,
-  Account/Data settings, GCSIM worker/payload parsing, and shell routing.
+  Account/Data settings, GCSIM worker/payload parsing, shell routing, and the
+  first RUN-page Save bridge into immutable snapshot storage.
 - `RightOperationsDock` is the fixed right operation area. Its current
   `RightPanelPrototypeWidget` has live in-memory Abyss timer editing, factual
   DPS rows, and compact GCSIM status/result cells. The old inert bottom
   `Reset` / `Save Run` / `History` action placeholder has been removed. A real
   localized RUN-page Reset command now routes through `RunSessionController`
-  and resets only the active live mode; durable save/history commands are still
-  future typed session-controller work.
+  and resets only the active live mode. A real localized RUN-page Save command
+  now builds and writes immutable `HistorySnapshotBundle` records for the
+  active run type; durable History browsing/opening remains future
+  session/workspace work.
 - `run_workspace.team_builder` is the typed team composition layer.
 - `run_workspace.models` contains an early legacy Abyss snapshot adapter:
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,
@@ -33,22 +36,25 @@ does not switch `main.py`.
   Bundle v1 schema and a caller-rooted local read/write service for supplied
   bundles. `run_workspace.history_snapshot_builder` now builds backend-only
   bundles from explicit `RunSessionState`/right-panel view-model inputs. It
-  does not wire Save, History rows, asset copying, preview rendering, or UI.
+  does not query live account/cache/DB data, copy assets, render previews, or
+  implement History rows.
 - AppShell now uses live in-memory Abyss timer state for the compact right-dock
   chamber table. T1/T2 timer edits update controller state and the right-panel
   view model immediately. T2 follows T1 until manually edited; if T1 is edited
   below current T2, T2 clamps to T1 and returns to follow mode. The RUN Reset
   command restores the active mode's teams/selection/timers/GCSIM runtime rows
-  to defaults without touching the inactive mode. Save/history persistence is
-  still future.
+  to defaults without touching the inactive mode. The RUN Save command writes
+  immutable bundles under the caller-provided snapshot root without resetting
+  or opening History.
 - The current compact editor uses separate minute/second segments inside one
   visual `MM:SS` field per T1/T2 cell. Raw segment input normalizes only on
   commit. Left/Right changes the active segment; mouse wheel and Up/Down step
   the active minute or second segment.
 - Current in-memory Abyss timer/session behavior is owned by the typed session
   boundary and exposed through AppShellController compatibility properties.
-  Reset is wired through that boundary for the active live run mode. Save/history
-  commands and immutable snapshots are still future work.
+  Reset is wired through that boundary for the active live run mode. Save is
+  wired to build/persist immutable bundles from typed session/view-model data;
+  History browsing and opening commands are still future work.
 - `ui/widgets/timers.py` contains useful timer editing behavior but must not
   remain the durable owner of run/session state.
 - `ui/run_history_window.py` and `runs_history.json` are legacy image/path
@@ -85,7 +91,7 @@ Required before switch:
 - Right dock action wiring:
   - Reset now resets the active live run mode through typed session state, not
     legacy widgets.
-  - Save must build and persist an immutable snapshot for the current run type.
+  - Save now builds and persists an immutable snapshot for the current run type.
   - History must open/select a left History workspace, not a floating legacy
     history window or right-dock-only button.
 - Startup scaling and Account/Data behavior from `AppShell` remain required.
@@ -154,9 +160,9 @@ display/provenance/team/scenario/result/asset/preview dataclasses, JSON
 roundtrip helpers, and `HistorySnapshotBundleStore(root)`. The store writes
 supplied bundles as `<root>/<bundle_id>/snapshot.json` through a temp file in
 the same directory and reads them back without using production `data/`,
-account/profile/cache/DB paths, or real assets. Future work must add the
-Save command/storage wiring that calls the backend builder for the active run
-type.
+account/profile/cache/DB paths, or real assets. The AppShell RUN Save command
+uses the project-root convention `data/history/snapshots` by default, while
+tests and future callers can pass a temp/custom root.
 
 Every snapshot should include:
 
@@ -300,10 +306,10 @@ Recommended order:
    and tests.
 2. Done: build backend-only snapshots from explicit typed live
    session/right-panel view-model data.
-3. Wire right-dock Save to snapshot creation for the active run type.
+3. Done: wire RUN-page Save to snapshot creation for the active run type.
 4. Add a minimal History left workspace that reads immutable snapshots.
-5. Route the right-dock History action to activate/select that left workspace
-   and the relevant default run type section.
+5. Route a future History command to activate/select that left workspace and
+   the relevant default run type section.
 6. Retire the floating legacy `RunHistoryWindow` only after the new workspace
    can show saved runs.
 
@@ -375,9 +381,11 @@ Integration rules:
 5. Done: backend-only builder maps supplied typed session/right-panel
    view-model data into `HistorySnapshotBundle` records for Abyss and DPS
    Dummy shapes.
-6. Wire Save to snapshot creation for the active run type.
+6. Done: RUN-page Save builds and persists immutable bundles for the active run
+   type through `HistorySnapshotBundleStore`.
 7. Add a minimal History left workspace that reads immutable snapshots, and route
-   right-dock History to that workspace with the active run type as default.
+   a future History command to that workspace with the active run type as
+   default.
 8. Attach Browser/GCSIM results to session/snapshot metadata as `sim DPS` and
    keep them separate from factual DPS.
 9. Add DPS Dummy current factual-DPS inputs/results and GCSIM DPS Dummy
@@ -387,8 +395,8 @@ Integration rules:
 
 - Do not delete `ui/main_window.py`.
 - Do not migrate the old `runs_history.json` UI as final design.
-- Do not wire Save/History UI without calling the backend builder from typed
-  session state and writing immutable History Snapshot Bundles through an
-  explicit store boundary.
+- Do not add further Save/History UI behavior without calling the backend
+  builder from typed session state and writing immutable History Snapshot
+  Bundles through an explicit store boundary.
 - Do not mix factual DPS and sim DPS.
 - Do not make right-panel widgets the source of truth for timers or saved runs.

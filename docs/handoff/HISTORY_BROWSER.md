@@ -1,10 +1,10 @@
 # History Browser Contract
 
 Scope: product and architecture contract for the future AppShell History
-Browser. The current implementation is only the inert left-workspace
-placeholder plus an empty isolated right-panel viewer in `ui/history_browser/`.
-The backend bundle schema/service exists, but real Save wiring, rows, export,
-filters, and snapshot payload rendering are later tasks.
+Browser. The current implementation is the inert left-workspace placeholder
+plus an empty isolated right-panel viewer in `ui/history_browser/`. RUN-page
+Save can now create immutable backend bundles, but rows, export, filters,
+opening/routing, and snapshot payload rendering are later tasks.
 
 ## Boundary
 
@@ -19,8 +19,8 @@ filters, and snapshot payload rendering are later tasks.
   History implementation.
 - Opening the `history` workspace immediately switches the fixed right dock to
   the isolated empty History viewer, before any saved run is selected.
-- The current placeholders remain inert until a builder saves typed
-  run/session data as immutable bundles and History rows can read them.
+- The current placeholders remain inert even though RUN Save may create
+  immutable bundles; History rows still do not read or render them.
 
 ## Future Rows
 
@@ -88,9 +88,10 @@ result/asset/preview records, JSON roundtrip helpers, and
 `HistorySnapshotBundleStore(root)` for caller-provided local roots. The store
 writes supplied bundles to `<root>/<bundle_id>/snapshot.json`.
 `run_workspace.history_snapshot_builder` can build backend-only bundles from
-explicit typed session/right-panel view-model data. These backend pieces do not
-copy real assets, query account/cache/DB data, wire Save, or render History
-rows/viewers/export surfaces.
+explicit typed session/right-panel view-model data, and AppShell RUN Save
+writes those bundles to the configured snapshot root. These backend pieces and
+the Save bridge do not copy real assets, query account/cache/DB data, or render
+History rows/viewers/export surfaces.
 
 ## Export Preview/Card
 
@@ -111,6 +112,7 @@ Recommended sequence after the placeholder/module split:
 1. Extract typed `RunSessionState`.
 2. Done: define snapshot bundle schema/service v1.
 3. Done: build backend-only snapshots from typed session/view-model data.
-4. Add fake/sample snapshot rows and preview in History Browser.
-5. Add a History-specific right-panel snapshot viewer.
-6. Add the export renderer/generator.
+4. Done: wire RUN-page Save to persist immutable bundles.
+5. Add fake/sample snapshot rows and preview in History Browser.
+6. Add a History-specific right-panel snapshot viewer.
+7. Add the export renderer/generator.

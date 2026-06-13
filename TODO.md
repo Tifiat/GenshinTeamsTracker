@@ -53,11 +53,11 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 - New target main app shell is documented in `docs/handoff/APP_SHELL_WORKSPACE_PLAN.md`: `[LeftWorkspaceHost] [RightOperationsDock]`. Treat `ui/main_window.py` as legacy once the new shell begins; do not patch the old right column as the final architecture.
 - Future AppShell tasks:
-  - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the compact chamber/result area has live in-memory Abyss timer and factual-DPS behavior, and active-mode Reset is typed; save/history persistence is not wired, and the approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
+  - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the compact chamber/result area has live in-memory Abyss timer and factual-DPS behavior, active-mode Reset is typed, and RUN-page Save writes immutable backend bundles; History browsing/routing is not wired, and the approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
   - keep the reduced fixed-width right operations dock around `RightPanelPrototypeWidget`; it must not be user-resizable or expand with the window;
   - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, a painted pixel-aligned icon grid via `ui/utils/pixel_icon_grid.py`, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
   - AppShell left workspace navigation exists with Character/Weapon, lazy-created Artifacts, GCSIM Browser, inert `ui/history_browser/` History placeholder, and PvP Decks v0 workspaces. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; activating History hides the live Run panel behind an isolated empty History right-viewer without clearing live session state, and real History browsing still waits for typed immutable run snapshots and the contract in `docs/handoff/HISTORY_BROWSER.md`;
-  - continue the production adapter: first typed live-session ownership now lives in `run_workspace/session.py` for mode/per-mode team state, selected target, external bonus state, Abyss timers/T2 follow flags, compact runtime GCSIM chamber results, and active-mode Reset. Immutable History Snapshot Bundle v1 schema/service now lives in `run_workspace/history_snapshot.py`, and `run_workspace/history_snapshot_builder.py` can build backend-only bundles from supplied session/right-panel data; Save/History routing and durable GCSIM history attachment remain future work;
+  - continue the production adapter: first typed live-session ownership now lives in `run_workspace/session.py` for mode/per-mode team state, selected target, external bonus state, Abyss timers/T2 follow flags, compact runtime GCSIM chamber results, and active-mode Reset. Immutable History Snapshot Bundle v1 schema/service now lives in `run_workspace/history_snapshot.py`, `run_workspace/history_snapshot_builder.py` can build backend-only bundles from supplied session/right-panel data, and RUN-page Save persists them through an explicit store root; History reading/routing and durable GCSIM history attachment remain future work;
   - keep roster clicks as quick-pick add/remove and right-panel slot clicks as selected build/details target toggle;
   - AppShell quick-pick marker latency is fixed with incremental visible-card marker updates; roster clicks now update markers immediately and defer/coalesce right-panel refreshes through a short scheduler;
   - AppShell filters now use session-cached character/weapon asset lists plus the reusable painted icon grid. The grid computes integer physical-pixel item/gap rectangles under fractional startup downscale and prepares cached HiDPI pixmaps outside paint events. Right-panel slot selection does not reload portrait/weapon PNGs, fitted right-panel PNG canvases are cached per DPR/source, and remaining performance work is to reduce first bonus-strip chip rebuild cost on high-DPI screens;
@@ -113,7 +113,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - saved into DPS Dummy history;
   - later connected to simulator UI.
 - Prefer UI wording "DPS" or "factual DPS" for HP/time calculation. Keep simulator output separate as "sim DPS" with explicit GCSIM label/logo where applicable.
-- Before implementing Save/History rows or durable GCSIM history, use `run_workspace/history_snapshot_builder.py` to build immutable `HistorySnapshotBundle` records from typed run/session state. The right-panel widget must display/command this state; it must not be the source of truth for timers or saved runs.
+- Before implementing History rows/routing or durable GCSIM history, keep using `run_workspace/history_snapshot_builder.py` to build immutable `HistorySnapshotBundle` records from typed run/session state. The right-panel widget must display/command this state; it must not be the source of truth for timers or saved runs.
 
 ## 3. Shared TeamCard / RunCard
 
@@ -166,8 +166,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   `docs/handoff/HISTORY_BROWSER.md`. Backend-only
   `run_workspace/history_snapshot.py` defines the autonomous immutable bundle
   schema/service, and `run_workspace/history_snapshot_builder.py` builds
-  bundles from supplied typed session/right-panel data; Save/History UI wiring
-  is still future.
+  bundles from supplied typed session/right-panel data; RUN-page Save now
+  writes bundles, while History rows/routing are still future.
 - Do not develop `ui/run_history_window.py` or `runs_history.json` as the final
   History model.
 

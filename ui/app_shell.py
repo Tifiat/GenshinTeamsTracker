@@ -6,9 +6,11 @@ import os
 import sys
 from contextlib import closing
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from collections.abc import Callable, Iterable
 from typing import Any
+from uuid import uuid4
 
 from PySide6.QtCore import QEvent, QRect, QSize, QThread, QTimer, Qt, Signal
 from PySide6.QtGui import QColor, QIcon, QPainter, QPen, QPixmap
@@ -48,7 +50,7 @@ from hoyolab_export.team_card_data import (
     BUILD_IDENTITY_SOURCE_CURRENT_EQUIPMENT,
     build_current_equipment_artifact_snapshot,
 )
-from localization import tr
+from localization import get_language, tr
 from ui.character_browser.icon_grid_adapter import build_asset_grid_items
 from run_workspace.right_panel_prototype_view_model import (
     FACT_DPS_HP_MODE_MULTI_TARGET,
@@ -56,9 +58,15 @@ from run_workspace.right_panel_prototype_view_model import (
     MODE_ABYSS,
     MODE_DPS_DUMMY,
     RightPanelGcsimChamberResult,
+    RightPanelPrototypeViewModel,
     RightPanelGcsimStatusViewModel,
     build_abyss_chamber_rows,
     build_right_panel_prototype_view_model,
+)
+from run_workspace.history_snapshot import HistorySnapshotBundleStore
+from run_workspace.history_snapshot_builder import (
+    HistorySnapshotBuildContext,
+    build_history_snapshot_bundle,
 )
 from run_workspace.abyss.source_data import AbyssFloorSourceData
 from run_workspace.abyss.fact_dps_settings import (
@@ -197,6 +205,7 @@ RIGHT_DOCK_POLICY_RUN = "run"
 RIGHT_DOCK_POLICY_HISTORY = "history"
 RIGHT_DOCK_POLICY_PVP = "pvp"
 RIGHT_DOCK_ACCOUNT_ICON_SIZE = 18
+HISTORY_SNAPSHOT_ROOT = PROJECT_ROOT / "data" / "history" / "snapshots"
 LEFT_WORKSPACE_CHARACTERS_WEAPONS = "characters_weapons"
 LEFT_WORKSPACE_ARTIFACTS = "artifacts"
 LEFT_WORKSPACE_GCSIM = "gcsim"
@@ -326,6 +335,14 @@ class PersistentEquipmentHydration:
     weapon_bonus_context: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True, slots=True)
+class RunSaveResult:
+    success: bool
+    bundle_id: str = ""
+    saved_path: Path | None = None
+    error_text: str = ""
+
+
 @dataclass
 class AppShellController:
     """Tiny boundary for the separate AppShell prototype."""
@@ -424,11 +441,17 @@ class AppShellController:
     ) -> None:
         self.session.gcsim_chamber_results = tuple(results)
 
-    def right_panel_model(self):
+    def right_panel_model(
+        self,
+        *,
+        load_abyss_source_data: bool = True,
+    ) -> RightPanelPrototypeViewModel:
         chamber_rows = (
             build_abyss_chamber_rows(
                 self.abyss_timer_states,
-                abyss_source_data=self.cached_abyss_source_data(),
+                abyss_source_data=self._right_panel_abyss_source_data(
+                    load_if_needed=load_abyss_source_data,
+                ),
                 fact_dps_multi_target_enabled=(
                     self.abyss_fact_dps_multi_target_enabled
                 ),
@@ -446,6 +469,63 @@ class AppShellController:
             chamber_rows=chamber_rows,
             gcsim_status=self._gcsim_status_view_model(),
         )
+
+    def _right_panel_abyss_source_data(
+        self,
+        *,
+        load_if_needed: bool,
+    ) -> AbyssFloorSourceData | None:
+        if load_if_needed:
+            return self.cached_abyss_source_data()
+        return (
+            self._cached_abyss_source_data
+            if self._cached_abyss_source_data_loaded
+            else None
+        )
+
+    def save_current_run_snapshot(
+        self,
+        *,
+        history_root: str | Path = HISTORY_SNAPSHOT_ROOT,
+        created_at: datetime | None = None,
+    ) -> RunSaveResult:
+        bundle_id = ""
+        try:
+            created_at_utc = _utc_snapshot_datetime(created_at)
+            bundle_id = _new_history_snapshot_bundle_id(
+                run_type=self.mode,
+                created_at=created_at_utc,
+            )
+            context = HistorySnapshotBuildContext(
+                bundle_id=bundle_id,
+                created_at=_format_history_snapshot_created_at(created_at_utc),
+                source="app_shell",
+                content_language=get_language(),
+                provenance={
+                    "right_panel_model": (
+                        "AppShellController.right_panel_model("
+                        "load_abyss_source_data=False)"
+                    ),
+                },
+            )
+            model = self.right_panel_model(load_abyss_source_data=False)
+            bundle = build_history_snapshot_bundle(
+                self.session.state,
+                model,
+                context,
+            )
+            saved_path = HistorySnapshotBundleStore(history_root).write_bundle(bundle)
+            return RunSaveResult(
+                success=True,
+                bundle_id=bundle.bundle_id,
+                saved_path=Path(saved_path),
+            )
+        except Exception as exc:
+            return RunSaveResult(
+                success=False,
+                bundle_id=bundle_id,
+                error_text=str(exc) or exc.__class__.__name__,
+            )
 
     def cached_abyss_source_data(self) -> AbyssFloorSourceData | None:
         if not self._cached_abyss_source_data_loaded:
@@ -1363,9 +1443,13 @@ class AppShell(QWidget):
         self,
         controller: AppShellController | None = None,
         parent: QWidget | None = None,
+        *,
+        history_snapshot_root: str | Path = HISTORY_SNAPSHOT_ROOT,
     ) -> None:
         super().__init__(parent)
         self.controller = controller or AppShellController.empty()
+        self.history_snapshot_root = Path(history_snapshot_root)
+        self.last_save_result: RunSaveResult | None = None
         if controller is None:
             self.controller.abyss_fact_dps_multi_target_enabled = (
                 is_abyss_fact_dps_multi_target_enabled()
@@ -1458,6 +1542,7 @@ class AppShell(QWidget):
 
         self.right_dock.mode_requested.connect(self._on_mode_requested)
         self.right_dock.reset_requested.connect(self._on_reset_requested)
+        self.right_dock.save_requested.connect(self._on_save_requested)
         self.right_panel.slot_selected.connect(self._on_slot_selected)
         self.right_panel.slot_dropped.connect(self._on_slot_dropped)
         self.right_panel.external_bonuses_toggled.connect(
@@ -2157,6 +2242,27 @@ class AppShell(QWidget):
             **refresh_timings,
         )
 
+    def _on_save_requested(self) -> None:
+        if self.right_dock.current_page() != RIGHT_DOCK_PAGE_RUN:
+            log_perf(
+                "run_save_ignored",
+                right_page=self.right_dock.current_page(),
+            )
+            return
+        total_start = perf_now()
+        result = self.controller.save_current_run_snapshot(
+            history_root=self.history_snapshot_root,
+        )
+        self.last_save_result = result
+        self.right_dock.show_save_result(result)
+        log_perf(
+            "run_save",
+            mode=self.controller.mode,
+            success=result.success,
+            bundle_id=result.bundle_id,
+            total=perf_ms(total_start),
+        )
+
     def _on_workspace_requested(self, workspace_id: str) -> None:
         self.left_host.activate_workspace(workspace_id)
 
@@ -2699,6 +2805,7 @@ def _selected_team_has_characters(selected_team: dict[str, Any]) -> bool:
 class RightDockHeader(QWidget):
     mode_requested = Signal(str)
     reset_requested = Signal()
+    save_requested = Signal()
     account_requested = Signal()
     pvp_control_requested = Signal()
     pvp_page_requested = Signal(str)
@@ -2725,6 +2832,13 @@ class RightDockHeader(QWidget):
             lambda _checked=False: self.reset_requested.emit()
         )
         layout.addWidget(self.reset_button, 1)
+
+        self.save_button = make_mode_tab_button(tr("app_shell.right_dock.save"))
+        self.save_button.setCheckable(False)
+        self.save_button.clicked.connect(
+            lambda _checked=False: self.save_requested.emit()
+        )
+        layout.addWidget(self.save_button, 1)
 
         self.pvp_decks_button = make_mode_tab_button(
             tr("app_shell.right_dock.pvp_decks")
@@ -2762,8 +2876,7 @@ class RightDockHeader(QWidget):
 
     def show_run_mode(self, mode: str) -> None:
         self.run_mode_tabs.setVisible(True)
-        self.reset_button.setVisible(True)
-        self.reset_button.setEnabled(True)
+        self._show_run_action_buttons(True)
         self._show_pvp_buttons(False)
         self.account_button.setChecked(False)
         self.run_mode_tabs.set_active_mode(mode)
@@ -2771,22 +2884,19 @@ class RightDockHeader(QWidget):
     def show_pvp_control(self, active_page: str = PVP_PAGE_DECKS) -> None:
         self.run_mode_tabs.setVisible(False)
         self.run_mode_tabs.set_active_mode(None)
-        self.reset_button.setVisible(False)
-        self.reset_button.setEnabled(False)
+        self._show_run_action_buttons(False)
         self._show_pvp_buttons(True, active_page=active_page)
         self.account_button.setChecked(False)
 
     def show_history_viewer(self) -> None:
         self.run_mode_tabs.setVisible(False)
         self.run_mode_tabs.set_active_mode(None)
-        self.reset_button.setVisible(False)
-        self.reset_button.setEnabled(False)
+        self._show_run_action_buttons(False)
         self._show_pvp_buttons(False)
         self.account_button.setChecked(False)
 
     def show_account(self, *, policy: str = RIGHT_DOCK_POLICY_RUN) -> None:
-        self.reset_button.setVisible(False)
-        self.reset_button.setEnabled(False)
+        self._show_run_action_buttons(False)
         if policy == RIGHT_DOCK_POLICY_PVP:
             self.run_mode_tabs.setVisible(False)
             self.run_mode_tabs.set_active_mode(None)
@@ -2804,12 +2914,18 @@ class RightDockHeader(QWidget):
     def retranslate_ui(self) -> None:
         self.run_mode_tabs.retranslate_ui()
         self.reset_button.setText(tr("app_shell.right_dock.reset"))
+        self.save_button.setText(tr("app_shell.right_dock.save"))
         self.pvp_decks_button.setText(tr("app_shell.right_dock.pvp_decks"))
         self.pvp_play_button.setText(tr("app_shell.right_dock.pvp_play"))
         self.account_button.setText(tr("app_shell.right_dock.account"))
 
     def _request_pvp_page(self, page_id: str) -> None:
         self.pvp_page_requested.emit(page_id)
+
+    def _show_run_action_buttons(self, visible: bool) -> None:
+        for button in (self.reset_button, self.save_button):
+            button.setVisible(visible)
+            button.setEnabled(visible)
 
     def _show_pvp_buttons(
         self,
@@ -2825,6 +2941,7 @@ class RightDockHeader(QWidget):
 class RightOperationsDock(QFrame):
     mode_requested = Signal(str)
     reset_requested = Signal()
+    save_requested = Signal()
 
     def __init__(
         self,
@@ -2846,11 +2963,25 @@ class RightOperationsDock(QFrame):
         self._pvp_page = PVP_PAGE_DECKS
         self.header = RightDockHeader(active_mode)
         self.account_page = AccountDataPage()
+        self._last_save_result: RunSaveResult | None = None
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(self.header)
+
+        self.save_status_label = QLabel("")
+        self.save_status_label.setObjectName("RightDockSaveStatus")
+        self.save_status_label.setWordWrap(True)
+        self.save_status_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        self.save_status_label.setStyleSheet(
+            "padding: 4px 10px 6px 10px; "
+            f"color: {UI_TEXT_MUTED};"
+        )
+        self.save_status_label.setVisible(False)
+        layout.addWidget(self.save_status_label)
 
         self.content_stack = QStackedWidget()
         self.content_stack.addWidget(self.operation_widget)
@@ -2868,6 +2999,7 @@ class RightOperationsDock(QFrame):
 
         self.header.mode_requested.connect(self._on_mode_requested)
         self.header.reset_requested.connect(self.reset_requested.emit)
+        self.header.save_requested.connect(self.save_requested.emit)
         self.header.pvp_control_requested.connect(
             lambda: self.show_pvp_page(PVP_PAGE_DECKS)
         )
@@ -2886,10 +3018,12 @@ class RightOperationsDock(QFrame):
 
     def show_run_page(self, mode: str) -> None:
         self._operation_policy = RIGHT_DOCK_POLICY_RUN
+        self.clear_save_status()
         self.content_stack.setCurrentWidget(self.operation_widget)
         self.header.show_run_mode(mode)
 
     def show_pvp_page(self, page_id: str | None = None) -> None:
+        self.clear_save_status()
         if page_id in (PVP_PAGE_DECKS, PVP_PAGE_PLAY):
             self._pvp_page = page_id
         self._operation_policy = RIGHT_DOCK_POLICY_PVP
@@ -2899,16 +3033,54 @@ class RightOperationsDock(QFrame):
         self.header.show_pvp_control(self._pvp_page)
 
     def show_history_page(self) -> None:
+        self.clear_save_status()
         self._operation_policy = RIGHT_DOCK_POLICY_HISTORY
         self.content_stack.setCurrentWidget(self.history_operation_widget)
         self.header.show_history_viewer()
 
     def show_account_page(self) -> None:
+        self.clear_save_status()
         self.content_stack.setCurrentWidget(self.account_page)
         self.header.show_account(policy=self._operation_policy)
 
     def _on_mode_requested(self, mode: str) -> None:
         self.mode_requested.emit(mode)
+
+    def show_save_result(self, result: RunSaveResult) -> None:
+        self._last_save_result = result
+        if self.current_page() == RIGHT_DOCK_PAGE_RUN:
+            self._render_save_status()
+
+    def clear_save_status(self) -> None:
+        self._last_save_result = None
+        self.save_status_label.clear()
+        self.save_status_label.setVisible(False)
+
+    def _render_save_status(self) -> None:
+        result = self._last_save_result
+        if result is None:
+            self.save_status_label.clear()
+            self.save_status_label.setVisible(False)
+            return
+        if result.success:
+            text = tr(
+                "app_shell.right_dock.save_status.saved",
+                bundle_id=result.bundle_id,
+                path=str(result.saved_path or ""),
+            )
+            color = UI_STATE_SUCCESS
+        else:
+            text = tr(
+                "app_shell.right_dock.save_status.failed",
+                error=result.error_text or "unknown error",
+            )
+            color = UI_STATE_DANGER
+        self.save_status_label.setStyleSheet(
+            "padding: 4px 10px 6px 10px; "
+            f"color: {color};"
+        )
+        self.save_status_label.setText(text)
+        self.save_status_label.setVisible(True)
 
     def retranslate_ui(self) -> None:
         self.header.retranslate_ui()
@@ -2917,6 +3089,11 @@ class RightOperationsDock(QFrame):
             self.history_operation_widget.retranslate_ui()
         if hasattr(self.pvp_operation_widget, "retranslate_ui"):
             self.pvp_operation_widget.retranslate_ui()
+        if (
+            self._last_save_result is not None
+            and self.current_page() == RIGHT_DOCK_PAGE_RUN
+        ):
+            self._render_save_status()
 
 
 def _account_tab_icon() -> QIcon:
@@ -4285,6 +4462,26 @@ def _gcsim_rotation_hash(text: str) -> str:
     return hashlib.sha256(str(text or "").encode("utf-8")).hexdigest()
 
 
+def _utc_snapshot_datetime(value: datetime | None = None) -> datetime:
+    current = value or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    return current.astimezone(timezone.utc).replace(microsecond=0)
+
+
+def _format_history_snapshot_created_at(value: datetime) -> str:
+    return value.isoformat().replace("+00:00", "Z")
+
+
+def _new_history_snapshot_bundle_id(
+    *,
+    run_type: str,
+    created_at: datetime,
+) -> str:
+    timestamp = created_at.strftime("%Y%m%dT%H%M%SZ")
+    return f"app-shell-{normalize_run_mode(run_type)}-{timestamp}-{uuid4().hex[:8]}"
+
+
 def _dedupe(values: list[str]) -> list[str]:
     result: list[str] = []
     for value in values:
@@ -4305,6 +4502,7 @@ __all__ = [
     "AppShellController",
     "AssetIconLabel",
     "CharacterWeaponWorkspace",
+    "HISTORY_SNAPSHOT_ROOT",
     "LEFT_WORKSPACE_ARTIFACTS",
     "LEFT_WORKSPACE_CHARACTERS_WEAPONS",
     "LEFT_WORKSPACE_GCSIM",
@@ -4317,6 +4515,7 @@ __all__ = [
     "RIGHT_DOCK_PAGE_HISTORY",
     "RIGHT_DOCK_PAGE_PVP",
     "RIGHT_DOCK_PAGE_RUN",
+    "RunSaveResult",
     "RosterSelectionMarker",
     "RightOperationsDock",
     "launch_app_shell",

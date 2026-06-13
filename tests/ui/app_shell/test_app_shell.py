@@ -33,6 +33,11 @@ from run_workspace.pvp.deck_preset import (
     create_deck_preset_from_account_assets,
     save_deck_preset,
 )
+from run_workspace.history_snapshot import (
+    HISTORY_RUN_TYPE_ABYSS,
+    HISTORY_RUN_TYPE_DPS_DUMMY,
+    HistorySnapshotBundleStore,
+)
 from ui.app_shell import (
     AppShell,
     AppShellController,
@@ -365,6 +370,130 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.controller.session.state.dps_dummy.team_state, dps_state)
         self.assertIsNone(shell.left_host._pending_artifact_right_panel_target)
         self.assertTrue(shell.right_panel._model.teams[0].slots[0].is_empty)
+
+    def test_run_save_button_writes_abyss_snapshot_without_mutating_run_state(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history" / "snapshots"
+            shell = AppShell(history_snapshot_root=root)
+            shell.controller.add_or_replace_character_fast(
+                _character_asset("10000050", "Thoma")
+            )
+            shell.controller.set_abyss_timer_seconds(0, 1, 555)
+            shell.controller.gcsim_chamber_results = (_stored_gcsim_result(),)
+            before_state = shell.controller.session.state
+
+            shell.right_dock.header.save_button.click()
+
+            result = shell.last_save_result
+            self.assertIsNotNone(result)
+            self.assertTrue(result.success)
+            self.assertTrue(result.bundle_id.startswith("app-shell-abyss-"))
+            self.assertEqual(
+                result.saved_path,
+                root / result.bundle_id / "snapshot.json",
+            )
+            self.assertFalse(shell.right_dock.save_status_label.isHidden())
+            self.assertIn(result.bundle_id, shell.right_dock.save_status_label.text())
+
+            bundle = HistorySnapshotBundleStore(root).read_bundle(result.bundle_id)
+            self.assertEqual(bundle.run_type, HISTORY_RUN_TYPE_ABYSS)
+            self.assertEqual(bundle.source, "app_shell")
+            self.assertEqual(bundle.content_language, get_language())
+            self.assertIsNotNone(bundle.scenario)
+            self.assertIsNotNone(bundle.scenario.abyss)
+            self.assertIsNotNone(bundle.scenario.abyss.chambers[0].timer)
+            self.assertEqual(
+                bundle.scenario.abyss.chambers[0].timer.team1_left_seconds,
+                555,
+            )
+            self.assertIsNotNone(bundle.teams[0].slots[0].character)
+            self.assertEqual(bundle.teams[0].slots[0].character.name, "Thoma")
+            self.assertEqual(shell.controller.session.state, before_state)
+
+    def test_run_save_controller_writes_dps_dummy_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history" / "snapshots"
+            shell = AppShell(history_snapshot_root=root)
+            shell._on_mode_requested(MODE_DPS_DUMMY)
+            shell.controller.add_or_replace_character_fast(
+                _character_asset("10000089", "Furina", weapon_type=1)
+            )
+            before_state = shell.controller.session.state
+
+            result = shell.controller.save_current_run_snapshot(history_root=root)
+
+            self.assertTrue(result.success)
+            bundle = HistorySnapshotBundleStore(root).read_bundle(result.bundle_id)
+            self.assertEqual(bundle.run_type, HISTORY_RUN_TYPE_DPS_DUMMY)
+            self.assertIsNotNone(bundle.scenario)
+            self.assertIsNotNone(bundle.scenario.dps_dummy)
+            self.assertIsNotNone(bundle.teams[0].slots[0].character)
+            self.assertEqual(bundle.teams[0].slots[0].character.name, "Furina")
+            self.assertEqual(shell.controller.session.state, before_state)
+
+    def test_run_save_failure_reports_status_without_raising(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            shell = AppShell(history_snapshot_root=Path(tmp) / "history")
+
+            with patch(
+                "ui.app_shell.HistorySnapshotBundleStore.write_bundle",
+                side_effect=OSError("write blocked"),
+            ):
+                shell.right_dock.header.save_button.click()
+
+            result = shell.last_save_result
+            self.assertIsNotNone(result)
+            self.assertFalse(result.success)
+            self.assertIn("write blocked", result.error_text)
+            self.assertFalse(shell.right_dock.save_status_label.isHidden())
+            self.assertIn("write blocked", shell.right_dock.save_status_label.text())
+
+    def test_run_save_button_is_live_run_only_and_ignored_elsewhere(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history" / "snapshots"
+            shell = AppShell(history_snapshot_root=root)
+
+            self.assertFalse(shell.right_dock.header.save_button.isHidden())
+            self.assertTrue(shell.right_dock.header.save_button.isEnabled())
+
+            with patch(
+                "ui.app_shell.HistorySnapshotBundleStore.write_bundle",
+                wraps=HistorySnapshotBundleStore.write_bundle,
+            ) as write_bundle:
+                shell.left_host.history_button.click()
+
+                self.assertEqual(
+                    shell.right_dock.current_page(),
+                    RIGHT_DOCK_PAGE_HISTORY,
+                )
+                self.assertTrue(shell.right_dock.header.save_button.isHidden())
+                self.assertFalse(shell.right_dock.header.save_button.isEnabled())
+                shell.right_dock.save_requested.emit()
+                write_bundle.assert_not_called()
+                self.assertFalse(root.exists())
+
+                shell.right_dock.header.account_button.click()
+
+                self.assertEqual(
+                    shell.right_dock.current_page(),
+                    RIGHT_DOCK_PAGE_ACCOUNT,
+                )
+                self.assertTrue(shell.right_dock.header.save_button.isHidden())
+                self.assertFalse(shell.right_dock.header.save_button.isEnabled())
+                shell.right_dock.save_requested.emit()
+                write_bundle.assert_not_called()
+                self.assertFalse(root.exists())
+
+                shell.left_host.pvp_button.click()
+
+                self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
+                self.assertTrue(shell.right_dock.header.save_button.isHidden())
+                self.assertFalse(shell.right_dock.header.save_button.isEnabled())
+                shell.right_dock.save_requested.emit()
+                write_bundle.assert_not_called()
+                self.assertFalse(root.exists())
 
     def test_pvp_account_page_keeps_pvp_policy_until_normal_workspace_selected(self) -> None:
         shell = AppShell()

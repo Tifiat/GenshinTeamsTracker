@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QEvent, QMargins, QPoint, QRect, QRectF, QSize, Qt, Signal
@@ -211,6 +212,7 @@ class PixelIconGrid(QWidget):
         self._prepared_pixmaps: dict[str, QPixmap] = {}
         self._prepared_overlay_pixmaps: dict[tuple[str, int], QPixmap] = {}
         self._prepared_backgrounds: dict[tuple[str, int, int], QPixmap] = {}
+        self._prepared_pixmap_signature: tuple[object, ...] | None = None
         self._pixmap_cache: dict[tuple[object, ...], QPixmap | None] = {}
         self._hovered_item_id = ""
         self._tooltip_anchor = QWidget(self)
@@ -246,16 +248,20 @@ class PixelIconGrid(QWidget):
             return False
         updated: list[PixelIconGridItem] = []
         changed = False
+        pixmap_inputs_changed = False
         for item in self._items:
             if item.item_id == item_id:
+                previous = item
                 item = replace(item, **changes)
                 changed = True
+                pixmap_inputs_changed = _item_pixmap_inputs_changed(previous, item)
             updated.append(item)
         if not changed:
             return False
         self._items = tuple(updated)
         self._items_by_id = {item.item_id: item for item in self._items if item.item_id}
-        self._refresh_prepared_pixmaps()
+        if pixmap_inputs_changed:
+            self._refresh_prepared_pixmaps()
         self.update()
         return True
 
@@ -399,6 +405,9 @@ class PixelIconGrid(QWidget):
 
     def _refresh_prepared_pixmaps(self) -> None:
         dpr = self.devicePixelRatioF()
+        signature = self._pixmap_signature(dpr)
+        if signature == self._prepared_pixmap_signature:
+            return
         self._prepared_pixmaps = {}
         self._prepared_overlay_pixmaps = {}
         self._prepared_backgrounds = {}
@@ -428,6 +437,15 @@ class PixelIconGrid(QWidget):
                     surface=f"{self._surface}_overlay",
                 )
                 self._prepared_overlay_pixmaps[(item.item_id, overlay_index)] = result.pixmap
+        self._prepared_pixmap_signature = signature
+
+    def _pixmap_signature(self, dpr: float) -> tuple[object, ...]:
+        return (
+            dpr_cache_key(dpr),
+            int(self._metrics.item_width),
+            int(self._metrics.resolved_item_height),
+            tuple(_item_pixmap_signature(item) for item in self._items),
+        )
 
     def _overlay_logical_size(self, overlay: PixelIconGridOverlayIcon) -> QSize:
         return QSize(
@@ -642,6 +660,45 @@ def _logical_rect(rect: QRect, dpr: float) -> QRectF:
         rect.width() / scale,
         rect.height() / scale,
     )
+
+
+def _item_pixmap_inputs_changed(
+    previous: PixelIconGridItem,
+    current: PixelIconGridItem,
+) -> bool:
+    return (
+        previous.item_id != current.item_id
+        or previous.icon_path != current.icon_path
+        or previous.overlay_icons != current.overlay_icons
+        or previous.pixmap_cache_key_parts != current.pixmap_cache_key_parts
+    )
+
+
+def _item_pixmap_signature(item: PixelIconGridItem) -> tuple[object, ...]:
+    return (
+        item.item_id,
+        _path_signature(item.icon_path),
+        tuple(
+            (
+                overlay,
+                _path_signature(overlay.icon_path),
+            )
+            for overlay in item.overlay_icons
+        ),
+        item.pixmap_cache_key_parts,
+    )
+
+
+def _path_signature(path_value: str) -> tuple[str, int, int]:
+    path_text = str(path_value or "")
+    if not path_text:
+        return ("", 0, 0)
+    path = Path(path_text)
+    try:
+        stat = path.stat()
+    except OSError:
+        return (path_text, 0, 0)
+    return (path_text, int(stat.st_mtime_ns), int(stat.st_size))
 
 
 def _physical_rect_for_logical(rect: QRect, dpr: float) -> QRect:

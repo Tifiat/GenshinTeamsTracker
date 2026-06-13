@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from ui.utils.app_scaling import configure_startup_ui_scale
 
@@ -74,6 +75,38 @@ class PvpBrowserTest(unittest.TestCase):
 
             self.assertFalse(workspace.create_deck("Empty"))
             self.assertEqual(workspace.presets, [])
+
+    def test_pvp_decks_show_event_skips_unchanged_viewport_refresh(self) -> None:
+        characters = [_character_asset("10000050", "Thoma")]
+        weapons = [_weapon_asset("13407", "Favonius Lance", weapon_type=13)]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpDecksWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: characters,
+                weapon_assets_provider=lambda: weapons,
+            )
+            workspace._last_refresh_viewport_widths = workspace._current_viewport_widths()
+
+            with patch.object(workspace, "refresh_view", wraps=workspace.refresh_view) as refresh:
+                QApplication.sendEvent(workspace, QEvent(QEvent.Type.Show))
+
+            refresh.assert_not_called()
+
+    def test_pvp_decks_width_change_refreshes_view(self) -> None:
+        characters = [_character_asset("10000050", "Thoma")]
+        weapons = [_weapon_asset("13407", "Favonius Lance", weapon_type=13)]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = PvpDecksWorkspace(
+                deck_dir=temp_dir,
+                character_assets_provider=lambda: characters,
+                weapon_assets_provider=lambda: weapons,
+            )
+            workspace._last_refresh_viewport_widths = (-1, -1)
+
+            with patch.object(workspace, "refresh_view", wraps=workspace.refresh_view) as refresh:
+                workspace._refresh_view_if_viewport_widths_changed()
+
+            refresh.assert_called_once()
 
     def test_pvp_decks_right_panel_has_no_start_draft_action(self) -> None:
         characters = [_character_asset("10000089", "Furina", weapon_type=1)]

@@ -137,6 +137,37 @@ class AppShellTest(unittest.TestCase):
             LEFT_WORKSPACE_CHARACTERS_WEAPONS,
         )
 
+    def test_app_shell_reuses_character_weapon_asset_cache_for_pvp_workspace(self) -> None:
+        characters = [_character_asset("10000050", "Thoma")]
+        weapons = [_weapon_asset("13407", "Favonius Lance", weapon_type=13)]
+        with (
+            patch(
+                "ui.app_shell.load_account_character_asset_items",
+                return_value=characters,
+            ) as character_loader,
+            patch(
+                "ui.app_shell.load_account_weapon_stack_asset_items",
+                return_value=weapons,
+            ) as weapon_loader,
+            patch(
+                "ui.pvp_browser.window.load_account_character_asset_items",
+                side_effect=AssertionError("PvP should use AppShell provider"),
+            ),
+            patch(
+                "ui.pvp_browser.window.load_account_weapon_stack_asset_items",
+                side_effect=AssertionError("PvP should use AppShell provider"),
+            ),
+        ):
+            shell = AppShell()
+            workspace = shell.left_host.character_weapon_workspace
+            workspace.reload_characters()
+            workspace.reload_weapons()
+
+        self.assertEqual(shell.left_host.pvp_workspace.character_assets, characters)
+        self.assertEqual(shell.left_host.pvp_workspace.weapon_assets, weapons)
+        character_loader.assert_called_once()
+        weapon_loader.assert_called_once()
+
     def test_left_workspace_nav_requests_route_through_app_shell(self) -> None:
         shell = AppShell()
 

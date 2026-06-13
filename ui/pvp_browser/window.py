@@ -598,7 +598,7 @@ class PvpDecksWorkspace(QWidget):
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
-        self.refresh_view()
+        self._refresh_view_if_viewport_widths_changed()
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)

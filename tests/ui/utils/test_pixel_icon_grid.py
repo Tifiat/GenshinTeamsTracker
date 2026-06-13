@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
-from PySide6.QtCore import QPoint
+from PySide6.QtCore import QEvent, QPoint
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QApplication
 
+from ui.utils.hidpi_pixmap import HidpiPixmapResult
 from ui.utils.pixel_icon_grid import (
     PixelIconGrid,
     PixelIconGridItem,
     PixelIconGridMetrics,
+    PixelIconGridOutline,
     build_pixel_icon_grid_layout,
 )
 
@@ -107,6 +111,50 @@ class PixelIconGridLayoutTest(unittest.TestCase):
         self.assertTrue(grid.click_item_for_test("10000050"))
 
         self.assertEqual(clicked, ["10000050"])
+
+    def test_outline_only_update_does_not_reload_pixmaps(self) -> None:
+        grid = PixelIconGrid(metrics=PixelIconGridMetrics(item_width=20, gap_x=2))
+        with patch(
+            "ui.utils.pixel_icon_grid.load_hidpi_pixmap",
+            return_value=HidpiPixmapResult(QPixmap(), False, 1.0),
+        ) as load:
+            grid.set_items([PixelIconGridItem(item_id="a", icon_path="a.png")])
+            self.assertEqual(load.call_count, 1)
+
+            updated = grid.update_item(
+                "a",
+                outline=PixelIconGridOutline(color="#35d07f"),
+            )
+
+        self.assertTrue(updated)
+        self.assertEqual(load.call_count, 1)
+
+    def test_pixmap_input_update_reloads_pixmaps(self) -> None:
+        grid = PixelIconGrid(metrics=PixelIconGridMetrics(item_width=20, gap_x=2))
+        with patch(
+            "ui.utils.pixel_icon_grid.load_hidpi_pixmap",
+            return_value=HidpiPixmapResult(QPixmap(), False, 1.0),
+        ) as load:
+            grid.set_items([PixelIconGridItem(item_id="a", icon_path="a.png")])
+            self.assertEqual(load.call_count, 1)
+
+            updated = grid.update_item("a", icon_path="b.png")
+
+        self.assertTrue(updated)
+        self.assertEqual(load.call_count, 2)
+
+    def test_repeated_show_event_skips_unchanged_pixmap_inputs(self) -> None:
+        grid = PixelIconGrid(metrics=PixelIconGridMetrics(item_width=20, gap_x=2))
+        with patch(
+            "ui.utils.pixel_icon_grid.load_hidpi_pixmap",
+            return_value=HidpiPixmapResult(QPixmap(), False, 1.0),
+        ) as load:
+            grid.set_items([PixelIconGridItem(item_id="a", icon_path="a.png")])
+            self.assertEqual(load.call_count, 1)
+
+            QApplication.sendEvent(grid, QEvent(QEvent.Type.Show))
+
+        self.assertEqual(load.call_count, 1)
 
 
 if __name__ == "__main__":

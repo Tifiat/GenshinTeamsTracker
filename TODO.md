@@ -449,21 +449,11 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   Assignment rows, fixed preset panel). Extra horizontal remainder goes to
   Assignment width as a preferred/current width, not a propagated minimum. Do
   not reintroduce candidate-width search or guessed card/gap constants.
-- Future startup preload/cache concept, after real optimization work: prewarm
-  heavy tabs/widgets under the startup loader or a progress strip, including
-  Artifact Browser, Character/Weapon workspace, preset-edit controls, and
-  pixmap/text/marquee caches. Persistent caches should reduce loader time on
-  later launches. Do not use this loader as a substitute for fixing current
-  optimization or layout bugs.
-- Loader/prewarm backlog from AppShell click profiling: the visible roster marker
-  path is still instant (`~2-3 ms`), but deferred work can still feel heavy.
-  Prewarm the Character/Weapon workspace weapon asset list so the first
-  selected-character weapon auto-filter cannot reopen SQLite (`~140-150 ms` in
-  the measured cold sync), and consider prebuilding/reusing filtered weapon grid
-  card pixmaps/widgets where safe (`~15-40 ms` cached sync). Also keep an eye on
-  right-panel selected-details/bonus-strip rendering for equipped characters
-  (`~50-66 ms` refresh spikes) as a possible loader/cache target if it becomes
-  visible again.
+- Future startup preload/cache concept, after real optimization work, is tracked
+  in `docs/handoff/PRELOADER_BACKLOG.md`. Do not use that future loader as a
+  substitute for fixing duplicate work, avoidable rebuilds, or current layout
+  bugs. Keep TODO here as a pointer; detailed loader candidates belong in the
+  dedicated handoff with measurement context.
 - AppShell/Artifact Browser performance measurement on the weak 1366px HP
   laptop is recorded in
   `docs/handoff/performance_measurements/2026-06-13_appshell_artifact_browser_hp_1366.md`.

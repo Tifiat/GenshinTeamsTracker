@@ -950,6 +950,7 @@ class ArtifactBrowserWindow(QWidget):
         self._build_target_buttons_initialized = False
         self._build_target_button_order: list[str] = []
         self._build_target_list_stretch_added = False
+        self._build_target_button_icon_ms = 0.0
         self.build_target_element_filters: set[str] = set()
         self.build_target_weapon_filters: set[str] = set()
         self.build_target_rarity_filters: set[int] = set()
@@ -997,6 +998,7 @@ class ArtifactBrowserWindow(QWidget):
         self._artifact_column_count = 0
         self.content_layout: QHBoxLayout | None = None
         self.build_target_panel: QFrame | None = None
+        self.build_target_list_content: QWidget | None = None
         self.build_panel: QFrame | None = None
         self._resize_event_count = 0
         self._adaptive_update_count = 0
@@ -1432,6 +1434,7 @@ class ArtifactBrowserWindow(QWidget):
         target_scroll.setWidgetResizable(True)
         target_scroll.setFrameShape(QFrame.Shape.NoFrame)
         target_content = QWidget()
+        self.build_target_list_content = target_content
         self.build_target_list_layout = QVBoxLayout(target_content)
         self.build_target_list_layout.setContentsMargins(0, 0, 0, 0)
         self.build_target_list_layout.setSpacing(TARGET_ITEM_SPACING)
@@ -3077,6 +3080,7 @@ class ArtifactBrowserWindow(QWidget):
         button.setProperty("targetIconSource", "")
         button.setProperty("targetVisible", True)
         path = item.get("path")
+        icon_start = perf_now()
         if key == BUILD_TARGET_UNIVERSAL_KEY:
             button.setIcon(self._cached_universal_target_icon())
             button.setIconSize(QSize(TARGET_ITEM_ICON_SIZE, TARGET_ITEM_ICON_SIZE))
@@ -3085,6 +3089,7 @@ class ArtifactBrowserWindow(QWidget):
             button.setIcon(QIcon(str(path)))
             button.setIconSize(QSize(TARGET_ITEM_ICON_SIZE, TARGET_ITEM_ICON_SIZE))
             button.setProperty("targetIconSource", str(path))
+        self._build_target_button_icon_ms += perf_ms(icon_start)
         button.clicked.connect(
             lambda checked=False, value=key: self.toggle_build_target(value)
         )
@@ -3092,19 +3097,50 @@ class ArtifactBrowserWindow(QWidget):
         return button
 
     def _ensure_build_target_buttons(self) -> int:
+        total_start = perf_now()
+        icon_ms_before = self._build_target_button_icon_ms
         created = 0
         if not self._build_target_buttons_initialized:
-            for item in self._ordered_build_target_items():
-                key = item["key"]
-                if key in self.build_target_buttons_by_key:
-                    continue
-                button = self._make_build_target_button(item)
-                self.build_target_list_layout.addWidget(button)
-                self._build_target_button_order.append(key)
-                created += 1
-            self.build_target_list_layout.addStretch()
-            self._build_target_list_stretch_added = True
-            self._build_target_buttons_initialized = True
+            update_widgets = [
+                widget
+                for widget in (
+                    self.build_target_panel,
+                    getattr(self, "build_target_scroll", None),
+                    self.build_target_list_content,
+                )
+                if widget is not None
+            ]
+            update_states = [
+                (widget, widget.updatesEnabled())
+                for widget in update_widgets
+            ]
+            for widget in update_widgets:
+                widget.setUpdatesEnabled(False)
+            try:
+                for item in self._ordered_build_target_items():
+                    key = item["key"]
+                    if key in self.build_target_buttons_by_key:
+                        continue
+                    button = self._make_build_target_button(item)
+                    self.build_target_list_layout.addWidget(button)
+                    self._build_target_button_order.append(key)
+                    created += 1
+                self.build_target_list_layout.addStretch()
+                self._build_target_list_stretch_added = True
+                self._build_target_buttons_initialized = True
+            finally:
+                for widget, enabled in update_states:
+                    widget.setUpdatesEnabled(enabled)
+                    if enabled:
+                        widget.update()
+            log_perf(
+                "artifact_target_button_ensure",
+                total=perf_ms(total_start),
+                initial=True,
+                created=created,
+                icon_assign=self._build_target_button_icon_ms - icon_ms_before,
+                total_buttons=len(self.build_target_buttons_by_key),
+            )
             return created
 
         for item in self._ordered_build_target_items():
@@ -3121,6 +3157,14 @@ class ArtifactBrowserWindow(QWidget):
         if not self._build_target_list_stretch_added:
             self.build_target_list_layout.addStretch()
             self._build_target_list_stretch_added = True
+        log_perf(
+            "artifact_target_button_ensure",
+            total=perf_ms(total_start),
+            initial=False,
+            created=created,
+            icon_assign=self._build_target_button_icon_ms - icon_ms_before,
+            total_buttons=len(self.build_target_buttons_by_key),
+        )
         return created
 
     def _ordered_build_target_items(self) -> list[dict]:

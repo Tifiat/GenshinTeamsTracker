@@ -2410,7 +2410,15 @@ class LeftWorkspaceHost(QWidget):
             tr("app_shell.workspace.history"),
             self.history_workspace,
         )
-        self.pvp_workspace = PvpDecksWorkspace(db_path=self.artifact_db_path)
+        self.pvp_workspace = PvpDecksWorkspace(
+            db_path=self.artifact_db_path,
+            character_assets_provider=(
+                self.character_weapon_workspace.character_asset_items_snapshot
+            ),
+            weapon_assets_provider=(
+                self.character_weapon_workspace.weapon_asset_items_snapshot
+            ),
+        )
         self.pvp_button = self.add_workspace(
             LEFT_WORKSPACE_PVP,
             tr("app_shell.workspace.pvp"),
@@ -3047,6 +3055,10 @@ class CharacterWeaponWorkspace(QWidget):
                 load_account_weapon_stack_asset_items(db_path=self.db_path)
             )
         return list(self._all_weapon_items), perf_ms(load_start), source
+
+    def weapon_asset_items_snapshot(self) -> list[dict]:
+        items, _load_ms, _source = self._weapon_asset_items()
+        return items
 
     def _emit_grid_asset_click(
         self,

@@ -24,20 +24,24 @@ does not switch `main.py`.
   DPS rows, and compact GCSIM status/result cells. The old inert bottom
   `Reset` / `Save Run` / `History` action placeholder has been removed. A real
   localized RUN-page Reset command now routes through `RunSessionController`
-  and resets only the active live mode. A real localized RUN-page Save command
-  now builds and writes immutable `HistorySnapshotBundle` records for the
-  active run type; durable History browsing/opening remains future
-  session/workspace work.
+  and resets only the active live mode. A real localized bottom RUN-page Save
+  command now builds and writes immutable `HistorySnapshotBundle` records for
+  the active run type, using grouped History storage. A minimal History
+  left-workspace reader/list exists; durable right-panel snapshot details,
+  export rendering, and History command routing remain future work.
 - `run_workspace.team_builder` is the typed team composition layer.
 - `run_workspace.models` contains an early legacy Abyss snapshot adapter:
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,
   and `build_legacy_abyss_run_snapshot(...)`.
 - `run_workspace.history_snapshot` contains the immutable History Snapshot
   Bundle v1 schema and a caller-rooted local read/write service for supplied
-  bundles. `run_workspace.history_snapshot_builder` now builds backend-only
-  bundles from explicit `RunSessionState`/right-panel view-model inputs. It
-  does not query live account/cache/DB data, copy assets, render previews, or
-  implement History rows.
+  bundles. It writes grouped Abyss snapshots under
+  `abyss/<period_start>/<bundle_id>/snapshot.json`, DPS Dummy snapshots under
+  `dps_dummy/<bundle_id>/snapshot.json`, and can list old flat dev bundles for
+  transition without migrating them. `run_workspace.history_snapshot_builder`
+  builds backend-only bundles from explicit `RunSessionState`/right-panel
+  view-model inputs. It does not query live account/cache/DB data, copy assets,
+  or render previews.
 - AppShell now uses live in-memory Abyss timer state for the compact right-dock
   chamber table. T1/T2 timer edits update controller state and the right-panel
   view model immediately. T2 follows T1 until manually edited; if T1 is edited
@@ -45,7 +49,9 @@ does not switch `main.py`.
   command restores the active mode's teams/selection/timers/GCSIM runtime rows
   to defaults without touching the inactive mode. The RUN Save command writes
   immutable bundles under the caller-provided snapshot root without resetting
-  or opening History.
+  or opening History. Abyss Save passes already-loaded current Abyss source
+  metadata into the builder so saved bundles carry `period_start`/floor when
+  available.
 - The current compact editor uses separate minute/second segments inside one
   visual `MM:SS` field per T1/T2 cell. Raw segment input normalizes only on
   commit. Left/Right changes the active segment; mouse wheel and Up/Down step
@@ -54,7 +60,8 @@ does not switch `main.py`.
   boundary and exposed through AppShellController compatibility properties.
   Reset is wired through that boundary for the active live run mode. Save is
   wired to build/persist immutable bundles from typed session/view-model data;
-  History browsing and opening commands are still future work.
+  the minimal History left workspace can read saved rows, while right-panel
+  snapshot viewing and History command routing are still future work.
 - `ui/widgets/timers.py` contains useful timer editing behavior but must not
   remain the durable owner of run/session state.
 - `ui/run_history_window.py` and `runs_history.json` are legacy image/path
@@ -157,12 +164,16 @@ crops, or localized display names.
 The first concrete backend data contract is
 `run_workspace/history_snapshot.py`: `HistorySnapshotBundle` plus nested
 display/provenance/team/scenario/result/asset/preview dataclasses, JSON
-roundtrip helpers, and `HistorySnapshotBundleStore(root)`. The store writes
-supplied bundles as `<root>/<bundle_id>/snapshot.json` through a temp file in
-the same directory and reads them back without using production `data/`,
-account/profile/cache/DB paths, or real assets. The AppShell RUN Save command
-uses the project-root convention `data/history/snapshots` by default, while
-tests and future callers can pass a temp/custom root.
+roundtrip helpers, and `HistorySnapshotBundleStore(root)`. The grouped writer
+stores supplied Abyss bundles as
+`<root>/abyss/<period_start>/<bundle_id>/snapshot.json` and DPS Dummy bundles
+as `<root>/dps_dummy/<bundle_id>/snapshot.json`, through a temp file in the
+same directory. Missing Abyss period start uses `unknown_period`. The store can
+also list/read old flat `<root>/<bundle_id>/snapshot.json` dev bundles without
+using production `data/`, account/profile/cache/DB paths, or real assets. The
+AppShell RUN Save command uses the project-root convention
+`data/history/snapshots` by default, while tests and future callers can pass a
+temp/custom root.
 
 Every snapshot should include:
 
@@ -381,11 +392,11 @@ Integration rules:
 5. Done: backend-only builder maps supplied typed session/right-panel
    view-model data into `HistorySnapshotBundle` records for Abyss and DPS
    Dummy shapes.
-6. Done: RUN-page Save builds and persists immutable bundles for the active run
-   type through `HistorySnapshotBundleStore`.
-7. Add a minimal History left workspace that reads immutable snapshots, and route
-   a future History command to that workspace with the active run type as
-   default.
+6. Done: RUN-page Save builds and persists immutable grouped bundles for the
+   active run type through `HistorySnapshotBundleStore`.
+7. Done: minimal History left workspace reads immutable snapshots from disk.
+   Future work should route a History command to that workspace with the active
+   run type as default.
 8. Attach Browser/GCSIM results to session/snapshot metadata as `sim DPS` and
    keep them separate from factual DPS.
 9. Add DPS Dummy current factual-DPS inputs/results and GCSIM DPS Dummy

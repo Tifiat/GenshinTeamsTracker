@@ -81,6 +81,11 @@ class HistorySnapshotBuildContext:
     source: str
     content_language: str
     account: HistoryAccountProfileSnapshot | Mapping[str, Any] | None = None
+    abyss_period_start: str = ""
+    abyss_period_end: str = ""
+    abyss_season_label: str = ""
+    abyss_floor: int | None = None
+    abyss_target_mode: str = ""
     asset_refs: tuple[HistoryAssetRefSnapshot, ...] = ()
     preview_refs: tuple[HistoryPreviewRefSnapshot, ...] = ()
     warnings: tuple[str, ...] = ()
@@ -125,6 +130,7 @@ def build_history_snapshot_bundle(
         scenario, result_summaries = _build_abyss_scenario_and_results(
             session_state,
             right_panel_model,
+            context=context,
             asset_collector=asset_collector,
             bundle_warnings=warnings,
         )
@@ -870,6 +876,7 @@ def _build_abyss_scenario_and_results(
     session_state: RunSessionState,
     right_panel_model: RightPanelPrototypeViewModel,
     *,
+    context: HistorySnapshotBuildContext,
     asset_collector: "_AssetCollector",
     bundle_warnings: list[str],
 ) -> tuple[HistoryScenarioSnapshot, tuple[HistoryResultSummarySnapshot, ...]]:
@@ -954,13 +961,16 @@ def _build_abyss_scenario_and_results(
             )
         )
 
-    abyss_metadata = _abyss_metadata_from_results_and_rows(
+    abyss_metadata = _abyss_metadata_from_context_results_and_rows(
+        context,
         session_state.abyss.gcsim_chamber_results,
         right_panel_model.chamber_rows,
     )
     abyss = HistoryAbyssScenarioSnapshot(
         chambers=tuple(chambers),
         period_start=abyss_metadata["period_start"],
+        period_end=abyss_metadata["period_end"],
+        season_label=abyss_metadata["season_label"],
         floor=abyss_metadata["floor"],
         target_mode=abyss_metadata["target_mode"],
         total_elapsed_seconds=sum(
@@ -1214,11 +1224,36 @@ def _build_dps_dummy_scenario() -> HistoryDpsDummyScenarioSnapshot:
     )
 
 
+def _abyss_metadata_from_context_results_and_rows(
+    context: HistorySnapshotBuildContext,
+    results: tuple[RightPanelGcsimChamberResult, ...],
+    rows: tuple[RightPanelChamberRowViewModel, ...],
+) -> dict[str, Any]:
+    metadata = {
+        "period_start": _text(context.abyss_period_start),
+        "period_end": _text(context.abyss_period_end),
+        "season_label": _text(context.abyss_season_label),
+        "floor": _optional_int(context.abyss_floor),
+        "target_mode": _text(context.abyss_target_mode),
+    }
+    fallback = _abyss_metadata_from_results_and_rows(results, rows)
+    for key, value in fallback.items():
+        if metadata.get(key) in ("", None):
+            metadata[key] = value
+    return metadata
+
+
 def _abyss_metadata_from_results_and_rows(
     results: tuple[RightPanelGcsimChamberResult, ...],
     rows: tuple[RightPanelChamberRowViewModel, ...],
 ) -> dict[str, Any]:
-    metadata = {"period_start": "", "floor": None, "target_mode": ""}
+    metadata = {
+        "period_start": "",
+        "period_end": "",
+        "season_label": "",
+        "floor": None,
+        "target_mode": "",
+    }
     for result in results:
         if result.period_start and not metadata["period_start"]:
             metadata["period_start"] = result.period_start
@@ -1226,7 +1261,11 @@ def _abyss_metadata_from_results_and_rows(
             metadata["floor"] = int(result.floor)
         if result.target_mode and not metadata["target_mode"]:
             metadata["target_mode"] = result.target_mode
-        if all(metadata.values()):
+        if (
+            metadata["period_start"]
+            and metadata["floor"] is not None
+            and metadata["target_mode"]
+        ):
             return metadata
 
     for row in rows:

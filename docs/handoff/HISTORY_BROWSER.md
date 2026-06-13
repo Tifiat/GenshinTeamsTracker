@@ -1,10 +1,11 @@
 # History Browser Contract
 
-Scope: product and architecture contract for the future AppShell History
-Browser. The current implementation is the inert left-workspace placeholder
-plus an empty isolated right-panel viewer in `ui/history_browser/`. RUN-page
-Save can now create immutable backend bundles, but rows, export, filters,
-opening/routing, and snapshot payload rendering are later tasks.
+Scope: product and architecture contract for the AppShell History Browser.
+The current implementation is a minimal left-workspace reader/list in
+`ui/history_browser/` plus an empty isolated right-panel viewer. RUN-page Save
+creates immutable backend bundles and the History workspace can read/list them,
+but export, filters, row selection side effects, and snapshot payload rendering
+are later tasks.
 
 ## Boundary
 
@@ -17,10 +18,11 @@ opening/routing, and snapshot payload rendering are later tasks.
 - `ui/run_history_window.py` and `runs_history.json` are legacy. Do not develop
   them as the final History model, and do not migrate them as the first real
   History implementation.
-- Opening the `history` workspace immediately switches the fixed right dock to
-  the isolated empty History viewer, before any saved run is selected.
-- The current placeholders remain inert even though RUN Save may create
-  immutable bundles; History rows still do not read or render them.
+- Opening the `history` workspace reloads the current snapshot root and
+  immediately switches the fixed right dock to the isolated empty History
+  viewer, before any saved run is selected.
+- The left workspace lists saved immutable bundles from disk. The right viewer
+  remains placeholder-only until frozen snapshot details are implemented.
 
 ## Future Rows
 
@@ -85,13 +87,29 @@ export, provenance, and future compatibility. It must not be image-only.
 Backend status: `run_workspace/history_snapshot.py` defines
 `HistorySnapshotBundle` v1, nested frozen display/provenance/team/scenario/
 result/asset/preview records, JSON roundtrip helpers, and
-`HistorySnapshotBundleStore(root)` for caller-provided local roots. The store
-writes supplied bundles to `<root>/<bundle_id>/snapshot.json`.
+`HistorySnapshotBundleStore(root)` for caller-provided local roots. The grouped
+write path stores Abyss bundles at
+`<root>/abyss/<period_start>/<bundle_id>/snapshot.json`, using
+`unknown_period` when no safe/parseable period start exists, and DPS Dummy
+bundles at `<root>/dps_dummy/<bundle_id>/snapshot.json`. The old flat
+`<root>/<bundle_id>/snapshot.json` writer/reader remains for tests and
+transition; no automatic migration or deletion is performed.
 `run_workspace.history_snapshot_builder` can build backend-only bundles from
 explicit typed session/right-panel view-model data, and AppShell RUN Save
 writes those bundles to the configured snapshot root. These backend pieces and
 the Save bridge do not copy real assets, query account/cache/DB data, or render
-History rows/viewers/export surfaces.
+export surfaces.
+
+## Abyss Period Groups
+
+- Abyss History is organized by saved Abyss period key, normally the immutable
+  `scenario.abyss.period_start` ISO date.
+- Period groups should eventually show a compact period card with start/end,
+  floor/season label, chamber enemy/boss/HP summary, and later stored
+  boss/enemy image/icon previews if snapshot assets contain them.
+- That period summary must be derived from saved snapshot data, not from the
+  live Abyss cache.
+- Real image/export rendering remains future work.
 
 ## Export Preview/Card
 
@@ -113,6 +131,6 @@ Recommended sequence after the placeholder/module split:
 2. Done: define snapshot bundle schema/service v1.
 3. Done: build backend-only snapshots from typed session/view-model data.
 4. Done: wire RUN-page Save to persist immutable bundles.
-5. Add fake/sample snapshot rows and preview in History Browser.
+5. Done: add a minimal History left reader/list for saved bundles.
 6. Add a History-specific right-panel snapshot viewer.
 7. Add the export renderer/generator.

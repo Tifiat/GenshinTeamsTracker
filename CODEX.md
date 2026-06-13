@@ -174,9 +174,9 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   timers/T2 follow flags, runtime compact GCSIM chamber results, and active-mode
   Reset. It is not snapshot persistence or History storage.
 - `run_workspace/history_snapshot.py`: immutable History Snapshot Bundle v1
-  schema plus caller-rooted local read/write service for supplied bundles. It
-  is not Save wiring, live-session bundle building, History rows, asset copying,
-  or export rendering.
+  schema plus caller-rooted local read/write/list service for supplied bundles.
+  AppShell Save uses grouped History storage; asset copying and export
+  rendering are still future.
 - `docs/handoff/`: detailed project maps and research handoffs. Root `TODO.md` and `CODEX.md` remain the entrypoints.
 - `docs/handoff/TESTS.md`: test-suite layout and rules for choosing narrow
   per-area `unittest` runs.
@@ -687,13 +687,15 @@ Debug files are private and ignored.
 
 History:
 
-- Current AppShell History placeholders live in `ui/history_browser/`: the left
-  workspace and the isolated empty right-panel viewer.
+- Current AppShell History workspace lives in `ui/history_browser/`: the left
+  workspace reads a minimal grouped saved-bundle list, while the isolated
+  right-panel viewer remains an empty placeholder.
 - Immutable History Snapshot Bundle v1 backend schema/service lives in
   `run_workspace/history_snapshot.py`, with a backend-only builder in
-  `run_workspace/history_snapshot_builder.py`. Future Save wiring, History
-  Browser rows, export preview/card, and read-only right-panel snapshot viewer
-  rules live in `docs/handoff/HISTORY_BROWSER.md`.
+  `run_workspace/history_snapshot_builder.py`. RUN-page Save writes grouped
+  bundles under `data/history/snapshots`; future row selection, export
+  preview/card, and read-only right-panel snapshot viewer rules live in
+  `docs/handoff/HISTORY_BROWSER.md`.
 
 Artifact Browser final UI:
 

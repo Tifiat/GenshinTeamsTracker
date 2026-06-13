@@ -187,9 +187,6 @@ from ui.utils.ui_palette import (
     UI_SELECTION_NEUTRAL_FILL_ALPHA,
     UI_SELECTION_OUTLINE_ALPHA,
     UI_BG_APP,
-    UI_STATE_DANGER,
-    UI_STATE_SUCCESS,
-    UI_TEXT_MUTED,
     UI_TEXT_PRIMARY,
     UI_TEXT_SECONDARY,
     UI_TEXT_ON_ACCENT,
@@ -501,6 +498,7 @@ class AppShellController:
                 created_at=_format_history_snapshot_created_at(created_at_utc),
                 source="app_shell",
                 content_language=get_language(),
+                **self._history_snapshot_abyss_context_fields(),
                 provenance={
                     "right_panel_model": (
                         "AppShellController.right_panel_model("
@@ -514,7 +512,9 @@ class AppShellController:
                 model,
                 context,
             )
-            saved_path = HistorySnapshotBundleStore(history_root).write_bundle(bundle)
+            saved_path = HistorySnapshotBundleStore(history_root).write_bundle_grouped(
+                bundle
+            )
             return RunSaveResult(
                 success=True,
                 bundle_id=bundle.bundle_id,
@@ -526,6 +526,21 @@ class AppShellController:
                 bundle_id=bundle_id,
                 error_text=str(exc) or exc.__class__.__name__,
             )
+
+    def _history_snapshot_abyss_context_fields(self) -> dict[str, Any]:
+        if self.mode != MODE_ABYSS:
+            return {}
+        source_data = self._right_panel_abyss_source_data(load_if_needed=False)
+        if source_data is None:
+            return {
+                "abyss_target_mode": self.gcsim_target_mode(),
+            }
+        return {
+            "abyss_period_start": source_data.period.start_date,
+            "abyss_period_end": source_data.period.end_date or "",
+            "abyss_floor": source_data.floor,
+            "abyss_target_mode": self.gcsim_target_mode(),
+        }
 
     def cached_abyss_source_data(self) -> AbyssFloorSourceData | None:
         if not self._cached_abyss_source_data_loaded:
@@ -1468,6 +1483,7 @@ class AppShell(QWidget):
         self.left_host = LeftWorkspaceHost(
             artifact_db_path=self.controller.equipment_db_path,
             artifact_equipment_changed=self._on_artifact_browser_equipment_changed,
+            history_snapshot_root=self.history_snapshot_root,
         )
         root.addWidget(self.left_host, 1)
 
@@ -2224,6 +2240,7 @@ class AppShell(QWidget):
             )
             return
         total_start = perf_now()
+        self.right_panel.clear_save_status()
         self.cancel_pending_equipment_hydration()
         self.cancel_pending_right_panel_refresh(reason="run_reset")
         self.controller.reset_active_run()
@@ -2254,7 +2271,7 @@ class AppShell(QWidget):
             history_root=self.history_snapshot_root,
         )
         self.last_save_result = result
-        self.right_dock.show_save_result(result)
+        self.right_panel.show_save_result(result)
         log_perf(
             "run_save",
             mode=self.controller.mode,
@@ -2276,6 +2293,7 @@ class AppShell(QWidget):
             self.cancel_pending_right_panel_refresh(
                 reason="history_workspace_activate"
             )
+            self.left_host.history_workspace.refresh()
             self.right_dock.show_history_page()
         elif previous_workspace_id in (LEFT_WORKSPACE_PVP, LEFT_WORKSPACE_HISTORY):
             self.right_dock.show_run_page(self.controller.mode)
@@ -2460,10 +2478,12 @@ class LeftWorkspaceHost(QWidget):
         *,
         artifact_db_path: str | Path = ARTIFACT_DB_PATH,
         artifact_equipment_changed=None,
+        history_snapshot_root: str | Path = HISTORY_SNAPSHOT_ROOT,
     ) -> None:
         super().__init__(parent)
         self.artifact_db_path = artifact_db_path
         self.artifact_equipment_changed = artifact_equipment_changed
+        self.history_snapshot_root = Path(history_snapshot_root)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
@@ -2515,7 +2535,9 @@ class LeftWorkspaceHost(QWidget):
             "GCSIM",
             self.gcsim_browser_workspace,
         )
-        self.history_workspace = HistoryBrowserWorkspace()
+        self.history_workspace = HistoryBrowserWorkspace(
+            snapshot_root=self.history_snapshot_root
+        )
         self.history_button = self.add_workspace(
             LEFT_WORKSPACE_HISTORY,
             tr("app_shell.workspace.history"),
@@ -2804,8 +2826,6 @@ def _selected_team_has_characters(selected_team: dict[str, Any]) -> bool:
 
 class RightDockHeader(QWidget):
     mode_requested = Signal(str)
-    reset_requested = Signal()
-    save_requested = Signal()
     account_requested = Signal()
     pvp_control_requested = Signal()
     pvp_page_requested = Signal(str)
@@ -2825,20 +2845,6 @@ class RightDockHeader(QWidget):
         self.run_mode_tabs = RunModeTabsWidget(active_mode)
         self.run_mode_tabs.mode_requested.connect(self.mode_requested.emit)
         layout.addWidget(self.run_mode_tabs, 2)
-
-        self.reset_button = make_mode_tab_button(tr("app_shell.right_dock.reset"))
-        self.reset_button.setCheckable(False)
-        self.reset_button.clicked.connect(
-            lambda _checked=False: self.reset_requested.emit()
-        )
-        layout.addWidget(self.reset_button, 1)
-
-        self.save_button = make_mode_tab_button(tr("app_shell.right_dock.save"))
-        self.save_button.setCheckable(False)
-        self.save_button.clicked.connect(
-            lambda _checked=False: self.save_requested.emit()
-        )
-        layout.addWidget(self.save_button, 1)
 
         self.pvp_decks_button = make_mode_tab_button(
             tr("app_shell.right_dock.pvp_decks")
@@ -2876,7 +2882,6 @@ class RightDockHeader(QWidget):
 
     def show_run_mode(self, mode: str) -> None:
         self.run_mode_tabs.setVisible(True)
-        self._show_run_action_buttons(True)
         self._show_pvp_buttons(False)
         self.account_button.setChecked(False)
         self.run_mode_tabs.set_active_mode(mode)
@@ -2884,19 +2889,16 @@ class RightDockHeader(QWidget):
     def show_pvp_control(self, active_page: str = PVP_PAGE_DECKS) -> None:
         self.run_mode_tabs.setVisible(False)
         self.run_mode_tabs.set_active_mode(None)
-        self._show_run_action_buttons(False)
         self._show_pvp_buttons(True, active_page=active_page)
         self.account_button.setChecked(False)
 
     def show_history_viewer(self) -> None:
         self.run_mode_tabs.setVisible(False)
         self.run_mode_tabs.set_active_mode(None)
-        self._show_run_action_buttons(False)
         self._show_pvp_buttons(False)
         self.account_button.setChecked(False)
 
     def show_account(self, *, policy: str = RIGHT_DOCK_POLICY_RUN) -> None:
-        self._show_run_action_buttons(False)
         if policy == RIGHT_DOCK_POLICY_PVP:
             self.run_mode_tabs.setVisible(False)
             self.run_mode_tabs.set_active_mode(None)
@@ -2913,19 +2915,12 @@ class RightDockHeader(QWidget):
 
     def retranslate_ui(self) -> None:
         self.run_mode_tabs.retranslate_ui()
-        self.reset_button.setText(tr("app_shell.right_dock.reset"))
-        self.save_button.setText(tr("app_shell.right_dock.save"))
         self.pvp_decks_button.setText(tr("app_shell.right_dock.pvp_decks"))
         self.pvp_play_button.setText(tr("app_shell.right_dock.pvp_play"))
         self.account_button.setText(tr("app_shell.right_dock.account"))
 
     def _request_pvp_page(self, page_id: str) -> None:
         self.pvp_page_requested.emit(page_id)
-
-    def _show_run_action_buttons(self, visible: bool) -> None:
-        for button in (self.reset_button, self.save_button):
-            button.setVisible(visible)
-            button.setEnabled(visible)
 
     def _show_pvp_buttons(
         self,
@@ -2963,25 +2958,11 @@ class RightOperationsDock(QFrame):
         self._pvp_page = PVP_PAGE_DECKS
         self.header = RightDockHeader(active_mode)
         self.account_page = AccountDataPage()
-        self._last_save_result: RunSaveResult | None = None
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(self.header)
-
-        self.save_status_label = QLabel("")
-        self.save_status_label.setObjectName("RightDockSaveStatus")
-        self.save_status_label.setWordWrap(True)
-        self.save_status_label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-        )
-        self.save_status_label.setStyleSheet(
-            "padding: 4px 10px 6px 10px; "
-            f"color: {UI_TEXT_MUTED};"
-        )
-        self.save_status_label.setVisible(False)
-        layout.addWidget(self.save_status_label)
 
         self.content_stack = QStackedWidget()
         self.content_stack.addWidget(self.operation_widget)
@@ -2998,8 +2979,10 @@ class RightOperationsDock(QFrame):
         self.setStyleSheet(right_panel_stylesheet())
 
         self.header.mode_requested.connect(self._on_mode_requested)
-        self.header.reset_requested.connect(self.reset_requested.emit)
-        self.header.save_requested.connect(self.save_requested.emit)
+        if hasattr(self.operation_widget, "reset_requested"):
+            self.operation_widget.reset_requested.connect(self.reset_requested.emit)
+        if hasattr(self.operation_widget, "save_requested"):
+            self.operation_widget.save_requested.connect(self.save_requested.emit)
         self.header.pvp_control_requested.connect(
             lambda: self.show_pvp_page(PVP_PAGE_DECKS)
         )
@@ -3018,12 +3001,12 @@ class RightOperationsDock(QFrame):
 
     def show_run_page(self, mode: str) -> None:
         self._operation_policy = RIGHT_DOCK_POLICY_RUN
-        self.clear_save_status()
+        self._clear_operation_save_status()
         self.content_stack.setCurrentWidget(self.operation_widget)
         self.header.show_run_mode(mode)
 
     def show_pvp_page(self, page_id: str | None = None) -> None:
-        self.clear_save_status()
+        self._clear_operation_save_status()
         if page_id in (PVP_PAGE_DECKS, PVP_PAGE_PLAY):
             self._pvp_page = page_id
         self._operation_policy = RIGHT_DOCK_POLICY_PVP
@@ -3033,67 +3016,32 @@ class RightOperationsDock(QFrame):
         self.header.show_pvp_control(self._pvp_page)
 
     def show_history_page(self) -> None:
-        self.clear_save_status()
+        self._clear_operation_save_status()
         self._operation_policy = RIGHT_DOCK_POLICY_HISTORY
         self.content_stack.setCurrentWidget(self.history_operation_widget)
         self.header.show_history_viewer()
 
     def show_account_page(self) -> None:
-        self.clear_save_status()
+        self._clear_operation_save_status()
         self.content_stack.setCurrentWidget(self.account_page)
         self.header.show_account(policy=self._operation_policy)
 
     def _on_mode_requested(self, mode: str) -> None:
         self.mode_requested.emit(mode)
 
-    def show_save_result(self, result: RunSaveResult) -> None:
-        self._last_save_result = result
-        if self.current_page() == RIGHT_DOCK_PAGE_RUN:
-            self._render_save_status()
-
-    def clear_save_status(self) -> None:
-        self._last_save_result = None
-        self.save_status_label.clear()
-        self.save_status_label.setVisible(False)
-
-    def _render_save_status(self) -> None:
-        result = self._last_save_result
-        if result is None:
-            self.save_status_label.clear()
-            self.save_status_label.setVisible(False)
-            return
-        if result.success:
-            text = tr(
-                "app_shell.right_dock.save_status.saved",
-                bundle_id=result.bundle_id,
-                path=str(result.saved_path or ""),
-            )
-            color = UI_STATE_SUCCESS
-        else:
-            text = tr(
-                "app_shell.right_dock.save_status.failed",
-                error=result.error_text or "unknown error",
-            )
-            color = UI_STATE_DANGER
-        self.save_status_label.setStyleSheet(
-            "padding: 4px 10px 6px 10px; "
-            f"color: {color};"
-        )
-        self.save_status_label.setText(text)
-        self.save_status_label.setVisible(True)
+    def _clear_operation_save_status(self) -> None:
+        if hasattr(self.operation_widget, "clear_save_status"):
+            self.operation_widget.clear_save_status()
 
     def retranslate_ui(self) -> None:
         self.header.retranslate_ui()
+        if hasattr(self.operation_widget, "retranslate_ui"):
+            self.operation_widget.retranslate_ui()
         self.account_page.retranslate_ui()
         if hasattr(self.history_operation_widget, "retranslate_ui"):
             self.history_operation_widget.retranslate_ui()
         if hasattr(self.pvp_operation_widget, "retranslate_ui"):
             self.pvp_operation_widget.retranslate_ui()
-        if (
-            self._last_save_result is not None
-            and self.current_page() == RIGHT_DOCK_PAGE_RUN
-        ):
-            self._render_save_status()
 
 
 def _account_tab_icon() -> QIcon:

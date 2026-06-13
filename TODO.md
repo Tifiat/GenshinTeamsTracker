@@ -53,11 +53,11 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 - New target main app shell is documented in `docs/handoff/APP_SHELL_WORKSPACE_PLAN.md`: `[LeftWorkspaceHost] [RightOperationsDock]`. Treat `ui/main_window.py` as legacy once the new shell begins; do not patch the old right column as the final architecture.
 - Future AppShell tasks:
-  - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the compact chamber/result area has live in-memory Abyss timer and factual-DPS behavior, active-mode Reset is typed, and RUN-page Save writes immutable backend bundles; History browsing/routing is not wired, and the approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
+  - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the compact chamber/result area has live in-memory Abyss timer and factual-DPS behavior, active-mode Reset is typed, RUN-page Save writes immutable grouped backend bundles, and History can read a minimal saved-bundle list; History selection/details/export/routing remain future, and the approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
   - keep the reduced fixed-width right operations dock around `RightPanelPrototypeWidget`; it must not be user-resizable or expand with the window;
   - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, a painted pixel-aligned icon grid via `ui/utils/pixel_icon_grid.py`, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
-  - AppShell left workspace navigation exists with Character/Weapon, lazy-created Artifacts, GCSIM Browser, inert `ui/history_browser/` History placeholder, and PvP Decks v0 workspaces. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; activating History hides the live Run panel behind an isolated empty History right-viewer without clearing live session state, and real History browsing still waits for typed immutable run snapshots and the contract in `docs/handoff/HISTORY_BROWSER.md`;
-  - continue the production adapter: first typed live-session ownership now lives in `run_workspace/session.py` for mode/per-mode team state, selected target, external bonus state, Abyss timers/T2 follow flags, compact runtime GCSIM chamber results, and active-mode Reset. Immutable History Snapshot Bundle v1 schema/service now lives in `run_workspace/history_snapshot.py`, `run_workspace/history_snapshot_builder.py` can build backend-only bundles from supplied session/right-panel data, and RUN-page Save persists them through an explicit store root; History reading/routing and durable GCSIM history attachment remain future work;
+  - AppShell left workspace navigation exists with Character/Weapon, lazy-created Artifacts, GCSIM Browser, minimal `ui/history_browser/` History saved-bundle list, and PvP Decks v0 workspaces. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; activating History reloads the snapshot root, hides the live Run panel behind an isolated empty History right-viewer without clearing live session state, and keeps full snapshot details/export future under the contract in `docs/handoff/HISTORY_BROWSER.md`;
+  - continue the production adapter: first typed live-session ownership now lives in `run_workspace/session.py` for mode/per-mode team state, selected target, external bonus state, Abyss timers/T2 follow flags, compact runtime GCSIM chamber results, and active-mode Reset. Immutable History Snapshot Bundle v1 schema/service now lives in `run_workspace/history_snapshot.py`, `run_workspace/history_snapshot_builder.py` can build backend-only bundles from supplied session/right-panel data, and RUN-page Save persists grouped bundles through an explicit store root; History selection/routing and durable GCSIM history attachment remain future work;
   - keep roster clicks as quick-pick add/remove and right-panel slot clicks as selected build/details target toggle;
   - AppShell quick-pick marker latency is fixed with incremental visible-card marker updates; roster clicks now update markers immediately and defer/coalesce right-panel refreshes through a short scheduler;
   - AppShell filters now use session-cached character/weapon asset lists plus the reusable painted icon grid. The grid computes integer physical-pixel item/gap rectangles under fractional startup downscale and prepares cached HiDPI pixmaps outside paint events. Right-panel slot selection does not reload portrait/weapon PNGs, fitted right-panel PNG canvases are cached per DPR/source, and remaining performance work is to reduce first bonus-strip chip rebuild cost on high-DPI screens;
@@ -78,7 +78,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - future import equipment auto-apply setting: HoYoLAB import should optionally apply observed current artifacts/weapons into the new `account_equipment` runtime tables after import. When enabled, apply through account equipment service helpers so artifacts/weapons follow the same move/swap semantics as manual equip; current import/storage paths still need an audit before wiring this behind a user-toggleable setting;
   - Artifact Browser equipment UX is documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`: right-panel selected character can drive the browser operation target, the top current-equipment zone is current equipment rather than a preset, preset apply is explicit, incomplete preset apply clears missing target slots, and owner side icons come from current equipment tables;
   - separate timer/run logic into a model/controller while keeping timer UI visually in the right operations dock;
-  - RightOperationsDock now owns a persistent same-style header row with page-specific Abyss / DPS Dummy controls plus an always-visible global Account action. Account opens a compact localized Account/Data page inside the same dock without changing the left workspace. The page reuses the current HoYoLAB import/update flow, offline profile save/load/sign-out actions, and language selector; AppShell refreshes account asset caches after import and clears only its runtime team state when an offline profile is loaded or signed out. Header routing uses stable ids rather than localized text. Future PvP can replace its page-specific controls while Account stays present;
+  - RightOperationsDock now owns a persistent same-style header row with page-specific Abyss / DPS Dummy controls plus an always-visible global Account action; live Reset/Save commands sit in the bottom RUN panel action row, not in the header. Account opens a compact localized Account/Data page in the same dock without changing the left workspace. The page reuses the current HoYoLAB import/update flow, offline profile save/load/sign-out actions, and language selector; AppShell refreshes account asset caches after import and clears only its runtime team state when an offline profile is loaded or signed out. Header routing uses stable ids rather than localized text. Future PvP can replace its page-specific controls while Account stays present;
   - root AppShell now gates Character/Weapon workspace mutation clicks by the active right-dock page: roster and weapon clicks are no-op while Account/Data is open. Returning from a non-RUN page updates the requested controller mode and right-panel model before exposing RUN content, so the previous run mode cannot paint as a stale intermediate frame;
   - future first-run/onboarding flow should handle empty-account startup: when the account database is empty, guide the user by opening/highlighting the Account/Data page as part of the onboarding/tutorial sequence. Do not implement this as an isolated Account/Data auto-open task now; debug it together with the first-opening guidance flow. A compact Support/Donate header action, fuller settings area, and fuller Account-page support area remain optional future directions, not current UI;
   - keep PvP inside the AppShell `pvp` workspace/right-dock policy. Detailed PvP UI mode/stage direction lives in `docs/handoff/PVP_UI_ROADMAP.md`; Decks mode v0 and Play/local match setup v0 are implemented, and the next real UI target is Draft board v0;
@@ -113,7 +113,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - saved into DPS Dummy history;
   - later connected to simulator UI.
 - Prefer UI wording "DPS" or "factual DPS" for HP/time calculation. Keep simulator output separate as "sim DPS" with explicit GCSIM label/logo where applicable.
-- Before implementing History rows/routing or durable GCSIM history, keep using `run_workspace/history_snapshot_builder.py` to build immutable `HistorySnapshotBundle` records from typed run/session state. The right-panel widget must display/command this state; it must not be the source of truth for timers or saved runs.
+- Before extending History selection/routing/details or durable GCSIM history, keep using `run_workspace/history_snapshot_builder.py` to build immutable `HistorySnapshotBundle` records from typed run/session state. The right-panel widget must display/command this state; it must not be the source of truth for timers or saved runs.
 
 ## 3. Shared TeamCard / RunCard
 
@@ -157,17 +157,20 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 6. History Browser
 
-- History is an AppShell left workspace with placeholder UI owned by
-  `ui/history_browser/`; `ui/app_shell.py` should only wire the stable
-  `history` workspace id/nav/routing and select the isolated empty History
-  right-viewer.
-- Future saved-run browsing, Akasha-like rows, expanded export image/card, and
-  the read-only History-specific right-panel viewer are contracted in
-  `docs/handoff/HISTORY_BROWSER.md`. Backend-only
-  `run_workspace/history_snapshot.py` defines the autonomous immutable bundle
-  schema/service, and `run_workspace/history_snapshot_builder.py` builds
-  bundles from supplied typed session/right-panel data; RUN-page Save now
-  writes bundles, while History rows/routing are still future.
+- History is an AppShell left workspace owned by `ui/history_browser/`. It reads
+  immutable snapshot bundles from the configured root, shows grouped minimal
+  rows, and keeps the isolated empty History right-viewer separate from the live
+  Run panel.
+- Future Akasha-like rows, row selection, expanded export image/card,
+  read-only History-specific right-panel details, and right-dock History command
+  routing are contracted in `docs/handoff/HISTORY_BROWSER.md`.
+- Backend-only `run_workspace/history_snapshot.py` defines the autonomous
+  immutable bundle schema/service and grouped storage:
+  `abyss/<period_start>/<bundle_id>/snapshot.json` or
+  `dps_dummy/<bundle_id>/snapshot.json`. The reader can list old flat dev
+  bundles without migrating them. `run_workspace/history_snapshot_builder.py`
+  builds bundles from supplied typed session/right-panel data; RUN-page Save now
+  writes grouped bundles.
 - Do not develop `ui/run_history_window.py` or `runs_history.json` as the final
   History model.
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -20,6 +21,9 @@ HISTORY_SNAPSHOT_FILENAME = "snapshot.json"
 HISTORY_RUN_TYPE_ABYSS = "abyss"
 HISTORY_RUN_TYPE_DPS_DUMMY = "dps_dummy"
 HISTORY_RUN_TYPES = (HISTORY_RUN_TYPE_ABYSS, HISTORY_RUN_TYPE_DPS_DUMMY)
+HISTORY_SNAPSHOT_GROUP_ABYSS = "abyss"
+HISTORY_SNAPSHOT_GROUP_DPS_DUMMY = "dps_dummy"
+HISTORY_UNKNOWN_ABYSS_PERIOD = "unknown_period"
 
 
 class HistorySnapshotBundleError(ValueError):
@@ -32,6 +36,25 @@ class UnsupportedHistorySnapshotSchemaVersionError(HistorySnapshotBundleError):
 
 class MalformedHistorySnapshotBundleError(HistorySnapshotBundleError):
     """Raised for malformed v1 bundle payloads."""
+
+
+@dataclass(frozen=True, slots=True)
+class HistorySnapshotBundleRecord:
+    bundle: "HistorySnapshotBundle"
+    path: Path
+    relative_dir: Path
+
+
+@dataclass(frozen=True, slots=True)
+class HistorySnapshotBundleReadError:
+    path: Path
+    error_text: str
+
+
+@dataclass(frozen=True, slots=True)
+class HistorySnapshotBundleListing:
+    records: tuple[HistorySnapshotBundleRecord, ...] = ()
+    errors: tuple[HistorySnapshotBundleReadError, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -985,6 +1008,22 @@ class HistorySnapshotBundleStore:
     def snapshot_path(self, bundle_id: str) -> Path:
         return self.bundle_dir(bundle_id) / HISTORY_SNAPSHOT_FILENAME
 
+    def bundle_relative_dir_for(self, bundle: HistorySnapshotBundle) -> Path:
+        bundle_id = _safe_bundle_id(bundle.bundle_id)
+        if normalize_history_run_type(bundle.run_type) == HISTORY_RUN_TYPE_ABYSS:
+            return (
+                Path(HISTORY_SNAPSHOT_GROUP_ABYSS)
+                / _abyss_period_path_segment(bundle)
+                / bundle_id
+            )
+        return Path(HISTORY_SNAPSHOT_GROUP_DPS_DUMMY) / bundle_id
+
+    def grouped_bundle_dir(self, bundle: HistorySnapshotBundle) -> Path:
+        return self.root / self.bundle_relative_dir_for(bundle)
+
+    def grouped_snapshot_path(self, bundle: HistorySnapshotBundle) -> Path:
+        return self.grouped_bundle_dir(bundle) / HISTORY_SNAPSHOT_FILENAME
+
     def write_bundle(self, bundle: HistorySnapshotBundle) -> Path:
         bundle_id = _safe_bundle_id(bundle.bundle_id)
         bundle_dir = self.bundle_dir(bundle_id)
@@ -993,8 +1032,18 @@ class HistorySnapshotBundleStore:
         _write_json_atomic(path, bundle.to_dict())
         return path
 
+    def write_bundle_grouped(self, bundle: HistorySnapshotBundle) -> Path:
+        bundle_dir = self.grouped_bundle_dir(bundle)
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        path = bundle_dir / HISTORY_SNAPSHOT_FILENAME
+        _write_json_atomic(path, bundle.to_dict())
+        return path
+
     def read_bundle(self, bundle_id: str) -> HistorySnapshotBundle:
-        path = self.snapshot_path(bundle_id)
+        safe_bundle_id = _safe_bundle_id(bundle_id)
+        path = self.snapshot_path(safe_bundle_id)
+        if not path.exists():
+            path = self._find_snapshot_path_by_bundle_id(safe_bundle_id)
         try:
             text = path.read_text(encoding="utf-8")
         except OSError as exc:
@@ -1002,6 +1051,54 @@ class HistorySnapshotBundleStore:
                 f"History snapshot bundle not found or unreadable: {path}"
             ) from exc
         return history_snapshot_bundle_from_json_text(text)
+
+    def iter_bundle_paths(self) -> tuple[Path, ...]:
+        if not self.root.exists():
+            return ()
+        return tuple(
+            sorted(
+                path
+                for path in self.root.rglob(HISTORY_SNAPSHOT_FILENAME)
+                if path.is_file()
+            )
+        )
+
+    def list_bundle_records(self) -> HistorySnapshotBundleListing:
+        records: list[HistorySnapshotBundleRecord] = []
+        errors: list[HistorySnapshotBundleReadError] = []
+        for path in self.iter_bundle_paths():
+            try:
+                bundle = history_snapshot_bundle_from_json_text(
+                    path.read_text(encoding="utf-8")
+                )
+            except (OSError, HistorySnapshotBundleError) as exc:
+                errors.append(
+                    HistorySnapshotBundleReadError(
+                        path=path,
+                        error_text=str(exc) or exc.__class__.__name__,
+                    )
+                )
+                continue
+            records.append(
+                HistorySnapshotBundleRecord(
+                    bundle=bundle,
+                    path=path,
+                    relative_dir=_relative_parent(path, self.root),
+                )
+            )
+        return HistorySnapshotBundleListing(
+            records=tuple(records),
+            errors=tuple(errors),
+        )
+
+    def list_bundles(self) -> HistorySnapshotBundleListing:
+        return self.list_bundle_records()
+
+    def _find_snapshot_path_by_bundle_id(self, bundle_id: str) -> Path:
+        for path in self.iter_bundle_paths():
+            if path.parent.name == bundle_id:
+                return path
+        return self.snapshot_path(bundle_id)
 
 
 def normalize_history_run_type(value: Any) -> str:
@@ -1057,6 +1154,54 @@ def _write_json_atomic(path: Path, payload: Mapping[str, Any]) -> None:
     finally:
         if temp_path.exists():
             temp_path.unlink()
+
+
+def _abyss_period_path_segment(bundle: HistorySnapshotBundle) -> str:
+    scenario = bundle.scenario
+    abyss = None if scenario is None else scenario.abyss
+    period_start = "" if abyss is None else abyss.period_start
+    iso_segment = _iso_date_segment(period_start)
+    if iso_segment:
+        return iso_segment
+    return _safe_history_path_segment(
+        period_start,
+        fallback=HISTORY_UNKNOWN_ABYSS_PERIOD,
+    )
+
+
+def _iso_date_segment(value: Any) -> str:
+    text = _text(value)
+    if len(text) < 10:
+        return ""
+    try:
+        return date.fromisoformat(text[:10]).isoformat()
+    except ValueError:
+        return ""
+
+
+def _safe_history_path_segment(value: Any, *, fallback: str) -> str:
+    text = _text(value)
+    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
+    chars: list[str] = []
+    previous_was_separator = False
+    for char in text:
+        if char in allowed:
+            chars.append(char)
+            previous_was_separator = False
+        elif not previous_was_separator:
+            chars.append("_")
+            previous_was_separator = True
+    segment = "".join(chars).strip("._-")
+    if not segment or segment in {".", ".."}:
+        return fallback
+    return segment
+
+
+def _relative_parent(path: Path, root: Path) -> Path:
+    try:
+        return path.parent.relative_to(root)
+    except ValueError:
+        return path.parent
 
 
 def _safe_bundle_id(bundle_id: Any) -> str:
@@ -1150,9 +1295,12 @@ __all__ = [
     "HISTORY_RUN_TYPE_ABYSS",
     "HISTORY_RUN_TYPE_DPS_DUMMY",
     "HISTORY_RUN_TYPES",
+    "HISTORY_SNAPSHOT_GROUP_ABYSS",
+    "HISTORY_SNAPSHOT_GROUP_DPS_DUMMY",
     "HISTORY_SNAPSHOT_BUNDLE_KIND",
     "HISTORY_SNAPSHOT_BUNDLE_SCHEMA_VERSION",
     "HISTORY_SNAPSHOT_FILENAME",
+    "HISTORY_UNKNOWN_ABYSS_PERIOD",
     "HistoryAbyssChamberSnapshot",
     "HistoryAbyssScenarioSnapshot",
     "HistoryAbyssSideResultSnapshot",
@@ -1170,6 +1318,9 @@ __all__ = [
     "HistorySetBonusSnapshot",
     "HistorySnapshotBundle",
     "HistorySnapshotBundleError",
+    "HistorySnapshotBundleListing",
+    "HistorySnapshotBundleReadError",
+    "HistorySnapshotBundleRecord",
     "HistorySnapshotBundleStore",
     "HistoryStatRowSnapshot",
     "HistoryTeamSlotSnapshot",

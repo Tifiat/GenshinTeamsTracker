@@ -65,6 +65,7 @@ from ui.utils.owner_icon_badge import (
     owner_badge_size_for_icon,
 )
 from ui.artifact_browser.queries import list_set_bonus_description_map
+from ui.utils.ui_palette import UI_STATE_DANGER, UI_STATE_SUCCESS, UI_TEXT_MUTED
 
 
 RIGHT_PANEL_PROTOTYPE_MIN_WIDTH = 660
@@ -181,6 +182,91 @@ def make_mode_tab_button(text: str) -> QPushButton:
     return button
 
 
+class RightPanelRunActionsWidget(QFrame):
+    reset_requested = Signal()
+    save_requested = Signal()
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+        self.setObjectName("RunActionBar")
+        self._last_save_result: object | None = None
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(6)
+
+        button_row = QWidget()
+        button_layout = QHBoxLayout(button_row)
+        button_layout.setContentsMargins(0, 0, 0, 0)
+        button_layout.setSpacing(8)
+        root.addWidget(button_row)
+
+        self.reset_button = QPushButton(tr("app_shell.right_dock.reset"))
+        self.reset_button.setObjectName("ActionButton")
+        self.reset_button.clicked.connect(
+            lambda _checked=False: self.reset_requested.emit()
+        )
+        button_layout.addWidget(self.reset_button, 1)
+
+        self.save_button = QPushButton(tr("app_shell.right_dock.save"))
+        self.save_button.setObjectName("ActionButton")
+        self.save_button.clicked.connect(
+            lambda _checked=False: self.save_requested.emit()
+        )
+        button_layout.addWidget(self.save_button, 1)
+
+        self.save_status_label = QLabel("")
+        self.save_status_label.setObjectName("RunActionStatus")
+        self.save_status_label.setWordWrap(True)
+        self.save_status_label.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        self.save_status_label.setStyleSheet(
+            f"color: {UI_TEXT_MUTED}; padding: 0px 2px;"
+        )
+        self.save_status_label.setVisible(False)
+        root.addWidget(self.save_status_label)
+
+    def show_save_result(self, result: object) -> None:
+        self._last_save_result = result
+        self._render_save_status()
+
+    def clear_save_status(self) -> None:
+        self._last_save_result = None
+        self.save_status_label.clear()
+        self.save_status_label.setVisible(False)
+
+    def retranslate_ui(self) -> None:
+        self.reset_button.setText(tr("app_shell.right_dock.reset"))
+        self.save_button.setText(tr("app_shell.right_dock.save"))
+        if self._last_save_result is not None:
+            self._render_save_status()
+
+    def _render_save_status(self) -> None:
+        result = self._last_save_result
+        if result is None:
+            self.clear_save_status()
+            return
+        if bool(getattr(result, "success", False)):
+            text = tr(
+                "app_shell.right_dock.save_status.saved",
+                bundle_id=str(getattr(result, "bundle_id", "")),
+                path=str(getattr(result, "saved_path", "") or ""),
+            )
+            color = UI_STATE_SUCCESS
+        else:
+            text = tr(
+                "app_shell.right_dock.save_status.failed",
+                error=str(getattr(result, "error_text", "") or "unknown error"),
+            )
+            color = UI_STATE_DANGER
+        self.save_status_label.setStyleSheet(
+            f"color: {color}; padding: 0px 2px;"
+        )
+        self.save_status_label.setText(text)
+        self.save_status_label.setVisible(True)
+
+
 class RightPanelPrototypeWidget(QWidget):
     """Standalone visual prototype for the future right panel."""
 
@@ -189,6 +275,8 @@ class RightPanelPrototypeWidget(QWidget):
     slot_dropped = Signal(int, int, int, int)
     external_bonuses_toggled = Signal(bool)
     abyss_timer_changed = Signal(int, int, int)
+    reset_requested = Signal()
+    save_requested = Signal()
 
     def __init__(
         self,
@@ -246,6 +334,14 @@ class RightPanelPrototypeWidget(QWidget):
         )
         self._layout.addWidget(self._details_frame)
 
+        self._run_actions = RightPanelRunActionsWidget()
+        self._run_actions.reset_requested.connect(self.reset_requested.emit)
+        self._run_actions.save_requested.connect(self.save_requested.emit)
+        self.reset_button = self._run_actions.reset_button
+        self.save_button = self._run_actions.save_button
+        self.save_status_label = self._run_actions.save_status_label
+        self._layout.addWidget(self._run_actions)
+
         self._layout.addStretch(1)
 
         self.setStyleSheet(right_panel_stylesheet())
@@ -301,6 +397,17 @@ class RightPanelPrototypeWidget(QWidget):
         )
         if updates_were_enabled:
             QTimer.singleShot(0, self._finish_deferred_update)
+
+    def show_save_result(self, result: object) -> None:
+        self._run_actions.show_save_result(result)
+
+    def clear_save_status(self) -> None:
+        self._run_actions.clear_save_status()
+
+    def retranslate_ui(self) -> None:
+        if self._mode_tabs is not None:
+            self._mode_tabs.retranslate_ui()
+        self._run_actions.retranslate_ui()
 
     def recommended_standalone_size(self) -> QSize:
         self._content.adjustSize()

@@ -172,6 +172,31 @@ class HistorySnapshotBuilderTests(unittest.TestCase):
         self.assertEqual(timer.total_elapsed_seconds, 90)
         self.assertEqual(bundle.scenario.abyss.total_elapsed_seconds, 90)
 
+    def test_abyss_period_metadata_maps_from_build_context_without_gcsim(self) -> None:
+        session = RunSessionController.empty()
+        model = _right_panel_model(
+            mode=MODE_ABYSS,
+            teams=_teams_vm(team_count=2),
+            chamber_rows=_chamber_rows(count=1),
+        )
+
+        bundle = build_history_snapshot_bundle(
+            session.state,
+            model,
+            _context(
+                abyss_period_start="2026-06-16",
+                abyss_period_end="2026-07-01",
+                abyss_floor=12,
+                abyss_target_mode=FACT_DPS_HP_MODE_SOLO,
+            ),
+        )
+
+        scenario = bundle.scenario.abyss
+        self.assertEqual(scenario.period_start, "2026-06-16")
+        self.assertEqual(scenario.period_end, "2026-07-01")
+        self.assertEqual(scenario.floor, 12)
+        self.assertEqual(scenario.target_mode, FACT_DPS_HP_MODE_SOLO)
+
     def test_factual_dps_tooltip_maps_to_factual_results_and_enemy_payload(self) -> None:
         session = RunSessionController.empty()
         tooltip = _fact_tooltip()
@@ -262,13 +287,23 @@ class HistorySnapshotBuilderTests(unittest.TestCase):
         self.assertEqual(json_roundtrip.to_dict(), bundle.to_dict())
 
 
-def _context() -> HistorySnapshotBuildContext:
+def _context(
+    **overrides: object,
+) -> HistorySnapshotBuildContext:
+    data = {
+        "bundle_id": "builder-test-bundle",
+        "created_at": "2026-06-13T12:00:00Z",
+        "source": "unit_test",
+        "content_language": "en-us",
+        "account": {
+            "account_uid": "700000001",
+            "nickname": "Tester",
+            "source": "fixture",
+        },
+    }
+    data.update(overrides)
     return HistorySnapshotBuildContext(
-        bundle_id="builder-test-bundle",
-        created_at="2026-06-13T12:00:00Z",
-        source="unit_test",
-        content_language="en-us",
-        account={"account_uid": "700000001", "nickname": "Tester", "source": "fixture"},
+        **data,
     )
 
 

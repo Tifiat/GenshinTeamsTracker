@@ -13,7 +13,7 @@ from ui.utils.app_scaling import configure_startup_ui_scale
 configure_startup_ui_scale()
 from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QKeyEvent, QPixmap, QWheelEvent
-from PySide6.QtWidgets import QApplication, QStyleOptionButton, QWidget
+from PySide6.QtWidgets import QApplication, QLabel, QStyleOptionButton, QWidget
 
 from hoyolab_export.account_equipment import (
     equip_artifact,
@@ -139,6 +139,19 @@ class AppShellTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls._app = QApplication.instance() or QApplication([])
 
+    def assert_header_has_no_run_actions(self, shell: AppShell) -> None:
+        self.assertFalse(hasattr(shell.right_dock.header, "reset_button"))
+        self.assertFalse(hasattr(shell.right_dock.header, "save_button"))
+
+    def assert_run_actions_available(self, shell: AppShell) -> None:
+        self.assertIs(shell.right_dock.content_stack.currentWidget(), shell.right_panel)
+        self.assertFalse(shell.right_panel.reset_button.isHidden())
+        self.assertTrue(shell.right_panel.reset_button.isEnabled())
+        self.assertFalse(shell.right_panel.save_button.isHidden())
+        self.assertTrue(shell.right_panel.save_button.isEnabled())
+        self.assertEqual(shell.right_panel.reset_button.objectName(), "ActionButton")
+        self.assertEqual(shell.right_panel.save_button.objectName(), "ActionButton")
+
     def test_app_shell_constructs_with_character_weapon_workspace(self) -> None:
         shell = AppShell()
 
@@ -242,8 +255,7 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.controller.mode, selected_mode)
         self.assertEqual(shell.right_panel._model.mode, selected_mode)
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
-        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
-        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_header_has_no_run_actions(shell)
         self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.pvp_play_button.isHidden())
         self.assertTrue(shell.right_dock.header.pvp_control_button.isChecked())
@@ -289,8 +301,7 @@ class AppShellTest(unittest.TestCase):
             before_selected,
         )
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
-        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
-        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_header_has_no_run_actions(shell)
         self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.account_button.isChecked())
 
@@ -298,8 +309,7 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
-        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
-        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_header_has_no_run_actions(shell)
         self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertTrue(shell.right_dock.header.account_button.isChecked())
 
@@ -316,9 +326,7 @@ class AppShellTest(unittest.TestCase):
         shell.left_host.character_weapon_button.click()
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
-        self.assertIs(shell.right_dock.content_stack.currentWidget(), shell.right_panel)
-        self.assertFalse(shell.right_dock.header.reset_button.isHidden())
-        self.assertTrue(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_run_actions_available(shell)
         self.assertEqual(shell.controller.state, before_team_state)
         self.assertEqual(shell.controller.abyss_timer_states, before_timer_states)
         self.assertEqual(
@@ -346,12 +354,11 @@ class AppShellTest(unittest.TestCase):
         shell.controller.selected_slot_index = 0
         shell._sync_artifact_browser_operation_target()
         shell._refresh_right_panel()
-        self.assertFalse(shell.right_dock.header.reset_button.isHidden())
-        self.assertTrue(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_run_actions_available(shell)
         self.assertFalse(shell.right_panel._model.teams[0].slots[0].is_empty)
         self.assertIsNotNone(shell.left_host._pending_artifact_right_panel_target)
 
-        shell.right_dock.header.reset_button.click()
+        shell.right_panel.reset_button.click()
 
         default_controller = AppShellController.empty()
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
@@ -376,7 +383,12 @@ class AppShellTest(unittest.TestCase):
     ) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "history" / "snapshots"
-            shell = AppShell(history_snapshot_root=root)
+            source_data = _simple_abyss_source_data_for_gcsim_writeback()
+            with patch(
+                "ui.app_shell.load_current_cached_abyss_floor_source_data",
+                return_value=source_data,
+            ):
+                shell = AppShell(history_snapshot_root=root)
             shell.controller.add_or_replace_character_fast(
                 _character_asset("10000050", "Thoma")
             )
@@ -384,7 +396,7 @@ class AppShellTest(unittest.TestCase):
             shell.controller.gcsim_chamber_results = (_stored_gcsim_result(),)
             before_state = shell.controller.session.state
 
-            shell.right_dock.header.save_button.click()
+            shell.right_panel.save_button.click()
 
             result = shell.last_save_result
             self.assertIsNotNone(result)
@@ -392,10 +404,10 @@ class AppShellTest(unittest.TestCase):
             self.assertTrue(result.bundle_id.startswith("app-shell-abyss-"))
             self.assertEqual(
                 result.saved_path,
-                root / result.bundle_id / "snapshot.json",
+                root / "abyss" / "2026-06-01" / result.bundle_id / "snapshot.json",
             )
-            self.assertFalse(shell.right_dock.save_status_label.isHidden())
-            self.assertIn(result.bundle_id, shell.right_dock.save_status_label.text())
+            self.assertFalse(shell.right_panel.save_status_label.isHidden())
+            self.assertIn(result.bundle_id, shell.right_panel.save_status_label.text())
 
             bundle = HistorySnapshotBundleStore(root).read_bundle(result.bundle_id)
             self.assertEqual(bundle.run_type, HISTORY_RUN_TYPE_ABYSS)
@@ -403,6 +415,8 @@ class AppShellTest(unittest.TestCase):
             self.assertEqual(bundle.content_language, get_language())
             self.assertIsNotNone(bundle.scenario)
             self.assertIsNotNone(bundle.scenario.abyss)
+            self.assertEqual(bundle.scenario.abyss.period_start, "2026-06-01")
+            self.assertEqual(bundle.scenario.abyss.floor, 12)
             self.assertIsNotNone(bundle.scenario.abyss.chambers[0].timer)
             self.assertEqual(
                 bundle.scenario.abyss.chambers[0].timer.team1_left_seconds,
@@ -410,6 +424,67 @@ class AppShellTest(unittest.TestCase):
             )
             self.assertIsNotNone(bundle.teams[0].slots[0].character)
             self.assertEqual(bundle.teams[0].slots[0].character.name, "Thoma")
+            self.assertEqual(shell.controller.session.state, before_state)
+
+    def test_run_save_writes_different_cached_abyss_periods_to_different_folders(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history" / "snapshots"
+            controller = AppShellController.empty()
+            controller._cached_abyss_source_data = (
+                _simple_abyss_source_data_for_gcsim_writeback(
+                    period_start="2026-06-01"
+                )
+            )
+            controller._cached_abyss_source_data_loaded = True
+            shell = AppShell(controller=controller, history_snapshot_root=root)
+
+            first = shell.controller.save_current_run_snapshot(history_root=root)
+            shell.controller._cached_abyss_source_data = (
+                _simple_abyss_source_data_for_gcsim_writeback(
+                    period_start="2026-06-16"
+                )
+            )
+            shell.controller._cached_abyss_source_data_loaded = True
+            second = shell.controller.save_current_run_snapshot(history_root=root)
+
+            self.assertTrue(first.success)
+            self.assertTrue(second.success)
+            self.assertEqual(first.saved_path.parent.parent.name, "2026-06-01")
+            self.assertEqual(second.saved_path.parent.parent.name, "2026-06-16")
+            self.assertTrue((root / "abyss" / "2026-06-01").exists())
+            self.assertTrue((root / "abyss" / "2026-06-16").exists())
+
+    def test_history_browser_shows_saved_rows_from_snapshot_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history" / "snapshots"
+            source_data = _simple_abyss_source_data_for_gcsim_writeback()
+            with patch(
+                "ui.app_shell.load_current_cached_abyss_floor_source_data",
+                return_value=source_data,
+            ):
+                shell = AppShell(history_snapshot_root=root)
+            shell.controller.add_or_replace_character_fast(
+                _character_asset("10000050", "Thoma")
+            )
+            before_state = shell.controller.session.state
+
+            shell.right_panel.save_button.click()
+            result = shell.last_save_result
+            shell.left_host.history_button.click()
+
+            workspace = shell.left_host.history_workspace
+            texts = _label_texts(workspace.content_widget)
+            self.assertIsNotNone(result)
+            self.assertTrue(result.success)
+            self.assertEqual(shell.active_left_workspace_id, LEFT_WORKSPACE_HISTORY)
+            self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_HISTORY)
+            self.assertTrue(workspace.empty_label.isHidden())
+            self.assertFalse(workspace.scroll_area.isHidden())
+            self.assertIn("2026-06-01", "\n".join(texts))
+            self.assertIn(result.bundle_id, "\n".join(texts))
+            self.assertIn("Thoma", "\n".join(texts))
             self.assertEqual(shell.controller.session.state, before_state)
 
     def test_run_save_controller_writes_dps_dummy_snapshot(self) -> None:
@@ -425,6 +500,10 @@ class AppShellTest(unittest.TestCase):
             result = shell.controller.save_current_run_snapshot(history_root=root)
 
             self.assertTrue(result.success)
+            self.assertEqual(
+                result.saved_path,
+                root / "dps_dummy" / result.bundle_id / "snapshot.json",
+            )
             bundle = HistorySnapshotBundleStore(root).read_bundle(result.bundle_id)
             self.assertEqual(bundle.run_type, HISTORY_RUN_TYPE_DPS_DUMMY)
             self.assertIsNotNone(bundle.scenario)
@@ -438,29 +517,29 @@ class AppShellTest(unittest.TestCase):
             shell = AppShell(history_snapshot_root=Path(tmp) / "history")
 
             with patch(
-                "ui.app_shell.HistorySnapshotBundleStore.write_bundle",
+                "ui.app_shell.HistorySnapshotBundleStore.write_bundle_grouped",
                 side_effect=OSError("write blocked"),
             ):
-                shell.right_dock.header.save_button.click()
+                shell.right_panel.save_button.click()
 
             result = shell.last_save_result
             self.assertIsNotNone(result)
             self.assertFalse(result.success)
             self.assertIn("write blocked", result.error_text)
-            self.assertFalse(shell.right_dock.save_status_label.isHidden())
-            self.assertIn("write blocked", shell.right_dock.save_status_label.text())
+            self.assertFalse(shell.right_panel.save_status_label.isHidden())
+            self.assertIn("write blocked", shell.right_panel.save_status_label.text())
 
     def test_run_save_button_is_live_run_only_and_ignored_elsewhere(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "history" / "snapshots"
             shell = AppShell(history_snapshot_root=root)
 
-            self.assertFalse(shell.right_dock.header.save_button.isHidden())
-            self.assertTrue(shell.right_dock.header.save_button.isEnabled())
+            self.assert_header_has_no_run_actions(shell)
+            self.assert_run_actions_available(shell)
 
             with patch(
-                "ui.app_shell.HistorySnapshotBundleStore.write_bundle",
-                wraps=HistorySnapshotBundleStore.write_bundle,
+                "ui.app_shell.HistorySnapshotBundleStore.write_bundle_grouped",
+                wraps=HistorySnapshotBundleStore.write_bundle_grouped,
             ) as write_bundle:
                 shell.left_host.history_button.click()
 
@@ -468,8 +547,10 @@ class AppShellTest(unittest.TestCase):
                     shell.right_dock.current_page(),
                     RIGHT_DOCK_PAGE_HISTORY,
                 )
-                self.assertTrue(shell.right_dock.header.save_button.isHidden())
-                self.assertFalse(shell.right_dock.header.save_button.isEnabled())
+                self.assertIsNot(
+                    shell.right_dock.content_stack.currentWidget(),
+                    shell.right_panel,
+                )
                 shell.right_dock.save_requested.emit()
                 write_bundle.assert_not_called()
                 self.assertFalse(root.exists())
@@ -480,8 +561,10 @@ class AppShellTest(unittest.TestCase):
                     shell.right_dock.current_page(),
                     RIGHT_DOCK_PAGE_ACCOUNT,
                 )
-                self.assertTrue(shell.right_dock.header.save_button.isHidden())
-                self.assertFalse(shell.right_dock.header.save_button.isEnabled())
+                self.assertIsNot(
+                    shell.right_dock.content_stack.currentWidget(),
+                    shell.right_panel,
+                )
                 shell.right_dock.save_requested.emit()
                 write_bundle.assert_not_called()
                 self.assertFalse(root.exists())
@@ -489,8 +572,10 @@ class AppShellTest(unittest.TestCase):
                 shell.left_host.pvp_button.click()
 
                 self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
-                self.assertTrue(shell.right_dock.header.save_button.isHidden())
-                self.assertFalse(shell.right_dock.header.save_button.isEnabled())
+                self.assertIsNot(
+                    shell.right_dock.content_stack.currentWidget(),
+                    shell.right_panel,
+                )
                 shell.right_dock.save_requested.emit()
                 write_bundle.assert_not_called()
                 self.assertFalse(root.exists())
@@ -504,8 +589,7 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
-        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
-        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_header_has_no_run_actions(shell)
         self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.pvp_play_button.isHidden())
         self.assertFalse(shell.right_dock.header.pvp_control_button.isChecked())
@@ -526,8 +610,7 @@ class AppShellTest(unittest.TestCase):
         )
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
         self.assertFalse(shell.right_dock.header.run_mode_tabs.isHidden())
-        self.assertFalse(shell.right_dock.header.reset_button.isHidden())
-        self.assertTrue(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_run_actions_available(shell)
         self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertTrue(
             shell.right_dock.header.run_mode_tabs.button_for_mode(
@@ -682,10 +765,11 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
         self.assertEqual(shell.controller.mode_states, before)
-        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
-        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_header_has_no_run_actions(shell)
 
-    def test_account_page_hides_reset_and_ignores_programmatic_reset_click(self) -> None:
+    def test_account_page_hides_run_actions_and_ignores_programmatic_reset_click(
+        self,
+    ) -> None:
         shell = AppShell()
         shell.controller.add_or_replace_character_fast(
             _character_asset("10000050", "Thoma")
@@ -696,8 +780,7 @@ class AppShellTest(unittest.TestCase):
         shell.right_dock.reset_requested.emit()
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
-        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
-        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_header_has_no_run_actions(shell)
         self.assertEqual(shell.controller.session.state, before)
 
     def test_perf_logging_is_disabled_by_default(self) -> None:
@@ -716,8 +799,8 @@ class AppShellTest(unittest.TestCase):
 
         self.assertIsNone(shell.right_panel._mode_tabs)
         self.assertEqual(len(shell.right_dock.header.run_mode_tabs.buttons()), 2)
-        self.assertFalse(shell.right_dock.header.reset_button.isHidden())
-        self.assertTrue(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_header_has_no_run_actions(shell)
+        self.assert_run_actions_available(shell)
         self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.account_button.icon().isNull())
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
@@ -731,8 +814,7 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
         self.assertEqual(shell.left_host.stack.currentIndex(), left_workspace_index)
         self.assertTrue(shell.right_dock.header.account_button.isChecked())
-        self.assertTrue(shell.right_dock.header.reset_button.isHidden())
-        self.assertFalse(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_header_has_no_run_actions(shell)
         self.assertFalse(
             any(
                 button.isChecked()
@@ -745,8 +827,7 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_RUN)
         self.assertEqual(shell.controller.mode, MODE_DPS_DUMMY)
         self.assertFalse(shell.right_dock.header.account_button.isChecked())
-        self.assertFalse(shell.right_dock.header.reset_button.isHidden())
-        self.assertTrue(shell.right_dock.header.reset_button.isEnabled())
+        self.assert_run_actions_available(shell)
         self.assertTrue(
             shell.right_dock.header.run_mode_tabs.button_for_mode(
                 MODE_DPS_DUMMY
@@ -1394,6 +1475,30 @@ class AppShellTest(unittest.TestCase):
         self.assertNotIn("Total damage mean", sim_tooltip_text)
         self.assertIn("<b>Config path</b>: C:/repo/config.txt", sim_tooltip_text)
         self.assertIn("DPS correctness claim: false", sim_tooltip_text)
+
+    def test_right_panel_run_actions_render_after_details_as_action_buttons(self) -> None:
+        model = RightPanelPrototypeViewModel(
+            mode=MODE_ABYSS,
+            mode_tabs=("Abyss", "DPS Dummy"),
+            teams=(),
+            selected_details=RightPanelSelectedDetailsViewModel(has_selection=False),
+            chamber_headers=(),
+            chamber_rows=(),
+            total_seconds=0,
+            gcsim_status=RightPanelGcsimStatusViewModel(status="Idle"),
+        )
+
+        widget = RightPanelPrototypeWidget(model, show_mode_tabs=False)
+
+        self.assertEqual(
+            widget._layout.indexOf(widget._run_actions),
+            widget._layout.indexOf(widget._details_frame) + 1,
+        )
+        self.assertEqual(widget.reset_button.objectName(), "ActionButton")
+        self.assertEqual(widget.save_button.objectName(), "ActionButton")
+        self.assertNotEqual(widget.reset_button.objectName(), "ModeTabButton")
+        self.assertNotEqual(widget.save_button.objectName(), "ModeTabButton")
+        self.assertTrue(widget.save_status_label.isHidden())
 
     def test_chamber_timer_cell_signal_updates_app_shell_model(self) -> None:
         shell = AppShell()
@@ -4558,12 +4663,23 @@ def _valid_pvp_character_assets() -> list[dict]:
     ]
 
 
-def _simple_abyss_source_data_for_gcsim_writeback():
+def _label_texts(widget: QWidget) -> list[str]:
+    return [
+        label.text()
+        for label in widget.findChildren(QLabel)
+        if label.text()
+    ]
+
+
+def _simple_abyss_source_data_for_gcsim_writeback(
+    *,
+    period_start: str = "2026-06-01",
+):
     return load_abyss_floor12_source_data(
-        "2026-06-01",
+        period_start,
         "120",
         composition_report=composition_report(
-            "2026-06-01",
+            period_start,
             [
                 fandom_row("Team 1 Enemy", chamber=1, side=1, wave=1, level=100),
                 fandom_row("Team 2 Enemy", chamber=1, side=2, wave=1, level=100),

@@ -16,6 +16,7 @@ from run_workspace.history_snapshot import (
     HISTORY_RUN_TYPE_ABYSS,
     HISTORY_RUN_TYPE_DPS_DUMMY,
     HISTORY_SNAPSHOT_FILENAME,
+    HISTORY_UNKNOWN_ABYSS_PERIOD,
     HistoryAbyssChamberSnapshot,
     HistoryAbyssScenarioSnapshot,
     HistoryAbyssSideResultSnapshot,
@@ -40,6 +41,9 @@ from run_workspace.history_snapshot import (
     UnsupportedHistorySnapshotSchemaVersionError,
     history_snapshot_bundle_from_json_text,
     history_snapshot_bundle_to_json_text,
+)
+from run_workspace.history_snapshot_listing import (
+    load_history_snapshot_summary_listing,
 )
 
 
@@ -187,6 +191,111 @@ class HistorySnapshotBundleTests(unittest.TestCase):
             self.assertEqual(read_back.to_dict(), bundle.to_dict())
             self.assertEqual(sorted(path.name for path in root.iterdir()), [bundle.bundle_id])
 
+    def test_grouped_store_writes_abyss_under_period_start(self) -> None:
+        bundle = _with_abyss_period(
+            _minimal_abyss_bundle(bundle_id="abyss-period-1"),
+            period_start="2026-06-01",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history-root"
+            store = HistorySnapshotBundleStore(root)
+
+            snapshot_path = store.write_bundle_grouped(bundle)
+            read_back = store.read_bundle(bundle.bundle_id)
+
+            self.assertEqual(
+                snapshot_path,
+                root / "abyss" / "2026-06-01" / bundle.bundle_id / HISTORY_SNAPSHOT_FILENAME,
+            )
+            self.assertEqual(read_back.to_dict(), bundle.to_dict())
+
+    def test_grouped_store_splits_different_abyss_periods(self) -> None:
+        first = _with_abyss_period(
+            _minimal_abyss_bundle(bundle_id="abyss-period-1"),
+            period_start="2026-06-01",
+        )
+        second = _with_abyss_period(
+            _minimal_abyss_bundle(bundle_id="abyss-period-2"),
+            period_start="2026-06-16",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history-root"
+            store = HistorySnapshotBundleStore(root)
+
+            first_path = store.write_bundle_grouped(first)
+            second_path = store.write_bundle_grouped(second)
+
+            self.assertIn(Path("abyss") / "2026-06-01", first_path.relative_to(root).parents)
+            self.assertIn(Path("abyss") / "2026-06-16", second_path.relative_to(root).parents)
+
+    def test_grouped_store_uses_unknown_period_for_missing_abyss_period_start(self) -> None:
+        bundle = _minimal_abyss_bundle(bundle_id="abyss-unknown-period")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history-root"
+            path = HistorySnapshotBundleStore(root).write_bundle_grouped(bundle)
+
+            self.assertEqual(
+                path,
+                root / "abyss" / HISTORY_UNKNOWN_ABYSS_PERIOD / bundle.bundle_id / HISTORY_SNAPSHOT_FILENAME,
+            )
+
+    def test_grouped_store_writes_dps_dummy_outside_abyss_periods(self) -> None:
+        bundle = _minimal_dps_dummy_bundle()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history-root"
+            path = HistorySnapshotBundleStore(root).write_bundle_grouped(bundle)
+
+            self.assertEqual(
+                path,
+                root / "dps_dummy" / bundle.bundle_id / HISTORY_SNAPSHOT_FILENAME,
+            )
+            self.assertFalse((root / "abyss").exists())
+
+    def test_listing_reads_grouped_bundles_and_collects_corrupt_errors(self) -> None:
+        abyss_bundle = _with_abyss_period(
+            _minimal_abyss_bundle(bundle_id="abyss-listing"),
+            period_start="2026-06-01",
+            period_end="2026-06-16",
+        )
+        dps_bundle = _minimal_dps_dummy_bundle()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history-root"
+            store = HistorySnapshotBundleStore(root)
+            store.write_bundle_grouped(abyss_bundle)
+            store.write_bundle_grouped(dps_bundle)
+            corrupt_dir = root / "abyss" / "2026-06-01" / "broken"
+            corrupt_dir.mkdir(parents=True)
+            (corrupt_dir / HISTORY_SNAPSHOT_FILENAME).write_text("{broken", encoding="utf-8")
+
+            listing = load_history_snapshot_summary_listing(root)
+
+            self.assertEqual(listing.run_count, 2)
+            self.assertEqual(len(listing.errors), 1)
+            self.assertEqual([group.run_type for group in listing.groups], ["abyss", "dps_dummy"])
+            abyss_group = listing.groups[0]
+            self.assertEqual(abyss_group.group_key, "2026-06-01")
+            self.assertEqual(abyss_group.period_end, "2026-06-16")
+            self.assertEqual(abyss_group.runs[0].team_character_names[0][0], "Thoma")
+            self.assertIn("12-1", abyss_group.runs[0].chamber_summaries[0])
+            self.assertIn("60s/100k", abyss_group.runs[0].chamber_summaries[0])
+
+    def test_listing_reads_old_flat_bundles_without_migration(self) -> None:
+        bundle = _with_abyss_period(
+            _minimal_abyss_bundle(bundle_id="old-flat-abyss"),
+            period_start="2026-06-01",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history-root"
+            store = HistorySnapshotBundleStore(root)
+            old_flat_path = store.write_bundle(bundle)
+
+            listing = load_history_snapshot_summary_listing(root)
+
+            self.assertEqual(old_flat_path, root / bundle.bundle_id / HISTORY_SNAPSHOT_FILENAME)
+            self.assertEqual(listing.run_count, 1)
+            self.assertEqual(listing.groups[0].group_key, "2026-06-01")
+            self.assertTrue(old_flat_path.exists())
+
     def test_store_rejects_path_traversal_bundle_id(self) -> None:
         bundle = replace(_minimal_abyss_bundle(), bundle_id="../escape")
         with tempfile.TemporaryDirectory() as tmp:
@@ -332,6 +441,25 @@ def _minimal_dps_dummy_bundle(
                 source="manual_fixture",
             ),
         ),
+    )
+
+
+def _with_abyss_period(
+    bundle: HistorySnapshotBundle,
+    *,
+    period_start: str,
+    period_end: str = "",
+) -> HistorySnapshotBundle:
+    assert bundle.scenario is not None
+    assert bundle.scenario.abyss is not None
+    abyss = replace(
+        bundle.scenario.abyss,
+        period_start=period_start,
+        period_end=period_end,
+    )
+    return replace(
+        bundle,
+        scenario=replace(bundle.scenario, abyss=abyss),
     )
 
 

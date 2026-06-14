@@ -70,9 +70,13 @@ Mirror the primary project owner under `tests/`:
   shared `character_id`, per-seat ownership/constellation markers, legal click
   mapping, illegal no-op behavior, right-panel pick/ban zones, same-deck
   seat-state independence, and a deterministic full Free Draft completion
-  through UI card clicks, plus post-draft Assignment, Weapon assignment,
-  Timers/results, completed result summary, duplicate assignment move behavior,
-  incompatible/exhausted weapon blocking, and active-draft clear/reset state.
+  through UI card clicks, plus post-draft visual layout guards: two left/main
+  source zones with picked-character and weapon tiles, two right-panel target
+  zones with 2x4 slots per player, visual character-to-slot assignment,
+  visual slot-to-weapon assignment, compact right-panel timer inputs,
+  completed result teams/timers/winner display, duplicate assignment move
+  behavior, incompatible/exhausted weapon blocking, and active-draft
+  clear/reset state.
   PvP offscreen smoke should also verify the default
   deck path, first/second activation
   timing, and that edit tint is scoped to the card grid viewports when this area

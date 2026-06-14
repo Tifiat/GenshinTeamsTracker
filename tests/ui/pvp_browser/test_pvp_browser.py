@@ -637,11 +637,36 @@ class PvpBrowserTest(unittest.TestCase):
 
         self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_ASSIGNMENT)
         board = workspace.active_draft_session.board_dict()
-        self.assertIn(
-            ("player_1", board["unified_pool"]["result_zones"]["player_1"]["picked"][0]),
-            workspace.draft_workspace.assignment_character_buttons_by_key,
+        self.assertEqual(
+            set(workspace.draft_workspace.source_zone_frames_by_seat),
+            {"player_1", "player_2"},
         )
+        self.assertEqual(
+            set(draft_panel.target_zone_frames_by_seat),
+            {"player_1", "player_2"},
+        )
+        self.assertEqual(
+            len(workspace.draft_workspace.findChildren(QPushButton, "pvp-picked-character-tile")),
+            16,
+        )
+        self.assertEqual(
+            len(workspace.draft_workspace.findChildren(QPushButton, "pvp-weapon-tile")),
+            2,
+        )
+        self.assertFalse(
+            workspace.draft_workspace.findChildren(QPushButton, "pvp-team-slot")
+        )
+        self.assertEqual(len(draft_panel.team_slot_buttons_by_key), 16)
         self.assertFalse(workspace.assignment_ready())
+
+        first_p1 = board["unified_pool"]["result_zones"]["player_1"]["picked"][0]
+        workspace.draft_workspace.assignment_character_buttons_by_key[
+            ("player_1", first_p1)
+        ].click()
+        QApplication.processEvents()
+        draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].click()
+        QApplication.processEvents()
+        self.assertEqual(workspace.assignment_slots_by_seat["player_1"][0][0], first_p1)
 
         self._assign_all_picks_to_teams(workspace)
 
@@ -651,10 +676,19 @@ class PvpBrowserTest(unittest.TestCase):
         QApplication.processEvents()
 
         self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_WEAPONS)
-        self.assertGreater(
-            len(workspace.draft_workspace.weapon_character_buttons_by_key),
-            0,
+        draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].click()
+        QApplication.processEvents()
+        self.assertEqual(workspace.selected_weapon_character, ("player_1", first_p1))
+        weapon_tiles = workspace.draft_workspace.findChildren(
+            QPushButton,
+            "pvp-weapon-tile",
         )
+        self.assertGreater(len(weapon_tiles), 0)
+        self.assertTrue(any(tile.isEnabled() for tile in weapon_tiles))
+        enabled_weapon_tile = next(tile for tile in weapon_tiles if tile.isEnabled())
+        enabled_weapon_tile.click()
+        QApplication.processEvents()
+        self.assertIn(first_p1, workspace.weapon_assignments_by_seat["player_1"])
 
         self._assign_compatible_weapons(workspace)
 
@@ -663,6 +697,7 @@ class PvpBrowserTest(unittest.TestCase):
         QApplication.processEvents()
 
         self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_TIMERS_RESULTS)
+        self.assertEqual(len(draft_panel.timer_inputs_by_key), 6)
         for index, text in enumerate(("01:00", "01:00", "01:00")):
             workspace.set_timer_text("player_1", index, text)
         for index, text in enumerate(("01:10", "01:00", "01:00")):
@@ -682,9 +717,15 @@ class PvpBrowserTest(unittest.TestCase):
             for label in workspace.draft_workspace.findChildren(QLabel)
             if label.text()
         )
+        panel_text = "\n".join(
+            label.text()
+            for label in draft_panel.findChildren(QLabel)
+            if label.text()
+        )
         self.assertIn(tr("app_shell.pvp.post.result_summary_title"), summary_text)
-        self.assertIn(tr("app_shell.pvp.draft.player_1"), summary_text)
-        self.assertIn("01:00", summary_text)
+        self.assertIn(tr("app_shell.pvp.draft.player_1"), panel_text)
+        self.assertIn("01:00", panel_text)
+        self.assertIn(tr("app_shell.pvp.post.result_win"), panel_text)
 
     def test_pvp_assignment_moves_used_character_instead_of_duplicating(self) -> None:
         workspace, _panel = self._started_draft_workspace(

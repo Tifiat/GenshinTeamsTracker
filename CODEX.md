@@ -551,9 +551,10 @@ validates by converting presets to backend `DraftDeck`. Play chooses Player
 readable character pool, sends legal pick/ban clicks through backend action
 payloads, shows right-panel pick/ban zones, and can complete the full Free
 Draft schedule locally, then continues through assignment, weapon assignment,
-manual timers, and read-only result summary. The next PvP code target is
-post-draft polish/review affordances or export/history only after those
-contracts are ready.
+manual timers, and read-only result summary in the corrected two-player visual
+source/target match layout. The next PvP code target is post-draft
+density/review/back polish or export/history only after those contracts are
+ready.
 Shared observed weapon-stack identity for Deck presets and
 future PvP screens lives in `run_workspace/pvp/weapon_identity.py`.
 Reference-site findings live in

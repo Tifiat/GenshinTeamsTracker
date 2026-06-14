@@ -300,12 +300,18 @@ Current v0 scope:
   completion.
 - It keeps PvP-owned in-memory UI state until validation succeeds, then commits
   through `FreeDraftController.set_team_assignment(...)`.
-- Left/main area uses split Player 1 / Player 2 sections. Each side shows only
-  that player's 8 picked characters and two 4-character team areas.
-- Interaction is simple click-character, click-slot. Re-selecting an already
-  used character moves it instead of duplicating it; slots can be cleared.
-- The right panel shows stage validation and enables the next-stage button only
-  when both players have valid 4+4 assignments.
+- Left/main area is now the visual source pool: top Player 1 and bottom
+  Player 2, each with that player's weapon pool tiles and 8 picked character
+  tiles. There are no filters or full-account browsers in post-draft stages.
+- The PvP right panel is now the target match panel: top Player 1 and bottom
+  Player 2, each with two compact 4-character team halves, attached weapon
+  indicators, and compact timer/result rows.
+- Interaction is simple click source character, click right-panel target slot.
+  Re-selecting an already used character moves it instead of duplicating it;
+  slots can be cleared.
+- Stage controls are low-priority right-panel footer controls; stage
+  validation still enables the next-stage button only when both players have
+  valid 4+4 assignments.
 - No normal character filters, artifact badges, GCSIM block, or normal
   TeamBuilder mutation are part of v0.
 
@@ -315,7 +321,10 @@ Current v0 scope:
 - It commits through `FreeDraftController.set_weapon_assignment(...)` only after
   backend validation accepts both players.
 - Each assigned character can be selected, then assigned a compatible weapon
-  stack from that player's own deck weapon pool.
+  stack from that player's own left/main source weapon pool.
+- Weapon assignment is visual: click a right-panel team character slot, then
+  click a compatible source weapon tile. The assigned weapon is shown on/near
+  that right-panel slot.
 - The UI enforces player ownership, weapon type compatibility, and stack count
   exhaustion before setting local selection state; backend validation remains
   the final authority before continuing.
@@ -325,9 +334,9 @@ Current v0 scope:
 
 - Timers/results v0 is implemented as an internal Draft stage after valid team
   and weapon assignment.
-- The left/main area shows compact read-only team/weapon summaries and three
-  manual timer inputs per player. Inputs accept `mm:ss` or raw seconds and
-  require valid values for both players before finalization.
+- The right-panel target zones keep the teams/weapons visible and show compact
+  timer inputs per player. Inputs accept `mm:ss` or raw seconds and require
+  valid values for both players before finalization.
 - Finalization calls `FreeDraftController.set_match_timers(...)`; lower total
   time wins and equal totals draw through the backend result model.
 - Factual DPS, restarts, technical-loss UI, bundle/export actions, and GCSIM
@@ -336,8 +345,9 @@ Current v0 scope:
 ## Export / Result
 
 - Completed result v0 is implemented as a read-only internal Draft stage.
-- It shows status, winner/draw, time difference, per-player totals, chamber
-  timers, and compact Player 1 / Player 2 team + weapon summaries.
+- It stays in the same two-player visual match layout and shows teams,
+  assigned weapons, per-player chamber timers/totals, winner/draw, and time
+  difference.
 - PNG/export, history persistence, and polished result-card design remain
   future work.
 
@@ -407,15 +417,17 @@ Current Decks v0 scope:
 - Draft board v0 is implemented. It renders the backend `unified_pool`, lets the
   user click legal pick/ban targets through the controller, shows right-panel
   pick/ban zones, and can complete the full Free Draft schedule locally.
-- Post-draft local flow v0 is implemented inside Draft: Assignment, Weapon
-  assignment, Timers/results, and Completed result summary. It reuses
+- Post-draft local flow v0 is implemented inside Draft with the corrected
+  two-player visual match layout: left/main source pools for picked characters
+  and weapons, right-panel target teams/weapons/timers/results. It reuses
   controller assignment/timer APIs and remains in-memory/PvP-owned.
 
 Next implementation task:
 
 > Post-draft polish and result/export planning. The core local flow now reaches
-> completed result; next code work should refine usability, add back/review
-> affordances, or begin export/history only when their contracts are ready.
+> completed result in the intended visual match layout; next code work should
+> refine usability/review/back affordances, improve visual density, or begin
+> export/history only when their contracts are ready.
 
 Still out of scope:
 

@@ -421,6 +421,47 @@ QLabel#pvp_draft_result_bans {{
     font-size: 11px;
     font-weight: 600;
 }}
+QFrame#pvp_postdraft_source_frame,
+QFrame#pvp-postdraft-source-player-1,
+QFrame#pvp-postdraft-source-player-2 {{
+    border: 1px solid {UI_BORDER_PANEL};
+    border-radius: 8px;
+    background: {UI_BG_PANEL};
+}}
+QFrame#pvp-postdraft-source-player-1 {{
+    border-left: 4px solid {UI_ACCENT_TEAM_1};
+}}
+QFrame#pvp-postdraft-source-player-2 {{
+    border-left: 4px solid {UI_ACCENT_TEAM_2};
+}}
+QPushButton#pvp-picked-character-tile,
+QPushButton#pvp-weapon-tile {{
+    min-width: 92px;
+    max-width: 92px;
+    min-height: 72px;
+    max-height: 72px;
+    padding: 4px;
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 6px;
+    background: {UI_BG_PANEL_RAISED};
+    color: {UI_TEXT_SECONDARY};
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+}}
+QPushButton#pvp-picked-character-tile[selected="true"],
+QPushButton#pvp-weapon-tile[compatible="true"] {{
+    border-color: {UI_STATE_SUCCESS};
+    background: #203b28;
+    color: {UI_TEXT_PRIMARY};
+}}
+QPushButton#pvp-picked-character-tile[assigned="true"],
+QPushButton#pvp-weapon-tile[exhausted="true"],
+QPushButton#pvp-picked-character-tile:disabled,
+QPushButton#pvp-weapon-tile:disabled {{
+    color: {UI_TEXT_MUTED};
+    background: {UI_BG_BUTTON};
+}}
 """
 
 
@@ -1247,6 +1288,35 @@ class PvpDraftUnifiedCardButton(QPushButton):
         _refresh_qss(self)
 
 
+class PvpPostDraftTileButton(QPushButton):
+    def __init__(
+        self,
+        *,
+        text: str,
+        image_path: str = "",
+        icon_size: int = 48,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setText(text)
+        self.setIconSize(QSize(icon_size, icon_size))
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setProperty("hasIcon", False)
+        if image_path:
+            pixmap_result = load_hidpi_pixmap(
+                image_path,
+                icon_size,
+                dpr=self.devicePixelRatioF(),
+                aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+                transform_mode=Qt.TransformationMode.SmoothTransformation,
+                cache=_PVP_DECK_ICON_PIXMAP_CACHE,
+                surface="pvp_postdraft_tile",
+            )
+            if not pixmap_result.pixmap.isNull():
+                self.setIcon(QIcon(pixmap_result.pixmap))
+                self.setProperty("hasIcon", True)
+
+
 class PvpDraftWorkspace(QWidget):
     card_clicked = Signal(dict)
     assignment_character_clicked = Signal(str, str)
@@ -1264,6 +1334,8 @@ class PvpDraftWorkspace(QWidget):
         self._active_session: PvpActiveDraftSession | None = None
         self._status_text = ""
         self._view_state: Mapping[str, Any] = {}
+        self._character_assets_by_id: dict[str, dict[str, Any]] = {}
+        self._weapon_assets_by_stack_key: dict[str, dict[str, Any]] = {}
         self.card_buttons_by_character_id: dict[str, PvpDraftUnifiedCardButton] = {}
         self.card_buttons_by_key = self.card_buttons_by_character_id
         self.legal_card_buttons: list[PvpDraftUnifiedCardButton] = []
@@ -1271,6 +1343,7 @@ class PvpDraftWorkspace(QWidget):
         self.assignment_slot_buttons_by_key: dict[tuple[str, int, int], QPushButton] = {}
         self.weapon_character_buttons_by_key: dict[tuple[str, str], QPushButton] = {}
         self.weapon_stack_buttons_by_key: dict[tuple[str, str], QPushButton] = {}
+        self.source_zone_frames_by_seat: dict[str, QFrame] = {}
         self.timer_inputs_by_key: dict[tuple[str, int], QLineEdit] = {}
         self.timer_total_labels_by_seat: dict[str, QLabel] = {}
 
@@ -1358,10 +1431,14 @@ class PvpDraftWorkspace(QWidget):
         *,
         status_text: str = "",
         view_state: Mapping[str, Any] | None = None,
+        character_assets: Iterable[dict[str, Any]] = (),
+        weapon_assets: Iterable[dict[str, Any]] = (),
     ) -> None:
         self._active_session = session
         self._status_text = status_text
         self._view_state = dict(view_state or {})
+        self._character_assets_by_id = _character_assets_by_id(character_assets)
+        self._weapon_assets_by_stack_key = _weapon_assets_by_stack_key(weapon_assets)
         self.refresh()
 
     def refresh(self) -> None:
@@ -1379,6 +1456,7 @@ class PvpDraftWorkspace(QWidget):
         self.assignment_slot_buttons_by_key.clear()
         self.weapon_character_buttons_by_key.clear()
         self.weapon_stack_buttons_by_key.clear()
+        self.source_zone_frames_by_seat.clear()
         self.timer_inputs_by_key.clear()
         self.timer_total_labels_by_seat.clear()
         _clear_layout(self.scroll_layout)
@@ -1397,14 +1475,13 @@ class PvpDraftWorkspace(QWidget):
         self.action_title_label.setText(_draft_stage_title(board, stage))
         self.action_detail_label.setText(_draft_stage_detail(board, stage, self._view_state))
 
-        if stage == PVP_DRAFT_STAGE_ASSIGNMENT:
-            self.scroll_layout.addWidget(self._build_assignment_stage(board))
-        elif stage == PVP_DRAFT_STAGE_WEAPONS:
-            self.scroll_layout.addWidget(self._build_weapons_stage(board))
-        elif stage == PVP_DRAFT_STAGE_TIMERS_RESULTS:
-            self.scroll_layout.addWidget(self._build_timers_stage(board))
-        elif stage == PVP_DRAFT_STAGE_COMPLETED_RESULT:
-            self.scroll_layout.addWidget(self._build_result_stage(board))
+        if stage in {
+            PVP_DRAFT_STAGE_ASSIGNMENT,
+            PVP_DRAFT_STAGE_WEAPONS,
+            PVP_DRAFT_STAGE_TIMERS_RESULTS,
+            PVP_DRAFT_STAGE_COMPLETED_RESULT,
+        }:
+            self.scroll_layout.addWidget(self._build_post_draft_source_stage(board, stage))
         else:
             self.scroll_layout.addWidget(self._build_unified_pool(board, complete))
         self.scroll_layout.addStretch(1)
@@ -1467,312 +1544,152 @@ class PvpDraftWorkspace(QWidget):
         layout.addWidget(grid_widget)
         return pool_frame
 
-    def _build_assignment_stage(self, board: Mapping[str, Any]) -> QFrame:
+    def _build_post_draft_source_stage(
+        self,
+        board: Mapping[str, Any],
+        stage: str,
+    ) -> QFrame:
         frame = QFrame()
-        frame.setObjectName("pvp_draft_pool_frame")
+        frame.setObjectName("pvp_postdraft_source_frame")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
-
-        for seat in PVP_SEATS:
-            section = QFrame()
-            section.setObjectName("pvp_draft_result_zone")
-            section_layout = QVBoxLayout(section)
-            section_layout.setContentsMargins(8, 8, 8, 8)
-            section_layout.setSpacing(7)
-            title = QLabel(_seat_label(seat))
-            title.setObjectName("pvp_draft_result_title")
-            section_layout.addWidget(title)
-
-            selected = _selected_assignment_character(self._view_state)
-            selected_text = (
-                _entry_display_name_for_id(board, selected[1])
-                if selected and selected[0] == seat
-                else tr("app_shell.pvp.post.none_selected")
-            )
-            selected_label = QLabel(
-                tr("app_shell.pvp.post.selected_character").format(
-                    character=selected_text,
-                )
-            )
-            selected_label.setObjectName("small_muted")
-            selected_label.setWordWrap(True)
-            section_layout.addWidget(selected_label)
-
-            available_title = QLabel(tr("app_shell.pvp.post.available_picks"))
-            available_title.setObjectName("pvp_deck_info_line")
-            section_layout.addWidget(available_title)
-            available_grid = QGridLayout()
-            available_grid.setContentsMargins(0, 0, 0, 0)
-            available_grid.setHorizontalSpacing(5)
-            available_grid.setVerticalSpacing(5)
-            used = _assigned_character_ids(self._view_state, seat)
-            available = [
-                character_id
-                for character_id in _picked_character_ids(board, seat)
-                if character_id not in used
-            ]
-            if not available:
-                empty = QLabel(tr("app_shell.pvp.post.available_empty"))
-                empty.setObjectName("small_muted")
-                section_layout.addWidget(empty)
-            else:
-                for index, character_id in enumerate(available):
-                    button = QPushButton(_entry_display_name_for_id(board, character_id))
-                    button.setObjectName("pvp_secondary_button")
-                    button.clicked.connect(
-                        lambda _checked=False, s=seat, c=character_id: (
-                            self.assignment_character_clicked.emit(s, c)
-                        )
-                    )
-                    self.assignment_character_buttons_by_key[(seat, character_id)] = button
-                    available_grid.addWidget(button, index // 4, index % 4)
-                section_layout.addLayout(available_grid)
-
-            slots = _assignment_slots(self._view_state, seat)
-            for team_index in range(2):
-                team_title = QLabel(
-                    tr("app_shell.pvp.post.team_title").format(
-                        index=team_index + 1,
-                    )
-                )
-                team_title.setObjectName("pvp_deck_info_line")
-                section_layout.addWidget(team_title)
-                slot_grid = QGridLayout()
-                slot_grid.setContentsMargins(0, 0, 0, 0)
-                slot_grid.setHorizontalSpacing(5)
-                slot_grid.setVerticalSpacing(5)
-                for slot_index in range(4):
-                    character_id = slots[team_index][slot_index]
-                    slot_text = (
-                        _entry_display_name_for_id(board, character_id)
-                        if character_id
-                        else tr("app_shell.pvp.post.empty_slot").format(
-                            index=slot_index + 1,
-                        )
-                    )
-                    slot_button = QPushButton(slot_text)
-                    slot_button.setObjectName("pvp_secondary_button")
-                    slot_button.clicked.connect(
-                        lambda _checked=False, s=seat, t=team_index, i=slot_index: (
-                            self.assignment_slot_clicked.emit(s, t, i)
-                        )
-                    )
-                    key = (seat, team_index, slot_index)
-                    self.assignment_slot_buttons_by_key[key] = slot_button
-                    slot_grid.addWidget(slot_button, slot_index, 0)
-                    clear_button = QPushButton("x")
-                    clear_button.setObjectName("row_cancel_button")
-                    clear_button.setEnabled(bool(character_id))
-                    clear_button.clicked.connect(
-                        lambda _checked=False, s=seat, t=team_index, i=slot_index: (
-                            self.assignment_slot_clear_clicked.emit(s, t, i)
-                        )
-                    )
-                    slot_grid.addWidget(clear_button, slot_index, 1)
-                section_layout.addLayout(slot_grid)
-            layout.addWidget(section)
-        return frame
-
-    def _build_weapons_stage(self, board: Mapping[str, Any]) -> QFrame:
-        frame = QFrame()
-        frame.setObjectName("pvp_draft_pool_frame")
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
-        session = self._active_session
-        if session is None:
-            return frame
-
-        selected = _selected_weapon_character(self._view_state)
-        for seat in PVP_SEATS:
-            section = QFrame()
-            section.setObjectName("pvp_draft_result_zone")
-            section_layout = QVBoxLayout(section)
-            section_layout.setContentsMargins(8, 8, 8, 8)
-            section_layout.setSpacing(7)
-            title = QLabel(_seat_label(seat))
-            title.setObjectName("pvp_draft_result_title")
-            section_layout.addWidget(title)
-
-            character_ids = _assigned_character_ids(self._view_state, seat)
-            for character_id in character_ids:
-                current_stack_key = _weapon_assignment_map(
-                    self._view_state,
-                    seat,
-                ).get(character_id, "")
-                current_weapon = _weapon_display_name(
-                    session,
-                    seat,
-                    current_stack_key,
-                )
-                text = _entry_display_name_for_id(board, character_id)
-                if current_weapon:
-                    text = f"{text} / {current_weapon}"
-                button = QPushButton(text)
-                button.setObjectName("pvp_secondary_button")
-                button.setProperty(
-                    "selectedWeaponCharacter",
-                    bool(selected == (seat, character_id)),
-                )
-                button.clicked.connect(
-                    lambda _checked=False, s=seat, c=character_id: (
-                        self.weapon_character_clicked.emit(s, c)
-                    )
-                )
-                self.weapon_character_buttons_by_key[(seat, character_id)] = button
-                section_layout.addWidget(button)
-                if current_stack_key:
-                    clear = QPushButton(tr("app_shell.pvp.post.clear_weapon"))
-                    clear.setObjectName("row_cancel_button")
-                    clear.clicked.connect(
-                        lambda _checked=False, s=seat, c=character_id: (
-                            self.weapon_clear_clicked.emit(s, c)
-                        )
-                    )
-                    section_layout.addWidget(clear)
-
-            if selected and selected[0] == seat:
-                weapon_title = QLabel(tr("app_shell.pvp.post.compatible_weapons"))
-                weapon_title.setObjectName("pvp_deck_info_line")
-                section_layout.addWidget(weapon_title)
-                for stack in _compatible_weapon_stacks(
-                    session,
-                    seat,
-                    selected[1],
-                ):
-                    remaining = _weapon_stack_remaining(
-                        session,
-                        self._view_state,
-                        seat,
-                        stack.stack_key,
-                        selected_character_id=selected[1],
-                    )
-                    text = tr("app_shell.pvp.post.weapon_option").format(
-                        weapon=stack.display_name,
-                        count=remaining,
-                    )
-                    button = QPushButton(text)
-                    button.setObjectName("pvp_secondary_button")
-                    button.setEnabled(remaining > 0)
-                    button.clicked.connect(
-                        lambda _checked=False, s=seat, c=selected[1], k=stack.stack_key: (
-                            self.weapon_stack_clicked.emit(s, c, k)
-                        )
-                    )
-                    self.weapon_stack_buttons_by_key[(seat, stack.stack_key)] = button
-                    section_layout.addWidget(button)
-            layout.addWidget(section)
-        return frame
-
-    def _build_timers_stage(self, board: Mapping[str, Any]) -> QFrame:
-        frame = QFrame()
-        frame.setObjectName("pvp_draft_pool_frame")
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(10)
+        layout.setSpacing(8)
         session = self._active_session
 
         for seat in PVP_SEATS:
             section = QFrame()
-            section.setObjectName("pvp_draft_result_zone")
+            section.setObjectName(_postdraft_source_object_name(seat))
+            section.setProperty("seat", seat)
             section_layout = QVBoxLayout(section)
             section_layout.setContentsMargins(8, 8, 8, 8)
             section_layout.setSpacing(6)
-            title = QLabel(_seat_label(seat))
+            self.source_zone_frames_by_seat[seat] = section
+
+            title = QLabel(
+                tr("app_shell.pvp.post.source_zone_title").format(
+                    seat=_seat_label(seat),
+                )
+            )
             title.setObjectName("pvp_draft_result_title")
             section_layout.addWidget(title)
+
+            weapon_title = QLabel(tr("app_shell.pvp.post.source_weapons"))
+            weapon_title.setObjectName("pvp_deck_info_line")
+            section_layout.addWidget(weapon_title)
+            weapon_grid = QGridLayout()
+            weapon_grid.setContentsMargins(0, 0, 0, 0)
+            weapon_grid.setHorizontalSpacing(5)
+            weapon_grid.setVerticalSpacing(5)
             if session is not None:
-                summary = QLabel(_post_draft_team_weapon_summary(session, board, seat))
-                summary.setObjectName("small_muted")
-                summary.setWordWrap(True)
-                section_layout.addWidget(summary)
-            for index, chamber_id in enumerate(PVP_TIMER_CHAMBERS):
-                row = QHBoxLayout()
-                label = QLabel(f"T{index + 1}")
-                label.setObjectName("pvp_deck_info_line")
-                row.addWidget(label)
-                line = QLineEdit()
-                line.setPlaceholderText("mm:ss")
-                line.setText(_timer_text(self._view_state, seat, index))
-                line.textChanged.connect(
-                    lambda text, s=seat, i=index: self._on_timer_text_changed(s, i, text)
-                )
-                self.timer_inputs_by_key[(seat, index)] = line
-                row.addWidget(line, 1)
-                section_layout.addLayout(row)
-            total = QLabel(
-                tr("app_shell.pvp.post.timer_total").format(
-                    total=_format_seconds(_timer_total_seconds(self._view_state, seat)),
-                )
-            )
-            total.setObjectName("small_muted")
-            self.timer_total_labels_by_seat[seat] = total
-            section_layout.addWidget(total)
-            layout.addWidget(section)
+                for index, stack in enumerate(session.controller.session_state.deck_for(seat).weapons):
+                    tile = self._make_source_weapon_tile(session, seat, stack, stage)
+                    weapon_grid.addWidget(tile, index // 6, index % 6)
+            section_layout.addLayout(weapon_grid)
+
+            picks_title = QLabel(tr("app_shell.pvp.post.source_picks"))
+            picks_title.setObjectName("pvp_deck_info_line")
+            section_layout.addWidget(picks_title)
+            character_grid = QGridLayout()
+            character_grid.setContentsMargins(0, 0, 0, 0)
+            character_grid.setHorizontalSpacing(5)
+            character_grid.setVerticalSpacing(5)
+            for index, character_id in enumerate(_picked_character_ids(board, seat)):
+                tile = self._make_source_character_tile(board, seat, character_id, stage)
+                character_grid.addWidget(tile, index // 8, index % 8)
+            section_layout.addLayout(character_grid)
+            layout.addWidget(section, 1)
         return frame
 
-    def _on_timer_text_changed(self, seat: str, index: int, text: str) -> None:
-        self.timer_text_changed.emit(seat, index, text)
-        total_label = self.timer_total_labels_by_seat.get(seat)
-        if total_label is None:
-            return
-        total = 0
-        for timer_index in range(len(PVP_TIMER_CHAMBERS)):
-            line = self.timer_inputs_by_key.get((seat, timer_index))
-            seconds = _parse_timer_text(line.text() if line is not None else "")
-            if seconds is not None:
-                total += seconds
-        total_label.setText(
-            tr("app_shell.pvp.post.timer_total").format(
-                total=_format_seconds(total),
+    def _make_source_character_tile(
+        self,
+        board: Mapping[str, Any],
+        seat: str,
+        character_id: str,
+        stage: str,
+    ) -> PvpPostDraftTileButton:
+        assigned = character_id in set(_assigned_character_ids(self._view_state, seat))
+        selected = _selected_assignment_character(self._view_state) == (seat, character_id)
+        name = _entry_display_name_for_id(board, character_id)
+        label = name
+        if assigned:
+            label = f"{name}\n{tr('app_shell.pvp.post.assigned_marker')}"
+        tile = PvpPostDraftTileButton(
+            text=label,
+            image_path=_asset_image_path(self._character_assets_by_id.get(character_id)),
+            icon_size=50,
+        )
+        tile.setObjectName("pvp-picked-character-tile")
+        tile.setProperty("seat", seat)
+        tile.setProperty("characterId", character_id)
+        tile.setProperty("assigned", assigned)
+        tile.setProperty("selected", selected)
+        tile.setEnabled(stage == PVP_DRAFT_STAGE_ASSIGNMENT and not assigned)
+        tile.clicked.connect(
+            lambda _checked=False, s=seat, c=character_id: (
+                self.assignment_character_clicked.emit(s, c)
             )
         )
+        self.assignment_character_buttons_by_key[(seat, character_id)] = tile
+        _refresh_qss(tile)
+        return tile
 
-    def _build_result_stage(self, board: Mapping[str, Any]) -> QFrame:
-        frame = QFrame()
-        frame.setObjectName("pvp_draft_completed")
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(7)
-        session = self._active_session
-        result = session.controller.state.match_result if session is not None else None
-        title = QLabel(tr("app_shell.pvp.post.result_summary_title"))
-        title.setObjectName("pvp_draft_result_title")
-        layout.addWidget(title)
-        if result is not None:
-            payload = result.to_dict()
-            lines = [
-                tr("app_shell.pvp.post.result_status").format(
-                    status=_text(payload.get("status")),
-                    winner=(
-                        _seat_label(_text(payload.get("winner_seat")))
-                        if payload.get("winner_seat")
-                        else tr("app_shell.pvp.draft.none")
-                    ),
-                    diff=int(payload.get("seconds_difference") or 0),
-                ),
-                tr("app_shell.pvp.post.timer_total_line").format(
-                    seat=_seat_label("player_1"),
-                    total=_format_seconds(_mapping(payload.get("totals")).get("player_1")),
-                ),
-                tr("app_shell.pvp.post.timer_total_line").format(
-                    seat=_seat_label("player_2"),
-                    total=_format_seconds(_mapping(payload.get("totals")).get("player_2")),
-                ),
-            ]
-            lines.extend(_result_chamber_timer_lines(payload))
-            for line_text in lines:
-                label = QLabel(line_text)
-                label.setObjectName("pvp_deck_info_line")
-                label.setWordWrap(True)
-                layout.addWidget(label)
-        for seat in PVP_SEATS:
-            label = QLabel(_post_draft_team_weapon_summary(session, board, seat))
-            label.setObjectName("small_muted")
-            label.setWordWrap(True)
-            layout.addWidget(label)
-        return frame
+    def _make_source_weapon_tile(
+        self,
+        session: PvpActiveDraftSession,
+        seat: str,
+        stack,
+        stage: str,
+    ) -> PvpPostDraftTileButton:
+        selected = _selected_weapon_character(self._view_state)
+        selected_character_id = selected[1] if selected and selected[0] == seat else ""
+        remaining = _weapon_stack_remaining(
+            session,
+            self._view_state,
+            seat,
+            stack.stack_key,
+            selected_character_id=selected_character_id,
+        )
+        compatible = bool(
+            selected_character_id
+            and _weapon_stack_is_assignable(
+                session,
+                self._view_state,
+                seat,
+                selected_character_id,
+                stack.stack_key,
+            )
+        )
+        exhausted = remaining <= 0
+        text = tr("app_shell.pvp.post.weapon_tile_text").format(
+            weapon=stack.display_name,
+            count=remaining,
+        )
+        tile = PvpPostDraftTileButton(
+            text=text,
+            image_path=_asset_image_path(self._weapon_assets_by_stack_key.get(stack.stack_key)),
+            icon_size=42,
+        )
+        tile.setObjectName("pvp-weapon-tile")
+        tile.setProperty("seat", seat)
+        tile.setProperty("stackKey", stack.stack_key)
+        tile.setProperty("compatible", compatible)
+        tile.setProperty("exhausted", exhausted)
+        tile.setEnabled(
+            bool(
+                stage == PVP_DRAFT_STAGE_WEAPONS
+                and selected_character_id
+                and compatible
+                and not exhausted
+            )
+        )
+        tile.clicked.connect(
+            lambda _checked=False, s=seat, c=selected_character_id, k=stack.stack_key: (
+                self.weapon_stack_clicked.emit(s, c, k)
+            )
+        )
+        self.weapon_stack_buttons_by_key[(seat, stack.stack_key)] = tile
+        _refresh_qss(tile)
+        return tile
 
     def _refresh_completed(self, board: Mapping[str, Any] | None) -> None:
         visible = bool(board and _draft_is_complete(board))
@@ -2441,6 +2358,8 @@ class PvpWorkspace(QWidget):
             self.active_draft_session,
             status_text=self._last_draft_status,
             view_state=self._draft_view_state(),
+            character_assets=self.character_assets,
+            weapon_assets=self.weapon_assets,
         )
 
 
@@ -2572,6 +2491,67 @@ QPushButton#pvp_secondary_button {{
     border: 1px solid {UI_BORDER_DEFAULT};
     background: {UI_BG_BUTTON};
     color: {UI_TEXT_SECONDARY};
+}}
+QFrame#pvp_postdraft_match_panel {{
+    background: transparent;
+    border: none;
+}}
+QFrame#pvp-postdraft-target-player-1,
+QFrame#pvp-postdraft-target-player-2 {{
+    border: 1px solid {UI_BORDER_PANEL};
+    border-radius: 8px;
+    background: {UI_BG_PANEL};
+}}
+QFrame#pvp-postdraft-target-player-1 {{
+    border-left: 4px solid {UI_ACCENT_TEAM_1};
+}}
+QFrame#pvp-postdraft-target-player-2 {{
+    border-left: 4px solid {UI_ACCENT_TEAM_2};
+}}
+QFrame#pvp-team-half,
+QFrame#pvp-timer-area {{
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 6px;
+    background: {UI_BG_PANEL_RAISED};
+}}
+QFrame#pvp-team-slot-frame {{
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 6px;
+    background: {UI_BG_BUTTON};
+}}
+QPushButton#pvp-team-slot {{
+    min-width: 78px;
+    max-width: 78px;
+    min-height: 62px;
+    max-height: 62px;
+    padding: 3px;
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 5px;
+    background: {UI_BG_PANEL_RAISED};
+    color: {UI_TEXT_SECONDARY};
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+}}
+QPushButton#pvp-team-slot[hasCharacter="true"] {{
+    color: {UI_TEXT_PRIMARY};
+}}
+QPushButton#pvp-team-slot[selectedAssignment="true"],
+QPushButton#pvp-team-slot[selectedWeaponCharacter="true"] {{
+    border-color: {UI_STATE_SUCCESS};
+    background: #203b28;
+}}
+QLabel#pvp-assigned-weapon-indicator {{
+    color: {UI_TEXT_MUTED};
+    font-size: 10px;
+    font-weight: 600;
+}}
+QLabel#pvp-assigned-weapon-indicator[assigned="true"] {{
+    color: {UI_TEXT_SECONDARY};
+}}
+QFrame#pvp-timer-row {{
+    border: none;
+    background: transparent;
 }}
 """
 
@@ -3288,6 +3268,17 @@ class PvpDraftRightPanel(QWidget):
         self.empty_label.setWordWrap(True)
         root.addWidget(self.empty_label)
 
+        self.match_frame = QFrame()
+        self.match_frame.setObjectName("pvp_postdraft_match_panel")
+        self.match_layout = QVBoxLayout(self.match_frame)
+        self.match_layout.setContentsMargins(0, 0, 0, 0)
+        self.match_layout.setSpacing(6)
+        root.addWidget(self.match_frame, 1)
+        self.target_zone_frames_by_seat: dict[str, QFrame] = {}
+        self.team_slot_buttons_by_key: dict[tuple[str, int, int], QPushButton] = {}
+        self.timer_inputs_by_key: dict[tuple[str, int], QLineEdit] = {}
+        self.timer_total_labels_by_seat: dict[str, QLabel] = {}
+
         self.status_frame = QFrame()
         self.status_frame.setObjectName("pvp_deck_expanded_info")
         status_layout = QVBoxLayout(self.status_frame)
@@ -3360,7 +3351,6 @@ class PvpDraftRightPanel(QWidget):
         self.message_label.setObjectName("small_muted")
         self.message_label.setWordWrap(True)
         root.addWidget(self.message_label)
-        root.addStretch(1)
 
         self.workspace.state_changed.connect(self.refresh)
         self.workspace.active_draft_changed.connect(self.refresh)
@@ -3371,6 +3361,7 @@ class PvpDraftRightPanel(QWidget):
         session = self.workspace.active_draft_session
         has_session = session is not None
         self.empty_label.setVisible(not has_session)
+        self.match_frame.setVisible(False)
         self.status_frame.setVisible(has_session)
         self.log_title_label.setVisible(has_session)
         self.clear_button.setVisible(has_session)
@@ -3381,6 +3372,8 @@ class PvpDraftRightPanel(QWidget):
         self.message_label.setVisible(bool(self.message_label.text()))
 
         if session is None:
+            _clear_layout(self.match_layout)
+            self._clear_match_registries()
             for label in (*self.status_labels, *self.log_labels):
                 label.clear()
                 label.setVisible(False)
@@ -3391,6 +3384,13 @@ class PvpDraftRightPanel(QWidget):
 
         board = session.board_dict()
         stage = self.workspace.draft_stage
+        post_draft_stage = _is_post_draft_stage(stage)
+        if post_draft_stage:
+            self._rebuild_match_panel(board, stage)
+        else:
+            _clear_layout(self.match_layout)
+            self._clear_match_registries()
+        self.match_frame.setVisible(post_draft_stage)
         status_lines = _draft_panel_status_lines(board, stage=stage, workspace=self.workspace)
         for index, label in enumerate(self.status_labels):
             text = status_lines[index] if index < len(status_lines) else ""
@@ -3402,7 +3402,7 @@ class PvpDraftRightPanel(QWidget):
         show_draft_summary = stage in {
             PVP_DRAFT_STAGE_DRAFT,
             PVP_DRAFT_STAGE_COMPLETED_RESULT,
-        }
+        } and not post_draft_stage
         for key, frame in self.result_zone_frames.items():
             seat, zone = key
             self.result_zone_title_labels[key].setText(
@@ -3461,6 +3461,255 @@ class PvpDraftRightPanel(QWidget):
             self.workspace.continue_to_timers()
         elif stage == PVP_DRAFT_STAGE_TIMERS_RESULTS:
             self.workspace.finalize_match_result()
+
+    def _clear_match_registries(self) -> None:
+        self.target_zone_frames_by_seat.clear()
+        self.team_slot_buttons_by_key.clear()
+        self.timer_inputs_by_key.clear()
+        self.timer_total_labels_by_seat.clear()
+
+    def _rebuild_match_panel(self, board: Mapping[str, Any], stage: str) -> None:
+        _clear_layout(self.match_layout)
+        self._clear_match_registries()
+        session = self.workspace.active_draft_session
+        if session is None:
+            return
+        for seat in PVP_SEATS:
+            zone = QFrame()
+            zone.setObjectName(_postdraft_target_object_name(seat))
+            zone.setProperty("seat", seat)
+            zone_layout = QVBoxLayout(zone)
+            zone_layout.setContentsMargins(7, 7, 7, 7)
+            zone_layout.setSpacing(5)
+            self.target_zone_frames_by_seat[seat] = zone
+
+            title = QLabel(_seat_label(seat))
+            title.setObjectName("pvp_draft_result_title")
+            zone_layout.addWidget(title)
+
+            teams_row = QHBoxLayout()
+            teams_row.setContentsMargins(0, 0, 0, 0)
+            teams_row.setSpacing(5)
+            for team_index in range(2):
+                teams_row.addWidget(
+                    self._build_target_team(board, session, stage, seat, team_index),
+                    1,
+                )
+            zone_layout.addLayout(teams_row)
+
+            self._add_timer_result_area(zone_layout, session, stage, seat)
+            self.match_layout.addWidget(zone, 1)
+
+    def _build_target_team(
+        self,
+        board: Mapping[str, Any],
+        session: PvpActiveDraftSession,
+        stage: str,
+        seat: str,
+        team_index: int,
+    ) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("pvp-team-half")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(4)
+        title = QLabel(
+            tr("app_shell.pvp.post.team_title").format(index=team_index + 1)
+        )
+        title.setObjectName("small_muted")
+        layout.addWidget(title)
+        grid = QGridLayout()
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(3)
+        grid.setVerticalSpacing(3)
+        slots = _assignment_slots(self.workspace._draft_view_state(), seat)
+        for slot_index in range(4):
+            grid.addWidget(
+                self._build_target_slot(
+                    board,
+                    session,
+                    stage,
+                    seat,
+                    team_index,
+                    slot_index,
+                    slots[team_index][slot_index],
+                ),
+                slot_index // 2,
+                slot_index % 2,
+            )
+        layout.addLayout(grid)
+        return frame
+
+    def _build_target_slot(
+        self,
+        board: Mapping[str, Any],
+        session: PvpActiveDraftSession,
+        stage: str,
+        seat: str,
+        team_index: int,
+        slot_index: int,
+        character_id: str | None,
+    ) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("pvp-team-slot-frame")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(2)
+        text = (
+            _entry_display_name_for_id(board, character_id)
+            if character_id
+            else tr("app_shell.pvp.post.empty_slot").format(index=slot_index + 1)
+        )
+        button = PvpPostDraftTileButton(
+            text=text,
+            image_path=_asset_image_path(
+                self.workspace.draft_workspace._character_assets_by_id.get(
+                    character_id or "",
+                )
+            ),
+            icon_size=30,
+        )
+        button.setObjectName("pvp-team-slot")
+        button.setProperty("seat", seat)
+        button.setProperty("teamIndex", team_index)
+        button.setProperty("slotIndex", slot_index)
+        button.setProperty("characterId", character_id or "")
+        button.setProperty("hasCharacter", bool(character_id))
+        button.setProperty(
+            "selectedAssignment",
+            bool(_selected_assignment_character(self.workspace._draft_view_state()) == (seat, character_id)),
+        )
+        button.setProperty(
+            "selectedWeaponCharacter",
+            bool(_selected_weapon_character(self.workspace._draft_view_state()) == (seat, character_id)),
+        )
+        button.clicked.connect(
+            lambda _checked=False, s=seat, t=team_index, i=slot_index: (
+                self._on_target_slot_clicked(stage, s, t, i)
+            )
+        )
+        self.team_slot_buttons_by_key[(seat, team_index, slot_index)] = button
+        layout.addWidget(button)
+
+        stack_key = _weapon_assignment_map(self.workspace._draft_view_state(), seat).get(
+            character_id or "",
+            "",
+        )
+        weapon = QLabel(_weapon_display_name(session, seat, stack_key) or "-")
+        weapon.setObjectName("pvp-assigned-weapon-indicator")
+        weapon.setProperty("assigned", bool(stack_key))
+        weapon.setWordWrap(True)
+        layout.addWidget(weapon)
+
+        if stage == PVP_DRAFT_STAGE_ASSIGNMENT:
+            clear = QPushButton("x")
+            clear.setObjectName("row_cancel_button")
+            clear.setEnabled(bool(character_id))
+            clear.clicked.connect(
+                lambda _checked=False, s=seat, t=team_index, i=slot_index: (
+                    self.workspace.clear_assignment_slot(s, t, i)
+                )
+            )
+            layout.addWidget(clear)
+        elif stage == PVP_DRAFT_STAGE_WEAPONS and character_id and stack_key:
+            clear_weapon = QPushButton(tr("app_shell.pvp.post.clear_weapon"))
+            clear_weapon.setObjectName("row_cancel_button")
+            clear_weapon.clicked.connect(
+                lambda _checked=False, s=seat, c=character_id: (
+                    self.workspace.clear_weapon_assignment(s, c)
+                )
+            )
+            layout.addWidget(clear_weapon)
+        _refresh_qss(frame)
+        return frame
+
+    def _on_target_slot_clicked(
+        self,
+        stage: str,
+        seat: str,
+        team_index: int,
+        slot_index: int,
+    ) -> None:
+        if stage == PVP_DRAFT_STAGE_ASSIGNMENT:
+            self.workspace.assign_selected_character_to_slot(seat, team_index, slot_index)
+            return
+        character_id = self.workspace.assignment_slots_by_seat[seat][team_index][slot_index]
+        if character_id and stage == PVP_DRAFT_STAGE_WEAPONS:
+            self.workspace.select_weapon_character(seat, character_id)
+
+    def _add_timer_result_area(
+        self,
+        layout: QVBoxLayout,
+        session: PvpActiveDraftSession,
+        stage: str,
+        seat: str,
+    ) -> None:
+        timer_frame = QFrame()
+        timer_frame.setObjectName("pvp-timer-area")
+        timer_layout = QVBoxLayout(timer_frame)
+        timer_layout.setContentsMargins(5, 5, 5, 5)
+        timer_layout.setSpacing(3)
+        show_inputs = stage == PVP_DRAFT_STAGE_TIMERS_RESULTS
+        show_result = stage == PVP_DRAFT_STAGE_COMPLETED_RESULT
+        if show_inputs or show_result:
+            for index, chamber_id in enumerate(PVP_TIMER_CHAMBERS):
+                row = QFrame()
+                row.setObjectName("pvp-timer-row")
+                row_layout = QHBoxLayout(row)
+                row_layout.setContentsMargins(0, 0, 0, 0)
+                row_layout.setSpacing(4)
+                label = QLabel(f"T{chamber_id}")
+                label.setObjectName("pvp_deck_info_line")
+                row_layout.addWidget(label)
+                if show_inputs:
+                    line = QLineEdit()
+                    line.setPlaceholderText("mm:ss")
+                    line.setText(self.workspace.timer_texts_by_seat[seat][index])
+                    line.textChanged.connect(
+                        lambda text, s=seat, i=index: self._on_timer_text_changed(s, i, text)
+                    )
+                    self.timer_inputs_by_key[(seat, index)] = line
+                    row_layout.addWidget(line, 1)
+                else:
+                    value = QLabel(_completed_timer_text(session, seat, index))
+                    value.setObjectName("pvp_deck_info_line")
+                    row_layout.addWidget(value, 1)
+                timer_layout.addWidget(row)
+        else:
+            dps = QLabel(tr("app_shell.pvp.post.dps_unavailable"))
+            dps.setObjectName("small_muted")
+            timer_layout.addWidget(dps)
+        total = QLabel(
+            tr("app_shell.pvp.post.timer_total").format(
+                total=_format_seconds(_postdraft_timer_total(session, self.workspace._draft_view_state(), seat)),
+            )
+        )
+        total.setObjectName("small_muted")
+        self.timer_total_labels_by_seat[seat] = total
+        timer_layout.addWidget(total)
+        if show_result:
+            result = QLabel(_result_line_for_seat(session, seat))
+            result.setObjectName("pvp_deck_info_line")
+            result.setWordWrap(True)
+            timer_layout.addWidget(result)
+        layout.addWidget(timer_frame)
+
+    def _on_timer_text_changed(self, seat: str, index: int, text: str) -> None:
+        self.workspace.set_timer_text(seat, index, text)
+        total_label = self.timer_total_labels_by_seat.get(seat)
+        if total_label is None:
+            return
+        total = 0
+        for timer_index in range(len(PVP_TIMER_CHAMBERS)):
+            line = self.timer_inputs_by_key.get((seat, timer_index))
+            seconds = _parse_timer_text(line.text() if line is not None else "")
+            if seconds is not None:
+                total += seconds
+        total_label.setText(
+            tr("app_shell.pvp.post.timer_total").format(
+                total=_format_seconds(total),
+            )
+        )
 
 
 class PvpRightPanelHost(QWidget):
@@ -4267,6 +4516,115 @@ def _result_chamber_timer_lines(payload: Mapping[str, Any]) -> list[str]:
                 )
             )
     return lines
+
+
+def _is_post_draft_stage(stage: str) -> bool:
+    return stage in {
+        PVP_DRAFT_STAGE_ASSIGNMENT,
+        PVP_DRAFT_STAGE_WEAPONS,
+        PVP_DRAFT_STAGE_TIMERS_RESULTS,
+        PVP_DRAFT_STAGE_COMPLETED_RESULT,
+    }
+
+
+def _postdraft_source_object_name(seat: str) -> str:
+    if seat == "player_1":
+        return "pvp-postdraft-source-player-1"
+    return "pvp-postdraft-source-player-2"
+
+
+def _postdraft_target_object_name(seat: str) -> str:
+    if seat == "player_1":
+        return "pvp-postdraft-target-player-1"
+    return "pvp-postdraft-target-player-2"
+
+
+def _character_assets_by_id(
+    assets: Iterable[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for asset in assets:
+        character_id = character_id_from_asset(asset)
+        if character_id:
+            result[character_id] = dict(asset)
+    return result
+
+
+def _weapon_assets_by_stack_key(
+    assets: Iterable[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for asset in assets:
+        weapon_ref = weapon_ref_from_asset(asset)
+        if weapon_ref is not None and weapon_ref.key:
+            result[weapon_ref.key] = dict(asset)
+    return result
+
+
+def _asset_image_path(asset: Mapping[str, Any] | None) -> str:
+    if asset is None:
+        return ""
+    metadata = _mapping(asset.get("metadata"))
+    character = _mapping(metadata.get("character"))
+    weapon = _mapping(metadata.get("weapon"))
+    for value in (
+        character.get("portrait_path"),
+        character.get("icon_path"),
+        weapon.get("icon_path"),
+        asset.get("path"),
+    ):
+        path = _text(value)
+        if path:
+            return path
+    return ""
+
+
+def _postdraft_timer_total(
+    session: PvpActiveDraftSession,
+    view_state: Mapping[str, Any],
+    seat: str,
+) -> int:
+    result = session.controller.state.match_result
+    if result is not None:
+        return int(_mapping(result.to_dict().get("totals")).get(seat) or 0)
+    return _timer_total_seconds(view_state, seat)
+
+
+def _completed_timer_text(
+    session: PvpActiveDraftSession,
+    seat: str,
+    index: int,
+) -> str:
+    result = session.controller.state.match_result
+    if result is None:
+        return "--:--"
+    timer_key = "player_1_timers" if seat == "player_1" else "player_2_timers"
+    chambers = _mapping(result.to_dict().get(timer_key)).get("chambers")
+    if not isinstance(chambers, list) or not (0 <= index < len(chambers)):
+        return "--:--"
+    chamber = _mapping(chambers[index])
+    seconds = chamber.get("normalized_elapsed_seconds")
+    if seconds is None:
+        seconds = chamber.get("elapsed_seconds")
+    return _format_seconds(seconds)
+
+
+def _result_line_for_seat(session: PvpActiveDraftSession, seat: str) -> str:
+    result = session.controller.state.match_result
+    if result is None:
+        return ""
+    payload = result.to_dict()
+    winner = _text(payload.get("winner_seat"))
+    if not winner:
+        outcome = tr("app_shell.pvp.post.result_draw")
+    elif winner == seat:
+        outcome = tr("app_shell.pvp.post.result_win")
+    else:
+        outcome = tr("app_shell.pvp.post.result_loss")
+    return tr("app_shell.pvp.post.result_seat_line").format(
+        result=outcome,
+        diff=int(payload.get("seconds_difference") or 0),
+    )
 
 
 def _is_legal_card(board: Mapping[str, Any], seat: str, character_id: str) -> bool:

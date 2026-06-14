@@ -20,12 +20,32 @@ from run_workspace.history_snapshot import (
     HISTORY_SNAPSHOT_FILENAME,
     HistoryAbyssChamberSnapshot,
     HistorySnapshotBundle,
+    HistoryTeamSlotSnapshot,
     HistoryTeamSnapshot,
 )
 
 
 HISTORY_PREVIEW_FILENAME = "history_card.png"
 HISTORY_PREVIEW_SUBDIR = "preview"
+
+_DEFAULT_TEXT_LIMIT = 96
+_BODY_TEXT_LIMIT = 180
+_INTERNAL_TEXT_PREFIXES = (
+    "artifact_build_incomplete",
+    "dps_dummy_factual_inputs_not_implemented",
+    "history_builder_",
+    "preview_",
+    "right_panel_",
+    "set_bonus_formulas_not_included",
+)
+_INTERNAL_TEXT_MARKERS = (
+    "AppShellController",
+    "RightPanelPrototype",
+    "hoyolab_export.",
+    "object at 0x",
+    "run_workspace.",
+    "ui.",
+)
 
 _QT_APP: QGuiApplication | None = None
 
@@ -51,6 +71,32 @@ def default_history_snapshot_preview_path(bundle_path: str | Path) -> Path:
     path = Path(bundle_path)
     bundle_dir = path.parent if path.name == HISTORY_SNAPSHOT_FILENAME else path
     return bundle_dir / HISTORY_PREVIEW_SUBDIR / HISTORY_PREVIEW_FILENAME
+
+
+def sanitize_history_snapshot_display_text(
+    value: object,
+    *,
+    max_chars: int = _DEFAULT_TEXT_LIMIT,
+    fallback: str = "",
+) -> str:
+    """Return a compact user-facing label for preview/viewer presentation."""
+
+    text = _text(value)
+    if not text:
+        return fallback
+    if _is_internal_display_text(text):
+        return fallback
+    if _looks_like_path_ref(text):
+        text = _path_basename_label(text)
+    if not text or _is_internal_display_text(text):
+        return fallback
+    return _truncate(text, max_chars=max_chars)
+
+
+def history_snapshot_preview_text_lines(bundle: HistorySnapshotBundle) -> tuple[str, ...]:
+    """Return the sanitized visible text lines used by the v0 preview card."""
+
+    return tuple(text for kind, text in _card_lines(bundle) if kind != "gap" and text)
 
 
 def render_history_snapshot_preview(
@@ -130,19 +176,31 @@ def _card_lines(bundle: HistorySnapshotBundle) -> list[tuple[str, str]]:
     if bundle.run_type == HISTORY_RUN_TYPE_ABYSS and abyss is not None:
         lines.append(("gap", ""))
         lines.append(("section", "Chambers"))
+        sim_dps_by_side = _sim_dps_by_chamber_side(bundle)
         for chamber in abyss.chambers:
-            lines.extend(_abyss_chamber_lines(chamber, floor=abyss.floor))
+            lines.extend(
+                _abyss_chamber_lines(
+                    chamber,
+                    floor=abyss.floor,
+                    sim_dps_by_side=sim_dps_by_side,
+                )
+            )
     elif bundle.run_type == HISTORY_RUN_TYPE_DPS_DUMMY and dps_dummy is not None:
         lines.append(("gap", ""))
         lines.append(("section", "Target"))
-        target_parts = [dps_dummy.target_label or "Target"]
+        target_parts = [
+            sanitize_history_snapshot_display_text(
+                dps_dummy.target_label,
+                fallback="Target",
+            )
+        ]
         if dps_dummy.target_hp is not None:
             target_parts.append(f"HP {_compact_number(float(dps_dummy.target_hp))}")
         if dps_dummy.duration_seconds is not None:
             target_parts.append(f"{_format_seconds(dps_dummy.duration_seconds)}")
         if dps_dummy.factual_dps is not None:
             target_parts.append(f"Fact DPS {_compact_number(float(dps_dummy.factual_dps))}")
-        lines.append(("body", " | ".join(target_parts)))
+        lines.append(("body", _join_display_parts(target_parts)))
     result_lines = _result_lines(bundle)
     if result_lines:
         lines.append(("gap", ""))
@@ -152,8 +210,6 @@ def _card_lines(bundle: HistorySnapshotBundle) -> list[tuple[str, str]]:
     if warning_lines:
         lines.append(("gap", ""))
         lines.append(("warning", f"Warnings: {len(warning_lines)}"))
-        for warning in warning_lines[:3]:
-            lines.append(("warning", warning))
     return lines
 
 
@@ -168,50 +224,102 @@ def _title_and_meta(bundle: HistorySnapshotBundle) -> tuple[str, str]:
             if abyss.floor is not None:
                 meta_parts.append(f"Floor {int(abyss.floor)}")
             if abyss.season_label:
-                meta_parts.append(abyss.season_label)
-        return title, " | ".join(item for item in meta_parts if item)
+                meta_parts.append(
+                    sanitize_history_snapshot_display_text(abyss.season_label)
+                )
+        return title, _join_display_parts(meta_parts)
     return "DPS Dummy", bundle.created_at
 
 
 def _team_lines(teams: tuple[HistoryTeamSnapshot, ...]) -> list[tuple[str, str]]:
     lines: list[tuple[str, str]] = [("section", "Teams")]
     for team in teams:
-        team_label = team.label or f"Team {int(team.team_index) + 1}"
-        slot_lines: list[str] = []
+        team_label = sanitize_history_snapshot_display_text(
+            team.label,
+            fallback=f"Team {int(team.team_index) + 1}",
+        )
+        lines.append(("subsection", team_label))
+        has_slot = False
         for slot in team.slots:
-            if slot.character is None:
+            slot_line = _slot_line(slot)
+            if not slot_line:
                 continue
-            parts = [slot.character.name]
-            if slot.weapon is not None and slot.weapon.name:
-                parts.append(slot.weapon.name)
-            if slot.weapon is not None and slot.weapon.icon_ref:
-                parts.append(slot.weapon.icon_ref)
-            if slot.artifact_build is not None:
-                set_names = [
-                    f"{bonus.set_name} {int(bonus.piece_count)}p"
-                    if bonus.piece_count
-                    else bonus.set_name
-                    for bonus in slot.artifact_build.active_set_bonuses
-                    if bonus.set_name
-                ]
-                if slot.artifact_build.build_name:
-                    parts.append(slot.artifact_build.build_name)
-                if set_names:
-                    parts.append(", ".join(set_names))
-            slot_lines.append(" - ".join(parts))
-        lines.append(("body", f"{team_label}: {' / '.join(slot_lines) or '-'}"))
+            has_slot = True
+            lines.append(("body", f"{int(slot.slot_index) + 1}. {slot_line}"))
+        if not has_slot:
+            lines.append(("muted", "-"))
     return lines
+
+
+def _slot_line(slot: HistoryTeamSlotSnapshot) -> str:
+    character = (
+        ""
+        if slot.character is None
+        else _display_label(
+            slot.character.name,
+            slot.character.portrait_ref,
+            slot.character.side_icon_ref,
+        )
+    )
+    if not character:
+        return ""
+    parts = [character]
+    if slot.weapon is not None:
+        weapon = _display_label(slot.weapon.name, slot.weapon.icon_ref)
+        if weapon:
+            parts.append(weapon)
+    if slot.artifact_build is not None:
+        build_label = sanitize_history_snapshot_display_text(
+            slot.artifact_build.build_name
+        )
+        if build_label:
+            parts.append(build_label)
+        set_names = [
+            item
+            for item in (
+                _set_bonus_label(bonus.set_name, bonus.icon_ref, bonus.piece_count)
+                for bonus in slot.artifact_build.active_set_bonuses
+            )
+            if item
+        ]
+        if set_names:
+            parts.append(", ".join(set_names))
+    return _join_display_parts(parts)
+
+
+def _display_label(primary: object, *fallback_refs: object) -> str:
+    label = sanitize_history_snapshot_display_text(primary)
+    if label:
+        return label
+    for fallback_ref in fallback_refs:
+        label = sanitize_history_snapshot_display_text(fallback_ref)
+        if label:
+            return label
+    return ""
+
+
+def _set_bonus_label(set_name: object, icon_ref: object, piece_count: int) -> str:
+    label = _display_label(set_name, icon_ref)
+    if not label:
+        return ""
+    if piece_count:
+        return f"{label} {int(piece_count)}p"
+    return label
 
 
 def _abyss_chamber_lines(
     chamber: HistoryAbyssChamberSnapshot,
     *,
     floor: int | None,
+    sim_dps_by_side: dict[tuple[int, int], float],
 ) -> list[tuple[str, str]]:
-    label = chamber.chamber_label or (
-        f"{int(floor)}-{int(chamber.chamber_index)}"
-        if floor is not None
-        else f"C{int(chamber.chamber_index)}"
+    label = sanitize_history_snapshot_display_text(
+        chamber.chamber_label,
+        fallback=(
+            f"{int(floor)}-{int(chamber.chamber_index)}"
+            if floor is not None
+            else f"C{int(chamber.chamber_index)}"
+        ),
     )
     parts = [label]
     if chamber.timer is not None:
@@ -225,22 +333,29 @@ def _abyss_chamber_lines(
         if timer_parts:
             parts.append(", ".join(timer_parts))
     for result in chamber.side_results:
-        result_parts = [f"S{int(result.side)}"]
+        side = int(result.side)
+        result_parts = [f"S{side}"]
         if result.factual_dps is not None:
             result_parts.append(f"Fact {_compact_number(float(result.factual_dps))}")
         if result.elapsed_seconds is not None:
             result_parts.append(_format_seconds(result.elapsed_seconds))
-        if result.sim_result_ref:
-            result_parts.append(f"Sim {result.sim_result_ref}")
+        sim_dps = sim_dps_by_side.get((int(chamber.chamber_index), side))
+        if sim_dps is not None:
+            result_parts.append(f"Sim {_compact_number(float(sim_dps))}")
         if len(result_parts) > 1:
             parts.append(" ".join(result_parts))
-    return [("body", " | ".join(parts))]
+    return [("body", _join_display_parts(parts))]
 
 
 def _result_lines(bundle: HistorySnapshotBundle) -> list[str]:
     lines: list[str] = []
     for result in bundle.result_summaries:
-        parts = [result.label or result.result_type]
+        parts = [
+            sanitize_history_snapshot_display_text(
+                result.label,
+                fallback=_result_type_label(result.result_type),
+            )
+        ]
         if result.chamber_index is not None:
             parts.append(f"C{int(result.chamber_index)}")
         if result.side is not None:
@@ -252,8 +367,27 @@ def _result_lines(bundle: HistorySnapshotBundle) -> list[str]:
             parts.append(f"DMG {_compact_number(float(result.damage))}")
         if result.elapsed_seconds is not None:
             parts.append(_format_seconds(result.elapsed_seconds))
-        lines.append(" | ".join(parts))
+        lines.append(_join_display_parts(parts, max_chars=160))
     return lines
+
+
+def _result_type_label(result_type: str) -> str:
+    if result_type == "factual_dps":
+        return "Factual DPS"
+    if result_type == "sim_dps":
+        return "Sim DPS"
+    return "Result"
+
+
+def _sim_dps_by_chamber_side(bundle: HistorySnapshotBundle) -> dict[tuple[int, int], float]:
+    values: dict[tuple[int, int], float] = {}
+    for summary in bundle.result_summaries:
+        if summary.result_type != "sim_dps" or summary.dps is None:
+            continue
+        if summary.chamber_index is None or summary.side is None:
+            continue
+        values[(int(summary.chamber_index), int(summary.side))] = float(summary.dps)
+    return values
 
 
 def _warning_lines(bundle: HistorySnapshotBundle) -> list[str]:
@@ -288,6 +422,8 @@ def _height_for(lines: list[tuple[str, str]]) -> int:
             height += 46
         elif kind == "section":
             height += 32
+        elif kind == "subsection":
+            height += 26
         else:
             height += 28
     return max(420, min(height + 48, 1600))
@@ -317,6 +453,7 @@ def _paint_card(
     fonts = {
         "title": QFont("Segoe UI", 24, QFont.Weight.DemiBold),
         "section": QFont("Segoe UI", 14, QFont.Weight.DemiBold),
+        "subsection": QFont("Segoe UI", 12, QFont.Weight.DemiBold),
         "body": QFont("Segoe UI", 11),
         "muted": QFont("Segoe UI", 10),
         "warning": QFont("Segoe UI", 10, QFont.Weight.DemiBold),
@@ -324,6 +461,7 @@ def _paint_card(
     colors = {
         "title": QColor("#f8fafc"),
         "section": QColor("#f0c36a"),
+        "subsection": QColor("#e7edf7"),
         "body": QColor("#dce4f0"),
         "muted": QColor("#95a3b8"),
         "warning": QColor("#ffb86b"),
@@ -360,10 +498,58 @@ def _format_seconds(value: float | int) -> str:
 def _dedupe(values: list[str]) -> list[str]:
     result: list[str] = []
     for value in values:
-        text = str(value).strip()
+        text = _text(value)
         if text and text not in result:
             result.append(text)
     return result
+
+
+def _join_display_parts(
+    parts: list[str] | tuple[str, ...],
+    *,
+    max_chars: int = _BODY_TEXT_LIMIT,
+) -> str:
+    return _truncate(" | ".join(item for item in parts if item), max_chars=max_chars)
+
+
+def _text(value: object) -> str:
+    return str(value).strip() if value is not None else ""
+
+
+def _truncate(text: str, *, max_chars: int) -> str:
+    limit = max(1, int(max_chars))
+    if len(text) <= limit:
+        return text
+    if limit <= 3:
+        return "." * limit
+    return f"{text[: limit - 3].rstrip()}..."
+
+
+def _looks_like_path_ref(text: str) -> bool:
+    normalized = text.replace("\\", "/")
+    if len(normalized) >= 3 and normalized[1] == ":" and normalized[2] == "/":
+        return True
+    if normalized.startswith(("/", "~/")):
+        return True
+    if "/" not in normalized:
+        return False
+    name = normalized.rstrip("/").rsplit("/", 1)[-1]
+    return "." in name
+
+
+def _path_basename_label(text: str) -> str:
+    normalized = text.replace("\\", "/").strip().rstrip("/")
+    name = normalized.rsplit("/", 1)[-1].strip()
+    if not name:
+        return ""
+    stem = name.rsplit(".", 1)[0] if "." in name else name
+    return stem.replace("_", " ").replace("-", " ").strip()
+
+
+def _is_internal_display_text(text: str) -> bool:
+    if any(text.startswith(prefix) for prefix in _INTERNAL_TEXT_PREFIXES):
+        return True
+    return any(marker in text for marker in _INTERNAL_TEXT_MARKERS)
 
 
 __all__ = [
@@ -372,5 +558,7 @@ __all__ = [
     "HistorySnapshotPreviewOptions",
     "HistorySnapshotPreviewResult",
     "default_history_snapshot_preview_path",
+    "history_snapshot_preview_text_lines",
     "render_history_snapshot_preview",
+    "sanitize_history_snapshot_display_text",
 ]

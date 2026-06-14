@@ -53,7 +53,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 - New target main app shell is documented in `docs/handoff/APP_SHELL_WORKSPACE_PLAN.md`: `[LeftWorkspaceHost] [RightOperationsDock]`. Treat `ui/main_window.py` as legacy once the new shell begins; do not patch the old right column as the final architecture.
 - Future AppShell tasks:
-  - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the compact chamber/result area has live in-memory Abyss timer and factual-DPS behavior, active-mode Reset is typed, RUN-page Save writes immutable grouped backend bundles, and History can read grouped saved rows with read-only selected snapshot details plus a derived PNG preview v0; polished History export/actions and routing remain future, and the approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
+  - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the compact chamber/result area has live in-memory Abyss timer and factual-DPS behavior, active-mode Reset is typed, RUN-page Save writes immutable grouped backend bundles, and History can read grouped saved rows with sanitized read-only selected snapshot details plus a derived user-facing PNG preview v0; polished History export/actions and routing remain future, and the approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
   - keep the reduced fixed-width right operations dock around `RightPanelPrototypeWidget`; it must not be user-resizable or expand with the window;
   - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, a painted pixel-aligned icon grid via `ui/utils/pixel_icon_grid.py`, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
   - AppShell left workspace navigation exists with Character/Weapon, lazy-created Artifacts, GCSIM Browser, `ui/history_browser/` History saved-bundle list/details/preview v0, and PvP Decks/Play/Draft v0 workspace pages. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; activating History reloads the snapshot root, hides the live Run panel behind an isolated read-only History viewer without clearing live session state, and keeps polished export/cards future under the contract in `docs/handoff/HISTORY_BROWSER.md`;
@@ -372,8 +372,9 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 9. Export
 
-- Abyss history and DPS Dummy history have a selected-snapshot PNG preview v0;
-  polished export actions and XLSX remain future work.
+- Abyss history and DPS Dummy history have a selected-snapshot PNG preview v0
+  that uses saved display labels instead of raw paths/debug text; polished
+  export actions and XLSX remain future work.
 - Target formats: PNG/image for visual sharing and XLSX for analysis/comparison. CSV/HTML can be optional fallback later.
 - PNG export should reuse the same visual components/cards as history where practical.
 - XLSX should be data-oriented and include season/period, date, run type, chamber/side, team, characters, weapons, artifact set bonuses, timers, factual DPS if available, sim DPS if available, notes/warnings.

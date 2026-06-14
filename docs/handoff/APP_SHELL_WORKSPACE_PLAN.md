@@ -213,8 +213,10 @@ right column patched in place.
 - The current left page reads immutable snapshot bundles from disk, shows
   grouped saved-run rows, and supports saved-row selection. Activating History
   hides the live Run panel and shows an isolated History viewer; selected rows
-  render compact frozen read-only snapshot details and a derived PNG preview v0
-  in the left workspace. Polished export cards/actions remain future work.
+  render sanitized compact frozen read-only snapshot details and a derived
+  user-facing PNG preview v0 in the left workspace. Raw paths/provenance/debug
+  strings stay out of the primary History UI. Polished export cards/actions
+  remain future work.
 - Entering History must not reset, clear, or reinitialize live Abyss/DPS/PvP
   session state. Leaving History for a normal workspace restores the live Run
   panel and its previous state.
@@ -738,8 +740,9 @@ Sizing note:
   Continue that work without treating Browser runtime output as saved history.
 - RUN-page Save is wired through typed run/session state and immutable grouped
   `HistorySnapshotBundle` records. The History workspace can open/read grouped
-  rows, display compact frozen selected-snapshot details, and show a derived
-  PNG preview before any GCSIM result is treated as durable saved history.
+  rows, display sanitized compact frozen selected-snapshot details, and show a
+  derived user-facing PNG preview before any GCSIM result is treated as durable
+  saved history.
   Active-mode Reset is already wired through typed live session state.
 - Continue History browsing from the current list/viewer/preview v0 toward
   polished export cards, richer visuals, filters, and future right-dock History command routing

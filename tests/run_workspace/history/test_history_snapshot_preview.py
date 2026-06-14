@@ -25,7 +25,9 @@ from run_workspace.history_snapshot import (
 )
 from run_workspace.history_snapshot_preview import (
     default_history_snapshot_preview_path,
+    history_snapshot_preview_text_lines,
     render_history_snapshot_preview,
+    sanitize_history_snapshot_display_text,
 )
 
 
@@ -79,12 +81,62 @@ class HistorySnapshotPreviewTests(unittest.TestCase):
             self.assertTrue(result.success, result.error_text)
             self.assertEqual(output_path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
 
+    def test_preview_text_prefers_saved_names_over_path_refs(self) -> None:
+        bundle = _abyss_preview_bundle(
+            portrait_ref=r"C:\Users\tester\assets\thoma.png",
+            weapon_icon_ref=r"C:\Users\tester\assets\favonius_lance.png",
+            set_icon_ref=r"C:\Users\tester\assets\retracing_bolide.png",
+        )
+
+        text = "\n".join(history_snapshot_preview_text_lines(bundle))
+
+        self.assertIn("Thoma", text)
+        self.assertIn("Favonius Lance", text)
+        self.assertIn("Retracing Bolide 2p", text)
+        self.assertIn("Sim DPS 123k", text)
+        self.assertNotIn("C:\\", text)
+        self.assertNotIn("Users", text)
+        self.assertNotIn("favonius_lance", text)
+        self.assertNotIn("sim-1", text)
+
+    def test_preview_text_hides_raw_debug_warning_strings(self) -> None:
+        bundle = _abyss_preview_bundle(
+            warnings=(
+                "history_builder_chamber_row_missing",
+                "AppShellController.save_current_run_snapshot",
+                r"C:\Users\tester\debug\asset.png",
+            )
+        )
+
+        text = "\n".join(history_snapshot_preview_text_lines(bundle))
+
+        self.assertIn("Warnings: 3", text)
+        self.assertNotIn("history_builder", text)
+        self.assertNotIn("AppShellController", text)
+        self.assertNotIn("C:\\", text)
+        self.assertNotIn("asset.png", text)
+
+    def test_display_text_sanitizer_uses_basename_and_truncates(self) -> None:
+        self.assertEqual(
+            sanitize_history_snapshot_display_text(
+                r"C:\Users\tester\assets\favonius_lance.png"
+            ),
+            "favonius lance",
+        )
+
+        long_text = "Readable label " + ("x" * 160)
+        sanitized = sanitize_history_snapshot_display_text(long_text, max_chars=40)
+
+        self.assertLessEqual(len(sanitized), 40)
+        self.assertTrue(sanitized.endswith("..."))
+
 
 def _abyss_preview_bundle(
     *,
     portrait_ref: str = "",
     weapon_icon_ref: str = "",
     set_icon_ref: str = "",
+    warnings: tuple[str, ...] = ("preview_fixture_warning",),
 ) -> HistorySnapshotBundle:
     return HistorySnapshotBundle(
         bundle_id="preview-abyss",
@@ -184,7 +236,7 @@ def _abyss_preview_bundle(
                 payload={"sim_result_ref": "sim-1"},
             ),
         ),
-        warnings=("preview_fixture_warning",),
+        warnings=warnings,
     )
 
 

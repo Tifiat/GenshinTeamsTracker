@@ -36,7 +36,20 @@ from run_workspace.pvp.deck_preset import (
 from run_workspace.history_snapshot import (
     HISTORY_RUN_TYPE_ABYSS,
     HISTORY_RUN_TYPE_DPS_DUMMY,
+    HistoryAbyssChamberSnapshot,
+    HistoryAbyssScenarioSnapshot,
+    HistoryAbyssSideResultSnapshot,
+    HistoryAbyssTimerSnapshot,
+    HistoryArtifactBuildSnapshot,
+    HistoryCharacterSnapshot,
+    HistoryResultSummarySnapshot,
+    HistoryScenarioSnapshot,
+    HistorySetBonusSnapshot,
+    HistorySnapshotBundle,
     HistorySnapshotBundleStore,
+    HistoryTeamSlotSnapshot,
+    HistoryTeamSnapshot,
+    HistoryWeaponSnapshot,
 )
 from run_workspace.history_snapshot_preview import HistorySnapshotPreviewResult
 from ui.app_shell import (
@@ -524,6 +537,40 @@ class AppShellTest(unittest.TestCase):
             self.assertEqual(preview_path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
             self.assertFalse(hasattr(viewer, "reset_button"))
             self.assertFalse(hasattr(viewer, "save_button"))
+            self.assertEqual(shell.controller.session.state, before_state)
+
+    def test_history_viewer_hides_raw_debug_and_path_text(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "history" / "snapshots"
+            bundle = _history_bundle_with_debug_text()
+            snapshot_path = HistorySnapshotBundleStore(root).write_bundle_grouped(bundle)
+            shell = AppShell(history_snapshot_root=root)
+            before_state = shell.controller.session.state
+
+            shell.left_host.history_button.click()
+            workspace = shell.left_host.history_workspace
+            row = workspace.row_widget(bundle.bundle_id)
+            self.assertIsNotNone(row)
+            row.click()
+
+            viewer = shell.right_dock.history_operation_widget
+            viewer_text = "\n".join(_label_texts(viewer))
+            preview_path = workspace.selected_preview_path()
+
+            self.assertIn(bundle.bundle_id, viewer_text)
+            self.assertIn("Thoma", viewer_text)
+            self.assertIn("Favonius Lance", viewer_text)
+            self.assertIn("Retracing Bolide", viewer_text)
+            self.assertNotIn("AppShellController", viewer_text)
+            self.assertNotIn("C:\\", viewer_text)
+            self.assertNotIn("history_builder", viewer_text)
+            self.assertNotIn("right_panel_mode", viewer_text)
+            self.assertEqual(
+                preview_path,
+                snapshot_path.parent / "preview" / "history_card.png",
+            )
+            self.assertTrue(preview_path.exists())
+            self.assertEqual(preview_path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
             self.assertEqual(shell.controller.session.state, before_state)
 
     def test_history_preview_failure_is_controlled_and_preserves_live_state(self) -> None:
@@ -4749,6 +4796,114 @@ def _character_asset(
             }
         },
     }
+
+
+def _history_bundle_with_debug_text() -> HistorySnapshotBundle:
+    return HistorySnapshotBundle(
+        bundle_id="debug-history-bundle",
+        created_at="2026-06-13T13:00:00Z",
+        run_type=HISTORY_RUN_TYPE_ABYSS,
+        source="AppShellController.save_current_run_snapshot",
+        content_language="en-us",
+        teams=(
+            HistoryTeamSnapshot(
+                team_index=0,
+                label="Team 1",
+                slots=(
+                    HistoryTeamSlotSnapshot(
+                        slot_index=0,
+                        character=HistoryCharacterSnapshot(
+                            name="Thoma",
+                            portrait_ref=r"C:\Users\tester\assets\thoma.png",
+                            provenance={"source": "AppShellController.slot"},
+                        ),
+                        weapon=HistoryWeaponSnapshot(
+                            name="Favonius Lance",
+                            icon_ref=r"C:\Users\tester\assets\favonius_lance.png",
+                            provenance={"path": r"C:\Users\tester\debug\weapon.json"},
+                        ),
+                        artifact_build=HistoryArtifactBuildSnapshot(
+                            build_name="Shield support",
+                            active_set_bonuses=(
+                                HistorySetBonusSnapshot(
+                                    set_name="Retracing Bolide",
+                                    piece_count=2,
+                                    icon_ref=r"C:\Users\tester\assets\bolide.png",
+                                ),
+                            ),
+                            warnings=("artifact_build_incomplete",),
+                            provenance={
+                                "right_panel_mode": "abyss",
+                                "controller": "AppShellController.artifacts",
+                            },
+                        ),
+                        warnings=("history_builder_slot_debug_key",),
+                        provenance={"class": "AppShellController"},
+                    ),
+                ),
+                warnings=("right_panel_mode=abyss",),
+            ),
+        ),
+        scenario=HistoryScenarioSnapshot(
+            run_type=HISTORY_RUN_TYPE_ABYSS,
+            abyss=HistoryAbyssScenarioSnapshot(
+                period_start="2026-06-01",
+                period_end="2026-06-16",
+                floor=12,
+                chambers=(
+                    HistoryAbyssChamberSnapshot(
+                        chamber_index=1,
+                        chamber_label="12-1",
+                        timer=HistoryAbyssTimerSnapshot(
+                            team1_left_seconds=540,
+                            team2_left_seconds=510,
+                            team1_elapsed_seconds=60,
+                            team2_elapsed_seconds=30,
+                            total_elapsed_seconds=90,
+                        ),
+                        side_results=(
+                            HistoryAbyssSideResultSnapshot(
+                                side=1,
+                                team_index=0,
+                                elapsed_seconds=60,
+                                total_hp=6000000,
+                                factual_dps=100000,
+                                sim_result_ref="sim-debug-ref",
+                                warnings=("history_builder_side_debug_key",),
+                            ),
+                        ),
+                        warnings=("history_builder_chamber_row_missing",),
+                    ),
+                ),
+                warnings=("right_panel_mode_abyss",),
+                provenance={"controller": "AppShellController.scenario"},
+            ),
+            provenance={"right_panel_mode": "abyss"},
+        ),
+        result_summaries=(
+            HistoryResultSummarySnapshot(
+                result_type="factual_dps",
+                label="Fact T1 DPS",
+                team_index=0,
+                chamber_index=1,
+                side=1,
+                dps=100000,
+                elapsed_seconds=60,
+                source="AppShellController",
+                warnings=(r"C:\Users\tester\debug\result.txt",),
+                provenance={"controller": "AppShellController.result"},
+            ),
+        ),
+        warnings=(
+            "history_builder_bundle_debug_key",
+            r"C:\Users\tester\debug\asset.png",
+        ),
+        provenance={
+            "controller": "AppShellController.save_current_run_snapshot",
+            "right_panel_mode": "abyss",
+            "path": r"C:\Users\tester\debug\snapshot.json",
+        },
+    )
 
 
 def _valid_pvp_character_assets() -> list[dict]:

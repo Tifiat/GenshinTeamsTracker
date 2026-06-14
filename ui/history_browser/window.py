@@ -32,6 +32,7 @@ from run_workspace.history_snapshot import (
 from run_workspace.history_snapshot_preview import (
     default_history_snapshot_preview_path,
     render_history_snapshot_preview,
+    sanitize_history_snapshot_display_text,
 )
 from run_workspace.history_snapshot_listing import (
     HistorySnapshotDetailsPayload,
@@ -331,21 +332,21 @@ class HistoryBrowserWorkspace(QFrame):
                 return
         try:
             bundle = HistorySnapshotBundleStore(self.snapshot_root).read_bundle(bundle_id)
-        except HistorySnapshotBundleError as exc:
-            self._show_preview_error(str(exc) or exc.__class__.__name__)
+        except HistorySnapshotBundleError:
+            self._show_preview_error(tr("app_shell.history.preview.error_unavailable"))
             return
         result = render_history_snapshot_preview(bundle, output_path=output_path)
         if not result.success or result.output_path is None:
             self._show_preview_error(result.error_text or "preview_render_failed")
             return
         if not self._show_preview_path(result.output_path):
-            self._show_preview_error(f"preview_image_unreadable: {result.output_path}")
+            self._show_preview_error(tr("app_shell.history.preview.error_unavailable"))
 
     def _show_preview_path(self, path: Path) -> bool:
         pixmap = QPixmap(str(path))
         if pixmap.isNull():
             return False
-        width = min(720, pixmap.width())
+        width = self._preview_display_width(pixmap)
         display_pixmap = pixmap.scaledToWidth(
             width,
             Qt.TransformationMode.SmoothTransformation,
@@ -361,7 +362,11 @@ class HistoryBrowserWorkspace(QFrame):
     def _show_preview_error(self, error_text: str) -> None:
         self.preview_image_label.clear()
         self._selected_preview_path = None
-        self._preview_error_text = error_text
+        self._preview_error_text = sanitize_history_snapshot_display_text(
+            error_text,
+            max_chars=96,
+            fallback=tr("app_shell.history.preview.error_unavailable"),
+        )
         self.preview_status_label.setObjectName("WarningLabel")
         self._refresh_preview_status_text()
         self.preview_frame.setVisible(True)
@@ -386,6 +391,22 @@ class HistoryBrowserWorkspace(QFrame):
             self.preview_status_label.setText(tr("app_shell.history.preview.ready"))
         else:
             self.preview_status_label.clear()
+
+    def _preview_display_width(self, pixmap: QPixmap) -> int:
+        candidates = (
+            self.preview_image_label.width(),
+            self.preview_frame.width(),
+            self.scroll_area.viewport().width(),
+            self.width(),
+        )
+        available = max((value for value in candidates if value > 0), default=720)
+        available = max(1, available - 36)
+        return max(1, min(720, pixmap.width(), available))
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if self._selected_preview_path is not None:
+            self._show_preview_path(self._selected_preview_path)
 
 
 class HistoryRunRowWidget(QFrame):
@@ -541,22 +562,13 @@ class HistoryRightPanelPlaceholder(QWidget):
                 object_name="MutedLabel",
             )
         )
-        self.details_layout.addWidget(
-            _details_label(
-                tr("app_shell.history.viewer.source_language").format(
-                    source=payload.source or "-",
-                    language=payload.content_language or "-",
-                ),
-                object_name="MutedLabel",
-            )
-        )
         if payload.run_type == HISTORY_RUN_TYPE_ABYSS:
             self.details_layout.addWidget(
                 _details_label(
                     tr("app_shell.history.viewer.abyss_meta").format(
                         period=_period_text(payload),
                         floor="-" if payload.floor is None else int(payload.floor),
-                        season=payload.season_label or "-",
+                        season=_viewer_text(payload.season_label, fallback="-"),
                     ),
                     object_name="MutedLabel",
                 )
@@ -586,17 +598,30 @@ class HistoryRightPanelPlaceholder(QWidget):
             )
             for chamber in payload.chamber_details:
                 lines = [
-                    chamber.label,
-                    chamber.timing_summary,
-                    *chamber.factual_dps_summaries,
-                    *chamber.sim_dps_summaries,
-                    *chamber.enemy_hp_summaries,
+                    _viewer_text(chamber.label),
+                    _viewer_text(chamber.timing_summary, max_chars=120),
+                    *(_viewer_text(item, max_chars=120) for item in chamber.factual_dps_summaries),
+                    *(_viewer_text(item, max_chars=120) for item in chamber.sim_dps_summaries),
+                    *(_viewer_text(item, max_chars=160) for item in chamber.enemy_hp_summaries),
                 ]
                 self.details_layout.addWidget(
                     _details_label(" | ".join(item for item in lines if item))
                 )
 
-        result_lines = [*payload.factual_dps_summaries, *payload.sim_dps_summaries]
+        result_lines = [
+            item
+            for item in (
+                *(
+                    _viewer_text(item, max_chars=140)
+                    for item in payload.factual_dps_summaries
+                ),
+                *(
+                    _viewer_text(item, max_chars=140)
+                    for item in payload.sim_dps_summaries
+                ),
+            )
+            if item
+        ]
         if result_lines:
             self.details_layout.addWidget(
                 _details_label(
@@ -614,19 +639,14 @@ class HistoryRightPanelPlaceholder(QWidget):
                     object_name="SectionTitle",
                 )
             )
-            for warning in payload.warnings:
-                self.details_layout.addWidget(
-                    _details_label(warning, object_name="WarningLabel")
-                )
-        if payload.provenance_notes:
             self.details_layout.addWidget(
                 _details_label(
-                    tr("app_shell.history.viewer.provenance"),
-                    object_name="SectionTitle",
+                    tr("app_shell.history.row.warnings").format(
+                        count=len(payload.warnings)
+                    ),
+                    object_name="WarningLabel",
                 )
             )
-            for note in payload.provenance_notes:
-                self.details_layout.addWidget(_details_label(note, object_name="MutedLabel"))
         self.details_layout.addStretch(1)
 
 
@@ -645,19 +665,31 @@ def _period_text(payload: HistorySnapshotDetailsPayload) -> str:
 
 
 def _slot_line(slot) -> str:
-    character = slot.character_name or tr("app_shell.history.viewer.empty_slot")
+    character = _viewer_text(
+        slot.character_name,
+        fallback=tr("app_shell.history.viewer.empty_slot"),
+    )
     parts = [f"{int(slot.slot_index) + 1}. {character}"]
-    if slot.weapon_name:
-        parts.append(slot.weapon_name)
+    weapon = _viewer_text(slot.weapon_name or slot.weapon_icon_ref)
+    if weapon:
+        parts.append(weapon)
     set_labels = [
-        f"{item.set_name} {int(item.piece_count)}p"
-        if item.piece_count
-        else item.set_name
+        f"{set_name} {int(item.piece_count)}p" if item.piece_count else set_name
         for item in slot.artifact_sets
-        if item.set_name
+        for set_name in (_viewer_text(item.set_name or item.icon_ref),)
+        if set_name
     ]
-    if slot.artifact_build_label:
-        parts.append(slot.artifact_build_label)
+    build_label = _viewer_text(slot.artifact_build_label)
+    if build_label:
+        parts.append(build_label)
     if set_labels:
         parts.append(", ".join(set_labels))
     return " | ".join(parts)
+
+
+def _viewer_text(text: object, *, max_chars: int = 120, fallback: str = "") -> str:
+    return sanitize_history_snapshot_display_text(
+        text,
+        max_chars=max_chars,
+        fallback=fallback,
+    )

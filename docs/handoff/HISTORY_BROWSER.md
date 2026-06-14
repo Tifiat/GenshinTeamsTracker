@@ -6,8 +6,9 @@ The current implementation is a left-workspace reader/list in
 v0. RUN-page Save creates immutable backend bundles, History can read/list
 grouped bundles, saved rows are selectable, and the viewer renders compact
 frozen snapshot details. A v0 PNG export-preview renderer exists for selected
-saved rows. Filters, polished export/share actions, and richer image rendering
-are later tasks.
+saved rows. The current v0 presentation uses saved display labels and keeps
+raw paths/provenance/debug strings out of primary UI. Filters, polished
+export/share actions, and richer image rendering are later tasks.
 
 ## Boundary
 
@@ -62,9 +63,11 @@ Dummy, or later PvP run state.
 The History right-panel viewer is not the live Run panel:
 
 - initial state is an empty localized prompt to select a saved run;
-- selected state shows compact frozen snapshot details: run/date/source,
-  Abyss period/floor when present, teams, character/weapon/build labels,
-  chamber timing, factual DPS, sim DPS where present, warnings, and provenance;
+- selected state shows compact frozen snapshot details: run/date, Abyss
+  period/floor when present, teams, character/weapon/build labels, chamber
+  timing, factual DPS, sim DPS where present, and warning count;
+- raw source/provenance/debug strings and absolute local paths are hidden from
+  the primary viewer surface in v0;
 - no ticking timers;
 - no GCSIM execution;
 - no equipment/team mutation;
@@ -134,6 +137,11 @@ Current v0:
 - The renderer uses saved snapshot fields only. It does not query live account
   data, caches, DBs, image assets, GCSIM, or network state.
 - Missing icon/image refs are tolerated and shown as text fallbacks.
+- The renderer prefers saved character, weapon, artifact/build, chamber, timer,
+  and DPS labels; path refs are reduced to safe basename fallback only when no
+  display label exists.
+- Raw provenance/source/debug keys, internal warning strings, absolute local
+  paths, and raw sim result refs are not rendered as primary card text.
 - The left History workspace displays the generated PNG for the selected row.
 
 Future:
@@ -154,3 +162,5 @@ Recommended sequence after the placeholder/module split:
 6. Done: add saved-row selection and a History-specific read-only right-panel
    snapshot viewer v0.
 7. Done: add a v0 selected-snapshot PNG export-preview renderer.
+8. Done: sanitize History viewer/preview v0 presentation so primary UI uses
+   saved user-facing labels instead of raw paths/provenance/debug strings.

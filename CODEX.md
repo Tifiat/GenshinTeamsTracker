@@ -706,8 +706,9 @@ History:
 - Current AppShell History workspace lives in `ui/history_browser/`: the left
   workspace reads a minimal grouped saved-bundle list, supports saved-row
   selection, shows compact Abyss period summaries, and sends frozen selected
-  snapshot details to the isolated read-only History right-panel viewer v0. It
-  also displays a derived PNG preview v0 for the selected snapshot.
+  sanitized snapshot details to the isolated read-only History right-panel
+  viewer v0. It also displays a derived sanitized PNG preview v0 for the
+  selected snapshot.
 - Immutable History Snapshot Bundle v1 backend schema/service lives in
   `run_workspace/history_snapshot.py`, with a backend-only builder in
   `run_workspace/history_snapshot_builder.py`. RUN-page Save writes grouped

@@ -55,6 +55,7 @@ from run_workspace.pvp.session import (
     validate_weapon_assignment,
 )
 from run_workspace.pvp.validation import DeckValidationReport, validate_draft_deck
+from run_workspace.pvp.weapon_identity import weapon_observed_stack_key
 from ui.character_assets import (
     CHARACTER_RARITY_FILTERS,
     CHARACTER_STANDARD_FILTER,
@@ -85,6 +86,7 @@ from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.pixel_icon_grid import (
     PixelIconGrid,
     PixelIconGridFill,
+    PixelIconGridItem,
     PixelIconGridMetrics,
     PixelIconGridOutline,
 )
@@ -132,6 +134,7 @@ PVP_DRAFT_STAGE_VALUES = (
 )
 PVP_SEATS = ("player_1", "player_2")
 PVP_TIMER_CHAMBERS = ("1", "2", "3")
+PVP_BROWSER_PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
@@ -434,33 +437,10 @@ QFrame#pvp-postdraft-source-player-1 {{
 QFrame#pvp-postdraft-source-player-2 {{
     border-left: 4px solid {UI_ACCENT_TEAM_2};
 }}
-QPushButton#pvp-picked-character-tile,
-QPushButton#pvp-weapon-tile {{
-    min-width: 92px;
-    max-width: 92px;
-    min-height: 72px;
-    max-height: 72px;
-    padding: 4px;
-    border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 6px;
-    background: {UI_BG_PANEL_RAISED};
-    color: {UI_TEXT_SECONDARY};
-    text-align: left;
-    font-size: 10px;
-    font-weight: 700;
-}}
-QPushButton#pvp-picked-character-tile[selected="true"],
-QPushButton#pvp-weapon-tile[compatible="true"] {{
-    border-color: {UI_STATE_SUCCESS};
-    background: #203b28;
-    color: {UI_TEXT_PRIMARY};
-}}
-QPushButton#pvp-picked-character-tile[assigned="true"],
-QPushButton#pvp-weapon-tile[exhausted="true"],
-QPushButton#pvp-picked-character-tile:disabled,
-QPushButton#pvp-weapon-tile:disabled {{
-    color: {UI_TEXT_MUTED};
-    background: {UI_BG_BUTTON};
+QWidget#pvp-postdraft-source-grid-wrap,
+QWidget#pvp-postdraft-source-grid-content,
+QWidget#pvp-postdraft-source-grid-viewport {{
+    background: transparent;
 }}
 """
 
@@ -1288,33 +1268,200 @@ class PvpDraftUnifiedCardButton(QPushButton):
         _refresh_qss(self)
 
 
-class PvpPostDraftTileButton(QPushButton):
-    def __init__(
+class PvpPostDraftGridItemHandle:
+    def __init__(self, grid: PixelIconGrid, item_id: str) -> None:
+        self.grid = grid
+        self.item_id = item_id
+
+    def click(self) -> bool:
+        return self.grid.click_item_for_test(self.item_id)
+
+    def isEnabled(self) -> bool:  # noqa: N802 - Qt-style test compatibility
+        item = self.grid.item(self.item_id)
+        return bool(item and item.enabled)
+
+    def property(self, name: str) -> Any:  # noqa: A003, N802 - Qt-style compatibility
+        return self.grid.item_property(self.item_id, name)
+
+
+class PvpPostDraftTargetSlotWidget(QFrame):
+    clicked = Signal()
+    clear_assignment_requested = Signal()
+    clear_weapon_requested = Signal()
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._clickable = False
+        self._portrait_path = ""
+        self._weapon_path = ""
+        self._weapon_tooltip_controller = None
+        self._clear_tooltip_controller = None
+        self.setObjectName("pvp-team-slot")
+        self.setFixedSize(92, 82)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(4, 4, 4, 4)
+        root.setSpacing(3)
+
+        top = QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 0)
+        top.setSpacing(4)
+        root.addLayout(top)
+
+        self.portrait_label = QLabel("")
+        self.portrait_label.setObjectName("pvp-target-slot-portrait")
+        self.portrait_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.portrait_label.setFixedSize(46, 46)
+        top.addWidget(self.portrait_label)
+
+        side = QVBoxLayout()
+        side.setContentsMargins(0, 0, 0, 0)
+        side.setSpacing(3)
+        top.addLayout(side)
+
+        self.weapon_label = QLabel("")
+        self.weapon_label.setObjectName("pvp-target-slot-weapon")
+        self.weapon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.weapon_label.setFixedSize(28, 28)
+        side.addWidget(self.weapon_label, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        self.clear_button = QPushButton("x")
+        self.clear_button.setObjectName("row_cancel_button")
+        self.clear_button.clicked.connect(self.clear_assignment_requested.emit)
+        side.addWidget(self.clear_button, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        self.name_label = QLabel("")
+        self.name_label.setObjectName("pvp-target-slot-name")
+        self.name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.name_label.setWordWrap(False)
+        self.name_label.setFixedHeight(16)
+        root.addWidget(self.name_label)
+
+    def configure(
         self,
         *,
-        text: str,
-        image_path: str = "",
-        icon_size: int = 48,
-        parent: QWidget | None = None,
+        seat: str,
+        team_index: int,
+        slot_index: int,
+        character_id: str,
+        character_name: str,
+        empty_label: str,
+        portrait_path: str,
+        weapon_stack_key: str,
+        weapon_name: str,
+        weapon_image_path: str,
+        weapon_tooltip: str,
+        selected_assignment: bool,
+        selected_weapon_character: bool,
+        clear_mode: str,
+        clickable: bool,
     ) -> None:
-        super().__init__(parent)
-        self.setText(text)
-        self.setIconSize(QSize(icon_size, icon_size))
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setProperty("hasIcon", False)
-        if image_path:
-            pixmap_result = load_hidpi_pixmap(
-                image_path,
-                icon_size,
-                dpr=self.devicePixelRatioF(),
-                aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
-                transform_mode=Qt.TransformationMode.SmoothTransformation,
-                cache=_PVP_DECK_ICON_PIXMAP_CACHE,
-                surface="pvp_postdraft_tile",
-            )
-            if not pixmap_result.pixmap.isNull():
-                self.setIcon(QIcon(pixmap_result.pixmap))
-                self.setProperty("hasIcon", True)
+        self._clickable = bool(clickable)
+        self._portrait_path = portrait_path
+        self._weapon_path = weapon_image_path
+        has_character = bool(character_id)
+        has_weapon = bool(weapon_stack_key)
+        self.setProperty("seat", seat)
+        self.setProperty("teamIndex", team_index)
+        self.setProperty("slotIndex", slot_index)
+        self.setProperty("characterId", character_id)
+        self.setProperty("stackKey", weapon_stack_key)
+        self.setProperty("hasCharacter", has_character)
+        self.setProperty("selectedAssignment", selected_assignment)
+        self.setProperty("selectedWeaponCharacter", selected_weapon_character)
+        self.setCursor(
+            Qt.CursorShape.PointingHandCursor
+            if self._clickable
+            else Qt.CursorShape.ArrowCursor
+        )
+
+        portrait_loaded = _set_label_hidpi_pixmap(
+            self.portrait_label,
+            portrait_path,
+            QSize(46, 46),
+            surface="pvp_postdraft_target_portrait",
+        )
+        self.setProperty("hasPortraitPixmap", portrait_loaded)
+        self.portrait_label.setProperty("hasPixmap", portrait_loaded)
+        if not portrait_loaded:
+            self.portrait_label.setText(_slot_portrait_fallback(character_name, slot_index))
+
+        weapon_loaded = _set_label_hidpi_pixmap(
+            self.weapon_label,
+            weapon_image_path,
+            QSize(24, 24),
+            surface="pvp_postdraft_target_weapon",
+        )
+        self.setProperty("hasWeaponPixmap", weapon_loaded)
+        self.weapon_label.setProperty("hasPixmap", weapon_loaded)
+        self.weapon_label.setProperty("assigned", has_weapon)
+        if not weapon_loaded:
+            self.weapon_label.setText("W" if has_weapon else "-")
+        self._weapon_tooltip_controller = _set_custom_tooltip_text(
+            self.weapon_label,
+            self._weapon_tooltip_controller,
+            weapon_tooltip or weapon_name,
+        )
+
+        self.clear_button.setVisible(clear_mode in {"assignment", "weapon"})
+        self.clear_button.setEnabled(
+            (clear_mode == "assignment" and has_character)
+            or (clear_mode == "weapon" and has_weapon)
+        )
+        try:
+            self.clear_button.clicked.disconnect()
+        except RuntimeError:
+            pass
+        if clear_mode == "weapon":
+            self.clear_button.clicked.connect(self.clear_weapon_requested.emit)
+            clear_text = tr("app_shell.pvp.post.clear_weapon")
+        else:
+            self.clear_button.clicked.connect(self.clear_assignment_requested.emit)
+            clear_text = ""
+        self._clear_tooltip_controller = _set_custom_tooltip_text(
+            self.clear_button,
+            self._clear_tooltip_controller,
+            clear_text,
+        )
+
+        self.name_label.setText(character_name if has_character else empty_label)
+        _refresh_qss(self)
+        _refresh_qss(self.portrait_label)
+        _refresh_qss(self.weapon_label)
+
+    def click(self) -> None:
+        if self._clickable:
+            self.clicked.emit()
+
+    def refresh_hidpi_pixmaps(self) -> None:
+        _set_label_hidpi_pixmap(
+            self.portrait_label,
+            self._portrait_path,
+            QSize(46, 46),
+            surface="pvp_postdraft_target_portrait",
+        )
+        _set_label_hidpi_pixmap(
+            self.weapon_label,
+            self._weapon_path,
+            QSize(24, 24),
+            surface="pvp_postdraft_target_weapon",
+        )
+
+    def event(self, event) -> bool:
+        if event.type() in (
+            QEvent.Type.DevicePixelRatioChange,
+            QEvent.Type.ScreenChangeInternal,
+            QEvent.Type.Show,
+        ):
+            self.refresh_hidpi_pixmaps()
+        return super().event(event)
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt override
+        if event.button() == Qt.MouseButton.LeftButton and self._clickable:
+            self.clicked.emit()
+            event.accept()
+            return
+        super().mousePressEvent(event)
 
 
 class PvpDraftWorkspace(QWidget):
@@ -1339,11 +1486,13 @@ class PvpDraftWorkspace(QWidget):
         self.card_buttons_by_character_id: dict[str, PvpDraftUnifiedCardButton] = {}
         self.card_buttons_by_key = self.card_buttons_by_character_id
         self.legal_card_buttons: list[PvpDraftUnifiedCardButton] = []
-        self.assignment_character_buttons_by_key: dict[tuple[str, str], QPushButton] = {}
+        self.assignment_character_buttons_by_key: dict[tuple[str, str], PvpPostDraftGridItemHandle] = {}
         self.assignment_slot_buttons_by_key: dict[tuple[str, int, int], QPushButton] = {}
         self.weapon_character_buttons_by_key: dict[tuple[str, str], QPushButton] = {}
-        self.weapon_stack_buttons_by_key: dict[tuple[str, str], QPushButton] = {}
+        self.weapon_stack_buttons_by_key: dict[tuple[str, str], PvpPostDraftGridItemHandle] = {}
         self.source_zone_frames_by_seat: dict[str, QFrame] = {}
+        self.source_character_grids_by_seat: dict[str, PixelIconGrid] = {}
+        self.source_weapon_grids_by_seat: dict[str, PixelIconGrid] = {}
         self.timer_inputs_by_key: dict[tuple[str, int], QLineEdit] = {}
         self.timer_total_labels_by_seat: dict[str, QLabel] = {}
 
@@ -1457,6 +1606,8 @@ class PvpDraftWorkspace(QWidget):
         self.weapon_character_buttons_by_key.clear()
         self.weapon_stack_buttons_by_key.clear()
         self.source_zone_frames_by_seat.clear()
+        self.source_character_grids_by_seat.clear()
+        self.source_weapon_grids_by_seat.clear()
         self.timer_inputs_by_key.clear()
         self.timer_total_labels_by_seat.clear()
         _clear_layout(self.scroll_layout)
@@ -1576,120 +1727,255 @@ class PvpDraftWorkspace(QWidget):
             weapon_title = QLabel(tr("app_shell.pvp.post.source_weapons"))
             weapon_title.setObjectName("pvp_deck_info_line")
             section_layout.addWidget(weapon_title)
-            weapon_grid = QGridLayout()
-            weapon_grid.setContentsMargins(0, 0, 0, 0)
-            weapon_grid.setHorizontalSpacing(5)
-            weapon_grid.setVerticalSpacing(5)
             if session is not None:
-                for index, stack in enumerate(session.controller.session_state.deck_for(seat).weapons):
-                    tile = self._make_source_weapon_tile(session, seat, stack, stage)
-                    weapon_grid.addWidget(tile, index // 6, index % 6)
-            section_layout.addLayout(weapon_grid)
+                weapon_grid = self._build_source_weapon_grid(session, seat, stage)
+                section_layout.addWidget(
+                    _postdraft_grid_scroll_area(
+                        weapon_grid,
+                        object_name="pvp-postdraft-source-weapon-scroll",
+                        maximum_height=118,
+                    )
+                )
 
             picks_title = QLabel(tr("app_shell.pvp.post.source_picks"))
             picks_title.setObjectName("pvp_deck_info_line")
             section_layout.addWidget(picks_title)
-            character_grid = QGridLayout()
-            character_grid.setContentsMargins(0, 0, 0, 0)
-            character_grid.setHorizontalSpacing(5)
-            character_grid.setVerticalSpacing(5)
-            for index, character_id in enumerate(_picked_character_ids(board, seat)):
-                tile = self._make_source_character_tile(board, seat, character_id, stage)
-                character_grid.addWidget(tile, index // 8, index % 8)
-            section_layout.addLayout(character_grid)
+            character_grid = self._build_source_character_grid(board, seat, stage)
+            section_layout.addWidget(
+                _postdraft_grid_scroll_area(
+                    character_grid,
+                    object_name="pvp-postdraft-source-character-scroll",
+                    maximum_height=88,
+                )
+            )
             layout.addWidget(section, 1)
         return frame
 
-    def _make_source_character_tile(
+    def _build_source_character_grid(
         self,
         board: Mapping[str, Any],
         seat: str,
-        character_id: str,
         stage: str,
-    ) -> PvpPostDraftTileButton:
-        assigned = character_id in set(_assigned_character_ids(self._view_state, seat))
-        selected = _selected_assignment_character(self._view_state) == (seat, character_id)
-        name = _entry_display_name_for_id(board, character_id)
-        label = name
-        if assigned:
-            label = f"{name}\n{tr('app_shell.pvp.post.assigned_marker')}"
-        tile = PvpPostDraftTileButton(
-            text=label,
-            image_path=_asset_image_path(self._character_assets_by_id.get(character_id)),
-            icon_size=50,
-        )
-        tile.setObjectName("pvp-picked-character-tile")
-        tile.setProperty("seat", seat)
-        tile.setProperty("characterId", character_id)
-        tile.setProperty("assigned", assigned)
-        tile.setProperty("selected", selected)
-        tile.setEnabled(stage == PVP_DRAFT_STAGE_ASSIGNMENT and not assigned)
-        tile.clicked.connect(
-            lambda _checked=False, s=seat, c=character_id: (
-                self.assignment_character_clicked.emit(s, c)
+    ) -> PixelIconGrid:
+        assets: list[dict[str, Any]] = []
+        assigned_ids = set(_assigned_character_ids(self._view_state, seat))
+        selected = _selected_assignment_character(self._view_state)
+        for character_id in _picked_character_ids(board, seat):
+            asset = dict(self._character_assets_by_id.get(character_id) or {})
+            image_path = _asset_image_path(asset)
+            name = _entry_display_name_for_id(board, character_id)
+            asset.update(
+                {
+                    "path": image_path,
+                    "filename": name,
+                    "tooltip": _postdraft_character_tooltip(
+                        name,
+                        assigned=character_id in assigned_ids,
+                    ),
+                    "grid_id": character_id,
+                    "seat": seat,
+                    "character_id": character_id,
+                    "assigned": character_id in assigned_ids,
+                    "selected": selected == (seat, character_id),
+                    "enabled": (
+                        stage == PVP_DRAFT_STAGE_ASSIGNMENT
+                        and character_id not in assigned_ids
+                    ),
+                    "has_image": bool(image_path),
+                }
             )
+            assets.append(asset)
+        result = build_asset_grid_items(
+            assets,
+            key_for_asset=lambda asset: _text(asset.get("grid_id")),
+            outline_for_asset=lambda asset, _item_id: (
+                PixelIconGridOutline(
+                    color=UI_STATE_SUCCESS,
+                    width=2,
+                    radius=6,
+                    overhang=1,
+                    badge_text="SEL",
+                )
+                if bool(asset.get("selected"))
+                else None
+            ),
+            overlay_fill_for_asset=lambda asset, _item_id: (
+                PixelIconGridFill(UI_BG_BUTTON, alpha=150)
+                if bool(asset.get("assigned")) or not bool(asset.get("enabled"))
+                else None
+            ),
+            properties_for_asset=lambda asset, _item_id: {
+                "seat": _text(asset.get("seat")),
+                "characterId": _text(asset.get("character_id")),
+                "assigned": bool(asset.get("assigned")),
+                "selected": bool(asset.get("selected")),
+                "hasImage": bool(asset.get("has_image")),
+            },
         )
-        self.assignment_character_buttons_by_key[(seat, character_id)] = tile
-        _refresh_qss(tile)
-        return tile
+        items = tuple(
+            PixelIconGridItem(
+                item_id=item.item_id,
+                icon_path=item.icon_path,
+                label=item.label,
+                tooltip=item.tooltip,
+                enabled=bool(result.assets_by_id[item.item_id].get("enabled")),
+                outline=item.outline,
+                overlay_fill=item.overlay_fill,
+                overlay_icons=item.overlay_icons,
+                properties=item.properties,
+                pixmap_cache_key_parts=("pvp_postdraft_character", seat),
+            )
+            for item in result.items
+        )
+        grid = PixelIconGrid(
+            metrics=PixelIconGridMetrics(
+                item_width=56,
+                item_height=62,
+                gap_x=6,
+                gap_y=6,
+                margin_top=2,
+                margin_bottom=2,
+            ),
+            surface="pvp_postdraft_source_character",
+        )
+        grid.setObjectName("pvp-postdraft-source-character-grid")
+        grid.setProperty("seat", seat)
+        grid.setProperty("kind", "characters")
+        grid.set_items(items)
+        grid.item_clicked.connect(
+            lambda item_id, s=seat: self.assignment_character_clicked.emit(s, item_id)
+        )
+        self.source_character_grids_by_seat[seat] = grid
+        for item_id in grid.item_ids():
+            self.assignment_character_buttons_by_key[(seat, item_id)] = (
+                PvpPostDraftGridItemHandle(grid, item_id)
+            )
+        return grid
 
-    def _make_source_weapon_tile(
+    def _build_source_weapon_grid(
         self,
         session: PvpActiveDraftSession,
         seat: str,
-        stack,
         stage: str,
-    ) -> PvpPostDraftTileButton:
+    ) -> PixelIconGrid:
         selected = _selected_weapon_character(self._view_state)
         selected_character_id = selected[1] if selected and selected[0] == seat else ""
-        remaining = _weapon_stack_remaining(
-            session,
-            self._view_state,
-            seat,
-            stack.stack_key,
-            selected_character_id=selected_character_id,
-        )
-        compatible = bool(
-            selected_character_id
-            and _weapon_stack_is_assignable(
+        assets: list[dict[str, Any]] = []
+        for stack in session.controller.session_state.deck_for(seat).weapons:
+            remaining = _weapon_stack_remaining(
                 session,
                 self._view_state,
                 seat,
-                selected_character_id,
                 stack.stack_key,
+                selected_character_id=selected_character_id,
+            )
+            compatible = bool(
+                selected_character_id
+                and _weapon_stack_is_assignable(
+                    session,
+                    self._view_state,
+                    seat,
+                    selected_character_id,
+                    stack.stack_key,
+                )
+            )
+            exhausted = remaining <= 0
+            asset = dict(self._weapon_assets_by_stack_key.get(stack.stack_key) or {})
+            image_path = _asset_image_path(asset)
+            label = tr("app_shell.pvp.post.weapon_tile_text").format(
+                weapon=stack.display_name,
+                count=remaining,
+            )
+            asset.update(
+                {
+                    "path": image_path,
+                    "filename": stack.display_name,
+                    "tooltip": label,
+                    "grid_id": stack.stack_key,
+                    "seat": seat,
+                    "stack_key": stack.stack_key,
+                    "remaining": remaining,
+                    "compatible": compatible,
+                    "exhausted": exhausted,
+                    "enabled": bool(
+                        stage == PVP_DRAFT_STAGE_WEAPONS
+                        and selected_character_id
+                        and compatible
+                        and not exhausted
+                    ),
+                    "has_image": bool(image_path),
+                }
+            )
+            assets.append(asset)
+        result = build_asset_grid_items(
+            assets,
+            key_for_asset=lambda asset: _text(asset.get("grid_id")),
+            outline_for_asset=lambda asset, _item_id: (
+                PixelIconGridOutline(
+                    color=UI_STATE_SUCCESS,
+                    width=2,
+                    radius=6,
+                    overhang=1,
+                    badge_text=str(asset.get("remaining") or ""),
+                )
+                if bool(asset.get("compatible")) and not bool(asset.get("exhausted"))
+                else None
+            ),
+            overlay_fill_for_asset=lambda asset, _item_id: (
+                PixelIconGridFill(UI_BG_BUTTON, alpha=155)
+                if bool(asset.get("exhausted")) or not bool(asset.get("enabled"))
+                else None
+            ),
+            properties_for_asset=lambda asset, _item_id: {
+                "seat": _text(asset.get("seat")),
+                "stackKey": _text(asset.get("stack_key")),
+                "remaining": int(asset.get("remaining") or 0),
+                "compatible": bool(asset.get("compatible")),
+                "exhausted": bool(asset.get("exhausted")),
+                "hasImage": bool(asset.get("has_image")),
+            },
+        )
+        items = tuple(
+            PixelIconGridItem(
+                item_id=item.item_id,
+                icon_path=item.icon_path,
+                label=item.label,
+                tooltip=item.tooltip,
+                enabled=bool(result.assets_by_id[item.item_id].get("enabled")),
+                outline=item.outline,
+                overlay_fill=item.overlay_fill,
+                overlay_icons=item.overlay_icons,
+                properties=item.properties,
+                pixmap_cache_key_parts=("pvp_postdraft_weapon", seat),
+            )
+            for item in result.items
+        )
+        grid = PixelIconGrid(
+            metrics=PixelIconGridMetrics(
+                item_width=50,
+                item_height=54,
+                gap_x=6,
+                gap_y=6,
+                margin_top=2,
+                margin_bottom=2,
+            ),
+            surface="pvp_postdraft_source_weapon",
+        )
+        grid.setObjectName("pvp-postdraft-source-weapon-grid")
+        grid.setProperty("seat", seat)
+        grid.setProperty("kind", "weapons")
+        grid.set_items(items)
+        grid.item_clicked.connect(
+            lambda item_id, s=seat, c=selected_character_id: (
+                self.weapon_stack_clicked.emit(s, c, item_id)
             )
         )
-        exhausted = remaining <= 0
-        text = tr("app_shell.pvp.post.weapon_tile_text").format(
-            weapon=stack.display_name,
-            count=remaining,
-        )
-        tile = PvpPostDraftTileButton(
-            text=text,
-            image_path=_asset_image_path(self._weapon_assets_by_stack_key.get(stack.stack_key)),
-            icon_size=42,
-        )
-        tile.setObjectName("pvp-weapon-tile")
-        tile.setProperty("seat", seat)
-        tile.setProperty("stackKey", stack.stack_key)
-        tile.setProperty("compatible", compatible)
-        tile.setProperty("exhausted", exhausted)
-        tile.setEnabled(
-            bool(
-                stage == PVP_DRAFT_STAGE_WEAPONS
-                and selected_character_id
-                and compatible
-                and not exhausted
+        self.source_weapon_grids_by_seat[seat] = grid
+        for item_id in grid.item_ids():
+            self.weapon_stack_buttons_by_key[(seat, item_id)] = (
+                PvpPostDraftGridItemHandle(grid, item_id)
             )
-        )
-        tile.clicked.connect(
-            lambda _checked=False, s=seat, c=selected_character_id, k=stack.stack_key: (
-                self.weapon_stack_clicked.emit(s, c, k)
-            )
-        )
-        self.weapon_stack_buttons_by_key[(seat, stack.stack_key)] = tile
-        _refresh_qss(tile)
-        return tile
+        return grid
 
     def _refresh_completed(self, board: Mapping[str, Any] | None) -> None:
         visible = bool(board and _draft_is_complete(board))
@@ -2514,40 +2800,48 @@ QFrame#pvp-timer-area {{
     border-radius: 6px;
     background: {UI_BG_PANEL_RAISED};
 }}
-QFrame#pvp-team-slot-frame {{
+QFrame#pvp-team-slot {{
     border: 1px solid {UI_BORDER_DEFAULT};
     border-radius: 6px;
-    background: {UI_BG_BUTTON};
-}}
-QPushButton#pvp-team-slot {{
-    min-width: 78px;
-    max-width: 78px;
-    min-height: 62px;
-    max-height: 62px;
-    padding: 3px;
-    border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 5px;
     background: {UI_BG_PANEL_RAISED};
     color: {UI_TEXT_SECONDARY};
-    text-align: left;
-    font-size: 10px;
-    font-weight: 700;
 }}
-QPushButton#pvp-team-slot[hasCharacter="true"] {{
+QFrame#pvp-team-slot[hasCharacter="true"] {{
     color: {UI_TEXT_PRIMARY};
 }}
-QPushButton#pvp-team-slot[selectedAssignment="true"],
-QPushButton#pvp-team-slot[selectedWeaponCharacter="true"] {{
+QFrame#pvp-team-slot[selectedAssignment="true"],
+QFrame#pvp-team-slot[selectedWeaponCharacter="true"] {{
     border-color: {UI_STATE_SUCCESS};
     background: #203b28;
 }}
-QLabel#pvp-assigned-weapon-indicator {{
+QLabel#pvp-target-slot-portrait {{
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 5px;
+    background: {UI_BG_BUTTON};
     color: {UI_TEXT_MUTED};
     font-size: 10px;
-    font-weight: 600;
+    font-weight: 800;
 }}
-QLabel#pvp-assigned-weapon-indicator[assigned="true"] {{
+QLabel#pvp-target-slot-portrait[hasPixmap="true"] {{
+    background: transparent;
+}}
+QLabel#pvp-target-slot-weapon {{
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 5px;
+    background: {UI_BG_BUTTON};
+    color: {UI_TEXT_MUTED};
+    font-size: 10px;
+    font-weight: 800;
+}}
+QLabel#pvp-target-slot-weapon[assigned="true"] {{
     color: {UI_TEXT_SECONDARY};
+}}
+QLabel#pvp-target-slot-name {{
+    color: {UI_TEXT_SECONDARY};
+    background: transparent;
+    border: none;
+    font-size: 10px;
+    font-weight: 700;
 }}
 QFrame#pvp-timer-row {{
     border: none;
@@ -3275,7 +3569,7 @@ class PvpDraftRightPanel(QWidget):
         self.match_layout.setSpacing(6)
         root.addWidget(self.match_frame, 1)
         self.target_zone_frames_by_seat: dict[str, QFrame] = {}
-        self.team_slot_buttons_by_key: dict[tuple[str, int, int], QPushButton] = {}
+        self.team_slot_buttons_by_key: dict[tuple[str, int, int], PvpPostDraftTargetSlotWidget] = {}
         self.timer_inputs_by_key: dict[tuple[str, int], QLineEdit] = {}
         self.timer_total_labels_by_seat: dict[str, QLabel] = {}
 
@@ -3549,79 +3843,74 @@ class PvpDraftRightPanel(QWidget):
         team_index: int,
         slot_index: int,
         character_id: str | None,
-    ) -> QFrame:
-        frame = QFrame()
-        frame.setObjectName("pvp-team-slot-frame")
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(2, 2, 2, 2)
-        layout.setSpacing(2)
-        text = (
+    ) -> PvpPostDraftTargetSlotWidget:
+        character_name = (
             _entry_display_name_for_id(board, character_id)
             if character_id
-            else tr("app_shell.pvp.post.empty_slot").format(index=slot_index + 1)
+            else ""
         )
-        button = PvpPostDraftTileButton(
-            text=text,
-            image_path=_asset_image_path(
-                self.workspace.draft_workspace._character_assets_by_id.get(
-                    character_id or "",
-                )
-            ),
-            icon_size=30,
-        )
-        button.setObjectName("pvp-team-slot")
-        button.setProperty("seat", seat)
-        button.setProperty("teamIndex", team_index)
-        button.setProperty("slotIndex", slot_index)
-        button.setProperty("characterId", character_id or "")
-        button.setProperty("hasCharacter", bool(character_id))
-        button.setProperty(
-            "selectedAssignment",
-            bool(_selected_assignment_character(self.workspace._draft_view_state()) == (seat, character_id)),
-        )
-        button.setProperty(
-            "selectedWeaponCharacter",
-            bool(_selected_weapon_character(self.workspace._draft_view_state()) == (seat, character_id)),
-        )
-        button.clicked.connect(
-            lambda _checked=False, s=seat, t=team_index, i=slot_index: (
-                self._on_target_slot_clicked(stage, s, t, i)
+        portrait_path = _asset_image_path(
+            self.workspace.draft_workspace._character_assets_by_id.get(
+                character_id or "",
             )
         )
-        self.team_slot_buttons_by_key[(seat, team_index, slot_index)] = button
-        layout.addWidget(button)
-
         stack_key = _weapon_assignment_map(self.workspace._draft_view_state(), seat).get(
             character_id or "",
             "",
         )
-        weapon = QLabel(_weapon_display_name(session, seat, stack_key) or "-")
-        weapon.setObjectName("pvp-assigned-weapon-indicator")
-        weapon.setProperty("assigned", bool(stack_key))
-        weapon.setWordWrap(True)
-        layout.addWidget(weapon)
-
-        if stage == PVP_DRAFT_STAGE_ASSIGNMENT:
-            clear = QPushButton("x")
-            clear.setObjectName("row_cancel_button")
-            clear.setEnabled(bool(character_id))
-            clear.clicked.connect(
-                lambda _checked=False, s=seat, t=team_index, i=slot_index: (
-                    self.workspace.clear_assignment_slot(s, t, i)
-                )
+        weapon_name = _weapon_display_name(session, seat, stack_key)
+        weapon_image_path = _asset_image_path(
+            self.workspace.draft_workspace._weapon_assets_by_stack_key.get(stack_key)
+        )
+        slot = PvpPostDraftTargetSlotWidget()
+        slot.configure(
+            seat=seat,
+            team_index=team_index,
+            slot_index=slot_index,
+            character_id=character_id or "",
+            character_name=character_name,
+            empty_label=tr("app_shell.pvp.post.empty_slot").format(index=slot_index + 1),
+            portrait_path=portrait_path,
+            weapon_stack_key=stack_key,
+            weapon_name=weapon_name,
+            weapon_image_path=weapon_image_path,
+            weapon_tooltip=_postdraft_weapon_tooltip(session, seat, stack_key),
+            selected_assignment=bool(
+                _selected_assignment_character(self.workspace._draft_view_state())
+                == (seat, character_id)
+            ),
+            selected_weapon_character=bool(
+                _selected_weapon_character(self.workspace._draft_view_state())
+                == (seat, character_id)
+            ),
+            clear_mode=(
+                "assignment"
+                if stage == PVP_DRAFT_STAGE_ASSIGNMENT
+                else "weapon"
+                if stage == PVP_DRAFT_STAGE_WEAPONS and character_id and stack_key
+                else ""
+            ),
+            clickable=bool(
+                stage == PVP_DRAFT_STAGE_ASSIGNMENT
+                or (stage == PVP_DRAFT_STAGE_WEAPONS and character_id)
+            ),
+        )
+        slot.clicked.connect(
+            lambda s=seat, t=team_index, i=slot_index: (
+                self._on_target_slot_clicked(stage, s, t, i)
             )
-            layout.addWidget(clear)
-        elif stage == PVP_DRAFT_STAGE_WEAPONS and character_id and stack_key:
-            clear_weapon = QPushButton(tr("app_shell.pvp.post.clear_weapon"))
-            clear_weapon.setObjectName("row_cancel_button")
-            clear_weapon.clicked.connect(
-                lambda _checked=False, s=seat, c=character_id: (
-                    self.workspace.clear_weapon_assignment(s, c)
-                )
+        )
+        slot.clear_assignment_requested.connect(
+            lambda s=seat, t=team_index, i=slot_index: (
+                self.workspace.clear_assignment_slot(s, t, i)
             )
-            layout.addWidget(clear_weapon)
-        _refresh_qss(frame)
-        return frame
+        )
+        if character_id:
+            slot.clear_weapon_requested.connect(
+                lambda s=seat, c=character_id: self.workspace.clear_weapon_assignment(s, c)
+            )
+        self.team_slot_buttons_by_key[(seat, team_index, slot_index)] = slot
+        return slot
 
     def _on_target_slot_clicked(
         self,
@@ -4558,6 +4847,23 @@ def _weapon_assets_by_stack_key(
         weapon_ref = weapon_ref_from_asset(asset)
         if weapon_ref is not None and weapon_ref.key:
             result[weapon_ref.key] = dict(asset)
+            metadata = _mapping(asset.get("metadata"))
+            weapon = _mapping(metadata.get("weapon"))
+            for weapon_type in (
+                weapon_ref.weapon_type,
+                weapon.get("weapon_type_name"),
+                weapon.get("type_name"),
+                weapon.get("type"),
+            ):
+                fallback_key = weapon_observed_stack_key(
+                    weapon_id=weapon_ref.weapon_id,
+                    weapon_type=weapon_type,
+                    rarity=weapon_ref.rarity,
+                    level=weapon_ref.level,
+                    refinement=weapon_ref.refinement,
+                )
+                if fallback_key:
+                    result.setdefault(fallback_key, dict(asset))
     return result
 
 
@@ -4569,14 +4875,134 @@ def _asset_image_path(asset: Mapping[str, Any] | None) -> str:
     weapon = _mapping(metadata.get("weapon"))
     for value in (
         character.get("portrait_path"),
+        character.get("local_portrait_path"),
+        character.get("side_icon_path"),
         character.get("icon_path"),
         weapon.get("icon_path"),
+        weapon.get("local_icon_path"),
         asset.get("path"),
     ):
-        path = _text(value)
+        path = _existing_local_asset_path(value)
         if path:
             return path
     return ""
+
+
+def _existing_local_asset_path(value: Any) -> str:
+    path_text = _text(value)
+    if not path_text:
+        return ""
+    path = Path(path_text)
+    candidates = [path]
+    if not path.is_absolute():
+        candidates.append(PVP_BROWSER_PROJECT_ROOT / path)
+    for candidate in candidates:
+        try:
+            if candidate.is_file():
+                return str(candidate)
+        except OSError:
+            continue
+    return ""
+
+
+def _postdraft_grid_scroll_area(
+    grid: PixelIconGrid,
+    *,
+    object_name: str,
+    maximum_height: int,
+) -> OverlayVerticalScrollArea:
+    scroll = OverlayVerticalScrollArea()
+    scroll.setObjectName(object_name)
+    scroll.setWidgetResizable(True)
+    scroll.setFrameShape(QFrame.Shape.NoFrame)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    scroll.viewport().setObjectName("pvp-postdraft-source-grid-viewport")
+    content = QWidget()
+    content.setObjectName("pvp-postdraft-source-grid-content")
+    layout = QVBoxLayout(content)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(0)
+    layout.addWidget(grid)
+    scroll.setWidget(content)
+    scroll.setMaximumHeight(maximum_height)
+    scroll.setMinimumHeight(min(maximum_height, max(1, grid.minimumSizeHint().height() + 4)))
+    return scroll
+
+
+def _postdraft_character_tooltip(name: str, *, assigned: bool) -> str:
+    lines = [_text(name)]
+    if assigned:
+        lines.append(tr("app_shell.pvp.post.assigned_marker"))
+    return "\n".join(line for line in lines if line)
+
+
+def _postdraft_weapon_tooltip(
+    session: PvpActiveDraftSession,
+    seat: str,
+    stack_key: str,
+) -> str:
+    if not stack_key:
+        return ""
+    try:
+        stack = session.controller.session_state.deck_for(seat).weapon_stack_by_key.get(stack_key)
+    except Exception:
+        stack = None
+    if stack is None:
+        return stack_key
+    parts = [stack.display_name or stack_key]
+    meta: list[str] = []
+    if stack.refinement is not None:
+        meta.append(f"R{stack.refinement}")
+    if stack.level is not None:
+        meta.append(f"Lv.{stack.level}")
+    if stack.count:
+        meta.append(f"x{stack.count}")
+    if meta:
+        parts.append(" | ".join(meta))
+    return "\n".join(part for part in parts if part)
+
+
+def _slot_portrait_fallback(character_name: str, slot_index: int) -> str:
+    name = _text(character_name)
+    if not name:
+        return str(slot_index + 1)
+    for character in name:
+        if character.strip():
+            return character.upper()
+    return str(slot_index + 1)
+
+
+def _set_custom_tooltip_text(owner: QWidget, controller, text: str):
+    if controller is None:
+        return install_custom_tooltip(owner, text)
+    controller.set_text(text)
+    return controller
+
+
+def _set_label_hidpi_pixmap(
+    label: QLabel,
+    image_path: str,
+    size: QSize,
+    *,
+    surface: str,
+) -> bool:
+    label.clear()
+    path = _existing_local_asset_path(image_path)
+    if not path:
+        return False
+    result = load_hidpi_pixmap(
+        path,
+        size,
+        dpr=label.devicePixelRatioF(),
+        aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
+        transform_mode=Qt.TransformationMode.SmoothTransformation,
+        cache=_PVP_DECK_ICON_PIXMAP_CACHE,
+        surface=surface,
+    )
+    if result.pixmap.isNull():
+        return False
+    label.setPixmap(result.pixmap)
+    return True
 
 
 def _postdraft_timer_total(

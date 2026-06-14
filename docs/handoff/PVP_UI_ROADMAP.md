@@ -301,11 +301,14 @@ Current v0 scope:
 - It keeps PvP-owned in-memory UI state until validation succeeds, then commits
   through `FreeDraftController.set_team_assignment(...)`.
 - Left/main area is now the visual source pool: top Player 1 and bottom
-  Player 2, each with that player's weapon pool tiles and 8 picked character
-  tiles. There are no filters or full-account browsers in post-draft stages.
+  Player 2, each with that player's weapon pool and 8 picked characters as
+  image-backed `PixelIconGrid` cards. There are no filters or full-account
+  browsers in post-draft stages.
 - The PvP right panel is now the target match panel: top Player 1 and bottom
-  Player 2, each with two compact 4-character team halves, attached weapon
-  indicators, and compact timer/result rows.
+  Player 2, each with two compact 4-character team halves, compact
+  portrait-backed target slots, assigned weapon icons, and compact timer/result
+  rows. The previous text-button post-draft prototype is no longer the accepted
+  visual layer.
 - Interaction is simple click source character, click right-panel target slot.
   Re-selecting an already used character moves it instead of duplicating it;
   slots can be cleared.
@@ -323,8 +326,8 @@ Current v0 scope:
 - Each assigned character can be selected, then assigned a compatible weapon
   stack from that player's own left/main source weapon pool.
 - Weapon assignment is visual: click a right-panel team character slot, then
-  click a compatible source weapon tile. The assigned weapon is shown on/near
-  that right-panel slot.
+  click a compatible source weapon grid card. The assigned weapon icon is shown
+  on/near that right-panel slot.
 - The UI enforces player ownership, weapon type compatibility, and stack count
   exhaustion before setting local selection state; backend validation remains
   the final authority before continuing.

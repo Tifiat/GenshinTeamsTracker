@@ -8,7 +8,7 @@ from ui.utils.app_scaling import configure_startup_ui_scale
 
 configure_startup_ui_scale()
 from PySide6.QtCore import QEvent, Qt
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtGui import QColor, QKeyEvent, QPixmap
 from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton
 
 from localization import tr
@@ -25,10 +25,12 @@ from ui.pvp_browser.window import (
     PvpDecksWorkspace,
     PvpDraftRightPanel,
     PvpDraftWorkspace,
+    PvpPostDraftTargetSlotWidget,
     PvpPlayRightPanel,
     PvpRightPanelHost,
     PvpWorkspace,
 )
+from ui.utils.pixel_icon_grid import PixelIconGrid
 
 
 class PvpBrowserTest(unittest.TestCase):
@@ -645,28 +647,55 @@ class PvpBrowserTest(unittest.TestCase):
             set(draft_panel.target_zone_frames_by_seat),
             {"player_1", "player_2"},
         )
-        self.assertEqual(
-            len(workspace.draft_workspace.findChildren(QPushButton, "pvp-picked-character-tile")),
-            16,
-        )
-        self.assertEqual(
-            len(workspace.draft_workspace.findChildren(QPushButton, "pvp-weapon-tile")),
-            2,
+        self.assertFalse(
+            workspace.draft_workspace.findChildren(QPushButton, "pvp-picked-character-tile")
         )
         self.assertFalse(
-            workspace.draft_workspace.findChildren(QPushButton, "pvp-team-slot")
+            workspace.draft_workspace.findChildren(QPushButton, "pvp-weapon-tile")
+        )
+        self.assertFalse(
+            draft_panel.findChildren(QPushButton, "pvp-team-slot")
         )
         self.assertEqual(len(draft_panel.team_slot_buttons_by_key), 16)
+        self.assertEqual(
+            len(draft_panel.findChildren(PvpPostDraftTargetSlotWidget, "pvp-team-slot")),
+            16,
+        )
+        for seat, zone in draft_panel.target_zone_frames_by_seat.items():
+            self.assertEqual(len(zone.findChildren(QFrame, "pvp-team-half")), 2, seat)
+        for seat in ("player_1", "player_2"):
+            source_zone = workspace.draft_workspace.source_zone_frames_by_seat[seat]
+            grids = source_zone.findChildren(PixelIconGrid)
+            self.assertEqual(len(grids), 2, seat)
+            character_grid = workspace.draft_workspace.source_character_grids_by_seat[seat]
+            weapon_grid = workspace.draft_workspace.source_weapon_grids_by_seat[seat]
+            picks = board["unified_pool"]["result_zones"][seat]["picked"]
+            self.assertEqual(character_grid.item_count(), 8)
+            self.assertEqual(tuple(character_grid.item_ids()), tuple(picks))
+            self.assertTrue(
+                all(character_grid.item_property(item_id, "hasImage") for item_id in picks)
+            )
+            self.assertGreater(weapon_grid.item_count(), 0)
+            self.assertTrue(
+                all(
+                    weapon_grid.item_property(item_id, "hasImage")
+                    for item_id in weapon_grid.item_ids()
+                )
+            )
         self.assertFalse(workspace.assignment_ready())
 
         first_p1 = board["unified_pool"]["result_zones"]["player_1"]["picked"][0]
-        workspace.draft_workspace.assignment_character_buttons_by_key[
-            ("player_1", first_p1)
-        ].click()
+        self.assertTrue(
+            workspace.draft_workspace.source_character_grids_by_seat[
+                "player_1"
+            ].click_item_for_test(first_p1)
+        )
         QApplication.processEvents()
         draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].click()
         QApplication.processEvents()
         self.assertEqual(workspace.assignment_slots_by_seat["player_1"][0][0], first_p1)
+        assigned_slot = draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)]
+        self.assertTrue(assigned_slot.property("hasPortraitPixmap"))
 
         self._assign_all_picks_to_teams(workspace)
 
@@ -679,16 +708,21 @@ class PvpBrowserTest(unittest.TestCase):
         draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].click()
         QApplication.processEvents()
         self.assertEqual(workspace.selected_weapon_character, ("player_1", first_p1))
-        weapon_tiles = workspace.draft_workspace.findChildren(
-            QPushButton,
-            "pvp-weapon-tile",
-        )
-        self.assertGreater(len(weapon_tiles), 0)
-        self.assertTrue(any(tile.isEnabled() for tile in weapon_tiles))
-        enabled_weapon_tile = next(tile for tile in weapon_tiles if tile.isEnabled())
-        enabled_weapon_tile.click()
+        weapon_grid = workspace.draft_workspace.source_weapon_grids_by_seat["player_1"]
+        enabled_weapon_ids = [
+            item_id
+            for item_id in weapon_grid.item_ids()
+            if weapon_grid.item(item_id) is not None and weapon_grid.item(item_id).enabled
+        ]
+        self.assertGreater(len(enabled_weapon_ids), 0)
+        self.assertTrue(weapon_grid.click_item_for_test(enabled_weapon_ids[0]))
         QApplication.processEvents()
         self.assertIn(first_p1, workspace.weapon_assignments_by_seat["player_1"])
+        weaponed_slot = draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)]
+        self.assertTrue(weaponed_slot.property("hasWeaponPixmap"))
+        self.assertFalse(
+            draft_panel.findChildren(QLabel, "pvp-assigned-weapon-indicator")
+        )
 
         self._assign_compatible_weapons(workspace)
 
@@ -866,18 +900,23 @@ class PvpBrowserTest(unittest.TestCase):
         deck_names: tuple[str, ...] = ("Alpha", "Beta"),
         weapons: list[dict] | None = None,
     ) -> tuple[PvpWorkspace, PvpPlayRightPanel]:
-        characters = _valid_character_assets(character_count)
-        weapons = weapons or [
-            _weapon_asset(
-                "11401",
-                "Sword",
-                weapon_type=1,
-                weapon_type_name="Sword",
-                known_count=24,
-            )
-        ]
         temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(temp_dir.cleanup)
+        portrait_path, weapon_path = _create_test_asset_images(temp_dir.name)
+        characters = _valid_character_assets(character_count, image_path=portrait_path)
+        weapons = _with_weapon_image_paths(
+            weapons or [
+                _weapon_asset(
+                    "11401",
+                    "Sword",
+                    weapon_type=1,
+                    weapon_type_name="Sword",
+                    known_count=24,
+                    image_path=weapon_path,
+                )
+            ],
+            weapon_path,
+        )
         workspace = PvpWorkspace(
             deck_dir=temp_dir.name,
             character_assets_provider=lambda: characters,
@@ -963,9 +1002,10 @@ def _character_asset(
     weapon_type: int = 13,
     weapon_type_name: str = "Polearm",
     rarity: int = 4,
+    image_path: str = "portrait.png",
 ) -> dict:
     return {
-        "path": "portrait.png",
+        "path": image_path,
         "filename": "portrait.png",
         "metadata": {
             "character": {
@@ -977,7 +1017,7 @@ def _character_asset(
                 "element": "Pyro",
                 "weapon_type": weapon_type,
                 "weapon_type_name": weapon_type_name,
-                "portrait_path": "portrait.png",
+                "portrait_path": image_path,
             }
         },
     }
@@ -992,10 +1032,11 @@ def _weapon_asset(
     rarity: int = 4,
     known_count: int = 1,
     weapon_fingerprint: str | None = None,
+    image_path: str = "weapon.png",
 ) -> dict:
     fingerprint = weapon_fingerprint or f"fingerprint-{weapon_id}"
     return {
-        "path": "weapon.png",
+        "path": image_path,
         "filename": "weapon.png",
         "metadata": {
             "known_count": known_count,
@@ -1008,7 +1049,7 @@ def _weapon_asset(
                 "weapon_type": weapon_type,
                 "weapon_type_name": weapon_type_name,
                 "type_name": weapon_type_name,
-                "icon_path": "fav.png",
+                "icon_path": image_path,
                 "source_key": fingerprint,
                 "weapon_fingerprint": fingerprint,
                 "known_count": known_count,
@@ -1017,7 +1058,7 @@ def _weapon_asset(
     }
 
 
-def _valid_character_assets(count: int = 11) -> list[dict]:
+def _valid_character_assets(count: int = 11, *, image_path: str = "portrait.png") -> list[dict]:
     return [
         _character_asset(
             str(20000000 + index),
@@ -1025,9 +1066,38 @@ def _valid_character_assets(count: int = 11) -> list[dict]:
             weapon_type=1,
             weapon_type_name="Sword",
             rarity=5,
+            image_path=image_path,
         )
         for index in range(count)
     ]
+
+
+def _create_test_asset_images(directory: str) -> tuple[str, str]:
+    portrait_path = f"{directory}\\portrait.png"
+    weapon_path = f"{directory}\\weapon.png"
+    portrait = QPixmap(16, 16)
+    portrait.fill(QColor("#c96b4f"))
+    if not portrait.save(portrait_path):
+        raise AssertionError("Failed to create portrait fixture image")
+    weapon = QPixmap(16, 16)
+    weapon.fill(QColor("#6b9bd2"))
+    if not weapon.save(weapon_path):
+        raise AssertionError("Failed to create weapon fixture image")
+    return portrait_path, weapon_path
+
+
+def _with_weapon_image_paths(weapons: list[dict], image_path: str) -> list[dict]:
+    updated: list[dict] = []
+    for weapon in weapons:
+        item = dict(weapon)
+        metadata = dict(item.get("metadata") or {})
+        weapon_meta = dict(metadata.get("weapon") or {})
+        item["path"] = image_path
+        weapon_meta["icon_path"] = image_path
+        metadata["weapon"] = weapon_meta
+        item["metadata"] = metadata
+        updated.append(item)
+    return updated
 
 
 def _board_card(board: dict, seat: str, character_id: str) -> dict:

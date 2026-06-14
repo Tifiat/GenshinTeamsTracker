@@ -71,9 +71,10 @@ Mirror the primary project owner under `tests/`:
   mapping, illegal no-op behavior, right-panel pick/ban zones, same-deck
   seat-state independence, and a deterministic full Free Draft completion
   through UI card clicks, plus post-draft visual layout guards: two left/main
-  source zones with picked-character and weapon tiles, two right-panel target
-  zones with 2x4 slots per player, visual character-to-slot assignment,
-  visual slot-to-weapon assignment, compact right-panel timer inputs,
+  source zones with image-backed picked-character and weapon `PixelIconGrid`
+  cards, two right-panel target zones with 2x4 portrait-backed slots per
+  player, visual character-to-slot assignment, visual slot-to-weapon assignment,
+  compact right-panel timer inputs,
   completed result teams/timers/winner display, duplicate assignment move
   behavior, incompatible/exhausted weapon blocking, and active-draft
   clear/reset state.

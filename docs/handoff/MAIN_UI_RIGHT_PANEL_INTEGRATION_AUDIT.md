@@ -68,11 +68,51 @@ Ownership rules:
 - `dock.py` and `header.py` own fixed right-dock shell/header mechanics and
   stable-id routing.
 
+## Current Implementation Snapshot
+
+The global right-panel source-ownership refactor has been applied with no
+intended behavior or visual changes:
+
+- `ui/right_panel/common/metrics.py`, `slot_card.py`, and `team_card.py` own
+  shared slot/team card metrics, HiDPI pixmap helpers, drag/drop MIME handling,
+  portrait/weapon/artifact mini-zones, and the production
+  `RightPanelSlotCardWidget` / `RightPanelTeamCardWidget` names.
+- `ui/right_panel/live_run/panel.py` owns the current Run/Abyss/DPS right panel
+  as `RunRightPanelWidget`, including run actions, chamber/timer cells, selected
+  details, bonus strip/chips, and compact GCSIM/factual-DPS cells. The
+  `run_workspace/right_panel_prototype_view_model.py` owner was intentionally
+  left unchanged.
+- `ui/right_panel/dock.py` and `ui/right_panel/header.py` own
+  `RightOperationsDock` and `RightDockHeader`; `ui/app_shell.py` remains the
+  routing/coordinator root.
+- `ui/right_panel/settings/account_data.py` owns the Account/Data/global
+  settings page. `ui/account_data_page.py` is only a compatibility wrapper.
+- `ui/right_panel/history/viewer.py` owns the frozen read-only History right
+  viewer. `ui/history_browser/` still owns the left History browser/list/preview.
+- `ui/right_panel/pvp/` owns PvP right-dock pages:
+  `host.py`, `decks/panel.py`, `play/panel.py`, `draft/panel.py`, and
+  `draft/assignment/target_slot.py`. `ui/pvp_browser/window.py` keeps left/main
+  PvP workspace classes and compatibility re-exports for old right-panel names.
+- `ui/right_panel_prototype.py` is now a deprecated compatibility facade only.
+  Old names such as `RightPanelPrototypeWidget`,
+  `RightPanelSlotPrototypeWidget`, `RightPanelTeamPrototypeWidget`,
+  `RunModeTabsWidget`, and `RightPanelRunActionsWidget` remain importable while
+  new production imports should use `ui.right_panel.*`.
+- Tests moved with ownership where practical: live-run right-panel tests now
+  live under `tests/ui/right_panel/live_run/`, structural ownership/import
+  coverage lives under `tests/ui/right_panel/`, AppShell routing remains under
+  `tests/ui/app_shell/`, and left/main PvP behavior remains under
+  `tests/ui/pvp_browser/` while importing right panels from their new owners.
+
+Intentional non-goals of this refactor: do not switch `main.py` to AppShell, do
+not delete `ui/main_window.py`, do not implement PvP Artifact equipment, and do
+not implement scoped PvP GCSIM.
+
 ## Refactor Rule
 
-A candidate code task is the global right-panel source-ownership refactor toward
-the tree above. When ownership moves, update imports and matching tests in the
-same task. Do not weaken behavior coverage because files move.
+Future right-panel work should keep the tree above as source ownership. When
+ownership moves again, update imports and matching tests in the same task. Do
+not weaken behavior coverage because files move.
 
 Do not treat old prototype integration steps as current instructions. The
 durable rule is the ownership split above plus AppShell-controlled routing.

@@ -1,5 +1,6 @@
 from .placeholders import PvpRightDockPlaceholder, PvpWorkspacePlaceholder
-from .window import PvpDeckAssetIconLabel, PvpDecksRightPanel, PvpDecksWorkspace
+from .window import PvpDeckAssetIconLabel, PvpDecksWorkspace
+from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
 
 __all__ = [
     "PvpDeckAssetIconLabel",

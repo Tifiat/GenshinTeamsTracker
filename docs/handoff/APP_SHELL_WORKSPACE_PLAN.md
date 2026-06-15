@@ -122,15 +122,15 @@ Mode terminology:
   right-dock pages. Account/Data can be opened without destroying the current
   live run, PvP, or History state.
 - `history` mode is a right-panel mode for read-only frozen snapshots. The left
-  History browser remains under `ui/history_browser/`; the right viewer should
-  move toward `ui/right_panel/history/`.
+  History browser remains under `ui/history_browser/`; the right viewer is
+  owned by `ui/right_panel/history/viewer.py`.
 - `pvp` mode owns PvP right-dock pages and match-stage panels under
   `ui/right_panel/pvp/`. The left/main PvP workspace remains under
   `ui/pvp_browser/`.
 
-The next right-panel coding task should be a global refactor toward this tree,
-with moved imports and corresponding tests updated in the same task. It should
-not only move the current prototype files around.
+The global source-ownership refactor toward this tree has been applied for the
+current right-panel code. Future moves should keep imports and corresponding
+tests updated in the same task.
 
 Display scale contract:
 
@@ -283,7 +283,7 @@ right column patched in place.
 - `ui/app_shell.py` should only wire/register the History workspace, update its
   nav label, and choose/update the History right-dock page. History left
   browsing/details/preview remain under `ui/history_browser/`; the read-only
-  right-panel snapshot viewer should move toward `ui/right_panel/history/`.
+  right-panel snapshot viewer is owned by `ui/right_panel/history/viewer.py`.
 - Legacy `runs_history.json` / image-path history UI is obsolete and should not
   become the long-term design.
 - The current left page reads immutable snapshot bundles from disk, shows
@@ -306,10 +306,11 @@ right column patched in place.
 
 ## Right Operations Dock
 
-Near-term default:
+Current default:
 
-- Build/Run Panel based on `ui.right_panel_prototype.RightPanelPrototypeWidget`.
-- PvP Decks/Play/Draft pages for the `pvp` left workspace.
+- Build/Run Panel based on `ui.right_panel.live_run.panel.RunRightPanelWidget`.
+- PvP Decks/Play/Draft right pages are under `ui/right_panel/pvp/`; the left
+  workspace remains under `ui/pvp_browser/`.
 - Fixed width.
 - Always visible in the normal app shell.
 
@@ -514,7 +515,7 @@ Current interaction rules:
   such as `2p`/`2+2` should appear only when icon assets are genuinely missing
   or invalid. This does not create or mutate
   `artifact_builds`, `artifact_build_slots`, or `artifact_build_targets`.
-- The right panel is refreshed through `RightPanelPrototypeWidget.set_model(...)`
+- The right panel is refreshed through `RunRightPanelWidget.set_model(...)`
   after controller state changes.
 
 Equipment-state note:
@@ -579,7 +580,7 @@ Performance audit note, 2026-05-26:
 - Programmatic offscreen audit with local SQLite-backed asset helpers measured
   73 character cards and 58 visible weapon cards. A quick-pick character click
   spent only about `0.1-0.4 ms` in `AppShellController` state mutation and
-  roughly `1-2 ms` building the right-panel view-model. `RightPanelPrototypeWidget`
+  roughly `1-2 ms` building the right-panel view-model. `RunRightPanelWidget`
   rebuilds were usually `25-60 ms`, with an occasional `~150 ms` layout/details
   spike.
 - The dominant click bottleneck is selected roster marker refresh:
@@ -617,7 +618,7 @@ Performance fix status:
   being tuned further.
 - Roster clicks update marker state first, request repaint, and schedule a short
   debounced right-panel refresh. Rapid clicks coalesce into one later
-  `RightPanelPrototypeWidget.set_model(...)` call.
+  `RunRightPanelWidget.set_model(...)` call.
 - Character and weapon asset items are cached for the AppShell session. A future
   import/data refresh can explicitly clear this cache, but ordinary filter
   clicks should not reopen SQLite.
@@ -651,7 +652,7 @@ Performance fix status:
   - The visible bounce was not one bug. It was a chain of layout and refresh
     problems that only became obvious under realistic click timing.
   - First cause: right-panel team/slot area used destructive rebuilds in
-    `RightPanelPrototypeWidget.set_model(...)`. Clearing `_teams_layout`
+    `RunRightPanelWidget.set_model(...)`. Clearing `_teams_layout`
     temporarily removed the slot area, so the chamber/timer block could visually
     jump upward. Fix: keep persistent team/slot widgets for same-structure
     updates and update slot contents in place.

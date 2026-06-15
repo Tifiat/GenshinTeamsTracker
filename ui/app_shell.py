@@ -98,23 +98,21 @@ from ui.character_assets import (
     metadata_int,
     standard_character_filter_icon,
 )
-from ui.account_data_page import AccountDataPage
+from ui.right_panel.settings.account_data import AccountDataPage
 from ui.pvp_browser.placeholders import PvpRightDockPlaceholder
-from ui.pvp_browser.window import (
+from ui.pvp_browser.window import PvpWorkspace
+from ui.right_panel.pvp._shared import (
     PVP_PAGE_DECKS,
     PVP_PAGE_DRAFT,
     PVP_PAGE_PLAY,
-    PvpRightPanelHost,
-    PvpWorkspace,
 )
+from ui.right_panel.pvp.host import PvpRightPanelHost
 from ui.gcsim_browser.window import (
     GcsimBrowserTeamSlotPreview,
     GcsimBrowserWorkspace,
 )
-from ui.history_browser.window import (
-    HistoryBrowserWorkspace,
-    HistoryRightPanelPlaceholder,
-)
+from ui.history_browser.window import HistoryBrowserWorkspace
+from ui.right_panel.history.viewer import HistoryRightPanelPlaceholder
 from ui.gcsim_browser.run_worker import (
     GcsimBrowserBatchRunRequest,
     GcsimBrowserBatchRunWorker,
@@ -129,13 +127,15 @@ from ui.gcsim_browser.run_worker import (
     right_panel_gcsim_results_from_browser_batch_payload,
     split_gcsim_browser_warnings,
 )
-from ui.right_panel_prototype import (
-    RIGHT_PANEL_PROTOTYPE_MIN_WIDTH,
-    RunModeTabsWidget,
-    RightPanelPrototypeWidget,
-    make_mode_tab_button,
-    right_panel_stylesheet,
+from ui.right_panel.constants import (
+    RIGHT_DOCK_PAGE_ACCOUNT,
+    RIGHT_DOCK_PAGE_HISTORY,
+    RIGHT_DOCK_PAGE_PVP,
+    RIGHT_DOCK_PAGE_RUN,
+    RIGHT_OPERATIONS_DOCK_WIDTH,
 )
+from ui.right_panel.dock import RightOperationsDock
+from ui.right_panel.live_run.panel import RunRightPanelWidget
 from run_workspace.gcsim.selected_team_config import (
     build_selected_team_full_config_report,
 )
@@ -194,15 +194,6 @@ from ui.utils.ui_palette import (
 )
 
 
-RIGHT_OPERATIONS_DOCK_WIDTH = RIGHT_PANEL_PROTOTYPE_MIN_WIDTH
-RIGHT_DOCK_PAGE_RUN = "run"
-RIGHT_DOCK_PAGE_ACCOUNT = "account"
-RIGHT_DOCK_PAGE_HISTORY = "history"
-RIGHT_DOCK_PAGE_PVP = "pvp"
-RIGHT_DOCK_POLICY_RUN = "run"
-RIGHT_DOCK_POLICY_HISTORY = "history"
-RIGHT_DOCK_POLICY_PVP = "pvp"
-RIGHT_DOCK_ACCOUNT_ICON_SIZE = 18
 HISTORY_SNAPSHOT_ROOT = PROJECT_ROOT / "data" / "history" / "snapshots"
 LEFT_WORKSPACE_CHARACTERS_WEAPONS = "characters_weapons"
 LEFT_WORKSPACE_ARTIFACTS = "artifacts"
@@ -1488,7 +1479,7 @@ class AppShell(QWidget):
         )
         root.addWidget(self.left_host, 1)
 
-        self.right_panel = RightPanelPrototypeWidget(
+        self.right_panel = RunRightPanelWidget(
             self.controller.right_panel_model(),
             show_mode_tabs=False,
         )
@@ -2835,262 +2826,6 @@ def _selected_team_has_characters(selected_team: dict[str, Any]) -> bool:
     return False
 
 
-class RightDockHeader(QWidget):
-    mode_requested = Signal(str)
-    account_requested = Signal()
-    pvp_control_requested = Signal()
-    pvp_page_requested = Signal(str)
-
-    def __init__(
-        self,
-        active_mode: str = MODE_ABYSS,
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self.setObjectName("RightDockHeader")
-
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 0)
-        layout.setSpacing(6)
-
-        self.run_mode_tabs = RunModeTabsWidget(active_mode)
-        self.run_mode_tabs.mode_requested.connect(self.mode_requested.emit)
-        layout.addWidget(self.run_mode_tabs, 2)
-
-        self.pvp_decks_button = make_mode_tab_button(
-            tr("app_shell.right_dock.pvp_decks")
-        )
-        self.pvp_decks_button.clicked.connect(
-            lambda _checked=False: self._request_pvp_page(PVP_PAGE_DECKS)
-        )
-        layout.addWidget(self.pvp_decks_button, 1)
-
-        self.pvp_play_button = make_mode_tab_button(
-            tr("app_shell.right_dock.pvp_play")
-        )
-        self.pvp_play_button.clicked.connect(
-            lambda _checked=False: self._request_pvp_page(PVP_PAGE_PLAY)
-        )
-        layout.addWidget(self.pvp_play_button, 1)
-
-        self.pvp_draft_button = make_mode_tab_button(
-            tr("app_shell.right_dock.pvp_draft")
-        )
-        self.pvp_draft_button.clicked.connect(
-            lambda _checked=False: self._request_pvp_page(PVP_PAGE_DRAFT)
-        )
-        layout.addWidget(self.pvp_draft_button, 1)
-        self.pvp_control_button = self.pvp_decks_button
-        self._pvp_buttons_by_page = {
-            PVP_PAGE_DECKS: self.pvp_decks_button,
-            PVP_PAGE_PLAY: self.pvp_play_button,
-            PVP_PAGE_DRAFT: self.pvp_draft_button,
-        }
-
-        self.account_button = make_mode_tab_button(
-            tr("app_shell.right_dock.account")
-        )
-        self.account_button.setIcon(_account_tab_icon())
-        self.account_button.setIconSize(
-            QSize(RIGHT_DOCK_ACCOUNT_ICON_SIZE, RIGHT_DOCK_ACCOUNT_ICON_SIZE)
-        )
-        self.account_button.clicked.connect(
-            lambda _checked=False: self.account_requested.emit()
-        )
-        layout.addWidget(self.account_button, 1)
-        self.show_run_mode(active_mode)
-
-    def show_run_mode(self, mode: str) -> None:
-        self.run_mode_tabs.setVisible(True)
-        self._show_pvp_buttons(False)
-        self.account_button.setChecked(False)
-        self.run_mode_tabs.set_active_mode(mode)
-
-    def show_pvp_control(self, active_page: str = PVP_PAGE_DECKS) -> None:
-        self.run_mode_tabs.setVisible(False)
-        self.run_mode_tabs.set_active_mode(None)
-        self._show_pvp_buttons(True, active_page=active_page)
-        self.account_button.setChecked(False)
-
-    def show_history_viewer(self) -> None:
-        self.run_mode_tabs.setVisible(False)
-        self.run_mode_tabs.set_active_mode(None)
-        self._show_pvp_buttons(False)
-        self.account_button.setChecked(False)
-
-    def show_account(self, *, policy: str = RIGHT_DOCK_POLICY_RUN) -> None:
-        if policy == RIGHT_DOCK_POLICY_PVP:
-            self.run_mode_tabs.setVisible(False)
-            self.run_mode_tabs.set_active_mode(None)
-            self._show_pvp_buttons(True, active_page=None)
-        elif policy == RIGHT_DOCK_POLICY_HISTORY:
-            self.run_mode_tabs.setVisible(False)
-            self.run_mode_tabs.set_active_mode(None)
-            self._show_pvp_buttons(False)
-        else:
-            self.run_mode_tabs.setVisible(True)
-            self.run_mode_tabs.set_active_mode(None)
-            self._show_pvp_buttons(False)
-        self.account_button.setChecked(True)
-
-    def retranslate_ui(self) -> None:
-        self.run_mode_tabs.retranslate_ui()
-        self.pvp_decks_button.setText(tr("app_shell.right_dock.pvp_decks"))
-        self.pvp_play_button.setText(tr("app_shell.right_dock.pvp_play"))
-        self.pvp_draft_button.setText(tr("app_shell.right_dock.pvp_draft"))
-        self.account_button.setText(tr("app_shell.right_dock.account"))
-
-    def _request_pvp_page(self, page_id: str) -> None:
-        self.pvp_page_requested.emit(page_id)
-
-    def _show_pvp_buttons(
-        self,
-        visible: bool,
-        *,
-        active_page: str | None = PVP_PAGE_DECKS,
-    ) -> None:
-        for page_id, button in self._pvp_buttons_by_page.items():
-            button.setVisible(visible)
-            button.setChecked(bool(visible and active_page == page_id))
-
-
-class RightOperationsDock(QFrame):
-    mode_requested = Signal(str)
-    reset_requested = Signal()
-    save_requested = Signal()
-
-    def __init__(
-        self,
-        operation_widget: QWidget,
-        parent: QWidget | None = None,
-        *,
-        history_operation_widget: QWidget | None = None,
-        pvp_operation_widget: QWidget | None = None,
-        active_mode: str = MODE_ABYSS,
-    ) -> None:
-        super().__init__(parent)
-        self.setObjectName("RightOperationsDock")
-        self.operation_widget = operation_widget
-        self.history_operation_widget = (
-            history_operation_widget or HistoryRightPanelPlaceholder()
-        )
-        self.pvp_operation_widget = pvp_operation_widget or PvpRightDockPlaceholder()
-        self._operation_policy = RIGHT_DOCK_POLICY_RUN
-        self._pvp_page = PVP_PAGE_DECKS
-        self.header = RightDockHeader(active_mode)
-        self.account_page = AccountDataPage()
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-        layout.addWidget(self.header)
-
-        self.content_stack = QStackedWidget()
-        self.content_stack.addWidget(self.operation_widget)
-        self.content_stack.addWidget(self.history_operation_widget)
-        self.content_stack.addWidget(self.pvp_operation_widget)
-        self.content_stack.addWidget(self.account_page)
-        layout.addWidget(self.content_stack, 1)
-
-        operation_widget.setMinimumWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
-        self.history_operation_widget.setMinimumWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
-        self.pvp_operation_widget.setMinimumWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
-        self.setFixedWidth(RIGHT_OPERATIONS_DOCK_WIDTH)
-        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
-        self.setStyleSheet(right_panel_stylesheet())
-
-        self.header.mode_requested.connect(self._on_mode_requested)
-        if hasattr(self.operation_widget, "reset_requested"):
-            self.operation_widget.reset_requested.connect(self.reset_requested.emit)
-        if hasattr(self.operation_widget, "save_requested"):
-            self.operation_widget.save_requested.connect(self.save_requested.emit)
-        self.header.pvp_control_requested.connect(
-            lambda: self.show_pvp_page(PVP_PAGE_DECKS)
-        )
-        self.header.pvp_page_requested.connect(self.show_pvp_page)
-        self.header.account_requested.connect(self.show_account_page)
-        pvp_workspace = getattr(self.pvp_operation_widget, "workspace", None)
-        if pvp_workspace is not None and hasattr(pvp_workspace, "page_changed"):
-            pvp_workspace.page_changed.connect(self._on_pvp_page_changed)
-        self.show_run_page(active_mode)
-
-    def current_page(self) -> str:
-        if self.content_stack.currentWidget() is self.account_page:
-            return RIGHT_DOCK_PAGE_ACCOUNT
-        if self.content_stack.currentWidget() is self.history_operation_widget:
-            return RIGHT_DOCK_PAGE_HISTORY
-        if self.content_stack.currentWidget() is self.pvp_operation_widget:
-            return RIGHT_DOCK_PAGE_PVP
-        return RIGHT_DOCK_PAGE_RUN
-
-    def show_run_page(self, mode: str) -> None:
-        self._operation_policy = RIGHT_DOCK_POLICY_RUN
-        self._clear_operation_save_status()
-        self.content_stack.setCurrentWidget(self.operation_widget)
-        self.header.show_run_mode(mode)
-
-    def show_pvp_page(self, page_id: str | None = None) -> None:
-        self._clear_operation_save_status()
-        if page_id in (PVP_PAGE_DECKS, PVP_PAGE_PLAY, PVP_PAGE_DRAFT):
-            self._pvp_page = page_id
-        elif hasattr(self.pvp_operation_widget, "current_page"):
-            self._pvp_page = self.pvp_operation_widget.current_page()
-        self._operation_policy = RIGHT_DOCK_POLICY_PVP
-        if hasattr(self.pvp_operation_widget, "set_page"):
-            self.pvp_operation_widget.set_page(self._pvp_page)
-        self.content_stack.setCurrentWidget(self.pvp_operation_widget)
-        self.header.show_pvp_control(self._pvp_page)
-
-    def show_history_page(self) -> None:
-        self._clear_operation_save_status()
-        self._operation_policy = RIGHT_DOCK_POLICY_HISTORY
-        self.content_stack.setCurrentWidget(self.history_operation_widget)
-        self.header.show_history_viewer()
-
-    def show_account_page(self) -> None:
-        self._clear_operation_save_status()
-        self.content_stack.setCurrentWidget(self.account_page)
-        self.header.show_account(policy=self._operation_policy)
-
-    def _on_mode_requested(self, mode: str) -> None:
-        self.mode_requested.emit(mode)
-
-    def _clear_operation_save_status(self) -> None:
-        if hasattr(self.operation_widget, "clear_save_status"):
-            self.operation_widget.clear_save_status()
-
-    def _on_pvp_page_changed(self, page_id: str) -> None:
-        if page_id not in (PVP_PAGE_DECKS, PVP_PAGE_PLAY, PVP_PAGE_DRAFT):
-            return
-        self._pvp_page = page_id
-        if self.current_page() == RIGHT_DOCK_PAGE_PVP:
-            self.header.show_pvp_control(self._pvp_page)
-
-    def retranslate_ui(self) -> None:
-        self.header.retranslate_ui()
-        if hasattr(self.operation_widget, "retranslate_ui"):
-            self.operation_widget.retranslate_ui()
-        self.account_page.retranslate_ui()
-        if hasattr(self.history_operation_widget, "retranslate_ui"):
-            self.history_operation_widget.retranslate_ui()
-        if hasattr(self.pvp_operation_widget, "retranslate_ui"):
-            self.pvp_operation_widget.retranslate_ui()
-
-
-def _account_tab_icon() -> QIcon:
-    icon = QIcon()
-    size = RIGHT_DOCK_ACCOUNT_ICON_SIZE
-    icon.addPixmap(
-        tinted_svg_pixmap("user-round-cog", size, UI_TEXT_SECONDARY),
-        QIcon.Mode.Normal,
-        QIcon.State.Off,
-    )
-    icon.addPixmap(
-        tinted_svg_pixmap("user-round-cog", size, UI_BG_APP),
-        QIcon.Mode.Normal,
-        QIcon.State.On,
-    )
-    return icon
 
 
 class CharacterWeaponWorkspace(QWidget):

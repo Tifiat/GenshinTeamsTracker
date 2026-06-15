@@ -2,8 +2,8 @@
 
 Scope: product and architecture contract for the AppShell History Browser.
 The current implementation is a left-workspace reader/list in
-`ui/history_browser/` plus an isolated read-only right-panel snapshot viewer
-v0. RUN-page Save creates immutable backend bundles, History can read/list
+`ui/history_browser/` plus an isolated read-only right-panel snapshot viewer in
+`ui/right_panel/history/viewer.py`. RUN-page Save creates immutable backend bundles, History can read/list
 grouped bundles, saved rows are selectable, and the viewer renders compact
 frozen snapshot details. A v0 PNG export-preview renderer exists for selected
 saved rows. The current v0 presentation uses saved display labels and keeps
@@ -20,8 +20,8 @@ export/share actions, and richer image rendering are later tasks.
 - The left History Browser remains under `ui/history_browser/`: grouped saved
   bundle rows, saved-row selection, compact period summaries, selected-snapshot
   preview, filters, and export/share actions.
-- The right read-only snapshot viewer should be treated as a right-panel mode
-  and should move toward `ui/right_panel/history/`.
+- The right read-only snapshot viewer is treated as a right-panel mode and is
+  owned by `ui/right_panel/history/viewer.py`.
 - `ui/run_history_window.py` and `runs_history.json` are legacy. Do not develop
   them as the final History model, and do not migrate them as the first real
   History implementation.
@@ -66,8 +66,8 @@ Dummy, or later PvP run state.
 
 The History right-panel viewer is not the live Run panel:
 
-- target source owner is `ui/right_panel/history/`, not
-  `ui/history_browser/`, once the global right-panel refactor happens;
+- target source owner is `ui/right_panel/history/viewer.py`, not
+  `ui/history_browser/`;
 - initial state is an empty localized prompt to select a saved run;
 - selected state shows compact frozen snapshot details: run/date, Abyss
   period/floor when present, teams, character/weapon/build labels, chamber

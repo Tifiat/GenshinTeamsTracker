@@ -28,7 +28,8 @@ from run_workspace.right_panel_prototype_view_model import (
     build_right_panel_prototype_view_model,
 )
 from run_workspace.team_builder import TeamBuilderState, create_empty_team
-from ui.right_panel_prototype import RIGHT_PANEL_PROTOTYPE_MIN_WIDTH, RightPanelPrototypeWidget
+from ui.right_panel.common.metrics import RIGHT_PANEL_PROTOTYPE_MIN_WIDTH
+from ui.right_panel.live_run.panel import RunRightPanelWidget as RightPanelPrototypeWidget
 
 
 ARTIFACT_SET_ICON_DIR = PROJECT_ROOT / "assets" / "artifact_sets"

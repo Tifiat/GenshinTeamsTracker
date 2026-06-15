@@ -65,7 +65,9 @@ Mirror the primary project owner under `tests/`:
   shared metrics/styles/helpers, and non-domain-specific card UI.
 - `tests/ui/right_panel/live_run/` - live Run/Abyss/DPS right-panel widgets,
   including current-run team slots, chamber/timer/result widgets, selected
-  target behavior, and compact GCSIM summary/status cells.
+  target behavior, and compact GCSIM summary/status cells. The former
+  right-panel prototype bonus/smoke tests now live here and import production
+  widgets from `ui.right_panel.*`.
 - `tests/ui/right_panel/history/` - frozen read-only snapshot viewer widgets.
   Coverage should assert no live timer/GCSIM/equipment/save/reset behavior is
   exposed by the History viewer.
@@ -83,7 +85,10 @@ Mirror the primary project owner under `tests/`:
   illegal no-op behavior, same-deck seat-state independence, and a deterministic
   full Free Draft completion through UI card clicks, plus post-draft left/main
   source-zone layout guards for image-backed picked-character and weapon
-  `PixelIconGrid` cards.
+  `PixelIconGrid` cards. Tests in this folder may instantiate the moved
+  right-panel widgets when asserting cross-page behavior, but those imports
+  should come from `ui.right_panel.pvp.*`, not from the old compatibility
+  exports in `ui.pvp_browser.window`.
   PvP offscreen smoke should also verify the default
   deck path, first/second activation
   timing, and that edit tint is scoped to the card grid viewports when this area

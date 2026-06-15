@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import subprocess
 import unittest
 
 from run_workspace.pvp.draft_system import (
@@ -54,7 +55,21 @@ class DraftSystemRegistryTests(unittest.TestCase):
         self.assertEqual(cm.exception.system_id, "unknown_system")
 
     def test_registry_import_does_not_pull_pyside(self) -> None:
-        self.assertNotIn("PySide6", sys.modules)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                (
+                    "import sys; "
+                    "import run_workspace.pvp.draft_system; "
+                    "raise SystemExit(1 if 'PySide6' in sys.modules else 0)"
+                ),
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

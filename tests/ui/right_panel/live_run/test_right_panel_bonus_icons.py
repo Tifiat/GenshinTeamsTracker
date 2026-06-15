@@ -16,20 +16,23 @@ from run_workspace.right_panel_prototype_view_model import (
     build_right_panel_prototype_view_model,
 )
 from run_workspace.team_builder import create_empty_team_builder_state
-from ui.right_panel_prototype import (
+from ui.right_panel.common.metrics import (
     BONUS_MEMBER_ICON_SIZE,
     _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE,
     _BONUS_SOURCE_ICON_PIXMAP_CACHE,
     _FIT_PIXMAP_CACHE,
+    _fit_pixmap,
+)
+from ui.right_panel.common.slot_card import (
+    RightPanelSlotCardWidget,
+    _build_mini_set_stack_pixmap,
+)
+from ui.right_panel.live_run.panel import (
     BonusSourceChipWidget,
     BonusSourceStripWidget,
-    RightPanelPrototypeWidget,
-    RightPanelSlotPrototypeWidget,
     _bonus_member_side_icon_pixmap,
-    _bonus_source_tooltip_html,
     _bonus_source_icon_pixmap,
-    _build_mini_set_stack_pixmap,
-    _fit_pixmap,
+    _bonus_source_tooltip_html,
 )
 
 
@@ -71,7 +74,7 @@ class RightPanelBonusIconTest(unittest.TestCase):
             applied=True,
         )
 
-        with patch("ui.right_panel_prototype.tr", return_value="Effects"):
+        with patch("ui.right_panel.live_run.panel.tr", return_value="Effects"):
             html = _bonus_source_tooltip_html(item)
 
         self.assertEqual(html.count("ATK +25%"), 1)
@@ -90,7 +93,7 @@ class RightPanelBonusIconTest(unittest.TestCase):
             applied=True,
         )
 
-        with patch("ui.right_panel_prototype.tr", return_value="Эффекты"):
+        with patch("ui.right_panel.live_run.panel.tr", return_value="Эффекты"):
             tooltip = _bonus_source_tooltip_html(item)
 
         self.assertIn("<b>Эффекты:</b>", tooltip)
@@ -131,7 +134,7 @@ class RightPanelBonusIconTest(unittest.TestCase):
             applied=True,
         )
 
-        with patch("ui.right_panel_prototype.install_custom_tooltip"):
+        with patch("ui.right_panel.common.metrics.install_custom_tooltip"):
             chip = BonusSourceChipWidget(item)
         labels = chip.findChildren(QLabel)
         icon_labels = [label for label in labels if label.objectName() == "BonusSourceIcon"]
@@ -198,7 +201,7 @@ class RightPanelBonusIconTest(unittest.TestCase):
             )
 
             _BONUS_MEMBER_SIDE_ICON_PIXMAP_CACHE.clear()
-            with patch("ui.right_panel_prototype.install_custom_tooltip"):
+            with patch("ui.right_panel.common.metrics.install_custom_tooltip"):
                 chip = BonusSourceChipWidget(item)
         effect_badges = [
             label for label in chip.findChildren(QLabel)
@@ -289,10 +292,10 @@ class RightPanelBonusIconTest(unittest.TestCase):
             selected_model = RightPanelSlotPrototypeViewModel(
                 **{**base_model.to_dict(), "is_selected": True, "build_mini_sets": ()}
             )
-            widget = RightPanelSlotPrototypeWidget(base_model)
+            widget = RightPanelSlotCardWidget(base_model)
 
             with patch(
-                "ui.right_panel_prototype._fit_pixmap",
+                "ui.right_panel.common.slot_card._fit_pixmap",
                 side_effect=AssertionError("selected state should not reload pixmaps"),
             ):
                 widget.set_model(selected_model)

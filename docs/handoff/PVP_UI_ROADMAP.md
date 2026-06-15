@@ -11,27 +11,26 @@ remains in `PVP_BACKEND_STATUS.md`.
 - When PvP is active, the right dock shows `Decks`, `Play`, `Draft`, and the
   global Account action instead of Abyss / DPS Dummy.
 - Account remains a global shell action in the right header.
-- Current PvP widgets still live in `ui/pvp_browser/window.py`, but target
-  right-panel ownership is `ui/right_panel/pvp/`. A global right-panel refactor
-  should move PvP right-dock pages/stages there while keeping `ui/pvp_browser/`
-  focused on the left/main PvP workspace.
-- Decks v0 is implemented in `ui/pvp_browser/window.py` as
-  `PvpDecksWorkspace` plus `PvpDecksRightPanel`.
+- PvP source ownership is split: `ui/pvp_browser/window.py` owns the left/main
+  workspace, while `ui/right_panel/pvp/` owns the fixed right-dock pages and
+  stage panels. Old right-panel exports from `ui.pvp_browser.window` remain as
+  compatibility re-exports.
+- Decks v0 is implemented as `ui.pvp_browser.window.PvpDecksWorkspace` on the
+  left plus `ui.right_panel.pvp.decks.panel.PvpDecksRightPanel` on the right.
   The corrected UI follows the existing Characters/Weapons browser grid on the
   left and the Artifact Browser preset-row/list/edit pattern on the right. It
   persists local deck presets, supports explicit view/edit/save/cancel, and
   validates through the existing backend deck validator.
-- Play/local match setup v0 is implemented in `ui/pvp_browser/window.py` as
-  a `PvpWorkspace` page plus `PvpPlayRightPanel`. It selects Player 1 and
+- Play/local match setup v0 is implemented as a `PvpWorkspace` page plus
+  `ui.right_panel.pvp.play.panel.PvpPlayRightPanel`. It selects Player 1 and
   Player 2 local deck presets, validates both through backend `DraftDeck`
   conversion, starts an in-memory `FreeDraftController`, and switches to the
   Draft board page.
 - Draft board v0 is implemented in `ui/pvp_browser/window.py` as a local
-  hot-seat board over the backend Free Draft board projection. It consumes the
-  backend `unified_pool` read model, renders one readable character pool,
-  displays shared ownership markers on one card, moves picked/banned entries
-  into right-panel result zones, and refreshes from the backend controller after
-  accepted/rejected actions.
+  hot-seat board over the backend Free Draft board projection. The right Draft
+  panel is `ui.right_panel.pvp.draft.panel.PvpDraftRightPanel`; shared draft UI
+  helper/read-model formatting used by both sides lives in
+  `ui/right_panel/pvp/_shared.py`.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
 - Post-draft Assignment, Weapon assignment, Timers/results, and read-only
@@ -447,7 +446,11 @@ Current PvP v0 implementation lives in:
 
 - `run_workspace/pvp/deck_preset.py`;
 - `run_workspace/pvp/weapon_identity.py`;
-- `ui/pvp_browser/window.py` (`PvpDecksWorkspace`, `PvpDecksRightPanel`);
+- `ui/pvp_browser/window.py` (`PvpDecksWorkspace`, `PvpWorkspace`,
+  `PvpDraftWorkspace`, and left/main PvP browser scenes);
+- `ui/right_panel/pvp/host.py`, `decks/panel.py`, `play/panel.py`,
+  `draft/panel.py`, and `draft/assignment/target_slot.py` for the right-dock
+  PvP host/pages/current v0 target slot;
 - `ui/app_shell.py` as the shell coordinator that instantiates the PvP
   workspace/right-dock page;
 - `tests/run_workspace/pvp/test_deck_preset.py`;
@@ -490,13 +493,14 @@ Current v0 scope:
   and weapons, right-panel target teams/weapons/timers/results. It reuses
   controller assignment/timer APIs and remains in-memory/PvP-owned.
 
-Candidate architecture task before more PvP right-panel growth:
+Right-panel architecture status before more PvP growth:
 
-> Global right-panel refactor. Move right-dock ownership toward
-> `ui/right_panel/{common,live_run,history,pvp,settings}`; place PvP right-panel
-> pages and Draft-stage panels under `ui/right_panel/pvp/`; keep
-> `ui/pvp_browser/` as the left/main PvP workspace; update imports and matching
-> tests in the same task without weakening behavior coverage.
+> The global right-panel ownership refactor is complete for current v0 code.
+> Keep new PvP right-panel work under `ui/right_panel/pvp/`; keep
+> `ui/pvp_browser/` as the left/main PvP workspace. Do not implement PvP
+> Artifact equipment or scoped PvP GCSIM by expanding the temporary v0 target
+> slot in place; replace/extend it with shared artifact-capable primitives in a
+> dedicated follow-up.
 
 Current v0 limitations / later work:
 

@@ -12,11 +12,12 @@ configure_startup_ui_scale()
 
 from PySide6.QtWidgets import QApplication
 
-from ui.pvp_browser.window import (
-    PVP_DRAFT_STAGE_COMPLETED_RESULT,
-    PvpPlayRightPanel,
-    PvpWorkspace,
-)
+from ui.pvp_browser.window import PvpWorkspace
+from ui.right_panel.pvp._shared import PVP_DRAFT_STAGE_COMPLETED_RESULT
+from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
+
+# This smoke drives the left/main PvP workspace while instantiating the moved
+# right-panel play page from ui.right_panel.pvp.
 
 
 def main() -> int:

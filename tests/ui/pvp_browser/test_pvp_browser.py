@@ -12,7 +12,8 @@ from PySide6.QtGui import QColor, QKeyEvent, QPixmap
 from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton
 
 from localization import tr
-from ui.pvp_browser.window import (
+from ui.pvp_browser.window import PvpDecksWorkspace, PvpDraftWorkspace, PvpWorkspace
+from ui.right_panel.pvp._shared import (
     PVP_DRAFT_STAGE_ASSIGNMENT,
     PVP_DRAFT_STAGE_COMPLETED_RESULT,
     PVP_DRAFT_STAGE_DRAFT,
@@ -21,15 +22,12 @@ from ui.pvp_browser.window import (
     PVP_PAGE_DECKS,
     PVP_PAGE_DRAFT,
     PVP_PAGE_PLAY,
-    PvpDecksRightPanel,
-    PvpDecksWorkspace,
-    PvpDraftRightPanel,
-    PvpDraftWorkspace,
-    PvpPostDraftTargetSlotWidget,
-    PvpPlayRightPanel,
-    PvpRightPanelHost,
-    PvpWorkspace,
 )
+from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
+from ui.right_panel.pvp.draft.assignment.target_slot import PvpPostDraftTargetSlotWidget
+from ui.right_panel.pvp.draft.panel import PvpDraftRightPanel
+from ui.right_panel.pvp.host import PvpRightPanelHost
+from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
 from ui.utils.pixel_icon_grid import PixelIconGrid
 
 

@@ -15,6 +15,8 @@ from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QKeyEvent, QPixmap, QWheelEvent
 from PySide6.QtWidgets import QApplication, QLabel, QStyleOptionButton, QWidget
 
+_APP = QApplication.instance() or QApplication([])
+
 from hoyolab_export.account_equipment import (
     equip_artifact,
     equip_weapon,
@@ -83,15 +85,12 @@ from ui.app_shell import (
     _weapon_owner_side_icon_size,
     _weapon_owner_target_rect,
 )
-from ui.account_data_page import AccountDataPage
-from ui.history_browser.window import HistoryRightPanelPlaceholder
-from ui.pvp_browser.window import (
-    PvpDecksRightPanel,
-    PvpDecksWorkspace,
-    PvpDraftRightPanel,
-    PvpRightPanelHost,
-    PvpWorkspace,
-)
+from ui.right_panel.settings.account_data import AccountDataPage
+from ui.right_panel.history.viewer import HistoryRightPanelPlaceholder
+from ui.pvp_browser.window import PvpDecksWorkspace, PvpWorkspace
+from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
+from ui.right_panel.pvp.draft.panel import PvpDraftRightPanel
+from ui.right_panel.pvp.host import PvpRightPanelHost
 from ui.artifact_browser.card_delegate import ArtifactCardDelegate, CARD_SIZE, GRID_SIZE
 from ui.artifact_browser.window import (
     ARTIFACT_GRID_FIT_PADDING,
@@ -137,23 +136,25 @@ from tests.run_workspace.abyss.test_source_data import (
     nanoka_row,
 )
 from ui.utils.ui_palette import UI_ACCENT_TEAM_1
-from ui.right_panel_prototype import (
+from ui.right_panel.common.metrics import (
     ABYSS_CHAMBER_BADGE_WIDTH,
     ABYSS_CHAMBER_GRID_SPACING,
     ABYSS_DPS_COLUMN_MIN_WIDTH,
     ABYSS_FACT_DPS_LEFT_BUDGET_MAX,
     ABYSS_TIMER_CELL_WIDTH,
     ABYSS_TIMER_FRAME_WIDTH,
+)
+from ui.right_panel.live_run.panel import (
     CompactAbyssTimerWidget,
-    RightPanelPrototypeWidget,
     RunModeTabsWidget,
+    RunRightPanelWidget,
 )
 
 
 class AppShellTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls._app = QApplication.instance() or QApplication([])
+        cls._app = _APP
 
     def assert_header_has_no_run_actions(self, shell: AppShell) -> None:
         self.assertFalse(hasattr(shell.right_dock.header, "reset_button"))
@@ -1572,7 +1573,7 @@ class AppShellTest(unittest.TestCase):
                 gcsim_status=RightPanelGcsimStatusViewModel(status="Idle"),
             )
 
-            widget = RightPanelPrototypeWidget(model, show_mode_tabs=False)
+            widget = RunRightPanelWidget(model, show_mode_tabs=False)
         finally:
             set_language(previous_language)
 
@@ -1634,7 +1635,7 @@ class AppShellTest(unittest.TestCase):
             gcsim_status=RightPanelGcsimStatusViewModel(status="Idle"),
         )
 
-        widget = RightPanelPrototypeWidget(model, show_mode_tabs=False)
+        widget = RunRightPanelWidget(model, show_mode_tabs=False)
 
         self.assertEqual(
             widget._layout.indexOf(widget._run_actions),
@@ -1983,7 +1984,7 @@ class AppShellTest(unittest.TestCase):
 
     def test_run_mode_tabs_route_by_stable_id_not_localized_text(self) -> None:
         with patch(
-            "ui.right_panel_prototype.tr",
+            "ui.right_panel.live_run.panel.tr",
             side_effect=lambda key: {
                 "right_panel.mode.abyss": "First localized tab",
                 "right_panel.mode.dps_dummy": "Second localized tab",

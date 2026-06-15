@@ -61,8 +61,8 @@ Mirror the primary project owner under `tests/`:
   recreation, and active in-memory Draft board preservation after leaving and
   returning to PvP.
 - `tests/ui/right_panel/common/` - shared right-panel visual primitives such as
-  reusable slot/team/card primitives, portrait/weapon/artifact mini-zones,
-  shared metrics/styles/helpers, and non-domain-specific card UI.
+  reusable slot/team/card primitives, `slot_parts.py` portrait/weapon/artifact
+  mini-zones, shared metrics/styles/helpers, and non-domain-specific card UI.
 - `tests/ui/right_panel/live_run/` - live Run/Abyss/DPS right-panel widgets,
   including current-run team slots, chamber/timer/result widgets, selected
   target behavior, and compact GCSIM summary/status cells. The former
@@ -75,6 +75,10 @@ Mirror the primary project owner under `tests/`:
   including Decks, Play, Draft pick/ban zones, Assignment, Weapon assignment,
   future Artifact equipment, optional scoped PvP GCSIM, Timers/results, and
   Completed result/export panels.
+- `tests/ui/right_panel/test_right_panel_ownership_imports.py` - structural
+  right-panel ownership guardrails: new production imports, compatibility
+  facades, canonical PvP constants/imports, and the common-backed PvP target
+  slot extension point.
 - `tests/ui/pvp_browser/` - left/main PvP browser/workspace tests, including
   deck browser grids, left workspace create/edit/save/cancel coordination,
   card-grid viewport edit tint, selected-card edit markers, Play deck selectors,

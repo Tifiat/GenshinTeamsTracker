@@ -6,7 +6,39 @@ from typing import Any
 from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from localization import tr
-from ui.right_panel.pvp._shared import *
+from ui.right_panel.pvp._shared import (
+    PVP_DECKS_RIGHT_PANEL_STYLE,
+    PVP_DRAFT_STAGE_ASSIGNMENT,
+    PVP_DRAFT_STAGE_COMPLETED_RESULT,
+    PVP_DRAFT_STAGE_DRAFT,
+    PVP_DRAFT_STAGE_TIMERS_RESULTS,
+    PVP_DRAFT_STAGE_WEAPONS,
+    PVP_PAGE_PLAY,
+    PVP_SEATS,
+    PVP_TIMER_CHAMBERS,
+    _asset_image_path,
+    _assignment_slots,
+    _clear_layout,
+    _completed_timer_text,
+    _draft_action_log_lines,
+    _draft_is_complete,
+    _draft_panel_status_lines,
+    _draft_result_zone_text,
+    _draft_result_zone_title,
+    _entry_display_name_for_id,
+    _format_seconds,
+    _is_post_draft_stage,
+    _parse_timer_text,
+    _postdraft_target_object_name,
+    _postdraft_timer_total,
+    _postdraft_weapon_tooltip,
+    _result_line_for_seat,
+    _seat_label,
+    _selected_assignment_character,
+    _selected_weapon_character,
+    _weapon_assignment_map,
+    _weapon_display_name,
+)
 from ui.right_panel.pvp.draft.assignment.target_slot import PvpPostDraftTargetSlotWidget
 
 

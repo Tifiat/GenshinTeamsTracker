@@ -4,18 +4,16 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QFrame, QGridLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QGridLayout, QVBoxLayout, QWidget
 
 from localization import tr
 from run_workspace.pvp.deck_preset import character_id_from_asset, weapon_ref_from_asset
 from run_workspace.pvp.weapon_identity import weapon_observed_stack_key
 from ui.character_assets import metadata_int
-from ui.utils.hidpi_pixmap import load_hidpi_pixmap
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.pixel_icon_grid import PixelIconGrid, PixelIconGridFill, PixelIconGridOutline
-from ui.utils.tooltips import install_custom_tooltip
 from ui.utils.ui_palette import (
     UI_ACCENT_TEAM_1,
     UI_ACCENT_TEAM_2,
@@ -257,6 +255,14 @@ QLabel#pvp-target-slot-weapon {{
 }}
 QLabel#pvp-target-slot-weapon[assigned="true"] {{
     color: {UI_TEXT_SECONDARY};
+}}
+QLabel#pvp-target-slot-artifact {{
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 4px;
+    background: {UI_BG_BUTTON};
+    color: {UI_TEXT_MUTED};
+    font-size: 8px;
+    font-weight: 800;
 }}
 QLabel#pvp-target-slot-name {{
     color: {UI_TEXT_SECONDARY};
@@ -1188,49 +1194,6 @@ def _postdraft_weapon_tooltip(
     if meta:
         parts.append(" | ".join(meta))
     return "\n".join(part for part in parts if part)
-
-
-def _slot_portrait_fallback(character_name: str, slot_index: int) -> str:
-    name = _text(character_name)
-    if not name:
-        return str(slot_index + 1)
-    for character in name:
-        if character.strip():
-            return character.upper()
-    return str(slot_index + 1)
-
-
-def _set_custom_tooltip_text(owner: QWidget, controller, text: str):
-    if controller is None:
-        return install_custom_tooltip(owner, text)
-    controller.set_text(text)
-    return controller
-
-
-def _set_label_hidpi_pixmap(
-    label: QLabel,
-    image_path: str,
-    size: QSize,
-    *,
-    surface: str,
-) -> bool:
-    label.clear()
-    path = _existing_local_asset_path(image_path)
-    if not path:
-        return False
-    result = load_hidpi_pixmap(
-        path,
-        size,
-        dpr=label.devicePixelRatioF(),
-        aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
-        transform_mode=Qt.TransformationMode.SmoothTransformation,
-        cache=_PVP_DECK_ICON_PIXMAP_CACHE,
-        surface=surface,
-    )
-    if result.pixmap.isNull():
-        return False
-    label.setPixmap(result.pixmap)
-    return True
 
 
 def _postdraft_timer_total(

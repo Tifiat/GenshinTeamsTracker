@@ -29,8 +29,8 @@ remains in `PVP_BACKEND_STATUS.md`.
 - Draft board v0 is implemented in `ui/pvp_browser/window.py` as a local
   hot-seat board over the backend Free Draft board projection. The right Draft
   panel is `ui.right_panel.pvp.draft.panel.PvpDraftRightPanel`; shared draft UI
-  helper/read-model formatting used by both sides lives in
-  `ui/right_panel/pvp/_shared.py`.
+  helper/read-model formatting and canonical PvP page/stage/timer constants
+  used by both sides live in `ui/right_panel/pvp/_shared.py`.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
 - Post-draft Assignment, Weapon assignment, Timers/results, and read-only
@@ -332,9 +332,10 @@ Current v0 scope:
   validation still enables the next-stage button only when both players have
   valid 4+4 assignments.
 - Current v0 does not implement artifact equipment or scoped PvP GCSIM yet.
-  However, the next right-panel refactor should avoid dead-end simplified target
-  widgets and preserve character + weapon + artifact mini-zone structure for
-  the future PvP build flow.
+  The compact target slot now uses shared right-panel portrait/weapon/artifact
+  mini-zone visual parts from `ui/right_panel/common/slot_parts.py`, including a
+  current hidden artifact mini-zone extension point, so future PvP build flow
+  can extend it without preserving a no-artifact dead end.
 - PvP assignment must not mutate normal TeamBuilder or `live_run` state.
 
 ## Weapon Assignment
@@ -450,7 +451,7 @@ Current PvP v0 implementation lives in:
   `PvpDraftWorkspace`, and left/main PvP browser scenes);
 - `ui/right_panel/pvp/host.py`, `decks/panel.py`, `play/panel.py`,
   `draft/panel.py`, and `draft/assignment/target_slot.py` for the right-dock
-  PvP host/pages/current v0 target slot;
+  PvP host/pages/current common-backed v0 target slot;
 - `ui/app_shell.py` as the shell coordinator that instantiates the PvP
   workspace/right-dock page;
 - `tests/run_workspace/pvp/test_deck_preset.py`;
@@ -497,10 +498,10 @@ Right-panel architecture status before more PvP growth:
 
 > The global right-panel ownership refactor is complete for current v0 code.
 > Keep new PvP right-panel work under `ui/right_panel/pvp/`; keep
-> `ui/pvp_browser/` as the left/main PvP workspace. Do not implement PvP
-> Artifact equipment or scoped PvP GCSIM by expanding the temporary v0 target
-> slot in place; replace/extend it with shared artifact-capable primitives in a
-> dedicated follow-up.
+> `ui/pvp_browser/` as the left/main PvP workspace. PvP page/stage constants are
+> canonical in `ui/right_panel/pvp/_shared.py`, and the current compact v0
+> target slot is backed by shared common mini-zone primitives. Full scoped PvP
+> Artifact equipment and scoped PvP GCSIM remain dedicated follow-ups.
 
 Current v0 limitations / later work:
 

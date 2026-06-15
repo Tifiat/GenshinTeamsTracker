@@ -295,7 +295,7 @@ class RightPanelBonusIconTest(unittest.TestCase):
             widget = RightPanelSlotCardWidget(base_model)
 
             with patch(
-                "ui.right_panel.common.slot_card._fit_pixmap",
+                "ui.right_panel.common.slot_parts._fit_pixmap",
                 side_effect=AssertionError("selected state should not reload pixmaps"),
             ):
                 widget.set_model(selected_model)

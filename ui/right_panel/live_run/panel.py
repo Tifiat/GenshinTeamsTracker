@@ -246,7 +246,7 @@ class RightPanelRunActionsWidget(QFrame):
 
 
 class RunRightPanelWidget(QWidget):
-    """Standalone visual prototype for the future right panel."""
+    """Current live Run/Abyss/DPS right-panel widget."""
 
     mode_requested = Signal(str)
     slot_selected = Signal(int, int)

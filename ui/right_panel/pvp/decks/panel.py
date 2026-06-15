@@ -10,7 +10,12 @@ from ui.utils.icon_utils import auto_contrast_svg_icon
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.tooltips import install_custom_tooltip
-from ui.right_panel.pvp._shared import *
+from ui.right_panel.pvp._shared import (
+    PVP_DECKS_RIGHT_PANEL_STYLE,
+    PVP_DECK_UI_ICON_BACKGROUND,
+    PVP_DECK_UI_ICON_SIZE,
+    _clear_layout,
+)
 
 
 class PvpDecksRightPanel(QWidget):

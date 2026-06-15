@@ -73,10 +73,10 @@ Ownership rules:
 The global right-panel source-ownership refactor has been applied with no
 intended behavior or visual changes:
 
-- `ui/right_panel/common/metrics.py`, `slot_card.py`, and `team_card.py` own
-  shared slot/team card metrics, HiDPI pixmap helpers, drag/drop MIME handling,
-  portrait/weapon/artifact mini-zones, and the production
-  `RightPanelSlotCardWidget` / `RightPanelTeamCardWidget` names.
+- `ui/right_panel/common/metrics.py`, `slot_parts.py`, `slot_card.py`, and
+  `team_card.py` own shared slot/team card metrics, HiDPI pixmap helpers,
+  drag/drop MIME handling, portrait/weapon/artifact mini-zones, and the
+  production `RightPanelSlotCardWidget` / `RightPanelTeamCardWidget` names.
 - `ui/right_panel/live_run/panel.py` owns the current Run/Abyss/DPS right panel
   as `RunRightPanelWidget`, including run actions, chamber/timer cells, selected
   details, bonus strip/chips, and compact GCSIM/factual-DPS cells. The
@@ -91,8 +91,13 @@ intended behavior or visual changes:
   viewer. `ui/history_browser/` still owns the left History browser/list/preview.
 - `ui/right_panel/pvp/` owns PvP right-dock pages:
   `host.py`, `decks/panel.py`, `play/panel.py`, `draft/panel.py`, and
-  `draft/assignment/target_slot.py`. `ui/pvp_browser/window.py` keeps left/main
-  PvP workspace classes and compatibility re-exports for old right-panel names.
+  `draft/assignment/target_slot.py`. PvP page/stage/timer constants are
+  canonical in `ui/right_panel/pvp/_shared.py`; `ui/pvp_browser/window.py`
+  imports them instead of redefining them. The compact PvP v0 target slot uses
+  shared `ui/right_panel/common/slot_parts.py` portrait/weapon/artifact
+  mini-zone pieces, with full scoped Artifact equipment still future.
+  `ui/pvp_browser/window.py` keeps left/main PvP workspace classes and
+  compatibility re-exports for old right-panel names.
 - `ui/right_panel_prototype.py` is now a deprecated compatibility facade only.
   Old names such as `RightPanelPrototypeWidget`,
   `RightPanelSlotPrototypeWidget`, `RightPanelTeamPrototypeWidget`,

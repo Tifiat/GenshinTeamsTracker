@@ -91,7 +91,58 @@ from ui.utils.pixel_icon_grid import (
     PixelIconGridOutline,
 )
 from ui.utils.tooltips import install_custom_tooltip
-from ui.right_panel.pvp._shared import *
+from ui.right_panel.pvp._shared import (
+    PVP_DRAFT_STAGE_ASSIGNMENT,
+    PVP_DRAFT_STAGE_COMPLETED_RESULT,
+    PVP_DRAFT_STAGE_DRAFT,
+    PVP_DRAFT_STAGE_TIMERS_RESULTS,
+    PVP_DRAFT_STAGE_VALUES,
+    PVP_DRAFT_STAGE_WEAPONS,
+    PVP_PAGE_DECKS,
+    PVP_PAGE_DRAFT,
+    PVP_PAGE_PLAY,
+    PVP_SEATS,
+    PVP_TIMER_CHAMBERS,
+    _PVP_DECK_ICON_PIXMAP_CACHE,
+    _active_draft_summary_lines,
+    _asset_image_path,
+    _assigned_character_ids,
+    _character_assets_by_id,
+    _clear_layout,
+    _compact_issue_codes,
+    _completed_draft_lines,
+    _draft_action_from_unified_pool,
+    _draft_action_label,
+    _draft_is_complete,
+    _draft_main_pool_entries,
+    _draft_stage,
+    _draft_stage_detail,
+    _draft_stage_title,
+    _draft_unified_card_text,
+    _draft_unified_pool_summary,
+    _empty_assignment_slots_by_seat,
+    _entry_display_name_for_id,
+    _mapping,
+    _owner_seats,
+    _parse_timer_text,
+    _picked_character_ids,
+    _postdraft_character_tooltip,
+    _postdraft_grid_scroll_area,
+    _postdraft_source_object_name,
+    _pvp_deck_inactive_fill,
+    _pvp_deck_item_properties,
+    _pvp_deck_outline,
+    _pvp_weapon_sort_key,
+    _refresh_qss,
+    _seat_label,
+    _selected_assignment_character,
+    _selected_weapon_character,
+    _text,
+    _weapon_assets_by_stack_key,
+    _weapon_stack_is_assignable,
+    _weapon_stack_remaining,
+    _weapon_type_filter_keys,
+)
 from ui.utils.ui_palette import (
     UI_ACCENT_TEAM_1,
     UI_ACCENT_TEAM_2,
@@ -113,45 +164,7 @@ WEAPON_PICKER_ICON_SIZE = 48
 WEAPON_PICKER_SAFE_MARGIN = 6
 WEAPON_PICKER_VIEWPORT_TOP_EXTENSION = 6
 CHARACTER_GRID_SELECTION_SAFE_TOP_MARGIN = 4
-PVP_DECK_ROW_ACTION_SIZE = 24
-PVP_DECK_UI_ICON_SIZE = 24
-PVP_DECK_UI_ICON_BACKGROUND = UI_BG_PANEL_RAISED
 FILTER_BUTTON_STYLE = filter_button_style("app_shell_filter_button")
-_PVP_DECK_ICON_PIXMAP_CACHE: dict[tuple[object, ...], QPixmap | None] = {}
-PVP_PAGE_DECKS = "decks"
-PVP_PAGE_PLAY = "play"
-PVP_PAGE_DRAFT = "draft"
-PVP_DRAFT_STAGE_DRAFT = "draft"
-PVP_DRAFT_STAGE_ASSIGNMENT = "assignment"
-PVP_DRAFT_STAGE_WEAPONS = "weapons"
-PVP_DRAFT_STAGE_TIMERS_RESULTS = "timers_results"
-PVP_DRAFT_STAGE_COMPLETED_RESULT = "completed_result"
-PVP_DRAFT_STAGE_VALUES = (
-    PVP_DRAFT_STAGE_DRAFT,
-    PVP_DRAFT_STAGE_ASSIGNMENT,
-    PVP_DRAFT_STAGE_WEAPONS,
-    PVP_DRAFT_STAGE_TIMERS_RESULTS,
-    PVP_DRAFT_STAGE_COMPLETED_RESULT,
-)
-PVP_SEATS = ("player_1", "player_2")
-PVP_TIMER_CHAMBERS = ("1", "2", "3")
-PVP_BROWSER_PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-WEAPON_TYPE_FILTER_BY_ID = {
-    1: "sword",
-    10: "catalyst",
-    11: "claymore",
-    12: "bow",
-    13: "polearm",
-}
-WEAPON_TYPE_FILTER_ALIASES = {
-    "sword": "sword",
-    "one_handed_sword": "sword",
-    "catalyst": "catalyst",
-    "claymore": "claymore",
-    "bow": "bow",
-    "polearm": "polearm",
-}
 
 
 @dataclass(frozen=True, slots=True)

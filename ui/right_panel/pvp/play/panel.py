@@ -4,7 +4,11 @@ from PySide6.QtWidgets import QComboBox, QFrame, QLabel, QPushButton, QVBoxLayou
 
 from localization import tr
 from run_workspace.pvp.deck_preset import PvpDeckPreset
-from ui.right_panel.pvp._shared import *
+from ui.right_panel.pvp._shared import (
+    PVP_DECKS_RIGHT_PANEL_STYLE,
+    _active_draft_summary_lines,
+    _text,
+)
 
 
 class PvpPlayRightPanel(QWidget):

@@ -4,15 +4,27 @@ from PySide6.QtCore import QEvent, QSize, Qt, Signal
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from localization import tr
+from ui.right_panel.common.metrics import _set_custom_tooltip_text
+from ui.right_panel.common.slot_parts import (
+    RightPanelArtifactMiniZoneState,
+    RightPanelArtifactMiniZoneWidget,
+    RightPanelPortraitMiniBox,
+    RightPanelWeaponMiniBox,
+    slot_portrait_fallback,
+)
 from ui.right_panel.pvp._shared import (
     _refresh_qss,
-    _set_custom_tooltip_text,
-    _set_label_hidpi_pixmap,
-    _slot_portrait_fallback,
 )
 
 
 class PvpPostDraftTargetSlotWidget(QFrame):
+    """Compact PvP v0 target slot backed by shared right-panel visual parts.
+
+    Artifact equipment is intentionally not implemented here yet; the hidden
+    artifact mini-zone is a stable extension point for the later scoped PvP
+    artifact session.
+    """
+
     clicked = Signal()
     clear_assignment_requested = Signal()
     clear_weapon_requested = Signal()
@@ -20,9 +32,6 @@ class PvpPostDraftTargetSlotWidget(QFrame):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._clickable = False
-        self._portrait_path = ""
-        self._weapon_path = ""
-        self._weapon_tooltip_controller = None
         self._clear_tooltip_controller = None
         self.setObjectName("pvp-team-slot")
         self.setFixedSize(92, 82)
@@ -36,10 +45,10 @@ class PvpPostDraftTargetSlotWidget(QFrame):
         top.setSpacing(4)
         root.addLayout(top)
 
-        self.portrait_label = QLabel("")
-        self.portrait_label.setObjectName("pvp-target-slot-portrait")
-        self.portrait_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.portrait_label.setFixedSize(46, 46)
+        self.portrait_label = RightPanelPortraitMiniBox(
+            box_size=QSize(46, 46),
+            object_name="pvp-target-slot-portrait",
+        )
         top.addWidget(self.portrait_label)
 
         side = QVBoxLayout()
@@ -47,11 +56,21 @@ class PvpPostDraftTargetSlotWidget(QFrame):
         side.setSpacing(3)
         top.addLayout(side)
 
-        self.weapon_label = QLabel("")
-        self.weapon_label.setObjectName("pvp-target-slot-weapon")
-        self.weapon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.weapon_label.setFixedSize(28, 28)
+        self.weapon_label = RightPanelWeaponMiniBox(
+            box_size=QSize(28, 28),
+            pixmap_size=QSize(24, 24),
+            object_name="pvp-target-slot-weapon",
+        )
         side.addWidget(self.weapon_label, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        self.artifact_label = RightPanelArtifactMiniZoneWidget(
+            box_size=QSize(28, 12),
+            icon_size=QSize(12, 12),
+            object_name="pvp-target-slot-artifact",
+            missing_object_name="pvp-target-slot-artifact",
+        )
+        self.artifact_label.setVisible(False)
+        side.addWidget(self.artifact_label, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.clear_button = QPushButton("x")
         self.clear_button.setObjectName("row_cancel_button")
@@ -85,8 +104,6 @@ class PvpPostDraftTargetSlotWidget(QFrame):
         clickable: bool,
     ) -> None:
         self._clickable = bool(clickable)
-        self._portrait_path = portrait_path
-        self._weapon_path = weapon_image_path
         has_character = bool(character_id)
         has_weapon = bool(weapon_stack_key)
         self.setProperty("seat", seat)
@@ -103,33 +120,23 @@ class PvpPostDraftTargetSlotWidget(QFrame):
             else Qt.CursorShape.ArrowCursor
         )
 
-        portrait_loaded = _set_label_hidpi_pixmap(
-            self.portrait_label,
-            portrait_path,
-            QSize(46, 46),
+        portrait_loaded = self.portrait_label.set_portrait(
+            image_path=portrait_path,
+            fallback_text=slot_portrait_fallback(character_name, slot_index),
+            empty=not has_character,
             surface="pvp_postdraft_target_portrait",
         )
         self.setProperty("hasPortraitPixmap", portrait_loaded)
-        self.portrait_label.setProperty("hasPixmap", portrait_loaded)
-        if not portrait_loaded:
-            self.portrait_label.setText(_slot_portrait_fallback(character_name, slot_index))
 
-        weapon_loaded = _set_label_hidpi_pixmap(
-            self.weapon_label,
-            weapon_image_path,
-            QSize(24, 24),
+        weapon_loaded = self.weapon_label.set_weapon(
+            image_path=weapon_image_path,
+            fallback_text="W" if has_weapon else "-",
+            tooltip=weapon_tooltip or weapon_name,
+            assigned=has_weapon,
             surface="pvp_postdraft_target_weapon",
         )
         self.setProperty("hasWeaponPixmap", weapon_loaded)
-        self.weapon_label.setProperty("hasPixmap", weapon_loaded)
-        self.weapon_label.setProperty("assigned", has_weapon)
-        if not weapon_loaded:
-            self.weapon_label.setText("W" if has_weapon else "-")
-        self._weapon_tooltip_controller = _set_custom_tooltip_text(
-            self.weapon_label,
-            self._weapon_tooltip_controller,
-            weapon_tooltip or weapon_name,
-        )
+        self.artifact_label.set_state(RightPanelArtifactMiniZoneState())
 
         self.clear_button.setVisible(clear_mode in {"assignment", "weapon"})
         self.clear_button.setEnabled(
@@ -162,18 +169,9 @@ class PvpPostDraftTargetSlotWidget(QFrame):
             self.clicked.emit()
 
     def refresh_hidpi_pixmaps(self) -> None:
-        _set_label_hidpi_pixmap(
-            self.portrait_label,
-            self._portrait_path,
-            QSize(46, 46),
-            surface="pvp_postdraft_target_portrait",
-        )
-        _set_label_hidpi_pixmap(
-            self.weapon_label,
-            self._weapon_path,
-            QSize(24, 24),
-            surface="pvp_postdraft_target_weapon",
-        )
+        self.portrait_label.refresh_hidpi_pixmap()
+        self.weapon_label.refresh_hidpi_pixmap()
+        self.artifact_label.refresh_hidpi_pixmap()
 
     def event(self, event) -> bool:
         if event.type() in (

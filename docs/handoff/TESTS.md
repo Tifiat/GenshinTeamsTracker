@@ -54,30 +54,36 @@ Mirror the primary project owner under `tests/`:
 - `tests/run_workspace/session/` - typed live Run Session ownership for
   AppShell mode/team/selection/timer/GCSIM runtime state.
 - `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests,
-  including workspace/right-dock routing integration for History and PvP,
-  PvP `Decks`/`Play`/`Draft` header routing, preservation of normal Run state
-  while switching PvP pages, root deck path coverage that prevents `ui/data`
+  including cross-boundary routing tests for right-dock page selection,
+  workspace/right-dock routing integration for History and PvP, PvP
+  `Decks`/`Play`/`Draft` header routing, preservation of normal Run state while
+  switching PvP pages, root deck path coverage that prevents `ui/data`
   recreation, and active in-memory Draft board preservation after leaving and
   returning to PvP.
-- `tests/ui/pvp_browser/` - PvP Browser/Decks widget tests, including
-  workspace/right-panel create, edit, save/cancel, corrected Artifact
-  Browser-style preset rows/expanded info, Enter/Esc create/edit shortcuts,
-  automatic validation status without manual Validate, card-grid viewport edit
-  tint, selected-card edit markers, no Decks-local draft start action, Play
-  deck selectors, disabled/no-op invalid start, same-deck self-vs-self start,
-  active Free Draft controller summary fields, Draft empty state, start-to-Draft
-  routing, unified-pool current action/legal target rendering, one card per
-  shared `character_id`, per-seat ownership/constellation markers, legal click
-  mapping, illegal no-op behavior, right-panel pick/ban zones, same-deck
-  seat-state independence, and a deterministic full Free Draft completion
-  through UI card clicks, plus post-draft visual layout guards: two left/main
-  source zones with image-backed picked-character and weapon `PixelIconGrid`
-  cards, two right-panel target zones with 2x4 portrait-backed slots per
-  player, visual character-to-slot assignment, visual slot-to-weapon assignment,
-  compact right-panel timer inputs,
-  completed result teams/timers/winner display, duplicate assignment move
-  behavior, incompatible/exhausted weapon blocking, and active-draft
-  clear/reset state.
+- `tests/ui/right_panel/common/` - shared right-panel visual primitives such as
+  reusable slot/team/card primitives, portrait/weapon/artifact mini-zones,
+  shared metrics/styles/helpers, and non-domain-specific card UI.
+- `tests/ui/right_panel/live_run/` - live Run/Abyss/DPS right-panel widgets,
+  including current-run team slots, chamber/timer/result widgets, selected
+  target behavior, and compact GCSIM summary/status cells.
+- `tests/ui/right_panel/history/` - frozen read-only snapshot viewer widgets.
+  Coverage should assert no live timer/GCSIM/equipment/save/reset behavior is
+  exposed by the History viewer.
+- `tests/ui/right_panel/pvp/` - PvP right-panel host/pages/stage panels,
+  including Decks, Play, Draft pick/ban zones, Assignment, Weapon assignment,
+  future Artifact equipment, optional scoped PvP GCSIM, Timers/results, and
+  Completed result/export panels.
+- `tests/ui/pvp_browser/` - left/main PvP browser/workspace tests, including
+  deck browser grids, left workspace create/edit/save/cancel coordination,
+  card-grid viewport edit tint, selected-card edit markers, Play deck selectors,
+  disabled/no-op invalid start, same-deck self-vs-self start, active Free Draft
+  controller summary fields, Draft empty state, start-to-Draft routing,
+  unified-pool current action/legal target rendering, one card per shared
+  `character_id`, per-seat ownership/constellation markers, legal click mapping,
+  illegal no-op behavior, same-deck seat-state independence, and a deterministic
+  full Free Draft completion through UI card clicks, plus post-draft left/main
+  source-zone layout guards for image-backed picked-character and weapon
+  `PixelIconGrid` cards.
   PvP offscreen smoke should also verify the default
   deck path, first/second activation
   timing, and that edit tint is scoped to the card grid viewports when this area
@@ -85,7 +91,6 @@ Mirror the primary project owner under `tests/`:
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.
-- `tests/ui/right_panel/` - Qt right-panel widget/icon/smoke tests.
 - `tests/ui/utils/` - shared UI utility tests.
 - `tests/ui/character_assets/` - `ui/character_assets.py` behavior.
 - `tests/tools/future/` - reusable future/admin tools.
@@ -100,6 +105,7 @@ Prefer the narrowest suite that covers the touched ownership area:
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests\ui\artifact_browser -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\ui\pvp_browser -t .
+.\.venv\Scripts\python.exe -m unittest discover -s tests\ui\right_panel -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\gcsim -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\history -t . -p "test_*.py"
 .\.venv\Scripts\python.exe -m unittest discover -s tests\run_workspace\session -t . -p "test_*.py"

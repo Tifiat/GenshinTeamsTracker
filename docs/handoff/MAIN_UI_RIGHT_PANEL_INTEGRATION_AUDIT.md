@@ -87,6 +87,62 @@ Minimal adapter needed:
   panel view-model;
 - keep smoke preset builders out of this path.
 
+## Target Right-Panel Mode Architecture
+
+This audit predates the current AppShell/PvP/History progress. The next
+right-panel code task should be a global source-ownership refactor, not just a
+move of the prototype widget files.
+
+Target tree:
+
+```text
+ui/right_panel/
+  common/
+  live_run/
+    abyss/
+    dps_dummy/
+    gcsim/
+  history/
+  pvp/
+    decks/
+    play/
+    draft/
+      pick_ban/
+      assignment/
+      weapons/
+      artifacts/
+      gcsim/
+      timers/
+      result/
+  settings/
+  dock.py
+  header.py
+```
+
+Ownership rules for that refactor:
+
+- `common/` owns shared visual primitives only: character slot cards, team
+  cards, portrait/weapon/artifact mini-zones, shared metrics/styles/helpers, and
+  non-domain-specific card UI.
+- `live_run/` owns the normal current-run right panel used by Characters/Weapons,
+  Artifact Browser, and GCSIM Browser. Abyss and DPS Dummy are submodes of the
+  same live-run state; Artifact Browser and GCSIM Browser should use the
+  selected live-run target/state through controllers or adapters.
+- `history/` owns the read-only frozen snapshot viewer. It may reuse common
+  visuals but must not tick timers, run GCSIM, mutate teams/equipment, save or
+  reset live runs, query live account/cache data for old snapshots, or clear
+  live Abyss/DPS/PvP state.
+- `pvp/` owns PvP right-dock pages and internal Draft-stage panels. The left/main
+  PvP workspace stays under `ui/pvp_browser/`.
+- `settings/` owns Account/Data, language, DPS settings, and other global
+  right-dock pages. Opening settings must not destroy the current live-run, PvP,
+  or History state.
+- `dock.py` and `header.py` own the right-dock shell/header mechanics and stable
+  id routing.
+
+When source ownership moves, update imports and matching tests in the same
+task. Do not weaken behavior coverage just because files move.
+
 ## Timer / Run Logic
 
 Existing UI:

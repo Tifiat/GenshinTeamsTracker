@@ -11,6 +11,10 @@ remains in `PVP_BACKEND_STATUS.md`.
 - When PvP is active, the right dock shows `Decks`, `Play`, `Draft`, and the
   global Account action instead of Abyss / DPS Dummy.
 - Account remains a global shell action in the right header.
+- Current PvP widgets still live in `ui/pvp_browser/window.py`, but the target
+  right-panel ownership is `ui/right_panel/pvp/`. The next global right-panel
+  refactor should move PvP right-dock pages/stages there while keeping
+  `ui/pvp_browser/` focused on the left/main PvP workspace.
 - Decks v0 is implemented in `ui/pvp_browser/window.py` as
   `PvpDecksWorkspace` plus `PvpDecksRightPanel`.
   The corrected UI follows the existing Characters/Weapons browser grid on the
@@ -42,6 +46,11 @@ PvP is a mini-section inside AppShell, not a single flat screen.
 - Left/main PvP area: browser/workspace scene.
 - Right PvP control panel: current mode controls, deck preset list, validation,
   selected details, setup actions, timers/result controls.
+- Source ownership target:
+  - `ui/pvp_browser/` owns deck browser grids, the draft board, source pools,
+    and main PvP scenes.
+  - `ui/right_panel/pvp/` owns fixed right-dock PvP pages and internal
+    match-stage panels.
 
 PvP opens into Decks, not directly into Draft.
 
@@ -57,12 +66,14 @@ internal Draft stages, not additional top-level tabs:
 1. Draft / pick-ban.
 2. Assignment.
 3. Weapon assignment.
-4. Timers / results.
-5. Completed result.
-6. Future export / result card.
+4. Artifact equipment.
+5. Optional PvP GCSIM.
+6. Timers / results.
+7. Completed result / export.
 
 Permanent right-header tabs should be added only when their real mode is
-implemented. Do not add top-level Team, Timers, Result, or Match tabs.
+implemented. Do not add top-level Team, Timers, Result, Artifacts, GCSIM, or
+Match tabs.
 
 ## Decks Mode
 
@@ -333,10 +344,60 @@ Current v0 scope:
   the final authority before continuing.
 - Weaponless continuation is blocked by the existing backend contract.
 
+## Artifact Equipment
+
+Artifact equipment is the new product direction for PvP, not an immediate
+implementation requirement for this docs-only task.
+
+- After Draft pick/ban plus team and weapon assignment, PvP should support an
+  Artifact equipment stage inside Draft.
+- Player 1 gets a temporary isolated copy of the current local Artifact Browser
+  data/session.
+- Player 2 gets a temporary empty Artifact Browser session with the same
+  artifact-browser logic.
+- Player 2 can import artifacts from JSON into that temporary PvP session.
+- PvP artifact data is scoped to the active PvP match/session.
+- Changes made inside PvP must not affect the main Artifact Browser, main
+  account artifact state, normal live-run builds, or current account equipment.
+- The eventual implementation should reuse the existing Artifact Browser logic
+  through a scoped PvP adapter/session rather than forking a second Artifact
+  Browser.
+- PvP right-panel character slots must be designed for character, weapon, and
+  artifact mini-zones plus artifact-equipment actions. Do not build a dead-end
+  simplified no-artifact target widget.
+
+Future PvP JSON preset QoL:
+
+- Later, GTT export JSON should optionally include Artifact Browser build
+  presets.
+- Import should support both ordinary artifact JSON / Artiscan-like imports and
+  extended GTT JSON that includes artifacts plus preset metadata.
+- This is a later PvP Artifact Browser import/export enhancement, not part of
+  the immediate right-panel refactor. It matters for PvP MVP polish because
+  Player 2 should not have to manually find already prepared artifacts when an
+  exported JSON already includes the needed presets.
+
+Hot-seat layout direction:
+
+- In hot-seat PvP, Player 1 and Player 2 halves/zones should be able to
+  collapse/expand so the artifact-equipment stage has enough room.
+- This is especially relevant once Artifact Browser-like equipment UI opens
+  inside PvP.
+
+## PvP GCSIM
+
+- Normal live-run GCSIM Browser remains a left workspace tied to current
+  live-run teams.
+- PvP does not need a separate top-level PvP GCSIM Browser tab.
+- PvP can expose GCSIM through a button/action inside the Draft/build flow.
+- That action should open or route to a scoped PvP GCSIM stage/panel using PvP
+  teams/builds, not normal live-run teams.
+
 ## Timers / Results
 
 - Timers/results v0 is implemented as an internal Draft stage after valid team
-  and weapon assignment.
+  and weapon assignment. In the target flow, it follows artifact equipment and
+  optional PvP GCSIM when those stages exist.
 - The right-panel target zones keep the teams/weapons visible and show compact
   timer inputs per player. Inputs accept `mm:ss` or raw seconds and require
   valid values for both players before finalization.
@@ -432,6 +493,14 @@ Next implementation task:
 > refine usability/review/back affordances, improve visual density, or begin
 > export/history only when their contracts are ready.
 
+Next architecture task before more PvP right-panel growth:
+
+> Global right-panel refactor. Move right-dock ownership toward
+> `ui/right_panel/{common,live_run,history,pvp,settings}`; place PvP right-panel
+> pages and Draft-stage panels under `ui/right_panel/pvp/`; keep
+> `ui/pvp_browser/` as the left/main PvP workspace; update imports and matching
+> tests in the same task without weakening behavior coverage.
+
 Still out of scope:
 
 - online;
@@ -439,5 +508,6 @@ Still out of scope:
 - PNG/export result card;
 - ruleset cost rendering;
 - Gentor/Abyss importer;
-- GCSIM scoring;
+- scoped PvP artifact equipment and JSON preset import/export QoL;
+- scoped PvP GCSIM scoring;
 - final styling.

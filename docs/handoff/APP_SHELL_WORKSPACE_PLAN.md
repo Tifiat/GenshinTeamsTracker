@@ -16,10 +16,10 @@ AppShell
     |   |-- page-specific tabs / controls
     |   `-- global actions
     `-- ContentStack
-        |-- current run operation widget
-        |-- History read-only snapshot viewer
-        |-- PvP control page
-        `-- Account / Data page
+        |-- live_run current-run pages
+        |-- history read-only snapshot viewer
+        |-- pvp controls/stages
+        `-- settings / Account / Data pages
 ```
 
 Terms:
@@ -37,7 +37,7 @@ Terms:
   RUN panel itself owns the localized bottom Reset and Save commands for the
   active live run mode. Save writes immutable backend snapshot bundles only; it
   does not open History. The PvP AppShell policy replaces RUN header controls
-  with `Decks` / `Play` when the `pvp` workspace is active.
+  with `Decks` / `Play` / `Draft` when the `pvp` workspace is active.
   Account opens a compact localized Account / Data page in the same fixed dock
   without changing the left workspace. The page reuses the existing HoYoLAB
   import/update behavior, offline profile save/load/sign-out actions, and
@@ -57,15 +57,80 @@ Terms:
   operation target. Returning from a non-RUN page must update the requested
   controller mode and right-panel model before exposing RUN content so the
   previous run-mode model cannot paint as a stale intermediate frame.
-- The PvP Decks page and the History read-only viewer are workspace-driven
-  right-dock policies: they replace the normal run control host while the
-  global action host stays present. Future empty-database startup should
+- The PvP Decks/Play/Draft pages and the History read-only viewer are
+  workspace-driven right-dock policies: they replace the normal run control host
+  while the global action host stays present. Future empty-database startup should
   auto-open Account / Data setup, and later onboarding may highlight the
   Account action. A compact
   Support/Donate action near Account and a fuller support area inside Account
   remain optional future directions; do not add them until explicitly requested.
 - Custom overlay scrollbars remain relevant where native scrollbars would shift
   right-panel content or create asymmetric empty space.
+
+Target right-panel source ownership:
+
+```text
+ui/right_panel/
+  common/
+    # shared right-panel visual primitives:
+    # character slot cards, team cards, portrait/weapon/artifact mini-zones,
+    # shared metrics/styles/helpers, non-domain-specific card UI
+
+  live_run/
+    # normal current-run right panel used by Characters/Weapons,
+    # Artifact Browser, and GCSIM Browser
+    abyss/
+    dps_dummy/
+    gcsim/
+
+  history/
+    # read-only frozen snapshot right viewer
+
+  pvp/
+    # all PvP right-panel pages and internal match-stage panels
+    decks/
+    play/
+    draft/
+      pick_ban/
+      assignment/
+      weapons/
+      artifacts/
+      gcsim/
+      timers/
+      result/
+
+  settings/
+    # Account/Data, language, DPS settings, and other global right-dock settings
+
+  dock.py
+  header.py
+```
+
+Mode terminology:
+
+- `live_run` mode is the normal current-run right-panel mode. Characters/Weapons,
+  Artifact Browser, and GCSIM Browser operate on the same live run state; the
+  right panel must not become three unrelated panels just because the left
+  workspace changes.
+- Abyss and DPS Dummy are submodes of `live_run`. Abyss owns two teams, chamber
+  rows, timers, factual DPS, and GCSIM summaries where available. DPS Dummy owns
+  one team, dummy settings/results, and GCSIM summaries where available.
+- Artifact Browser and GCSIM Browser remain left workspaces. They should use the
+  selected `live_run` target/state through controllers or adapters, not directly
+  own right-panel widgets.
+- `settings` mode owns Account/Data, language, DPS settings, and similar global
+  right-dock pages. Account/Data can be opened without destroying the current
+  live run, PvP, or History state.
+- `history` mode is a right-panel mode for read-only frozen snapshots. The left
+  History browser remains under `ui/history_browser/`; the right viewer should
+  move toward `ui/right_panel/history/`.
+- `pvp` mode owns PvP right-dock pages and match-stage panels under
+  `ui/right_panel/pvp/`. The left/main PvP workspace remains under
+  `ui/pvp_browser/`.
+
+The next right-panel coding task should be a global refactor toward this tree,
+with moved imports and corresponding tests updated in the same task. It should
+not only move the current prototype files around.
 
 Display scale contract:
 
@@ -102,6 +167,9 @@ right column patched in place.
 
 - Embedded mode for the existing Artifact Browser is implemented as an
   AppShell left workspace.
+- Artifact Browser participates in the current `live_run` right-panel mode
+  through a selected target/state adapter. It must not own or instantiate a
+  separate right-panel widget for team-building state.
 - The workspace is lazy-created on first switch so the default Character/Weapon
   workspace stays fast.
 - Standalone Artifact Browser remains available; embedded mode does not show
@@ -168,6 +236,9 @@ right column patched in place.
 - Browser runtime results may update compact right-panel Sim DPS cells, but they
   are not durable saved history. Treat them as current-session runtime results
   until immutable run snapshots/history are implemented.
+- Normal GCSIM Browser belongs to `live_run`: it uses the current live-run teams
+  selected in Characters/Weapons or Artifact Browser, and it updates summaries
+  on the shared live-run right panel through controller state.
 
 ### PvP Workspace
 
@@ -179,16 +250,21 @@ right column patched in place.
 - Account / Data remains the global right-dock action in the same header
   position. Opening Account from PvP preserves the PvP right-dock policy until a
   normal workspace is selected again.
-- `PvpWorkspace` owns separate Decks, Play, and Draft pages. `PvpDecksWorkspace`
-  shows account characters/weapons, supports deck view/edit mode, and persists
-  presets through `run_workspace/pvp/deck_preset.py`; Play selects two local
-  deck presets and starts an in-memory `FreeDraftController`; Draft renders the
-  backend board projection and sends legal pick/ban card clicks through the
-  controller.
+- `ui/pvp_browser/` owns the left/main PvP workspace: deck browser grids, draft
+  board, source pools, and main PvP scenes. `ui/right_panel/pvp/` should own the
+  fixed right-dock PvP controls and target/build panels after the global
+  right-panel refactor.
+- `PvpWorkspace` owns separate Decks, Play, and Draft left pages.
+  `PvpDecksWorkspace` shows account characters/weapons, supports deck view/edit
+  mode, and persists presets through `run_workspace/pvp/deck_preset.py`; Play
+  selects two local deck presets and starts an in-memory `FreeDraftController`;
+  Draft renders the backend board projection and sends legal pick/ban card
+  clicks through the controller.
 - In the target PvP flow, `Draft` is the active match container. Internal match
-  stages should live inside Draft: pick/ban, Assignment, Timers/results, and
-  Export/result. Do not add top-level Team/Timers/Result PvP header tabs unless
-  a later product decision changes this.
+  stages should live inside Draft: Pick/Ban, Assignment, Weapon assignment,
+  Artifact equipment, optional PvP GCSIM, Timers/results, and Completed
+  result/export. Do not add top-level Team/Timers/Result/Artifacts/GCSIM PvP
+  header tabs unless a later product decision changes this.
 - PvP Decks character/weapon selection grids also use the shared painted icon
   grid. Preserve edit-mode viewport tint, selected outlines, inactive overlay,
   custom tooltips, overlay scrollbars, and stable test helper handles instead
@@ -205,9 +281,9 @@ right column patched in place.
 - Minimal left workspace exists with stable id `history` and is implemented
   through `ui/history_browser/`.
 - `ui/app_shell.py` should only wire/register the History workspace, update its
-  nav label, and choose/update the History right-dock page. History UI details
-  and the read-only right-panel viewer widget belong in the History Browser
-  module.
+  nav label, and choose/update the History right-dock page. History left
+  browsing/details/preview remain under `ui/history_browser/`; the read-only
+  right-panel snapshot viewer should move toward `ui/right_panel/history/`.
 - Legacy `runs_history.json` / image-path history UI is obsolete and should not
   become the long-term design.
 - The current left page reads immutable snapshot bundles from disk, shows
@@ -233,7 +309,7 @@ right column patched in place.
 Near-term default:
 
 - Build/Run Panel based on `ui.right_panel_prototype.RightPanelPrototypeWidget`.
-- PvP Decks page for the `pvp` left workspace.
+- PvP Decks/Play/Draft pages for the `pvp` left workspace.
 - Fixed width.
 - Always visible in the normal app shell.
 
@@ -242,6 +318,8 @@ Future operation modes:
 - Account/Data owns HoYoLAB import/update, offline profile actions, language
   selection, and the DPS settings subzone. Current DPS setting: persistent
   Abyss Fact DPS multi-target HP toggle, default off/solo-target.
+- Account/Data and similar global pages belong to `ui/right_panel/settings/`;
+  opening them must preserve the current live-run, PvP, or History state.
 - Real PvP draft/deck/opponent controls wired to the Free Draft board/read-model
   contract.
 - Build panel after PvP draft when a buildable pool/team exists.
@@ -350,16 +428,30 @@ durable saved results must later attach through explicit session/snapshot data.
 
 - PvP now has AppShell Decks, Play, and Draft workspace/right-dock policy, not a
   separate first window.
+- PvP right-panel code belongs under `ui/right_panel/pvp/`; `ui/pvp_browser/`
+  should keep the left/main PvP workspace, deck grids, draft board, and source
+  pools.
 - Detailed PvP UI roadmap and the next unified-pool Draft UI refactor scope live
   in `PVP_UI_ROADMAP.md`.
 - During draft/deck/opponent phases, showing the normal build panel can be
   misleading because builds may not be editable yet.
 - The right operations dock currently shows Decks, Play, and Draft controls and
   can later show assignment/result controls for those phases.
-- Assignment/result controls should be internal Draft-stage controls, not extra
-  top-level right-header pages.
+- Pick/Ban, Assignment, Weapon assignment, Artifact equipment, optional PvP
+  GCSIM, Timers/results, and Completed result/export controls should be internal
+  Draft-stage controls, not extra top-level right-header pages.
 - Once draft/pool/team is ready, the build panel can be reused against the PvP
   pool/team instead of the full account roster.
+- PvP artifact equipment is future product direction, not part of this docs-only
+  task. Player 1 should receive a temporary isolated copy of the current local
+  Artifact Browser data/session; Player 2 should receive a temporary empty
+  Artifact Browser session with JSON import. Both are scoped to the active PvP
+  match and must not mutate the main Artifact Browser, normal account artifact
+  state, or live-run builds. Prefer reusing Artifact Browser logic through a
+  scoped PvP adapter/session rather than forking a second browser.
+- PvP can expose GCSIM through a button/action inside Draft/build flow, routing
+  to a scoped PvP GCSIM stage/panel using PvP teams/builds. It should not add a
+  separate top-level PvP GCSIM Browser tab or use normal live-run teams.
 - PvP training runs can later save history scoped to the current deck/PvP mode.
 
 ## Staged Implementation Plan

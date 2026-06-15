@@ -16,8 +16,12 @@ export/share actions, and richer image rendering are later tasks.
 - History browsing is not a floating legacy window and not a right-dock-only
   page.
 - `ui/app_shell.py` owns only stable workspace id/routing/nav wiring for
-  `history` and the workspace-driven right-dock selection. History UI belongs
-  under `ui/history_browser/`.
+  `history` and the workspace-driven right-dock selection.
+- The left History Browser remains under `ui/history_browser/`: grouped saved
+  bundle rows, saved-row selection, compact period summaries, selected-snapshot
+  preview, filters, and export/share actions.
+- The right read-only snapshot viewer should be treated as a right-panel mode
+  and should move toward `ui/right_panel/history/`.
 - `ui/run_history_window.py` and `runs_history.json` are legacy. Do not develop
   them as the final History model, and do not migrate them as the first real
   History implementation.
@@ -62,17 +66,22 @@ Dummy, or later PvP run state.
 
 The History right-panel viewer is not the live Run panel:
 
+- target source owner is `ui/right_panel/history/`, not
+  `ui/history_browser/`, once the global right-panel refactor happens;
 - initial state is an empty localized prompt to select a saved run;
 - selected state shows compact frozen snapshot details: run/date, Abyss
   period/floor when present, teams, character/weapon/build labels, chamber
   timing, factual DPS, sim DPS where present, and warning count;
 - raw source/provenance/debug strings and absolute local paths are hidden from
   the primary viewer surface in v0;
+- it may reuse the same visual language/cards as `live_run` through
+  `ui/right_panel/common/`, but it must not inherit live behavior;
 - no ticking timers;
 - no GCSIM execution;
 - no equipment/team mutation;
 - no save/reset live commands;
-- no dependency on the current account, profile, cache, or settings;
+- no query of live account/cache data to render old snapshots;
+- no dependency on the current account, profile, cache, or settings for display;
 - no reset/clear of live Run Session state as a shortcut for entering History;
 - current live Abyss, DPS Dummy, and PvP state must remain intact when leaving
   History.

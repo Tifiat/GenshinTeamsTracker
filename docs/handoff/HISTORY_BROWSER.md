@@ -159,17 +159,13 @@ Future:
 - Add deliberate export/share/copy actions.
 - Add XLSX/data-oriented export.
 
-## First Real Stages
+## Current Status
 
-Recommended sequence after the placeholder/module split:
-
-1. Extract typed `RunSessionState`.
-2. Done: define snapshot bundle schema/service v1.
-3. Done: build backend-only snapshots from typed session/view-model data.
-4. Done: wire RUN-page Save to persist immutable bundles.
-5. Done: add a minimal History left reader/list for saved bundles.
-6. Done: add saved-row selection and a History-specific read-only right-panel
-   snapshot viewer v0.
-7. Done: add a v0 selected-snapshot PNG export-preview renderer.
-8. Done: sanitize History viewer/preview v0 presentation so primary UI uses
-   saved user-facing labels instead of raw paths/provenance/debug strings.
+- Typed live-session state, immutable snapshot bundle schema/service, backend
+  snapshot builder, RUN-page Save, left History bundle reader/list, saved-row
+  selection, read-only right-panel viewer, and selected-snapshot PNG preview are
+  implemented.
+- Remaining History work is product polish: richer rows, filters, export/share
+  actions, polished visual cards, and XLSX/data-oriented export.
+- The right viewer remains frozen/read-only and must keep using saved snapshot
+  display data only.

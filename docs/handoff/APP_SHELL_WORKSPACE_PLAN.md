@@ -431,8 +431,7 @@ durable saved results must later attach through explicit session/snapshot data.
 - PvP right-panel code belongs under `ui/right_panel/pvp/`; `ui/pvp_browser/`
   should keep the left/main PvP workspace, deck grids, draft board, and source
   pools.
-- Detailed PvP UI roadmap and the next unified-pool Draft UI refactor scope live
-  in `PVP_UI_ROADMAP.md`.
+- Detailed PvP current/target UI direction lives in `PVP_UI_ROADMAP.md`.
 - During draft/deck/opponent phases, showing the normal build panel can be
   misleading because builds may not be editable yet.
 - The right operations dock currently shows Decks, Play, and Draft controls and
@@ -442,59 +441,31 @@ durable saved results must later attach through explicit session/snapshot data.
   Draft-stage controls, not extra top-level right-header pages.
 - Once draft/pool/team is ready, the build panel can be reused against the PvP
   pool/team instead of the full account roster.
-- PvP artifact equipment is future product direction, not part of this docs-only
-  task. Player 1 should receive a temporary isolated copy of the current local
-  Artifact Browser data/session; Player 2 should receive a temporary empty
-  Artifact Browser session with JSON import. Both are scoped to the active PvP
-  match and must not mutate the main Artifact Browser, normal account artifact
-  state, or live-run builds. Prefer reusing Artifact Browser logic through a
-  scoped PvP adapter/session rather than forking a second browser.
+- PvP artifact equipment is target product direction. Player 1 should receive a
+  temporary isolated copy of the current local Artifact Browser data/session;
+  Player 2 should receive a temporary empty Artifact Browser session with JSON
+  import. Both are scoped to the active PvP match and must not mutate the main
+  Artifact Browser, normal account artifact state, or live-run builds. Prefer
+  reusing Artifact Browser logic through a scoped PvP adapter/session rather
+  than forking a second browser.
 - PvP can expose GCSIM through a button/action inside Draft/build flow, routing
   to a scoped PvP GCSIM stage/panel using PvP teams/builds. It should not add a
   separate top-level PvP GCSIM Browser tab or use normal live-run teams.
 - PvP training runs can later save history scoped to the current deck/PvP mode.
 
-## Staged Implementation Plan
+## Current AppShell Status
 
-### Stage 1: New AppShell
-
-- Introduce a new `AppShell` / `MainShell` file/class.
-- Left side contains a Character/Weapon workspace extracted from old
-  `ui/main_window.py`.
-- Right side contains fixed-width `RightPanelPrototypeWidget`.
-- Keep old `ui/main_window.py` as legacy/fallback.
-- Do not embed Artifact Browser yet.
-
-Current prototype entrypoint:
+Current development entrypoint:
 
 ```powershell
 .\.venv\Scripts\python.exe -m ui.app_shell_smoke
 ```
 
-This command launches the separate `ui.app_shell.AppShell` prototype only.
-`main.py` still launches the legacy app. The prototype uses a real empty
-`TeamBuilderState` and does not copy `ui/right_panel_prototype_smoke.py` fake
-team builders into the production shell path.
+`main.py` still launches the legacy app until the production switch is explicitly
+approved. When that switch happens, `main.py` must run the same startup adaptive
+scaling bootstrap as `ui.app_shell_smoke` before constructing `QApplication`.
 
-Production-switch blockers:
-
-- `RightPanelPrototypeWidget` has live in-memory Abyss timer editing, factual
-  DPS rows, and compact GCSIM status/result cells. The old inert bottom action
-  label placeholder is removed; typed run/session Reset and immutable RUN Save
-  snapshots are wired into the new AppShell/controller path. The History
-  workspace can open/read grouped saved-bundle rows, update a read-only
-  selected-snapshot viewer v0, and show a derived PNG preview v0; polished
-  export actions and command routing remain future work.
-- New run/session persistence and immutable history snapshot flow need the
-  typed contract in `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` before
-  replacing legacy startup.
-- When the switch is explicitly approved, `main.py` must run the same startup
-  adaptive scaling bootstrap as `ui.app_shell_smoke` before constructing
-  `QApplication`.
-- Empty-account startup auto-open for Account/Data remains a setup UX follow-up,
-  not a reason to copy legacy window ownership back into AppShell.
-
-Stage 2 interaction status:
+Current interaction rules:
 
 - Character/Weapon workspace icon clicks flow through `AppShellController` into
   typed `TeamBuilderState`.
@@ -779,76 +750,37 @@ Performance fix status:
 
 Sizing note:
 
-- The first AppShell prototype uses a fixed `RightOperationsDock` width from
-  the reduced Right Panel Prototype minimum (`660px` at the time of writing).
+- AppShell uses a fixed `RightOperationsDock` width from the reduced right-panel
+  content width (`660px` at the time of writing).
 - The dock is not user-resizable and must not expand when the outer window gets
   wider; the left workspace receives extra width.
 - The Character/Weapon workspace uses project overlay scroll areas around its
   painted character and weapon grids so native vertical scrollbars do not
   reserve layout width or shift grid content.
 
-### Stage 2: Real Controller / Adapter (In Progress)
+## Current Implemented Areas
 
-- `run_workspace/session.py` now owns the first typed live Run Session slice:
-  active mode, per-mode `TeamBuilderState`, selected team/slot, external bonus
-  state, Abyss timers/T2 follow flags, and compact runtime GCSIM chamber
-  results. It also owns active-mode Reset. `AppShellController` remains the
-  UI/account/equipment adapter and right-panel view-model coordinator.
-- `run_workspace/history_snapshot.py` owns the backend-only immutable History
-  Snapshot Bundle v1 schema/service for supplied bundles, and
-  `run_workspace/history_snapshot_builder.py` builds bundles from explicit
-  typed session/right-panel view-model inputs.
-- Keep smoke presets as debug harness only.
-- RUN-page Save now calls the builder and stores immutable grouped bundles.
-  The History workspace can read/list saved bundles from disk and selected rows
-  update the isolated read-only History viewer v0 plus a derived PNG preview v0.
-  Next production-switch adapter work is History export/right-command polish and richer
-  `CharacterDetailsData` preparation where selected-details UI still needs it.
-
-### Stage 3: LeftWorkspaceHost (Implemented)
-
-- `LeftWorkspaceHost` uses a `QStackedWidget` and small workspace nav.
-- Current workspaces: default Character/Weapon, lazy-created Artifacts, GCSIM
-  Browser, `ui/history_browser/` saved-bundle list/details/preview v0, and
-  PvP Decks/Play/Draft v0.
-- Navigation uses stable workspace ids requested through root AppShell so later
-  real History browsing or real PvP workspace stages can coordinate right-dock
-  policies without directly mutating the dock.
-
-### Stage 4: Embedded Artifact Browser (Implemented)
-
-- Artifact Browser embedded/content mode exists as an `Artifacts` left
-  workspace while preserving standalone browser construction.
-- Preserve grid resize recalculation.
-- Respect selected target / no-target browse-only rule through visible
-  target-selection/current-equipment UI.
-- Artifact click equip/unequip, preset apply, conflict confirmation, owner side
-  icons, current-equipment preview, and selected-card highlights are wired
-  through typed state plus the `account_equipment` service.
-
-### Stage 5: GCSIM And History Production Readiness
-
-- Backend/dev GCSIM and the AppShell GCSIM Browser MVP have already started.
-  Continue that work without treating Browser runtime output as saved history.
-- RUN-page Save is wired through typed run/session state and immutable grouped
-  `HistorySnapshotBundle` records. The History workspace can open/read grouped
-  rows, display sanitized compact frozen selected-snapshot details, and show a
-  derived user-facing PNG preview before any GCSIM result is treated as durable
-  saved history.
-  Active-mode Reset is already wired through typed live session state.
-- Continue History browsing from the current list/viewer/preview v0 toward
-  polished export cards, richer visuals, filters, and future right-dock History command routing
-  according to active run type; follow the contract in
-  `docs/handoff/HISTORY_BROWSER.md`.
-- Attach GCSIM results to current session/snapshots as `sim DPS` metadata, kept
-  separate from factual HP/time DPS.
-- Production switch still depends on the correct AppShell/session/snapshot
-  boundaries; do not migrate legacy history UI as the final design.
-
-### Stage 6: Legacy Cleanup
-
-- Remove legacy main-window right panel after replacement is stable.
-- Retire old history window/data path after a migration/export decision.
+- `run_workspace/session.py` owns typed live-run session state: active mode,
+  per-mode `TeamBuilderState`, selected team/slot, external bonus state, Abyss
+  timers/T2 follow flags, compact runtime GCSIM chamber results, and active-mode
+  Reset.
+- `AppShellController` remains the UI/account/equipment adapter and right-panel
+  view-model coordinator until the right-panel source-ownership refactor moves
+  widgets into `ui/right_panel/`.
+- `LeftWorkspaceHost` uses stable workspace ids through root AppShell. Current
+  workspaces are Character/Weapon, lazy-created Artifacts, GCSIM Browser,
+  `ui/history_browser/`, and PvP Decks/Play/Draft.
+- Artifact Browser embedded/content mode exists as the `Artifacts` left
+  workspace. It preserves standalone browser construction, respects selected
+  target/no-target browse-only rules, and routes equip/apply through
+  `account_equipment`.
+- RUN-page Save stores immutable grouped `HistorySnapshotBundle` records through
+  `run_workspace/history_snapshot_builder.py`. The History workspace can
+  read/list saved bundles and selected rows update the isolated read-only
+  History viewer plus a derived PNG preview.
+- GCSIM Browser runtime output may update current-session Sim DPS rows, but it
+  is not durable saved history until explicit session/snapshot attachment is
+  implemented.
 
 ## Implementation Guardrails
 
@@ -857,6 +789,5 @@ Sizing note:
 - Do not save future runs from live widgets or image paths.
 - Do not make Artifact Browser equip/apply anything without an explicit selected
   build target.
-- Do not expand a narrow AppShell/PvP Decks/Play/Draft patch into Team
-  assignment, GCSIM, History, or legacy cleanup unless the user explicitly asks
-  for that stage.
+- Keep source-ownership refactors separate from new feature behavior unless the
+  user explicitly asks for that broader stage.

@@ -47,8 +47,10 @@ This file is written for future coding agents. Keep it compact, English, and mos
   wording. Prefer a style equivalent to "has been added/fixed/updated" or
   "added/fixed/updated as a completed result", not a style equivalent to "I
   added/fixed/updated".
-- When adding or changing any persistent project structure, source/cache format, domain model, or long-lived UI/data contract, update the relevant project map under `docs/handoff/` and keep root docs as concise pointers. Examples: backend data model -> architecture/data map; raw payload discovery -> source-field reference; UI prototype contract -> UI architecture notes; GCSIM/Abyss research -> dedicated handoff file.
-- Obsidian map maintenance: The Obsidian vault is stored in `docs/obsidian/GTT/`. `docs/obsidian/GTT/GenshinTeamsTracker.canvas` is the human project navigation map. `docs/obsidian/GTT/DataFlow.canvas` is the human data-flow map. `docs/obsidian/GTT/SourceBoundaries.canvas` is the human source/runtime boundary map for avoiding data-owner confusion. These maps do not replace `CODEX.md`/`TODO.md` or detailed handoff files. After meaningful structural changes, update the maps together with handoff files when the change affects human understanding of the project layout: new major subsystem, renamed/moved important folder, changed data flow, changed current priority, changed architecture direction, or an important feature moving from planned to active/done. Do not update maps for tiny bugfixes, one-line styling changes, or internal refactors that do not affect the project map.
+- When adding or changing any persistent project structure, source/cache format, domain model, or long-lived UI/data contract, update the relevant handoff map under `docs/handoff/` and keep root docs as concise pointers. Examples: backend data model -> architecture/data map; raw payload discovery -> source-field reference; UI prototype contract -> UI architecture notes; GCSIM/Abyss research -> dedicated handoff file.
+- `docs/obsidian/` is a user-owned folder for optional human maps. It is not
+  source of truth; ignore it unless the user explicitly asks to work on
+  Obsidian maps.
 - Project SVG UI icons should go through `ui/utils/icon_utils.py` auto-contrast helpers instead of direct raw SVG loading or hardcoded final icon colors. This is needed for future theme support.
 - Any new user-facing UI text must be added through `localization/locales/*.json` and read with the localization helpers (`tr` / `tr_for_language`) instead of being hardcoded in widgets, view-models, or tooltip formatters. Debug/provenance strings can stay internal, but anything visible in the app needs ru/en/pt-br entries when the feature is added.
 - New user-facing tooltips must be custom in-app tooltips, not native Qt/system
@@ -188,12 +190,10 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   donation/support, monetization, and optional AI companion ideas. Read only
   when the user asks about far-future ideas.
 - `docs/handoff/PVP_UI_ROADMAP.md`: PvP UI source of truth for the AppShell
-  mini-section, Decks-first direction, local Play setup, Draft/assignment/result
-  staging, and next UI implementation scope.
+  mini-section, Decks-first direction, local Play setup, current v0 stages, and
+  target scoped PvP build flow.
 - `docs/handoff/DATA_RUNTIME_BOUNDARIES.md`: compact map of raw/source caches, runtime SQLite tables, visual asset caches, static/reference catalogs, and stored-vs-hidden UI rules.
-- `docs/obsidian/GTT/GenshinTeamsTracker.canvas`: human project navigation map for major areas, subsystem status, priorities, and important paths. It is not detailed agent context.
-- `docs/obsidian/GTT/DataFlow.canvas`: human data-flow map from HoYoLAB export through caches/databases to selected-details UI and future Run Workspace.
-- `docs/obsidian/GTT/SourceBoundaries.canvas`: human source/runtime boundary map for account JSON, SQLite runtime data, static/reference catalogs, artifact/build storage, and UI display ownership.
+- `docs/obsidian/`: optional user-owned human maps. Ignore unless the user asks.
 - `data/`: local generated profile/account state. Treat as private/generated.
 - `assets/hoyolab/`: generated local account icons. Treat as private/generated.
 - `assets/artifact_sets/`: generated or seeded artifact set piece icons.
@@ -303,7 +303,10 @@ Character and weapon stat catalogs are static/generated catalog data, not accoun
 - Isolated read-only TeamCard prototype exists as a pure view-model in `run_workspace/team_card_view_model.py` and a small QWidget in `ui/team_card_prototype.py`. Manual visual smoke launcher: `python -m ui.team_card_prototype_smoke` for real no-network Thoma + build id 20, or `python -m ui.team_card_prototype_smoke --fake` for fake data. It consumes `TeamBuilderState` plus optional `CharacterDetailsData`, shows empty/filled four-slot teams, character/weapon/build labels, artifact summaries, statuses, and compact warnings. It is not wired into the legacy right panel and is not the final Run Workspace.
 - Isolated Right Panel / TeamBuilder Prototype v6 exists as a pure view-model in `run_workspace/right_panel_prototype_view_model.py`, display stat helper in `run_workspace/display_stats.py`, and a QWidget prototype in `ui/right_panel_prototype.py`. Manual smoke launcher: `python -m ui.right_panel_prototype_smoke` with fake data by default, or `python -m ui.right_panel_prototype_smoke --real-thoma` for the existing no-network Thoma + build id 20 sample plus deterministic Hexerei/Moonsign validation teams when local account data is available; `--team-preset moonsign|hexerei|resonance-sanity` and `--summary` provide no-GUI team bonus sanity checks. The no-preset sandbox loader now uses SQLite account runtime records and observed weapon stacks, not raw account detail JSON. It keeps the v4/v5 layout direction, enforces a minimum standalone content width, uses square character portraits with aligned weapon/build boxes, labels chamber factual/sim columns as DPS, and shows selected-character virtual build display rows from character base + selected weapon + selected artifact build + ascension/baselines. The build box uses compact Artifact Browser preset-row set semantics: active set icons plus 2p/4p overlay/count, with `Equip`/`ART` placeholders for no-preset slots. The slot main-stat badge is derived from the selected `ArtifactBuildSnapshot` slot data, specifically actual sands/goblet main stats, and must not come from target recommendations, character element, HoYoLAB current-final stats, or display-stat row order. Selected weapon meta includes weapon base ATK and secondary stat from selected SQLite observed weapon stack/account runtime data. The selected-details bottom area is now a bonus source strip for modeled external bonuses, with source chips/tooltips for direct static artifact set effects, direct static weapon passive effects, elemental resonance, `Moonsign`, and `Hexerei`; the `Apply external bonuses` toggle excludes external stat rows such as artifact/weapon static effects and elemental resonance, not base stats, selected weapon base/secondary, or artifact main/sub totals. Bonus source chips use `[large source icon] [separate compact effect badge(s)]`, and tooltips are formatted once with title, one `Effects:` section, and one source/note/breakdown body. `Moonsign` is a capped Lunar Reaction DMG indicator shown for teams with at least 2 `moonsign` characters; it reads team member stats after direct external stat bonuses when the toggle is on, requires a non-`moonsign` trigger teammate for a nonzero value, and does not add back into normal stat rows. Bonus strip source icons use cached alpha-trim scaling; compact Hexerei/member side icons use a separate cached bottom-aligned side-icon renderer so hats/hair can clip upward instead of shrinking the whole character. `Hexerei` is shown only with 2+ Hexerei members, remains display/tooltip-only, and member tooltips resolve unlocked SQLite Hexerei sections by account constellation with localized override/en-us fallback. Real smoke selected weapons are explicit observed weapon options from SQLite, not inferred from current-equipped provenance. It is visual-only, not wired into the legacy right panel, and implements no drag/drop, equip conflict logic, history export, or GCSIM execution.
 - Display stat rows are virtual TeamBuilder results in this order: HP, ATK, DEF, EM, Crit Rate, Crit DMG, ER, then damage/healing bonuses. HoYoLAB stat-sheet `final` rows are reference/debug only for TeamBuilder slots and must not be shown as selected-build final stats. HoYoWiki contribution rows are fallback/provenance only. Raw partial labels such as `Base HP`, `Weapon ATK`, `Asc ...`, `Art CR`, `WATK`, and `AER` are internal/debug provenance and should not be rendered as selected-detail final stats. Direct static artifact set and weapon passive effects come only from normalized SQLite rows (`artifact_set_display_stat_effects`, `weapon_display_stat_effects`); JSON seed/audit files are not runtime storage, and derived/conditional/talent/constellation effects are not applied.
-- Next Run Workspace/UI step after visual inspection of Prototype v6: inspect real multi-character layout, no-preset states, and build-slot readability; then refine exact proportions if needed before planning the first Run Workspace / TeamBuilder shell before replacing the legacy right panel.
+- Candidate Run Workspace/UI work around the right-panel prototype: inspect real
+  multi-character layout, no-preset states, and build-slot readability when that
+  area is actively being changed; refine proportions only when needed for the
+  current task.
 - Stat normalization / GCSIM stat-key mapping handoff exists at `docs/handoff/STAT_NORMALIZATION.md`; backend code exists in `hoyolab_export/stat_normalization.py`. It maps artifact `property_type` values to normalized keys/GCSIM `add stats` keys, converts percent-point values like `46.6%` to ratio values like `0.466`, keeps flat stats unchanged, treats Crit Value / Proc Count as virtual metrics, and intentionally does not compute final totals or apply passives/set bonuses/resonances.
 - Weapon passive/refinement text is reference data only. Do not parse free text into formulas or auto-apply passive bonuses unless a future effect is explicitly modeled/whitelisted.
 - Future source note: Russian HoYoWiki character pages may expose recommendation blocks for weapons, artifacts, and teams/allies. This may later feed right-side guide/info content, draft bot heuristics, and recommended stat/build hints; do not parse it now.
@@ -542,8 +545,9 @@ implementation target is a full local Hot-seat / Ghost Deck offline loop with
 two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
 weapon assignment, timers, and winner summary. Decks mode v0, Play/local match
 setup v0, Draft board v0, and local post-draft Assignment/Weapon/Timers/
-Completed result v0 are implemented with PvP UI widgets owned by
-`ui/pvp_browser/`; Decks persists `gtt.pvp_deck_preset` JSON under
+Completed result v0 are implemented with current PvP UI widgets under
+`ui/pvp_browser/`; target PvP right-panel ownership is `ui/right_panel/pvp/`.
+Decks persists `gtt.pvp_deck_preset` JSON under
 `data/pvp/decks/`, shows account characters/weapons in view/edit mode, and
 validates by converting presets to backend `DraftDeck`. Play chooses Player
 1/Player 2 local deck presets and starts an in-memory local
@@ -552,9 +556,9 @@ readable character pool, sends legal pick/ban clicks through backend action
 payloads, shows right-panel pick/ban zones, and can complete the full Free
 Draft schedule locally, then continues through assignment, weapon assignment,
 manual timers, and read-only result summary in the corrected two-player visual
-source/target match layout. The next PvP code target is post-draft
-density/review/back polish or export/history only after those contracts are
-ready.
+source/target match layout. Candidate PvP follow-ups live in
+`docs/handoff/PVP_UI_ROADMAP.md`; do not treat older post-draft polish wording
+as fixed priority.
 Shared observed weapon-stack identity for Deck presets and
 future PvP screens lives in `run_workspace/pvp/weapon_identity.py`.
 Reference-site findings live in

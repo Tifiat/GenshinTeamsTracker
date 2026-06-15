@@ -23,7 +23,7 @@ Current maps:
   modules, smoke commands, generated/private paths, tests, and known gaps.
 - `PVP_UI_ROADMAP.md` - PvP AppShell/UI roadmap: Decks-first direction,
   left/main vs right-panel split, local Play setup, unified-pool Draft target,
-  internal Draft stages, and next implementation scope.
+  current v0 stages, and target scoped PvP build flow.
 - `PVP_REFERENCE_SITE_AUDIT.md` - Abyss Draft and Gentor reference-site findings used by the PvP v0 contract.
 - `PVP_MODE_PLAN.md` - PvP planning history for local hot-seat Free Draft, deck JSON, future relay lobby, roadmap, risks, and resolved/open questions.
 - `PVP_RULESETS_AUDIT.md` - PvP/tournament ruleset source audit.
@@ -31,7 +31,9 @@ Current maps:
   Gentor/Abyss/manual rulesets onto the PvP backend. Ruleset mapping is paused
   until real usable tournament files exist.
 - `STAT_NORMALIZATION.md` - stat normalization and GCSIM stat-key mapping handoff.
-- `MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md` - audit and staged plan for replacing the legacy main-window right panel with fixed Right Panel Prototype v6 plus left workspaces.
+- `MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md` - compact audit of legacy
+  main-window right-panel boundaries and current `ui/right_panel/` target
+  ownership.
 - `APP_SHELL_WORKSPACE_PLAN.md` - target AppShell architecture: left workspace host plus fixed right operations dock, with staged migration notes.
 - `RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` - Run Workspace session/snapshot contract
   for durable history, GCSIM result attachment, and the future `main.py` switch.
@@ -65,15 +67,6 @@ Rules:
 - When adding or changing a persistent structure, source format, data model, or
   long-lived UI/data contract, update the relevant handoff map in this folder
   and keep root docs as concise pointers.
-- Obsidian map maintenance: the Obsidian vault is stored in
-  `docs/obsidian/GTT/`. `docs/obsidian/GTT/GenshinTeamsTracker.canvas` is the
-  human project navigation map, `docs/obsidian/GTT/DataFlow.canvas` is the
-  human data-flow map, and `docs/obsidian/GTT/SourceBoundaries.canvas` is the
-  human source/runtime boundary map. These maps do not replace `CODEX.md`/`TODO.md` or the
-  detailed handoffs. After meaningful structural changes, update the maps
-  together with handoff files when the change affects human understanding of the
-  project layout: new major subsystem, renamed/moved important folder, changed
-  data flow, changed current priority, changed architecture direction, or an
-  important feature moving from planned to active/done. Do not update maps for
-  tiny bugfixes, one-line styling changes, or internal refactors that do not
-  affect the project map.
+- `docs/obsidian/` is a user-owned folder for optional human maps. It is not
+  source of truth; ignore it unless the user explicitly asks to work on
+  Obsidian maps.

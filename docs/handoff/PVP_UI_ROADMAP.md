@@ -11,10 +11,10 @@ remains in `PVP_BACKEND_STATUS.md`.
 - When PvP is active, the right dock shows `Decks`, `Play`, `Draft`, and the
   global Account action instead of Abyss / DPS Dummy.
 - Account remains a global shell action in the right header.
-- Current PvP widgets still live in `ui/pvp_browser/window.py`, but the target
-  right-panel ownership is `ui/right_panel/pvp/`. The next global right-panel
-  refactor should move PvP right-dock pages/stages there while keeping
-  `ui/pvp_browser/` focused on the left/main PvP workspace.
+- Current PvP widgets still live in `ui/pvp_browser/window.py`, but target
+  right-panel ownership is `ui/right_panel/pvp/`. A global right-panel refactor
+  should move PvP right-dock pages/stages there while keeping `ui/pvp_browser/`
+  focused on the left/main PvP workspace.
 - Decks v0 is implemented in `ui/pvp_browser/window.py` as
   `PvpDecksWorkspace` plus `PvpDecksRightPanel`.
   The corrected UI follows the existing Characters/Weapons browser grid on the
@@ -46,6 +46,10 @@ PvP is a mini-section inside AppShell, not a single flat screen.
 - Left/main PvP area: browser/workspace scene.
 - Right PvP control panel: current mode controls, deck preset list, validation,
   selected details, setup actions, timers/result controls.
+- Target PvP right panels should reuse the same kind of rich team/build panel
+  logic as `live_run`, but scoped and isolated for PvP state. Do not design a
+  separate dead-end simplified panel that cannot carry character, weapon,
+  artifact, and scoped GCSIM build flow.
 - Source ownership target:
   - `ui/pvp_browser/` owns deck browser grids, the draft board, source pools,
     and main PvP scenes.
@@ -60,10 +64,10 @@ Top-level PvP right-header pages:
 - Play / local match setup;
 - Draft.
 
-`Draft` is the active match container. Future post-start match stages should be
+`Draft` is the active match container. Target post-start match stages should be
 internal Draft stages, not additional top-level tabs:
 
-1. Draft / pick-ban.
+1. Pick/Ban.
 2. Assignment.
 3. Weapon assignment.
 4. Artifact equipment.
@@ -299,11 +303,13 @@ Current v0 scope:
   projection.
 - When the schedule completes, pick/ban clicks are disabled and final picks,
   bans, and action-log count remain visible.
-- After completion, the Draft page can continue through internal Assignment,
+- After pick/ban completion, current v0 continues through internal Assignment,
   Weapon assignment, Timers/results, and Completed result stages for local
   hot-seat play.
+- Current v0 skips Artifact equipment and scoped PvP GCSIM, but the target
+  architecture must prepare right-panel slots/stages for them.
 - Online mode, ruleset cost rendering, immune picks, session files, PvP History
-  writes, and export are still out of scope.
+  writes, and export are not implemented in current v0.
 
 ## Team Assignment
 
@@ -326,8 +332,11 @@ Current v0 scope:
 - Stage controls are low-priority right-panel footer controls; stage
   validation still enables the next-stage button only when both players have
   valid 4+4 assignments.
-- No normal character filters, artifact badges, GCSIM block, or normal
-  TeamBuilder mutation are part of v0.
+- Current v0 does not implement artifact equipment or scoped PvP GCSIM yet.
+  However, the next right-panel refactor should avoid dead-end simplified target
+  widgets and preserve character + weapon + artifact mini-zone structure for
+  the future PvP build flow.
+- PvP assignment must not mutate normal TeamBuilder or `live_run` state.
 
 ## Weapon Assignment
 
@@ -346,8 +355,9 @@ Current v0 scope:
 
 ## Artifact Equipment
 
-Artifact equipment is the new product direction for PvP, not an immediate
-implementation requirement for this docs-only task.
+Artifact equipment is target product direction for PvP. It is not implemented
+in current v0, and the immediate source-ownership refactor should preserve the
+structure needed for it rather than implementing the full equipment flow.
 
 - After Draft pick/ban plus team and weapon assignment, PvP should support an
   Artifact equipment stage inside Draft.
@@ -433,13 +443,7 @@ Use reference sites to decide information placement, not to copy styling.
 
 ## Current Implementation Status
 
-Completed Decks v0 task:
-
-> PvP Decks mode v0: persistent deck presets + corrected
-> Characters/Weapons-style browser and Artifact Browser-style preset list/edit
-> flow.
-
-Implemented in:
+Current PvP v0 implementation lives in:
 
 - `run_workspace/pvp/deck_preset.py`;
 - `run_workspace/pvp/weapon_identity.py`;
@@ -451,7 +455,7 @@ Implemented in:
 - `tests/ui/pvp_browser/test_pvp_browser.py`;
 - `tests/ui/app_shell/test_app_shell.py` for AppShell routing integration.
 
-Current Decks v0 scope:
+Current v0 scope:
 
 - Decks replaces the former `PvP Control` placeholder in the right header.
 - Presets persist under root `data/pvp/decks/` as `gtt.pvp_deck_preset`
@@ -486,14 +490,7 @@ Current Decks v0 scope:
   and weapons, right-panel target teams/weapons/timers/results. It reuses
   controller assignment/timer APIs and remains in-memory/PvP-owned.
 
-Next implementation task:
-
-> Post-draft polish and result/export planning. The core local flow now reaches
-> completed result in the intended visual match layout; next code work should
-> refine usability/review/back affordances, improve visual density, or begin
-> export/history only when their contracts are ready.
-
-Next architecture task before more PvP right-panel growth:
+Candidate architecture task before more PvP right-panel growth:
 
 > Global right-panel refactor. Move right-dock ownership toward
 > `ui/right_panel/{common,live_run,history,pvp,settings}`; place PvP right-panel
@@ -501,13 +498,14 @@ Next architecture task before more PvP right-panel growth:
 > `ui/pvp_browser/` as the left/main PvP workspace; update imports and matching
 > tests in the same task without weakening behavior coverage.
 
-Still out of scope:
+Current v0 limitations / later work:
 
 - online;
 - History;
 - PNG/export result card;
 - ruleset cost rendering;
 - Gentor/Abyss importer;
-- scoped PvP artifact equipment and JSON preset import/export QoL;
+- scoped PvP artifact equipment implementation;
+- extended GTT JSON artifact+preset import/export QoL;
 - scoped PvP GCSIM scoring;
 - final styling.

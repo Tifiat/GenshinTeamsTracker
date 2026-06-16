@@ -34,8 +34,8 @@ remains in `PVP_BACKEND_STATUS.md`.
 - The current Draft/build visual pass is implemented: the left Draft pool uses
   portrait-backed unified character cards resolved from local asset metadata,
   the right Draft panel uses visual pick/ban result chips instead of primary
-  text dump zones, and post-draft target slots use the shared compact
-  right-panel slot primitive plus portrait/weapon mini-boxes.
+  text dump zones, and post-draft targets adapt PvP state into the shared
+  right-panel team/slot-card widgets with portrait and weapon mini-boxes.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
 - Post-draft Assignment, Weapon assignment, Timers/results, and read-only
@@ -327,10 +327,10 @@ Current v0 scope:
   image-backed `PixelIconGrid` cards. There are no filters or full-account
   browsers in post-draft stages.
 - The PvP right panel is now the target match panel: top Player 1 and bottom
-  Player 2, each with two compact 4-character team halves, compact
+  Player 2, each with two shared right-panel 4-character team rows,
   portrait-backed target slots, assigned weapon icons, and compact timer/result
-  rows. The previous text-button post-draft prototype is no longer the accepted
-  visual layer.
+  rows. The previous text-button/rectangle post-draft prototype is no longer
+  the accepted visual layer.
 - Interaction is simple click source character, click right-panel target slot.
   Re-selecting an already used character moves it instead of duplicating it;
   slots can be cleared.
@@ -338,11 +338,12 @@ Current v0 scope:
   validation still enables the next-stage button only when both players have
   valid 4+4 assignments.
 - Current v0 does not implement artifact equipment or scoped PvP GCSIM yet.
-  The compact target slot now uses
-  `ui/right_panel/common/compact_slot.py` plus shared portrait/weapon/artifact
-  mini-zone visual parts from `ui/right_panel/common/slot_parts.py`, including
-  a current hidden artifact mini-zone extension point, so future PvP build flow
-  can extend it without preserving a no-artifact dead end.
+  PvP post-draft target slots are built by adapting PvP assignment/weapon state
+  into `RightPanelTeamPrototypeViewModel` / `RightPanelSlotPrototypeViewModel`
+  and rendering the shared `ui/right_panel/common/team_card.py` and
+  `ui/right_panel/common/slot_card.py` widgets. The artifact mini-zone remains
+  the shared slot-card extension point, so future PvP build flow can extend it
+  without preserving a no-artifact dead end.
 - PvP assignment must not mutate normal TeamBuilder or `live_run` state.
 
 ## Weapon Assignment
@@ -459,7 +460,7 @@ Current PvP v0 implementation lives in:
 - `ui/right_panel/pvp/host.py`, `decks/panel.py`, `play/panel.py`,
   `draft/panel.py`, `draft/pick_ban/result_zone.py`, and
   `draft/assignment/target_slot.py` for the right-dock PvP host/pages/current
-  common-backed visual result zones and target slot;
+  common-backed visual result zones and compatibility target-slot alias;
 - `ui/app_shell.py` as the shell coordinator that instantiates the PvP
   workspace/right-dock page;
 - `tests/run_workspace/pvp/test_deck_preset.py`;
@@ -507,10 +508,10 @@ Right-panel architecture status before more PvP growth:
 > The global right-panel ownership refactor is complete for current v0 code.
 > Keep new PvP right-panel work under `ui/right_panel/pvp/`; keep
 > `ui/pvp_browser/` as the left/main PvP workspace. PvP page/stage constants are
-> canonical in `ui/right_panel/pvp/_shared.py`, and the current compact v0
-> target slot is backed by `ui/right_panel/common/compact_slot.py` and shared
-> common mini-zone primitives. Full scoped PvP Artifact equipment and scoped
-> PvP GCSIM remain dedicated follow-ups.
+> canonical in `ui/right_panel/pvp/_shared.py`, and the current PvP post-draft
+> target panel adapts isolated PvP state into shared common right-panel
+> team/slot-card widgets. Full scoped PvP Artifact equipment and scoped PvP
+> GCSIM remain dedicated follow-ups.
 
 Current v0 limitations / later work:
 

@@ -12,7 +12,6 @@ class RightPanelOwnershipImportsTest(unittest.TestCase):
             RightPanelPortraitMiniBox,
             RightPanelWeaponMiniBox,
         )
-        from ui.right_panel.common.compact_slot import RightPanelCompactSlotWidget
         from ui.right_panel.common.slot_card import RightPanelSlotCardWidget
         from ui.right_panel.common.team_card import RightPanelTeamCardWidget
         from ui.right_panel.dock import RightOperationsDock
@@ -31,14 +30,13 @@ class RightPanelOwnershipImportsTest(unittest.TestCase):
             RightPanelArtifactMiniZoneWidget.__name__,
             "RightPanelArtifactMiniZoneWidget",
         )
-        self.assertEqual(RightPanelCompactSlotWidget.__name__, "RightPanelCompactSlotWidget")
         self.assertEqual(RightPanelSlotCardWidget.__name__, "RightPanelSlotCardWidget")
         self.assertEqual(RightPanelTeamCardWidget.__name__, "RightPanelTeamCardWidget")
         self.assertEqual(RunRightPanelWidget.__name__, "RunRightPanelWidget")
         self.assertEqual(RightOperationsDock.__name__, "RightOperationsDock")
         self.assertEqual(RightDockHeader.__name__, "RightDockHeader")
         self.assertEqual(HistoryRightPanelPlaceholder.__name__, "HistoryRightPanelPlaceholder")
-        self.assertEqual(PvpPostDraftTargetSlotWidget.__name__, "PvpPostDraftTargetSlotWidget")
+        self.assertIs(PvpPostDraftTargetSlotWidget, RightPanelSlotCardWidget)
         self.assertEqual(PvpRightPanelHost.__name__, "PvpRightPanelHost")
         self.assertEqual(AccountDataPage.__name__, "AccountDataPage")
 
@@ -117,19 +115,22 @@ class RightPanelOwnershipImportsTest(unittest.TestCase):
             source = (root / relative_path).read_text(encoding="utf-8")
             self.assertNotIn("from ui.right_panel.pvp._shared import *", source)
 
-    def test_pvp_target_slot_uses_common_visual_parts(self) -> None:
+    def test_pvp_target_panel_uses_shared_team_slot_cards(self) -> None:
         root = Path(__file__).resolve().parents[3]
-        source = (
+        target_slot_source = (
             root / "ui/right_panel/pvp/draft/assignment/target_slot.py"
         ).read_text(encoding="utf-8")
-        common_source = (
-            root / "ui/right_panel/common/compact_slot.py"
-        ).read_text(encoding="utf-8")
+        panel_source = (root / "ui/right_panel/pvp/draft/panel.py").read_text(
+            encoding="utf-8"
+        )
 
-        self.assertIn("RightPanelCompactSlotWidget", source)
-        self.assertIn("RightPanelPortraitMiniBox", common_source)
-        self.assertIn("RightPanelWeaponMiniBox", common_source)
-        self.assertIn("RightPanelArtifactMiniZoneWidget", common_source)
+        self.assertFalse((root / "ui/right_panel/common/compact_slot.py").exists())
+        self.assertNotIn("class PvpPostDraftTargetSlotWidget", target_slot_source)
+        self.assertIn("RightPanelSlotCardWidget", target_slot_source)
+        self.assertIn("RightPanelTeamCardWidget", panel_source)
+        self.assertIn("RightPanelSlotPrototypeViewModel", panel_source)
+        self.assertIn("RightPanelTeamPrototypeViewModel", panel_source)
+        self.assertNotIn("RightPanelCompactSlotWidget", panel_source)
 
 
 if __name__ == "__main__":

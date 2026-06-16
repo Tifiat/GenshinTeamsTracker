@@ -23,8 +23,9 @@ from ui.right_panel.pvp._shared import (
     PVP_PAGE_DRAFT,
     PVP_PAGE_PLAY,
 )
+from ui.right_panel.common.slot_card import RightPanelSlotCardWidget
+from ui.right_panel.common.team_card import RightPanelTeamCardWidget
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
-from ui.right_panel.pvp.draft.assignment.target_slot import PvpPostDraftTargetSlotWidget
 from ui.right_panel.pvp.draft.panel import PvpDraftRightPanel
 from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultChipWidget
 from ui.right_panel.pvp.host import PvpRightPanelHost
@@ -670,13 +671,13 @@ class PvpBrowserTest(unittest.TestCase):
             draft_panel.findChildren(QPushButton, "pvp-team-slot")
         )
         self.assertEqual(len(draft_panel.team_slot_buttons_by_key), 16)
-        self.assertEqual(
-            len(draft_panel.findChildren(PvpPostDraftTargetSlotWidget, "pvp-team-slot")),
-            16,
-        )
+        self.assertEqual(len(draft_panel.findChildren(RightPanelTeamCardWidget)), 4)
+        self.assertEqual(len(draft_panel.findChildren(RightPanelSlotCardWidget)), 16)
         self.assertFalse(draft_panel.findChildren(QPushButton, "row_cancel_button"))
+        self.assertFalse(draft_panel.findChildren(QFrame, "pvp-team-slot"))
+        self.assertFalse(draft_panel.findChildren(QFrame, "pvp-team-half"))
         for seat, zone in draft_panel.target_zone_frames_by_seat.items():
-            self.assertEqual(len(zone.findChildren(QFrame, "pvp-team-half")), 2, seat)
+            self.assertEqual(len(zone.findChildren(RightPanelTeamCardWidget)), 2, seat)
         for seat in ("player_1", "player_2"):
             source_zone = workspace.draft_workspace.source_zone_frames_by_seat[seat]
             grids = source_zone.findChildren(PixelIconGrid)
@@ -705,10 +706,11 @@ class PvpBrowserTest(unittest.TestCase):
             ].click_item_for_test(first_p1)
         )
         QApplication.processEvents()
-        draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].click()
+        draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].clicked.emit(0, 0)
         QApplication.processEvents()
         self.assertEqual(workspace.assignment_slots_by_seat["player_1"][0][0], first_p1)
         assigned_slot = draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)]
+        self.assertIsInstance(assigned_slot, RightPanelSlotCardWidget)
         self.assertTrue(assigned_slot.property("hasPortraitPixmap"))
 
         self._assign_all_picks_to_teams(workspace)
@@ -719,7 +721,7 @@ class PvpBrowserTest(unittest.TestCase):
         QApplication.processEvents()
 
         self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_WEAPONS)
-        draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].click()
+        draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].clicked.emit(0, 0)
         QApplication.processEvents()
         self.assertEqual(workspace.selected_weapon_character, ("player_1", first_p1))
         weapon_grid = workspace.draft_workspace.source_weapon_grids_by_seat["player_1"]

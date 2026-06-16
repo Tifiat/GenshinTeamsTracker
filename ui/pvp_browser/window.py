@@ -2348,7 +2348,10 @@ class PvpWorkspace(QWidget):
         slots = self.assignment_slots_by_seat[seat]
         if not (0 <= team_index < 2 and 0 <= slot_index < 4):
             return
+        removed_character_id = slots[team_index][slot_index]
         slots[team_index][slot_index] = None
+        if self.selected_assignment_character == (seat, removed_character_id):
+            self.selected_assignment_character = None
         self._clear_weapon_for_unassigned_characters(seat)
         self._sync_draft_workspace()
         self.state_changed.emit()

@@ -31,6 +31,11 @@ remains in `PVP_BACKEND_STATUS.md`.
   panel is `ui.right_panel.pvp.draft.panel.PvpDraftRightPanel`; shared draft UI
   helper/read-model formatting and canonical PvP page/stage/timer constants
   used by both sides live in `ui/right_panel/pvp/_shared.py`.
+- The current Draft/build visual pass is implemented: the left Draft pool uses
+  portrait-backed unified character cards resolved from local asset metadata,
+  the right Draft panel uses visual pick/ban result chips instead of primary
+  text dump zones, and post-draft target slots use the shared compact
+  right-panel slot primitive plus portrait/weapon mini-boxes.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
 - Post-draft Assignment, Weapon assignment, Timers/results, and read-only
@@ -294,10 +299,11 @@ Current v0 scope:
 - Starting from Play creates an in-memory `FreeDraftController` and switches to
   Draft.
 - The board renders cards from `to_board_dict()["unified_pool"]["entries"]`,
-  marks legal/available/blocked states, and sends legal clicks through the
-  backend action payload exposed on the entry.
+  marks legal/available/blocked states, resolves local portraits on the UI
+  side, and sends legal clicks through the backend action payload exposed on
+  the entry.
 - Picked/banned entries are omitted from the main pool and rendered in
-  right-panel result zones from `unified_pool.result_zones`.
+  visual right-panel result zones from `unified_pool.result_zones`.
 - After each accepted or rejected action, UI state is rebuilt from the backend
   projection.
 - When the schedule completes, pick/ban clicks are disabled and final picks,
@@ -332,9 +338,10 @@ Current v0 scope:
   validation still enables the next-stage button only when both players have
   valid 4+4 assignments.
 - Current v0 does not implement artifact equipment or scoped PvP GCSIM yet.
-  The compact target slot now uses shared right-panel portrait/weapon/artifact
-  mini-zone visual parts from `ui/right_panel/common/slot_parts.py`, including a
-  current hidden artifact mini-zone extension point, so future PvP build flow
+  The compact target slot now uses
+  `ui/right_panel/common/compact_slot.py` plus shared portrait/weapon/artifact
+  mini-zone visual parts from `ui/right_panel/common/slot_parts.py`, including
+  a current hidden artifact mini-zone extension point, so future PvP build flow
   can extend it without preserving a no-artifact dead end.
 - PvP assignment must not mutate normal TeamBuilder or `live_run` state.
 
@@ -450,8 +457,9 @@ Current PvP v0 implementation lives in:
 - `ui/pvp_browser/window.py` (`PvpDecksWorkspace`, `PvpWorkspace`,
   `PvpDraftWorkspace`, and left/main PvP browser scenes);
 - `ui/right_panel/pvp/host.py`, `decks/panel.py`, `play/panel.py`,
-  `draft/panel.py`, and `draft/assignment/target_slot.py` for the right-dock
-  PvP host/pages/current common-backed v0 target slot;
+  `draft/panel.py`, `draft/pick_ban/result_zone.py`, and
+  `draft/assignment/target_slot.py` for the right-dock PvP host/pages/current
+  common-backed visual result zones and target slot;
 - `ui/app_shell.py` as the shell coordinator that instantiates the PvP
   workspace/right-dock page;
 - `tests/run_workspace/pvp/test_deck_preset.py`;
@@ -500,8 +508,9 @@ Right-panel architecture status before more PvP growth:
 > Keep new PvP right-panel work under `ui/right_panel/pvp/`; keep
 > `ui/pvp_browser/` as the left/main PvP workspace. PvP page/stage constants are
 > canonical in `ui/right_panel/pvp/_shared.py`, and the current compact v0
-> target slot is backed by shared common mini-zone primitives. Full scoped PvP
-> Artifact equipment and scoped PvP GCSIM remain dedicated follow-ups.
+> target slot is backed by `ui/right_panel/common/compact_slot.py` and shared
+> common mini-zone primitives. Full scoped PvP Artifact equipment and scoped
+> PvP GCSIM remain dedicated follow-ups.
 
 Current v0 limitations / later work:
 

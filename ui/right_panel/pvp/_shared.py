@@ -121,20 +121,51 @@ QFrame#pvp_draft_result_zone {{
     border-radius: 6px;
     background: {UI_BG_PANEL};
 }}
+QFrame#pvp_draft_action_card {{
+    border: 1px solid {UI_BORDER_PANEL};
+    border-radius: 8px;
+    background: {UI_BG_PANEL_RAISED};
+}}
+QLabel#pvp_draft_action_title {{
+    color: {UI_TEXT_PRIMARY};
+    font-size: 13px;
+    font-weight: 900;
+}}
 QLabel#pvp_draft_result_title {{
     color: {UI_TEXT_PRIMARY};
     font-size: 12px;
     font-weight: 800;
 }}
-QLabel#pvp_draft_result_picks {{
-    color: {UI_TEXT_PRIMARY};
-    font-size: 12px;
-    font-weight: 700;
+QWidget#pvp-draft-result-chip-grid {{
+    background: transparent;
+    border: none;
 }}
-QLabel#pvp_draft_result_bans {{
-    color: {UI_TEXT_SECONDARY};
+QFrame#pvp-draft-result-pick-chip,
+QFrame#pvp-draft-result-ban-chip {{
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 6px;
+    background: {UI_BG_PANEL_RAISED};
+}}
+QFrame#pvp-draft-result-ban-chip {{
+    background: {UI_BG_BUTTON};
+}}
+QLabel#pvp-draft-result-portrait {{
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 5px;
+    background: {UI_BG_BUTTON};
+    color: {UI_TEXT_MUTED};
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 900;
+}}
+QLabel#pvp-draft-result-portrait[hasPixmap="true"] {{
+    background: transparent;
+}}
+QLabel#pvp-draft-result-chip-name {{
+    color: {UI_TEXT_PRIMARY};
+    background: transparent;
+    border: none;
+    font-size: 10px;
+    font-weight: 800;
 }}
 QPushButton#icon_button,
 QPushButton#row_save_button,
@@ -221,8 +252,8 @@ QFrame#pvp-timer-area {{
     background: {UI_BG_PANEL_RAISED};
 }}
 QFrame#pvp-team-slot {{
-    border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 6px;
+    border: 2px solid {UI_BORDER_DEFAULT};
+    border-radius: 7px;
     background: {UI_BG_PANEL_RAISED};
     color: {UI_TEXT_SECONDARY};
 }}
@@ -230,16 +261,18 @@ QFrame#pvp-team-slot[hasCharacter="true"] {{
     color: {UI_TEXT_PRIMARY};
 }}
 QFrame#pvp-team-slot[selectedAssignment="true"],
-QFrame#pvp-team-slot[selectedWeaponCharacter="true"] {{
+QFrame#pvp-team-slot[selectedWeaponCharacter="true"],
+QFrame#pvp-team-slot[selected="true"],
+QFrame#pvp-team-slot[secondarySelected="true"] {{
     border-color: {UI_STATE_SUCCESS};
     background: #203b28;
 }}
 QLabel#pvp-target-slot-portrait {{
     border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 5px;
+    border-radius: 6px;
     background: {UI_BG_BUTTON};
     color: {UI_TEXT_MUTED};
-    font-size: 10px;
+    font-size: 20px;
     font-weight: 800;
 }}
 QLabel#pvp-target-slot-portrait[hasPixmap="true"] {{
@@ -264,12 +297,30 @@ QLabel#pvp-target-slot-artifact {{
     font-size: 8px;
     font-weight: 800;
 }}
+QPushButton#pvp-target-slot-clear {{
+    min-width: 18px;
+    max-width: 18px;
+    min-height: 18px;
+    max-height: 18px;
+    padding: 0px;
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 4px;
+    background: {UI_BG_BUTTON};
+    color: {UI_TEXT_MUTED};
+    font-size: 10px;
+    font-weight: 900;
+}}
+QPushButton#pvp-target-slot-clear:hover {{
+    border-color: {UI_STATE_DANGER};
+    color: {UI_TEXT_PRIMARY};
+    background: #4a2529;
+}}
 QLabel#pvp-target-slot-name {{
     color: {UI_TEXT_SECONDARY};
     background: transparent;
     border: none;
-    font-size: 10px;
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 800;
 }}
 QFrame#pvp-timer-row {{
     border: none;

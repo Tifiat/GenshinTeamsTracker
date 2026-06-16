@@ -12,6 +12,7 @@ class RightPanelOwnershipImportsTest(unittest.TestCase):
             RightPanelPortraitMiniBox,
             RightPanelWeaponMiniBox,
         )
+        from ui.right_panel.common.compact_slot import RightPanelCompactSlotWidget
         from ui.right_panel.common.slot_card import RightPanelSlotCardWidget
         from ui.right_panel.common.team_card import RightPanelTeamCardWidget
         from ui.right_panel.dock import RightOperationsDock
@@ -30,6 +31,7 @@ class RightPanelOwnershipImportsTest(unittest.TestCase):
             RightPanelArtifactMiniZoneWidget.__name__,
             "RightPanelArtifactMiniZoneWidget",
         )
+        self.assertEqual(RightPanelCompactSlotWidget.__name__, "RightPanelCompactSlotWidget")
         self.assertEqual(RightPanelSlotCardWidget.__name__, "RightPanelSlotCardWidget")
         self.assertEqual(RightPanelTeamCardWidget.__name__, "RightPanelTeamCardWidget")
         self.assertEqual(RunRightPanelWidget.__name__, "RunRightPanelWidget")
@@ -120,10 +122,14 @@ class RightPanelOwnershipImportsTest(unittest.TestCase):
         source = (
             root / "ui/right_panel/pvp/draft/assignment/target_slot.py"
         ).read_text(encoding="utf-8")
+        common_source = (
+            root / "ui/right_panel/common/compact_slot.py"
+        ).read_text(encoding="utf-8")
 
-        self.assertIn("RightPanelPortraitMiniBox", source)
-        self.assertIn("RightPanelWeaponMiniBox", source)
-        self.assertIn("RightPanelArtifactMiniZoneWidget", source)
+        self.assertIn("RightPanelCompactSlotWidget", source)
+        self.assertIn("RightPanelPortraitMiniBox", common_source)
+        self.assertIn("RightPanelWeaponMiniBox", common_source)
+        self.assertIn("RightPanelArtifactMiniZoneWidget", common_source)
 
 
 if __name__ == "__main__":

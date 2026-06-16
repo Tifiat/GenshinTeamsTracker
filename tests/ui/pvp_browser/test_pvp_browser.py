@@ -26,6 +26,7 @@ from ui.right_panel.pvp._shared import (
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
 from ui.right_panel.pvp.draft.assignment.target_slot import PvpPostDraftTargetSlotWidget
 from ui.right_panel.pvp.draft.panel import PvpDraftRightPanel
+from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultChipWidget
 from ui.right_panel.pvp.host import PvpRightPanelHost
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
 from ui.utils.pixel_icon_grid import PixelIconGrid
@@ -472,6 +473,17 @@ class PvpBrowserTest(unittest.TestCase):
             ]
         )
         self.assertEqual(len(draft.card_buttons_by_character_id), len(pool_entries))
+        self.assertFalse(draft.findChildren(QPushButton, "pvp_draft_card"))
+        self.assertGreaterEqual(
+            len(draft.findChildren(QFrame, "pvp_draft_card")),
+            len(pool_entries),
+        )
+        self.assertTrue(
+            all(
+                button.property("hasPortraitPixmap")
+                for button in draft.card_buttons_by_character_id.values()
+            )
+        )
         self.assertEqual(
             len({button.character_id for button in draft.legal_card_buttons}),
             board["progress"]["legal_target_count"],
@@ -535,14 +547,15 @@ class PvpBrowserTest(unittest.TestCase):
             banned_id,
             board["unified_pool"]["result_zones"]["player_1"]["banned"],
         )
-        self.assertIn(
-            _board_entry(board, banned_id)["display_name"],
-            draft_panel.result_zone_value_labels[("player_1", "banned")].text(),
+        banned_zone = draft_panel.result_zone_widgets[("player_1", "banned")]
+        picked_zone = draft_panel.result_zone_widgets[("player_1", "picked")]
+        self.assertIn(banned_id, banned_zone.chips_by_character_id)
+        self.assertTrue(
+            banned_zone.chips_by_character_id[banned_id].property("hasPortraitPixmap")
         )
-        self.assertEqual(
-            draft_panel.result_zone_value_labels[("player_1", "picked")].text(),
-            tr("app_shell.pvp.draft.none"),
-        )
+        self.assertFalse(picked_zone.chips_by_character_id)
+        self.assertFalse(draft_panel.findChildren(QLabel, "pvp_draft_result_picks"))
+        self.assertFalse(draft_panel.findChildren(QLabel, "pvp_draft_result_bans"))
 
     def test_pvp_draft_same_deck_self_vs_self_keeps_seat_state_independent(self) -> None:
         workspace, _panel = self._started_draft_workspace(
@@ -603,13 +616,15 @@ class PvpBrowserTest(unittest.TestCase):
                 for button in workspace.draft_workspace.card_buttons_by_character_id.values()
             )
         )
-        self.assertNotEqual(
-            draft_panel.result_zone_value_labels[("player_1", "picked")].text(),
-            tr("app_shell.pvp.draft.none"),
+        self.assertTrue(
+            draft_panel.result_zone_widgets[("player_1", "picked")].chips_by_character_id
         )
-        self.assertNotEqual(
-            draft_panel.result_zone_value_labels[("player_2", "picked")].text(),
-            tr("app_shell.pvp.draft.none"),
+        self.assertTrue(
+            draft_panel.result_zone_widgets[("player_2", "picked")].chips_by_character_id
+        )
+        self.assertGreater(
+            len(draft_panel.findChildren(PvpDraftResultChipWidget)),
+            0,
         )
         completed_text = "\n".join(
             label.text()
@@ -659,6 +674,7 @@ class PvpBrowserTest(unittest.TestCase):
             len(draft_panel.findChildren(PvpPostDraftTargetSlotWidget, "pvp-team-slot")),
             16,
         )
+        self.assertFalse(draft_panel.findChildren(QPushButton, "row_cancel_button"))
         for seat, zone in draft_panel.target_zone_frames_by_seat.items():
             self.assertEqual(len(zone.findChildren(QFrame, "pvp-team-half")), 2, seat)
         for seat in ("player_1", "player_2"):

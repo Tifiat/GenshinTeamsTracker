@@ -20,14 +20,16 @@ from ui.right_panel.pvp._shared import (
     _assignment_slots,
     _clear_layout,
     _completed_timer_text,
+    _draft_action_detail,
     _draft_action_log_lines,
+    _draft_action_title,
     _draft_is_complete,
     _draft_panel_status_lines,
-    _draft_result_zone_text,
     _draft_result_zone_title,
     _entry_display_name_for_id,
     _format_seconds,
     _is_post_draft_stage,
+    _mapping,
     _parse_timer_text,
     _postdraft_target_object_name,
     _postdraft_timer_total,
@@ -40,6 +42,7 @@ from ui.right_panel.pvp._shared import (
     _weapon_display_name,
 )
 from ui.right_panel.pvp.draft.assignment.target_slot import PvpPostDraftTargetSlotWidget
+from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultZoneWidget
 
 
 class PvpDraftRightPanel(QWidget):
@@ -65,6 +68,21 @@ class PvpDraftRightPanel(QWidget):
         self.empty_label.setObjectName("small_muted")
         self.empty_label.setWordWrap(True)
         root.addWidget(self.empty_label)
+
+        self.action_frame = QFrame()
+        self.action_frame.setObjectName("pvp_draft_action_card")
+        action_layout = QVBoxLayout(self.action_frame)
+        action_layout.setContentsMargins(9, 8, 9, 8)
+        action_layout.setSpacing(4)
+        self.action_label = QLabel()
+        self.action_label.setObjectName("pvp_draft_action_title")
+        self.action_label.setWordWrap(True)
+        action_layout.addWidget(self.action_label)
+        self.action_detail_label = QLabel()
+        self.action_detail_label.setObjectName("small_muted")
+        self.action_detail_label.setWordWrap(True)
+        action_layout.addWidget(self.action_detail_label)
+        root.addWidget(self.action_frame)
 
         self.match_frame = QFrame()
         self.match_frame.setObjectName("pvp_postdraft_match_panel")
@@ -96,32 +114,18 @@ class PvpDraftRightPanel(QWidget):
         self.stage_button.clicked.connect(self._on_stage_button_clicked)
         root.addWidget(self.stage_button)
 
-        self.result_zone_frames: dict[tuple[str, str], QFrame] = {}
-        self.result_zone_title_labels: dict[tuple[str, str], QLabel] = {}
-        self.result_zone_value_labels: dict[tuple[str, str], QLabel] = {}
+        self.result_zone_frames: dict[tuple[str, str], PvpDraftResultZoneWidget] = {}
+        self.result_zone_widgets = self.result_zone_frames
         for seat in ("player_1", "player_2"):
             for zone in ("picked", "banned"):
-                frame = QFrame()
-                frame.setObjectName("pvp_draft_result_zone")
-                frame_layout = QVBoxLayout(frame)
-                frame_layout.setContentsMargins(8, 7, 8, 7)
-                frame_layout.setSpacing(3)
-                title = QLabel()
-                title.setObjectName("pvp_draft_result_title")
-                frame_layout.addWidget(title)
-                value = QLabel()
-                value.setObjectName(
-                    "pvp_draft_result_picks"
-                    if zone == "picked"
-                    else "pvp_draft_result_bans"
+                frame = PvpDraftResultZoneWidget(
+                    seat=seat,
+                    zone=zone,
+                    title=_draft_result_zone_title(seat, zone),
                 )
-                value.setWordWrap(True)
-                frame_layout.addWidget(value)
                 root.addWidget(frame)
                 key = (seat, zone)
                 self.result_zone_frames[key] = frame
-                self.result_zone_title_labels[key] = title
-                self.result_zone_value_labels[key] = value
 
         self.log_title_label = QLabel()
         self.log_title_label.setObjectName("pvp_deck_info_line")
@@ -159,6 +163,7 @@ class PvpDraftRightPanel(QWidget):
         session = self.workspace.active_draft_session
         has_session = session is not None
         self.empty_label.setVisible(not has_session)
+        self.action_frame.setVisible(False)
         self.match_frame.setVisible(False)
         self.status_frame.setVisible(has_session)
         self.log_title_label.setVisible(has_session)
@@ -183,6 +188,10 @@ class PvpDraftRightPanel(QWidget):
         board = session.board_dict()
         stage = self.workspace.draft_stage
         post_draft_stage = _is_post_draft_stage(stage)
+        self.action_frame.setVisible(not post_draft_stage)
+        if not post_draft_stage:
+            self.action_label.setText(_draft_action_title(board))
+            self.action_detail_label.setText(_draft_action_detail(board))
         if post_draft_stage:
             self._rebuild_match_panel(board, stage)
         else:
@@ -203,12 +212,8 @@ class PvpDraftRightPanel(QWidget):
         } and not post_draft_stage
         for key, frame in self.result_zone_frames.items():
             seat, zone = key
-            self.result_zone_title_labels[key].setText(
-                _draft_result_zone_title(seat, zone)
-            )
-            self.result_zone_value_labels[key].setText(
-                _draft_result_zone_text(board, seat=seat, zone=zone)
-            )
+            frame.set_title(_draft_result_zone_title(seat, zone))
+            frame.set_items(self._result_zone_items(board, seat=seat, zone=zone))
             frame.setVisible(show_draft_summary)
 
         log_lines = _draft_action_log_lines(board, limit=len(self.log_labels))
@@ -248,6 +253,36 @@ class PvpDraftRightPanel(QWidget):
             self.stage_button.setEnabled(self.workspace.timers_ready())
             return
         self.stage_button.setVisible(False)
+
+    def _result_zone_items(
+        self,
+        board: Mapping[str, Any],
+        *,
+        seat: str,
+        zone: str,
+    ) -> list[dict[str, Any]]:
+        result_zones = _mapping(_mapping(board.get("unified_pool")).get("result_zones"))
+        seat_zones = _mapping(result_zones.get(seat))
+        character_ids = seat_zones.get(zone)
+        if not isinstance(character_ids, list):
+            return []
+        items: list[dict[str, Any]] = []
+        for character_id_value in character_ids:
+            character_id = str(character_id_value or "").strip()
+            if not character_id:
+                continue
+            items.append(
+                {
+                    "character_id": character_id,
+                    "name": _entry_display_name_for_id(board, character_id),
+                    "portrait_path": _asset_image_path(
+                        self.workspace.draft_workspace._character_assets_by_id.get(
+                            character_id,
+                        )
+                    ),
+                }
+            )
+        return items
 
     def _on_stage_button_clicked(self) -> None:
         stage = self.workspace.draft_stage

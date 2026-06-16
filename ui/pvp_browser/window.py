@@ -91,6 +91,7 @@ from ui.utils.pixel_icon_grid import (
     PixelIconGridOutline,
 )
 from ui.utils.tooltips import install_custom_tooltip
+from ui.right_panel.common.slot_parts import RightPanelPortraitMiniBox, slot_portrait_fallback
 from ui.right_panel.pvp._shared import (
     PVP_DRAFT_STAGE_ASSIGNMENT,
     PVP_DRAFT_STAGE_COMPLETED_RESULT,
@@ -113,6 +114,7 @@ from ui.right_panel.pvp._shared import (
     _completed_draft_lines,
     _draft_action_from_unified_pool,
     _draft_action_label,
+    _draft_card_status_label,
     _draft_is_complete,
     _draft_main_pool_entries,
     _draft_stage,
@@ -135,6 +137,7 @@ from ui.right_panel.pvp._shared import (
     _pvp_weapon_sort_key,
     _refresh_qss,
     _seat_label,
+    _seat_short_label,
     _selected_assignment_character,
     _selected_weapon_character,
     _text,
@@ -380,43 +383,88 @@ QWidget#pvp_draft_scroll_viewport,
 QWidget#pvp_draft_scroll_content {{
     background: transparent;
 }}
-QPushButton#pvp_draft_card {{
-    min-width: 136px;
-    max-width: 136px;
-    min-height: 88px;
-    max-height: 88px;
-    padding: 6px;
+QFrame#pvp_draft_card {{
     border: 1px solid {UI_BORDER_DEFAULT};
     border-radius: 8px;
     background: {UI_BG_PANEL_RAISED};
     color: {UI_TEXT_SECONDARY};
-    text-align: left;
-    font-size: 11px;
-    font-weight: 700;
 }}
-QPushButton#pvp_draft_card[legalTarget="true"] {{
+QFrame#pvp_draft_card[legalTarget="true"] {{
     border-color: {UI_STATE_SUCCESS};
     background: #203b28;
     color: {UI_TEXT_PRIMARY};
 }}
-QPushButton#pvp_draft_card[ownerP1="true"] {{
+QFrame#pvp_draft_card[ownerP1="true"] {{
     border-left: 4px solid {UI_ACCENT_TEAM_1};
 }}
-QPushButton#pvp_draft_card[ownerP2="true"] {{
+QFrame#pvp_draft_card[ownerP2="true"] {{
     border-right: 4px solid {UI_ACCENT_TEAM_2};
 }}
-QPushButton#pvp_draft_card[sharedOwner="true"] {{
+QFrame#pvp_draft_card[sharedOwner="true"] {{
     border-color: #d6b35f;
     background: #2d2d28;
 }}
-QPushButton#pvp_draft_card[status="blocked"],
-QPushButton#pvp_draft_card[status="invalid"] {{
+QFrame#pvp_draft_card[status="blocked"],
+QFrame#pvp_draft_card[status="invalid"] {{
     border-color: #69512d;
     background: #352a1d;
     color: {UI_TEXT_SECONDARY};
 }}
-QPushButton#pvp_draft_card:disabled {{
+QFrame#pvp_draft_card:disabled {{
     color: {UI_TEXT_MUTED};
+}}
+QLabel#pvp-draft-card-portrait,
+QLabel#pvp-draft-card-portrait-empty {{
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 6px;
+    background: {UI_BG_BUTTON};
+    color: {UI_TEXT_MUTED};
+    font-size: 18px;
+    font-weight: 900;
+}}
+QLabel#pvp-draft-card-name {{
+    color: {UI_TEXT_PRIMARY};
+    background: transparent;
+    border: none;
+    font-size: 12px;
+    font-weight: 800;
+}}
+QLabel#pvp-draft-card-meta,
+QLabel#pvp-draft-card-status {{
+    color: {UI_TEXT_SECONDARY};
+    background: transparent;
+    border: none;
+    font-size: 10px;
+    font-weight: 700;
+}}
+QLabel#pvp-draft-card-action {{
+    min-height: 20px;
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 5px;
+    background: {UI_BG_BUTTON};
+    color: {UI_TEXT_SECONDARY};
+    font-size: 10px;
+    font-weight: 900;
+}}
+QFrame#pvp_draft_card[legalTarget="true"] QLabel#pvp-draft-card-action {{
+    border-color: {UI_STATE_SUCCESS};
+    background: #24452d;
+    color: {UI_TEXT_PRIMARY};
+}}
+QLabel#pvp-draft-owner-p1,
+QLabel#pvp-draft-owner-p2 {{
+    min-height: 18px;
+    border-radius: 4px;
+    color: {UI_TEXT_PRIMARY};
+    font-size: 10px;
+    font-weight: 900;
+    padding: 0px 4px;
+}}
+QLabel#pvp-draft-owner-p1 {{
+    background: {UI_ACCENT_TEAM_1};
+}}
+QLabel#pvp-draft-owner-p2 {{
+    background: {UI_ACCENT_TEAM_2};
 }}
 QLabel#pvp_draft_pool_empty {{
     color: {UI_TEXT_MUTED};
@@ -427,16 +475,6 @@ QLabel#pvp_draft_result_title {{
     color: {UI_TEXT_PRIMARY};
     font-size: 12px;
     font-weight: 800;
-}}
-QLabel#pvp_draft_result_picks {{
-    color: {UI_TEXT_PRIMARY};
-    font-size: 12px;
-    font-weight: 700;
-}}
-QLabel#pvp_draft_result_bans {{
-    color: {UI_TEXT_SECONDARY};
-    font-size: 11px;
-    font-weight: 600;
 }}
 QFrame#pvp_postdraft_source_frame,
 QFrame#pvp-postdraft-source-player-1,
@@ -1239,13 +1277,14 @@ class PvpPlayWorkspace(QWidget):
         self.refresh()
 
 
-class PvpDraftUnifiedCardButton(QPushButton):
+class PvpDraftUnifiedCardButton(QFrame):
     card_clicked = Signal(dict)
 
     def __init__(
         self,
         *,
         entry: Mapping[str, Any],
+        portrait_path: str = "",
         draft_complete: bool,
         parent: QWidget | None = None,
     ) -> None:
@@ -1261,7 +1300,10 @@ class PvpDraftUnifiedCardButton(QPushButton):
             and bool(self.action_payload)
             and not draft_complete
         )
+        self._legal = legal
+        self._card_text = _draft_unified_card_text(entry)
         self.setObjectName("pvp_draft_card")
+        self.setFixedSize(156, 118)
         self.setProperty("characterId", self.character_id)
         self.setProperty("status", status)
         self.setProperty("zone", zone)
@@ -1269,17 +1311,111 @@ class PvpDraftUnifiedCardButton(QPushButton):
         self.setProperty("ownerP1", "player_1" in self.owner_seats)
         self.setProperty("ownerP2", "player_2" in self.owner_seats)
         self.setProperty("sharedOwner", len(self.owner_seats) > 1)
-        self.setText(_draft_unified_card_text(entry))
         self.setEnabled(legal)
         self.setCursor(
             Qt.CursorShape.PointingHandCursor
             if legal
             else Qt.CursorShape.ArrowCursor
         )
-        self.clicked.connect(
-            lambda _checked=False: self.card_clicked.emit(dict(self.action_payload))
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(6, 6, 6, 6)
+        root.setSpacing(4)
+
+        top = QHBoxLayout()
+        top.setContentsMargins(0, 0, 0, 0)
+        top.setSpacing(6)
+        root.addLayout(top)
+
+        display_name = _text(entry.get("display_name")) or self.character_id
+        self.portrait_label = RightPanelPortraitMiniBox(
+            box_size=QSize(58, 58),
+            object_name="pvp-draft-card-portrait",
+            empty_object_name="pvp-draft-card-portrait-empty",
         )
+        portrait_loaded = self.portrait_label.set_portrait(
+            image_path=portrait_path,
+            fallback_text=slot_portrait_fallback(display_name, 0),
+            empty=False,
+            surface="pvp_draft_unified_card",
+        )
+        self.setProperty("hasPortraitPixmap", portrait_loaded)
+        self.setProperty("hasImage", bool(portrait_path))
+        top.addWidget(self.portrait_label, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        text_col = QVBoxLayout()
+        text_col.setContentsMargins(0, 0, 0, 0)
+        text_col.setSpacing(2)
+        top.addLayout(text_col, 1)
+
+        self.name_label = QLabel(display_name)
+        self.name_label.setObjectName("pvp-draft-card-name")
+        self.name_label.setWordWrap(False)
+        text_col.addWidget(self.name_label)
+
+        meta_text = " ".join(
+            part
+            for part in (
+                _text(entry.get("element")),
+                _text(entry.get("weapon_type")),
+                f"Lv.{int(entry.get('level') or 0)}" if entry.get("level") else "",
+            )
+            if part
+        )
+        self.meta_label = QLabel(meta_text)
+        self.meta_label.setObjectName("pvp-draft-card-meta")
+        self.meta_label.setWordWrap(False)
+        text_col.addWidget(self.meta_label)
+
+        action_text = (
+            _draft_action_label(_text(self.action_payload.get("type")))
+            if legal
+            else _draft_card_status_label(status)
+        )
+        self.action_label = QLabel(action_text)
+        self.action_label.setObjectName("pvp-draft-card-action")
+        self.action_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        text_col.addWidget(self.action_label)
+
+        owner_row = QHBoxLayout()
+        owner_row.setContentsMargins(0, 0, 0, 0)
+        owner_row.setSpacing(4)
+        root.addLayout(owner_row)
+        per_seat = _mapping(entry.get("per_seat"))
+        for seat in ("player_1", "player_2"):
+            if seat not in self.owner_seats:
+                continue
+            owner = QLabel(
+                f"{_seat_short_label(seat)} C{int(_mapping(per_seat.get(seat)).get('constellation') or 0)}"
+            )
+            owner.setObjectName(
+                "pvp-draft-owner-p1"
+                if seat == "player_1"
+                else "pvp-draft-owner-p2"
+            )
+            owner.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            owner_row.addWidget(owner)
+        owner_row.addStretch(1)
+
+        self.status_label = QLabel(_draft_card_status_label(status))
+        self.status_label.setObjectName("pvp-draft-card-status")
+        root.addWidget(self.status_label)
         _refresh_qss(self)
+        _refresh_qss(self.portrait_label)
+
+    def text(self) -> str:
+        return self._card_text
+
+    def click(self) -> None:
+        if self._legal:
+            self.card_clicked.emit(dict(self.action_payload))
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt override
+        if event.button() == Qt.MouseButton.LeftButton and self._legal:
+            self.card_clicked.emit(dict(self.action_payload))
+            event.accept()
+            return
+        super().mousePressEvent(event)
 
 
 class PvpPostDraftGridItemHandle:
@@ -1519,8 +1655,12 @@ class PvpDraftWorkspace(QWidget):
         columns = 5
         for index, entry_value in enumerate(entries):
             entry = _mapping(entry_value)
+            character_id = _text(entry.get("character_id"))
             button = PvpDraftUnifiedCardButton(
                 entry=entry,
+                portrait_path=_asset_image_path(
+                    self._character_assets_by_id.get(character_id),
+                ),
                 draft_complete=draft_complete,
             )
             button.card_clicked.connect(self.card_clicked.emit)

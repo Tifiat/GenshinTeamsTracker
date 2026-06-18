@@ -136,11 +136,12 @@ Mode terminology:
   Characters/Weapons + Artifact Browser + GCSIM Browser + `RunRightPanelWidget`
   pipeline. The scope owns its own run state and equipment/artifact data source,
   while reusing the existing widget/controller behavior.
-- That data source is a PvP profile provider: local players may point at the
-  current app SQLite DB, while imported/remote players point at a `.gttpvp`
-  package's managed temporary `account_slice.sqlite`. AppShell should consume
-  the provider `db_path` through the existing workspace/browser constructors
-  rather than adding a PvP-only data path.
+- PvP source data comes from a profile provider: local players may read the
+  current app SQLite DB as source data, while imported/remote players read a
+  `.gttpvp` package's managed temporary `account_slice.sqlite`. Runtime
+  equipment state is not the provider DB: PvP uses separate per-seat scoped
+  weapon/artifact equipment state that starts empty and never writes normal
+  account equipment tables.
 
 The global source-ownership refactor toward this tree has been applied for the
 current right-panel code. Future moves should keep imports and corresponding
@@ -480,13 +481,14 @@ durable saved results must later attach through explicit session/snapshot data.
   exposes package export; Play exposes import and return-to-local actions per
   seat. Import selects an imported provider and never restores profile data
   into the main app database.
-- PvP artifact equipment is target product direction. Player 1 should receive a
-  temporary isolated copy of the current local Artifact Browser data/session;
-  Player 2 should receive a temporary empty Artifact Browser session with JSON
-  import. Both are scoped to the active PvP match and must not mutate the main
-  Artifact Browser, normal account artifact state, or live-run builds. Prefer
-  reusing Artifact Browser logic through a scoped PvP adapter/session rather
-  than forking a second browser.
+- PvP artifact equipment is target product direction. Local players should read
+  shared artifact source data without duplicating the whole local DB, while
+  artifact equipment choices and newly created PvP runtime state stay scoped to
+  the active match/seat. Imported/remote players read source data from their
+  package/provider. None of these paths may mutate the main Artifact Browser,
+  normal account artifact state, or live-run builds. Prefer reusing Artifact
+  Browser logic through a scoped PvP adapter/session rather than forking a
+  second browser.
 - PvP can expose GCSIM through a button/action inside Draft/build flow, routing
   to a scoped PvP GCSIM stage/panel using PvP teams/builds. It should not add a
   separate top-level PvP GCSIM Browser tab or use normal live-run teams.

@@ -105,7 +105,10 @@ Mirror the primary project owner under `tests/`:
   assigned-character overlays, and no custom PvP target-slot hierarchy in place
   of `RunRightPanelWidget`. They also cover normal slot-target selection,
   selected-slot weapon assignment, Ready backend commits, both-Ready timer
-  transition, and imported-profile provider routing. Tests in this folder may instantiate the moved
+  transition, imported-profile provider routing, per-seat scoped PvP runtime
+  weapon state, no mutation of normal account equipment tables, no initial
+  leakage of normal/imported owner badges into PvP source grids, and stable
+  post-draft source/right-panel widget identity across clicks. Tests in this folder may instantiate the moved
   right-panel widgets when asserting cross-page behavior, but those imports
   should come from `ui.right_panel.pvp.*`, not from the old compatibility
   exports in `ui.pvp_browser.window`.

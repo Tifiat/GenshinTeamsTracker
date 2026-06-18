@@ -13,6 +13,10 @@ from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QColor, QKeyEvent, QPixmap
 from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton
 
+from hoyolab_export.account_equipment import (
+    equip_weapon,
+    list_equipped_weapon_owners,
+)
 from hoyolab_export.artifact_db import connect_db, init_db
 from localization import tr
 from ui.pvp_browser.build_flow import PvpScopedCharacterWeaponWorkspace
@@ -819,6 +823,122 @@ class PvpBrowserTest(unittest.TestCase):
             seat_context.controller.roster_selection_markers(),
         )
 
+    def test_pvp_runtime_weapon_state_is_isolated_and_incremental(self) -> None:
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        portrait_path, weapon_path = _create_test_asset_images(temp_dir.name)
+        characters = _valid_character_assets(24, image_path=portrait_path)
+        weapons = [
+            _weapon_asset(
+                "11401",
+                "Sword",
+                weapon_type=1,
+                weapon_type_name="Sword",
+                known_count=24,
+                image_path=weapon_path,
+            )
+        ]
+        db_path = Path(temp_dir.name) / "pvp-runtime-state.sqlite"
+        _seed_pvp_build_db(db_path, characters=characters, weapons=weapons)
+        weapon_fingerprint = weapons[0]["metadata"]["weapon"]["weapon_fingerprint"]
+        with closing(connect_db(db_path)) as conn:
+            equip_weapon(conn, _asset_character_id(characters[0]), weapon_fingerprint)
+            conn.commit()
+            self.assertEqual(
+                tuple(list_equipped_weapon_owners(conn, weapon_fingerprint)),
+                (int(_asset_character_id(characters[0])),),
+            )
+
+        workspace = PvpWorkspace(db_path=db_path, deck_dir=temp_dir.name)
+        self.assertTrue(
+            any(
+                weapon.get("metadata", {}).get("owner_badges")
+                for weapon in workspace.weapon_assets
+            )
+        )
+        self.assertTrue(workspace.decks_workspace.create_deck("Mirror"))
+        self.assertTrue(workspace.decks_workspace.save_edit(name="Mirror"))
+        play_panel = PvpPlayRightPanel(workspace)
+        play_panel.start_button.click()
+        QApplication.processEvents()
+        self._complete_draft(workspace)
+        self.assertTrue(workspace.continue_to_assignment())
+        draft_panel = PvpDraftRightPanel(workspace)
+
+        p1_source = workspace.build_source_workspace("player_1")
+        p2_source = workspace.build_source_workspace("player_2")
+        self.assertIsInstance(p1_source, PvpScopedCharacterWeaponWorkspace)
+        self.assertIsInstance(p2_source, PvpScopedCharacterWeaponWorkspace)
+        p1_weapon_item_id = p1_source.weapon_grid.item_ids()[0]
+        p2_weapon_item_id = p2_source.weapon_grid.item_ids()[0]
+        self.assertFalse(
+            p1_source.weapon_grid.item_property(p1_weapon_item_id, "has_owner_badges")
+        )
+        self.assertFalse(
+            p2_source.weapon_grid.item_property(p2_weapon_item_id, "has_owner_badges")
+        )
+
+        p1_run_panel = draft_panel.postdraft_run_panels_by_seat["player_1"]
+        p1_zone = draft_panel.target_zone_frames_by_seat["player_1"]
+        p1_first_pick = workspace.active_draft_session.board_dict()["unified_pool"][
+            "result_zones"
+        ]["player_1"]["picked"][0]
+        p1_asset = next(
+            asset
+            for asset in workspace.character_assets
+            if _asset_character_id(asset) == p1_first_pick
+        )
+        with patch.object(
+            p1_source,
+            "reload_characters",
+            wraps=p1_source.reload_characters,
+        ) as reload_characters:
+            self.assertTrue(p1_source.char_grid.click_item_for_test(p1_first_pick))
+            QApplication.processEvents()
+            self.assertEqual(reload_characters.call_count, 0)
+        self.assertIs(workspace.build_source_workspace("player_1"), p1_source)
+        self.assertIs(draft_panel.postdraft_run_panels_by_seat["player_1"], p1_run_panel)
+        self.assertIs(draft_panel.target_zone_frames_by_seat["player_1"], p1_zone)
+        self.assertEqual(
+            workspace.build_flow_context.seat("player_1")
+            .controller.state.team(0)
+            .slot(0)
+            .character.id,
+            p1_first_pick,
+        )
+
+        self.assertTrue(workspace.handle_build_weapon_clicked("player_1", weapons[0]))
+        QApplication.processEvents()
+        self.assertTrue(
+            p1_source.weapon_grid.item_property(p1_weapon_item_id, "has_owner_badges")
+        )
+        self.assertFalse(
+            p2_source.weapon_grid.item_property(p2_weapon_item_id, "has_owner_badges")
+        )
+        with closing(connect_db(db_path)) as conn:
+            self.assertEqual(
+                tuple(list_equipped_weapon_owners(conn, weapon_fingerprint)),
+                (int(_asset_character_id(characters[0])),),
+            )
+
+        p2_first_pick = workspace.active_draft_session.board_dict()["unified_pool"][
+            "result_zones"
+        ]["player_2"]["picked"][0]
+        p2_asset = next(
+            asset
+            for asset in workspace.character_assets
+            if _asset_character_id(asset) == p2_first_pick
+        )
+        self.assertTrue(workspace.handle_build_character_clicked("player_2", p2_asset))
+        self.assertTrue(workspace.handle_build_weapon_clicked("player_2", weapons[0]))
+        QApplication.processEvents()
+        self.assertTrue(
+            p1_source.weapon_grid.item_property(p1_weapon_item_id, "has_owner_badges")
+        )
+        self.assertTrue(
+            p2_source.weapon_grid.item_property(p2_weapon_item_id, "has_owner_badges")
+        )
+
     def test_pvp_weapon_stage_rejects_incompatible_and_exhausted_stack(self) -> None:
         weapons = [
             _weapon_asset(
@@ -922,6 +1042,10 @@ class PvpBrowserTest(unittest.TestCase):
         ]
         db_path = Path(temp_dir.name) / "local.sqlite"
         _seed_pvp_build_db(db_path, characters=characters, weapons=weapons)
+        weapon_fingerprint = weapons[0]["metadata"]["weapon"]["weapon_fingerprint"]
+        with closing(connect_db(db_path)) as conn:
+            equip_weapon(conn, _asset_character_id(characters[0]), weapon_fingerprint)
+            conn.commit()
         workspace = PvpWorkspace(
             db_path=db_path,
             deck_dir=temp_dir.name,
@@ -941,6 +1065,12 @@ class PvpBrowserTest(unittest.TestCase):
             [preset.name for preset in workspace.play_deck_options("player_2")],
             ["Local"],
         )
+        self.assertTrue(
+            any(
+                asset.get("metadata", {}).get("owner_badges")
+                for asset in workspace._profile_assets("player_2")[1]
+            )
+        )
         play_panel = PvpPlayRightPanel(workspace)
         self.assertFalse(play_panel.player_2_local_button.isHidden())
         self.assertIn("remote", play_panel.player_2_label.text())
@@ -949,6 +1079,14 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertTrue(workspace.start_local_draft(deck_id, deck_id))
         self._complete_draft(workspace)
         self.assertTrue(workspace.continue_to_assignment())
+        player_2_source = workspace.build_source_workspace("player_2")
+        player_2_weapon_item_id = player_2_source.weapon_grid.item_ids()[0]
+        self.assertFalse(
+            player_2_source.weapon_grid.item_property(
+                player_2_weapon_item_id,
+                "has_owner_badges",
+            )
+        )
         imported_provider = workspace.seat_profile_provider("player_2")
         self.assertIs(
             workspace.build_flow_context.seat("player_2").provider,

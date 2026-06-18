@@ -111,6 +111,8 @@ class PvpDraftRightPanel(QWidget):
         self.target_zone_frames_by_seat: dict[str, QFrame] = {}
         self.team_slot_buttons_by_key: dict[tuple[str, int, int], RightPanelSlotCardWidget] = {}
         self.postdraft_run_panels_by_seat: dict[str, PvpPostDraftRunPanel] = {}
+        self.postdraft_toggle_buttons_by_seat: dict[str, QPushButton] = {}
+        self.postdraft_ready_buttons_by_seat: dict[str, QPushButton] = {}
         self.collapsed_postdraft_seats: set[str] = {"player_2"}
 
         self.status_frame = QFrame()
@@ -303,14 +305,21 @@ class PvpDraftRightPanel(QWidget):
         self.target_zone_frames_by_seat.clear()
         self.team_slot_buttons_by_key.clear()
         self.postdraft_run_panels_by_seat.clear()
+        self.postdraft_toggle_buttons_by_seat.clear()
+        self.postdraft_ready_buttons_by_seat.clear()
 
     def _rebuild_match_panel(self, board: Mapping[str, Any], stage: str) -> None:
-        _clear_layout(self.match_layout)
-        self._clear_match_registries()
         session = self.workspace.active_draft_session
         build_context = self.workspace.build_flow_context
         if session is None or build_context is None:
+            _clear_layout(self.match_layout)
+            self._clear_match_registries()
             return
+        if set(self.postdraft_run_panels_by_seat) == set(PVP_SEATS):
+            self._update_match_panel(stage)
+            return
+        _clear_layout(self.match_layout)
+        self._clear_match_registries()
         for seat in PVP_SEATS:
             seat_context = build_context.seat(seat)
             if seat_context is None:
@@ -331,6 +340,7 @@ class PvpDraftRightPanel(QWidget):
             toggle.clicked.connect(
                 lambda _checked=False, s=seat: self._toggle_postdraft_seat(s)
             )
+            self.postdraft_toggle_buttons_by_seat[seat] = toggle
             zone_layout.addWidget(toggle)
 
             panel = PvpPostDraftRunPanel(
@@ -355,11 +365,46 @@ class PvpDraftRightPanel(QWidget):
             ready_button.clicked.connect(
                 lambda _checked=False, s=seat: self.workspace.ready_build_seat(s)
             )
+            self.postdraft_ready_buttons_by_seat[seat] = ready_button
             ready_button.setVisible(
                 not collapsed and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}
             )
             zone_layout.addWidget(ready_button)
             self.match_layout.addWidget(zone, 0 if collapsed else 1)
+        self._update_match_panel(stage)
+
+    def _update_match_panel(self, stage: str) -> None:
+        build_context = self.workspace.build_flow_context
+        if build_context is None:
+            return
+        self.team_slot_buttons_by_key.clear()
+        for seat in PVP_SEATS:
+            seat_context = build_context.seat(seat)
+            panel = self.postdraft_run_panels_by_seat.get(seat)
+            zone = self.target_zone_frames_by_seat.get(seat)
+            if seat_context is None or panel is None or zone is None:
+                continue
+            collapsed = self.workspace.is_build_seat_collapsed(seat)
+            toggle = self.postdraft_toggle_buttons_by_seat.get(seat)
+            if toggle is not None:
+                toggle_prefix = ">" if collapsed else "v"
+                ready_marker = " ready" if seat_context.ready else ""
+                toggle.setText(f"{toggle_prefix} {_seat_label(seat)}{ready_marker}")
+            panel.set_model(seat_context.right_panel_model())
+            panel.setVisible(not collapsed)
+            self._register_target_run_panel_slots(panel, seat, seat_context)
+            ready_button = self.postdraft_ready_buttons_by_seat.get(seat)
+            if ready_button is not None:
+                ready_button.setEnabled(
+                    not seat_context.ready and seat_context.ready_candidate()
+                )
+                ready_button.setVisible(
+                    not collapsed
+                    and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}
+                )
+            zone_index = self.match_layout.indexOf(zone)
+            if zone_index >= 0:
+                self.match_layout.setStretch(zone_index, 0 if collapsed else 1)
 
     def _toggle_postdraft_seat(self, seat: str) -> None:
         self.workspace.toggle_build_seat_collapsed(seat)

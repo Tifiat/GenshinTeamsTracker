@@ -7,6 +7,7 @@ from typing import Any
 
 from PySide6.QtWidgets import QWidget
 
+from hoyolab_export.account_equipment import EquipmentChangeResult, EquipmentError
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
 from run_workspace.pvp.deck_preset import DEFAULT_PVP_DECK_PRESET_DIR
 from run_workspace.pvp.profile_package import (
@@ -65,7 +66,10 @@ class PvpScopedCharacterWeaponWorkspace(CharacterWeaponWorkspace):
             if _text(key)
         }
         self._pvp_character_assets = [dict(asset) for asset in character_assets]
-        self._pvp_weapon_assets = [dict(asset) for asset in weapon_assets]
+        self._pvp_weapon_assets = [
+            _strip_asset_owner_badges(asset)
+            for asset in weapon_assets
+        ]
 
     def _character_asset_items(self) -> tuple[list[dict], float, str]:
         if self._pvp_character_assets:
@@ -103,13 +107,195 @@ class PvpScopedCharacterWeaponWorkspace(CharacterWeaponWorkspace):
         assets, load_ms, source = super()._weapon_asset_items()
         return (
             [
-                dict(asset)
+                _strip_asset_owner_badges(asset)
                 for asset in assets
                 if _asset_weapon_keys(asset) & self._allowed_weapon_keys
             ],
             load_ms,
             source,
         )
+
+    def set_pvp_weapon_assets(
+        self,
+        assets: Iterable[dict[str, Any]],
+        *,
+        reload_grid: bool = True,
+    ) -> None:
+        self._pvp_weapon_assets = [dict(asset) for asset in assets]
+        self.refresh_weapon_asset_cache()
+        if reload_grid:
+            self.reload_weapons()
+
+    def update_grids(self) -> None:
+        self._initial_grid_built = True
+        super().update_grids()
+
+
+@dataclass(slots=True)
+class PvpRuntimeEquipmentState:
+    """Per-seat temporary PvP equipment state over provider source data."""
+
+    seat: str
+    allowed_character_ids: set[str]
+    allowed_weapon_keys: set[str]
+    weapon_assets_by_key: dict[str, dict[str, Any]]
+    known_count_by_key: dict[str, int]
+    weapons_by_character: dict[str, dict[str, Any]] = field(default_factory=dict)
+    characters_by_id: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    @classmethod
+    def from_assets(
+        cls,
+        *,
+        seat: str,
+        allowed_character_ids: Iterable[str],
+        allowed_weapon_keys: Iterable[str],
+        weapon_assets: Iterable[dict[str, Any]],
+    ) -> "PvpRuntimeEquipmentState":
+        allowed = {_text(key) for key in allowed_weapon_keys if _text(key)}
+        assets_by_key: dict[str, dict[str, Any]] = {}
+        counts_by_key: dict[str, int] = {}
+        for asset in weapon_assets:
+            weapon = _asset_metadata_mapping(asset, "weapon")
+            keys = _asset_weapon_keys(asset) & allowed
+            if not keys:
+                continue
+            clean_asset = _strip_asset_owner_badges(asset)
+            known_count = max(
+                1,
+                _optional_int(
+                    _mapping(clean_asset.get("metadata")).get("known_count")
+                    or weapon.get("known_count")
+                )
+                or 1,
+            )
+            for key in keys:
+                assets_by_key[key] = clean_asset
+                counts_by_key[key] = known_count
+        return cls(
+            seat=_text(seat),
+            allowed_character_ids={
+                _text(character_id)
+                for character_id in allowed_character_ids
+                if _text(character_id)
+            },
+            allowed_weapon_keys=allowed,
+            weapon_assets_by_key=assets_by_key,
+            known_count_by_key=counts_by_key,
+        )
+
+    def assign_weapon_to_character(
+        self,
+        character_id: str,
+        character: Mapping[str, Any],
+        weapon: Mapping[str, Any],
+    ) -> tuple[EquipmentChangeResult, dict[str, Any] | None]:
+        character_id = _text(character_id)
+        if character_id not in self.allowed_character_ids:
+            raise EquipmentError(f"PvP character is not in this seat pool: {character_id!r}")
+        weapon_key = _weapon_stack_key_from_mapping(weapon)
+        if weapon_key not in self.allowed_weapon_keys:
+            raise EquipmentError(f"PvP weapon is not in this seat pool: {weapon_key!r}")
+        self.characters_by_id[character_id] = dict(character)
+        current = self.weapons_by_character.get(character_id)
+        current_key = _weapon_stack_key_from_mapping(current or {})
+        if current_key == weapon_key:
+            self.weapons_by_character.pop(character_id, None)
+            return (
+                EquipmentChangeResult(
+                    operation="unequip_weapon",
+                    changed=True,
+                    message="pvp_scoped",
+                    affected_character_ids=(int(character_id),),
+                    affected_weapon_fingerprints=(weapon_key,),
+                ),
+                None,
+            )
+
+        known_count = max(1, self.known_count_by_key.get(weapon_key, 1))
+        owners = [
+            owner_id
+            for owner_id, equipped in self.weapons_by_character.items()
+            if _weapon_stack_key_from_mapping(equipped) == weapon_key
+            and owner_id != character_id
+        ]
+        affected_character_ids = {character_id}
+        if len(owners) >= known_count:
+            if len(owners) != 1:
+                raise EquipmentError(f"No available PvP copy for weapon stack {weapon_key!r}")
+            previous_owner = owners[0]
+            self.weapons_by_character.pop(previous_owner, None)
+            affected_character_ids.add(previous_owner)
+
+        self.weapons_by_character[character_id] = _pvp_weapon_ref(weapon, weapon_key)
+        return (
+            EquipmentChangeResult(
+                operation="equip_weapon",
+                changed=True,
+                message="pvp_scoped",
+                affected_character_ids=tuple(
+                    int(value)
+                    for value in sorted(affected_character_ids)
+                    if value.isdigit()
+                ),
+                affected_weapon_fingerprints=(weapon_key,),
+            ),
+            dict(self.weapons_by_character[character_id]),
+        )
+
+    def weapon_for_character(
+        self,
+        character_id: str,
+        _character: Mapping[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        weapon = self.weapons_by_character.get(_text(character_id))
+        return dict(weapon) if weapon else None
+
+    def artifact_ids_for_character(self, _character_id: str) -> dict[str, int]:
+        return {}
+
+    def weapon_assets_with_owner_badges(
+        self,
+        assets: Iterable[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return [
+            self._weapon_asset_with_owner_badges(_strip_asset_owner_badges(asset))
+            for asset in assets
+        ]
+
+    def _weapon_asset_with_owner_badges(self, asset: dict[str, Any]) -> dict[str, Any]:
+        keys = _asset_weapon_keys(asset)
+        owners = [
+            character_id
+            for character_id, weapon in self.weapons_by_character.items()
+            if _weapon_stack_key_from_mapping(weapon) in keys
+        ]
+        if not owners:
+            return asset
+        metadata = dict(_mapping(asset.get("metadata")))
+        metadata["owner_badges"] = [
+            badge
+            for character_id in owners
+            for badge in [self._owner_badge(character_id)]
+            if badge
+        ]
+        metadata["extra_owner_count"] = max(0, len(metadata["owner_badges"]) - 1)
+        asset["metadata"] = metadata
+        return asset
+
+    def _owner_badge(self, character_id: str) -> dict[str, Any]:
+        character = self.characters_by_id.get(_text(character_id), {})
+        side_icon_path = _text(
+            character.get("side_icon_path")
+            or character.get("local_side_icon_path")
+            or character.get("portrait_path")
+            or character.get("local_portrait_path")
+        )
+        return {
+            "character_id": _text(character_id),
+            "name": _text(character.get("name")) or _text(character_id),
+            "side_icon_path": side_icon_path,
+        }
 
 
 @dataclass(slots=True, weakref_slot=True)
@@ -123,11 +309,21 @@ class PvpSeatBuildContext:
     parent: QWidget | None = None
     controller: AppShellController = field(init=False)
     source_workspace: PvpScopedCharacterWeaponWorkspace = field(init=False)
+    equipment_state: PvpRuntimeEquipmentState = field(init=False)
     ready: bool = False
     last_error: str = ""
 
     def __post_init__(self) -> None:
-        self.controller = AppShellController.empty(equipment_db_path=self.provider.db_path)
+        self.equipment_state = PvpRuntimeEquipmentState.from_assets(
+            seat=self.seat,
+            allowed_character_ids=self.picked_character_ids,
+            allowed_weapon_keys=self.allowed_weapon_keys,
+            weapon_assets=self.weapon_assets,
+        )
+        self.controller = AppShellController.empty(
+            equipment_db_path=self.provider.db_path,
+            equipment_state=self.equipment_state,
+        )
         self.controller.set_mode(MODE_ABYSS)
         self.source_workspace = PvpScopedCharacterWeaponWorkspace(
             self.parent,
@@ -150,12 +346,18 @@ class PvpSeatBuildContext:
         character_id = _asset_character_id(asset)
         if character_id not in set(self.picked_character_ids):
             return False
-        changed = self.controller.add_or_replace_character(dict(asset))
-        if changed:
+        before_markers = self.controller.roster_selection_markers()
+        result = self.controller.add_or_replace_character_fast(dict(asset))
+        if result.changed:
             self.ready = False
             self.last_error = ""
-            self.sync_source_workspace()
-        return changed
+            self.sync_source_workspace(
+                affected_character_ids=_changed_marker_ids(
+                    before_markers,
+                    self.controller.roster_selection_markers(),
+                )
+            )
+        return result.changed
 
     def toggle_slot_selection(self, team_index: int, slot_index: int) -> None:
         self.controller.toggle_slot_selection(int(team_index), int(slot_index))
@@ -171,12 +373,23 @@ class PvpSeatBuildContext:
             return False
         self.ready = False
         self.last_error = ""
-        self.sync_source_workspace()
+        self.sync_source_workspace(refresh_weapons=True)
         return True
 
-    def sync_source_workspace(self, *, reload_grids: bool = False) -> None:
+    def sync_source_workspace(
+        self,
+        *,
+        reload_grids: bool = False,
+        refresh_weapons: bool = False,
+        affected_character_ids: set[str] | None = None,
+    ) -> None:
+        self.source_workspace.set_pvp_weapon_assets(
+            self.equipment_state.weapon_assets_with_owner_badges(self.weapon_assets),
+            reload_grid=False,
+        )
         self.source_workspace.set_character_selection_markers(
-            self.controller.roster_selection_markers()
+            self.controller.roster_selection_markers(),
+            affected_character_ids=affected_character_ids,
         )
         self.source_workspace.set_auto_weapon_type_filter(
             self.controller.selected_character_weapon_filter_key()
@@ -184,8 +397,10 @@ class PvpSeatBuildContext:
         if reload_grids:
             self.source_workspace.refresh_asset_cache()
             self.source_workspace.update_grids()
+        elif refresh_weapons:
+            self.source_workspace.reload_weapons()
         else:
-            self.source_workspace.reload_characters()
+            self.source_workspace.weapon_area.viewport().update()
 
     def right_panel_model(self):
         return self.controller.right_panel_model(load_abyss_source_data=False)
@@ -445,6 +660,31 @@ def _asset_weapon_keys(asset: Mapping[str, Any]) -> set[str]:
         if key:
             keys.add(key)
     return {key for key in keys if key}
+
+
+def _strip_asset_owner_badges(asset: Mapping[str, Any]) -> dict[str, Any]:
+    item = dict(asset)
+    metadata = dict(_mapping(item.get("metadata")))
+    metadata.pop("owner_badges", None)
+    metadata.pop("extra_owner_count", None)
+    item["metadata"] = metadata
+    return item
+
+
+def _pvp_weapon_ref(weapon: Mapping[str, Any], weapon_key: str) -> dict[str, Any]:
+    result = dict(weapon)
+    if weapon_key:
+        result.setdefault("variant_key", weapon_key)
+        result.setdefault("source_key", _text(weapon.get("source_key")) or weapon_key)
+    return result
+
+
+def _changed_marker_ids(before: Mapping[str, Any], after: Mapping[str, Any]) -> set[str]:
+    return {
+        character_id
+        for character_id in set(before) | set(after)
+        if before.get(character_id) != after.get(character_id)
+    }
 
 
 def _slot_character_id(slot: TeamBuilderSlotState) -> str:

@@ -102,24 +102,24 @@ scoped instance of the normal live-run build pipeline:
 - PvP must be able to launch that pipeline with a scoped PvP run context instead
   of the user's normal live-run state. The scoped context owns its own
   `RunSessionController` / `TeamBuilderState`, selected slot, timers, runtime
-  GCSIM summaries, and equipment database path/provider.
-- The scoped equipment/artifact database may be a temporary copy of the current
-  local account database for Player 1, an empty/imported temporary database for
-  Player 2, or another explicit PvP data provider. It must be isolated: build
-  actions inside PvP must not mutate the main account equipment tables, normal
-  Artifact Browser state, normal live-run teams, or normal live-run GCSIM
-  summaries.
-- PvP player data is provider-scoped. A local player may use the current app
-  SQLite database directly. An imported or future remote player must use an
-  imported/scoped provider backed by a managed temporary SQLite database.
+  GCSIM summaries, provider source data, and seat-local runtime equipment state.
+- PvP provider source data and PvP runtime equipment state are separate. A
+  local player can read shared immutable/source account data from the normal app
+  SQLite DB without duplicating it, but weapon/artifact equipment decisions made
+  inside PvP must live in a per-seat scoped runtime state that starts empty and
+  never mutates normal account equipment. Imported/future remote players read
+  source data from their `.gttpvp` package while still receiving a fresh PvP
+  runtime equipment state for the current match.
 - The PvP profile package format is `.gttpvp`, a versioned ZIP containing
   `manifest.json`, `decks.json`, and `account_slice.sqlite`. It is not `.npz`:
   NumPy adds no useful contract here. Import must validate archive entries and
   materialize only the SQLite member to a managed temp path, not unpack an
   arbitrary folder tree.
-- Exported `.gttpvp` packages contain deck presets and a deduplicated account
-  slice for characters/weapons used by those decks, plus the artifact database
-  and build presets needed by the existing Artifact Browser/GCSIM pipeline.
+- Target `.gttpvp` packages contain deck presets, a deduplicated account slice
+  for characters/weapons/artifacts/presets used by those decks, and the bitmap
+  assets needed for autonomous display on another machine. Current package
+  implementation still has an asset-portability gap and must not fall back to
+  image paths as identity.
 - The left Characters/Weapons view for Assignment/Weapon stages must use the
   same normal quick-pick and marker machinery as AppShell. Selected characters
   show team-colored team-local slot markers `1-4` for team 1 and `1-4` for team
@@ -430,10 +430,11 @@ structure needed for it rather than implementing the full equipment flow.
 
 - After Draft pick/ban plus team and weapon assignment, PvP should support an
   Artifact equipment stage inside Draft.
-- Player 1 gets a temporary isolated copy of the current local Artifact Browser
-  data/session.
-- Player 2 gets a temporary empty Artifact Browser session with the same
-  artifact-browser logic.
+- Local Player 1 reads normal Artifact Browser source data but uses scoped PvP
+  runtime artifact equipment state. It should not require a duplicated copy of
+  the whole local artifact DB.
+- Imported/remote Player 2 reads artifact source data from the imported package
+  and uses the same scoped PvP runtime artifact equipment state boundary.
 - Player 2 can import artifacts from JSON into that temporary PvP session.
 - PvP artifact data is scoped to the active PvP match/session.
 - Changes made inside PvP must not affect the main Artifact Browser, main

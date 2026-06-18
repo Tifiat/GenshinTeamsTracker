@@ -529,17 +529,23 @@ characters and that player's deck/scoped weapons are available.
 The MVP build-flow target is not a new PvP imitation of the normal roster/right
 panel. It is the existing AppShell Characters/Weapons, Artifact Browser, GCSIM
 Browser, and Abyss right-panel pipeline running against a scoped PvP
-run/equipment context. That context may use a temporary database copied from
-the current local account for Player 1 and an empty/imported temporary database
-for Player 2, but it must not mutate the user's normal `TeamBuilderState`,
-normal current-equipment tables, normal Artifact Browser state, or normal
-GCSIM summaries.
+run/equipment context. Local players read source account data from the normal
+app database without duplicating it, while equipment choices inside PvP live in
+per-seat runtime state that starts empty. Imported/remote players read source
+data from their package/provider and also get per-seat runtime equipment state.
+PvP must not mutate the user's normal `TeamBuilderState`, normal
+current-equipment tables, normal Artifact Browser state, or normal GCSIM
+summaries.
 
 PvP profile/provider model:
 
-- local hot-seat players may use the current app SQLite database directly;
+- local hot-seat players may use the current app SQLite database directly only
+  as source data;
+- local hot-seat weapon/artifact equipment state is scoped per seat and must not
+  write to the normal account equipment tables;
 - imported or future remote players use a scoped provider backed by a managed
-  temporary SQLite database;
+  temporary SQLite database for source data plus a fresh scoped runtime
+  equipment state for the match;
 - `.gttpvp` is the PvP profile package format. It is a versioned ZIP with
   `manifest.json`, `decks.json`, and `account_slice.sqlite`;
 - package export deduplicates characters/weapons across selected deck presets

@@ -125,11 +125,13 @@ Draft board v0:
   then converts to `DraftDeck` for backend validation.
 - `run_workspace/pvp/profile_package.py`: backend-only PvP profile package and
   provider foundation. `.gttpvp` packages are versioned ZIP files containing
-  `manifest.json`, `decks.json`, and a filtered `account_slice.sqlite`. Local
-  providers can expose the current app DB directly; imported providers expose a
-  managed temporary DB path used by scoped AppShell build contexts. The current
-  package does not embed portrait/weapon bitmap files; cross-machine asset
-  portability remains a follow-up instead of falling back to path identity.
+  `manifest.json`, `decks.json`, and a filtered `account_slice.sqlite`.
+  Providers expose source data only. Local providers can expose the current app
+  DB for source reads; imported providers expose a managed temporary DB path.
+  PvP weapon/artifact equipment choices are a separate per-seat runtime state,
+  not writes into either source DB. The current package does not embed
+  portrait/weapon bitmap files; cross-machine asset portability remains a
+  follow-up instead of falling back to path identity.
 - `run_workspace/pvp/account_deck_copy.py`: small backend helper for creating an
   independent Player 2 copy of an account-derived deck. Stable backend modules
   should import this helper, not the CLI smoke module.
@@ -232,9 +234,8 @@ Recommended local checks:
 
 Still out of scope / not implemented:
 
-- scoped PvP run/equipment context that can launch the normal
-  Characters/Weapons + Artifact Browser + GCSIM Browser + Abyss right-panel
-  pipeline against the local/imported provider boundary;
+- scoped PvP artifact equipment context and executable scoped PvP GCSIM routing
+  against the local/imported provider boundary;
 - online/P2P/relay transport;
 - PvP History persistence;
 - result PNG/export UI;

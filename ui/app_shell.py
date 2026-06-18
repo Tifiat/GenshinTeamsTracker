@@ -338,6 +338,7 @@ class AppShellController:
 
     session: RunSessionController = field(default_factory=RunSessionController.empty)
     equipment_db_path: str | Path = ARTIFACT_DB_PATH
+    equipment_state: Any | None = None
     abyss_fact_dps_multi_target_enabled: bool = False
     gcsim_boosted_energy_enabled: bool = False
     last_equipment_error: str = ""
@@ -353,10 +354,12 @@ class AppShellController:
         cls,
         *,
         equipment_db_path: str | Path = ARTIFACT_DB_PATH,
+        equipment_state: Any | None = None,
     ) -> "AppShellController":
         return cls(
             session=RunSessionController.empty(),
             equipment_db_path=equipment_db_path,
+            equipment_state=equipment_state,
         )
 
     def __post_init__(self) -> None:
@@ -779,22 +782,31 @@ class AppShellController:
         if not character_id:
             return False
         try:
-            with self._equipment_connection() as conn:
-                current_weapon = get_equipped_weapon_for_character(conn, character_id)
-                if (
-                    current_weapon is not None
-                    and current_weapon.weapon_fingerprint == weapon_fingerprint
-                ):
-                    equipment_result = unequip_weapon(conn, character_id)
-                else:
-                    equipment_result = equip_weapon(conn, character_id, weapon_fingerprint)
-                persisted_weapon = self._persistent_weapon_for_character(
-                    conn,
-                    character_id,
-                    character,
-                    preferred_weapon=weapon,
+            if self.equipment_state is not None:
+                equipment_result, persisted_weapon = (
+                    self.equipment_state.assign_weapon_to_character(
+                        character_id,
+                        character,
+                        weapon,
+                    )
                 )
-                conn.commit()
+            else:
+                with self._equipment_connection() as conn:
+                    current_weapon = get_equipped_weapon_for_character(conn, character_id)
+                    if (
+                        current_weapon is not None
+                        and current_weapon.weapon_fingerprint == weapon_fingerprint
+                    ):
+                        equipment_result = unequip_weapon(conn, character_id)
+                    else:
+                        equipment_result = equip_weapon(conn, character_id, weapon_fingerprint)
+                    persisted_weapon = self._persistent_weapon_for_character(
+                        conn,
+                        character_id,
+                        character,
+                        preferred_weapon=weapon,
+                    )
+                    conn.commit()
         except EquipmentError as exc:
             self.last_equipment_error = str(exc)
             return False
@@ -1279,6 +1291,40 @@ class AppShellController:
         if use_cache and character_id in self._persistent_equipment_cache:
             return self._persistent_equipment_cache[character_id], {
                 "hydration_cache_hit": 1.0
+            }
+
+        if self.equipment_state is not None:
+            session_weapon = self.equipment_state.weapon_for_character(
+                character_id,
+                character,
+            )
+            current_artifacts = dict(
+                getattr(
+                    self.equipment_state,
+                    "artifact_ids_for_character",
+                    lambda _character_id: {},
+                )(character_id)
+            )
+            weapon_bonus_context = (
+                _weapon_bonus_context(session_weapon, db_path=self.equipment_db_path)
+                if session_weapon
+                else {
+                    "weapon_passive_reference": {},
+                    "weapon_display_stat_effects": [],
+                }
+            )
+            hydration = PersistentEquipmentHydration(
+                weapon=session_weapon,
+                current_artifacts=current_artifacts,
+                artifact_snapshot=None,
+                artifact_set_effects=[],
+                weapon_bonus_context=dict(weapon_bonus_context),
+            )
+            if use_cache:
+                self._persistent_equipment_cache[character_id] = hydration
+            return hydration, {
+                "hydration_cache_hit": 0.0,
+                "hydration_scoped_equipment": 1.0,
             }
 
         timings: dict[str, float] = {"hydration_cache_hit": 0.0}

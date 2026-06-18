@@ -1,104 +1,70 @@
 ---
 name: sync-github-rebase
-description: Safely synchronize a local Git repository with its GitHub remote by reviewing and committing intended changes, fetching and checking upstream state, rebasing local commits onto the updated remote branch, resolving rebase conflicts, validating the result, pushing without force, and confirming final synchronization. Use when the user asks to sync, update, publish, commit and push, rebase before push, bring a branch up to date with GitHub, or handle conflicts during that workflow.
+description: "Quickly synchronize the current Git repository with its GitHub upstream: commit intended local changes when present, update with pull --rebase, resolve conflicts only if they occur, push local commits, and report the result. Use when the user asks to sync, pull, update, commit and push, rebase before push, or resolve conflicts with GitHub."
 ---
 
-# Synchronize GitHub with rebase
+# Synchronize GitHub quickly
 
-Complete the whole synchronization workflow unless a conflict requires a genuine product decision. Preserve user work and report the final commit, branch, remote, validation, and synchronization state.
+Use the shortest safe path. Keep commentary minimal and do not narrate routine Git commands one by one.
 
-## Safety rules
+## Non-negotiable behavior
 
-- Treat all existing local changes and commits as user-owned. Never discard or overwrite them.
-- Never use `reset --hard`, destructive checkout/restore commands, plain `--force`, or history rewriting unrelated to the requested synchronization.
-- Do not amend existing commits, bypass hooks with `--no-verify`, change branches, or force-push unless the user explicitly requests it.
-- Stage only intended project changes. Exclude secrets, credentials, local environment files, generated artifacts, and unrelated edits.
-- Preserve the existing staged/unstaged split when it reflects an intentional partial commit. If commit scope is materially ambiguous, ask before committing.
-- Resolve conflicts from the surrounding code and intent. During rebase, do not choose `ours` or `theirs` blindly because their meaning differs from a normal merge.
-- Use normal `git push`. If non-fast-forward rejection repeats after fetch and rebase, diagnose it; do not escalate automatically to force-push.
+- If the working tree is clean and the branch is not ahead, run `git pull --rebase` and stop after it succeeds.
+- Do not run tests, lint, builds, formatters, or repeated fetch/comparison checks during a routine successful sync.
+- Run focused validation only after resolving a conflict or when a Git command fails and validation is needed to diagnose the failure.
+- Do not create an empty commit and do not push when there are no local commits to publish.
+- Preserve all user work. Never use `reset --hard`, destructive checkout/restore, plain `--force`, or automatic history rewriting beyond the requested rebase.
+- Never bypass hooks with `--no-verify`. Never force-push without explicit user approval.
 
 ## Workflow
 
-### 1. Inspect the repository
+### 1. Inspect only what is necessary
 
-1. Locate the repository root and inspect:
-   - current branch and whether HEAD is detached;
-   - concise status, including untracked files;
-   - staged and unstaged diffs;
-   - remotes, upstream tracking branch, and any in-progress Git operation;
-   - recent local commits when needed to understand intent.
-2. Stop and explain if a merge, rebase, cherry-pick, or revert is already in progress; continue that operation only when it is clearly part of the user's request.
-3. Prefer the configured upstream. Otherwise infer `origin/<current-branch>` if it exists. If no suitable GitHub remote or branch can be determined safely, ask for direction.
+1. Confirm the repository, current branch, upstream, concise status, and whether a merge or rebase is already in progress.
+2. Use the configured upstream. Ask only if no suitable upstream can be determined safely.
+3. Avoid broad repository inspection unless local changes or a conflict require it.
 
-### 2. Validate and commit intended changes
+### 2. Take the fast path
 
-1. Review the diff for accidental secrets, debug output, generated files, and unrelated changes.
-2. Run the repository's relevant fast tests, formatter check, lint, typecheck, or build before committing when discoverable and proportionate. Do not silently rewrite unrelated files with an auto-formatter.
-3. Stage only the intended paths. Respect any deliberate partial staging already present.
-4. Create one coherent commit with a concise message derived from the actual diff. If there are no intended uncommitted changes, skip the commit.
-5. If a hook or validation fails, fix an in-scope problem and retry. Never bypass the failure without explicit user approval.
-6. Ensure the working tree is clean before rebase. If unrelated local edits must remain uncommitted, preserve them with rebase autostash only after recording their state; verify that they are restored afterward.
+When the working tree is clean:
 
-### 3. Fetch and measure synchronization
+1. Run `git pull --rebase`.
+2. If it succeeds and there were no local commits ahead of upstream, report the update and finish. Do not run tests and do not push.
+3. If local commits are ahead after the pull, push normally and finish.
+4. If the pull produces a conflict, follow the conflict workflow.
 
-1. Fetch the relevant remote with pruning.
-2. Compare local HEAD with the resolved upstream using left/right commit counts and inspect the commits on each side when either count is nonzero.
-3. Interpret the state:
-   - equal: no rebase needed;
-   - local ahead only: ready for the final remote check and push;
-   - remote ahead only or diverged: rebase onto the fetched upstream;
-   - no upstream yet: rebase onto `origin/<current-branch>` if that branch exists, otherwise prepare to establish upstream on first push.
+This path covers both an already synchronized branch and a branch that is only behind GitHub. A clean fast-forward update needs no validation suite.
 
-### 4. Rebase and resolve conflicts
+### 3. Commit local changes when present
 
-1. Rebase the current branch onto the fetched upstream. Do not use an interactive rebase unless explicitly requested.
-2. For every conflict:
-   - list all unmerged paths and inspect the base/upstream/local context plus nearby callers and tests;
-   - determine the intent of both sides and combine compatible changes rather than selecting a side wholesale;
-   - handle modify/delete and rename conflicts according to the resulting project structure;
-   - remove all conflict markers, stage the resolved paths, and continue the rebase non-interactively while retaining the original commit message;
-   - repeat until the rebase completes.
-3. Run focused validation after meaningful resolutions. Then run the broader relevant checks after the rebase.
-4. If the correct result depends on an unknowable product choice, pause with the exact files, competing behaviors, and a concise question. Keep all user work recoverable and state whether the rebase remains in progress.
-5. If the rebase fails for a mechanical reason, diagnose and repair it. Abort only when continuing safely is impossible, and explain the reason.
+1. Inspect only the changed and untracked files needed to understand commit scope.
+2. Exclude secrets, credentials, generated artifacts, and clearly unrelated edits.
+3. Respect intentional partial staging. If scope is materially ambiguous, ask before committing.
+4. Stage the intended paths and create one concise commit. Let normal hooks run.
+5. Run `git pull --rebase` immediately after the commit.
+6. If the pull succeeds, push normally. Do not add routine test or fetch cycles.
 
-### 5. Close the race and push
+### 4. Resolve only actual conflicts
 
-1. Fetch the upstream again immediately before pushing.
-2. Recompute ahead/behind counts. If the remote advanced, rebase again and revalidate instead of attempting a stale push.
-3. Push normally:
-   - use the configured upstream when present;
-   - on a new remote branch, push the current HEAD and establish upstream deliberately.
-4. If push is rejected because the remote advanced between the final fetch and push, fetch, rebase, validate, and retry the normal push.
+If rebase reports conflicts:
 
-### 6. Verify final state
+1. List unmerged paths and inspect both sides plus nearby code needed to understand intent.
+2. Combine compatible changes; do not select `ours` or `theirs` blindly during rebase.
+3. Remove conflict markers, stage resolved files, and continue with `git -c core.editor=true rebase --continue`.
+4. Repeat until rebase completes.
+5. Run only the focused checks relevant to the resolved files. Run broader checks only when the conflict affects broad behavior or focused checks reveal a problem.
+6. Push normally after successful resolution.
+7. Ask the user only when the resolution requires an unknowable product decision.
 
-1. Fetch once more after the push.
-2. Confirm that local HEAD and the upstream resolve to the same commit and that ahead/behind counts are both zero.
-3. Check status for unresolved conflicts or unexpected leftover changes. If autostash was used, confirm the original edits were restored.
-4. Report:
-   - branch and upstream;
-   - pushed commit hash and subject;
-   - whether rebase or conflict resolution occurred;
-   - validation commands and results;
-   - explicit confirmation that local and GitHub are synchronized, or the exact remaining blocker.
+### 5. Handle push rejection
 
-## Useful checks
+If a normal push is rejected because GitHub advanced:
 
-Adapt syntax to the current shell and repository rather than copying blindly.
+1. Run `git pull --rebase` once more.
+2. Resolve conflicts only if they occur.
+3. Retry the normal push.
+4. Do not escalate to force-push automatically.
 
-```text
-git status --short --branch
-git diff --check
-git remote -v
-git rev-parse --abbrev-ref --symbolic-full-name @{upstream}
-git fetch --prune <remote>
-git rev-list --left-right --count HEAD...<upstream>
-git log --oneline --left-right HEAD...<upstream>
-git diff --name-only --diff-filter=U
-git rebase <upstream>
-git -c core.editor=true rebase --continue
-git push
-git rev-parse HEAD
-git rev-parse <upstream>
-```
+### 6. Finish briefly
+
+Run one concise status check. Report the branch, commit created or pulled, whether conflicts occurred, and whether push happened. Do not perform another fetch or test suite merely to reconfirm a successful pull or push.

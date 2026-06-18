@@ -606,7 +606,10 @@ account-derived Player 2 deck copy should import
 Current offscreen PvP UI full-flow smoke entrypoint is
 `python -m run_workspace.pvp.ui_full_flow_smoke`; it creates temp local decks,
 completes pick/ban, assignment, weapon assignment, timers, and result without
-writing sessions/history.
+writing sessions/history. `python -m run_workspace.pvp.ui_full_flow_smoke
+--account` runs the same UI path against local PvP deck presets/account assets
+without writing sessions/history and should catch real deck weapon stack/type
+identity regressions that synthetic fixtures can miss.
 Current PvP session bundle smoke entrypoint is
 `python -m run_workspace.pvp.session_bundle_smoke`; default mode uses synthetic
 fixtures and writes no files, `--account` explicitly uses local account data,

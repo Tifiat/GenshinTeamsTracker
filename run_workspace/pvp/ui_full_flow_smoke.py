@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import argparse
 import os
+from collections import defaultdict, deque
 from contextlib import closing
 import tempfile
 from pathlib import Path
@@ -15,6 +17,7 @@ configure_startup_ui_scale()
 from PySide6.QtWidgets import QApplication
 
 from hoyolab_export.artifact_db import connect_db, init_db
+from ui.pvp_browser.build_flow import _asset_weapon_keys
 from ui.pvp_browser.window import PvpWorkspace
 from ui.right_panel.pvp._shared import PVP_DRAFT_STAGE_COMPLETED_RESULT
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
@@ -23,8 +26,40 @@ from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
 # right-panel play page from ui.right_panel.pvp.
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Run the offscreen PvP UI full-flow smoke.",
+    )
+    parser.add_argument(
+        "--account",
+        action="store_true",
+        help=(
+            "Use local PvP deck presets/account assets instead of temp synthetic "
+            "fixtures. Reads local data but writes no session/history files."
+        ),
+    )
+    parser.add_argument(
+        "--player-1-deck",
+        default="",
+        help="Optional Player 1 deck preset id for --account mode.",
+    )
+    parser.add_argument(
+        "--player-2-deck",
+        default="",
+        help="Optional Player 2 deck preset id for --account mode.",
+    )
+    args = parser.parse_args(argv)
     app = QApplication.instance() or QApplication([])
+    if args.account:
+        return _run_account_smoke(
+            app,
+            player_1_deck_id=args.player_1_deck,
+            player_2_deck_id=args.player_2_deck,
+        )
+    return _run_synthetic_smoke(app)
+
+
+def _run_synthetic_smoke(app: QApplication) -> int:
     with tempfile.TemporaryDirectory() as temp_dir:
         db_path = Path(temp_dir) / "pvp-smoke.sqlite"
         _seed_scoped_equipment_db(db_path)
@@ -84,6 +119,62 @@ def main() -> int:
     return 0
 
 
+def _run_account_smoke(
+    app: QApplication,
+    *,
+    player_1_deck_id: str = "",
+    player_2_deck_id: str = "",
+) -> int:
+    workspace = PvpWorkspace()
+    deck_1 = player_1_deck_id or workspace.default_player_1_deck_id()
+    deck_2 = player_2_deck_id or workspace.default_player_2_deck_id()
+    if not deck_1 or not deck_2:
+        print("failed: no local PvP deck presets available")
+        return 1
+    if not workspace.start_local_draft(deck_1, deck_2):
+        print(f"failed: start local draft: {workspace.last_play_status()}")
+        return 1
+
+    _complete_draft(workspace, app)
+    if not workspace.continue_to_assignment():
+        print(f"failed: continue to assignment: {workspace.last_draft_status()}")
+        return 1
+    if workspace.build_flow_context is None:
+        print("failed: scoped build context missing")
+        return 1
+    _assign_all_picks(workspace)
+    try:
+        _assign_compatible_weapons(workspace)
+    except RuntimeError as exc:
+        print(f"failed: {exc}")
+        return 1
+    for seat in ("player_1", "player_2"):
+        if not workspace.ready_build_seat(seat):
+            print(f"failed: ready {seat}: {workspace.last_draft_status()}")
+            return 1
+    if not workspace.weapons_ready():
+        print("failed: scoped ready validation")
+        return 1
+    for index, text in enumerate(("01:00", "01:00", "01:00")):
+        workspace.set_timer_text("player_1", index, text)
+    for index, text in enumerate(("01:10", "01:00", "01:00")):
+        workspace.set_timer_text("player_2", index, text)
+    if not workspace.finalize_match_result():
+        print(f"failed: finalize result: {workspace.last_draft_status()}")
+        return 1
+
+    result = workspace.active_draft_session.controller.state.match_result
+    if result is None or workspace.draft_stage != PVP_DRAFT_STAGE_COMPLETED_RESULT:
+        print("failed: result missing")
+        return 1
+    print(
+        "PvP UI account full-flow smoke: "
+        f"status={result.status}, winner={result.winner_seat}, "
+        f"diff={result.seconds_difference}s, decks={deck_1}/{deck_2}"
+    )
+    return 0
+
+
 def _complete_draft(workspace: PvpWorkspace, app: QApplication) -> None:
     guard = 0
     while not workspace.active_draft_session.board_dict()["status"]["draft_finished"]:
@@ -120,6 +211,55 @@ def _assign_weapons(workspace: PvpWorkspace) -> None:
                     )
 
 
+def _assign_compatible_weapons(workspace: PvpWorkspace) -> None:
+    session = workspace.active_draft_session
+    context = workspace.build_flow_context
+    if session is None or context is None:
+        raise RuntimeError("active draft/build context missing")
+    assets_by_stack_key: dict[str, dict[str, Any]] = {}
+    for asset in workspace.weapon_assets:
+        for stack_key in _asset_weapon_keys(asset):
+            assets_by_stack_key.setdefault(stack_key, asset)
+
+    for seat in ("player_1", "player_2"):
+        seat_context = context.seat(seat)
+        if seat_context is None:
+            raise RuntimeError(f"missing seat context: {seat}")
+        deck = session.controller.session_state.deck_for(seat)
+        character_by_id = deck.character_by_id
+        stacks_by_type: dict[str, deque[Any]] = defaultdict(deque)
+        for stack in deck.weapons:
+            canonical_type = _canonical_weapon_type(stack.weapon_type)
+            if not canonical_type:
+                continue
+            for _index in range(max(1, stack.count or 1)):
+                stacks_by_type[canonical_type].append(stack)
+
+        for team_index, team in enumerate(seat_context.controller.state.teams[:2]):
+            for slot_index, slot in enumerate(team.slots[:4]):
+                if slot.character is None:
+                    raise RuntimeError(f"empty character slot: {seat} {team_index}:{slot_index}")
+                character_id = str(slot.character.id)
+                character = character_by_id.get(character_id)
+                if character is None:
+                    raise RuntimeError(f"character not in draft deck: {seat} {character_id}")
+                canonical_type = _canonical_weapon_type(character.weapon_type)
+                if not stacks_by_type[canonical_type]:
+                    raise RuntimeError(
+                        f"no compatible weapon stack: {seat} {character_id} {character.weapon_type}"
+                    )
+                stack = stacks_by_type[canonical_type].popleft()
+                asset = assets_by_stack_key.get(stack.stack_key)
+                if asset is None:
+                    raise RuntimeError(f"weapon asset missing for stack: {seat} {stack.stack_key}")
+                workspace.handle_build_slot_clicked(seat, team_index, slot_index)
+                if not workspace.handle_build_weapon_clicked(seat, asset):
+                    raise RuntimeError(
+                        "weapon assignment failed: "
+                        f"{seat} {team_index}:{slot_index} {stack.stack_key}"
+                    )
+
+
 def _character_id_from_asset(asset: dict[str, Any]) -> str:
     return str(
         asset.get("metadata", {})
@@ -127,6 +267,47 @@ def _character_id_from_asset(asset: dict[str, Any]) -> str:
         .get("id")
         or ""
     ).strip()
+
+
+_WEAPON_TYPE_BY_ID = {
+    "1": "sword",
+    "10": "catalyst",
+    "11": "claymore",
+    "12": "bow",
+    "13": "polearm",
+}
+_WEAPON_TYPE_ALIASES = {
+    "sword": "sword",
+    "one_handed_sword": "sword",
+    "одноручный_меч": "sword",
+    "одноручное": "sword",
+    "одноручное_оружие": "sword",
+    "claymore": "claymore",
+    "двуручный_меч": "claymore",
+    "двуручное": "claymore",
+    "двуручное_оружие": "claymore",
+    "bow": "bow",
+    "лук": "bow",
+    "стрелковое": "bow",
+    "стрелковое_оружие": "bow",
+    "catalyst": "catalyst",
+    "катализатор": "catalyst",
+    "polearm": "polearm",
+    "древковое": "polearm",
+    "древковое_оружие": "polearm",
+    "копье": "polearm",
+    "копьё": "polearm",
+}
+
+
+def _canonical_weapon_type(value: object) -> str:
+    raw = str(value or "").strip()
+    if raw in _WEAPON_TYPE_BY_ID:
+        return _WEAPON_TYPE_BY_ID[raw]
+    token = raw.casefold().replace("-", "_").replace(" ", "_")
+    while "__" in token:
+        token = token.replace("__", "_")
+    return _WEAPON_TYPE_ALIASES.get(token, "")
 
 
 def _character_assets(count: int) -> list[dict[str, Any]]:

@@ -160,6 +160,7 @@ python -m run_workspace.pvp.free_draft_controller_smoke --json
 python -m run_workspace.pvp.free_draft_controller_smoke --step-demo
 python -m run_workspace.pvp.free_draft_controller_smoke --account
 python -m run_workspace.pvp.ui_full_flow_smoke
+python -m run_workspace.pvp.ui_full_flow_smoke --account
 python -m run_workspace.pvp.account_deck_export_smoke
 python -m run_workspace.pvp.account_full_loop_smoke
 python -m run_workspace.pvp.session_bundle_smoke
@@ -188,6 +189,7 @@ Commands with local account access:
 
 - `account_deck_export_smoke`
 - `account_full_loop_smoke`
+- `ui_full_flow_smoke --account`
 - `session_bundle_smoke --account`
 - `free_draft_controller_smoke --account`
 - `ruleset_balance_smoke --account`
@@ -223,6 +225,7 @@ Recommended local checks:
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke --step-demo
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke --account
 .\.venv\Scripts\python.exe -m run_workspace.pvp.ui_full_flow_smoke
+.\.venv\Scripts\python.exe -m run_workspace.pvp.ui_full_flow_smoke --account
 .\.venv\Scripts\python.exe -m run_workspace.pvp.ruleset_applicability_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.ruleset_balance_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.account_deck_export_smoke

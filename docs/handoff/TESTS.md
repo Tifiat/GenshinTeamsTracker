@@ -41,6 +41,7 @@ Mirror the primary project owner under `tests/`:
   run_workspace.pvp.free_draft_controller_smoke --json`, `python -m
   run_workspace.pvp.free_draft_controller_smoke --step-demo`, `python -m
   run_workspace.pvp.ui_full_flow_smoke`, `python -m
+  run_workspace.pvp.ui_full_flow_smoke --account`, `python -m
   run_workspace.pvp.ruleset_applicability_smoke`, `python -m
   run_workspace.pvp.account_deck_export_smoke`, `python -m
   run_workspace.pvp.account_full_loop_smoke`, `python -m
@@ -118,10 +119,15 @@ Mirror the primary project owner under `tests/`:
   right-panel widgets when asserting cross-page behavior, but those imports
   should come from `ui.right_panel.pvp.*`, not from the old compatibility
   exports in `ui.pvp_browser.window`.
-  PvP offscreen smoke should also verify the default deck path, first/second
-  activation timing, that edit tint is scoped to the card grid viewports when
-  this area changes, and that collapsed/inactive PvP seats do not reserve large
-  empty right-panel geometry.
+  PvP offscreen smoke has two modes: default synthetic fixtures for a stable
+  temp-data full loop, and `--account` for real local PvP deck presets/account
+  assets. The account mode should catch post-draft Ready regressions caused by
+  numeric/localized weapon type or observed stack identity mismatches. It reads
+  local data but must not write session/history files. PvP offscreen smoke
+  should also verify the default deck path, first/second activation timing, that
+  edit tint is scoped to the card grid viewports when this area changes, and
+  that collapsed/inactive PvP seats do not reserve large empty right-panel
+  geometry.
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.
@@ -152,6 +158,7 @@ Prefer the narrowest suite that covers the touched ownership area:
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke --json
 .\.venv\Scripts\python.exe -m run_workspace.pvp.free_draft_controller_smoke --step-demo
 .\.venv\Scripts\python.exe -m run_workspace.pvp.ui_full_flow_smoke
+.\.venv\Scripts\python.exe -m run_workspace.pvp.ui_full_flow_smoke --account
 .\.venv\Scripts\python.exe -m run_workspace.pvp.ruleset_applicability_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.account_deck_export_smoke
 .\.venv\Scripts\python.exe -m run_workspace.pvp.account_full_loop_smoke

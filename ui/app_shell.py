@@ -482,7 +482,9 @@ class AppShellController:
         created_at: datetime | None = None,
     ) -> RunSaveResult:
         bundle_id = ""
+        original_team_state = self.state
         try:
+            self.hydrate_history_snapshot_slots()
             created_at_utc = _utc_snapshot_datetime(created_at)
             bundle_id = _new_history_snapshot_bundle_id(
                 run_type=self.mode,
@@ -508,7 +510,9 @@ class AppShellController:
                 context,
             )
             saved_path = HistorySnapshotBundleStore(history_root).write_bundle_grouped(
-                bundle
+                bundle,
+                copy_assets=True,
+                asset_source_roots=(PROJECT_ROOT,),
             )
             return RunSaveResult(
                 success=True,
@@ -521,6 +525,20 @@ class AppShellController:
                 bundle_id=bundle_id,
                 error_text=str(exc) or exc.__class__.__name__,
             )
+        finally:
+            self.state = original_team_state
+
+    def hydrate_history_snapshot_slots(self) -> None:
+        visible_team_count = 2 if self.mode == MODE_ABYSS else 1
+        for team_index, team in enumerate(self.state.teams[:visible_team_count]):
+            for slot in team.slots:
+                if slot.character is None:
+                    continue
+                self.hydrate_persistent_equipment_for_slot(
+                    team_index,
+                    slot.slot_index,
+                    str(slot.character.id),
+                )
 
     def _history_snapshot_abyss_context_fields(self) -> dict[str, Any]:
         if self.mode != MODE_ABYSS:

@@ -37,15 +37,17 @@ does not switch `main.py`.
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,
   and `build_legacy_abyss_run_snapshot(...)`.
 - `run_workspace.history_snapshot` contains the immutable History Snapshot
-  Bundle v1 schema and a caller-rooted local read/write service for supplied
+  Bundle v2 schema and a caller-rooted local read/write service for supplied
   bundles. It writes grouped Abyss snapshots under
   `abyss/<period_start>/<bundle_id>/snapshot.json`, DPS Dummy snapshots under
   `dps_dummy/<bundle_id>/snapshot.json`, and can list old flat dev bundles for
   current development compatibility. Pre-contract/dev snapshots are disposable;
   no migration contract is required. `run_workspace.history_snapshot_builder`
   builds backend-only bundles from explicit `RunSessionState`/right-panel
-  view-model inputs. Its current lack of complete per-slot data and bundle-local
-  asset capture is a known gap.
+  view-model inputs. It now derives frozen display details for every occupied
+  slot. Production AppShell Save materializes every declared visible asset into
+  the grouped bundle and restores the original live team state after temporary
+  save-time hydration.
 - `run_workspace.history_snapshot_preview` renders a derived v0 PNG card from a
   supplied immutable bundle to `<bundle_dir>/preview/history_card.png`. It does
   not mutate `snapshot.json` and does not query live assets/caches. This
@@ -349,14 +351,15 @@ such as GCSIM Run are unavailable. Snapshot metadata is shown only on the left.
 
 Recommended order:
 
-1. Done: define History Snapshot Bundle v1 schema, local write/read service,
+1. Done: define History Snapshot Bundle v2 schema, local write/read service,
    and tests.
 2. Done: build backend-only snapshots from explicit typed live
    session/right-panel view-model data.
 3. Done: wire RUN-page Save to snapshot creation for the active run type.
 4. Done as a foundation: the History left workspace reads grouped immutable
    snapshots and supports row selection. Its details/PNG views are provisional.
-5. Capture complete frozen data and bundle-local assets for every occupied slot.
+5. Done: capture frozen display data for every occupied slot and materialize
+   declared visible assets inside the bundle during production Save.
 6. Add Abyss/DPS Dummy snapshot adapters into the shared right-panel view-model
    and enforce the read-only presentation policy.
 7. Replace the provisional details/PNG browsing area with the contracted tabs,
@@ -428,7 +431,7 @@ Integration rules:
    factual DPS math, and GCSIM result stale/current metadata.
 3. Done: Reset is wired through the session controller so it resets the active
    live run mode, not widgets, and does not wipe the inactive Abyss/DPS mode.
-4. Done: immutable History Snapshot Bundle v1 dataclasses/services exist under
+4. Done: immutable History Snapshot Bundle v2 dataclasses/services exist under
    `run_workspace.history_snapshot` with local temp-root tests.
 5. Done: backend-only builder maps supplied typed session/right-panel
    view-model data into `HistorySnapshotBundle` records for Abyss and DPS
@@ -438,14 +441,16 @@ Integration rules:
 7. Done as a foundation: the minimal History left workspace reads grouped
    snapshots and supports row selection. Its independent details widget and
    permanent PNG preview are transitional, not a completed viewer.
-8. Capture full frozen data for every occupied slot, copy all required visible
-   assets into each bundle, and add snapshot-to-shared-right-panel adapters with
-   the contracted read-only/hidden control policy.
-9. Replace provisional browsing content with Abyss/DPS Dummy tabs, expandable
+8. Done: capture frozen display data for every occupied slot and copy declared
+   visible assets into each production bundle without retaining save-time
+   hydration in live state.
+9. Add snapshot-to-shared-right-panel adapters with the contracted
+   read-only/hidden control policy.
+10. Replace provisional browsing content with Abyss/DPS Dummy tabs, expandable
    Abyss period groups, compact visual rows, and newest-first ordering.
-10. Attach Browser/GCSIM results to session/snapshot metadata as `sim DPS` and
+11. Attach Browser/GCSIM results to session/snapshot metadata as `sim DPS` and
    keep them separate from factual DPS.
-11. Add DPS Dummy current factual-DPS inputs/results and GCSIM DPS Dummy
+12. Add DPS Dummy current factual-DPS inputs/results and GCSIM DPS Dummy
    integration as separate follow-up work.
 
 ## Non-Goals For The Next Stage

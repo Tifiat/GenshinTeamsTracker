@@ -1,7 +1,7 @@
 """Build immutable History Snapshot Bundles from supplied live run data.
 
 This module is intentionally backend-only glue between typed `RunSessionState`,
-the right-panel view model, and the existing History Snapshot Bundle v1 schema.
+the right-panel view model, and the History Snapshot Bundle v2 schema.
 It must not read Qt widgets, account/artifact DBs, generated app data, caches,
 real asset files, or network state. Missing optional data stays empty and is
 reported through warnings where the caller needs a follow-up source.
@@ -50,6 +50,7 @@ from run_workspace.right_panel_prototype_view_model import (
     RightPanelPrototypeViewModel,
     RightPanelSelectedDetailsViewModel,
     RightPanelSlotPrototypeViewModel,
+    build_right_panel_prototype_view_model,
 )
 from run_workspace.session import RunSessionController, RunSessionState
 from run_workspace.team_builder import (
@@ -141,6 +142,7 @@ def build_history_snapshot_bundle(
         run_type=run_type,
         source=context.source,
         content_language=context.content_language,
+        external_bonuses_enabled=right_panel_model.external_bonuses_enabled,
         account=_account_snapshot(context.account),
         teams=teams,
         scenario=scenario,
@@ -169,6 +171,7 @@ def _build_teams(
     bundle_warnings: list[str],
 ) -> tuple[HistoryTeamSnapshot, ...]:
     right_slots = _right_panel_slots_by_key(right_panel_model)
+    details_by_slot = _selected_details_by_slot(team_state, right_panel_model)
     teams: list[HistoryTeamSnapshot] = []
     for team_index, team in enumerate(team_state.teams):
         team_warnings = list(team.validation_warnings())
@@ -182,7 +185,10 @@ def _build_teams(
                     slot,
                     team_index=team_index,
                     right_slot=right_slot,
-                    selected_details=right_panel_model.selected_details,
+                    selected_details=details_by_slot.get(
+                        (team_index, slot.slot_index),
+                        RightPanelSelectedDetailsViewModel(has_selection=False),
+                    ),
                     asset_collector=asset_collector,
                 )
             )
@@ -207,11 +213,7 @@ def _build_team_slot_snapshot(
     asset_collector: "_AssetCollector",
 ) -> HistoryTeamSlotSnapshot:
     details = _details_dict(slot.character_details_data)
-    is_selected = _is_selected_details_for_slot(
-        selected_details,
-        team_index=team_index,
-        slot_index=slot.slot_index,
-    )
+    has_details = selected_details.has_selection
     slot_asset_refs: list[HistoryAssetRefSnapshot] = []
     warnings = _slot_warnings(slot, details, right_slot)
     if right_slot is None and not slot.is_empty:
@@ -221,7 +223,7 @@ def _build_team_slot_snapshot(
         slot,
         details,
         right_slot=right_slot,
-        selected_details=selected_details if is_selected else None,
+        selected_details=selected_details if has_details else None,
         asset_collector=asset_collector,
         slot_asset_refs=slot_asset_refs,
     )
@@ -229,7 +231,7 @@ def _build_team_slot_snapshot(
         slot,
         details,
         right_slot=right_slot,
-        selected_details=selected_details if is_selected else None,
+        selected_details=selected_details if has_details else None,
         asset_collector=asset_collector,
         slot_asset_refs=slot_asset_refs,
     )
@@ -237,13 +239,13 @@ def _build_team_slot_snapshot(
         slot,
         details,
         right_slot=right_slot,
-        selected_details=selected_details if is_selected else None,
+        selected_details=selected_details if has_details else None,
         asset_collector=asset_collector,
         slot_asset_refs=slot_asset_refs,
     )
     stat_rows = (
         tuple(_stat_row_from_detail(row) for row in selected_details.stat_rows)
-        if is_selected
+        if has_details
         else ()
     )
     bonus_sources = (
@@ -255,7 +257,7 @@ def _build_team_slot_snapshot(
             )
             for item in selected_details.bonus_sources
         )
-        if is_selected
+        if has_details
         else ()
     )
 
@@ -303,9 +305,24 @@ def _build_character_snapshot(
     )
     portrait_ref = (
         _text(getattr(right_slot, "portrait_path", ""))
-        or _text(_first_present(data, "portrait_path", "icon_path", "local_icon_path"))
+        or _text(
+            _first_present(
+                data,
+                "local_portrait_path",
+                "portrait_path",
+                "icon_path",
+                "local_icon_path",
+            )
+        )
     )
-    side_icon_ref = _text(_first_present(data, "side_icon_path", "side_icon_ref"))
+    side_icon_ref = _text(
+        _first_present(
+            data,
+            "local_side_icon_path",
+            "side_icon_path",
+            "side_icon_ref",
+        )
+    )
     if portrait_ref:
         ref = asset_collector.add(
             portrait_ref,
@@ -436,6 +453,7 @@ def _build_weapon_snapshot(
         weapon_fingerprint=fingerprint,
         icon_ref=icon_ref,
         passive_effects=passive_effects,
+        passive_tooltip=weapon_tooltip,
         stat_rows=stat_rows,
         provenance=provenance,
     )
@@ -855,20 +873,20 @@ def _bonus_source_snapshot(
     effects = tuple(
         _dedupe_texts([*item.short_effects, *item.tooltip_effects])
     )
-    provenance = {}
-    if item.tooltip_title:
-        provenance["tooltip_title"] = item.tooltip_title
-    if item.tooltip_body:
-        provenance["tooltip_body"] = item.tooltip_body
     return HistoryBonusSourceSnapshot(
         source_kind=item.source_kind,
         source_id=item.source_id,
         label=item.label,
         icon_ref=item.icon_path,
         effects=effects,
+        short_effects=item.short_effects,
+        tooltip_effects=item.tooltip_effects,
+        tooltip_title=item.tooltip_title,
+        tooltip_body=item.tooltip_body,
+        character_icon_refs=item.character_icons,
+        character_tooltips=item.character_tooltips,
         applied=bool(item.applied),
         not_applied_reason=item.not_applied_reason,
-        provenance=provenance,
     )
 
 
@@ -1334,6 +1352,39 @@ def _right_panel_slots_by_key(
     }
 
 
+def _selected_details_by_slot(
+    state: TeamBuilderState,
+    model: RightPanelPrototypeViewModel,
+) -> dict[tuple[int, int], RightPanelSelectedDetailsViewModel]:
+    result: dict[tuple[int, int], RightPanelSelectedDetailsViewModel] = {}
+    supplied = model.selected_details
+    if (
+        supplied.has_selection
+        and supplied.team_index is not None
+        and supplied.slot_index is not None
+    ):
+        result[(int(supplied.team_index), int(supplied.slot_index))] = supplied
+
+    visible_team_count = 2 if model.mode == MODE_ABYSS else 1
+    for team_index, team in enumerate(state.teams[:visible_team_count]):
+        for slot in team.slots:
+            key = (team_index, slot.slot_index)
+            if slot.is_empty or key in result:
+                continue
+            slot_model = build_right_panel_prototype_view_model(
+                state,
+                mode=model.mode,
+                selected_team_index=team_index,
+                selected_slot_index=slot.slot_index,
+                external_bonuses_enabled=model.external_bonuses_enabled,
+                chamber_rows=model.chamber_rows,
+                gcsim_status=model.gcsim_status,
+            )
+            if slot_model.selected_details.has_selection:
+                result[key] = slot_model.selected_details
+    return result
+
+
 def _account_snapshot(
     value: HistoryAccountProfileSnapshot | Mapping[str, Any] | None,
 ) -> HistoryAccountProfileSnapshot | None:
@@ -1349,19 +1400,6 @@ def _account_snapshot(
         profile_name=_text(data.get("profile_name")),
         source=_text(data.get("source")),
         provenance=dict(_mapping(data.get("provenance"))),
-    )
-
-
-def _is_selected_details_for_slot(
-    selected_details: RightPanelSelectedDetailsViewModel,
-    *,
-    team_index: int,
-    slot_index: int,
-) -> bool:
-    return (
-        bool(selected_details.has_selection)
-        and selected_details.team_index == team_index
-        and selected_details.slot_index == slot_index
     )
 
 

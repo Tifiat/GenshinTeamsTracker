@@ -413,7 +413,11 @@ class AppShellTest(unittest.TestCase):
             ):
                 shell = AppShell(history_snapshot_root=root)
             shell.controller.add_or_replace_character_fast(
-                _character_asset("10000050", "Thoma")
+                _character_asset(
+                    "10000050",
+                    "Thoma",
+                    portrait_path=_snapshot_test_asset(Path(tmp), "thoma.png"),
+                )
             )
             shell.controller.set_abyss_timer_seconds(0, 1, 555)
             shell.controller.gcsim_chamber_results = (_stored_gcsim_result(),)
@@ -489,7 +493,11 @@ class AppShellTest(unittest.TestCase):
             ):
                 shell = AppShell(history_snapshot_root=root)
             shell.controller.add_or_replace_character_fast(
-                _character_asset("10000050", "Thoma")
+                _character_asset(
+                    "10000050",
+                    "Thoma",
+                    portrait_path=_snapshot_test_asset(Path(tmp), "thoma.png"),
+                )
             )
             before_state = shell.controller.session.state
 
@@ -584,7 +592,11 @@ class AppShellTest(unittest.TestCase):
             ):
                 shell = AppShell(history_snapshot_root=root)
             shell.controller.add_or_replace_character_fast(
-                _character_asset("10000050", "Thoma")
+                _character_asset(
+                    "10000050",
+                    "Thoma",
+                    portrait_path=_snapshot_test_asset(Path(tmp), "thoma.png"),
+                )
             )
             before_state = shell.controller.session.state
             result = shell.controller.save_current_run_snapshot(history_root=root)
@@ -617,7 +629,12 @@ class AppShellTest(unittest.TestCase):
             shell = AppShell(history_snapshot_root=root)
             shell._on_mode_requested(MODE_DPS_DUMMY)
             shell.controller.add_or_replace_character_fast(
-                _character_asset("10000089", "Furina", weapon_type=1)
+                _character_asset(
+                    "10000089",
+                    "Furina",
+                    weapon_type=1,
+                    portrait_path=_snapshot_test_asset(Path(tmp), "furina.png"),
+                )
             )
             before_state = shell.controller.session.state
 
@@ -4772,6 +4789,7 @@ def _character_asset(
     name: str,
     *,
     weapon_type: int = 13,
+    portrait_path: str | None = None,
 ) -> dict:
     weapon_names = {
         1: "sword",
@@ -4780,9 +4798,10 @@ def _character_asset(
         12: "bow",
         13: "polearm",
     }
+    asset_path = portrait_path or "portrait.png"
     return {
-        "path": "portrait.png",
-        "filename": "portrait.png",
+        "path": asset_path,
+        "filename": Path(asset_path).name,
         "metadata": {
             "character": {
                 "id": character_id,
@@ -4793,10 +4812,16 @@ def _character_asset(
                 "constellation": 6,
                 "weapon_type": weapon_type,
                 "weapon_type_name": weapon_names.get(weapon_type, "polearm"),
-                "portrait_path": f"{name.casefold()}.png",
+                "portrait_path": portrait_path or f"{name.casefold()}.png",
             }
         },
     }
+
+
+def _snapshot_test_asset(root: Path, name: str) -> str:
+    path = root / name
+    path.write_bytes(b"synthetic-history-ui-asset")
+    return str(path)
 
 
 def _history_bundle_with_debug_text() -> HistorySnapshotBundle:

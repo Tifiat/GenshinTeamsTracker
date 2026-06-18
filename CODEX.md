@@ -42,6 +42,11 @@ This file is written for future coding agents. Keep it compact, English, and mos
   next-step/development-log noise and move durable details into dedicated
   handoff files. If root docs become long or contradictory, report:
   "handoffs should be cleaned before the next major task."
+- After any task that changes UX or visible UI behavior, include a short manual
+  smoke-test checklist in the final response. List the concrete controls and
+  flows to click, the important state transitions to observe, and the expected
+  visible result; include preservation/regression checks for adjacent UI state
+  when relevant.
 - After every completed pushable task, include one short Russian commit-message
   suggestion in impersonal passive/resultative wording, not first-person past
   wording. Prefer a style equivalent to "has been added/fixed/updated" or
@@ -177,7 +182,7 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   mode/per-mode team state, selected slot target, external bonus state, Abyss
   timers/T2 follow flags, runtime compact GCSIM chamber results, and active-mode
   Reset. It is not snapshot persistence or History storage.
-- `run_workspace/history_snapshot.py`: immutable History Snapshot Bundle v1
+- `run_workspace/history_snapshot.py`: immutable History Snapshot Bundle v2
   schema plus caller-rooted local read/write/list service for supplied bundles.
   AppShell Save uses grouped History storage.
 - `run_workspace/history_snapshot_preview.py`: derived PNG preview renderer for
@@ -723,12 +728,12 @@ History:
   tooltips remain available; mutation, drag/drop, timer/state editing, commands,
   mode tabs, and live Reset/Save behavior follow the policy in
   `docs/handoff/HISTORY_BROWSER.md`.
-- Immutable History Snapshot Bundle v1 backend schema/service lives in
+- Immutable History Snapshot Bundle v2 backend schema/service lives in
   `run_workspace/history_snapshot.py`, with a backend-only builder in
   `run_workspace/history_snapshot_builder.py`. RUN-page Save writes grouped
-  bundles under `data/history/snapshots`. The next History stage must capture
-  full frozen details for every occupied slot plus bundle-local visible assets,
-  then adapt that snapshot into the shared right-panel view-model.
+  bundles under `data/history/snapshots`, captures display details for every
+  occupied slot, and materializes declared visible assets inside the bundle.
+  The next History stage is the snapshot-to-shared-right-panel adapter.
 
 Artifact Browser final UI:
 

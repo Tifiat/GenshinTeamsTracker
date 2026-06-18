@@ -131,19 +131,18 @@ validating the new contract.
 
 ## Current Gap And Next Stage
 
-Current grouped bundle storage and row selection are useful foundations. The
-current independent History details widget, permanent selected PNG area,
-partial per-slot frozen detail capture, and non-autonomous asset refs do not
-satisfy this contract.
+Snapshot Bundle v2 and production Save now capture frozen display details for
+every occupied slot and materialize declared visible assets inside the bundle
+without retaining temporary hydration in the live team state. Grouped storage
+and row selection also exist. The current independent History details widget
+and permanent selected PNG area still do not satisfy this contract.
 
 The next implementation stage is:
 
-1. make snapshot Save capture complete per-slot frozen details and bundle-local
-   assets;
-2. add snapshot-to-shared-right-panel view-model adapters for Abyss and DPS
+1. add snapshot-to-shared-right-panel view-model adapters for Abyss and DPS
    Dummy;
-3. add a read-only interaction policy to the shared presentation components;
-4. replace the separate History details widget with a snapshot-bound instance
+2. add a read-only interaction policy to the shared presentation components;
+3. replace the separate History details widget with a snapshot-bound instance
    of the shared Run presentation;
-5. replace the permanent PNG area and text rows with the contracted tabs,
+4. replace the permanent PNG area and text rows with the contracted tabs,
    period headers, and compact visual rows.

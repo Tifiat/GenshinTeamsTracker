@@ -1,4 +1,4 @@
-"""Immutable History Snapshot Bundle v1 data contract and local file service.
+"""Immutable History Snapshot Bundle v2 data contract and local file service.
 
 This module defines the autonomous saved-run bundle shape only. It deliberately
 does not build bundles from live AppShell/session state and does not wire Save,
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 
-HISTORY_SNAPSHOT_BUNDLE_SCHEMA_VERSION = 1
+HISTORY_SNAPSHOT_BUNDLE_SCHEMA_VERSION = 2
 HISTORY_SNAPSHOT_BUNDLE_KIND = "gtt.history_snapshot_bundle"
 HISTORY_SNAPSHOT_FILENAME = "snapshot.json"
 
@@ -27,7 +27,7 @@ HISTORY_UNKNOWN_ABYSS_PERIOD = "unknown_period"
 
 
 class HistorySnapshotBundleError(ValueError):
-    """Raised when a History Snapshot Bundle cannot satisfy the v1 contract."""
+    """Raised when a History Snapshot Bundle cannot satisfy the current contract."""
 
 
 class UnsupportedHistorySnapshotSchemaVersionError(HistorySnapshotBundleError):
@@ -35,7 +35,7 @@ class UnsupportedHistorySnapshotSchemaVersionError(HistorySnapshotBundleError):
 
 
 class MalformedHistorySnapshotBundleError(HistorySnapshotBundleError):
-    """Raised for malformed v1 bundle payloads."""
+    """Raised for malformed bundle payloads."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -213,6 +213,12 @@ class HistoryBonusSourceSnapshot:
     source_id: str = ""
     icon_ref: str = ""
     effects: tuple[str, ...] = ()
+    short_effects: tuple[str, ...] = ()
+    tooltip_effects: tuple[str, ...] = ()
+    tooltip_title: str = ""
+    tooltip_body: str = ""
+    character_icon_refs: tuple[str, ...] = ()
+    character_tooltips: tuple[str, ...] = ()
     applied: bool = True
     not_applied_reason: str = ""
     provenance: Mapping[str, Any] = field(default_factory=dict)
@@ -224,6 +230,12 @@ class HistoryBonusSourceSnapshot:
             "label": self.label,
             "icon_ref": self.icon_ref,
             "effects": list(self.effects),
+            "short_effects": list(self.short_effects),
+            "tooltip_effects": list(self.tooltip_effects),
+            "tooltip_title": self.tooltip_title,
+            "tooltip_body": self.tooltip_body,
+            "character_icon_refs": list(self.character_icon_refs),
+            "character_tooltips": list(self.character_tooltips),
             "applied": self.applied,
             "not_applied_reason": self.not_applied_reason,
             "provenance": dict(sorted(self.provenance.items())),
@@ -238,6 +250,12 @@ class HistoryBonusSourceSnapshot:
             label=_text(data.get("label")),
             icon_ref=_text(data.get("icon_ref")),
             effects=_text_tuple(data.get("effects")),
+            short_effects=_text_tuple(data.get("short_effects")),
+            tooltip_effects=_text_tuple(data.get("tooltip_effects")),
+            tooltip_title=_text(data.get("tooltip_title")),
+            tooltip_body=_text(data.get("tooltip_body")),
+            character_icon_refs=_text_tuple(data.get("character_icon_refs")),
+            character_tooltips=_text_tuple(data.get("character_tooltips")),
             applied=bool(data.get("applied", True)),
             not_applied_reason=_text(data.get("not_applied_reason")),
             provenance=dict(_mapping(data.get("provenance"))),
@@ -298,6 +316,7 @@ class HistoryWeaponSnapshot:
     icon_ref: str = ""
     passive_name: str = ""
     passive_effects: tuple[str, ...] = ()
+    passive_tooltip: str = ""
     stat_rows: tuple[HistoryStatRowSnapshot, ...] = ()
     provenance: Mapping[str, Any] = field(default_factory=dict)
 
@@ -314,6 +333,7 @@ class HistoryWeaponSnapshot:
             "icon_ref": self.icon_ref,
             "passive_name": self.passive_name,
             "passive_effects": list(self.passive_effects),
+            "passive_tooltip": self.passive_tooltip,
             "stat_rows": [row.to_dict() for row in self.stat_rows],
             "provenance": dict(sorted(self.provenance.items())),
         }
@@ -333,6 +353,7 @@ class HistoryWeaponSnapshot:
             icon_ref=_text(data.get("icon_ref")),
             passive_name=_text(data.get("passive_name")),
             passive_effects=_text_tuple(data.get("passive_effects")),
+            passive_tooltip=_text(data.get("passive_tooltip")),
             stat_rows=_stat_rows(data.get("stat_rows")),
             provenance=dict(_mapping(data.get("provenance"))),
         )
@@ -897,6 +918,7 @@ class HistorySnapshotBundle:
     run_type: str
     source: str
     content_language: str
+    external_bonuses_enabled: bool = True
     teams: tuple[HistoryTeamSnapshot, ...] = ()
     scenario: HistoryScenarioSnapshot | None = None
     result_summaries: tuple[HistoryResultSummarySnapshot, ...] = ()
@@ -934,6 +956,7 @@ class HistorySnapshotBundle:
             "run_type": self.run_type,
             "source": self.source,
             "content_language": self.content_language,
+            "external_bonuses_enabled": self.external_bonuses_enabled,
             "account": None if self.account is None else self.account.to_dict(),
             "teams": [team.to_dict() for team in self.teams],
             "scenario": None if self.scenario is None else self.scenario.to_dict(),
@@ -967,6 +990,9 @@ class HistorySnapshotBundle:
             content_language=_required_text(
                 payload.get("content_language"),
                 "content_language",
+            ),
+            external_bonuses_enabled=bool(
+                payload.get("external_bonuses_enabled", True)
             ),
             account=(
                 HistoryAccountProfileSnapshot.from_dict(account)
@@ -1032,11 +1058,28 @@ class HistorySnapshotBundleStore:
         _write_json_atomic(path, bundle.to_dict())
         return path
 
-    def write_bundle_grouped(self, bundle: HistorySnapshotBundle) -> Path:
+    def write_bundle_grouped(
+        self,
+        bundle: HistorySnapshotBundle,
+        *,
+        copy_assets: bool = False,
+        asset_source_roots: tuple[str | Path, ...] = (),
+    ) -> Path:
         bundle_dir = self.grouped_bundle_dir(bundle)
         bundle_dir.mkdir(parents=True, exist_ok=True)
+        stored_bundle = bundle
+        if copy_assets:
+            from run_workspace.history_snapshot_assets import (
+                materialize_history_snapshot_bundle_assets,
+            )
+
+            stored_bundle = materialize_history_snapshot_bundle_assets(
+                bundle,
+                bundle_dir,
+                source_roots=asset_source_roots,
+            )
         path = bundle_dir / HISTORY_SNAPSHOT_FILENAME
-        _write_json_atomic(path, bundle.to_dict())
+        _write_json_atomic(path, stored_bundle.to_dict())
         return path
 
     def read_bundle(self, bundle_id: str) -> HistorySnapshotBundle:

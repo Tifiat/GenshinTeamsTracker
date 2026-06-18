@@ -818,9 +818,11 @@ Sizing note:
 - RUN-page Save stores immutable grouped `HistorySnapshotBundle` records through
   `run_workspace/history_snapshot_builder.py`. The History workspace can
   read/list saved bundles and select records, but its independent details widget
-  and permanent PNG preview are provisional. The next stage is complete frozen
-  slot/asset capture, snapshot-to-shared-Run adapters, the read-only interaction
-  policy, and the contracted History tabs/period groups/visual rows.
+  and permanent PNG preview are provisional. Snapshot v2 captures display
+  details for every occupied slot and production Save materializes declared
+  visible assets inside the bundle without changing live team state. The next
+  stage is snapshot-to-shared-Run adapters, the read-only interaction policy,
+  and the contracted History tabs/period groups/visual rows.
 - GCSIM Browser runtime output may update current-session Sim DPS rows, but it
   is not durable saved history until explicit session/snapshot attachment is
   implemented.

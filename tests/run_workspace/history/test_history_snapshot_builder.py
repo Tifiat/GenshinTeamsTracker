@@ -87,6 +87,21 @@ class HistorySnapshotBuilderTests(unittest.TestCase):
         self.assertIsNone(scenario.factual_dps)
         self.assertIn(WARNING_DPS_DUMMY_FACTUAL_INPUTS_NOT_IMPLEMENTED, bundle.warnings)
 
+    def test_saved_external_bonus_state_is_frozen(self) -> None:
+        session = RunSessionController.empty()
+        model = replace(
+            _right_panel_model(
+                mode=MODE_ABYSS,
+                teams=_teams_vm(team_count=2),
+                chamber_rows=_chamber_rows(),
+            ),
+            external_bonuses_enabled=False,
+        )
+
+        bundle = build_history_snapshot_bundle(session.state, model, _context())
+
+        self.assertFalse(bundle.external_bonuses_enabled)
+
     def test_ordered_teams_and_slots_are_preserved(self) -> None:
         session = RunSessionController.empty()
         session.team_state = session.team_state.set_character(
@@ -141,7 +156,62 @@ class HistorySnapshotBuilderTests(unittest.TestCase):
         self.assertEqual(slot.artifact_build.proc_count, 9)
         self.assertEqual(slot.stat_rows[0].label, "HP")
         self.assertEqual(slot.bonus_sources[0].source_kind, "artifact_set_static")
+        self.assertEqual(
+            slot.bonus_sources[0].tooltip_title,
+            "Retracing Bolide 2p",
+        )
+        self.assertEqual(slot.weapon.passive_tooltip, "Generates particles on CRIT.")
         self.assertIn("assets/weapons/favonius_lance.png", {ref.path for ref in bundle.asset_refs})
+        roundtripped = history_snapshot_bundle_from_json_text(
+            history_snapshot_bundle_to_json_text(bundle)
+        )
+        self.assertEqual(
+            roundtripped.teams[0].slots[0].bonus_sources[0].tooltip_title,
+            "Retracing Bolide 2p",
+        )
+
+    def test_non_selected_occupied_slot_keeps_full_details_and_tooltips(self) -> None:
+        session = RunSessionController.empty()
+        second_details = _rich_details()
+        second_details["account_character"] = {
+            **second_details["account_character"],
+            "id": "10000089",
+            "name": "Furina",
+            "element": "Hydro",
+        }
+        session.team_state = (
+            session.team_state.set_character(0, 0, {"id": "10000050", "name": "Thoma"})
+            .set_weapon(0, 0, {"id": "13501", "name": "Favonius Lance"})
+            .attach_character_details_data(0, 0, _rich_details())
+            .set_character(0, 1, {"id": "10000089", "name": "Furina"})
+            .set_weapon(0, 1, {"id": "13501", "name": "Favonius Lance"})
+            .attach_character_details_data(0, 1, second_details)
+        )
+        second_slot_vm = replace(
+            _rich_slot_vm(),
+            slot_index=1,
+            is_selected=False,
+            character_title="Furina",
+        )
+        model = _right_panel_model(
+            mode=MODE_ABYSS,
+            teams=_teams_vm(
+                overrides={
+                    (0, 0): _rich_slot_vm(),
+                    (0, 1): second_slot_vm,
+                }
+            ),
+            selected_details=_rich_selected_details(),
+            chamber_rows=_chamber_rows(),
+        )
+
+        bundle = build_history_snapshot_bundle(session.state, model, _context())
+        second_slot = bundle.teams[0].slots[1]
+
+        self.assertEqual(second_slot.character.name, "Furina")
+        self.assertTrue(second_slot.stat_rows)
+        self.assertTrue(second_slot.bonus_sources)
+        self.assertTrue(second_slot.bonus_sources[0].tooltip_title)
 
     def test_abyss_timers_and_elapsed_totals_are_mapped_from_session(self) -> None:
         session = RunSessionController.empty()
@@ -523,6 +593,9 @@ def _rich_details() -> dict[str, object]:
                 "set_uid": "retracing_bolide",
                 "pieces_required": 2,
                 "label": "Shield Strength +30%",
+                "stat_key": "SHIELD_STRENGTH",
+                "value": 0.3,
+                "value_type": "percent",
             },
         ],
     }

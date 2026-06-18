@@ -1,4 +1,4 @@
-"""Synthetic fixtures for the History Snapshot Bundle v1 contract.
+"""Synthetic fixtures for the History Snapshot Bundle v2 contract.
 
 These fixtures pin the backend schema/service before the future live
 RunSession/AppShell snapshot builder exists. They must stay local-only and must

@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub: синхронизация с rebase"
+  short_description: "Коммит, rebase, конфликты и безопасный push"
+  default_prompt: "Используй $sync-github-rebase, чтобы закоммитить изменения, синхронизировать ветку через rebase и безопасно отправить её в GitHub."

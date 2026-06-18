@@ -53,7 +53,6 @@ from run_workspace.history_snapshot import (
     HistoryTeamSnapshot,
     HistoryWeaponSnapshot,
 )
-from run_workspace.history_snapshot_preview import HistorySnapshotPreviewResult
 from ui.app_shell import (
     AppShell,
     AppShellController,
@@ -86,7 +85,7 @@ from ui.app_shell import (
     _weapon_owner_target_rect,
 )
 from ui.right_panel.settings.account_data import AccountDataPage
-from ui.right_panel.history.viewer import HistoryRightPanelPlaceholder
+from ui.right_panel.history.viewer import HistoryRightPanelHost
 from ui.pvp_browser.window import PvpDecksWorkspace, PvpWorkspace
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
 from ui.right_panel.pvp.draft.panel import PvpDraftRightPanel
@@ -285,7 +284,7 @@ class AppShellTest(unittest.TestCase):
         self.assertFalse(shell.right_dock.header.pvp_draft_button.isChecked())
         self.assertFalse(shell.right_dock.header.account_button.isChecked())
 
-    def test_history_workspace_uses_isolated_right_viewer_without_clearing_live_run_state(
+    def test_history_workspace_uses_isolated_shared_run_panel_without_clearing_live_state(
         self,
     ) -> None:
         shell = AppShell()
@@ -312,7 +311,7 @@ class AppShellTest(unittest.TestCase):
         self.assertIsNot(shell.right_dock.content_stack.currentWidget(), shell.right_panel)
         self.assertIsInstance(
             shell.right_dock.content_stack.currentWidget(),
-            HistoryRightPanelPlaceholder,
+            HistoryRightPanelHost,
         )
         self.assertEqual(shell.controller.state, before_team_state)
         self.assertEqual(shell.controller.abyss_timer_states, before_timer_states)
@@ -341,7 +340,7 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_HISTORY)
         self.assertIsInstance(
             shell.right_dock.content_stack.currentWidget(),
-            HistoryRightPanelPlaceholder,
+            HistoryRightPanelHost,
         )
         self.assertEqual(shell.controller.state, before_team_state)
         self.assertEqual(shell.controller.abyss_timer_states, before_timer_states)
@@ -528,24 +527,33 @@ class AppShellTest(unittest.TestCase):
             self.assertEqual(workspace.selected_bundle_id(), result.bundle_id)
             self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_HISTORY)
             viewer = shell.right_dock.history_operation_widget
-            viewer_text = "\n".join(_label_texts(viewer))
             self.assertIs(
                 shell.right_dock.content_stack.currentWidget(),
                 viewer,
             )
-            self.assertIn(result.bundle_id, viewer_text)
-            self.assertIn("Thoma", viewer_text)
-            self.assertIn("Team 1", viewer_text)
-            self.assertIn("2026-06-01", viewer_text)
-            preview_path = workspace.selected_preview_path()
+            self.assertIsNotNone(viewer.run_panel)
             self.assertEqual(
-                preview_path,
-                result.saved_path.parent / "preview" / "history_card.png",
+                viewer.run_panel._model.teams[0].slots[0].character_title,
+                "Thoma",
             )
-            self.assertTrue(preview_path.exists())
-            self.assertEqual(preview_path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
-            self.assertFalse(hasattr(viewer, "reset_button"))
-            self.assertFalse(hasattr(viewer, "save_button"))
+            self.assertEqual(
+                viewer.run_panel._model.selected_details.character_name,
+                "Thoma",
+            )
+            self.assertTrue(viewer.run_panel._read_only)
+            self.assertIsNone(viewer.run_panel._mode_tabs)
+            self.assertTrue(viewer.run_panel._run_actions.isHidden())
+            self.assertFalse(viewer.run_panel._slot_widgets[0].acceptDrops())
+            self.assertFalse(viewer.run_panel._details_frame._bonus_strip._interactive)
+            self.assertTrue(viewer.run_panel._chamber_table._timer_cells)
+            self.assertTrue(
+                all(
+                    not cell.isEnabled()
+                    for cell in viewer.run_panel._chamber_table._timer_cells.values()
+                )
+            )
+            self.assertTrue(viewer.run_panel._chamber_table._gcsim_button.isHidden())
+            self.assertFalse((result.saved_path.parent / "preview").exists())
             self.assertEqual(shell.controller.session.state, before_state)
 
     def test_history_viewer_hides_raw_debug_and_path_text(self) -> None:
@@ -564,25 +572,21 @@ class AppShellTest(unittest.TestCase):
 
             viewer = shell.right_dock.history_operation_widget
             viewer_text = "\n".join(_label_texts(viewer))
-            preview_path = workspace.selected_preview_path()
 
-            self.assertIn(bundle.bundle_id, viewer_text)
             self.assertIn("Thoma", viewer_text)
             self.assertIn("Favonius Lance", viewer_text)
-            self.assertIn("Retracing Bolide", viewer_text)
+            self.assertIn(
+                "Retracing Bolide",
+                viewer.run_panel._model.selected_details.active_sets[0],
+            )
             self.assertNotIn("AppShellController", viewer_text)
             self.assertNotIn("C:\\", viewer_text)
             self.assertNotIn("history_builder", viewer_text)
             self.assertNotIn("right_panel_mode", viewer_text)
-            self.assertEqual(
-                preview_path,
-                snapshot_path.parent / "preview" / "history_card.png",
-            )
-            self.assertTrue(preview_path.exists())
-            self.assertEqual(preview_path.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
+            self.assertFalse((snapshot_path.parent / "preview").exists())
             self.assertEqual(shell.controller.session.state, before_state)
 
-    def test_history_preview_failure_is_controlled_and_preserves_live_state(self) -> None:
+    def test_history_selection_does_not_render_png_preview(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "history" / "snapshots"
             source_data = _simple_abyss_source_data_for_gcsim_writeback()
@@ -605,21 +609,15 @@ class AppShellTest(unittest.TestCase):
             workspace = shell.left_host.history_workspace
 
             with patch(
-                "ui.history_browser.window.render_history_snapshot_preview",
-                return_value=HistorySnapshotPreviewResult(
-                    success=False,
-                    error_text="render failed",
-                ),
-            ):
+                "run_workspace.history_snapshot_preview.render_history_snapshot_preview"
+            ) as render_preview:
                 row = workspace.row_widget(result.bundle_id)
                 self.assertIsNotNone(row)
                 row.click()
 
-            self.assertIsNone(workspace.selected_preview_path())
-            self.assertFalse(workspace.preview_frame.isHidden())
-            self.assertIn("render failed", workspace.preview_status_label.text())
+            render_preview.assert_not_called()
+            self.assertFalse((result.saved_path.parent / "preview").exists())
             viewer_text = "\n".join(_label_texts(shell.right_dock.history_operation_widget))
-            self.assertIn(result.bundle_id, viewer_text)
             self.assertIn("Thoma", viewer_text)
             self.assertEqual(shell.controller.session.state, before_state)
 

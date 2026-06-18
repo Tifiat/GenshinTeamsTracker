@@ -16,7 +16,7 @@ class RightPanelOwnershipImportsTest(unittest.TestCase):
         from ui.right_panel.common.team_card import RightPanelTeamCardWidget
         from ui.right_panel.dock import RightOperationsDock
         from ui.right_panel.header import RightDockHeader
-        from ui.right_panel.history.viewer import HistoryRightPanelPlaceholder
+        from ui.right_panel.history.viewer import HistoryRightPanelHost
         from ui.right_panel.live_run.panel import RunRightPanelWidget
         from ui.right_panel.pvp.draft.assignment.target_slot import (
             PvpPostDraftTargetSlotWidget,
@@ -35,7 +35,7 @@ class RightPanelOwnershipImportsTest(unittest.TestCase):
         self.assertEqual(RunRightPanelWidget.__name__, "RunRightPanelWidget")
         self.assertEqual(RightOperationsDock.__name__, "RightOperationsDock")
         self.assertEqual(RightDockHeader.__name__, "RightDockHeader")
-        self.assertEqual(HistoryRightPanelPlaceholder.__name__, "HistoryRightPanelPlaceholder")
+        self.assertEqual(HistoryRightPanelHost.__name__, "HistoryRightPanelHost")
         self.assertIs(PvpPostDraftTargetSlotWidget, RightPanelSlotCardWidget)
         self.assertEqual(PvpRightPanelHost.__name__, "PvpRightPanelHost")
         self.assertEqual(AccountDataPage.__name__, "AccountDataPage")

@@ -140,9 +140,10 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `localization/`: JSON-backed app localization.
 - `ui/artifact_browser/`: isolated Artifact Browser module.
 - `ui/history_browser/`: dedicated AppShell History Browser module for grouped
-  saved-bundle browsing and selection. Its current independent details widget
-  and permanent selected PNG preview are transitional, not the accepted MVP;
-  the target contract lives in `docs/handoff/HISTORY_BROWSER.md`.
+  saved-bundle browsing and selection. Selected snapshots render through an
+  isolated read-only `RunRightPanelWidget`; normal browsing does not generate
+  a permanent selected PNG preview. The remaining left-browser contract lives
+  in `docs/handoff/HISTORY_BROWSER.md`.
 - `ui/character_browser/`: narrow adapters that translate character/weapon
   asset records into reusable generic browser/grid item models.
 - AppShell top-level browser/workspace UI must live in its own `ui/<area>_browser/`
@@ -720,9 +721,10 @@ Debug files are private and ignored.
 
 History:
 
-- Current AppShell History code can read grouped bundles and select rows, but
-  its independent QLabel-style details viewer and permanent selected PNG area
-  are provisional and do not satisfy the accepted MVP.
+- Current AppShell History code reads grouped bundles, selects rows, adapts
+  frozen snapshot data into the shared right-panel view-model, and displays an
+  isolated read-only `RunRightPanelWidget`. The old QLabel details viewer and
+  permanent selected PNG area are no longer used for normal browsing.
 - The accepted target is a snapshot-bound read-only instance of the same
   Abyss/DPS Dummy Run presentation used by live state. Slot inspection and
   tooltips remain available; mutation, drag/drop, timer/state editing, commands,
@@ -733,7 +735,8 @@ History:
   `run_workspace/history_snapshot_builder.py`. RUN-page Save writes grouped
   bundles under `data/history/snapshots`, captures display details for every
   occupied slot, and materializes declared visible assets inside the bundle.
-  The next History stage is the snapshot-to-shared-right-panel adapter.
+  The next History stage is the contracted left-side tabs, expandable period
+  groups, and compact visual saved-run rows.
 
 Artifact Browser final UI:
 

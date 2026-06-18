@@ -3,11 +3,11 @@
 Scope: authoritative product and architecture contract for the AppShell
 History Browser.
 
-The current code can list grouped immutable bundles and select saved rows, but
-its separate `HistoryRightPanelPlaceholder` and always-visible selected PNG
-preview are transitional code, not the accepted History MVP. The accepted MVP
-must reuse the normal mode-specific Run presentation classes with frozen
-snapshot data.
+The current code lists grouped immutable bundles and selects saved rows. A
+selected bundle is adapted into an isolated read-only instance of the normal
+mode-specific Run presentation, and normal browsing no longer generates an
+always-visible PNG preview. The remaining MVP gap is the contracted left-side
+browser presentation.
 
 ## Ownership And Boundaries
 
@@ -131,18 +131,16 @@ validating the new contract.
 
 ## Current Gap And Next Stage
 
-Snapshot Bundle v2 and production Save now capture frozen display details for
-every occupied slot and materialize declared visible assets inside the bundle
-without retaining temporary hydration in the live team state. Grouped storage
-and row selection also exist. The current independent History details widget
-and permanent selected PNG area still do not satisfy this contract.
+Snapshot Bundle v2 and production Save capture frozen display details for every
+occupied slot and materialize declared visible assets inside the bundle without
+retaining temporary hydration in live state. Grouped storage, row selection,
+the snapshot-to-shared-right-panel adapter, isolated read-only Run panel, first
+occupied slot selection, frozen slot navigation, disabled timers/state changes,
+hidden commands, and removal of the permanent PNG area are implemented.
 
 The next implementation stage is:
 
-1. add snapshot-to-shared-right-panel view-model adapters for Abyss and DPS
-   Dummy;
-2. add a read-only interaction policy to the shared presentation components;
-3. replace the separate History details widget with a snapshot-bound instance
-   of the shared Run presentation;
-4. replace the permanent PNG area and text rows with the contracted tabs,
-   period headers, and compact visual rows.
+1. add internal Abyss/DPS Dummy tabs with live-mode entry selection;
+2. replace text-first groups and rows with the contracted expandable period
+   headers and compact visual rows;
+3. preserve newest-first ordering and add the remaining left-browser tests.

@@ -1,3 +1,4 @@
-from .window import HistoryBrowserWorkspace, HistoryRightPanelPlaceholder
+from .window import HistoryBrowserWorkspace
+from ui.right_panel.history.viewer import HistoryRightPanelHost
 
-__all__ = ["HistoryBrowserWorkspace", "HistoryRightPanelPlaceholder"]
+__all__ = ["HistoryBrowserWorkspace", "HistoryRightPanelHost"]

@@ -312,9 +312,10 @@ right column patched in place.
 - Legacy `runs_history.json` / image-path history UI is obsolete and should not
   become the long-term design.
 - The current left page reads immutable snapshot bundles from disk, shows
-  grouped saved-run rows, and supports saved-row selection. Its independent
-  details widget and permanent selected PNG preview are transitional code, not
-  the accepted History MVP.
+  grouped saved-run rows, and supports saved-row selection. Selection adapts
+  the frozen bundle into an isolated read-only instance of the shared Run
+  presentation; the independent details widget and permanent PNG preview have
+  been removed from normal browsing.
 - The accepted MVP adapts a selected immutable snapshot into the same current
   right-panel view-model and presentation classes as live Abyss or DPS Dummy.
   This snapshot-bound instance is read-only: slot inspection, scrolling, and
@@ -830,12 +831,11 @@ Sizing note:
   `account_equipment`.
 - RUN-page Save stores immutable grouped `HistorySnapshotBundle` records through
   `run_workspace/history_snapshot_builder.py`. The History workspace can
-  read/list saved bundles and select records, but its independent details widget
-  and permanent PNG preview are provisional. Snapshot v2 captures display
-  details for every occupied slot and production Save materializes declared
-  visible assets inside the bundle without changing live team state. The next
-  stage is snapshot-to-shared-Run adapters, the read-only interaction policy,
-  and the contracted History tabs/period groups/visual rows.
+  read/list saved bundles and select records through an isolated read-only
+  `RunRightPanelWidget`. Snapshot v2 captures display details for every occupied
+  slot and production Save materializes declared visible assets inside the
+  bundle without changing live team state. The next stage is the contracted
+  History tabs, period groups, and compact visual rows.
 - GCSIM Browser runtime output may update current-session Sim DPS rows, but it
   is not durable saved history until explicit session/snapshot attachment is
   implemented.

@@ -152,13 +152,18 @@ def load_history_snapshot_summary_listing(root: str | Path) -> HistorySnapshotSu
 def load_history_snapshot_details_payload(
     root: str | Path,
     bundle_id: str,
+    *,
+    bundle_path: str | Path | None = None,
 ) -> HistorySnapshotDetailsPayload | None:
     store = HistorySnapshotBundleStore(root)
     try:
         bundle = store.read_bundle(bundle_id)
     except HistorySnapshotBundleError:
         return None
-    return history_snapshot_details_payload_from_bundle(bundle)
+    return history_snapshot_details_payload_from_bundle(
+        bundle,
+        bundle_path=bundle_path,
+    )
 
 
 def history_snapshot_details_payload_from_bundle(

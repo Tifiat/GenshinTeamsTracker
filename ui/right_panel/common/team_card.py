@@ -15,10 +15,13 @@ class RightPanelTeamCardWidget(QFrame):
         self,
         model: RightPanelTeamPrototypeViewModel,
         parent: QWidget | None = None,
+        *,
+        allow_mutation: bool = True,
     ):
         super().__init__(parent)
         self.setObjectName("TeamSlotRow")
         self._model = model
+        self._allow_mutation = bool(allow_mutation)
         self._slot_widgets: list[RightPanelSlotCardWidget] = []
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -52,7 +55,10 @@ class RightPanelTeamCardWidget(QFrame):
         _clear_layout(self._grid)
         self._slot_widgets.clear()
         for index, slot in enumerate(model.slots):
-            widget = RightPanelSlotCardWidget(slot)
+            widget = RightPanelSlotCardWidget(
+                slot,
+                allow_mutation=self._allow_mutation,
+            )
             widget.clicked.connect(self.slot_selected.emit)
             widget.dropped.connect(self.slot_dropped.emit)
             self._slot_widgets.append(widget)

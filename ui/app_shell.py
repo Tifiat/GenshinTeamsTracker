@@ -112,7 +112,7 @@ from ui.gcsim_browser.window import (
     GcsimBrowserWorkspace,
 )
 from ui.history_browser.window import HistoryBrowserWorkspace
-from ui.right_panel.history.viewer import HistoryRightPanelPlaceholder
+from ui.right_panel.history.viewer import HistoryRightPanelHost
 from ui.gcsim_browser.run_worker import (
     GcsimBrowserBatchRunRequest,
     GcsimBrowserBatchRunWorker,
@@ -1550,7 +1550,7 @@ class AppShell(QWidget):
         self.pvp_right_panel = PvpRightPanelHost(self.left_host.pvp_workspace)
         self.right_dock = RightOperationsDock(
             self.right_panel,
-            history_operation_widget=HistoryRightPanelPlaceholder(),
+            history_operation_widget=HistoryRightPanelHost(),
             pvp_operation_widget=self.pvp_right_panel,
             active_mode=self.controller.mode,
         )

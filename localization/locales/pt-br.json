@@ -50,6 +50,8 @@
   "app_shell.history.viewer.results": "Resultados",
   "app_shell.history.viewer.warnings": "Avisos",
   "app_shell.history.viewer.provenance": "Proveni\u00eancia",
+  "app_shell.history.right_panel.gcsim_saved": "GCSIM: resultado salvo",
+  "app_shell.history.right_panel.gcsim_not_run": "GCSIM: n\u00e3o executado",
   "app_shell.pvp.placeholder.title": "PvP",
   "app_shell.pvp.placeholder.subtitle": "Espaco reservado da UI Free Draft",
   "app_shell.pvp.placeholder.note": "O contrato backend do board existe; a UI real de draft ainda nao esta conectada.",

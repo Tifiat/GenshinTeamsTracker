@@ -47,9 +47,12 @@ class RightPanelSlotCardWidget(QFrame):
         self,
         model: RightPanelSlotPrototypeViewModel,
         parent: QWidget | None = None,
+        *,
+        allow_mutation: bool = True,
     ):
         super().__init__(parent)
         self._model = model
+        self._allow_mutation = bool(allow_mutation)
         self._model_key: tuple[object, ...] | None = None
         self._warning_tooltip_controller = None
         self._press_pos = None
@@ -59,7 +62,7 @@ class RightPanelSlotCardWidget(QFrame):
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.setFixedWidth(SLOT_CARD_WIDTH)
         self.setFixedHeight(SLOT_CARD_FIXED_HEIGHT)
-        self.setAcceptDrops(True)
+        self.setAcceptDrops(self._allow_mutation)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(
@@ -207,7 +210,8 @@ class RightPanelSlotCardWidget(QFrame):
 
     def mouseMoveEvent(self, event) -> None:  # noqa: N802 - Qt override
         if (
-            self._press_pos is None
+            not self._allow_mutation
+            or self._press_pos is None
             or self._drag_started
             or self._model.is_empty
             or not (event.buttons() & Qt.MouseButton.LeftButton)
@@ -244,6 +248,9 @@ class RightPanelSlotCardWidget(QFrame):
         super().mouseReleaseEvent(event)
 
     def dragEnterEvent(self, event) -> None:  # noqa: N802 - Qt override
+        if not self._allow_mutation:
+            event.ignore()
+            return
         source = self._drag_source_from_event(event)
         if source is None or source == (self._model.team_index, self._model.slot_index):
             event.ignore()
@@ -252,6 +259,9 @@ class RightPanelSlotCardWidget(QFrame):
         event.acceptProposedAction()
 
     def dragMoveEvent(self, event) -> None:  # noqa: N802 - Qt override
+        if not self._allow_mutation:
+            event.ignore()
+            return
         source = self._drag_source_from_event(event)
         if source is None or source == (self._model.team_index, self._model.slot_index):
             event.ignore()
@@ -263,6 +273,9 @@ class RightPanelSlotCardWidget(QFrame):
         super().dragLeaveEvent(event)
 
     def dropEvent(self, event) -> None:  # noqa: N802 - Qt override
+        if not self._allow_mutation:
+            event.ignore()
+            return
         source = self._drag_source_from_event(event)
         self._set_drag_hover(False)
         if source is None:

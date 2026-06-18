@@ -264,6 +264,7 @@ class RunRightPanelWidget(QWidget):
         show_mode_tabs: bool = True,
         show_chamber_table: bool = True,
         show_run_actions: bool = True,
+        read_only: bool = False,
     ):
         super().__init__(parent)
         self.setObjectName("RightPanelPrototypeWidget")
@@ -273,6 +274,7 @@ class RunRightPanelWidget(QWidget):
         self._slot_widgets: list[RightPanelSlotCardWidget] = []
         self._show_chamber_table = bool(show_chamber_table)
         self._show_run_actions = bool(show_run_actions)
+        self._read_only = bool(read_only)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -304,14 +306,16 @@ class RunRightPanelWidget(QWidget):
         self._teams_layout.setSpacing(6)
         self._layout.addWidget(self._teams_container)
 
-        self._chamber_table = ChamberTableBlockWidget()
+        self._chamber_table = ChamberTableBlockWidget(read_only=self._read_only)
         self._chamber_table.abyss_timer_changed.connect(
             self.abyss_timer_changed.emit
         )
         self._chamber_table.setVisible(self._show_chamber_table)
         self._layout.addWidget(self._chamber_table)
 
-        self._details_frame = SelectedCharacterDetailsWidget()
+        self._details_frame = SelectedCharacterDetailsWidget(
+            read_only=self._read_only
+        )
         self._details_frame.external_bonuses_toggled.connect(
             self.external_bonuses_toggled.emit
         )
@@ -428,7 +432,10 @@ class RunRightPanelWidget(QWidget):
         self._slot_widgets.clear()
 
         for team in model.teams:
-            team_widget = RightPanelTeamCardWidget(team)
+            team_widget = RightPanelTeamCardWidget(
+                team,
+                allow_mutation=not self._read_only,
+            )
             team_widget.slot_selected.connect(self.slot_selected.emit)
             team_widget.slot_dropped.connect(self.slot_dropped.emit)
             self._team_widgets.append(team_widget)
@@ -705,8 +712,14 @@ class ChamberTimerCellWidget(QWidget):
 class ChamberTableBlockWidget(QFrame):
     abyss_timer_changed = Signal(int, int, int)
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        read_only: bool = False,
+    ):
         super().__init__(parent)
+        self._read_only = bool(read_only)
         self.setObjectName("InfoBlock")
         self._layout = QVBoxLayout(self)
         self._structure_key: tuple[object, ...] | None = None
@@ -792,11 +805,14 @@ class ChamberTableBlockWidget(QFrame):
                 if row.timer_editable and column in (1, 2):
                     cell = ChamberTimerCellWidget()
                     team_number = column
-                    cell.seconds_changed.connect(
-                        lambda seconds, row_index=model_row_index, team=team_number: (
-                            self.abyss_timer_changed.emit(row_index, team, seconds)
+                    if self._read_only:
+                        cell.setEnabled(False)
+                    else:
+                        cell.seconds_changed.connect(
+                            lambda seconds, row_index=model_row_index, team=team_number: (
+                                self.abyss_timer_changed.emit(row_index, team, seconds)
+                            )
                         )
-                    )
                     self._timer_cells[(model_row_index, team_number)] = cell
                     grid.addWidget(cell, view_row_index, column)
                     continue
@@ -838,6 +854,7 @@ class ChamberTableBlockWidget(QFrame):
         self._gcsim_button = QPushButton(gcsim_status.button_label)
         self._gcsim_button.setObjectName("GhostButton")
         self._gcsim_button.setEnabled(False)
+        self._gcsim_button.setVisible(not self._read_only)
         bottom.addWidget(self._gcsim_button)
 
     @staticmethod
@@ -1299,7 +1316,12 @@ class DetailRowWidget(QWidget):
 class SelectedCharacterDetailsWidget(QFrame):
     external_bonuses_toggled = Signal(bool)
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        read_only: bool = False,
+    ):
         super().__init__(parent)
         self.setObjectName("DetailsBlock")
         self._layout = QVBoxLayout(self)
@@ -1313,6 +1335,7 @@ class SelectedCharacterDetailsWidget(QFrame):
         self._weapon_meta_tooltip_controller = None
         self._stable_selected_height = 0
         self._details: RightPanelSelectedDetailsViewModel | None = None
+        self._read_only = bool(read_only)
         self._build_stable_skeleton()
 
     def set_details(self, details: RightPanelSelectedDetailsViewModel) -> None:
@@ -1452,8 +1475,12 @@ class SelectedCharacterDetailsWidget(QFrame):
         cv_layout.addWidget(self._cv_value, 1)
         self._meta_layout.addStretch(1)
 
-        self._bonus_strip = BonusSourceStripWidget()
-        self._bonus_strip.external_bonuses_toggled.connect(self.external_bonuses_toggled.emit)
+        self._bonus_strip = BonusSourceStripWidget(
+            interactive=not self._read_only
+        )
+        self._bonus_strip.external_bonuses_toggled.connect(
+            self.external_bonuses_toggled.emit
+        )
         self._layout.addWidget(self._bonus_strip)
         self._body.hide()
         self._bonus_strip.hide()
@@ -1574,13 +1601,23 @@ class SelectedCharacterDetailsWidget(QFrame):
 class BonusSourceStripWidget(QFrame):
     external_bonuses_toggled = Signal(bool)
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        *,
+        interactive: bool = True,
+    ):
         super().__init__(parent)
         self.setObjectName("BonusSourceStrip")
         self._items_key: tuple[object, ...] | None = None
         self._items: tuple[RightPanelBonusSourceDisplayItem, ...] = ()
         self._external_bonuses_enabled = True
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._interactive = bool(interactive)
+        self.setCursor(
+            Qt.CursorShape.PointingHandCursor
+            if self._interactive
+            else Qt.CursorShape.ArrowCursor
+        )
         self.setFixedHeight(30)
         root = QHBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -1593,7 +1630,8 @@ class BonusSourceStripWidget(QFrame):
         self._scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._scroll.setFixedHeight(28)
-        self._scroll.clicked.connect(self._toggle_external_bonuses)
+        if self._interactive:
+            self._scroll.clicked.connect(self._toggle_external_bonuses)
         root.addWidget(self._scroll)
 
         self._content = QWidget()
@@ -1630,7 +1668,8 @@ class BonusSourceStripWidget(QFrame):
             return "rebuild_chips"
         for item in items:
             chip = BonusSourceChipWidget(item)
-            chip.installEventFilter(self)
+            if self._interactive:
+                chip.installEventFilter(self)
             self._layout.addWidget(chip)
         self._layout.addStretch(1)
         return "rebuild_chips"
@@ -1643,13 +1682,15 @@ class BonusSourceStripWidget(QFrame):
         )
 
     def mouseReleaseEvent(self, event) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
+        if self._interactive and event.button() == Qt.MouseButton.LeftButton:
             self._toggle_external_bonuses()
             event.accept()
             return
         super().mouseReleaseEvent(event)
 
     def _toggle_external_bonuses(self) -> None:
+        if not self._interactive:
+            return
         self.external_bonuses_toggled.emit(not self._external_bonuses_enabled)
 
     def _set_external_bonuses_enabled(self, enabled: bool) -> None:
@@ -1659,7 +1700,7 @@ class BonusSourceStripWidget(QFrame):
         self.style().polish(self)
 
     def eventFilter(self, watched, event) -> bool:
-        if event.type() == QEvent.Type.MouseButtonRelease:
+        if self._interactive and event.type() == QEvent.Type.MouseButtonRelease:
             if event.button() == Qt.MouseButton.LeftButton:
                 self._toggle_external_bonuses()
                 return True

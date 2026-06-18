@@ -28,10 +28,9 @@ does not switch `main.py`.
   command now builds and writes immutable `HistorySnapshotBundle` records for
   the active run type, using grouped History storage. A minimal History
   left-workspace reader/list exists; saved rows can select immutable bundles
-  and update a separate details widget plus a derived PNG preview. Those two
-  views are transitional code, not the accepted History MVP. The target is a
-  snapshot-bound, read-only instance of the same mode-specific Run presentation
-  used by the live pipeline.
+  and update an isolated read-only instance of the same mode-specific Run
+  presentation used by the live pipeline. Normal selection no longer creates a
+  derived PNG preview.
 - `run_workspace.team_builder` is the typed team composition layer.
 - `run_workspace.models` contains an early legacy Abyss snapshot adapter:
   `AbyssTimerState`, `calculate_abyss_chamber_result(...)`, `RunSnapshotV1`,
@@ -439,13 +438,13 @@ Integration rules:
 6. Done: RUN-page Save builds and persists immutable grouped bundles for the
    active run type through `HistorySnapshotBundleStore`.
 7. Done as a foundation: the minimal History left workspace reads grouped
-   snapshots and supports row selection. Its independent details widget and
-   permanent PNG preview are transitional, not a completed viewer.
+   snapshots and supports row selection.
 8. Done: capture frozen display data for every occupied slot and copy declared
    visible assets into each production bundle without retaining save-time
    hydration in live state.
-9. Add snapshot-to-shared-right-panel adapters with the contracted
-   read-only/hidden control policy.
+9. Done: snapshot-to-shared-right-panel adapters and the contracted
+   read-only/hidden control policy drive an isolated shared Run panel; normal
+   row selection does not generate a permanent PNG preview.
 10. Replace provisional browsing content with Abyss/DPS Dummy tabs, expandable
    Abyss period groups, compact visual rows, and newest-first ordering.
 11. Attach Browser/GCSIM results to session/snapshot metadata as `sim DPS` and

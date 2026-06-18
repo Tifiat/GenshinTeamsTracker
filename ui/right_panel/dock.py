@@ -16,7 +16,7 @@ from ui.right_panel.constants import (
     RIGHT_OPERATIONS_DOCK_WIDTH,
 )
 from ui.right_panel.header import RightDockHeader
-from ui.right_panel.history.viewer import HistoryRightPanelPlaceholder
+from ui.right_panel.history.viewer import HistoryRightPanelHost
 from ui.right_panel.live_run.panel import right_panel_stylesheet
 from ui.right_panel.pvp._shared import PVP_PAGE_DECKS, PVP_PAGE_DRAFT, PVP_PAGE_PLAY
 from ui.right_panel.settings.account_data import AccountDataPage
@@ -40,7 +40,7 @@ class RightOperationsDock(QFrame):
         self.setObjectName("RightOperationsDock")
         self.operation_widget = operation_widget
         self.history_operation_widget = (
-            history_operation_widget or HistoryRightPanelPlaceholder()
+            history_operation_widget or HistoryRightPanelHost()
         )
         self.pvp_operation_widget = pvp_operation_widget or PvpRightDockPlaceholder()
         self._operation_policy = RIGHT_DOCK_POLICY_RUN

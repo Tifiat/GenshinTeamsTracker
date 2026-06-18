@@ -1,6 +1,6 @@
 # PvP Backend Status
 
-Last updated: 2026-06-14.
+Last updated: 2026-06-18.
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
@@ -52,12 +52,17 @@ Draft board v0:
 - Draft board v0 is playable through the full local Free Draft schedule and now
   consumes the dedicated backend `unified_pool` projection for the readable
   main pool/right-panel pick-ban zones.
-- Post-draft local flow v0 is implemented in the Draft UI: Assignment, Weapon
-  assignment, Timers/results, and Completed result summary. The UI keeps
-  uncommitted selections in PvP workspace memory, then uses
-  `FreeDraftController.set_team_assignment(...)`,
-  `set_weapon_assignment(...)`, and `set_match_timers(...)` once each stage
-  validates.
+- Post-draft Assignment and Weapon assignment now run through a separate
+  `AppShellController`/`TeamBuilderState` per seat, the normal
+  Characters/Weapons workspace behavior, and the shared
+  `RunRightPanelWidget`. Ready converts that scoped state and commits validated
+  team/weapon data through `FreeDraftController.set_team_assignment(...)` and
+  `set_weapon_assignment(...)`. Both Ready transitions the left Draft workspace
+  to Timers/results; result finalization still uses
+  `set_match_timers(...)`.
+- Decks exposes `.gttpvp` export, and Play exposes per-seat profile import/local
+  provider selection. Imported packages stay in a managed temporary provider
+  and are never restored into the main application database.
 - Decks/Play/Draft v0 do not persist sessions/history and do not mutate normal
   TeamBuilder/Run state.
 - The UI roadmap and stage direction are owned by
@@ -118,6 +123,13 @@ Draft board v0:
   `character_ids` and observed weapon-stack refs without localized names or
   local paths, delegates weapon identity/conversion to `weapon_identity.py`,
   then converts to `DraftDeck` for backend validation.
+- `run_workspace/pvp/profile_package.py`: backend-only PvP profile package and
+  provider foundation. `.gttpvp` packages are versioned ZIP files containing
+  `manifest.json`, `decks.json`, and a filtered `account_slice.sqlite`. Local
+  providers can expose the current app DB directly; imported providers expose a
+  managed temporary DB path used by scoped AppShell build contexts. The current
+  package does not embed portrait/weapon bitmap files; cross-machine asset
+  portability remains a follow-up instead of falling back to path identity.
 - `run_workspace/pvp/account_deck_copy.py`: small backend helper for creating an
   independent Player 2 copy of an account-derived deck. Stable backend modules
   should import this helper, not the CLI smoke module.
@@ -196,6 +208,7 @@ Focused PvP backend tests live under `tests/run_workspace/pvp/`, including the
 weapon observed-stack identity helper tests in `test_weapon_identity.py`, Free
 Draft board/read-model projection, validator, compact JSON smoke shape, and
 committed UI-contract sample tests in `test_free_draft_board.py`.
+PvP profile/package/provider coverage lives in `test_profile_package.py`.
 
 Recommended local checks:
 
@@ -219,6 +232,9 @@ Recommended local checks:
 
 Still out of scope / not implemented:
 
+- scoped PvP run/equipment context that can launch the normal
+  Characters/Weapons + Artifact Browser + GCSIM Browser + Abyss right-panel
+  pipeline against the local/imported provider boundary;
 - online/P2P/relay transport;
 - PvP History persistence;
 - result PNG/export UI;

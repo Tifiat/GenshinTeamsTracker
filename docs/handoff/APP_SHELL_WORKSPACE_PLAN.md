@@ -127,6 +127,16 @@ Mode terminology:
 - `pvp` mode owns PvP right-dock pages and match-stage panels under
   `ui/right_panel/pvp/`. The left/main PvP workspace remains under
   `ui/pvp_browser/`.
+- PvP build mode must not be implemented as a separate visual clone of
+  `live_run`. After pick/ban, PvP should launch a scoped instance of the normal
+  Characters/Weapons + Artifact Browser + GCSIM Browser + `RunRightPanelWidget`
+  pipeline. The scope owns its own run state and equipment/artifact data source,
+  while reusing the existing widget/controller behavior.
+- That data source is a PvP profile provider: local players may point at the
+  current app SQLite DB, while imported/remote players point at a `.gttpvp`
+  package's managed temporary `account_slice.sqlite`. AppShell should consume
+  the provider `db_path` through the existing workspace/browser constructors
+  rather than adding a PvP-only data path.
 
 The global source-ownership refactor toward this tree has been applied for the
 current right-panel code. Future moves should keep imports and corresponding
@@ -251,9 +261,15 @@ right column patched in place.
   position. Opening Account from PvP preserves the PvP right-dock policy until a
   normal workspace is selected again.
 - `ui/pvp_browser/` owns the left/main PvP workspace: deck browser grids, draft
-  board, source pools, and main PvP scenes. `ui/right_panel/pvp/` should own the
-  fixed right-dock PvP controls and target/build panels after the global
-  right-panel refactor.
+  board, and main PvP scenes. MVP build stages host a restricted
+  `CharacterWeaponWorkspace` subclass backed by a seat-scoped
+  `AppShellController`; it changes the available assets/provider, not the
+  normal quick-pick or weapon-assignment behavior.
+- `ui/right_panel/pvp/` owns PvP mode routing and Draft/build commands. For MVP
+  build stages it exposes the normal `RunRightPanelWidget` for each scoped PvP
+  run context and provides only seat headers, collapse/Ready state, and routing
+  chrome. The custom right-panel target-slot imitation has been removed from
+  the accepted path.
 - `PvpWorkspace` owns separate Decks, Play, and Draft left pages.
   `PvpDecksWorkspace` shows account characters/weapons, supports deck view/edit
   mode, and persists presets through `run_workspace/pvp/deck_preset.py`; Play
@@ -271,8 +287,10 @@ right column patched in place.
   of depending on QLabel child widgets.
 - Draft v0 wires the first real local pick/ban board, but normal
   TeamBuilder/Run state is still not mutated.
-- PvP Assignment/Timers/Export stages remain PvP-owned state and must not
-  mutate the normal TeamBuilder/Run state automatically.
+- PvP Assignment/Weapon/Artifact/GCSIM build stages remain PvP-owned in scope
+  and must not mutate the normal TeamBuilder/Run state automatically. They
+  should use a separate scoped `RunSessionController` / `TeamBuilderState` plus
+  scoped equipment database/provider, not a duplicate PvP slot model.
 - Detailed PvP UI mode/stage direction lives in `PVP_UI_ROADMAP.md`; this
   AppShell plan owns only the shell/workspace/right-dock coordination boundary.
 
@@ -435,13 +453,21 @@ durable saved results must later attach through explicit session/snapshot data.
 - Detailed PvP current/target UI direction lives in `PVP_UI_ROADMAP.md`.
 - During draft/deck/opponent phases, showing the normal build panel can be
   misleading because builds may not be editable yet.
-- The right operations dock currently shows Decks, Play, and Draft controls and
-  can later show assignment/result controls for those phases.
+- Once the match reaches build stages, the right operations dock shows the
+  normal `RunRightPanelWidget` for the scoped PvP run context plus compact
+  PvP-specific commands. Do not add a second PvP team/slot-card hierarchy.
 - Pick/Ban, Assignment, Weapon assignment, Artifact equipment, optional PvP
   GCSIM, Timers/results, and Completed result/export controls should be internal
   Draft-stage controls, not extra top-level right-header pages.
-- Once draft/pool/team is ready, the build panel can be reused against the PvP
-  pool/team instead of the full account roster.
+- Once draft/pool/team is ready, the whole normal build pipeline should be
+  reused against the PvP scoped roster/database instead of the full account
+  roster. Reuse means the same quick-pick markers, selected-target behavior,
+  weapon filtering, Artifact Browser operation-target behavior, GCSIM Browser
+  behavior, and `RunRightPanelWidget.set_model(...)` path.
+- PvP profile import/export is backend-owned by `run_workspace/pvp/`. Decks
+  exposes package export; Play exposes import and return-to-local actions per
+  seat. Import selects an imported provider and never restores profile data
+  into the main app database.
 - PvP artifact equipment is target product direction. Player 1 should receive a
   temporary isolated copy of the current local Artifact Browser data/session;
   Player 2 should receive a temporary empty Artifact Browser session with JSON

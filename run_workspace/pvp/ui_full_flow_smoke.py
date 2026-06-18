@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+from contextlib import closing
 import tempfile
+from pathlib import Path
 from typing import Any
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -12,6 +14,7 @@ configure_startup_ui_scale()
 
 from PySide6.QtWidgets import QApplication
 
+from hoyolab_export.artifact_db import connect_db, init_db
 from ui.pvp_browser.window import PvpWorkspace
 from ui.right_panel.pvp._shared import PVP_DRAFT_STAGE_COMPLETED_RESULT
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
@@ -23,7 +26,10 @@ from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
 def main() -> int:
     app = QApplication.instance() or QApplication([])
     with tempfile.TemporaryDirectory() as temp_dir:
+        db_path = Path(temp_dir) / "pvp-smoke.sqlite"
+        _seed_scoped_equipment_db(db_path)
         workspace = PvpWorkspace(
+            db_path=db_path,
             deck_dir=temp_dir,
             character_assets_provider=lambda: _character_assets(24),
             weapon_assets_provider=lambda: [_weapon_asset()],
@@ -46,13 +52,17 @@ def main() -> int:
         if not workspace.continue_to_assignment():
             print("failed: continue to assignment")
             return 1
-        _assign_all_picks(workspace)
-        if not workspace.assignment_ready() or not workspace.continue_to_weapons():
-            print("failed: assignment validation")
+        if workspace.build_flow_context is None:
+            print("failed: scoped build context missing")
             return 1
+        _assign_all_picks(workspace)
         _assign_weapons(workspace)
-        if not workspace.weapons_ready() or not workspace.continue_to_timers():
-            print("failed: weapon validation")
+        for seat in ("player_1", "player_2"):
+            if not workspace.ready_build_seat(seat):
+                print(f"failed: ready {seat}: {workspace.last_draft_status()}")
+                return 1
+        if not workspace.weapons_ready():
+            print("failed: scoped ready validation")
             return 1
         for index, text in enumerate(("01:00", "01:00", "01:00")):
             workspace.set_timer_text("player_1", index, text)
@@ -86,22 +96,37 @@ def _complete_draft(workspace: PvpWorkspace, app: QApplication) -> None:
 
 def _assign_all_picks(workspace: PvpWorkspace) -> None:
     board = workspace.active_draft_session.board_dict()
+    assets_by_id = {
+        _character_id_from_asset(asset): asset
+        for asset in workspace.character_assets
+    }
     for seat in ("player_1", "player_2"):
         picks = board["unified_pool"]["result_zones"][seat]["picked"]
-        for index, character_id in enumerate(picks):
-            workspace.select_assignment_character(seat, character_id)
-            workspace.assign_selected_character_to_slot(seat, index // 4, index % 4)
+        for character_id in picks:
+            asset = assets_by_id[str(character_id)]
+            if not workspace.handle_build_character_clicked(seat, asset):
+                raise RuntimeError(f"character assignment failed: {seat} {character_id}")
 
 
 def _assign_weapons(workspace: PvpWorkspace) -> None:
-    session = workspace.active_draft_session
+    weapon_asset = workspace.weapon_assets[0]
     for seat in ("player_1", "player_2"):
-        deck = session.controller.session_state.deck_for(seat)
-        stack = deck.weapons[0]
-        for team in workspace.assignment_slots_by_seat[seat]:
-            for character_id in team:
-                if character_id:
-                    workspace.assign_weapon_stack(seat, character_id, stack.stack_key)
+        for team_index in range(2):
+            for slot_index in range(4):
+                workspace.handle_build_slot_clicked(seat, team_index, slot_index)
+                if not workspace.handle_build_weapon_clicked(seat, weapon_asset):
+                    raise RuntimeError(
+                        f"weapon assignment failed: {seat} {team_index}:{slot_index}"
+                    )
+
+
+def _character_id_from_asset(asset: dict[str, Any]) -> str:
+    return str(
+        asset.get("metadata", {})
+        .get("character", {})
+        .get("id")
+        or ""
+    ).strip()
 
 
 def _character_assets(count: int) -> list[dict[str, Any]]:
@@ -153,6 +178,44 @@ def _weapon_asset() -> dict[str, Any]:
             },
         },
     }
+
+
+def _seed_scoped_equipment_db(db_path: Path) -> None:
+    with closing(connect_db(db_path)) as conn:
+        init_db(conn)
+        conn.executemany(
+            """
+            INSERT INTO account_characters (
+                character_id,
+                name,
+                weapon_type,
+                weapon_type_name
+            )
+            VALUES (?, ?, 1, 'Sword')
+            """,
+            [
+                (20000000 + index, f"Char {index}")
+                for index in range(24)
+            ],
+        )
+        conn.execute(
+            """
+            INSERT INTO account_weapon_observed_stacks (
+                weapon_fingerprint,
+                weapon_id,
+                name,
+                weapon_type,
+                weapon_type_name,
+                rarity,
+                level,
+                refinement,
+                icon_path,
+                known_count
+            )
+            VALUES ('smoke-sword', 11401, 'Sword', 1, 'Sword', 4, 90, 5, 'weapon.png', 24)
+            """
+        )
+        conn.commit()
 
 
 if __name__ == "__main__":

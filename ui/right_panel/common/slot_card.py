@@ -130,6 +130,9 @@ class RightPanelSlotCardWidget(QFrame):
         outer.addWidget(self._name)
         self.set_model(model)
 
+    def slot_position(self) -> tuple[int, int]:
+        return self._model.team_index, self._model.slot_index
+
     def set_model(self, model: RightPanelSlotPrototypeViewModel) -> None:
         self._model = model
         _set_object_name(self, "SlotCardSelected" if model.is_selected else "SlotCard")

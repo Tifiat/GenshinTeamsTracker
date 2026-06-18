@@ -31,17 +31,19 @@ remains in `PVP_BACKEND_STATUS.md`.
   panel is `ui.right_panel.pvp.draft.panel.PvpDraftRightPanel`; shared draft UI
   helper/read-model formatting and canonical PvP page/stage/timer constants
   used by both sides live in `ui/right_panel/pvp/_shared.py`.
-- The current Draft/build visual pass is implemented: the left Draft pool uses
-  portrait-backed unified character cards resolved from local asset metadata,
-  the right Draft panel uses visual pick/ban result chips instead of primary
-  text dump zones, and post-draft targets adapt PvP state into the shared
-  right-panel team/slot-card widgets with portrait and weapon mini-boxes.
+- The current Draft pick/ban visual pass exists. Post-draft Assignment and
+  Weapon assignment now run through seat-scoped `AppShellController` state,
+  a `CharacterWeaponWorkspace` subclass that only restricts available assets,
+  and the shared Abyss `RunRightPanelWidget`. The old PvP-specific source grids,
+  `SEL`/grey assigned overlays, assignment dictionaries, and fake right-panel
+  target-slot model assembly are no longer an accepted UI path.
 - PvP browsing, deck editing, draft, and post-draft stages must not mutate the
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
 - Post-draft Assignment, Weapon assignment, Timers/results, and read-only
   completed result summary v0 are implemented for local hot-seat matches.
-  Online play, ruleset costs, immune picks, export/PNG, and PvP History are
-  still not implemented.
+  Profile package import/export actions are also available. Artifact Browser
+  routing, executable scoped PvP GCSIM, online play, ruleset costs, immune
+  picks, result PNG/export, and PvP History are still not implemented.
 
 ## Core Model
 
@@ -50,15 +52,21 @@ PvP is a mini-section inside AppShell, not a single flat screen.
 - Left/main PvP area: browser/workspace scene.
 - Right PvP control panel: current mode controls, deck preset list, validation,
   selected details, setup actions, timers/result controls.
-- Target PvP right panels should reuse the same kind of rich team/build panel
-  logic as `live_run`, but scoped and isolated for PvP state. Do not design a
-  separate dead-end simplified panel that cannot carry character, weapon,
-  artifact, and scoped GCSIM build flow.
+- Target PvP build stages must reuse the normal AppShell build pipeline, not a
+  visually similar PvP-specific imitation. The reusable unit is the existing
+  Characters/Weapons workspace, embedded Artifact Browser, GCSIM Browser, typed
+  `RunSessionController` / `TeamBuilderState`, and `RunRightPanelWidget`
+  refresh path. PvP may provide scoped adapters, routing, and data providers,
+  but it must not duplicate roster markers, slot assignment visuals,
+  right-panel slot hierarchies, artifact-equipment UI, or GCSIM browser UI.
 - Source ownership target:
-  - `ui/pvp_browser/` owns deck browser grids, the draft board, source pools,
-    and main PvP scenes.
-  - `ui/right_panel/pvp/` owns fixed right-dock PvP pages and internal
-    match-stage panels.
+  - `ui/pvp_browser/` owns deck browser grids, the draft board, and main PvP
+    scenes before build flow.
+  - `ui/right_panel/pvp/` owns fixed right-dock PvP pages and Draft/build
+    routing commands.
+  - MVP build-flow visuals come from the normal AppShell workspace/right-panel
+    classes running against scoped PvP data, not from new PvP source/target
+    widgets.
 
 PvP opens into Decks, not directly into Draft.
 
@@ -82,6 +90,56 @@ internal Draft stages, not additional top-level tabs:
 Permanent right-header tabs should be added only when their real mode is
 implemented. Do not add top-level Team, Timers, Result, Artifacts, GCSIM, or
 Match tabs.
+
+## MVP Build Flow Contract
+
+After pick/ban produces each player's restricted pool, PvP MVP build flow is a
+scoped instance of the normal live-run build pipeline:
+
+- The normal pipeline is: Characters/Weapons left workspace, embedded Artifact
+  Browser left workspace, GCSIM Browser left workspace, and the shared Abyss
+  `RunRightPanelWidget`.
+- PvP must be able to launch that pipeline with a scoped PvP run context instead
+  of the user's normal live-run state. The scoped context owns its own
+  `RunSessionController` / `TeamBuilderState`, selected slot, timers, runtime
+  GCSIM summaries, and equipment database path/provider.
+- The scoped equipment/artifact database may be a temporary copy of the current
+  local account database for Player 1, an empty/imported temporary database for
+  Player 2, or another explicit PvP data provider. It must be isolated: build
+  actions inside PvP must not mutate the main account equipment tables, normal
+  Artifact Browser state, normal live-run teams, or normal live-run GCSIM
+  summaries.
+- PvP player data is provider-scoped. A local player may use the current app
+  SQLite database directly. An imported or future remote player must use an
+  imported/scoped provider backed by a managed temporary SQLite database.
+- The PvP profile package format is `.gttpvp`, a versioned ZIP containing
+  `manifest.json`, `decks.json`, and `account_slice.sqlite`. It is not `.npz`:
+  NumPy adds no useful contract here. Import must validate archive entries and
+  materialize only the SQLite member to a managed temp path, not unpack an
+  arbitrary folder tree.
+- Exported `.gttpvp` packages contain deck presets and a deduplicated account
+  slice for characters/weapons used by those decks, plus the artifact database
+  and build presets needed by the existing Artifact Browser/GCSIM pipeline.
+- The left Characters/Weapons view for Assignment/Weapon stages must use the
+  same normal quick-pick and marker machinery as AppShell. Selected characters
+  show team-colored team-local slot markers `1-4` for team 1 and `1-4` for team
+  2; they do not use PvP-only `SEL` badges, grey disabled overlays, or custom
+  assigned-card states.
+- Right-panel character slots must be the same `RunRightPanelWidget` slots
+  driven by the scoped run model. A PvP command/routing layer may choose which
+  scoped player is active and where Artifact/GCSIM actions open, but it must not
+  create a second team/slot-card hierarchy that merely resembles the normal
+  right panel.
+- Artifacts and GCSIM are opened from PvP Draft/build controls, not from the
+  normal top-level AppShell workspace tabs. Those controls may be placed later
+  in the PvP right panel or another agreed Draft/build command location, but
+  the target they open is the existing Artifact Browser or GCSIM Browser wired
+  to the scoped PvP context.
+- Build-stage right-dock layout should keep player build panels collapsible as
+  local UI state. In future online mode, collapsing the opponent panel affects
+  only the local client and must not become synchronized draft state.
+- The previous PvP-specific post-draft source/target widgets were disposable
+  scaffolding and have been removed or bypassed. Do not reintroduce them.
 
 ## Decks Mode
 
@@ -318,48 +376,51 @@ Current v0 scope:
 
 ## Team Assignment
 
-- Assignment v0 is implemented as an internal Draft stage after pick/ban
-  completion.
-- It keeps PvP-owned in-memory UI state until validation succeeds, then commits
-  through `FreeDraftController.set_team_assignment(...)`.
-- Left/main area is now the visual source pool: top Player 1 and bottom
-  Player 2, each with that player's weapon pool and 8 picked characters as
-  image-backed `PixelIconGrid` cards. There are no filters or full-account
-  browsers in post-draft stages.
-- The PvP right panel is now the target match panel: top Player 1 and bottom
-  Player 2, each with two shared right-panel 4-character team rows,
-  portrait-backed target slots, assigned weapon icons, and compact timer/result
-  rows. The previous text-button/rectangle post-draft prototype is no longer
-  the accepted visual layer.
-- Interaction is simple click source character, click right-panel target slot.
-  Re-selecting an already used character moves it instead of duplicating it;
-  slots can be cleared.
-- Stage controls are low-priority right-panel footer controls; stage
-  validation still enables the next-stage button only when both players have
-  valid 4+4 assignments.
-- Current v0 does not implement artifact equipment or scoped PvP GCSIM yet.
-  PvP post-draft target slots are built by adapting PvP assignment/weapon state
-  into `RightPanelTeamPrototypeViewModel` / `RightPanelSlotPrototypeViewModel`
-  and rendering the shared `ui/right_panel/common/team_card.py` and
-  `ui/right_panel/common/slot_card.py` widgets. The artifact mini-zone remains
-  the shared slot-card extension point, so future PvP build flow can extend it
-  without preserving a no-artifact dead end.
-- PvP assignment must not mutate normal TeamBuilder or `live_run` state.
+- Assignment starts after pick/ban completion and must be the first MVP pass
+  that moves PvP onto the real build pipeline.
+- The allowed source roster is restricted to that player's 8 picked
+  `character_id` values, but the view/behavior must be the normal
+  Characters/Weapons workspace behavior: sequential quick-pick into Abyss team
+  1 slots 1-4, then team 2 slots 1-4; clicking an already picked source
+  character removes it from its slot without compacting; clicking a new
+  character when all eight slots are full does nothing.
+- The selected-source markers must be the normal AppShell roster markers:
+  compact team-colored markers with team-local slot numbers. Do not use PvP-only
+  `SEL` overlays, grey assigned-card dimming, disabled cards, or separate
+  selected/assigned marker logic.
+- The right panel is the normal Abyss `RunRightPanelWidget` driven by a scoped
+  PvP `RunSessionController` / `TeamBuilderState`. Right-panel slot clicks keep
+  their normal behavior: selected build/details target toggle, not character
+  assignment.
+- When assignment is committed to the PvP draft backend, convert the scoped
+  `TeamBuilderState` team slots into the backend `character_id` assignment and
+  call `FreeDraftController.set_team_assignment(...)`. Backend validation
+  remains final authority, but it must not be the source of UI identity or
+  roster marker visuals.
+- Player 1 and Player 2 may be built as separate scoped run contexts or as an
+  explicit seat switch over one scoped build workspace. In either case, the
+  inactive player must not consume half of the right panel as an empty target
+  area. Collapsed/inactive seat controls should be compact command rows only.
+- The existing PvP-specific post-draft target/source implementation is not an
+  MVP foundation. Delete or bypass it during the real build-flow migration; do
+  not extend it.
 
 ## Weapon Assignment
 
-- Weapon assignment v0 is implemented as the next internal Draft stage.
-- It commits through `FreeDraftController.set_weapon_assignment(...)` only after
-  backend validation accepts both players.
-- Each assigned character can be selected, then assigned a compatible weapon
-  stack from that player's own left/main source weapon pool.
-- Weapon assignment is visual: click a right-panel team character slot, then
-  click a compatible source weapon grid card. The assigned weapon icon is shown
-  on/near that right-panel slot.
-- The UI enforces player ownership, weapon type compatibility, and stack count
-  exhaustion before setting local selection state; backend validation remains
-  the final authority before continuing.
-- Weaponless continuation is blocked by the existing backend contract.
+- Weapon assignment is the normal Characters/Weapons weapon flow running against
+  the same scoped PvP context/database used for Assignment.
+- Clicking a right-panel slot selects the character/build target. Clicking a
+  compatible source weapon assigns it through the normal weapon assignment path,
+  filtered by the selected character's weapon type.
+- The weapon pool is restricted to the current player's PvP deck/temporary
+  database, but the UI must reuse normal weapon grid behavior, owner/exhaustion
+  markers where applicable, selected-target weapon-type filtering, and right
+  panel weapon mini-box rendering.
+- When weapon assignment is committed to the PvP draft backend, convert scoped
+  equipment state into the backend weapon-stack identity contract and call
+  `FreeDraftController.set_weapon_assignment(...)`. Do not invent localized-name,
+  image-path, or display-string weapon identity.
+- Weaponless continuation remains blocked by the existing backend contract.
 
 ## Artifact Equipment
 
@@ -377,12 +438,15 @@ structure needed for it rather than implementing the full equipment flow.
 - PvP artifact data is scoped to the active PvP match/session.
 - Changes made inside PvP must not affect the main Artifact Browser, main
   account artifact state, normal live-run builds, or current account equipment.
-- The eventual implementation should reuse the existing Artifact Browser logic
-  through a scoped PvP adapter/session rather than forking a second Artifact
-  Browser.
-- PvP right-panel character slots must be designed for character, weapon, and
-  artifact mini-zones plus artifact-equipment actions. Do not build a dead-end
-  simplified no-artifact target widget.
+- The implementation must use the existing Artifact Browser code path through a
+  scoped PvP adapter/session rather than forking a second Artifact Browser. PvP
+  may decide where the "open artifacts" command appears, but the opened surface
+  must be the same embedded Artifact Browser behavior pointed at the scoped PvP
+  database/operation target.
+- PvP right-panel character slots are the normal live-run slot cards and must
+  support the existing character, weapon, and artifact mini-zones plus
+  artifact-equipment actions. Do not build a dead-end simplified no-artifact
+  target widget.
 
 Future PvP JSON preset QoL:
 
@@ -407,18 +471,20 @@ Hot-seat layout direction:
 - Normal live-run GCSIM Browser remains a left workspace tied to current
   live-run teams.
 - PvP does not need a separate top-level PvP GCSIM Browser tab.
-- PvP can expose GCSIM through a button/action inside the Draft/build flow.
-- That action should open or route to a scoped PvP GCSIM stage/panel using PvP
-  teams/builds, not normal live-run teams.
+- PvP can expose GCSIM through a button/action inside the Draft/build flow. The
+  exact command location is intentionally flexible for later layout work.
+- That action must open or route to the existing GCSIM Browser behavior wired to
+  the scoped PvP teams/builds, not normal live-run teams and not a second
+  PvP-specific GCSIM UI.
 
 ## Timers / Results
 
 - Timers/results v0 is implemented as an internal Draft stage after valid team
   and weapon assignment. In the target flow, it follows artifact equipment and
   optional PvP GCSIM when those stages exist.
-- The right-panel target zones keep the teams/weapons visible and show compact
-  timer inputs per player. Inputs accept `mm:ss` or raw seconds and require
-  valid values for both players before finalization.
+- Timers/results should reuse scoped PvP team/build data for display rather
+  than resurrecting custom target-slot panels. Timer inputs accept `mm:ss` or
+  raw seconds and require valid values for both players before finalization.
 - Finalization calls `FreeDraftController.set_match_timers(...)`; lower total
   time wins and equal totals draw through the backend result model.
 - Factual DPS, restarts, technical-loss UI, bundle/export actions, and GCSIM
@@ -427,9 +493,9 @@ Hot-seat layout direction:
 ## Export / Result
 
 - Completed result v0 is implemented as a read-only internal Draft stage.
-- It stays in the same two-player visual match layout and shows teams,
-  assigned weapons, per-player chamber timers/totals, winner/draw, and time
-  difference.
+- The MVP result view should show scoped PvP teams/builds, assigned weapons,
+  per-player chamber timers/totals, winner/draw, and time difference without
+  bringing back the disposable two-player source/target slot layout.
 - PNG/export, history persistence, and polished result-card design remain
   future work.
 
@@ -498,20 +564,23 @@ Current v0 scope:
 - Draft board v0 is implemented. It renders the backend `unified_pool`, lets the
   user click legal pick/ban targets through the controller, shows right-panel
   pick/ban zones, and can complete the full Free Draft schedule locally.
-- Post-draft local flow v0 is implemented inside Draft with the corrected
-  two-player visual match layout: left/main source pools for picked characters
-  and weapons, right-panel target teams/weapons/timers/results. It reuses
-  controller assignment/timer APIs and remains in-memory/PvP-owned.
+- Post-draft local flow now uses one scoped normal AppShell build context per
+  seat. Character clicks use normal sequential quick-pick, right-panel slot
+  clicks select the build target, weapon clicks use the normal selected-slot
+  equipment path, and seat Ready commits converted team/weapon assignments
+  through the PvP backend controller. When both seats are Ready, timers and the
+  future GCSIM route move to the left Draft workspace.
 
 Right-panel architecture status before more PvP growth:
 
 > The global right-panel ownership refactor is complete for current v0 code.
 > Keep new PvP right-panel work under `ui/right_panel/pvp/`; keep
 > `ui/pvp_browser/` as the left/main PvP workspace. PvP page/stage constants are
-> canonical in `ui/right_panel/pvp/_shared.py`, and the current PvP post-draft
-> target panel adapts isolated PvP state into shared common right-panel
-> team/slot-card widgets. Full scoped PvP Artifact equipment and scoped PvP
-> GCSIM remain dedicated follow-ups.
+> canonical in `ui/right_panel/pvp/_shared.py`. Assignment/Weapon stages now
+> use scoped normal AppShell controller/workspace state and the shared
+> `RunRightPanelWidget`; the previous custom source/target implementation must
+> not return. Artifact Browser and executable scoped GCSIM remain later steps
+> on the same scoped pipeline.
 
 Current v0 limitations / later work:
 

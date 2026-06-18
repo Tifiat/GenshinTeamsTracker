@@ -1,6 +1,15 @@
 from __future__ import annotations
 
-from PySide6.QtWidgets import QComboBox, QFrame, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QComboBox,
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from localization import tr
 from run_workspace.pvp.deck_preset import PvpDeckPreset
@@ -43,9 +52,25 @@ class PvpPlayRightPanel(QWidget):
         self.empty_label.setWordWrap(True)
         root.addWidget(self.empty_label)
 
+        player_1_header = QHBoxLayout()
+        player_1_header.setContentsMargins(0, 0, 0, 0)
+        player_1_header.setSpacing(5)
         self.player_1_label = QLabel()
         self.player_1_label.setObjectName("pvp_deck_info_line")
-        root.addWidget(self.player_1_label)
+        player_1_header.addWidget(self.player_1_label, 1)
+        self.player_1_import_button = QPushButton()
+        self.player_1_import_button.setObjectName("pvp_secondary_button")
+        self.player_1_import_button.clicked.connect(
+            lambda: self._on_import_profile("player_1")
+        )
+        player_1_header.addWidget(self.player_1_import_button)
+        self.player_1_local_button = QPushButton()
+        self.player_1_local_button.setObjectName("pvp_secondary_button")
+        self.player_1_local_button.clicked.connect(
+            lambda: self.workspace.use_local_profile_for_seat("player_1")
+        )
+        player_1_header.addWidget(self.player_1_local_button)
+        root.addLayout(player_1_header)
         self.player_1_combo = QComboBox()
         self.player_1_combo.currentIndexChanged.connect(
             lambda _index: self._on_selection_changed()
@@ -56,9 +81,25 @@ class PvpPlayRightPanel(QWidget):
         self.player_1_status_label.setWordWrap(True)
         root.addWidget(self.player_1_status_label)
 
+        player_2_header = QHBoxLayout()
+        player_2_header.setContentsMargins(0, 0, 0, 0)
+        player_2_header.setSpacing(5)
         self.player_2_label = QLabel()
         self.player_2_label.setObjectName("pvp_deck_info_line")
-        root.addWidget(self.player_2_label)
+        player_2_header.addWidget(self.player_2_label, 1)
+        self.player_2_import_button = QPushButton()
+        self.player_2_import_button.setObjectName("pvp_secondary_button")
+        self.player_2_import_button.clicked.connect(
+            lambda: self._on_import_profile("player_2")
+        )
+        player_2_header.addWidget(self.player_2_import_button)
+        self.player_2_local_button = QPushButton()
+        self.player_2_local_button.setObjectName("pvp_secondary_button")
+        self.player_2_local_button.clicked.connect(
+            lambda: self.workspace.use_local_profile_for_seat("player_2")
+        )
+        player_2_header.addWidget(self.player_2_local_button)
+        root.addLayout(player_2_header)
         self.player_2_combo = QComboBox()
         self.player_2_combo.currentIndexChanged.connect(
             lambda _index: self._on_selection_changed()
@@ -111,55 +152,70 @@ class PvpPlayRightPanel(QWidget):
             return
         self._refreshing = True
         try:
-            options = self.workspace.play_deck_options()
-            option_ids = {preset.deck_id for preset in options}
-            if self.player_1_deck_id not in option_ids:
+            self._refresh_profile_labels()
+            player_1_options = self.workspace.play_deck_options("player_1")
+            player_2_options = self.workspace.play_deck_options("player_2")
+            player_1_option_ids = {preset.deck_id for preset in player_1_options}
+            player_2_option_ids = {preset.deck_id for preset in player_2_options}
+            if self.player_1_deck_id not in player_1_option_ids:
                 self.player_1_deck_id = self.workspace.default_player_1_deck_id()
-            if self.player_2_deck_id not in option_ids:
+            if self.player_2_deck_id not in player_2_option_ids:
                 self.player_2_deck_id = self.workspace.default_player_2_deck_id(
                     self.player_1_deck_id
                 )
             self.player_1_deck_id = self._sync_combo(
                 self.player_1_combo,
                 self.player_1_deck_id,
-                options,
+                player_1_options,
             )
             self.player_2_deck_id = self._sync_combo(
                 self.player_2_combo,
                 self.player_2_deck_id,
-                options,
+                player_2_options,
             )
 
-            has_decks = bool(options)
-            for widget in (
-                self.player_1_label,
-                self.player_1_combo,
-                self.player_1_status_label,
-                self.player_2_label,
-                self.player_2_combo,
-                self.player_2_status_label,
-                self.start_button,
-            ):
-                widget.setVisible(True)
-                widget.setEnabled(has_decks)
+            has_player_1_decks = bool(player_1_options)
+            has_player_2_decks = bool(player_2_options)
+            has_decks = has_player_1_decks and has_player_2_decks
+            active = self.workspace.active_draft_session is not None
+            self.player_1_combo.setEnabled(has_player_1_decks and not active)
+            self.player_2_combo.setEnabled(has_player_2_decks and not active)
+            self.player_1_import_button.setEnabled(not active)
+            self.player_2_import_button.setEnabled(not active)
+            self.player_1_local_button.setVisible(
+                self.workspace.seat_profile_is_imported("player_1")
+            )
+            self.player_2_local_button.setVisible(
+                self.workspace.seat_profile_is_imported("player_2")
+            )
+            self.player_1_local_button.setEnabled(not active)
+            self.player_2_local_button.setEnabled(not active)
             self.empty_label.setVisible(not has_decks)
             if not has_decks:
                 self.start_button.setEnabled(False)
-                self.player_1_status_label.setText("")
-                self.player_2_status_label.setText("")
+                if not has_player_1_decks:
+                    self.player_1_status_label.setText(
+                        tr("app_shell.pvp.play.no_decks")
+                    )
+                if not has_player_2_decks:
+                    self.player_2_status_label.setText(
+                        tr("app_shell.pvp.play.no_decks")
+                    )
             else:
                 player_1_status = self.workspace.deck_start_status(
                     self.player_1_deck_id,
                     player_label="Player 1",
+                    seat="player_1",
                 )
                 player_2_status = self.workspace.deck_start_status(
                     self.player_2_deck_id,
                     player_label="Player 2",
+                    seat="player_2",
                 )
                 self.player_1_status_label.setText(player_1_status.text)
                 self.player_2_status_label.setText(player_2_status.text)
                 self.start_button.setEnabled(
-                    player_1_status.ready and player_2_status.ready
+                    not active and player_1_status.ready and player_2_status.ready
                 )
             self._refresh_active_summary()
             status = self.workspace.last_play_status()
@@ -172,12 +228,29 @@ class PvpPlayRightPanel(QWidget):
         self.title_label.setText(tr("app_shell.pvp.play.title"))
         self.mode_label.setText(tr("app_shell.pvp.play.mode_local_hotseat"))
         self.empty_label.setText(tr("app_shell.pvp.play.no_decks"))
-        self.player_1_label.setText(tr("app_shell.pvp.play.player_1_deck"))
-        self.player_2_label.setText(tr("app_shell.pvp.play.player_2_deck"))
+        self._refresh_profile_labels()
+        self.player_1_import_button.setText(tr("app_shell.pvp.profile.import"))
+        self.player_2_import_button.setText(tr("app_shell.pvp.profile.import"))
+        self.player_1_local_button.setText(tr("app_shell.pvp.profile.use_local"))
+        self.player_2_local_button.setText(tr("app_shell.pvp.profile.use_local"))
         self.start_button.setText(tr("app_shell.pvp.play.start_local_draft"))
         self.active_title_label.setText(tr("app_shell.pvp.play.active_local_draft"))
         self.clear_button.setText(tr("app_shell.pvp.play.clear_active_draft"))
         self.refresh()
+
+    def _refresh_profile_labels(self) -> None:
+        self.player_1_label.setText(
+            tr("app_shell.pvp.play.player_profile").format(
+                seat=tr("app_shell.pvp.draft.player_1"),
+                profile=self.workspace.seat_profile_label("player_1"),
+            )
+        )
+        self.player_2_label.setText(
+            tr("app_shell.pvp.play.player_profile").format(
+                seat=tr("app_shell.pvp.draft.player_2"),
+                profile=self.workspace.seat_profile_label("player_2"),
+            )
+        )
 
     def _sync_combo(
         self,
@@ -213,6 +286,16 @@ class PvpPlayRightPanel(QWidget):
             self.player_2_deck_id,
         ):
             self.refresh()
+
+    def _on_import_profile(self, seat: str) -> None:
+        path, _selected_filter = QFileDialog.getOpenFileName(
+            self,
+            tr("app_shell.pvp.profile.import"),
+            "",
+            tr("app_shell.pvp.profile.file_filter"),
+        )
+        if path:
+            self.workspace.import_profile_for_seat(seat, path)
 
     def _refresh_active_summary(self) -> None:
         session = self.workspace.active_draft_session

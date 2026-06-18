@@ -93,9 +93,11 @@ intended behavior or visual changes:
   `host.py`, `decks/panel.py`, `play/panel.py`, `draft/panel.py`, and
   `draft/assignment/target_slot.py`. PvP page/stage/timer constants are
   canonical in `ui/right_panel/pvp/_shared.py`; `ui/pvp_browser/window.py`
-  imports them instead of redefining them. PvP post-draft targets adapt isolated
-  PvP state into the shared `ui/right_panel/common/team_card.py` /
-  `slot_card.py` widgets, with full scoped Artifact equipment still future.
+  imports them instead of redefining them. Current PvP post-draft visual code is
+  provisional and should not be treated as the MVP build-flow target. The MVP
+  target is scoped reuse of the normal AppShell build pipeline:
+  Characters/Weapons workspace, embedded Artifact Browser, GCSIM Browser,
+  `RunSessionController` / `TeamBuilderState`, and `RunRightPanelWidget`.
   `ui/pvp_browser/window.py` keeps left/main PvP workspace classes and
   compatibility re-exports for old right-panel names.
 - `ui/right_panel_prototype.py` is now a deprecated compatibility facade only.

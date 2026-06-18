@@ -435,7 +435,14 @@ Weapon availability:
    - weapon type and stack counts are enforced.
 
 6. Ready/confirm
-   - hot-seat confirmation is local;
+   - each seat becomes ready only after all 8 character slots have compatible
+     assigned weapons;
+   - Ready converts the seat-scoped normal build state to backend
+     `PlayerTeamAssignment` and `PlayerWeaponAssignment`, then validates through
+     the existing Free Draft controller;
+   - hot-seat confirmation and panel collapse state are local UI state;
+   - both seats ready transitions the left Draft workspace to timers/GCSIM
+     routing while the right side remains the build/details panel;
    - online ready/confirm is future transport behavior.
 
 7. Timers/results
@@ -515,12 +522,35 @@ Draft result zones:
 Picked and banned characters should be represented in those zones and should
 not remain in the active pool as ordinary available cards.
 
-Do not wire picked characters directly into the normal right panel as a normal
-full-account team. The post-draft pool should behave like a restricted local
-roster: only the 8 picked characters and deck weapons are available.
+Do not wire picked characters into the user's normal live-run team state. The
+post-draft pool should behave like a restricted local roster: only the 8 picked
+characters and that player's deck/scoped weapons are available.
 
-AppShell/Right Panel reuse can happen after the restricted PvP pool/team model
-exists. Avoid mutating the user's normal TeamBuilder state during draft.
+The MVP build-flow target is not a new PvP imitation of the normal roster/right
+panel. It is the existing AppShell Characters/Weapons, Artifact Browser, GCSIM
+Browser, and Abyss right-panel pipeline running against a scoped PvP
+run/equipment context. That context may use a temporary database copied from
+the current local account for Player 1 and an empty/imported temporary database
+for Player 2, but it must not mutate the user's normal `TeamBuilderState`,
+normal current-equipment tables, normal Artifact Browser state, or normal
+GCSIM summaries.
+
+PvP profile/provider model:
+
+- local hot-seat players may use the current app SQLite database directly;
+- imported or future remote players use a scoped provider backed by a managed
+  temporary SQLite database;
+- `.gttpvp` is the PvP profile package format. It is a versioned ZIP with
+  `manifest.json`, `decks.json`, and `account_slice.sqlite`;
+- package export deduplicates characters/weapons across selected deck presets
+  and keeps identity data-first;
+- package import validates archive entries and materializes only the SQLite DB
+  member to a temp path. It must not restore into the main app database.
+
+The restricted PvP roster must still use stable backend identity:
+`character_id` for characters and the observed weapon-stack identity contract
+for weapons. Localized names, image paths, and display strings are presentation
+data only.
 
 ## Existing Ruleset Code Boundary
 

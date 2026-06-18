@@ -2,7 +2,16 @@ from __future__ import annotations
 
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QIcon, QKeySequence, QShortcut
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from localization import tr
 from run_workspace.pvp.deck_preset import PvpDeckPreset
@@ -44,6 +53,11 @@ class PvpDecksRightPanel(QWidget):
         self.title_label = QLabel()
         self.title_label.setObjectName("SectionTitle")
         root.addWidget(self.title_label)
+
+        self.export_profile_button = QPushButton()
+        self.export_profile_button.setObjectName("pvp_secondary_button")
+        self.export_profile_button.clicked.connect(self._on_export_profile)
+        root.addWidget(self.export_profile_button)
 
         self.create_row_widget = QWidget()
         create_layout = QHBoxLayout(self.create_row_widget)
@@ -104,6 +118,7 @@ class PvpDecksRightPanel(QWidget):
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.decks.title"))
+        self.export_profile_button.setText(tr("app_shell.pvp.profile.export"))
         self.create_name_edit.setPlaceholderText(
             tr("app_shell.pvp.decks.create_placeholder")
         )
@@ -422,6 +437,16 @@ class PvpDecksRightPanel(QWidget):
         if self.workspace.is_new_deck_edit:
             self.workspace.cancel_edit()
         self.create_name_edit.clear()
+
+    def _on_export_profile(self) -> None:
+        path, _selected_filter = QFileDialog.getSaveFileName(
+            self,
+            tr("app_shell.pvp.profile.export"),
+            "profile.gttpvp",
+            tr("app_shell.pvp.profile.file_filter"),
+        )
+        if path:
+            self.workspace.export_profile(path)
 
     def _save_existing_from(self, name_input: QLineEdit) -> None:
         self.workspace.save_edit(name=name_input.text())

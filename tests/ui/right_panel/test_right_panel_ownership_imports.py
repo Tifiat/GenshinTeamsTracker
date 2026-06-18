@@ -127,10 +127,25 @@ class RightPanelOwnershipImportsTest(unittest.TestCase):
         self.assertFalse((root / "ui/right_panel/common/compact_slot.py").exists())
         self.assertNotIn("class PvpPostDraftTargetSlotWidget", target_slot_source)
         self.assertIn("RightPanelSlotCardWidget", target_slot_source)
-        self.assertIn("RightPanelTeamCardWidget", panel_source)
-        self.assertIn("RightPanelSlotPrototypeViewModel", panel_source)
-        self.assertIn("RightPanelTeamPrototypeViewModel", panel_source)
+        self.assertIn("RunRightPanelWidget", panel_source)
+        self.assertIn("class PvpPostDraftRunPanel(RunRightPanelWidget)", panel_source)
+        self.assertIn("RightPanelPrototypeViewModel", panel_source)
+        self.assertNotIn("RightPanelSlotPrototypeViewModel", panel_source)
+        self.assertNotIn("RightPanelTeamPrototypeViewModel", panel_source)
+        self.assertNotIn("_build_postdraft_view_model", panel_source)
+        self.assertNotIn("_build_target_slot_model", panel_source)
         self.assertNotIn("RightPanelCompactSlotWidget", panel_source)
+
+    def test_pvp_workspace_has_no_legacy_postdraft_assignment_path(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        source = (root / "ui/pvp_browser/window.py").read_text(encoding="utf-8")
+
+        self.assertNotIn("assignment_slots_by_seat", source)
+        self.assertNotIn("weapon_assignments_by_seat", source)
+        self.assertNotIn("badge_text=\"SEL\"", source)
+        self.assertNotIn("def _build_source_character_grid", source)
+        self.assertNotIn("def _build_source_weapon_grid", source)
+        self.assertIn("PvpBuildFlowContext.from_draft_session", source)
 
 
 if __name__ == "__main__":

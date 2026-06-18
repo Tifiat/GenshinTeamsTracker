@@ -245,10 +245,18 @@ QFrame#pvp-postdraft-target-player-1 {{
 QFrame#pvp-postdraft-target-player-2 {{
     border-left: 4px solid {UI_ACCENT_TEAM_2};
 }}
-QFrame#pvp-timer-area {{
-    border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 6px;
-    background: {UI_BG_PANEL_RAISED};
+QPushButton#pvp_postdraft_player_toggle {{
+    min-height: 24px;
+    padding: 2px 6px;
+    border: none;
+    background: transparent;
+    color: {UI_TEXT_PRIMARY};
+    font-size: 12px;
+    font-weight: 900;
+    text-align: left;
+}}
+QPushButton#pvp_postdraft_player_toggle:hover {{
+    color: #f1d486;
 }}
 #TeamSlotRow, #InfoBlock, #DetailsBlock {{
     border: 1px solid #363b43;
@@ -311,10 +319,6 @@ QFrame#pvp-timer-area {{
     color: #ffd2ad;
     background: #4a382f;
     font-weight: 900;
-}}
-QFrame#pvp-timer-row {{
-    border: none;
-    background: transparent;
 }}
 """
 
@@ -384,52 +388,24 @@ def _draft_panel_status_lines(
     workspace: PvpWorkspace | None = None,
 ) -> list[str]:
     if stage == PVP_DRAFT_STAGE_ASSIGNMENT and workspace is not None:
-        selected = workspace.selected_assignment_character
-        selected_text = (
-            f"{_seat_short_label(selected[0])} "
-            f"{_entry_display_name_for_id(board, selected[1])}"
-            if selected is not None
-            else tr("app_shell.pvp.post.none_selected")
-        )
+        view_state = workspace._draft_view_state()
         return [
             tr("app_shell.pvp.post.stage_assignment"),
             tr("app_shell.pvp.post.assignment_panel_status").format(
-                p1=sum(
-                    1
-                    for team in workspace.assignment_slots_by_seat["player_1"]
-                    for character_id in team
-                    if character_id
-                ),
-                p2=sum(
-                    1
-                    for team in workspace.assignment_slots_by_seat["player_2"]
-                    for character_id in team
-                    if character_id
-                ),
-            ),
-            tr("app_shell.pvp.post.selected_character").format(
-                character=selected_text,
+                p1=len(_assigned_character_ids(view_state, "player_1")),
+                p2=len(_assigned_character_ids(view_state, "player_2")),
             ),
             tr("app_shell.pvp.post.ready_status").format(
                 ready=_ready_text(workspace.assignment_ready()),
             ),
         ]
     if stage == PVP_DRAFT_STAGE_WEAPONS and workspace is not None:
-        selected = workspace.selected_weapon_character
-        selected_text = (
-            f"{_seat_short_label(selected[0])} "
-            f"{_entry_display_name_for_id(board, selected[1])}"
-            if selected is not None
-            else tr("app_shell.pvp.post.none_selected")
-        )
+        view_state = workspace._draft_view_state()
         return [
             tr("app_shell.pvp.post.stage_weapons"),
             tr("app_shell.pvp.post.weapon_panel_status").format(
-                p1=len(workspace.weapon_assignments_by_seat["player_1"]),
-                p2=len(workspace.weapon_assignments_by_seat["player_2"]),
-            ),
-            tr("app_shell.pvp.post.selected_character").format(
-                character=selected_text,
+                p1=len(_weapon_assignment_map(view_state, "player_1")),
+                p2=len(_weapon_assignment_map(view_state, "player_2")),
             ),
             tr("app_shell.pvp.post.ready_status").format(
                 ready=_ready_text(workspace.weapons_ready()),
@@ -724,13 +700,6 @@ def _draft_entry_display_name(
     return _text(entry.get("display_name")) or fallback
 
 
-def _empty_assignment_slots_by_seat() -> dict[str, list[list[str | None]]]:
-    return {
-        seat: [[None for _slot in range(4)] for _team in range(2)]
-        for seat in PVP_SEATS
-    }
-
-
 def _draft_stage(view_state: Mapping[str, Any]) -> str:
     stage = _text(view_state.get("stage"))
     return stage if stage in PVP_DRAFT_STAGE_VALUES else PVP_DRAFT_STAGE_DRAFT
@@ -771,28 +740,6 @@ def _draft_stage_detail(
     if stage == PVP_DRAFT_STAGE_COMPLETED_RESULT:
         return tr("app_shell.pvp.post.result_detail")
     return _draft_action_detail(board)
-
-
-def _selected_assignment_character(
-    view_state: Mapping[str, Any],
-) -> tuple[str, str] | None:
-    return _seat_character_pair(view_state.get("selected_assignment_character"))
-
-
-def _selected_weapon_character(
-    view_state: Mapping[str, Any],
-) -> tuple[str, str] | None:
-    return _seat_character_pair(view_state.get("selected_weapon_character"))
-
-
-def _seat_character_pair(value: Any) -> tuple[str, str] | None:
-    if not isinstance(value, (list, tuple)) or len(value) != 2:
-        return None
-    seat = _text(value[0])
-    character_id = _text(value[1])
-    if seat not in PVP_SEATS or not character_id:
-        return None
-    return seat, character_id
 
 
 def _assignment_slots(

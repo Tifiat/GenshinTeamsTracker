@@ -24,7 +24,8 @@ Mirror the primary project owner under `tests/`:
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Decks UI preset
   persistence/conversion and root-resolved default path coverage
   (`test_deck_preset.py`), observed weapon-stack identity helper coverage
-  (`test_weapon_identity.py`), Free Draft
+  (`test_weapon_identity.py`), PvP `.gttpvp` profile package/provider coverage
+  (`test_profile_package.py`), Free Draft
   schedule/reducer/action log, team/weapon assignment validation, and
   timer/result behavior, local-account deck export provider/report behavior,
   draft-system registry behavior, deterministic Free Draft planner/account
@@ -72,13 +73,14 @@ Mirror the primary project owner under `tests/`:
   Coverage should assert no live timer/GCSIM/equipment/save/reset behavior is
   exposed by the History viewer.
 - `tests/ui/right_panel/pvp/` - PvP right-panel host/pages/stage panels,
-  including Decks, Play, Draft pick/ban zones, Assignment, Weapon assignment,
-  future Artifact equipment, optional scoped PvP GCSIM, Timers/results, and
-  Completed result/export panels.
+  including Decks, Play, Draft pick/ban zones, future scoped build-flow routing,
+  Timers/results, and Completed result/export panels. Tests must not bless a
+  PvP-specific clone of the normal build right panel as MVP behavior.
 - `tests/ui/right_panel/test_right_panel_ownership_imports.py` - structural
   right-panel ownership guardrails: new production imports, compatibility
-  facades, canonical PvP constants/imports, and the common-backed PvP target
-  slot extension point.
+  facades, canonical PvP constants/imports, and guardrails that MVP PvP build
+  flow routes to the normal `RunRightPanelWidget` path instead of a custom PvP
+  target-slot hierarchy.
 - `tests/ui/pvp_browser/` - left/main PvP browser/workspace tests, including
   deck browser grids, left workspace create/edit/save/cancel coordination,
   card-grid viewport edit tint, selected-card edit markers, Play deck selectors,
@@ -87,16 +89,21 @@ Mirror the primary project owner under `tests/`:
   unified-pool current action/legal target rendering, one card per shared
   `character_id`, per-seat ownership/constellation markers, legal click mapping,
   illegal no-op behavior, same-deck seat-state independence, and a deterministic
-  full Free Draft completion through UI card clicks, plus post-draft left/main
-  source-zone layout guards for image-backed picked-character and weapon
-  `PixelIconGrid` cards. Tests in this folder may instantiate the moved
+  full Free Draft completion through UI card clicks, plus post-draft transition
+  guards. MVP build-flow tests assert that scoped PvP assignment uses the
+  normal AppShell quick-pick marker contract: team-colored `1-4` markers for
+  team 1 and team 2, no PvP-only `SEL` badges, no grey disabled
+  assigned-character overlays, and no custom PvP target-slot hierarchy in place
+  of `RunRightPanelWidget`. They also cover normal slot-target selection,
+  selected-slot weapon assignment, Ready backend commits, both-Ready timer
+  transition, and imported-profile provider routing. Tests in this folder may instantiate the moved
   right-panel widgets when asserting cross-page behavior, but those imports
   should come from `ui.right_panel.pvp.*`, not from the old compatibility
   exports in `ui.pvp_browser.window`.
-  PvP offscreen smoke should also verify the default
-  deck path, first/second activation
-  timing, and that edit tint is scoped to the card grid viewports when this area
-  changes.
+  PvP offscreen smoke should also verify the default deck path, first/second
+  activation timing, that edit tint is scoped to the card grid viewports when
+  this area changes, and that collapsed/inactive PvP seats do not reserve large
+  empty right-panel geometry.
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.

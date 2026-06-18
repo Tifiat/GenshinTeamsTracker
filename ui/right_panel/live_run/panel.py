@@ -262,6 +262,8 @@ class RunRightPanelWidget(QWidget):
         parent: QWidget | None = None,
         *,
         show_mode_tabs: bool = True,
+        show_chamber_table: bool = True,
+        show_run_actions: bool = True,
     ):
         super().__init__(parent)
         self.setObjectName("RightPanelPrototypeWidget")
@@ -269,6 +271,8 @@ class RunRightPanelWidget(QWidget):
         self._model = model
         self._team_widgets: list[RightPanelTeamCardWidget] = []
         self._slot_widgets: list[RightPanelSlotCardWidget] = []
+        self._show_chamber_table = bool(show_chamber_table)
+        self._show_run_actions = bool(show_run_actions)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -304,6 +308,7 @@ class RunRightPanelWidget(QWidget):
         self._chamber_table.abyss_timer_changed.connect(
             self.abyss_timer_changed.emit
         )
+        self._chamber_table.setVisible(self._show_chamber_table)
         self._layout.addWidget(self._chamber_table)
 
         self._details_frame = SelectedCharacterDetailsWidget()
@@ -318,6 +323,7 @@ class RunRightPanelWidget(QWidget):
         self.reset_button = self._run_actions.reset_button
         self.save_button = self._run_actions.save_button
         self.save_status_label = self._run_actions.save_status_label
+        self._run_actions.setVisible(self._show_run_actions)
         self._layout.addWidget(self._run_actions)
 
         self._layout.addStretch(1)
@@ -353,12 +359,13 @@ class RunRightPanelWidget(QWidget):
         teams_ms = perf_ms(teams_start)
 
         chamber_start = perf_now()
-        self._chamber_table.set_rows(
-            model.chamber_headers,
-            model.chamber_rows,
-            total_seconds=model.total_seconds,
-            gcsim_status=model.gcsim_status,
-        )
+        if self._show_chamber_table:
+            self._chamber_table.set_rows(
+                model.chamber_headers,
+                model.chamber_rows,
+                total_seconds=model.total_seconds,
+                gcsim_status=model.gcsim_status,
+            )
         chamber_ms = perf_ms(chamber_start)
         details_start = perf_now()
         self._details_frame.set_details(model.selected_details)
@@ -377,15 +384,20 @@ class RunRightPanelWidget(QWidget):
             QTimer.singleShot(0, self._finish_deferred_update)
 
     def show_save_result(self, result: object) -> None:
+        if not self._show_run_actions:
+            return
         self._run_actions.show_save_result(result)
 
     def clear_save_status(self) -> None:
+        if not self._show_run_actions:
+            return
         self._run_actions.clear_save_status()
 
     def retranslate_ui(self) -> None:
         if self._mode_tabs is not None:
             self._mode_tabs.retranslate_ui()
-        self._run_actions.retranslate_ui()
+        if self._show_run_actions:
+            self._run_actions.retranslate_ui()
 
     def recommended_standalone_size(self) -> QSize:
         self._content.adjustSize()

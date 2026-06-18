@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QComboBox,
-    QLineEdit,
     QPushButton,
     QScrollArea,
     QStackedWidget,
@@ -46,13 +45,12 @@ from run_workspace.pvp.free_draft_controller import (
     FreeDraftControllerActionRejected,
 )
 from run_workspace.pvp.match_result import ChamberTimer, PlayerMatchTimers
-from run_workspace.pvp.session import (
-    CharacterWeaponAssignment,
-    PlayerTeamAssignment,
-    PlayerWeaponAssignment,
-    TeamAssignment,
-    validate_team_assignment,
-    validate_weapon_assignment,
+from run_workspace.pvp.profile_package import (
+    ImportedPvpProfileProvider,
+    LocalPvpProfileProvider,
+    PvpProfileProvider,
+    export_pvp_profile_package,
+    import_pvp_profile_package,
 )
 from run_workspace.pvp.validation import DeckValidationReport, validate_draft_deck
 from run_workspace.pvp.weapon_identity import weapon_observed_stack_key
@@ -85,10 +83,7 @@ from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.pixel_icon_grid import (
     PixelIconGrid,
-    PixelIconGridFill,
-    PixelIconGridItem,
     PixelIconGridMetrics,
-    PixelIconGridOutline,
 )
 from ui.utils.tooltips import install_custom_tooltip
 from ui.right_panel.common.slot_parts import RightPanelPortraitMiniBox, slot_portrait_fallback
@@ -107,7 +102,6 @@ from ui.right_panel.pvp._shared import (
     _PVP_DECK_ICON_PIXMAP_CACHE,
     _active_draft_summary_lines,
     _asset_image_path,
-    _assigned_character_ids,
     _character_assets_by_id,
     _clear_layout,
     _compact_issue_codes,
@@ -117,19 +111,17 @@ from ui.right_panel.pvp._shared import (
     _draft_card_status_label,
     _draft_is_complete,
     _draft_main_pool_entries,
+    _draft_panel_status_lines,
     _draft_stage,
     _draft_stage_detail,
     _draft_stage_title,
     _draft_unified_card_text,
     _draft_unified_pool_summary,
-    _empty_assignment_slots_by_seat,
     _entry_display_name_for_id,
     _mapping,
     _owner_seats,
     _parse_timer_text,
     _picked_character_ids,
-    _postdraft_character_tooltip,
-    _postdraft_grid_scroll_area,
     _postdraft_source_object_name,
     _pvp_deck_inactive_fill,
     _pvp_deck_item_properties,
@@ -138,12 +130,8 @@ from ui.right_panel.pvp._shared import (
     _refresh_qss,
     _seat_label,
     _seat_short_label,
-    _selected_assignment_character,
-    _selected_weapon_character,
     _text,
     _weapon_assets_by_stack_key,
-    _weapon_stack_is_assignable,
-    _weapon_stack_remaining,
     _weapon_type_filter_keys,
 )
 from ui.utils.ui_palette import (
@@ -767,6 +755,23 @@ class PvpDecksWorkspace(QWidget):
         self.refresh_view()
         self.state_changed.emit()
         return deleted
+
+    def export_profile(self, output_path: str | Path) -> bool:
+        try:
+            report = export_pvp_profile_package(
+                output_path,
+                deck_dir=self.deck_dir,
+                db_path=self.db_path,
+            )
+        except Exception as exc:
+            self._last_status = str(exc) or exc.__class__.__name__
+            self.state_changed.emit()
+            return False
+        self._last_status = tr("app_shell.pvp.profile.exported").format(
+            path=str(report.path),
+        )
+        self.state_changed.emit()
+        return True
 
     def validation_report(self):
         preset = self.active_preset()
@@ -1418,33 +1423,8 @@ class PvpDraftUnifiedCardButton(QFrame):
         super().mousePressEvent(event)
 
 
-class PvpPostDraftGridItemHandle:
-    def __init__(self, grid: PixelIconGrid, item_id: str) -> None:
-        self.grid = grid
-        self.item_id = item_id
-
-    def click(self) -> bool:
-        return self.grid.click_item_for_test(self.item_id)
-
-    def isEnabled(self) -> bool:  # noqa: N802 - Qt-style test compatibility
-        item = self.grid.item(self.item_id)
-        return bool(item and item.enabled)
-
-    def property(self, name: str) -> Any:  # noqa: A003, N802 - Qt-style compatibility
-        return self.grid.item_property(self.item_id, name)
-
-
-
-
 class PvpDraftWorkspace(QWidget):
     card_clicked = Signal(dict)
-    assignment_character_clicked = Signal(str, str)
-    assignment_slot_clicked = Signal(str, int, int)
-    assignment_slot_clear_clicked = Signal(str, int, int)
-    weapon_character_clicked = Signal(str, str)
-    weapon_stack_clicked = Signal(str, str, str)
-    weapon_clear_clicked = Signal(str, str)
-    timer_text_changed = Signal(str, int, str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -1453,20 +1433,13 @@ class PvpDraftWorkspace(QWidget):
         self._active_session: PvpActiveDraftSession | None = None
         self._status_text = ""
         self._view_state: Mapping[str, Any] = {}
+        self._build_flow_context: Any | None = None
         self._character_assets_by_id: dict[str, dict[str, Any]] = {}
         self._weapon_assets_by_stack_key: dict[str, dict[str, Any]] = {}
         self.card_buttons_by_character_id: dict[str, PvpDraftUnifiedCardButton] = {}
         self.card_buttons_by_key = self.card_buttons_by_character_id
         self.legal_card_buttons: list[PvpDraftUnifiedCardButton] = []
-        self.assignment_character_buttons_by_key: dict[tuple[str, str], PvpPostDraftGridItemHandle] = {}
-        self.assignment_slot_buttons_by_key: dict[tuple[str, int, int], QPushButton] = {}
-        self.weapon_character_buttons_by_key: dict[tuple[str, str], QPushButton] = {}
-        self.weapon_stack_buttons_by_key: dict[tuple[str, str], PvpPostDraftGridItemHandle] = {}
         self.source_zone_frames_by_seat: dict[str, QFrame] = {}
-        self.source_character_grids_by_seat: dict[str, PixelIconGrid] = {}
-        self.source_weapon_grids_by_seat: dict[str, PixelIconGrid] = {}
-        self.timer_inputs_by_key: dict[tuple[str, int], QLineEdit] = {}
-        self.timer_total_labels_by_seat: dict[str, QLabel] = {}
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 18, 18, 18)
@@ -1554,10 +1527,12 @@ class PvpDraftWorkspace(QWidget):
         view_state: Mapping[str, Any] | None = None,
         character_assets: Iterable[dict[str, Any]] = (),
         weapon_assets: Iterable[dict[str, Any]] = (),
+        build_flow_context: Any | None = None,
     ) -> None:
         self._active_session = session
         self._status_text = status_text
         self._view_state = dict(view_state or {})
+        self._build_flow_context = build_flow_context
         self._character_assets_by_id = _character_assets_by_id(character_assets)
         self._weapon_assets_by_stack_key = _weapon_assets_by_stack_key(weapon_assets)
         self.refresh()
@@ -1573,15 +1548,8 @@ class PvpDraftWorkspace(QWidget):
         self.status_label.setVisible(bool(self._status_text))
         self.card_buttons_by_key.clear()
         self.legal_card_buttons.clear()
-        self.assignment_character_buttons_by_key.clear()
-        self.assignment_slot_buttons_by_key.clear()
-        self.weapon_character_buttons_by_key.clear()
-        self.weapon_stack_buttons_by_key.clear()
         self.source_zone_frames_by_seat.clear()
-        self.source_character_grids_by_seat.clear()
-        self.source_weapon_grids_by_seat.clear()
-        self.timer_inputs_by_key.clear()
-        self.timer_total_labels_by_seat.clear()
+        self._detach_build_source_widgets()
         _clear_layout(self.scroll_layout)
 
         if session is None:
@@ -1601,10 +1569,13 @@ class PvpDraftWorkspace(QWidget):
         if stage in {
             PVP_DRAFT_STAGE_ASSIGNMENT,
             PVP_DRAFT_STAGE_WEAPONS,
+        }:
+            self.scroll_layout.addWidget(self._build_scoped_build_source_stage())
+        elif stage in {
             PVP_DRAFT_STAGE_TIMERS_RESULTS,
             PVP_DRAFT_STAGE_COMPLETED_RESULT,
         }:
-            self.scroll_layout.addWidget(self._build_post_draft_source_stage(board, stage))
+            self.scroll_layout.addWidget(self._build_timers_results_stage(stage))
         else:
             self.scroll_layout.addWidget(self._build_unified_pool(board, complete))
         self.scroll_layout.addStretch(1)
@@ -1671,287 +1642,100 @@ class PvpDraftWorkspace(QWidget):
         layout.addWidget(grid_widget)
         return pool_frame
 
-    def _build_post_draft_source_stage(
-        self,
-        board: Mapping[str, Any],
-        stage: str,
-    ) -> QFrame:
-        frame = QFrame()
-        frame.setObjectName("pvp_postdraft_source_frame")
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(8)
-        session = self._active_session
+    def _detach_build_source_widgets(self) -> None:
+        context = self._build_flow_context
+        if context is None:
+            return
+        for seat_context in getattr(context, "seats", {}).values():
+            source = getattr(seat_context, "source_workspace", None)
+            if source is not None:
+                source.setParent(None)
 
+    def _build_scoped_build_source_stage(self) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("pvp_scoped_build_source_frame")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        context = self._build_flow_context
+        if context is None:
+            empty = QLabel(tr("app_shell.pvp.post.build_context_missing"))
+            empty.setObjectName("small_muted")
+            empty.setWordWrap(True)
+            layout.addWidget(empty)
+            return frame
         for seat in PVP_SEATS:
+            seat_context = context.seat(seat)
+            if seat_context is None:
+                continue
             section = QFrame()
             section.setObjectName(_postdraft_source_object_name(seat))
             section.setProperty("seat", seat)
+            section.setProperty("scopedBuildSource", True)
             section_layout = QVBoxLayout(section)
             section_layout.setContentsMargins(8, 8, 8, 8)
             section_layout.setSpacing(6)
-            self.source_zone_frames_by_seat[seat] = section
-
             title = QLabel(
-                tr("app_shell.pvp.post.source_zone_title").format(
+                tr("app_shell.pvp.post.scoped_source_title").format(
                     seat=_seat_label(seat),
+                    characters=seat_context.filled_character_count(),
+                    weapons=seat_context.filled_weapon_count(),
                 )
             )
             title.setObjectName("pvp_draft_result_title")
             section_layout.addWidget(title)
-
-            weapon_title = QLabel(tr("app_shell.pvp.post.source_weapons"))
-            weapon_title.setObjectName("pvp_deck_info_line")
-            section_layout.addWidget(weapon_title)
-            if session is not None:
-                weapon_grid = self._build_source_weapon_grid(session, seat, stage)
-                section_layout.addWidget(
-                    _postdraft_grid_scroll_area(
-                        weapon_grid,
-                        object_name="pvp-postdraft-source-weapon-scroll",
-                        maximum_height=118,
-                    )
-                )
-
-            picks_title = QLabel(tr("app_shell.pvp.post.source_picks"))
-            picks_title.setObjectName("pvp_deck_info_line")
-            section_layout.addWidget(picks_title)
-            character_grid = self._build_source_character_grid(board, seat, stage)
-            section_layout.addWidget(
-                _postdraft_grid_scroll_area(
-                    character_grid,
-                    object_name="pvp-postdraft-source-character-scroll",
-                    maximum_height=88,
-                )
-            )
+            source = seat_context.source_workspace
+            source.setParent(section)
+            section_layout.addWidget(source, 1)
+            self.source_zone_frames_by_seat[seat] = section
             layout.addWidget(section, 1)
         return frame
 
-    def _build_source_character_grid(
-        self,
-        board: Mapping[str, Any],
-        seat: str,
-        stage: str,
-    ) -> PixelIconGrid:
-        assets: list[dict[str, Any]] = []
-        assigned_ids = set(_assigned_character_ids(self._view_state, seat))
-        selected = _selected_assignment_character(self._view_state)
-        for character_id in _picked_character_ids(board, seat):
-            asset = dict(self._character_assets_by_id.get(character_id) or {})
-            image_path = _asset_image_path(asset)
-            name = _entry_display_name_for_id(board, character_id)
-            asset.update(
-                {
-                    "path": image_path,
-                    "filename": name,
-                    "tooltip": _postdraft_character_tooltip(
-                        name,
-                        assigned=character_id in assigned_ids,
-                    ),
-                    "grid_id": character_id,
-                    "seat": seat,
-                    "character_id": character_id,
-                    "assigned": character_id in assigned_ids,
-                    "selected": selected == (seat, character_id),
-                    "enabled": (
-                        stage == PVP_DRAFT_STAGE_ASSIGNMENT
-                        and character_id not in assigned_ids
-                    ),
-                    "has_image": bool(image_path),
-                }
-            )
-            assets.append(asset)
-        result = build_asset_grid_items(
-            assets,
-            key_for_asset=lambda asset: _text(asset.get("grid_id")),
-            outline_for_asset=lambda asset, _item_id: (
-                PixelIconGridOutline(
-                    color=UI_STATE_SUCCESS,
-                    width=2,
-                    radius=6,
-                    overhang=1,
-                    badge_text="SEL",
+    def _build_timers_results_stage(self, stage: str) -> QFrame:
+        frame = QFrame()
+        frame.setObjectName("pvp_postready_left_panel")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+        title = QLabel(
+            tr("app_shell.pvp.post.result_summary_title")
+            if stage == PVP_DRAFT_STAGE_COMPLETED_RESULT
+            else tr("app_shell.pvp.post.timers_title")
+        )
+        title.setObjectName("pvp_draft_result_title")
+        layout.addWidget(title)
+        timer_texts = _mapping(self._view_state.get("timer_texts"))
+        build_status = _mapping(self._view_state.get("build_status"))
+        lines = [
+            tr("app_shell.pvp.post.ready_status").format(
+                ready=tr("app_shell.pvp.post.ready_yes")
+                if all(
+                    _mapping(_mapping(build_status.get("seats")).get(seat)).get("ready")
+                    for seat in PVP_SEATS
                 )
-                if bool(asset.get("selected"))
-                else None
-            ),
-            overlay_fill_for_asset=lambda asset, _item_id: (
-                PixelIconGridFill(UI_BG_BUTTON, alpha=150)
-                if bool(asset.get("assigned")) or not bool(asset.get("enabled"))
-                else None
-            ),
-            properties_for_asset=lambda asset, _item_id: {
-                "seat": _text(asset.get("seat")),
-                "characterId": _text(asset.get("character_id")),
-                "assigned": bool(asset.get("assigned")),
-                "selected": bool(asset.get("selected")),
-                "hasImage": bool(asset.get("has_image")),
-            },
-        )
-        items = tuple(
-            PixelIconGridItem(
-                item_id=item.item_id,
-                icon_path=item.icon_path,
-                label=item.label,
-                tooltip=item.tooltip,
-                enabled=bool(result.assets_by_id[item.item_id].get("enabled")),
-                outline=item.outline,
-                overlay_fill=item.overlay_fill,
-                overlay_icons=item.overlay_icons,
-                properties=item.properties,
-                pixmap_cache_key_parts=("pvp_postdraft_character", seat),
+                else tr("app_shell.pvp.post.ready_no"),
             )
-            for item in result.items
-        )
-        grid = PixelIconGrid(
-            metrics=PixelIconGridMetrics(
-                item_width=56,
-                item_height=62,
-                gap_x=6,
-                gap_y=6,
-                margin_top=2,
-                margin_bottom=2,
-            ),
-            surface="pvp_postdraft_source_character",
-        )
-        grid.setObjectName("pvp-postdraft-source-character-grid")
-        grid.setProperty("seat", seat)
-        grid.setProperty("kind", "characters")
-        grid.set_items(items)
-        grid.item_clicked.connect(
-            lambda item_id, s=seat: self.assignment_character_clicked.emit(s, item_id)
-        )
-        self.source_character_grids_by_seat[seat] = grid
-        for item_id in grid.item_ids():
-            self.assignment_character_buttons_by_key[(seat, item_id)] = (
-                PvpPostDraftGridItemHandle(grid, item_id)
-            )
-        return grid
-
-    def _build_source_weapon_grid(
-        self,
-        session: PvpActiveDraftSession,
-        seat: str,
-        stage: str,
-    ) -> PixelIconGrid:
-        selected = _selected_weapon_character(self._view_state)
-        selected_character_id = selected[1] if selected and selected[0] == seat else ""
-        assets: list[dict[str, Any]] = []
-        for stack in session.controller.session_state.deck_for(seat).weapons:
-            remaining = _weapon_stack_remaining(
-                session,
-                self._view_state,
-                seat,
-                stack.stack_key,
-                selected_character_id=selected_character_id,
-            )
-            compatible = bool(
-                selected_character_id
-                and _weapon_stack_is_assignable(
-                    session,
-                    self._view_state,
-                    seat,
-                    selected_character_id,
-                    stack.stack_key,
+        ]
+        for seat in PVP_SEATS:
+            values = timer_texts.get(seat)
+            if isinstance(values, list):
+                lines.append(
+                    tr("app_shell.pvp.post.timer_chamber_line").format(
+                        seat=_seat_label(seat),
+                        chamber=" / ".join(PVP_TIMER_CHAMBERS),
+                        total=", ".join(_text(value) or "--:--" for value in values),
+                    )
                 )
-            )
-            exhausted = remaining <= 0
-            asset = dict(self._weapon_assets_by_stack_key.get(stack.stack_key) or {})
-            image_path = _asset_image_path(asset)
-            label = tr("app_shell.pvp.post.weapon_tile_text").format(
-                weapon=stack.display_name,
-                count=remaining,
-            )
-            asset.update(
-                {
-                    "path": image_path,
-                    "filename": stack.display_name,
-                    "tooltip": label,
-                    "grid_id": stack.stack_key,
-                    "seat": seat,
-                    "stack_key": stack.stack_key,
-                    "remaining": remaining,
-                    "compatible": compatible,
-                    "exhausted": exhausted,
-                    "enabled": bool(
-                        stage == PVP_DRAFT_STAGE_WEAPONS
-                        and selected_character_id
-                        and compatible
-                        and not exhausted
-                    ),
-                    "has_image": bool(image_path),
-                }
-            )
-            assets.append(asset)
-        result = build_asset_grid_items(
-            assets,
-            key_for_asset=lambda asset: _text(asset.get("grid_id")),
-            outline_for_asset=lambda asset, _item_id: (
-                PixelIconGridOutline(
-                    color=UI_STATE_SUCCESS,
-                    width=2,
-                    radius=6,
-                    overhang=1,
-                    badge_text=str(asset.get("remaining") or ""),
-                )
-                if bool(asset.get("compatible")) and not bool(asset.get("exhausted"))
-                else None
-            ),
-            overlay_fill_for_asset=lambda asset, _item_id: (
-                PixelIconGridFill(UI_BG_BUTTON, alpha=155)
-                if bool(asset.get("exhausted")) or not bool(asset.get("enabled"))
-                else None
-            ),
-            properties_for_asset=lambda asset, _item_id: {
-                "seat": _text(asset.get("seat")),
-                "stackKey": _text(asset.get("stack_key")),
-                "remaining": int(asset.get("remaining") or 0),
-                "compatible": bool(asset.get("compatible")),
-                "exhausted": bool(asset.get("exhausted")),
-                "hasImage": bool(asset.get("has_image")),
-            },
-        )
-        items = tuple(
-            PixelIconGridItem(
-                item_id=item.item_id,
-                icon_path=item.icon_path,
-                label=item.label,
-                tooltip=item.tooltip,
-                enabled=bool(result.assets_by_id[item.item_id].get("enabled")),
-                outline=item.outline,
-                overlay_fill=item.overlay_fill,
-                overlay_icons=item.overlay_icons,
-                properties=item.properties,
-                pixmap_cache_key_parts=("pvp_postdraft_weapon", seat),
-            )
-            for item in result.items
-        )
-        grid = PixelIconGrid(
-            metrics=PixelIconGridMetrics(
-                item_width=50,
-                item_height=54,
-                gap_x=6,
-                gap_y=6,
-                margin_top=2,
-                margin_bottom=2,
-            ),
-            surface="pvp_postdraft_source_weapon",
-        )
-        grid.setObjectName("pvp-postdraft-source-weapon-grid")
-        grid.setProperty("seat", seat)
-        grid.setProperty("kind", "weapons")
-        grid.set_items(items)
-        grid.item_clicked.connect(
-            lambda item_id, s=seat, c=selected_character_id: (
-                self.weapon_stack_clicked.emit(s, c, item_id)
-            )
-        )
-        self.source_weapon_grids_by_seat[seat] = grid
-        for item_id in grid.item_ids():
-            self.weapon_stack_buttons_by_key[(seat, item_id)] = (
-                PvpPostDraftGridItemHandle(grid, item_id)
-            )
-        return grid
+        for line in lines:
+            label = QLabel(line)
+            label.setObjectName("pvp_deck_info_line")
+            label.setWordWrap(True)
+            layout.addWidget(label)
+        gcsim = QLabel(tr("app_shell.pvp.post.gcsim_not_run"))
+        gcsim.setObjectName("small_muted")
+        gcsim.setWordWrap(True)
+        layout.addWidget(gcsim)
+        return frame
 
     def _refresh_completed(self, board: Mapping[str, Any] | None) -> None:
         visible = bool(board and _draft_is_complete(board))
@@ -1979,18 +1763,26 @@ class PvpWorkspace(QWidget):
     ) -> None:
         super().__init__(parent)
         self.setObjectName("PvpWorkspace")
+        self.db_path = Path(db_path)
+        self.deck_dir = resolve_deck_preset_dir(deck_dir)
         self.active_page_id = PVP_PAGE_DECKS
         self.active_draft_session: PvpActiveDraftSession | None = None
         self._last_play_status = ""
         self._last_draft_status = ""
         self.draft_stage = PVP_DRAFT_STAGE_DRAFT
-        self.assignment_slots_by_seat = _empty_assignment_slots_by_seat()
-        self.selected_assignment_character: tuple[str, str] | None = None
-        self.weapon_assignments_by_seat: dict[str, dict[str, str]] = {
-            seat: {}
+        self.build_flow_context: Any | None = None
+        self._local_profile_provider = LocalPvpProfileProvider(
+            source_db_path=self.db_path,
+            deck_dir=self.deck_dir,
+        )
+        self._profile_providers_by_seat: dict[str, PvpProfileProvider] = {
+            seat: self._local_profile_provider
             for seat in PVP_SEATS
         }
-        self.selected_weapon_character: tuple[str, str] | None = None
+        self._profile_assets_by_seat: dict[
+            str,
+            tuple[list[dict[str, Any]], list[dict[str, Any]]],
+        ] = {}
         self.timer_texts_by_seat: dict[str, list[str]] = {
             seat: [""] * len(PVP_TIMER_CHAMBERS)
             for seat in PVP_SEATS
@@ -2003,8 +1795,8 @@ class PvpWorkspace(QWidget):
         root.addWidget(self.stack, 1)
 
         self.decks_workspace = PvpDecksWorkspace(
-            db_path=db_path,
-            deck_dir=deck_dir,
+            db_path=self.db_path,
+            deck_dir=self.deck_dir,
             character_assets_provider=character_assets_provider,
             weapon_assets_provider=weapon_assets_provider,
         )
@@ -2015,21 +1807,6 @@ class PvpWorkspace(QWidget):
         self.stack.addWidget(self.draft_workspace)
         self.decks_workspace.state_changed.connect(self._on_decks_state_changed)
         self.draft_workspace.card_clicked.connect(self.apply_draft_card_click)
-        self.draft_workspace.assignment_character_clicked.connect(
-            self.select_assignment_character
-        )
-        self.draft_workspace.assignment_slot_clicked.connect(
-            self.assign_selected_character_to_slot
-        )
-        self.draft_workspace.assignment_slot_clear_clicked.connect(
-            self.clear_assignment_slot
-        )
-        self.draft_workspace.weapon_character_clicked.connect(
-            self.select_weapon_character
-        )
-        self.draft_workspace.weapon_stack_clicked.connect(self.assign_weapon_stack)
-        self.draft_workspace.weapon_clear_clicked.connect(self.clear_weapon_assignment)
-        self.draft_workspace.timer_text_changed.connect(self.set_timer_text)
         self._sync_play_workspace()
         self._sync_draft_workspace()
 
@@ -2082,6 +1859,9 @@ class PvpWorkspace(QWidget):
             reload_presets=reload_presets,
             emit_signal=False,
         )
+        for seat, provider in self._profile_providers_by_seat.items():
+            if provider is self._local_profile_provider:
+                self._profile_assets_by_seat.pop(seat, None)
         self._sync_play_workspace()
         self._sync_draft_workspace()
         if emit_signal:
@@ -2100,24 +1880,126 @@ class PvpWorkspace(QWidget):
                 return preset
         return None
 
-    def play_deck_options(self) -> tuple[PvpDeckPreset, ...]:
-        return tuple(self.decks_workspace.presets)
+    def seat_profile_provider(self, seat: str) -> PvpProfileProvider:
+        return self._profile_providers_by_seat.get(
+            seat,
+            self._local_profile_provider,
+        )
+
+    def seat_profile_is_imported(self, seat: str) -> bool:
+        return isinstance(
+            self.seat_profile_provider(seat),
+            ImportedPvpProfileProvider,
+        )
+
+    def seat_profile_label(self, seat: str) -> str:
+        provider = self.seat_profile_provider(seat)
+        if isinstance(provider, ImportedPvpProfileProvider):
+            manifest = provider.profile.manifest
+            return (
+                _text(manifest.get("nickname"))
+                or _text(manifest.get("player_label"))
+                or provider.profile.path.stem
+            )
+        return tr("app_shell.pvp.profile.local")
+
+    def import_profile_for_seat(self, seat: str, package_path: str | Path) -> bool:
+        if seat not in PVP_SEATS or self.active_draft_session is not None:
+            return False
+        try:
+            profile = import_pvp_profile_package(package_path)
+        except Exception as exc:
+            self._last_play_status = str(exc) or exc.__class__.__name__
+            self.state_changed.emit()
+            return False
+        previous = self._profile_providers_by_seat.get(seat)
+        self._profile_providers_by_seat[seat] = ImportedPvpProfileProvider(profile)
+        self._profile_assets_by_seat.pop(seat, None)
+        if previous is not None and previous is not self._local_profile_provider:
+            close = getattr(previous, "close", None)
+            if callable(close):
+                close()
+        self._last_play_status = tr("app_shell.pvp.profile.imported").format(
+            seat=_seat_label(seat),
+            profile=self.seat_profile_label(seat),
+        )
+        self._sync_play_workspace()
+        self.state_changed.emit()
+        return True
+
+    def use_local_profile_for_seat(self, seat: str) -> None:
+        if seat not in PVP_SEATS or self.active_draft_session is not None:
+            return
+        previous = self._profile_providers_by_seat.get(seat)
+        self._profile_providers_by_seat[seat] = self._local_profile_provider
+        self._profile_assets_by_seat.pop(seat, None)
+        if previous is not None and previous is not self._local_profile_provider:
+            close = getattr(previous, "close", None)
+            if callable(close):
+                close()
+        self._last_play_status = ""
+        self._sync_play_workspace()
+        self.state_changed.emit()
+
+    def play_deck_options(self, seat: str = "player_1") -> tuple[PvpDeckPreset, ...]:
+        provider = self.seat_profile_provider(seat)
+        if provider is self._local_profile_provider:
+            return tuple(self.decks_workspace.presets)
+        return tuple(provider.load_deck_presets())
+
+    def _profile_assets(
+        self,
+        seat: str,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        provider = self.seat_profile_provider(seat)
+        if provider is self._local_profile_provider:
+            return (
+                list(self.decks_workspace.character_assets),
+                list(self.decks_workspace.weapon_assets),
+            )
+        cached = self._profile_assets_by_seat.get(seat)
+        if cached is None:
+            cached = (
+                list(load_account_character_asset_items(db_path=provider.db_path)),
+                list(load_account_weapon_stack_asset_items(db_path=provider.db_path)),
+            )
+            self._profile_assets_by_seat[seat] = cached
+        return (list(cached[0]), list(cached[1]))
+
+    def _seat_preset_by_id(self, seat: str, deck_id: str) -> PvpDeckPreset | None:
+        for preset in self.play_deck_options(seat):
+            if preset.deck_id == deck_id:
+                return preset
+        return None
 
     def default_player_1_deck_id(self) -> str:
-        selected_id = self.decks_workspace.selected_deck_id
-        if selected_id and self.preset_by_id(selected_id) is not None:
+        presets = self.play_deck_options("player_1")
+        selected_id = (
+            self.decks_workspace.selected_deck_id
+            if not self.seat_profile_is_imported("player_1")
+            else ""
+        )
+        if selected_id and self._seat_preset_by_id("player_1", selected_id) is not None:
             return selected_id
-        for preset in self.decks_workspace.presets:
-            status = self.deck_start_status(preset.deck_id, player_label="Player 1")
+        for preset in presets:
+            status = self.deck_start_status(
+                preset.deck_id,
+                player_label="Player 1",
+                seat="player_1",
+            )
             if status.ready:
                 return preset.deck_id
-        return self.decks_workspace.presets[0].deck_id if self.decks_workspace.presets else ""
+        return presets[0].deck_id if presets else ""
 
     def default_player_2_deck_id(self, player_1_deck_id: str = "") -> str:
-        presets = self.decks_workspace.presets
+        presets = self.play_deck_options("player_2")
         if not presets:
             return ""
-        if len(presets) == 1:
+        if (
+            len(presets) == 1
+            and self.seat_profile_provider("player_1")
+            is self.seat_profile_provider("player_2")
+        ):
             return player_1_deck_id or presets[0].deck_id
         return presets[0].deck_id
 
@@ -2126,8 +2008,9 @@ class PvpWorkspace(QWidget):
         deck_id: str,
         *,
         player_label: str,
+        seat: str = "player_1",
     ) -> PvpDeckStartStatus:
-        preset = self.preset_by_id(deck_id)
+        preset = self._seat_preset_by_id(seat, deck_id)
         if preset is None:
             return PvpDeckStartStatus(
                 preset=None,
@@ -2137,10 +2020,11 @@ class PvpWorkspace(QWidget):
                 ready=False,
             )
         try:
+            character_assets, weapon_assets = self._profile_assets(seat)
             draft_deck = deck_preset_to_draft_deck(
                 preset,
-                self.decks_workspace.character_assets,
-                self.decks_workspace.weapon_assets,
+                character_assets,
+                weapon_assets,
                 player_nickname=player_label,
             )
             report = validate_draft_deck(draft_deck)
@@ -2171,18 +2055,28 @@ class PvpWorkspace(QWidget):
 
     def can_start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str) -> bool:
         return (
-            self.deck_start_status(player_1_deck_id, player_label="Player 1").ready
-            and self.deck_start_status(player_2_deck_id, player_label="Player 2").ready
+            self.deck_start_status(
+                player_1_deck_id,
+                player_label="Player 1",
+                seat="player_1",
+            ).ready
+            and self.deck_start_status(
+                player_2_deck_id,
+                player_label="Player 2",
+                seat="player_2",
+            ).ready
         )
 
     def start_local_draft(self, player_1_deck_id: str, player_2_deck_id: str) -> bool:
         player_1_status = self.deck_start_status(
             player_1_deck_id,
             player_label="Player 1",
+            seat="player_1",
         )
         player_2_status = self.deck_start_status(
             player_2_deck_id,
             player_label="Player 2",
+            seat="player_2",
         )
         if (
             not player_1_status.ready
@@ -2199,7 +2093,11 @@ class PvpWorkspace(QWidget):
         player_1_deck = player_1_status.draft_deck
         player_2_deck = (
             copy_deck_for_player_2(player_1_deck)
-            if player_1_deck_id == player_2_deck_id
+            if (
+                player_1_deck_id == player_2_deck_id
+                and self.seat_profile_provider("player_1")
+                is self.seat_profile_provider("player_2")
+            )
             else player_2_status.draft_deck
         )
         controller = FreeDraftController.from_decks(
@@ -2291,170 +2189,170 @@ class PvpWorkspace(QWidget):
             self._sync_draft_workspace()
             self.state_changed.emit()
             return False
+        if self._ensure_build_flow_context() is None:
+            self._last_draft_status = tr("app_shell.pvp.post.build_context_missing")
+            self._sync_draft_workspace()
+            self.state_changed.emit()
+            return False
         self.draft_stage = PVP_DRAFT_STAGE_ASSIGNMENT
         self._last_draft_status = tr("app_shell.pvp.post.assignment_started")
         self._sync_draft_workspace()
         self.state_changed.emit()
         return True
 
-    def select_assignment_character(self, seat: str, character_id: str) -> None:
-        if seat not in PVP_SEATS or not character_id:
-            return
-        self.selected_assignment_character = (seat, character_id)
+    def _ensure_build_flow_context(self) -> Any | None:
+        if self.build_flow_context is not None:
+            return self.build_flow_context
+        session = self.active_draft_session
+        if session is None:
+            return None
+        from ui.pvp_browser.build_flow import PvpBuildFlowContext
+
+        context = PvpBuildFlowContext.from_draft_session(
+            session,
+            db_path=self.db_path,
+            deck_dir=self.deck_dir,
+            character_assets=self.character_assets,
+            weapon_assets=self.weapon_assets,
+            providers_by_seat={
+                seat: self.seat_profile_provider(seat)
+                for seat in PVP_SEATS
+            },
+            character_assets_by_seat={
+                seat: self._profile_assets(seat)[0]
+                for seat in PVP_SEATS
+            },
+            weapon_assets_by_seat={
+                seat: self._profile_assets(seat)[1]
+                for seat in PVP_SEATS
+            },
+            parent=self.draft_workspace,
+        )
+        for seat, seat_context in context.seats.items():
+            seat_context.source_workspace.character_clicked.connect(
+                lambda _asset, s=seat: self._on_build_source_changed(s)
+            )
+            seat_context.source_workspace.weapon_clicked.connect(
+                lambda _asset, s=seat: self._on_build_source_changed(s)
+            )
+        self.build_flow_context = context
+        return context
+
+    def _on_build_source_changed(self, seat: str) -> None:
+        context = self.build_flow_context
+        if context is not None:
+            context.set_active_seat(seat)
         self._sync_draft_workspace()
+        self.active_draft_changed.emit()
         self.state_changed.emit()
 
-    def assign_selected_character_to_slot(
+    def build_source_workspace(self, seat: str):
+        context = self.build_flow_context
+        seat_context = context.seat(seat) if context is not None else None
+        return None if seat_context is None else seat_context.source_workspace
+
+    def handle_build_character_clicked(self, seat: str, asset: Mapping[str, Any]) -> bool:
+        context = self.build_flow_context
+        seat_context = context.seat(seat) if context is not None else None
+        if seat_context is None:
+            return False
+        changed = seat_context.add_or_replace_character(dict(asset))
+        if changed:
+            context.set_active_seat(seat)
+            self._sync_draft_workspace()
+            self.active_draft_changed.emit()
+            self.state_changed.emit()
+        return changed
+
+    def handle_build_weapon_clicked(self, seat: str, asset: Mapping[str, Any]) -> bool:
+        context = self.build_flow_context
+        seat_context = context.seat(seat) if context is not None else None
+        if seat_context is None:
+            return False
+        changed = seat_context.assign_weapon_to_selected_slot(dict(asset))
+        if changed:
+            context.set_active_seat(seat)
+            self._sync_draft_workspace()
+            self.active_draft_changed.emit()
+            self.state_changed.emit()
+        return changed
+
+    def handle_build_slot_clicked(
         self,
         seat: str,
         team_index: int,
         slot_index: int,
     ) -> None:
-        if seat not in PVP_SEATS:
+        context = self.build_flow_context
+        seat_context = context.seat(seat) if context is not None else None
+        if seat_context is None:
             return
-        slots = self.assignment_slots_by_seat[seat]
-        if not (0 <= team_index < 2 and 0 <= slot_index < 4):
+        context.set_active_seat(seat)
+        seat_context.toggle_slot_selection(team_index, slot_index)
+        self._sync_draft_workspace()
+        self.active_draft_changed.emit()
+        self.state_changed.emit()
+
+    def is_build_seat_collapsed(self, seat: str) -> bool:
+        context = self.build_flow_context
+        return bool(context is not None and seat in context.collapsed_seats)
+
+    def toggle_build_seat_collapsed(self, seat: str) -> None:
+        context = self.build_flow_context
+        if context is None:
             return
-        selected = self.selected_assignment_character
-        if selected is None:
-            existing = slots[team_index][slot_index]
-            if existing:
-                self.selected_assignment_character = (seat, existing)
-                self._sync_draft_workspace()
-                self.state_changed.emit()
-            return
-        selected_seat, character_id = selected
-        if selected_seat != seat:
-            return
-        session = self.active_draft_session
-        if session is None or character_id not in _picked_character_ids(
-            session.board_dict(),
-            seat,
-        ):
-            return
-        for team in slots:
-            for index, value in enumerate(team):
-                if value == character_id:
-                    team[index] = None
-        slots[team_index][slot_index] = character_id
-        self.selected_assignment_character = None
-        self._clear_weapon_for_unassigned_characters(seat)
+        context.toggle_collapsed(seat)
         self._sync_draft_workspace()
         self.state_changed.emit()
 
-    def clear_assignment_slot(self, seat: str, team_index: int, slot_index: int) -> None:
-        if seat not in PVP_SEATS:
-            return
-        slots = self.assignment_slots_by_seat[seat]
-        if not (0 <= team_index < 2 and 0 <= slot_index < 4):
-            return
-        removed_character_id = slots[team_index][slot_index]
-        slots[team_index][slot_index] = None
-        if self.selected_assignment_character == (seat, removed_character_id):
-            self.selected_assignment_character = None
-        self._clear_weapon_for_unassigned_characters(seat)
-        self._sync_draft_workspace()
-        self.state_changed.emit()
-
-    def assignment_ready(self) -> bool:
+    def ready_build_seat(self, seat: str) -> bool:
+        context = self.build_flow_context
         session = self.active_draft_session
-        if session is None:
+        if context is None or session is None:
             return False
-        return all(
-            validate_team_assignment(
-                session.controller.session_state,
-                self._team_assignment_for(seat),
-            ).ready
-            for seat in PVP_SEATS
-        )
-
-    def continue_to_weapons(self) -> bool:
-        session = self.active_draft_session
-        if session is None:
-            return False
-        try:
-            for seat in PVP_SEATS:
-                session.controller.set_team_assignment(self._team_assignment_for(seat))
-        except FreeDraftControllerActionRejected as exc:
-            self._last_draft_status = tr("app_shell.pvp.post.assignment_invalid").format(
-                code=getattr(exc, "code", "") or str(exc),
+        if not context.commit_ready(seat, session.controller):
+            seat_context = context.seat(seat)
+            code = "" if seat_context is None else seat_context.last_error
+            self._last_draft_status = tr("app_shell.pvp.post.ready_invalid").format(
+                code=code or "invalid",
             )
             self._sync_draft_workspace()
             self.state_changed.emit()
             return False
-        self.draft_stage = PVP_DRAFT_STAGE_WEAPONS
-        self.selected_assignment_character = None
-        self._last_draft_status = tr("app_shell.pvp.post.weapons_started")
+        self._last_draft_status = tr("app_shell.pvp.post.ready_accepted").format(
+            seat=_seat_label(seat),
+        )
+        if context.both_ready():
+            self.draft_stage = PVP_DRAFT_STAGE_TIMERS_RESULTS
+            self._last_draft_status = tr("app_shell.pvp.post.timers_started")
         self._sync_play_workspace()
         self._sync_draft_workspace()
         self.active_draft_changed.emit()
         self.state_changed.emit()
         return True
 
-    def select_weapon_character(self, seat: str, character_id: str) -> None:
-        if seat not in PVP_SEATS or not character_id:
-            return
-        self.selected_weapon_character = (seat, character_id)
-        self._sync_draft_workspace()
-        self.state_changed.emit()
-
-    def assign_weapon_stack(self, seat: str, character_id: str, stack_key: str) -> None:
-        if seat not in PVP_SEATS or not character_id or not stack_key:
-            return
-        session = self.active_draft_session
-        if session is None:
-            return
-        if not _weapon_stack_is_assignable(
-            session,
-            self._draft_view_state(),
-            seat,
-            character_id,
-            stack_key,
-        ):
-            self._last_draft_status = tr("app_shell.pvp.post.weapon_invalid")
-            self._sync_draft_workspace()
-            self.state_changed.emit()
-            return
-        self.weapon_assignments_by_seat[seat][character_id] = stack_key
-        self._last_draft_status = ""
-        self._sync_draft_workspace()
-        self.state_changed.emit()
-
-    def clear_weapon_assignment(self, seat: str, character_id: str) -> None:
-        if seat in PVP_SEATS:
-            self.weapon_assignments_by_seat[seat].pop(character_id, None)
-            self._sync_draft_workspace()
-            self.state_changed.emit()
+    def assignment_ready(self) -> bool:
+        return bool(
+            self.build_flow_context is not None
+            and all(
+                self.build_flow_context.ready_candidate(seat)
+                for seat in PVP_SEATS
+            )
+        )
 
     def weapons_ready(self) -> bool:
-        session = self.active_draft_session
-        if session is None:
-            return False
-        return all(
-            validate_weapon_assignment(
-                session.controller.session_state,
-                self._team_assignment_for(seat),
-                self._weapon_assignment_for(seat),
-            ).ready
-            for seat in PVP_SEATS
+        return bool(
+            self.build_flow_context is not None
+            and self.build_flow_context.both_ready()
         )
 
     def continue_to_timers(self) -> bool:
-        session = self.active_draft_session
-        if session is None:
-            return False
-        try:
-            for seat in PVP_SEATS:
-                session.controller.set_weapon_assignment(self._weapon_assignment_for(seat))
-        except FreeDraftControllerActionRejected as exc:
-            self._last_draft_status = tr("app_shell.pvp.post.weapon_invalid_code").format(
-                code=getattr(exc, "code", "") or str(exc),
-            )
+        if self.build_flow_context is None or not self.build_flow_context.both_ready():
+            self._last_draft_status = tr("app_shell.pvp.post.ready_required")
             self._sync_draft_workspace()
             self.state_changed.emit()
             return False
         self.draft_stage = PVP_DRAFT_STAGE_TIMERS_RESULTS
-        self.selected_weapon_character = None
         self._last_draft_status = tr("app_shell.pvp.post.timers_started")
         self._sync_play_workspace()
         self._sync_draft_workspace()
@@ -2523,93 +2421,67 @@ class PvpWorkspace(QWidget):
 
     def _reset_post_draft_state(self) -> None:
         self.draft_stage = PVP_DRAFT_STAGE_DRAFT
-        self.assignment_slots_by_seat = _empty_assignment_slots_by_seat()
-        self.selected_assignment_character = None
-        self.weapon_assignments_by_seat = {
-            seat: {}
-            for seat in PVP_SEATS
-        }
-        self.selected_weapon_character = None
+        self._dispose_build_flow_context()
         self.timer_texts_by_seat = {
             seat: [""] * len(PVP_TIMER_CHAMBERS)
             for seat in PVP_SEATS
         }
 
+    def _dispose_build_flow_context(self) -> None:
+        context = self.build_flow_context
+        self.build_flow_context = None
+        if context is None:
+            return
+        for seat_context in getattr(context, "seats", {}).values():
+            source = getattr(seat_context, "source_workspace", None)
+            if source is not None:
+                source.setParent(None)
+                source.deleteLater()
+
+    def closeEvent(self, event) -> None:  # noqa: N802 - Qt override
+        self._dispose_build_flow_context()
+        closed: set[int] = set()
+        for provider in self._profile_providers_by_seat.values():
+            if provider is self._local_profile_provider or id(provider) in closed:
+                continue
+            closed.add(id(provider))
+            close = getattr(provider, "close", None)
+            if callable(close):
+                close()
+        super().closeEvent(event)
+
     def _draft_view_state(self) -> dict[str, Any]:
+        assignment_slots = {
+            seat: [[None for _slot in range(4)] for _team in range(2)]
+            for seat in PVP_SEATS
+        }
+        weapon_assignments = {seat: {} for seat in PVP_SEATS}
+        build_status: dict[str, Any] = {}
+        if self.build_flow_context is not None:
+            build_status = self.build_flow_context.status_snapshot()
+            for seat in PVP_SEATS:
+                seat_context = self.build_flow_context.seat(seat)
+                if seat_context is None:
+                    continue
+                assignment = seat_context.team_assignment()
+                assignment_slots[seat] = [
+                    list(team.character_ids)
+                    for team in sorted(assignment.teams, key=lambda item: item.team_index)
+                ]
+                weapon_assignments[seat] = {
+                    item.character_id: item.weapon_stack_key
+                    for item in seat_context.weapon_assignment().assignments
+                }
         return {
             "stage": self.draft_stage,
-            "assignment_slots": {
-                seat: [list(team) for team in self.assignment_slots_by_seat[seat]]
-                for seat in PVP_SEATS
-            },
-            "selected_assignment_character": (
-                list(self.selected_assignment_character)
-                if self.selected_assignment_character is not None
-                else None
-            ),
-            "weapon_assignments": {
-                seat: dict(self.weapon_assignments_by_seat[seat])
-                for seat in PVP_SEATS
-            },
-            "selected_weapon_character": (
-                list(self.selected_weapon_character)
-                if self.selected_weapon_character is not None
-                else None
-            ),
+            "assignment_slots": assignment_slots,
+            "weapon_assignments": weapon_assignments,
             "timer_texts": {
                 seat: list(self.timer_texts_by_seat[seat])
                 for seat in PVP_SEATS
             },
+            "build_status": build_status,
         }
-
-    def _team_assignment_for(self, seat: str) -> PlayerTeamAssignment:
-        slots = self.assignment_slots_by_seat.get(seat, [[None] * 4, [None] * 4])
-        teams = tuple(
-            TeamAssignment(
-                team_index=team_index,
-                character_ids=tuple(
-                    character_id
-                    for character_id in slots[team_index]
-                    if character_id
-                ),
-            )
-            for team_index in range(2)
-        )
-        return PlayerTeamAssignment(seat=seat, teams=teams)
-
-    def _weapon_assignment_for(self, seat: str) -> PlayerWeaponAssignment:
-        assigned = set(
-            character_id
-            for team in self.assignment_slots_by_seat.get(seat, [])
-            for character_id in team
-            if character_id
-        )
-        assignments = tuple(
-            CharacterWeaponAssignment(
-                character_id=character_id,
-                weapon_stack_key=stack_key,
-            )
-            for character_id, stack_key in sorted(
-                self.weapon_assignments_by_seat.get(seat, {}).items()
-            )
-            if character_id in assigned and stack_key
-        )
-        return PlayerWeaponAssignment(seat=seat, assignments=assignments)
-
-    def _clear_weapon_for_unassigned_characters(self, seat: str) -> None:
-        assigned = set(
-            character_id
-            for team in self.assignment_slots_by_seat.get(seat, [])
-            for character_id in team
-            if character_id
-        )
-        current = self.weapon_assignments_by_seat.get(seat, {})
-        for character_id in list(current):
-            if character_id not in assigned:
-                current.pop(character_id, None)
-        selected = self.selected_weapon_character
-        if selected is not None and selected[0] == seat and selected[1] not in assigned:
-            self.selected_weapon_character = None
 
     def _on_decks_state_changed(self) -> None:
         self._sync_play_workspace()
@@ -2625,6 +2497,7 @@ class PvpWorkspace(QWidget):
             view_state=self._draft_view_state(),
             character_assets=self.character_assets,
             weapon_assets=self.weapon_assets,
+            build_flow_context=self.build_flow_context,
         )
 
 
@@ -2642,7 +2515,6 @@ class PvpWorkspace(QWidget):
 
 
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
-from ui.right_panel.pvp.draft.assignment.target_slot import PvpPostDraftTargetSlotWidget
 from ui.right_panel.pvp.draft.panel import PvpDraftRightPanel
 from ui.right_panel.pvp.host import PvpRightPanelHost
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import closing
+from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -11,14 +13,15 @@ from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QColor, QKeyEvent, QPixmap
 from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton
 
+from hoyolab_export.artifact_db import connect_db, init_db
 from localization import tr
+from ui.pvp_browser.build_flow import PvpScopedCharacterWeaponWorkspace
 from ui.pvp_browser.window import PvpDecksWorkspace, PvpDraftWorkspace, PvpWorkspace
 from ui.right_panel.pvp._shared import (
     PVP_DRAFT_STAGE_ASSIGNMENT,
     PVP_DRAFT_STAGE_COMPLETED_RESULT,
     PVP_DRAFT_STAGE_DRAFT,
     PVP_DRAFT_STAGE_TIMERS_RESULTS,
-    PVP_DRAFT_STAGE_WEAPONS,
     PVP_PAGE_DECKS,
     PVP_PAGE_DRAFT,
     PVP_PAGE_PLAY,
@@ -26,7 +29,7 @@ from ui.right_panel.pvp._shared import (
 from ui.right_panel.common.slot_card import RightPanelSlotCardWidget
 from ui.right_panel.common.team_card import RightPanelTeamCardWidget
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
-from ui.right_panel.pvp.draft.panel import PvpDraftRightPanel
+from ui.right_panel.pvp.draft.panel import PvpDraftRightPanel, PvpPostDraftRunPanel
 from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultChipWidget
 from ui.right_panel.pvp.host import PvpRightPanelHost
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
@@ -670,70 +673,85 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertFalse(
             draft_panel.findChildren(QPushButton, "pvp-team-slot")
         )
+        self.assertTrue(draft_panel.stage_button.isHidden())
+        self.assertTrue(draft_panel.clear_button.isHidden())
+        self.assertTrue(draft_panel.play_button.isHidden())
+        self.assertTrue(draft_panel.status_frame.isHidden())
         self.assertEqual(len(draft_panel.team_slot_buttons_by_key), 16)
+        self.assertIsInstance(
+            draft_panel.postdraft_run_panels_by_seat["player_1"],
+            PvpPostDraftRunPanel,
+        )
+        self.assertFalse(draft_panel.postdraft_run_panels_by_seat["player_2"].isVisible())
         self.assertEqual(len(draft_panel.findChildren(RightPanelTeamCardWidget)), 4)
         self.assertEqual(len(draft_panel.findChildren(RightPanelSlotCardWidget)), 16)
         self.assertFalse(draft_panel.findChildren(QPushButton, "row_cancel_button"))
         self.assertFalse(draft_panel.findChildren(QFrame, "pvp-team-slot"))
         self.assertFalse(draft_panel.findChildren(QFrame, "pvp-team-half"))
+        self.assertFalse(draft_panel.findChildren(QFrame, "pvp-timer-area"))
+        self.assertFalse(hasattr(draft_panel, "timer_inputs_by_key"))
         for seat, zone in draft_panel.target_zone_frames_by_seat.items():
             self.assertEqual(len(zone.findChildren(RightPanelTeamCardWidget)), 2, seat)
+        player_1_zone = draft_panel.target_zone_frames_by_seat["player_1"]
+        player_2_zone = draft_panel.target_zone_frames_by_seat["player_2"]
+        player_1_index = draft_panel.match_layout.indexOf(player_1_zone)
+        player_2_index = draft_panel.match_layout.indexOf(player_2_zone)
+        self.assertEqual(draft_panel.match_layout.stretch(player_1_index), 1)
+        self.assertEqual(draft_panel.match_layout.stretch(player_2_index), 0)
         for seat in ("player_1", "player_2"):
             source_zone = workspace.draft_workspace.source_zone_frames_by_seat[seat]
-            grids = source_zone.findChildren(PixelIconGrid)
-            self.assertEqual(len(grids), 2, seat)
-            character_grid = workspace.draft_workspace.source_character_grids_by_seat[seat]
-            weapon_grid = workspace.draft_workspace.source_weapon_grids_by_seat[seat]
+            scoped_sources = source_zone.findChildren(PvpScopedCharacterWeaponWorkspace)
+            self.assertEqual(len(scoped_sources), 1, seat)
+            source = workspace.build_source_workspace(seat)
+            self.assertIsInstance(source, PvpScopedCharacterWeaponWorkspace)
+            character_grid = source.char_grid
+            weapon_grid = source.weapon_grid
             picks = board["unified_pool"]["result_zones"][seat]["picked"]
             self.assertEqual(character_grid.item_count(), 8)
-            self.assertEqual(tuple(character_grid.item_ids()), tuple(picks))
-            self.assertTrue(
-                all(character_grid.item_property(item_id, "hasImage") for item_id in picks)
-            )
+            self.assertEqual(set(character_grid.item_ids()), set(picks))
             self.assertGreater(weapon_grid.item_count(), 0)
-            self.assertTrue(
-                all(
-                    weapon_grid.item_property(item_id, "hasImage")
-                    for item_id in weapon_grid.item_ids()
-                )
-            )
+        self.assertFalse(
+            hasattr(workspace.draft_workspace, "source_character_grids_by_seat")
+        )
+        self.assertFalse(
+            hasattr(workspace.draft_workspace, "source_weapon_grids_by_seat")
+        )
         self.assertFalse(workspace.assignment_ready())
 
         first_p1 = board["unified_pool"]["result_zones"]["player_1"]["picked"][0]
-        self.assertTrue(
-            workspace.draft_workspace.source_character_grids_by_seat[
-                "player_1"
-            ].click_item_for_test(first_p1)
+        p1_source = workspace.build_source_workspace("player_1")
+        self.assertTrue(p1_source.char_grid.click_item_for_test(first_p1))
+        QApplication.processEvents()
+        p1_context = workspace.build_flow_context.seat("player_1")
+        self.assertEqual(
+            p1_context.controller.state.team(0).slot(0).character.id,
+            first_p1,
         )
-        QApplication.processEvents()
-        draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].clicked.emit(0, 0)
-        QApplication.processEvents()
-        self.assertEqual(workspace.assignment_slots_by_seat["player_1"][0][0], first_p1)
+        marker = p1_context.controller.roster_selection_markers()[first_p1]
+        self.assertEqual((marker.team_index, marker.slot_number), (0, 1))
+        selected_item = p1_source.char_grid.item(first_p1)
+        self.assertIsNotNone(selected_item.outline)
+        self.assertNotEqual(getattr(selected_item.outline, "badge_text", ""), "SEL")
+        self.assertIsNone(selected_item.overlay_fill)
         assigned_slot = draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)]
         self.assertIsInstance(assigned_slot, RightPanelSlotCardWidget)
         self.assertTrue(assigned_slot.property("hasPortraitPixmap"))
+        draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].clicked.emit(0, 0)
+        QApplication.processEvents()
+        self.assertLess(p1_context.controller.selected_team_index, 0)
 
         self._assign_all_picks_to_teams(workspace)
 
-        self.assertTrue(workspace.assignment_ready())
-        self.assertTrue(draft_panel.stage_button.isEnabled())
-        draft_panel.stage_button.click()
-        QApplication.processEvents()
-
-        self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_WEAPONS)
+        self.assertEqual(p1_context.filled_character_count(), 8)
         draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].clicked.emit(0, 0)
         QApplication.processEvents()
-        self.assertEqual(workspace.selected_weapon_character, ("player_1", first_p1))
-        weapon_grid = workspace.draft_workspace.source_weapon_grids_by_seat["player_1"]
-        enabled_weapon_ids = [
-            item_id
-            for item_id in weapon_grid.item_ids()
-            if weapon_grid.item(item_id) is not None and weapon_grid.item(item_id).enabled
-        ]
-        self.assertGreater(len(enabled_weapon_ids), 0)
-        self.assertTrue(weapon_grid.click_item_for_test(enabled_weapon_ids[0]))
+        self.assertEqual(
+            (p1_context.controller.selected_team_index, p1_context.controller.selected_slot_index),
+            (0, 0),
+        )
+        weapon_asset = workspace.weapon_assets[0]
+        self.assertTrue(workspace.handle_build_weapon_clicked("player_1", weapon_asset))
         QApplication.processEvents()
-        self.assertIn(first_p1, workspace.weapon_assignments_by_seat["player_1"])
         weaponed_slot = draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)]
         self.assertTrue(weaponed_slot.property("hasWeaponPixmap"))
         self.assertFalse(
@@ -742,19 +760,18 @@ class PvpBrowserTest(unittest.TestCase):
 
         self._assign_compatible_weapons(workspace)
 
-        self.assertTrue(workspace.weapons_ready())
-        draft_panel.stage_button.click()
-        QApplication.processEvents()
+        for seat in ("player_1", "player_2"):
+            self.assertTrue(workspace.ready_build_seat(seat), seat)
+            QApplication.processEvents()
 
         self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_TIMERS_RESULTS)
-        self.assertEqual(len(draft_panel.timer_inputs_by_key), 6)
         for index, text in enumerate(("01:00", "01:00", "01:00")):
             workspace.set_timer_text("player_1", index, text)
         for index, text in enumerate(("01:10", "01:00", "01:00")):
             workspace.set_timer_text("player_2", index, text)
         self.assertTrue(workspace.timers_ready())
 
-        draft_panel.stage_button.click()
+        self.assertTrue(workspace.finalize_match_result())
         QApplication.processEvents()
 
         result = workspace.active_draft_session.controller.state.match_result
@@ -774,10 +791,9 @@ class PvpBrowserTest(unittest.TestCase):
         )
         self.assertIn(tr("app_shell.pvp.post.result_summary_title"), summary_text)
         self.assertIn(tr("app_shell.pvp.draft.player_1"), panel_text)
-        self.assertIn("01:00", panel_text)
-        self.assertIn(tr("app_shell.pvp.post.result_win"), panel_text)
+        self.assertNotIn("not run", panel_text.casefold())
 
-    def test_pvp_assignment_moves_used_character_instead_of_duplicating(self) -> None:
+    def test_pvp_scoped_quick_pick_repeated_character_does_not_duplicate(self) -> None:
         workspace, _panel = self._started_draft_workspace(
             character_count=24,
             deck_names=("Mirror",),
@@ -786,22 +802,22 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertTrue(workspace.continue_to_assignment())
         board = workspace.active_draft_session.board_dict()
         character_id = board["unified_pool"]["result_zones"]["player_1"]["picked"][0]
+        asset = next(
+            asset
+            for asset in workspace.character_assets
+            if _asset_character_id(asset) == character_id
+        )
+        seat_context = workspace.build_flow_context.seat("player_1")
 
-        workspace.select_assignment_character("player_1", character_id)
-        workspace.assign_selected_character_to_slot("player_1", 0, 0)
-        workspace.select_assignment_character("player_1", character_id)
-        workspace.assign_selected_character_to_slot("player_1", 0, 1)
+        self.assertTrue(workspace.handle_build_character_clicked("player_1", asset))
+        self.assertEqual(seat_context.filled_character_count(), 1)
 
-        slots = workspace.assignment_slots_by_seat["player_1"]
-        assigned = [
-            value
-            for team in slots
-            for value in team
-            if value == character_id
-        ]
-        self.assertEqual(assigned, [character_id])
-        self.assertIsNone(slots[0][0])
-        self.assertEqual(slots[0][1], character_id)
+        self.assertTrue(workspace.handle_build_character_clicked("player_1", asset))
+        self.assertEqual(seat_context.filled_character_count(), 0)
+        self.assertNotIn(
+            character_id,
+            seat_context.controller.roster_selection_markers(),
+        )
 
     def test_pvp_weapon_stage_rejects_incompatible_and_exhausted_stack(self) -> None:
         weapons = [
@@ -828,27 +844,38 @@ class PvpBrowserTest(unittest.TestCase):
         self._complete_draft(workspace)
         self.assertTrue(workspace.continue_to_assignment())
         self._assign_all_picks_to_teams(workspace)
-        self.assertTrue(workspace.continue_to_weapons())
 
         board = workspace.active_draft_session.board_dict()
         first, second = board["unified_pool"]["result_zones"]["player_1"]["picked"][:2]
         deck = workspace.active_draft_session.controller.session_state.deck_for("player_1")
         sword_stack = next(stack for stack in deck.weapons if stack.weapon_type == "Sword")
-        bow_stack = next(stack for stack in deck.weapons if stack.weapon_type == "Bow")
+        _bow_stack = next(stack for stack in deck.weapons if stack.weapon_type == "Bow")
+        sword_asset = next(
+            asset
+            for asset in workspace.weapon_assets
+            if asset["metadata"]["weapon"]["weapon_type_name"] == "Sword"
+        )
+        bow_asset = next(
+            asset
+            for asset in workspace.weapon_assets
+            if asset["metadata"]["weapon"]["weapon_type_name"] == "Bow"
+        )
+        seat_context = workspace.build_flow_context.seat("player_1")
 
-        workspace.assign_weapon_stack("player_1", first, bow_stack.stack_key)
-        self.assertNotIn(first, workspace.weapon_assignments_by_seat["player_1"])
+        workspace.handle_build_slot_clicked("player_1", 0, 0)
+        self.assertFalse(workspace.handle_build_weapon_clicked("player_1", bow_asset))
+        self.assertIsNone(seat_context.controller.state.team(0).slot(0).weapon)
 
-        workspace.assign_weapon_stack("player_1", first, sword_stack.stack_key)
+        self.assertTrue(workspace.handle_build_weapon_clicked("player_1", sword_asset))
         self.assertEqual(
-            workspace.weapon_assignments_by_seat["player_1"][first],
+            seat_context.weapon_assignment().assignments[0].weapon_stack_key,
             sword_stack.stack_key,
         )
-        workspace.assign_weapon_stack("player_1", second, sword_stack.stack_key)
-        self.assertNotEqual(
-            workspace.weapon_assignments_by_seat["player_1"].get(second),
-            sword_stack.stack_key,
-        )
+        workspace.handle_build_slot_clicked("player_1", 0, 1)
+        self.assertTrue(workspace.handle_build_weapon_clicked("player_1", sword_asset))
+        self.assertIsNone(seat_context.controller.state.team(0).slot(0).weapon)
+        self.assertIsNotNone(seat_context.controller.state.team(0).slot(1).weapon)
+        self.assertEqual(len(seat_context.weapon_assignment().assignments), 1)
         self.assertFalse(workspace.weapons_ready())
 
     def test_pvp_clear_active_draft_resets_post_draft_state(self) -> None:
@@ -860,24 +887,84 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertTrue(workspace.continue_to_assignment())
         board = workspace.active_draft_session.board_dict()
         character_id = board["unified_pool"]["result_zones"]["player_1"]["picked"][0]
-        workspace.select_assignment_character("player_1", character_id)
-        workspace.assign_selected_character_to_slot("player_1", 0, 0)
-        workspace.weapon_assignments_by_seat["player_1"][character_id] = "manual"
+        asset = next(
+            asset
+            for asset in workspace.character_assets
+            if _asset_character_id(asset) == character_id
+        )
+        self.assertTrue(workspace.handle_build_character_clicked("player_1", asset))
+        self.assertIsNotNone(workspace.build_flow_context)
         workspace.set_timer_text("player_1", 0, "01:00")
 
         workspace.clear_active_draft()
 
         self.assertIsNone(workspace.active_draft_session)
         self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_DRAFT)
-        self.assertEqual(workspace.assignment_slots_by_seat, {
-            "player_1": [[None, None, None, None], [None, None, None, None]],
-            "player_2": [[None, None, None, None], [None, None, None, None]],
-        })
-        self.assertEqual(workspace.weapon_assignments_by_seat, {
-            "player_1": {},
-            "player_2": {},
-        })
+        self.assertIsNone(workspace.build_flow_context)
+        self.assertFalse(hasattr(workspace, "assignment_slots_by_seat"))
+        self.assertFalse(hasattr(workspace, "weapon_assignments_by_seat"))
         self.assertEqual(workspace.timer_texts_by_seat["player_1"], ["", "", ""])
+
+    def test_imported_profile_drives_player_2_scoped_build_provider(self) -> None:
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        portrait_path, weapon_path = _create_test_asset_images(temp_dir.name)
+        characters = _valid_character_assets(24, image_path=portrait_path)
+        weapons = [
+            _weapon_asset(
+                "11401",
+                "Sword",
+                weapon_type=1,
+                weapon_type_name="Sword",
+                known_count=24,
+                image_path=weapon_path,
+            )
+        ]
+        db_path = Path(temp_dir.name) / "local.sqlite"
+        _seed_pvp_build_db(db_path, characters=characters, weapons=weapons)
+        workspace = PvpWorkspace(
+            db_path=db_path,
+            deck_dir=temp_dir.name,
+            character_assets_provider=lambda: characters,
+            weapon_assets_provider=lambda: weapons,
+        )
+        self.assertTrue(workspace.decks_workspace.create_deck("Local"))
+        self.assertTrue(workspace.decks_workspace.save_edit(name="Local"))
+        package_path = Path(temp_dir.name) / "remote.gttpvp"
+        self.assertTrue(workspace.decks_workspace.export_profile(package_path))
+
+        self.assertTrue(
+            workspace.import_profile_for_seat("player_2", package_path)
+        )
+        self.assertTrue(workspace.seat_profile_is_imported("player_2"))
+        self.assertEqual(
+            [preset.name for preset in workspace.play_deck_options("player_2")],
+            ["Local"],
+        )
+        play_panel = PvpPlayRightPanel(workspace)
+        self.assertFalse(play_panel.player_2_local_button.isHidden())
+        self.assertIn("remote", play_panel.player_2_label.text())
+
+        deck_id = workspace.decks_workspace.presets[0].deck_id
+        self.assertTrue(workspace.start_local_draft(deck_id, deck_id))
+        self._complete_draft(workspace)
+        self.assertTrue(workspace.continue_to_assignment())
+        imported_provider = workspace.seat_profile_provider("player_2")
+        self.assertIs(
+            workspace.build_flow_context.seat("player_2").provider,
+            imported_provider,
+        )
+        self.assertNotEqual(
+            workspace.build_flow_context.seat("player_2").db_path,
+            db_path,
+        )
+
+        workspace.clear_active_draft()
+        imported_db_path = Path(imported_provider.db_path)
+        self.assertTrue(imported_db_path.exists())
+        workspace.use_local_profile_for_seat("player_2")
+        self.assertFalse(imported_db_path.exists())
+        self.assertFalse(workspace.seat_profile_is_imported("player_2"))
 
     def test_pvp_right_panel_host_switches_decks_and_play_pages(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -933,7 +1020,10 @@ class PvpBrowserTest(unittest.TestCase):
             ],
             weapon_path,
         )
+        db_path = Path(temp_dir.name) / "pvp-build.sqlite"
+        _seed_pvp_build_db(db_path, characters=characters, weapons=weapons)
         workspace = PvpWorkspace(
+            db_path=db_path,
             deck_dir=temp_dir.name,
             character_assets_provider=lambda: characters,
             weapon_assets_provider=lambda: weapons,
@@ -963,39 +1053,65 @@ class PvpBrowserTest(unittest.TestCase):
 
     def _assign_all_picks_to_teams(self, workspace: PvpWorkspace) -> None:
         board = workspace.active_draft_session.board_dict()
+        assets_by_id = {
+            _asset_character_id(asset): asset
+            for asset in workspace.character_assets
+        }
         for seat in ("player_1", "player_2"):
+            seat_context = workspace.build_flow_context.seat(seat)
             picks = board["unified_pool"]["result_zones"][seat]["picked"]
             self.assertEqual(len(picks), 8)
-            for index, character_id in enumerate(picks):
-                workspace.select_assignment_character(seat, character_id)
-                workspace.assign_selected_character_to_slot(
-                    seat,
-                    index // 4,
-                    index % 4,
+            for character_id in picks:
+                if character_id in seat_context.controller.roster_selection_markers():
+                    continue
+                self.assertTrue(
+                    workspace.handle_build_character_clicked(
+                        seat,
+                        assets_by_id[character_id],
+                    ),
+                    (seat, character_id),
                 )
         QApplication.processEvents()
 
     def _assign_compatible_weapons(self, workspace: PvpWorkspace) -> None:
         session = workspace.active_draft_session
         self.assertIsNotNone(session)
+        assets_by_stack_key = {}
+        for asset in workspace.weapon_assets:
+            weapon = asset["metadata"]["weapon"]
+            stack_key = "|".join(
+                (
+                    str(weapon["id"]),
+                    str(weapon.get("weapon_type_name") or weapon.get("type_name")).casefold(),
+                    str(weapon.get("rarity") or ""),
+                    str(weapon.get("level") or ""),
+                    str(weapon.get("refinement") or ""),
+                )
+            )
+            assets_by_stack_key[stack_key] = asset
         for seat in ("player_1", "player_2"):
+            seat_context = workspace.build_flow_context.seat(seat)
             deck = session.controller.session_state.deck_for(seat)
             character_by_id = deck.character_by_id
-            assigned = [
-                character_id
-                for team in workspace.assignment_slots_by_seat[seat]
-                for character_id in team
-                if character_id
-            ]
-            for character_id in assigned:
-                weapon_type = character_by_id[character_id].weapon_type
-                stack = next(
-                    stack
-                    for stack in deck.weapons
-                    if stack.weapon_type == weapon_type
-                )
-                workspace.select_weapon_character(seat, character_id)
-                workspace.assign_weapon_stack(seat, character_id, stack.stack_key)
+            for team_index, team in enumerate(seat_context.controller.state.teams[:2]):
+                for slot_index, slot in enumerate(team.slots[:4]):
+                    if slot.character is None or slot.weapon is not None:
+                        continue
+                    character_id = str(slot.character.id)
+                    weapon_type = character_by_id[character_id].weapon_type
+                    stack = next(
+                        stack
+                        for stack in deck.weapons
+                        if stack.weapon_type == weapon_type
+                    )
+                    workspace.handle_build_slot_clicked(seat, team_index, slot_index)
+                    self.assertTrue(
+                        workspace.handle_build_weapon_clicked(
+                            seat,
+                            assets_by_stack_key[stack.stack_key],
+                        ),
+                        (seat, character_id, stack.stack_key),
+                    )
         QApplication.processEvents()
 
     @staticmethod
@@ -1114,6 +1230,86 @@ def _with_weapon_image_paths(weapons: list[dict], image_path: str) -> list[dict]
         item["metadata"] = metadata
         updated.append(item)
     return updated
+
+
+def _seed_pvp_build_db(
+    db_path: Path,
+    *,
+    characters: list[dict],
+    weapons: list[dict],
+) -> None:
+    with closing(connect_db(db_path)) as conn:
+        init_db(conn)
+        conn.executemany(
+            """
+            INSERT INTO account_characters (
+                character_id,
+                name,
+                element,
+                rarity,
+                level,
+                constellation,
+                weapon_type,
+                weapon_type_name,
+                portrait_path,
+                side_icon_path
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    int(_asset_character_id(character)),
+                    character["metadata"]["character"]["name"],
+                    character["metadata"]["character"].get("element") or "",
+                    int(character["metadata"]["character"].get("rarity") or 0),
+                    int(character["metadata"]["character"].get("level") or 0),
+                    int(character["metadata"]["character"].get("constellation") or 0),
+                    int(character["metadata"]["character"].get("weapon_type") or 0),
+                    character["metadata"]["character"].get("weapon_type_name") or "",
+                    str(character.get("path") or ""),
+                    str(character.get("path") or ""),
+                )
+                for character in characters
+            ],
+        )
+        conn.executemany(
+            """
+            INSERT INTO account_weapon_observed_stacks (
+                weapon_fingerprint,
+                weapon_id,
+                name,
+                weapon_type,
+                weapon_type_name,
+                rarity,
+                level,
+                refinement,
+                icon_path,
+                known_count
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    weapon["metadata"]["weapon"].get("weapon_fingerprint")
+                    or weapon["metadata"]["weapon"].get("source_key"),
+                    int(weapon["metadata"]["weapon"].get("id") or 0),
+                    weapon["metadata"]["weapon"].get("name") or "",
+                    int(weapon["metadata"]["weapon"].get("weapon_type") or 0),
+                    weapon["metadata"]["weapon"].get("weapon_type_name") or "",
+                    int(weapon["metadata"]["weapon"].get("rarity") or 0),
+                    int(weapon["metadata"]["weapon"].get("level") or 0),
+                    int(weapon["metadata"]["weapon"].get("refinement") or 0),
+                    weapon["metadata"]["weapon"].get("icon_path") or "",
+                    int(weapon["metadata"].get("known_count") or 1),
+                )
+                for weapon in weapons
+            ],
+        )
+        conn.commit()
+
+
+def _asset_character_id(asset: dict) -> str:
+    return str(asset.get("metadata", {}).get("character", {}).get("id") or "").strip()
 
 
 def _board_card(board: dict, seat: str, character_id: str) -> dict:

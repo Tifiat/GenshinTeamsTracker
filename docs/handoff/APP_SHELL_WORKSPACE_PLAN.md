@@ -747,6 +747,12 @@ Performance fix status:
   transient windows and multi-second first init. Stable Qt widget ownership is
   required: keep widgets parented in a single layout and update
   visibility/state/content in place.
+- PvP post-draft source panels follow the same rule. Once Assignment/Weapons
+  has created the scoped `CharacterWeaponWorkspace` source zones, clicks must
+  update titles, markers, filters, and grids in place. Do not detach source
+  workspaces, clear the whole scroll layout, or rebuild the post-draft source
+  frame on every character/weapon/slot action; that reproduces the old
+  live-resize/blank-window twitch failure under a different left-panel path.
 - Artifact Browser cold-start audit status:
   - Baseline after target-filter optimization was about `356 ms` total, with
     store load around `110 ms`, target item loading around `46-48 ms`, and UI

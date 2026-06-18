@@ -352,6 +352,19 @@ class PvpDraftRightPanel(QWidget):
                     self.workspace.handle_build_slot_clicked(s, team_index, slot_index)
                 )
             )
+            panel.slot_dropped.connect(
+                lambda source_team_index,
+                source_slot_index,
+                target_team_index,
+                target_slot_index,
+                s=seat: self.workspace.handle_build_slot_dropped(
+                    s,
+                    source_team_index,
+                    source_slot_index,
+                    target_team_index,
+                    target_slot_index,
+                )
+            )
             panel.setVisible(not collapsed)
             self.postdraft_run_panels_by_seat[seat] = panel
             self._register_target_run_panel_slots(panel, seat, seat_context)

@@ -880,6 +880,8 @@ class PvpBrowserTest(unittest.TestCase):
 
         p1_run_panel = draft_panel.postdraft_run_panels_by_seat["player_1"]
         p1_zone = draft_panel.target_zone_frames_by_seat["player_1"]
+        p1_source_zone = workspace.draft_workspace.source_zone_frames_by_seat["player_1"]
+        scoped_source_frame = workspace.draft_workspace._scoped_build_source_frame
         p1_first_pick = workspace.active_draft_session.board_dict()["unified_pool"][
             "result_zones"
         ]["player_1"]["picked"][0]
@@ -899,6 +901,11 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertIs(workspace.build_source_workspace("player_1"), p1_source)
         self.assertIs(draft_panel.postdraft_run_panels_by_seat["player_1"], p1_run_panel)
         self.assertIs(draft_panel.target_zone_frames_by_seat["player_1"], p1_zone)
+        self.assertIs(
+            workspace.draft_workspace.source_zone_frames_by_seat["player_1"],
+            p1_source_zone,
+        )
+        self.assertIs(workspace.draft_workspace._scoped_build_source_frame, scoped_source_frame)
         self.assertEqual(
             workspace.build_flow_context.seat("player_1")
             .controller.state.team(0)
@@ -921,6 +928,32 @@ class PvpBrowserTest(unittest.TestCase):
                 (int(_asset_character_id(characters[0])),),
             )
 
+        self.assertTrue(workspace.handle_build_character_clicked("player_1", p1_asset))
+        QApplication.processEvents()
+        self.assertIsNone(
+            workspace.build_flow_context.seat("player_1")
+            .controller.state.team(0)
+            .slot(0)
+            .character
+        )
+        self.assertTrue(
+            p1_source.weapon_grid.item_property(p1_weapon_item_id, "has_owner_badges")
+        )
+        self.assertTrue(workspace.handle_build_character_clicked("player_1", p1_asset))
+        QApplication.processEvents()
+        restored_slot = (
+            workspace.build_flow_context.seat("player_1")
+            .controller.state.team(0)
+            .slot(0)
+        )
+        self.assertIsNotNone(restored_slot.character)
+        self.assertIsNotNone(restored_slot.weapon)
+        self.assertTrue(
+            draft_panel.team_slot_buttons_by_key[("player_1", 0, 0)].property(
+                "hasWeaponPixmap"
+            )
+        )
+
         p2_first_pick = workspace.active_draft_session.board_dict()["unified_pool"][
             "result_zones"
         ]["player_2"]["picked"][0]
@@ -938,6 +971,69 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertTrue(
             p2_source.weapon_grid.item_property(p2_weapon_item_id, "has_owner_badges")
         )
+
+    def test_pvp_postdraft_right_panel_slot_drop_swaps_slots(self) -> None:
+        workspace, _panel = self._started_draft_workspace(
+            character_count=24,
+            deck_names=("Mirror",),
+        )
+        self._complete_draft(workspace)
+        self.assertTrue(workspace.continue_to_assignment())
+        draft_panel = PvpDraftRightPanel(workspace)
+        self._assign_all_picks_to_teams(workspace)
+        seat_context = workspace.build_flow_context.seat("player_1")
+        first_id = str(seat_context.controller.state.team(0).slot(0).character.id)
+        second_id = str(seat_context.controller.state.team(0).slot(1).character.id)
+
+        draft_panel.postdraft_run_panels_by_seat["player_1"].slot_dropped.emit(
+            0,
+            0,
+            0,
+            1,
+        )
+        QApplication.processEvents()
+
+        self.assertEqual(
+            str(seat_context.controller.state.team(0).slot(0).character.id),
+            second_id,
+        )
+        self.assertEqual(
+            str(seat_context.controller.state.team(0).slot(1).character.id),
+            first_id,
+        )
+        markers = seat_context.controller.roster_selection_markers()
+        self.assertEqual(markers[first_id].slot_number, 2)
+        self.assertEqual(markers[second_id].slot_number, 1)
+
+    def test_pvp_ready_uses_scoped_weapon_stack_key_not_display_type(self) -> None:
+        workspace, _panel = self._started_draft_workspace(
+            character_count=24,
+            deck_names=("Mirror",),
+        )
+        session = workspace.active_draft_session
+        stack_key = session.controller.session_state.deck_for("player_1").weapons[0].stack_key
+        weapon_meta = workspace.weapon_assets[0]["metadata"]["weapon"]
+        weapon_meta["source_key"] = stack_key
+        weapon_meta["weapon_fingerprint"] = ""
+        weapon_meta["weapon_type_name"] = "Sword Display"
+        weapon_meta["type_name"] = "Sword Display"
+
+        self._complete_draft(workspace)
+        self.assertTrue(workspace.continue_to_assignment())
+        self._assign_all_picks_to_teams(workspace)
+        for seat in ("player_1", "player_2"):
+            for team_index in range(2):
+                for slot_index in range(4):
+                    workspace.handle_build_slot_clicked(seat, team_index, slot_index)
+                    self.assertTrue(
+                        workspace.handle_build_weapon_clicked(
+                            seat,
+                            workspace.weapon_assets[0],
+                        ),
+                        (seat, team_index, slot_index),
+                    )
+            self.assertTrue(workspace.ready_build_seat(seat), workspace.last_draft_status())
+            self.assertNotIn("weapon_type_mismatch", workspace.last_draft_status())
 
     def test_pvp_weapon_stage_rejects_incompatible_and_exhausted_stack(self) -> None:
         weapons = [

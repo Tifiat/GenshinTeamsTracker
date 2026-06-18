@@ -466,6 +466,16 @@ Hot-seat layout direction:
   collapse/expand so the artifact-equipment stage has enough room.
 - This is especially relevant once Artifact Browser-like equipment UI opens
   inside PvP.
+- Assignment/Weapons source panels must stay stable after they are first
+  created. The scoped `CharacterWeaponWorkspace` instances are reused while
+  title text, markers, weapon filters, owner badges, and right-panel models are
+  updated in place. Rebuilding the post-draft left source frame on every click
+  is a regression because it reintroduces the same twitch/flicker class that was
+  fixed for the production right panel.
+- Right-panel slot drag/drop in PvP must route to the same scoped
+  `AppShellController.swap_slots(...)` behavior as normal Abyss. Slot clicks
+  select targets; source-card clicks assign characters/weapons; drag/drop swaps
+  existing right-panel slots.
 
 ## PvP GCSIM
 

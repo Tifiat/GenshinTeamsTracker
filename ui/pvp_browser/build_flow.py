@@ -193,7 +193,7 @@ class PvpRuntimeEquipmentState:
         character_id = _text(character_id)
         if character_id not in self.allowed_character_ids:
             raise EquipmentError(f"PvP character is not in this seat pool: {character_id!r}")
-        weapon_key = _weapon_stack_key_from_mapping(weapon)
+        weapon_key = _matching_allowed_weapon_key(weapon, self.allowed_weapon_keys)
         if weapon_key not in self.allowed_weapon_keys:
             raise EquipmentError(f"PvP weapon is not in this seat pool: {weapon_key!r}")
         self.characters_by_id[character_id] = dict(character)
@@ -351,6 +351,12 @@ class PvpSeatBuildContext:
         if result.changed:
             self.ready = False
             self.last_error = ""
+            if result.added:
+                self.controller.hydrate_persistent_equipment_for_slot(
+                    result.team_index,
+                    result.slot_index,
+                    result.character_id,
+                )
             self.sync_source_workspace(
                 affected_character_ids=_changed_marker_ids(
                     before_markers,
@@ -358,6 +364,31 @@ class PvpSeatBuildContext:
                 )
             )
         return result.changed
+
+    def swap_slots(
+        self,
+        source_team_index: int,
+        source_slot_index: int,
+        target_team_index: int,
+        target_slot_index: int,
+    ) -> bool:
+        before_markers = self.controller.roster_selection_markers()
+        changed = self.controller.swap_slots(
+            source_team_index,
+            source_slot_index,
+            target_team_index,
+            target_slot_index,
+        )
+        if changed:
+            self.ready = False
+            self.last_error = ""
+            self.sync_source_workspace(
+                affected_character_ids=_changed_marker_ids(
+                    before_markers,
+                    self.controller.roster_selection_markers(),
+                )
+            )
+        return changed
 
     def toggle_slot_selection(self, team_index: int, slot_index: int) -> None:
         self.controller.toggle_slot_selection(int(team_index), int(slot_index))
@@ -674,6 +705,7 @@ def _strip_asset_owner_badges(asset: Mapping[str, Any]) -> dict[str, Any]:
 def _pvp_weapon_ref(weapon: Mapping[str, Any], weapon_key: str) -> dict[str, Any]:
     result = dict(weapon)
     if weapon_key:
+        result["pvp_weapon_stack_key"] = weapon_key
         result.setdefault("variant_key", weapon_key)
         result.setdefault("source_key", _text(weapon.get("source_key")) or weapon_key)
     return result
@@ -700,10 +732,16 @@ def _slot_weapon_stack_key(slot: TeamBuilderSlotState) -> str:
         weapon = slot.weapon.to_dict()
     if not weapon:
         return ""
+    pvp_key = _text(weapon.get("pvp_weapon_stack_key"))
+    if pvp_key:
+        return pvp_key
     return _weapon_stack_key_from_mapping(weapon)
 
 
 def _weapon_stack_key_from_mapping(weapon: Mapping[str, Any]) -> str:
+    pvp_key = _text(weapon.get("pvp_weapon_stack_key"))
+    if pvp_key:
+        return pvp_key
     key = weapon_observed_stack_key(
         weapon_id=weapon.get("weapon_id") or weapon.get("id"),
         weapon_type=(
@@ -733,6 +771,40 @@ def _weapon_stack_key_from_mapping(weapon: Mapping[str, Any]) -> str:
         refinement=_optional_int(weapon.get("refinement")),
     )
     return ref.key
+
+
+def _matching_allowed_weapon_key(
+    weapon: Mapping[str, Any],
+    allowed_weapon_keys: Iterable[str],
+) -> str:
+    allowed = {_text(key) for key in allowed_weapon_keys if _text(key)}
+    for key_name in (
+        "pvp_weapon_stack_key",
+        "variant_key",
+        "source_key",
+        "weapon_fingerprint",
+    ):
+        key = _text(weapon.get(key_name))
+        if key in allowed:
+            return key
+
+    weapon_id = weapon.get("weapon_id") or weapon.get("id")
+    for weapon_type in (
+        weapon.get("weapon_type_name"),
+        weapon.get("type_name"),
+        weapon.get("weapon_type"),
+        weapon.get("type"),
+    ):
+        key = weapon_observed_stack_key(
+            weapon_id=weapon_id,
+            weapon_type=weapon_type,
+            rarity=weapon.get("rarity"),
+            level=weapon.get("level"),
+            refinement=weapon.get("refinement"),
+        )
+        if key in allowed:
+            return key
+    return _weapon_stack_key_from_mapping(weapon)
 
 
 def _asset_metadata_mapping(asset: Mapping[str, Any], key: str) -> dict[str, Any]:

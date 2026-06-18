@@ -1440,6 +1440,9 @@ class PvpDraftWorkspace(QWidget):
         self.card_buttons_by_key = self.card_buttons_by_character_id
         self.legal_card_buttons: list[PvpDraftUnifiedCardButton] = []
         self.source_zone_frames_by_seat: dict[str, QFrame] = {}
+        self._scoped_build_source_frame: QFrame | None = None
+        self._scoped_build_context_id: int | None = None
+        self._source_title_labels_by_seat: dict[str, QLabel] = {}
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 18, 18, 18)
@@ -1548,11 +1551,14 @@ class PvpDraftWorkspace(QWidget):
         self.status_label.setVisible(bool(self._status_text))
         self.card_buttons_by_key.clear()
         self.legal_card_buttons.clear()
-        self.source_zone_frames_by_seat.clear()
-        self._detach_build_source_widgets()
-        _clear_layout(self.scroll_layout)
 
         if session is None:
+            self.source_zone_frames_by_seat.clear()
+            self._source_title_labels_by_seat.clear()
+            self._scoped_build_source_frame = None
+            self._scoped_build_context_id = None
+            self._detach_build_source_widgets()
+            _clear_layout(self.scroll_layout)
             self.board_frame.setProperty("complete", False)
             _refresh_qss(self.board_frame)
             self._refresh_completed(None)
@@ -1570,15 +1576,28 @@ class PvpDraftWorkspace(QWidget):
             PVP_DRAFT_STAGE_ASSIGNMENT,
             PVP_DRAFT_STAGE_WEAPONS,
         }:
-            self.scroll_layout.addWidget(self._build_scoped_build_source_stage())
+            self._refresh_scoped_build_source_scroll_stage()
         elif stage in {
             PVP_DRAFT_STAGE_TIMERS_RESULTS,
             PVP_DRAFT_STAGE_COMPLETED_RESULT,
         }:
+            self.source_zone_frames_by_seat.clear()
+            self._source_title_labels_by_seat.clear()
+            self._scoped_build_source_frame = None
+            self._scoped_build_context_id = None
+            self._detach_build_source_widgets()
+            _clear_layout(self.scroll_layout)
             self.scroll_layout.addWidget(self._build_timers_results_stage(stage))
+            self.scroll_layout.addStretch(1)
         else:
+            self.source_zone_frames_by_seat.clear()
+            self._source_title_labels_by_seat.clear()
+            self._scoped_build_source_frame = None
+            self._scoped_build_context_id = None
+            self._detach_build_source_widgets()
+            _clear_layout(self.scroll_layout)
             self.scroll_layout.addWidget(self._build_unified_pool(board, complete))
-        self.scroll_layout.addStretch(1)
+            self.scroll_layout.addStretch(1)
         self._refresh_completed(board if stage == PVP_DRAFT_STAGE_DRAFT else None)
 
     def retranslate_ui(self) -> None:
@@ -1651,9 +1670,29 @@ class PvpDraftWorkspace(QWidget):
             if source is not None:
                 source.setParent(None)
 
+    def _refresh_scoped_build_source_scroll_stage(self) -> None:
+        context_id = id(self._build_flow_context) if self._build_flow_context else None
+        if (
+            self._scoped_build_source_frame is not None
+            and self._scoped_build_context_id == context_id
+            and self.scroll_layout.indexOf(self._scoped_build_source_frame) >= 0
+        ):
+            self._update_scoped_build_source_stage()
+            return
+        self.source_zone_frames_by_seat.clear()
+        self._source_title_labels_by_seat.clear()
+        self._scoped_build_source_frame = None
+        self._scoped_build_context_id = context_id
+        self._detach_build_source_widgets()
+        _clear_layout(self.scroll_layout)
+        self.scroll_layout.addWidget(self._build_scoped_build_source_stage())
+        self.scroll_layout.addStretch(1)
+
     def _build_scoped_build_source_stage(self) -> QFrame:
         frame = QFrame()
         frame.setObjectName("pvp_scoped_build_source_frame")
+        self._scoped_build_source_frame = frame
+        self._scoped_build_context_id = id(self._build_flow_context) if self._build_flow_context else None
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
@@ -1683,6 +1722,7 @@ class PvpDraftWorkspace(QWidget):
                 )
             )
             title.setObjectName("pvp_draft_result_title")
+            self._source_title_labels_by_seat[seat] = title
             section_layout.addWidget(title)
             source = seat_context.source_workspace
             source.setParent(section)
@@ -1690,6 +1730,29 @@ class PvpDraftWorkspace(QWidget):
             self.source_zone_frames_by_seat[seat] = section
             layout.addWidget(section, 1)
         return frame
+
+    def _update_scoped_build_source_stage(self) -> None:
+        context = self._build_flow_context
+        if context is None:
+            return
+        for seat in PVP_SEATS:
+            seat_context = context.seat(seat)
+            title = self._source_title_labels_by_seat.get(seat)
+            section = self.source_zone_frames_by_seat.get(seat)
+            if seat_context is None or title is None or section is None:
+                self._scoped_build_source_frame = None
+                self._refresh_scoped_build_source_scroll_stage()
+                return
+            title.setText(
+                tr("app_shell.pvp.post.scoped_source_title").format(
+                    seat=_seat_label(seat),
+                    characters=seat_context.filled_character_count(),
+                    weapons=seat_context.filled_weapon_count(),
+                )
+            )
+            source = seat_context.source_workspace
+            if source.parent() is not section:
+                source.setParent(section)
 
     def _build_timers_results_stage(self, stage: str) -> QFrame:
         frame = QFrame()
@@ -2293,6 +2356,31 @@ class PvpWorkspace(QWidget):
         self.active_draft_changed.emit()
         self.state_changed.emit()
 
+    def handle_build_slot_dropped(
+        self,
+        seat: str,
+        source_team_index: int,
+        source_slot_index: int,
+        target_team_index: int,
+        target_slot_index: int,
+    ) -> bool:
+        context = self.build_flow_context
+        seat_context = context.seat(seat) if context is not None else None
+        if seat_context is None:
+            return False
+        changed = seat_context.swap_slots(
+            source_team_index,
+            source_slot_index,
+            target_team_index,
+            target_slot_index,
+        )
+        if changed:
+            context.set_active_seat(seat)
+            self._sync_draft_workspace()
+            self.active_draft_changed.emit()
+            self.state_changed.emit()
+        return changed
+
     def is_build_seat_collapsed(self, seat: str) -> bool:
         context = self.build_flow_context
         return bool(context is not None and seat in context.collapsed_seats)
@@ -2314,7 +2402,7 @@ class PvpWorkspace(QWidget):
             seat_context = context.seat(seat)
             code = "" if seat_context is None else seat_context.last_error
             self._last_draft_status = tr("app_shell.pvp.post.ready_invalid").format(
-                code=code or "invalid",
+                code=_pvp_ready_error_text(code),
             )
             self._sync_draft_workspace()
             self.state_changed.emit()
@@ -2499,6 +2587,25 @@ class PvpWorkspace(QWidget):
             weapon_assets=self.weapon_assets,
             build_flow_context=self.build_flow_context,
         )
+
+
+def _pvp_ready_error_text(codes_text: str) -> str:
+    codes = [code.strip() for code in str(codes_text or "").split(",") if code.strip()]
+    if not codes:
+        return tr("app_shell.pvp.post.ready_issue.invalid")
+    unique_codes = tuple(dict.fromkeys(codes))
+    if len(unique_codes) == 1:
+        code = unique_codes[0]
+        key = f"app_shell.pvp.post.ready_issue.{code}"
+        text = tr(key)
+        if text != key:
+            if len(codes) > 1:
+                return tr("app_shell.pvp.post.ready_issue.repeated").format(
+                    issue=text,
+                    count=len(codes),
+                )
+            return text
+    return tr("app_shell.pvp.post.ready_issue.multiple")
 
 
 

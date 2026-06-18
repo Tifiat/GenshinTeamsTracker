@@ -134,10 +134,10 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `hoyolab_export/`: HoYoLAB auth/export/import pipeline, artifact DB helpers, HoYoWiki catalog/cache helpers.
 - `localization/`: JSON-backed app localization.
 - `ui/artifact_browser/`: isolated Artifact Browser module.
-- `ui/history_browser/`: isolated AppShell History Browser module for grouped
-  saved-bundle rows, saved-row selection, compact Abyss period summaries, and
-  the read-only History right-viewer v0 plus selected-snapshot PNG preview v0;
-  future product/architecture rules live in `docs/handoff/HISTORY_BROWSER.md`.
+- `ui/history_browser/`: dedicated AppShell History Browser module for grouped
+  saved-bundle browsing and selection. Its current independent details widget
+  and permanent selected PNG preview are transitional, not the accepted MVP;
+  the target contract lives in `docs/handoff/HISTORY_BROWSER.md`.
 - `ui/character_browser/`: narrow adapters that translate character/weapon
   asset records into reusable generic browser/grid item models.
 - AppShell top-level browser/workspace UI must live in its own `ui/<area>_browser/`
@@ -183,6 +183,8 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - `run_workspace/history_snapshot_preview.py`: derived PNG preview renderer for
   immutable History snapshots. Output convention:
   `<bundle_dir>/preview/history_card.png`; it does not mutate `snapshot.json`.
+  This text-first renderer is transitional and must not define the final
+  History browser or export presentation.
 - `docs/handoff/`: detailed project maps and research handoffs. Root `TODO.md` and `CODEX.md` remain the entrypoints.
 - `docs/handoff/TESTS.md`: test-suite layout and rules for choosing narrow
   per-area `unittest` runs.
@@ -506,7 +508,13 @@ Important direction:
 - Separate Account/Inventory, Team Builder, Scenario/Run, and Presentation/Export concerns.
 - Run Workspace should have at least Abyss and DPS Dummy modes. The active mode controls team layout, visible inputs, history target, and saved run type.
 - TeamCard and RunCard concepts should be shared by main Run Workspace, Abyss history, DPS Dummy history, export, simulator UI, and most PvP post-draft flows.
-- History / saved runs should use Akasha-like compact rows later: DPS Dummy can be one team row; Abyss can be a paired/double team row. Rows can show character icons, weapon icons, set/build icons, room times, factual DPS, and sim DPS. Character hover should show a rich build tooltip; row expansion should show full RunCard/export-ready detail.
+- History must render a selected snapshot through a separate read-only instance
+  of the same current mode-specific Run presentation classes and view-model
+  shape used by the live pipeline. Do not create History-specific copies of
+  team, slot, selected-details, timer, chamber, build, or result widgets.
+- History saved-run rows are compact visual rows: DPS Dummy uses one team and
+  Abyss uses a paired/double-team row with character, weapon, set/build,
+  chamber-time, factual-DPS, and sim-DPS presentation.
 - Saved runs must be immutable structured snapshots, not live references to current account/build state and not image-only records.
 - Run snapshots should preserve characters, weapons, constellations/refinements when available, artifacts, active set bonuses, relevant stats, timers, and run metadata.
 - Artifact Browser integration should feed artifact builds/build presets into Team Builder and TeamCard. When saving a run, snapshot actual selected build data, not only a live preset id.
@@ -707,18 +715,20 @@ Debug files are private and ignored.
 
 History:
 
-- Current AppShell History workspace lives in `ui/history_browser/`: the left
-  workspace reads a minimal grouped saved-bundle list, supports saved-row
-  selection, shows compact Abyss period summaries, and sends frozen selected
-  sanitized snapshot details to the isolated read-only History right-panel
-  viewer v0. It also displays a derived sanitized PNG preview v0 for the
-  selected snapshot.
+- Current AppShell History code can read grouped bundles and select rows, but
+  its independent QLabel-style details viewer and permanent selected PNG area
+  are provisional and do not satisfy the accepted MVP.
+- The accepted target is a snapshot-bound read-only instance of the same
+  Abyss/DPS Dummy Run presentation used by live state. Slot inspection and
+  tooltips remain available; mutation, drag/drop, timer/state editing, commands,
+  mode tabs, and live Reset/Save behavior follow the policy in
+  `docs/handoff/HISTORY_BROWSER.md`.
 - Immutable History Snapshot Bundle v1 backend schema/service lives in
   `run_workspace/history_snapshot.py`, with a backend-only builder in
   `run_workspace/history_snapshot_builder.py`. RUN-page Save writes grouped
-  bundles under `data/history/snapshots`; v0 preview rendering lives in
-  `run_workspace/history_snapshot_preview.py`, while polished export/card and
-  richer browser rules live in `docs/handoff/HISTORY_BROWSER.md`.
+  bundles under `data/history/snapshots`. The next History stage must capture
+  full frozen details for every occupied slot plus bundle-local visible assets,
+  then adapt that snapshot into the shared right-panel view-model.
 
 Artifact Browser final UI:
 

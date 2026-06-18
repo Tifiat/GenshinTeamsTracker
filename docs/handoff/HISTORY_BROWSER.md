@@ -1,171 +1,149 @@
 # History Browser Contract
 
-Scope: product and architecture contract for the AppShell History Browser.
-The current implementation is a left-workspace reader/list in
-`ui/history_browser/` plus an isolated read-only right-panel snapshot viewer in
-`ui/right_panel/history/viewer.py`. RUN-page Save creates immutable backend bundles, History can read/list
-grouped bundles, saved rows are selectable, and the viewer renders compact
-frozen snapshot details. A v0 PNG export-preview renderer exists for selected
-saved rows. The current v0 presentation uses saved display labels and keeps
-raw paths/provenance/debug strings out of primary UI. Filters, polished
-export/share actions, and richer image rendering are later tasks.
+Scope: authoritative product and architecture contract for the AppShell
+History Browser.
 
-## Boundary
+The current code can list grouped immutable bundles and select saved rows, but
+its separate `HistoryRightPanelPlaceholder` and always-visible selected PNG
+preview are transitional code, not the accepted History MVP. The accepted MVP
+must reuse the normal mode-specific Run presentation classes with frozen
+snapshot data.
 
-- History browsing is a left workspace/browser in AppShell.
-- History browsing is not a floating legacy window and not a right-dock-only
-  page.
-- `ui/app_shell.py` owns only stable workspace id/routing/nav wiring for
-  `history` and the workspace-driven right-dock selection.
-- The left History Browser remains under `ui/history_browser/`: grouped saved
-  bundle rows, saved-row selection, compact period summaries, selected-snapshot
-  preview, filters, and export/share actions.
-- The right read-only snapshot viewer is treated as a right-panel mode and is
-  owned by `ui/right_panel/history/viewer.py`.
-- `ui/run_history_window.py` and `runs_history.json` are legacy. Do not develop
-  them as the final History model, and do not migrate them as the first real
-  History implementation.
-- Opening the `history` workspace reloads the current snapshot root and
-  immediately switches the fixed right dock to the isolated empty History
-  viewer, before any saved run is selected.
-- The left workspace lists saved immutable bundles from disk. Selecting a row
-  loads that immutable bundle and sends a frozen read-only details payload to
-  the History viewer.
-- Selecting a row also generates or reuses a derived PNG preview at
-  `<bundle_dir>/preview/history_card.png`. The PNG is derived from
-  `snapshot.json`; the immutable snapshot JSON is not rewritten for preview
-  refs in this stage.
+## Ownership And Boundaries
 
-## Future Rows
+- History is a left AppShell workspace with stable id `history`.
+- History is not a floating legacy window and not a right-dock-only page.
+- `ui/app_shell.py` owns workspace routing and right-dock page selection only.
+  History browsing belongs under `ui/history_browser/`.
+- `ui/right_panel/history/` may own the snapshot adapter, host, empty state, and
+  read-only policy. It must not own parallel copies of Run presentation widgets.
+- `ui/run_history_window.py` and `runs_history.json` are obsolete and must not
+  become the final History model.
+- Opening History reloads the configured immutable snapshot root without
+  resetting or rebuilding the live Abyss/DPS Dummy/PvP session.
+- History never reads current account equipment, Artifact Browser presets,
+  account/profile data, DBs, caches, settings, or network state to render a
+  saved run.
 
-History rows should become Akasha-like compact saved-run rows:
+## Shared Right-Panel Presentation
 
-- Abyss rows may be paired/double-team rows.
-- Abyss rows should eventually show side-character icons, weapon icons,
-  artifact bonus icons/labels, chamber time, factual DPS summaries, sim DPS
-  where available, and warnings/provenance where needed.
-- DPS Dummy rows are one-team rows with team/build summary plus factual DPS and
-  sim DPS where available.
-- PvP History is later and must wait for the final PvP shape.
+- Selecting an Abyss snapshot creates or updates a separate instance of the
+  same Abyss Run presentation class/component tree used by the live pipeline.
+- Selecting a DPS Dummy snapshot does the same with the normal DPS Dummy Run
+  presentation.
+- Separate instance means separate widget state and ownership; it does not mean
+  a separate simplified History implementation.
+- History must not create parallel team-slot, selected-details, chamber-table,
+  timer, build, or result widgets. It adapts frozen snapshot data into the same
+  current shared right-panel view-model consumed by the live presentation.
+- Snapshot JSON stores domain/display facts, not QWidget instances or a
+  serialized copy of a particular UI view-model version. Old saved data is
+  displayed by the current shared presentation design.
+- History-specific metadata such as save date, period, and bundle identity is
+  shown in the left browser row/group, not as a wrapper above the shared right
+  panel.
+- Before a saved row is selected, the History right-dock page may show a small
+  localized empty prompt. After selection, the shared snapshot presentation is
+  the right-dock content.
 
-## Selecting A Run
+## Read-Only Policy
 
-Clicking a saved run now:
+History presentation allows inspection but no mutation:
 
-1. Select an immutable saved snapshot.
-2. Visually mark the selected saved row.
-3. Send a frozen read-only snapshot payload to a History-specific right-panel
-   viewer.
-4. Show a v0 generated PNG preview in the left History workspace.
+- select a frozen character slot to inspect its saved details;
+- initialize selection to the first occupied slot;
+- allow scrolling and saved-data tooltips;
+- disable slot drag/drop and all equipment/build mutation;
+- render saved Abyss timers with the same timer widgets and geometry, but keep
+  their editors disabled;
+- show saved state controls, such as the external-bonuses state, disabled;
+- hide command-only controls such as GCSIM Run;
+- hide the right-panel mode tabs because the selected snapshot fixes the mode;
+- hide the bottom live Run Reset/Save action row;
+- never emit commands into the live `RunSessionState`.
 
-History browsing state is separate from the live run mode. Switching filters,
-sections, or selected snapshots in History must not mutate current Abyss, DPS
-Dummy, or later PvP run state.
+Changing selected slots inside History changes only History-local inspection
+state. Leaving History restores the live Run presentation and its previous
+teams, selection, timers, results, and settings unchanged.
 
-## Right-Panel Viewer
+## Left Browser MVP
 
-The History right-panel viewer is not the live Run panel:
+- History has internal `Abyss` and `DPS Dummy` tabs. PvP may become a third tab
+  only after the PvP History contract exists.
+- Entering History defaults to the current live Run mode.
+- Within each section, newest saved runs are listed first.
+- MVP navigation includes type tabs, Abyss period groups, and newest-first
+  ordering. Character/DPS/set/warning filters and richer sorting remain later.
 
-- target source owner is `ui/right_panel/history/viewer.py`, not
-  `ui/history_browser/`;
-- initial state is an empty localized prompt to select a saved run;
-- selected state shows compact frozen snapshot details: run/date, Abyss
-  period/floor when present, teams, character/weapon/build labels, chamber
-  timing, factual DPS, sim DPS where present, and warning count;
-- raw source/provenance/debug strings and absolute local paths are hidden from
-  the primary viewer surface in v0;
-- it may reuse the same visual language/cards as `live_run` through
-  `ui/right_panel/common/`, but it must not inherit live behavior;
-- no ticking timers;
-- no GCSIM execution;
-- no equipment/team mutation;
-- no save/reset live commands;
-- no query of live account/cache data to render old snapshots;
-- no dependency on the current account, profile, cache, or settings for display;
-- no reset/clear of live Run Session state as a shortcut for entering History;
-- current live Abyss, DPS Dummy, and PvP state must remain intact when leaving
-  History.
+### Abyss
 
-The viewer consumes frozen snapshot display data and can expose read-only
-details/tooltips/export actions. It must not query live account equipment or
-current build presets to render a saved run.
+- Group snapshots by immutable `scenario.abyss.period_start`, using the period
+  start as the stable group key.
+- A compact period header shows date range, floor/season, and saved-run count.
+- Expanding the period header shows C1/C2/C3, Side 1/Side 2, saved enemy/boss
+  images, display names, and total HP for each side.
+- Each saved-run row is a compact visual double-team row with character
+  portraits, weapon icons, artifact set/build indicators, and all three chamber
+  result blocks.
+- Each chamber block shows saved time plus factual DPS and sim DPS when present.
 
-## Snapshot Bundle
+### DPS Dummy
 
-Saved history must be an autonomous immutable snapshot bundle:
+- Each saved-run row shows one visual team, target/setup summary, duration/time,
+  factual DPS, and sim DPS when present.
 
-- structured JSON is the source of truth;
-- local snapshot assets are copied into the bundle;
-- frozen display labels, stat rows, tooltips, and result payloads are stored;
-- character ids, build ids, artifact ids, and similar live ids may be stored as
-  provenance/debug references only;
-- those ids are not required live references for display;
-- clearing account/profile/artifact/weapon/Abyss/GCSIM caches must not break
-  already saved History display.
+Rows use frozen display data and copied bundle assets. Missing optional result
+values use clear unavailable/not-run states, not raw ids, paths, or debug keys.
 
-The snapshot bundle must preserve enough structured data for browsing, details,
-export, provenance, and future compatibility. It must not be image-only.
+## Immutable Snapshot Requirements
 
-Backend status: `run_workspace/history_snapshot.py` defines
-`HistorySnapshotBundle` v1, nested frozen display/provenance/team/scenario/
-result/asset/preview records, JSON roundtrip helpers, and
-`HistorySnapshotBundleStore(root)` for caller-provided local roots. The grouped
-write path stores Abyss bundles at
-`<root>/abyss/<period_start>/<bundle_id>/snapshot.json`, using
-`unknown_period` when no safe/parseable period start exists, and DPS Dummy
-bundles at `<root>/dps_dummy/<bundle_id>/snapshot.json`. The old flat
-`<root>/<bundle_id>/snapshot.json` writer/reader remains for tests and
-transition; no automatic migration or deletion is performed.
-`run_workspace.history_snapshot_builder` can build backend-only bundles from
-explicit typed session/right-panel view-model data, and AppShell RUN Save
-writes those bundles to the configured snapshot root. These backend pieces and
-the Save bridge do not copy real assets, query account/cache/DB data, or render
-export surfaces.
+Each occupied team slot must preserve enough frozen data to rebuild the full
+shared read-only panel independently:
 
-## Abyss Period Groups
+- character identity, display name, level, element, rarity, constellation,
+  portrait, and side icon;
+- weapon identity, display fields, level/refinement, visible stats, passive
+  tooltip data, and icon;
+- complete selected/current artifact build contents, active sets, set icons,
+  visible stats, CV/proc values, warnings, and saved tooltips;
+- saved detail rows and bonus-source state for every occupied slot, not only the
+  slot selected when Save was pressed;
+- scenario, chamber, timer, enemy/HP, factual DPS, and sim DPS data needed by
+  the normal mode-specific panel;
+- user-facing warnings plus internal provenance kept outside primary UI.
 
-- Abyss History is organized by saved Abyss period key, normally the immutable
-  `scenario.abyss.period_start` ISO date.
-- Period groups now derive a compact text summary from saved snapshots:
-  start/end, floor/season label, saved run count, chamber labels, and
-  chamber/side enemy/HP lines when the bundle contains them.
-- That period summary is derived from saved snapshot data, not from the live
-  Abyss cache.
-- Richer period card visuals and later stored boss/enemy image/icon previews
-  remain future work.
-- The selected-run PNG preview is available, but richer period-level images
-  remain future work.
+All visible portraits and icons required by History are copied into the bundle
+when Save succeeds. Paths are bundle-local conveniences, never identity. A
+saved run must remain visually usable after account data and caches are removed.
 
-## Export Preview/Card
+Existing pre-contract/dev snapshots are disposable. No automatic migration or
+live-data repair path is required; implementation work may remove them before
+validating the new contract.
 
-Current v0:
+## Export
 
-- `run_workspace/history_snapshot_preview.py` renders a text-first PNG card from
-  a supplied immutable `HistorySnapshotBundle`.
-- The output convention is `<bundle_dir>/preview/history_card.png`.
-- The renderer uses saved snapshot fields only. It does not query live account
-  data, caches, DBs, image assets, GCSIM, or network state.
-- Missing icon/image refs are tolerated and shown as text fallbacks.
-- The renderer prefers saved character, weapon, artifact/build, chamber, timer,
-  and DPS labels; path refs are reduced to safe basename fallback only when no
-  display label exists.
-- Raw provenance/source/debug keys, internal warning strings, absolute local
-  paths, and raw sim result refs are not rendered as primary card text.
-- The left History workspace displays the generated PNG for the selected row.
+- A permanent selected-run PNG preview is not part of normal History browsing.
+- The current text-first `history_snapshot_preview.py` renderer is transitional
+  and must not define the final History/export visual language.
+- A future explicit Preview/Export/Share flow should render PNG from the same
+  shared RunCard/TeamCard presentation used by Run and History.
+- Structured XLSX/data export remains a later feature.
 
-Future:
+## Current Gap And Next Stage
 
-- Polish the visual card design and reusable RunCard/TeamCard presentation.
-- Add deliberate export/share/copy actions.
-- Add XLSX/data-oriented export.
+Current grouped bundle storage and row selection are useful foundations. The
+current independent History details widget, permanent selected PNG area,
+partial per-slot frozen detail capture, and non-autonomous asset refs do not
+satisfy this contract.
 
-## Current Status
+The next implementation stage is:
 
-- Typed live-session state, immutable snapshot bundle schema/service, backend
-  snapshot builder, RUN-page Save, left History bundle reader/list, saved-row
-  selection, read-only right-panel viewer, and selected-snapshot PNG preview are
-  implemented.
-- Remaining History work is product polish: richer rows, filters, export/share
-  actions, polished visual cards, and XLSX/data-oriented export.
-- The right viewer remains frozen/read-only and must keep using saved snapshot
-  display data only.
+1. make snapshot Save capture complete per-slot frozen details and bundle-local
+   assets;
+2. add snapshot-to-shared-right-panel view-model adapters for Abyss and DPS
+   Dummy;
+3. add a read-only interaction policy to the shared presentation components;
+4. replace the separate History details widget with a snapshot-bound instance
+   of the shared Run presentation;
+5. replace the permanent PNG area and text rows with the contracted tabs,
+   period headers, and compact visual rows.

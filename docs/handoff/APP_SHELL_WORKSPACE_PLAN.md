@@ -17,7 +17,7 @@ AppShell
     |   `-- global actions
     `-- ContentStack
         |-- live_run current-run pages
-        |-- history read-only snapshot viewer
+        |-- history snapshot-bound shared Run presentation
         |-- pvp controls/stages
         `-- settings / Account / Data pages
 ```
@@ -57,9 +57,10 @@ Terms:
   operation target. Returning from a non-RUN page must update the requested
   controller mode and right-panel model before exposing RUN content so the
   previous run-mode model cannot paint as a stale intermediate frame.
-- The PvP Decks/Play/Draft pages and the History read-only viewer are
-  workspace-driven right-dock policies: they replace the normal run control host
-  while the global action host stays present. Future empty-database startup should
+- The PvP Decks/Play/Draft pages and History snapshot presentation are
+  workspace-driven right-dock policies. History uses a separate read-only
+  instance of the same mode-specific Run presentation component tree, while the
+  live instance and session remain intact. Future empty-database startup should
   auto-open Account / Data setup, and later onboarding may highlight the
   Account action. A compact
   Support/Donate action near Account and a fuller support area inside Account
@@ -84,7 +85,8 @@ ui/right_panel/
     gcsim/
 
   history/
-    # read-only frozen snapshot right viewer
+    # frozen snapshot adapters/host/read-only policy;
+    # reuses the mode-specific Run presentation instead of copying it
 
   pvp/
     # all PvP right-panel pages and internal match-stage panels
@@ -122,8 +124,10 @@ Mode terminology:
   right-dock pages. Account/Data can be opened without destroying the current
   live run, PvP, or History state.
 - `history` mode is a right-panel mode for read-only frozen snapshots. The left
-  History browser remains under `ui/history_browser/`; the right viewer is
-  owned by `ui/right_panel/history/viewer.py`.
+  History browser remains under `ui/history_browser/`; `ui/right_panel/history/`
+  may own the snapshot adapter/host/read-only policy, but selected snapshots use
+  a separate instance of the same mode-specific Run presentation classes as
+  `live_run`, not a History-specific widget tree.
 - `pvp` mode owns PvP right-dock pages and match-stage panels under
   `ui/right_panel/pvp/`. The left/main PvP workspace remains under
   `ui/pvp_browser/`.
@@ -299,18 +303,27 @@ right column patched in place.
 - Minimal left workspace exists with stable id `history` and is implemented
   through `ui/history_browser/`.
 - `ui/app_shell.py` should only wire/register the History workspace, update its
-  nav label, and choose/update the History right-dock page. History left
-  browsing/details/preview remain under `ui/history_browser/`; the read-only
-  right-panel snapshot viewer is owned by `ui/right_panel/history/viewer.py`.
+  nav label, and coordinate the History right-dock policy. History browsing UI
+  belongs in the History Browser module; `ui/right_panel/history/` owns only its
+  adapter/host/read-only policy. The selected snapshot must be shown by a
+  separate instance of the shared mode-specific Run presentation, not by a
+  History-owned copy of its team/slot/details/chamber widgets.
 - Legacy `runs_history.json` / image-path history UI is obsolete and should not
   become the long-term design.
 - The current left page reads immutable snapshot bundles from disk, shows
-  grouped saved-run rows, and supports saved-row selection. Activating History
-  hides the live Run panel and shows an isolated History viewer; selected rows
-  render sanitized compact frozen read-only snapshot details and a derived
-  user-facing PNG preview v0 in the left workspace. Raw paths/provenance/debug
-  strings stay out of the primary History UI. Polished export cards/actions
-  remain future work.
+  grouped saved-run rows, and supports saved-row selection. Its independent
+  details widget and permanent selected PNG preview are transitional code, not
+  the accepted History MVP.
+- The accepted MVP adapts a selected immutable snapshot into the same current
+  right-panel view-model and presentation classes as live Abyss or DPS Dummy.
+  This snapshot-bound instance is read-only: slot inspection, scrolling, and
+  tooltips remain available; mutation, drag/drop, equipment, and commands do
+  not. Mode tabs and Reset/Save are hidden, timers and saved state controls are
+  disabled, and command-only controls such as GCSIM Run are hidden.
+- History-specific metadata stays in the left browser. That browser owns
+  internal Abyss/DPS Dummy tabs, defaults to the current live mode, groups
+  Abyss runs by period, and orders new records first. Exact period headers and
+  compact row content are defined in `docs/handoff/HISTORY_BROWSER.md`.
 - Entering History must not reset, clear, or reinitialize live Abyss/DPS/PvP
   session state. Leaving History for a normal workspace restores the live Run
   panel and its previous state.
@@ -318,9 +331,8 @@ right column patched in place.
   may later expose a compact History command, but it should route to the left
   workspace and active run type, not open the old floating history window as
   the final behavior.
-- Detailed future History Browser row polish, snapshot-bundle,
-  export-preview/polished export, and History-specific right-panel viewer rules live in
-  `docs/handoff/HISTORY_BROWSER.md`.
+- Complete per-slot snapshot/assets, shared read-only presentation, browser-row,
+  and future export rules live in `docs/handoff/HISTORY_BROWSER.md`.
 
 ## Right Operations Dock
 
@@ -803,8 +815,10 @@ Sizing note:
   `account_equipment`.
 - RUN-page Save stores immutable grouped `HistorySnapshotBundle` records through
   `run_workspace/history_snapshot_builder.py`. The History workspace can
-  read/list saved bundles and selected rows update the isolated read-only
-  History viewer plus a derived PNG preview.
+  read/list saved bundles and select records, but its independent details widget
+  and permanent PNG preview are provisional. The next stage is complete frozen
+  slot/asset capture, snapshot-to-shared-Run adapters, the read-only interaction
+  policy, and the contracted History tabs/period groups/visual rows.
 - GCSIM Browser runtime output may update current-session Sim DPS rows, but it
   is not durable saved history until explicit session/snapshot attachment is
   implemented.

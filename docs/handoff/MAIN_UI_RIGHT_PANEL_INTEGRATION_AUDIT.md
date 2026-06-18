@@ -56,10 +56,13 @@ Ownership rules:
   Artifact Browser, and GCSIM Browser. Abyss and DPS Dummy are submodes of the
   same live-run state; left workspaces should use the selected live-run target
   through controllers/adapters instead of owning right-panel widgets.
-- `history/` owns the read-only frozen snapshot viewer. It may reuse common
-  visuals but must not tick timers, run GCSIM, mutate teams/equipment, save or
-  reset live runs, query live account/cache data for old snapshots, or clear
-  live Abyss/DPS/PvP state.
+- `history/` owns the frozen snapshot adapter, host/empty state, and read-only
+  interaction policy. A selected snapshot must use a separate instance of the
+  same mode-specific Run presentation classes as `live_run`, not a parallel
+  History team/slot/details/chamber widget tree. The History scope does not
+  inherit live commands: it must not tick/edit timers, run GCSIM, mutate
+  teams/equipment, save or reset live runs, query live account/cache data for
+  old snapshots, or clear live Abyss/DPS/PvP state.
 - `pvp/` owns PvP right-dock pages and internal Draft-stage panels. The left/main
   PvP workspace stays under `ui/pvp_browser/`.
 - `settings/` owns Account/Data, language, DPS settings, and other global
@@ -87,8 +90,12 @@ intended behavior or visual changes:
   routing/coordinator root.
 - `ui/right_panel/settings/account_data.py` owns the Account/Data/global
   settings page. `ui/account_data_page.py` is only a compatibility wrapper.
-- `ui/right_panel/history/viewer.py` owns the frozen read-only History right
-  viewer. `ui/history_browser/` still owns the left History browser/list/preview.
+- `ui/right_panel/history/viewer.py` currently owns the provisional independent
+  frozen History viewer. The accepted target keeps History adapter/host/read-only
+  policy under `ui/right_panel/history/` but replaces that separate viewer with
+  a snapshot-bound instance of the shared Run presentation. `ui/history_browser/`
+  continues to own the left History browser/list; its permanent PNG preview is
+  also provisional.
 - `ui/right_panel/pvp/` owns PvP right-dock pages:
   `host.py`, `decks/panel.py`, `play/panel.py`, `draft/panel.py`, and
   `draft/assignment/target_slot.py`. PvP page/stage/timer constants are

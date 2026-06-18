@@ -50,13 +50,18 @@ Mirror the primary project owner under `tests/`:
   models.
 - `tests/run_workspace/right_panel/` - right-panel view-model behavior owned by
   `run_workspace`.
-- `tests/run_workspace/history/` - immutable History Snapshot Bundle schema and
-  caller-rooted local read/write service behavior.
+- `tests/run_workspace/history/` - immutable History Snapshot Bundle schema,
+  caller-rooted local read/write service behavior, complete frozen data for
+  every occupied slot, bundle-local asset capture, and snapshot-to-shared
+  right-panel view-model adapters. Future fixtures must prove that rendering a
+  saved run needs no live account, DB, cache, or Run Session data.
 - `tests/run_workspace/session/` - typed live Run Session ownership for
   AppShell mode/team/selection/timer/GCSIM runtime state.
 - `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests,
   including cross-boundary routing tests for right-dock page selection,
-  workspace/right-dock routing integration for History and PvP, PvP
+  workspace/right-dock routing integration for History and PvP. History
+  coverage should verify a separate snapshot-bound presentation state and an
+  unchanged live session after entering/leaving History. PvP coverage includes
   `Decks`/`Play`/`Draft` header routing, preservation of normal Run state while
   switching PvP pages, root deck path coverage that prevents `ui/data`
   recreation, and active in-memory Draft board preservation after leaving and
@@ -69,9 +74,13 @@ Mirror the primary project owner under `tests/`:
   target behavior, and compact GCSIM summary/status cells. The former
   right-panel prototype bonus/smoke tests now live here and import production
   widgets from `ui.right_panel.*`.
-- `tests/ui/right_panel/history/` - frozen read-only snapshot viewer widgets.
-  Coverage should assert no live timer/GCSIM/equipment/save/reset behavior is
-  exposed by the History viewer.
+- `tests/ui/right_panel/history/` - frozen snapshot adapters, host, and read-only
+  policy around the shared mode-specific Run presentation. Coverage should
+  verify reuse of common Run components, first-occupied-slot selection, frozen
+  slot navigation/tooltips, disabled timers/state controls, hidden
+  mode/Reset/Save/command controls, blocked mutation and drag/drop, and
+  bundle-local assets. Do not pin the provisional separate details QLabel or
+  permanent PNG preview as target behavior.
 - `tests/ui/right_panel/pvp/` - PvP right-panel host/pages/stage panels,
   including Decks, Play, Draft pick/ban zones, future scoped build-flow routing,
   Timers/results, and Completed result/export panels. Tests must not bless a
@@ -107,6 +116,9 @@ Mirror the primary project owner under `tests/`:
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.
+- `tests/ui/history_browser/` - History left-browser behavior: Abyss/DPS Dummy
+  tabs, default section from the current live mode, expandable Abyss period
+  groups, compact frozen visual rows, and newest-first ordering.
 - `tests/ui/utils/` - shared UI utility tests.
 - `tests/ui/character_assets/` - `ui/character_assets.py` behavior.
 - `tests/tools/future/` - reusable future/admin tools.

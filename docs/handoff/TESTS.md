@@ -111,7 +111,10 @@ Mirror the primary project owner under `tests/`:
   post-draft source/right-panel widget identity across clicks, runtime weapon
   hydration after character remove/re-add, right-panel slot drag/drop swapping,
   and PvP Ready commits using scoped stack identity instead of display/type-name
-  recomputation. Tests in this folder may instantiate the moved
+  recomputation. Performance-regression coverage should include one-refresh
+  source clicks, active-seat-only right-panel updates where possible, compact
+  collapsed post-draft seat rows, and numeric/localized weapon type resolution
+  to backend stack keys. Tests in this folder may instantiate the moved
   right-panel widgets when asserting cross-page behavior, but those imports
   should come from `ui.right_panel.pvp.*`, not from the old compatibility
   exports in `ui.pvp_browser.window`.

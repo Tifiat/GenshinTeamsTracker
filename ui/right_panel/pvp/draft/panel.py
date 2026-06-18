@@ -4,7 +4,14 @@ from collections.abc import Mapping
 from typing import Any
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFrame,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from localization import tr
 from run_workspace.right_panel_prototype_view_model import RightPanelPrototypeViewModel
@@ -113,6 +120,7 @@ class PvpDraftRightPanel(QWidget):
         self.postdraft_run_panels_by_seat: dict[str, PvpPostDraftRunPanel] = {}
         self.postdraft_toggle_buttons_by_seat: dict[str, QPushButton] = {}
         self.postdraft_ready_buttons_by_seat: dict[str, QPushButton] = {}
+        self._last_match_stage = ""
         self.collapsed_postdraft_seats: set[str] = {"player_2"}
 
         self.status_frame = QFrame()
@@ -175,7 +183,6 @@ class PvpDraftRightPanel(QWidget):
         root.addWidget(self.message_label)
 
         self.workspace.state_changed.connect(self.refresh)
-        self.workspace.active_draft_changed.connect(self.refresh)
         self.retranslate_ui()
         self.refresh()
 
@@ -307,6 +314,7 @@ class PvpDraftRightPanel(QWidget):
         self.postdraft_run_panels_by_seat.clear()
         self.postdraft_toggle_buttons_by_seat.clear()
         self.postdraft_ready_buttons_by_seat.clear()
+        self._last_match_stage = ""
 
     def _rebuild_match_panel(self, board: Mapping[str, Any], stage: str) -> None:
         session = self.workspace.active_draft_session
@@ -316,7 +324,13 @@ class PvpDraftRightPanel(QWidget):
             self._clear_match_registries()
             return
         if set(self.postdraft_run_panels_by_seat) == set(PVP_SEATS):
-            self._update_match_panel(stage)
+            seats = (
+                None
+                if self._last_match_stage != stage
+                else (build_context.active_seat,)
+            )
+            self._update_match_panel(stage, seats=seats)
+            self._last_match_stage = stage
             return
         _clear_layout(self.match_layout)
         self._clear_match_registries()
@@ -337,6 +351,10 @@ class PvpDraftRightPanel(QWidget):
             ready_marker = " ready" if seat_context.ready else ""
             toggle = QPushButton(f"{toggle_prefix} {_seat_label(seat)}{ready_marker}")
             toggle.setObjectName("pvp_postdraft_player_toggle")
+            toggle.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Fixed,
+            )
             toggle.clicked.connect(
                 lambda _checked=False, s=seat: self._toggle_postdraft_seat(s)
             )
@@ -385,13 +403,25 @@ class PvpDraftRightPanel(QWidget):
             zone_layout.addWidget(ready_button)
             self.match_layout.addWidget(zone, 0 if collapsed else 1)
         self._update_match_panel(stage)
+        self._last_match_stage = stage
 
-    def _update_match_panel(self, stage: str) -> None:
+    def _update_match_panel(
+        self,
+        stage: str,
+        *,
+        seats: tuple[str, ...] | None = None,
+    ) -> None:
         build_context = self.workspace.build_flow_context
         if build_context is None:
             return
-        self.team_slot_buttons_by_key.clear()
-        for seat in PVP_SEATS:
+        target_seats = tuple(seats or PVP_SEATS)
+        if seats is None:
+            self.team_slot_buttons_by_key.clear()
+        else:
+            for key in list(self.team_slot_buttons_by_key):
+                if key[0] in target_seats:
+                    self.team_slot_buttons_by_key.pop(key, None)
+        for seat in target_seats:
             seat_context = build_context.seat(seat)
             panel = self.postdraft_run_panels_by_seat.get(seat)
             zone = self.target_zone_frames_by_seat.get(seat)
@@ -418,9 +448,36 @@ class PvpDraftRightPanel(QWidget):
             zone_index = self.match_layout.indexOf(zone)
             if zone_index >= 0:
                 self.match_layout.setStretch(zone_index, 0 if collapsed else 1)
+            self._sync_postdraft_zone_size(zone, toggle, collapsed)
 
     def _toggle_postdraft_seat(self, seat: str) -> None:
         self.workspace.toggle_build_seat_collapsed(seat)
+
+    def _sync_postdraft_zone_size(
+        self,
+        zone: QFrame,
+        toggle: QPushButton | None,
+        collapsed: bool,
+    ) -> None:
+        if collapsed:
+            button_height = toggle.sizeHint().height() if toggle is not None else 24
+            margins = zone.layout().contentsMargins() if zone.layout() is not None else None
+            vertical_margins = (
+                margins.top() + margins.bottom()
+                if margins is not None
+                else 14
+            )
+            zone.setMaximumHeight(button_height + vertical_margins)
+            zone.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Fixed,
+            )
+            return
+        zone.setMaximumHeight(16777215)
+        zone.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
 
     def _register_target_run_panel_slots(
         self,

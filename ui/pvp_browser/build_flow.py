@@ -34,6 +34,21 @@ from ui.app_shell import AppShellController, CharacterWeaponWorkspace
 
 PVP_BUILD_TEAM_COUNT = 2
 PVP_BUILD_TEAM_SIZE = 4
+_WEAPON_TYPE_BY_ID = {
+    1: "SWORD",
+    10: "CATALYST",
+    11: "CLAYMORE",
+    12: "BOW",
+    13: "POLEARM",
+}
+_WEAPON_TYPE_ALIASES = {
+    "sword": "SWORD",
+    "one_handed_sword": "SWORD",
+    "claymore": "CLAYMORE",
+    "bow": "BOW",
+    "catalyst": "CATALYST",
+    "polearm": "POLEARM",
+}
 
 
 class PvpScopedCharacterWeaponWorkspace(CharacterWeaponWorkspace):
@@ -679,7 +694,9 @@ def _asset_weapon_keys(asset: Mapping[str, Any]) -> set[str]:
         ref.weapon_type,
         weapon.get("weapon_type_name"),
         weapon.get("type_name"),
+        weapon.get("weapon_type"),
         weapon.get("type"),
+        *_canonical_weapon_type_candidates(weapon),
     ):
         key = weapon_observed_stack_key(
             weapon_id=ref.weapon_id,
@@ -794,6 +811,7 @@ def _matching_allowed_weapon_key(
         weapon.get("type_name"),
         weapon.get("weapon_type"),
         weapon.get("type"),
+        *_canonical_weapon_type_candidates(weapon),
     ):
         key = weapon_observed_stack_key(
             weapon_id=weapon_id,
@@ -805,6 +823,19 @@ def _matching_allowed_weapon_key(
         if key in allowed:
             return key
     return _weapon_stack_key_from_mapping(weapon)
+
+
+def _canonical_weapon_type_candidates(weapon: Mapping[str, Any]) -> tuple[str, ...]:
+    candidates: list[str] = []
+    for key in ("weapon_type", "type"):
+        type_id = _optional_int(weapon.get(key))
+        if type_id in _WEAPON_TYPE_BY_ID:
+            candidates.append(_WEAPON_TYPE_BY_ID[type_id])
+    for key in ("weapon_type_name", "type_name", "weapon_type", "type"):
+        token = _normalized_token(weapon.get(key))
+        if token in _WEAPON_TYPE_ALIASES:
+            candidates.append(_WEAPON_TYPE_ALIASES[token])
+    return tuple(dict.fromkeys(candidate for candidate in candidates if candidate))
 
 
 def _asset_metadata_mapping(asset: Mapping[str, Any], key: str) -> dict[str, Any]:
@@ -826,6 +857,10 @@ def _optional_int(value: Any) -> int | None:
 
 def _text(value: Any) -> str:
     return str(value or "").strip()
+
+
+def _normalized_token(value: Any) -> str:
+    return _text(value).casefold().replace("-", "_").replace(" ", "_")
 
 
 __all__ = [

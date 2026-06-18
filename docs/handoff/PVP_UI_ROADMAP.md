@@ -476,6 +476,16 @@ Hot-seat layout direction:
   `AppShellController.swap_slots(...)` behavior as normal Abyss. Slot clicks
   select targets; source-card clicks assign characters/weapons; drag/drop swaps
   existing right-panel slots.
+- Post-draft performance contract: Assignment/Weapons actions use the normal
+  AppShell fast path and must not double-refresh. Build-state actions emit a
+  single state refresh and update only the active seat right-panel model unless
+  the stage changes or the panel is being created. Collapsed player zones should
+  shrink to a compact full-width toggle row, including when both players are
+  collapsed.
+- Weapon assignment identity must use the scoped backend stack key selected from
+  the draft deck. UI display/type names are not authority; numeric Hoyo weapon
+  type ids and localized names must resolve to the same canonical stack key the
+  backend validates.
 
 ## PvP GCSIM
 

@@ -11,7 +11,7 @@ from ui.utils.app_scaling import configure_startup_ui_scale
 configure_startup_ui_scale()
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtGui import QColor, QKeyEvent, QPixmap
-from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton
+from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton, QSizePolicy
 
 from hoyolab_export.account_equipment import (
     equip_weapon,
@@ -19,7 +19,10 @@ from hoyolab_export.account_equipment import (
 )
 from hoyolab_export.artifact_db import connect_db, init_db
 from localization import tr
-from ui.pvp_browser.build_flow import PvpScopedCharacterWeaponWorkspace
+from ui.pvp_browser.build_flow import (
+    PvpRuntimeEquipmentState,
+    PvpScopedCharacterWeaponWorkspace,
+)
 from ui.pvp_browser.window import PvpDecksWorkspace, PvpDraftWorkspace, PvpWorkspace
 from ui.right_panel.pvp._shared import (
     PVP_DRAFT_STAGE_ASSIGNMENT,
@@ -1004,6 +1007,87 @@ class PvpBrowserTest(unittest.TestCase):
         markers = seat_context.controller.roster_selection_markers()
         self.assertEqual(markers[first_id].slot_number, 2)
         self.assertEqual(markers[second_id].slot_number, 1)
+
+    def test_pvp_postdraft_source_click_refreshes_draft_panel_once(self) -> None:
+        workspace, _panel = self._started_draft_workspace(
+            character_count=24,
+            deck_names=("Mirror",),
+        )
+        self._complete_draft(workspace)
+        self.assertTrue(workspace.continue_to_assignment())
+        calls: list[str] = []
+        original_refresh = PvpDraftRightPanel.refresh
+
+        def counted_refresh(panel):
+            calls.append("refresh")
+            return original_refresh(panel)
+
+        with patch.object(PvpDraftRightPanel, "refresh", counted_refresh):
+            draft_panel = PvpDraftRightPanel(workspace)
+            QApplication.processEvents()
+            calls.clear()
+            first_pick = workspace.active_draft_session.board_dict()["unified_pool"][
+                "result_zones"
+            ]["player_1"]["picked"][0]
+            source = workspace.build_source_workspace("player_1")
+            self.assertTrue(source.char_grid.click_item_for_test(first_pick))
+            QApplication.processEvents()
+
+        self.assertEqual(calls, ["refresh"])
+        self.assertIn(("player_1", 0, 0), draft_panel.team_slot_buttons_by_key)
+
+    def test_pvp_collapsed_postdraft_seat_is_compact_full_width_toggle(self) -> None:
+        workspace, _panel = self._started_draft_workspace(
+            character_count=24,
+            deck_names=("Mirror",),
+        )
+        self._complete_draft(workspace)
+        self.assertTrue(workspace.continue_to_assignment())
+        draft_panel = PvpDraftRightPanel(workspace)
+
+        p1_zone = draft_panel.target_zone_frames_by_seat["player_1"]
+        p2_zone = draft_panel.target_zone_frames_by_seat["player_2"]
+        p2_toggle = draft_panel.postdraft_toggle_buttons_by_seat["player_2"]
+
+        self.assertLessEqual(p2_zone.maximumHeight(), p2_toggle.sizeHint().height() + 14)
+        self.assertGreater(p1_zone.maximumHeight(), p1_zone.minimumHeight())
+        self.assertEqual(
+            p2_toggle.sizePolicy().horizontalPolicy(),
+            QSizePolicy.Policy.Expanding,
+        )
+
+        workspace.toggle_build_seat_collapsed("player_1")
+        QApplication.processEvents()
+        self.assertLessEqual(
+            draft_panel.target_zone_frames_by_seat["player_1"].maximumHeight(),
+            draft_panel.postdraft_toggle_buttons_by_seat["player_1"].sizeHint().height()
+            + 14,
+        )
+
+    def test_pvp_runtime_weapon_state_matches_allowed_key_from_numeric_type(self) -> None:
+        weapon = _weapon_asset(
+            "11401",
+            "Localized Sword",
+            weapon_type=1,
+            weapon_type_name="Локализованный меч",
+            known_count=1,
+        )
+        allowed_key = "11401|sword|4|90|5"
+        state = PvpRuntimeEquipmentState.from_assets(
+            seat="player_1",
+            allowed_character_ids=("20000000",),
+            allowed_weapon_keys=(allowed_key,),
+            weapon_assets=(weapon,),
+        )
+
+        _result, persisted_weapon = state.assign_weapon_to_character(
+            "20000000",
+            {"id": "20000000", "name": "Sword User", "weapon_type": 1},
+            weapon["metadata"]["weapon"],
+        )
+
+        self.assertIsNotNone(persisted_weapon)
+        self.assertEqual(persisted_weapon["pvp_weapon_stack_key"], allowed_key)
 
     def test_pvp_ready_uses_scoped_weapon_stack_key_not_display_type(self) -> None:
         workspace, _panel = self._started_draft_workspace(

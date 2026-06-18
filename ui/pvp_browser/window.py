@@ -2306,7 +2306,6 @@ class PvpWorkspace(QWidget):
         if context is not None:
             context.set_active_seat(seat)
         self._sync_draft_workspace()
-        self.active_draft_changed.emit()
         self.state_changed.emit()
 
     def build_source_workspace(self, seat: str):
@@ -2323,7 +2322,6 @@ class PvpWorkspace(QWidget):
         if changed:
             context.set_active_seat(seat)
             self._sync_draft_workspace()
-            self.active_draft_changed.emit()
             self.state_changed.emit()
         return changed
 
@@ -2336,7 +2334,6 @@ class PvpWorkspace(QWidget):
         if changed:
             context.set_active_seat(seat)
             self._sync_draft_workspace()
-            self.active_draft_changed.emit()
             self.state_changed.emit()
         return changed
 
@@ -2353,7 +2350,6 @@ class PvpWorkspace(QWidget):
         context.set_active_seat(seat)
         seat_context.toggle_slot_selection(team_index, slot_index)
         self._sync_draft_workspace()
-        self.active_draft_changed.emit()
         self.state_changed.emit()
 
     def handle_build_slot_dropped(
@@ -2377,7 +2373,6 @@ class PvpWorkspace(QWidget):
         if changed:
             context.set_active_seat(seat)
             self._sync_draft_workspace()
-            self.active_draft_changed.emit()
             self.state_changed.emit()
         return changed
 
@@ -2390,6 +2385,7 @@ class PvpWorkspace(QWidget):
         if context is None:
             return
         context.toggle_collapsed(seat)
+        context.set_active_seat(seat)
         self._sync_draft_workspace()
         self.state_changed.emit()
 
@@ -2398,6 +2394,7 @@ class PvpWorkspace(QWidget):
         session = self.active_draft_session
         if context is None or session is None:
             return False
+        context.set_active_seat(seat)
         if not context.commit_ready(seat, session.controller):
             seat_context = context.seat(seat)
             code = "" if seat_context is None else seat_context.last_error

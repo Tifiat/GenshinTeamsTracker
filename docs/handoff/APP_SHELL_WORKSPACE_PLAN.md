@@ -753,6 +753,13 @@ Performance fix status:
   workspaces, clear the whole scroll layout, or rebuild the post-draft source
   frame on every character/weapon/slot action; that reproduces the old
   live-resize/blank-window twitch failure under a different left-panel path.
+- PvP post-draft refresh should also preserve the AppShell signal cadence. A
+  source click, weapon click, slot select, or slot drop changes build state, not
+  the active draft identity, so it should emit one state refresh. Do not emit
+  both `active_draft_changed` and `state_changed` for those actions, and do not
+  refresh both player `RunRightPanelWidget` instances when only the active seat
+  changed. The fixed path updates the active seat in place and reserves all-seat
+  refreshes for initial creation or stage changes.
 - Artifact Browser cold-start audit status:
   - Baseline after target-filter optimization was about `356 ms` total, with
     store load around `110 ms`, target item loading around `46-48 ms`, and UI

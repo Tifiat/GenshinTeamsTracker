@@ -56,6 +56,35 @@ ISSUE_WEAPON_STACK_NOT_IN_DECK = "weapon_stack_not_in_deck"
 ISSUE_WEAPON_TYPE_MISMATCH = "weapon_type_mismatch"
 ISSUE_WEAPON_ASSIGNMENT_MISSING = "weapon_assignment_missing"
 ISSUE_WEAPON_STACK_COUNT_EXCEEDED = "weapon_stack_count_exceeded"
+_WEAPON_TYPE_BY_ID = {
+    "1": "sword",
+    "10": "catalyst",
+    "11": "claymore",
+    "12": "bow",
+    "13": "polearm",
+}
+_WEAPON_TYPE_ALIASES = {
+    "sword": "sword",
+    "one_handed_sword": "sword",
+    "одноручный_меч": "sword",
+    "одноручное": "sword",
+    "одноручное_оружие": "sword",
+    "claymore": "claymore",
+    "двуручный_меч": "claymore",
+    "двуручное": "claymore",
+    "двуручное_оружие": "claymore",
+    "bow": "bow",
+    "лук": "bow",
+    "стрелковое": "bow",
+    "стрелковое_оружие": "bow",
+    "catalyst": "catalyst",
+    "катализатор": "catalyst",
+    "polearm": "polearm",
+    "древковое": "polearm",
+    "древковое_оружие": "polearm",
+    "копье": "polearm",
+    "копьё": "polearm",
+}
 
 
 class DraftActionRejected(ValueError):
@@ -460,7 +489,10 @@ def validate_weapon_assignment(
             )
             continue
         character = character_by_id.get(character_id)
-        if character is not None and _norm(character.weapon_type) != _norm(stack.weapon_type):
+        if character is not None and not _weapon_types_match(
+            character.weapon_type,
+            stack.weapon_type,
+        ):
             issues.append(
                 _issue(
                     ISSUE_WEAPON_TYPE_MISMATCH,
@@ -597,3 +629,21 @@ def _issue(
 
 def _norm(value: str) -> str:
     return value.strip().casefold()
+
+
+def _weapon_types_match(character_type: str, weapon_type: str) -> bool:
+    character_key = _canonical_weapon_type(character_type)
+    weapon_key = _canonical_weapon_type(weapon_type)
+    if character_key and weapon_key:
+        return character_key == weapon_key
+    return _norm(character_type) == _norm(weapon_type)
+
+
+def _canonical_weapon_type(value: object) -> str:
+    raw = str(value or "").strip()
+    if raw in _WEAPON_TYPE_BY_ID:
+        return _WEAPON_TYPE_BY_ID[raw]
+    token = raw.casefold().replace("-", "_").replace(" ", "_")
+    while "__" in token:
+        token = token.replace("__", "_")
+    return _WEAPON_TYPE_ALIASES.get(token, "")

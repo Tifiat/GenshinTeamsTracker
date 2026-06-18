@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QFrame,
     QLabel,
@@ -108,6 +108,7 @@ class PvpDraftRightPanel(QWidget):
         self.match_layout = QVBoxLayout(self.match_frame)
         self.match_layout.setContentsMargins(0, 0, 0, 0)
         self.match_layout.setSpacing(6)
+        self.match_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.match_scroll = OverlayVerticalScrollArea()
         self.match_scroll.setObjectName("pvp_postdraft_match_scroll")
         self.match_scroll.setWidgetResizable(True)
@@ -121,6 +122,11 @@ class PvpDraftRightPanel(QWidget):
         self.postdraft_toggle_buttons_by_seat: dict[str, QPushButton] = {}
         self.postdraft_ready_buttons_by_seat: dict[str, QPushButton] = {}
         self._last_match_stage = ""
+        self._pending_match_stage = ""
+        self._pending_match_seats: set[str] = set()
+        self._match_update_timer = QTimer(self)
+        self._match_update_timer.setSingleShot(True)
+        self._match_update_timer.timeout.connect(self._flush_deferred_match_panel_update)
         self.collapsed_postdraft_seats: set[str] = {"player_2"}
 
         self.status_frame = QFrame()
@@ -212,21 +218,30 @@ class PvpDraftRightPanel(QWidget):
             self.stage_button.setVisible(False)
             return
 
-        board = session.board_dict()
         stage = self.workspace.draft_stage
         post_draft_stage = _is_post_draft_stage(stage)
         self.status_frame.setVisible(has_session and not post_draft_stage)
         self.clear_button.setVisible(has_session and not post_draft_stage)
         self.play_button.setVisible(not post_draft_stage)
         self.action_frame.setVisible(not post_draft_stage)
+        if post_draft_stage:
+            self._refresh_postdraft_match_panel(stage)
+            self.match_scroll.setVisible(True)
+            self.stage_button.setVisible(False)
+            for label in (*self.status_labels, *self.log_labels):
+                label.clear()
+                label.setVisible(False)
+            for frame in self.result_zone_frames.values():
+                frame.setVisible(False)
+            self.log_title_label.setVisible(False)
+            return
+
+        board = session.board_dict()
         if not post_draft_stage:
             self.action_label.setText(_draft_action_title(board))
             self.action_detail_label.setText(_draft_action_detail(board))
-        if post_draft_stage:
-            self._rebuild_match_panel(board, stage)
-        else:
-            _clear_layout(self.match_layout)
-            self._clear_match_registries()
+        _clear_layout(self.match_layout)
+        self._clear_match_registries()
         self.match_scroll.setVisible(post_draft_stage)
         status_lines = (
             _draft_panel_status_lines(board, stage=stage, workspace=self.workspace)
@@ -316,7 +331,7 @@ class PvpDraftRightPanel(QWidget):
         self.postdraft_ready_buttons_by_seat.clear()
         self._last_match_stage = ""
 
-    def _rebuild_match_panel(self, board: Mapping[str, Any], stage: str) -> None:
+    def _rebuild_match_panel(self, stage: str) -> None:
         session = self.workspace.active_draft_session
         build_context = self.workspace.build_flow_context
         if session is None or build_context is None:
@@ -403,6 +418,39 @@ class PvpDraftRightPanel(QWidget):
             zone_layout.addWidget(ready_button)
             self.match_layout.addWidget(zone, 0 if collapsed else 1)
         self._update_match_panel(stage)
+        self._last_match_stage = stage
+
+    def _refresh_postdraft_match_panel(self, stage: str) -> None:
+        if set(self.postdraft_run_panels_by_seat) != set(PVP_SEATS):
+            self._rebuild_match_panel(stage)
+            return
+        if self._last_match_stage != stage:
+            self._update_match_panel(stage)
+            self._last_match_stage = stage
+            return
+        build_context = self.workspace.build_flow_context
+        seat = build_context.active_seat if build_context is not None else ""
+        self._schedule_match_panel_update(stage, seats=(seat,) if seat else None)
+
+    def _schedule_match_panel_update(
+        self,
+        stage: str,
+        *,
+        seats: tuple[str, ...] | None,
+    ) -> None:
+        self._pending_match_stage = stage
+        if seats is None:
+            self._pending_match_seats = set(PVP_SEATS)
+        else:
+            self._pending_match_seats.update(seat for seat in seats if seat)
+        self._match_update_timer.start(0)
+
+    def _flush_deferred_match_panel_update(self) -> None:
+        stage = self._pending_match_stage or self.workspace.draft_stage
+        seats = tuple(self._pending_match_seats) or None
+        self._pending_match_stage = ""
+        self._pending_match_seats.clear()
+        self._update_match_panel(stage, seats=seats)
         self._last_match_stage = stage
 
     def _update_match_panel(

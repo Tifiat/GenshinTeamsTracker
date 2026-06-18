@@ -22,6 +22,7 @@ from localization import tr
 from ui.pvp_browser.build_flow import (
     PvpRuntimeEquipmentState,
     PvpScopedCharacterWeaponWorkspace,
+    _asset_weapon_keys,
 )
 from ui.pvp_browser.window import PvpDecksWorkspace, PvpDraftWorkspace, PvpWorkspace
 from ui.right_panel.pvp._shared import (
@@ -1030,7 +1031,13 @@ class PvpBrowserTest(unittest.TestCase):
                 "result_zones"
             ]["player_1"]["picked"][0]
             source = workspace.build_source_workspace("player_1")
-            self.assertTrue(source.char_grid.click_item_for_test(first_pick))
+            with patch.object(
+                source,
+                "reload_weapons",
+                wraps=source.reload_weapons,
+            ) as reload_weapons:
+                self.assertTrue(source.char_grid.click_item_for_test(first_pick))
+                self.assertEqual(reload_weapons.call_count, 0)
             QApplication.processEvents()
 
         self.assertEqual(calls, ["refresh"])
@@ -1044,6 +1051,9 @@ class PvpBrowserTest(unittest.TestCase):
         self._complete_draft(workspace)
         self.assertTrue(workspace.continue_to_assignment())
         draft_panel = PvpDraftRightPanel(workspace)
+        self.assertTrue(
+            draft_panel.match_layout.alignment() & Qt.AlignmentFlag.AlignTop
+        )
 
         p1_zone = draft_panel.target_zone_frames_by_seat["player_1"]
         p2_zone = draft_panel.target_zone_frames_by_seat["player_2"]
@@ -1119,6 +1129,94 @@ class PvpBrowserTest(unittest.TestCase):
             self.assertTrue(workspace.ready_build_seat(seat), workspace.last_draft_status())
             self.assertNotIn("weapon_type_mismatch", workspace.last_draft_status())
 
+    def test_pvp_ready_accepts_localized_character_weapon_type(self) -> None:
+        characters = [
+            _character_asset(
+                str(20000000 + index),
+                f"Claymore Char {index}",
+                weapon_type=11,
+                weapon_type_name="Двуручный меч",
+                rarity=5,
+            )
+            for index in range(24)
+        ]
+        weapons = [
+            _weapon_asset(
+                "12401",
+                "Favonius Greatsword",
+                weapon_type=11,
+                weapon_type_name="Claymore",
+                known_count=24,
+            )
+        ]
+        workspace, _panel = self._started_draft_workspace(
+            character_count=24,
+            deck_names=("Mirror",),
+            characters=characters,
+            weapons=weapons,
+        )
+        self._complete_draft(workspace)
+        self.assertTrue(workspace.continue_to_assignment())
+        self._assign_all_picks_to_teams(workspace)
+
+        for seat in ("player_1", "player_2"):
+            for team_index in range(2):
+                for slot_index in range(4):
+                    workspace.handle_build_slot_clicked(seat, team_index, slot_index)
+                    self.assertTrue(
+                        workspace.handle_build_weapon_clicked(
+                            seat,
+                            workspace.weapon_assets[0],
+                        ),
+                        (seat, team_index, slot_index),
+                    )
+            self.assertTrue(workspace.ready_build_seat(seat), workspace.last_draft_status())
+            self.assertNotIn("weapon_type_mismatch", workspace.last_draft_status())
+
+    def test_pvp_ready_accepts_russian_bow_display_weapon_type(self) -> None:
+        characters = [
+            _character_asset(
+                str(20000000 + index),
+                f"Bow Char {index}",
+                weapon_type=12,
+                weapon_type_name="Bow",
+                rarity=5,
+            )
+            for index in range(24)
+        ]
+        weapons = [
+            _weapon_asset(
+                "15508",
+                "Aqua Simulacra",
+                weapon_type=12,
+                weapon_type_name="\u0421\u0442\u0440\u0435\u043b\u043a\u043e\u0432\u043e\u0435",
+                known_count=24,
+            )
+        ]
+        workspace, _panel = self._started_draft_workspace(
+            character_count=24,
+            deck_names=("Mirror",),
+            characters=characters,
+            weapons=weapons,
+        )
+        self._complete_draft(workspace)
+        self.assertTrue(workspace.continue_to_assignment())
+        self._assign_all_picks_to_teams(workspace)
+
+        for seat in ("player_1", "player_2"):
+            for team_index in range(2):
+                for slot_index in range(4):
+                    workspace.handle_build_slot_clicked(seat, team_index, slot_index)
+                    self.assertTrue(
+                        workspace.handle_build_weapon_clicked(
+                            seat,
+                            workspace.weapon_assets[0],
+                        ),
+                        (seat, team_index, slot_index),
+                    )
+            self.assertTrue(workspace.ready_build_seat(seat), workspace.last_draft_status())
+            self.assertNotIn("weapon_type_mismatch", workspace.last_draft_status())
+
     def test_pvp_weapon_stage_rejects_incompatible_and_exhausted_stack(self) -> None:
         weapons = [
             _weapon_asset(
@@ -1148,8 +1246,12 @@ class PvpBrowserTest(unittest.TestCase):
         board = workspace.active_draft_session.board_dict()
         first, second = board["unified_pool"]["result_zones"]["player_1"]["picked"][:2]
         deck = workspace.active_draft_session.controller.session_state.deck_for("player_1")
-        sword_stack = next(stack for stack in deck.weapons if stack.weapon_type == "Sword")
-        _bow_stack = next(stack for stack in deck.weapons if stack.weapon_type == "Bow")
+        sword_stack = next(
+            stack for stack in deck.weapons if _weapon_types_match(1, stack.weapon_type)
+        )
+        _bow_stack = next(
+            stack for stack in deck.weapons if _weapon_types_match(12, stack.weapon_type)
+        )
         sword_asset = next(
             asset
             for asset in workspace.weapon_assets
@@ -1319,12 +1421,16 @@ class PvpBrowserTest(unittest.TestCase):
         *,
         character_count: int,
         deck_names: tuple[str, ...] = ("Alpha", "Beta"),
+        characters: list[dict] | None = None,
         weapons: list[dict] | None = None,
     ) -> tuple[PvpWorkspace, PvpPlayRightPanel]:
         temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(temp_dir.cleanup)
         portrait_path, weapon_path = _create_test_asset_images(temp_dir.name)
-        characters = _valid_character_assets(character_count, image_path=portrait_path)
+        characters = characters or _valid_character_assets(
+            character_count,
+            image_path=portrait_path,
+        )
         weapons = _with_weapon_image_paths(
             weapons or [
                 _weapon_asset(
@@ -1396,17 +1502,8 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertIsNotNone(session)
         assets_by_stack_key = {}
         for asset in workspace.weapon_assets:
-            weapon = asset["metadata"]["weapon"]
-            stack_key = "|".join(
-                (
-                    str(weapon["id"]),
-                    str(weapon.get("weapon_type_name") or weapon.get("type_name")).casefold(),
-                    str(weapon.get("rarity") or ""),
-                    str(weapon.get("level") or ""),
-                    str(weapon.get("refinement") or ""),
-                )
-            )
-            assets_by_stack_key[stack_key] = asset
+            for stack_key in _asset_weapon_keys(asset):
+                assets_by_stack_key[stack_key] = asset
         for seat in ("player_1", "player_2"):
             seat_context = workspace.build_flow_context.seat(seat)
             deck = session.controller.session_state.deck_for(seat)
@@ -1420,7 +1517,7 @@ class PvpBrowserTest(unittest.TestCase):
                     stack = next(
                         stack
                         for stack in deck.weapons
-                        if stack.weapon_type == weapon_type
+                        if _weapon_types_match(stack.weapon_type, weapon_type)
                     )
                     workspace.handle_build_slot_clicked(seat, team_index, slot_index)
                     self.assertTrue(
@@ -1443,6 +1540,51 @@ class PvpBrowserTest(unittest.TestCase):
             ),
         )
         QApplication.processEvents()
+
+
+_WEAPON_TYPE_BY_ID = {
+    "1": "sword",
+    "10": "catalyst",
+    "11": "claymore",
+    "12": "bow",
+    "13": "polearm",
+}
+_WEAPON_TYPE_ALIASES = {
+    "sword": "sword",
+    "one_handed_sword": "sword",
+    "одноручный_меч": "sword",
+    "одноручное": "sword",
+    "claymore": "claymore",
+    "двуручный_меч": "claymore",
+    "двуручное": "claymore",
+    "bow": "bow",
+    "лук": "bow",
+    "стрелковое": "bow",
+    "catalyst": "catalyst",
+    "катализатор": "catalyst",
+    "polearm": "polearm",
+    "древковое": "polearm",
+    "копье": "polearm",
+    "копьё": "polearm",
+}
+
+
+def _weapon_types_match(left: object, right: object) -> bool:
+    left_key = _canonical_weapon_type(left)
+    right_key = _canonical_weapon_type(right)
+    if left_key and right_key:
+        return left_key == right_key
+    return str(left or "").strip().casefold() == str(right or "").strip().casefold()
+
+
+def _canonical_weapon_type(value: object) -> str:
+    raw = str(value or "").strip()
+    if raw in _WEAPON_TYPE_BY_ID:
+        return _WEAPON_TYPE_BY_ID[raw]
+    token = raw.casefold().replace("-", "_").replace(" ", "_")
+    while "__" in token:
+        token = token.replace("__", "_")
+    return _WEAPON_TYPE_ALIASES.get(token, "")
 
 
 def _character_asset(

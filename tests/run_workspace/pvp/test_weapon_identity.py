@@ -147,7 +147,7 @@ class WeaponObservedStackIdentityTests(unittest.TestCase):
 
         self.assertEqual(stack.weapon_id, "13407")
         self.assertEqual(stack.display_name, "Favonius Lance")
-        self.assertEqual(stack.weapon_type, "Polearm")
+        self.assertEqual(stack.weapon_type, "13")
         self.assertEqual(stack.rarity, 4)
         self.assertEqual(stack.level, 90)
         self.assertEqual(stack.refinement, 5)
@@ -155,6 +155,32 @@ class WeaponObservedStackIdentityTests(unittest.TestCase):
         stack_payload = stack.to_dict()
         self.assertNotIn("weapon_copy_id", stack_payload)
         self.assertNotIn("weapon_instance_id", stack_payload)
+
+    def test_backend_stack_prefers_identity_weapon_type_over_localized_display(self) -> None:
+        ref = WeaponObservedStackRef(
+            weapon_id="15508",
+            weapon_type="12",
+            rarity=5,
+            level=90,
+            refinement=1,
+            count=1,
+        )
+        asset = _weapon_asset(
+            "15508",
+            "Aqua Simulacra",
+            fingerprint="",
+            weapon_type=12,
+            weapon_type_name="\u0421\u0442\u0440\u0435\u043b\u043a\u043e\u0432\u043e\u0435",
+            rarity=5,
+            level=90,
+            refinement=1,
+            known_count=1,
+        )
+
+        stack = draft_weapon_stack_from_observed_ref(ref=ref, asset=asset)
+
+        self.assertEqual(stack.weapon_type, "12")
+        self.assertEqual(stack.stack_key, "15508|12|5|90|1")
 
     def test_dedupe_helper_accepts_refs_only_by_observed_stack_key(self) -> None:
         refs = dedupe_weapon_observed_stack_refs(

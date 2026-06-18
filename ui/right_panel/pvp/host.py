@@ -50,6 +50,9 @@ class PvpRightPanelHost(QWidget):
         else:
             widget = self.decks_panel
         self.stack.setCurrentWidget(widget)
+        refresh = getattr(widget, "refresh", None)
+        if callable(refresh):
+            refresh()
 
 
 __all__ = ["PvpRightPanelHost"]

@@ -1564,9 +1564,15 @@ class PvpDraftWorkspace(QWidget):
             self._refresh_completed(None)
             return
 
-        board = session.board_dict()
-        complete = _draft_is_complete(board)
         stage = _draft_stage(self._view_state)
+        post_draft_stage = stage in {
+            PVP_DRAFT_STAGE_ASSIGNMENT,
+            PVP_DRAFT_STAGE_WEAPONS,
+            PVP_DRAFT_STAGE_TIMERS_RESULTS,
+            PVP_DRAFT_STAGE_COMPLETED_RESULT,
+        }
+        board = {} if post_draft_stage else session.board_dict()
+        complete = True if post_draft_stage else _draft_is_complete(board)
         self.board_frame.setProperty("complete", complete)
         _refresh_qss(self.board_frame)
         self.action_title_label.setText(_draft_stage_title(board, stage))

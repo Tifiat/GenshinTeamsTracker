@@ -121,10 +121,15 @@ def draft_weapon_stack_from_observed_ref(
 ) -> DraftWeaponStack:
     weapon = _asset_mapping(asset, "weapon")
     metadata = _mapping(asset.get("metadata")) if isinstance(asset, Mapping) else {}
+    weapon_type = (
+        _weapon_type_identity_text(weapon)
+        or _weapon_type_text(weapon)
+        or ref.weapon_type
+    )
     return DraftWeaponStack(
         weapon_id=_text(weapon.get("id") or weapon.get("weapon_id") or ref.weapon_id),
         display_name=_text(weapon.get("name") or weapon.get("display_name")),
-        weapon_type=_weapon_type_text(weapon) or ref.weapon_type,
+        weapon_type=weapon_type,
         rarity=_first_optional_int(weapon.get("rarity"), ref.rarity),
         level=_first_optional_int(weapon.get("level"), ref.level),
         refinement=_first_optional_int(weapon.get("refinement"), ref.refinement),

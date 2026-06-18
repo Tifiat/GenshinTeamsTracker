@@ -15,6 +15,8 @@ from localization import tr
 from run_workspace.pvp.deck_preset import PvpDeckPreset
 from ui.right_panel.pvp._shared import (
     PVP_DECKS_RIGHT_PANEL_STYLE,
+    PVP_DRAFT_STAGE_DRAFT,
+    PVP_PAGE_DRAFT,
     _active_draft_summary_lines,
     _text,
 )
@@ -148,6 +150,11 @@ class PvpPlayRightPanel(QWidget):
         self.refresh()
 
     def refresh(self) -> None:
+        if (
+            self.workspace.active_page_id == PVP_PAGE_DRAFT
+            and self.workspace.draft_stage != PVP_DRAFT_STAGE_DRAFT
+        ):
+            return
         if self._refreshing:
             return
         self._refreshing = True

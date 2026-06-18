@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QWidget
 
 from hoyolab_export.account_equipment import EquipmentChangeResult, EquipmentError
@@ -44,10 +45,24 @@ _WEAPON_TYPE_BY_ID = {
 _WEAPON_TYPE_ALIASES = {
     "sword": "SWORD",
     "one_handed_sword": "SWORD",
+    "одноручный_меч": "SWORD",
+    "одноручное": "SWORD",
+    "одноручное_оружие": "SWORD",
     "claymore": "CLAYMORE",
+    "двуручный_меч": "CLAYMORE",
+    "двуручное": "CLAYMORE",
+    "двуручное_оружие": "CLAYMORE",
     "bow": "BOW",
+    "лук": "BOW",
+    "стрелковое": "BOW",
+    "стрелковое_оружие": "BOW",
     "catalyst": "CATALYST",
+    "катализатор": "CATALYST",
     "polearm": "POLEARM",
+    "древковое": "POLEARM",
+    "древковое_оружие": "POLEARM",
+    "копье": "POLEARM",
+    "копьё": "POLEARM",
 }
 
 
@@ -325,6 +340,7 @@ class PvpSeatBuildContext:
     controller: AppShellController = field(init=False)
     source_workspace: PvpScopedCharacterWeaponWorkspace = field(init=False)
     equipment_state: PvpRuntimeEquipmentState = field(init=False)
+    _weapon_filter_timer: QTimer = field(init=False, repr=False)
     ready: bool = False
     last_error: str = ""
 
@@ -351,6 +367,9 @@ class PvpSeatBuildContext:
         )
         self.source_workspace.character_clicked.connect(self.add_or_replace_character)
         self.source_workspace.weapon_clicked.connect(self.assign_weapon_to_selected_slot)
+        self._weapon_filter_timer = QTimer(self.source_workspace)
+        self._weapon_filter_timer.setSingleShot(True)
+        self._weapon_filter_timer.timeout.connect(self._apply_deferred_weapon_filter)
         self.sync_source_workspace(reload_grids=True)
 
     @property
@@ -376,8 +395,10 @@ class PvpSeatBuildContext:
                 affected_character_ids=_changed_marker_ids(
                     before_markers,
                     self.controller.roster_selection_markers(),
-                )
+                ),
+                sync_weapon_filter=False,
             )
+            self.schedule_weapon_filter_sync()
         return result.changed
 
     def swap_slots(
@@ -401,13 +422,16 @@ class PvpSeatBuildContext:
                 affected_character_ids=_changed_marker_ids(
                     before_markers,
                     self.controller.roster_selection_markers(),
-                )
+                ),
+                sync_weapon_filter=False,
             )
+            self.schedule_weapon_filter_sync()
         return changed
 
     def toggle_slot_selection(self, team_index: int, slot_index: int) -> None:
         self.controller.toggle_slot_selection(int(team_index), int(slot_index))
-        self.sync_source_workspace()
+        self.sync_source_workspace(sync_weapon_filter=False)
+        self.schedule_weapon_filter_sync()
 
     def assign_weapon_to_selected_slot(self, asset: dict[str, Any]) -> bool:
         if not (_asset_weapon_keys(asset) & set(self.allowed_weapon_keys)):
@@ -428,6 +452,7 @@ class PvpSeatBuildContext:
         reload_grids: bool = False,
         refresh_weapons: bool = False,
         affected_character_ids: set[str] | None = None,
+        sync_weapon_filter: bool = True,
     ) -> None:
         self.source_workspace.set_pvp_weapon_assets(
             self.equipment_state.weapon_assets_with_owner_badges(self.weapon_assets),
@@ -437,9 +462,10 @@ class PvpSeatBuildContext:
             self.controller.roster_selection_markers(),
             affected_character_ids=affected_character_ids,
         )
-        self.source_workspace.set_auto_weapon_type_filter(
-            self.controller.selected_character_weapon_filter_key()
-        )
+        if sync_weapon_filter:
+            self.source_workspace.set_auto_weapon_type_filter(
+                self.controller.selected_character_weapon_filter_key()
+            )
         if reload_grids:
             self.source_workspace.refresh_asset_cache()
             self.source_workspace.update_grids()
@@ -447,6 +473,14 @@ class PvpSeatBuildContext:
             self.source_workspace.reload_weapons()
         else:
             self.source_workspace.weapon_area.viewport().update()
+
+    def schedule_weapon_filter_sync(self, delay_ms: int = 80) -> None:
+        self._weapon_filter_timer.start(max(0, int(delay_ms)))
+
+    def _apply_deferred_weapon_filter(self) -> None:
+        self.source_workspace.set_auto_weapon_type_filter(
+            self.controller.selected_character_weapon_filter_key()
+        )
 
     def right_panel_model(self):
         return self.controller.right_panel_model(load_abyss_source_data=False)

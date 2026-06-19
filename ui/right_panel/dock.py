@@ -4,6 +4,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QFrame, QSizePolicy, QStackedWidget, QVBoxLayout, QWidget
 
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS
+from run_workspace.history_browser_catalog import HISTORY_MODE_ABYSS
 from ui.pvp_browser.placeholders import PvpRightDockPlaceholder
 from ui.right_panel.constants import (
     RIGHT_DOCK_PAGE_ACCOUNT,
@@ -24,6 +25,7 @@ from ui.right_panel.settings.account_data import AccountDataPage
 
 class RightOperationsDock(QFrame):
     mode_requested = Signal(str)
+    history_mode_requested = Signal(str)
     reset_requested = Signal()
     save_requested = Signal()
 
@@ -45,6 +47,7 @@ class RightOperationsDock(QFrame):
         self.pvp_operation_widget = pvp_operation_widget or PvpRightDockPlaceholder()
         self._operation_policy = RIGHT_DOCK_POLICY_RUN
         self._pvp_page = PVP_PAGE_DECKS
+        self._history_mode = HISTORY_MODE_ABYSS
         self.header = RightDockHeader(active_mode)
         self.account_page = AccountDataPage()
 
@@ -68,6 +71,9 @@ class RightOperationsDock(QFrame):
         self.setStyleSheet(right_panel_stylesheet())
 
         self.header.mode_requested.connect(self._on_mode_requested)
+        self.header.history_mode_requested.connect(
+            self.history_mode_requested.emit
+        )
         if hasattr(self.operation_widget, "reset_requested"):
             self.operation_widget.reset_requested.connect(self.reset_requested.emit)
         if hasattr(self.operation_widget, "save_requested"):
@@ -109,11 +115,15 @@ class RightOperationsDock(QFrame):
         self.content_stack.setCurrentWidget(self.pvp_operation_widget)
         self.header.show_pvp_control(self._pvp_page)
 
-    def show_history_page(self) -> None:
+    def show_history_page(self, mode: str | None = None) -> None:
         self._clear_operation_save_status()
+        if mode is not None:
+            self._history_mode = mode
+        if hasattr(self.history_operation_widget, "set_history_mode"):
+            self.history_operation_widget.set_history_mode(self._history_mode)
         self._operation_policy = RIGHT_DOCK_POLICY_HISTORY
         self.content_stack.setCurrentWidget(self.history_operation_widget)
-        self.header.show_history_viewer()
+        self.header.show_history_viewer(self._history_mode)
 
     def show_account_page(self) -> None:
         self._clear_operation_save_status()

@@ -73,6 +73,17 @@ class IconCacheResult:
     warnings: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True, slots=True)
+class CachedAbyssFloorRecord:
+    """One readable cached period exposed to read-only production consumers."""
+
+    period_start: str
+    period_end: str | None
+    floor: int
+    cache_path: Path
+    data: AbyssFloorSourceData
+
+
 def cached_abyss_floor_source_data_path(
     period_start: str,
     floor: int = 12,
@@ -239,6 +250,58 @@ def load_cached_abyss_floor_source_data(
         expected_period_start=_normalize_period_start(period_start),
         expected_floor=_normalize_floor(floor),
         path=path,
+    )
+
+
+def list_cached_abyss_floor_source_data(
+    *,
+    floor: int = 12,
+    cache_dir: str | Path | None = None,
+) -> tuple[CachedAbyssFloorRecord, ...]:
+    """List readable cached periods without changing the active Abyss period."""
+
+    normalized_floor = _normalize_floor(floor)
+    base_dir = (
+        Path(cache_dir)
+        if cache_dir is not None
+        else DEFAULT_ABYSS_SOURCE_DATA_CACHE_DIR
+    )
+    if not base_dir.is_dir():
+        return ()
+    records: list[CachedAbyssFloorRecord] = []
+    for period_dir in base_dir.iterdir():
+        if not period_dir.is_dir() or not _PERIOD_START_PATTERN.fullmatch(
+            period_dir.name
+        ):
+            continue
+        path = cached_abyss_floor_source_data_path(
+            period_dir.name,
+            normalized_floor,
+            cache_dir=base_dir,
+        )
+        if not path.is_file():
+            continue
+        try:
+            data = load_cached_abyss_floor_source_data(
+                period_dir.name,
+                normalized_floor,
+                cache_dir=base_dir,
+            )
+        except (AbyssSourceDataCacheError, OSError, ValueError):
+            continue
+        if data is None:
+            continue
+        records.append(
+            CachedAbyssFloorRecord(
+                period_start=data.period.start_date,
+                period_end=data.period.end_date,
+                floor=data.floor,
+                cache_path=path,
+                data=data,
+            )
+        )
+    return tuple(
+        sorted(records, key=lambda item: item.period_start, reverse=True)
     )
 
 

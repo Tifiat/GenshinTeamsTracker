@@ -55,7 +55,9 @@ Mirror the primary project owner under `tests/`:
   caller-rooted local read/write service behavior, complete frozen data for
   every occupied slot, bundle-local asset capture, and snapshot-to-shared
   right-panel view-model adapters. Future fixtures must prove that rendering a
-  saved run needs no live account, DB, cache, or Run Session data.
+  saved run needs no live account, DB, cache, or Run Session data. Catalog
+  tests also cover cache-only/snapshot-only period union, deduplication,
+  newest-first ordering, current-period preference, and no period-file writes.
 - `tests/run_workspace/session/` - typed live Run Session ownership for
   AppShell mode/team/selection/timer/GCSIM runtime state.
 - `tests/ui/app_shell/` - AppShell and legacy-main-window adapter tests,
@@ -131,9 +133,10 @@ Mirror the primary project owner under `tests/`:
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.
-- `tests/ui/history_browser/` - History left-browser behavior: Abyss/DPS Dummy
-  tabs, default section from the current live mode, expandable Abyss period
-  groups, compact frozen visual rows, and newest-first ordering.
+- `tests/ui/history_browser/` - History left-browser behavior: separate
+  right-header Abyss/DPS Dummy/PvP routing, default mode from live Run,
+  six-side enemy preview/tooltips, History-local period dropdown, cache-only
+  empty states, compact frozen visual rows, and newest-first ordering.
 - `tests/ui/utils/` - shared UI utility tests.
 - `tests/ui/character_assets/` - `ui/character_assets.py` behavior.
 - `tests/tools/future/` - reusable future/admin tools.

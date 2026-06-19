@@ -64,6 +64,10 @@ from run_workspace.right_panel_prototype_view_model import (
     build_right_panel_prototype_view_model,
 )
 from run_workspace.history_snapshot import HistorySnapshotBundleStore
+from run_workspace.history_browser_catalog import (
+    HISTORY_MODE_ABYSS,
+    HISTORY_MODE_DPS_DUMMY,
+)
 from run_workspace.history_snapshot_builder import (
     HistorySnapshotBuildContext,
     build_history_snapshot_bundle,
@@ -1616,6 +1620,9 @@ class AppShell(QWidget):
         )
 
         self.right_dock.mode_requested.connect(self._on_mode_requested)
+        self.right_dock.history_mode_requested.connect(
+            self._on_history_mode_requested
+        )
         self.right_dock.reset_requested.connect(self._on_reset_requested)
         self.right_dock.save_requested.connect(self._on_save_requested)
         self.right_panel.slot_selected.connect(self._on_slot_selected)
@@ -2291,6 +2298,12 @@ class AppShell(QWidget):
             **refresh_timings,
         )
 
+    def _on_history_mode_requested(self, mode: str) -> None:
+        if self.active_left_workspace_id != LEFT_WORKSPACE_HISTORY:
+            return
+        self.left_host.history_workspace.set_mode(mode)
+        self.right_dock.show_history_page(mode)
+
     def _on_reset_requested(self) -> None:
         if self.right_dock.current_page() != RIGHT_DOCK_PAGE_RUN:
             log_perf(
@@ -2347,7 +2360,9 @@ class AppShell(QWidget):
         if hasattr(viewer, "set_snapshot_details"):
             viewer.set_snapshot_details(payload)
         if self.active_left_workspace_id == LEFT_WORKSPACE_HISTORY:
-            self.right_dock.show_history_page()
+            self.right_dock.show_history_page(
+                self.left_host.history_workspace.mode
+            )
 
     def _on_workspace_activated(self, workspace_id: str) -> None:
         previous_workspace_id = self.active_left_workspace_id
@@ -2359,8 +2374,14 @@ class AppShell(QWidget):
             self.cancel_pending_right_panel_refresh(
                 reason="history_workspace_activate"
             )
-            self.left_host.history_workspace.refresh()
-            self.right_dock.show_history_page()
+            history_mode = (
+                HISTORY_MODE_DPS_DUMMY
+                if self.controller.mode == MODE_DPS_DUMMY
+                else HISTORY_MODE_ABYSS
+            )
+            self.left_host.history_workspace.set_mode(history_mode)
+            self.left_host.history_workspace.reload_data()
+            self.right_dock.show_history_page(history_mode)
         elif previous_workspace_id in (LEFT_WORKSPACE_PVP, LEFT_WORKSPACE_HISTORY):
             self.right_dock.show_run_page(self.controller.mode)
         log_perf(

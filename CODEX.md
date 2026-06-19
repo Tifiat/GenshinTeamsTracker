@@ -521,6 +521,11 @@ Important direction:
 - History saved-run rows are compact visual rows: DPS Dummy uses one team and
   Abyss uses a paired/double-team row with character, weapon, set/build,
   chamber-time, factual-DPS, and sim-DPS presentation.
+- History mode selection is a separate right-header policy with stable
+  `abyss`/`dps_dummy`/`pvp` ids; it must not emit live Run/PvP mode commands.
+  Production Abyss cache data is allowed only for the History period catalog
+  and enemy preview. Selected rows/right-panel details remain snapshot-only
+  and bundle-local.
 - Saved runs must be immutable structured snapshots, not live references to current account/build state and not image-only records.
 - Run snapshots should preserve characters, weapons, constellations/refinements when available, artifacts, active set bonuses, relevant stats, timers, and run metadata.
 - Artifact Browser integration should feed artifact builds/build presets into Team Builder and TeamCard. When saving a run, snapshot actual selected build data, not only a live preset id.
@@ -738,8 +743,10 @@ History:
   `run_workspace/history_snapshot_builder.py`. RUN-page Save writes grouped
   bundles under `data/history/snapshots`, captures display details for every
   occupied slot, and materializes declared visible assets inside the bundle.
-  The next History stage is the contracted left-side tabs, expandable period
-  groups, and compact visual saved-run rows.
+  History visual MVP now includes automatic reload, History-local right-header
+  modes, cached/saved Abyss period navigation, compact enemy/HP preview and
+  visual saved-run rows. PvP History remains an inert placeholder; filters,
+  export, fuller DPS Dummy capture, and smoke-driven polish remain future work.
 
 Artifact Browser final UI:
 

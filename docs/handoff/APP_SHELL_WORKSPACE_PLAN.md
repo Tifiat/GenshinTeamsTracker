@@ -311,8 +311,9 @@ right column patched in place.
   History-owned copy of its team/slot/details/chamber widgets.
 - Legacy `runs_history.json` / image-path history UI is obsolete and should not
   become the long-term design.
-- The current left page reads immutable snapshot bundles from disk, shows
-  grouped saved-run rows, and supports saved-row selection. Selection adapts
+- The current left page automatically reads immutable snapshot bundles plus a
+  read-only cached Abyss period catalog, shows the selected period enemy/HP
+  preview and compact visual saved-run rows, and supports saved-row selection. Selection adapts
   the frozen bundle into an isolated read-only instance of the shared Run
   presentation; the independent details widget and permanent PNG preview have
   been removed from normal browsing.
@@ -322,10 +323,13 @@ right column patched in place.
   tooltips remain available; mutation, drag/drop, equipment, and commands do
   not. Mode tabs and Reset/Save are hidden, timers and saved state controls are
   disabled, and command-only controls such as GCSIM Run are hidden.
-- History-specific metadata stays in the left browser. That browser owns
-  internal Abyss/DPS Dummy tabs, defaults to the current live mode, groups
-  Abyss runs by period, and orders new records first. Exact period headers and
-  compact row content are defined in `docs/handoff/HISTORY_BROWSER.md`.
+- History-specific metadata stays in the left browser. History-local
+  Abyss/DPS Dummy/PvP selectors live in the persistent right header beside
+  Account and use routing separate from live Run/PvP. The browser defaults to
+  the current live mode, merges cached and saved Abyss periods, keeps period
+  selection local, and orders new records first. PvP is currently a History
+  placeholder. Exact preview and compact row content are defined in
+  `docs/handoff/HISTORY_BROWSER.md`.
 - Entering History must not reset, clear, or reinitialize live Abyss/DPS/PvP
   session state. Leaving History for a normal workspace restores the live Run
   panel and its previous state.

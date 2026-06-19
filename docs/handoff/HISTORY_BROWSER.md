@@ -3,11 +3,10 @@
 Scope: authoritative product and architecture contract for the AppShell
 History Browser.
 
-The current code lists grouped immutable bundles and selects saved rows. A
-selected bundle is adapted into an isolated read-only instance of the normal
-mode-specific Run presentation, and normal browsing no longer generates an
-always-visible PNG preview. The remaining MVP gap is the contracted left-side
-browser presentation.
+The visual MVP is implemented: History has local Abyss/DPS Dummy/PvP modes in
+the right header, a compact period navigator/enemy preview, visual saved-run
+rows, and an isolated shared read-only Run presentation for selected snapshots.
+Normal browsing has no Refresh command or always-visible PNG preview.
 
 ## Ownership And Boundaries
 
@@ -19,11 +18,13 @@ browser presentation.
   read-only policy. It must not own parallel copies of Run presentation widgets.
 - `ui/run_history_window.py` and `runs_history.json` are obsolete and must not
   become the final History model.
-- Opening History reloads the configured immutable snapshot root without
+- Opening History automatically reloads the configured immutable snapshot root without
   resetting or rebuilding the live Abyss/DPS Dummy/PvP session.
 - History never reads current account equipment, Artifact Browser presets,
-  account/profile data, DBs, caches, settings, or network state to render a
-  saved run.
+  account/profile data, DBs, settings, or network state to render a saved run.
+- The Abyss period navigator may read production Floor 12 source-data caches
+  for its period catalog and enemy preview only. A selected saved-run row and
+  its right panel use only frozen snapshot fields and bundle-local assets.
 
 ## Shared Right-Panel Presentation
 
@@ -68,20 +69,33 @@ teams, selection, timers, results, and settings unchanged.
 
 ## Left Browser MVP
 
-- History has internal `Abyss` and `DPS Dummy` tabs. PvP may become a third tab
-  only after the PvP History contract exists.
+- The right-dock header exposes History-local `Abyss`, `DPS Dummy`, and `PvP`
+  mode buttons plus Account. They use a separate History signal and never
+  invoke live Run or live PvP routing.
+- Account opened from History keeps those History mode buttons visible; a mode
+  button returns to History. PvP currently opens a localized History-only
+  placeholder and does not read or mutate live PvP.
 - Entering History defaults to the current live Run mode.
+- Switching History mode or Abyss period clears the selected row/right snapshot.
 - Within each section, newest saved runs are listed first.
 - MVP navigation includes type tabs, Abyss period groups, and newest-first
   ordering. Character/DPS/set/warning filters and richer sorting remain later.
 
 ### Abyss
 
-- Group snapshots by immutable `scenario.abyss.period_start`, using the period
-  start as the stable group key.
-- A compact period header shows date range, floor/season, and saved-run count.
-- Expanding the period header shows C1/C2/C3, Side 1/Side 2, saved enemy/boss
-  images, display names, and total HP for each side.
+- The period catalog is the union of immutable snapshot periods and readable
+  cached `floor_12.json` periods. It is newest-first, cache-only periods remain
+  selectable with empty run lists, and unknown snapshot periods sort last.
+- The initial period is the current cached period when available, otherwise the
+  newest catalog period. Selection is History-local and never rewrites the live
+  period file or Run Session.
+- The top selected-period zone always shows C1/C2/C3 with Side 1/Side 2,
+  compact local enemy icons and total HP per side. Enemy tooltips show saved or
+  cached name, level, count, wave, and individual HP.
+- A full-width period dropdown below that zone shows date range, floor, and run
+  count. Invalid/too-short end dates are omitted rather than inferred.
+- Cache data is preferred for this period preview; latest snapshot enemy data
+  is the fallback. Saved-run rows never borrow cache/account assets.
 - Each saved-run row is a compact visual double-team row with character
   portraits, weapon icons, artifact set/build indicators, and all three chamber
   result blocks.
@@ -129,7 +143,7 @@ validating the new contract.
   shared RunCard/TeamCard presentation used by Run and History.
 - Structured XLSX/data export remains a later feature.
 
-## Current Gap And Next Stage
+## Current State And Next Stage
 
 Snapshot Bundle v2 and production Save capture frozen display details for every
 occupied slot and materialize declared visible assets inside the bundle without
@@ -138,9 +152,7 @@ the snapshot-to-shared-right-panel adapter, isolated read-only Run panel, first
 occupied slot selection, frozen slot navigation, disabled timers/state changes,
 hidden commands, and removal of the permanent PNG area are implemented.
 
-The next implementation stage is:
-
-1. add internal Abyss/DPS Dummy tabs with live-mode entry selection;
-2. replace text-first groups and rows with the contracted expandable period
-   headers and compact visual rows;
-3. preserve newest-first ordering and add the remaining left-browser tests.
+The compact left-browser MVP is implemented with reusable summary components.
+Future work is visual polish from manual smoke, fuller DPS Dummy input capture,
+real PvP History, filters/sorting beyond newest-first, and an explicit shared
+presentation-based export flow.

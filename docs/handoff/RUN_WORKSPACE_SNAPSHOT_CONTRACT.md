@@ -335,9 +335,8 @@ browsing mode are separate states:
 - Reset must not be used as a History routing shortcut;
 - opening History from Abyss should default to Abyss history;
 - opening History from DPS Dummy should default to DPS Dummy history;
-- once inside History, the user can switch between Abyss and DPS Dummy through
-  explicit tabs inside the History workspace; PvP may be added only under its
-  own later contract;
+- once inside History, the user can switch between Abyss, DPS Dummy, and the
+  inert PvP History placeholder through History-local right-header buttons;
 - selecting snapshots or switching History's internal type/filter must not
   mutate the current right-dock run mode, team selection, or active run/session
   state.
@@ -355,23 +354,25 @@ Recommended order:
 2. Done: build backend-only snapshots from explicit typed live
    session/right-panel view-model data.
 3. Done: wire RUN-page Save to snapshot creation for the active run type.
-4. Done as a foundation: the History left workspace reads grouped immutable
-   snapshots and supports row selection. Its details/PNG views are provisional.
+4. Done: the History left workspace reads immutable snapshots, merges a
+   read-only cache-backed Abyss period catalog, and supports row selection.
 5. Done: capture frozen display data for every occupied slot and materialize
    declared visible assets inside the bundle during production Save.
-6. Add Abyss/DPS Dummy snapshot adapters into the shared right-panel view-model
-   and enforce the read-only presentation policy.
-7. Replace the provisional details/PNG browsing area with the contracted tabs,
-   period groups, compact visual rows, and newest-first ordering.
+6. Done: Abyss/DPS Dummy snapshot adapters use the shared right-panel
+   view-model and enforce the read-only presentation policy.
+7. Done for visual MVP: History-local header modes, compact period enemy/HP
+   preview, period dropdown, visual saved-run rows, and newest-first ordering.
 8. Route a future History command to activate/select that left workspace and
    the relevant default run type section.
 
-History is not a global right-dock page. The right dock may contain a command
-button, but the browsing surface belongs on the left.
+History browsing is not a right-dock-only page: the browsing surface belongs on
+the left, while the right dock hosts History-local mode controls and selected
+snapshot details.
 
-The MVP includes internal mode tabs, Abyss period groups, and newest-first
-ordering. More complex future History filters/sorts belong inside the History
-workspace, not in the right-dock run-mode tabs. Expected dimensions include:
+The MVP includes separate History header modes, an Abyss period selector, and
+newest-first ordering. More complex future History filters/sorts belong inside
+the History workspace, not in the live right-dock run-mode tabs. Expected
+dimensions include:
 
 - Abyss season/period, floor, chamber, side, enemy/wave/target metadata, clear
   time, factual DPS, team, characters, elements, resonances, artifact sets, and

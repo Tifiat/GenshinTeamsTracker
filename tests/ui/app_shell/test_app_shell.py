@@ -275,6 +275,7 @@ class AppShellTest(unittest.TestCase):
         self.assertEqual(shell.controller.mode, selected_mode)
         self.assertEqual(shell.right_panel._model.mode, selected_mode)
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertTrue(shell.right_dock.header.history_mode_tabs.isHidden())
         self.assert_header_has_no_run_actions(shell)
         self.assertFalse(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.pvp_play_button.isHidden())
@@ -295,6 +296,7 @@ class AppShellTest(unittest.TestCase):
         shell._on_abyss_timer_changed(0, 1, 555)
         before_team_state = shell.controller.state
         before_timer_states = shell.controller.abyss_timer_states
+        before_mode = shell.controller.mode
         before_selected = (
             shell.controller.selected_team_index,
             shell.controller.selected_slot_index,
@@ -323,6 +325,7 @@ class AppShellTest(unittest.TestCase):
             before_selected,
         )
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertFalse(shell.right_dock.header.history_mode_tabs.isHidden())
         self.assert_header_has_no_run_actions(shell)
         self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertFalse(shell.right_dock.header.account_button.isChecked())
@@ -331,9 +334,23 @@ class AppShellTest(unittest.TestCase):
 
         self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_ACCOUNT)
         self.assertTrue(shell.right_dock.header.run_mode_tabs.isHidden())
+        self.assertFalse(shell.right_dock.header.history_mode_tabs.isHidden())
         self.assert_header_has_no_run_actions(shell)
         self.assertTrue(shell.right_dock.header.pvp_control_button.isHidden())
         self.assertTrue(shell.right_dock.header.account_button.isChecked())
+
+        shell.right_dock.header.history_mode_tabs.buttons[MODE_DPS_DUMMY].click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_HISTORY)
+        self.assertEqual(shell.left_host.history_workspace.mode, MODE_DPS_DUMMY)
+        self.assertEqual(shell.controller.mode, before_mode)
+
+        shell.right_dock.header.history_mode_tabs.buttons["pvp"].click()
+
+        self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_HISTORY)
+        self.assertEqual(shell.left_host.history_workspace.mode, "pvp")
+        self.assertEqual(shell.controller.mode, before_mode)
+        self.assertNotEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_PVP)
 
         shell.left_host.history_button.click()
 
@@ -505,16 +522,22 @@ class AppShellTest(unittest.TestCase):
             shell.left_host.history_button.click()
 
             workspace = shell.left_host.history_workspace
-            texts = _label_texts(workspace.content_widget)
+            workspace._select_period("2026-06-01")
             self.assertIsNotNone(result)
             self.assertTrue(result.success)
             self.assertEqual(shell.active_left_workspace_id, LEFT_WORKSPACE_HISTORY)
             self.assertEqual(shell.right_dock.current_page(), RIGHT_DOCK_PAGE_HISTORY)
             self.assertTrue(workspace.empty_label.isHidden())
             self.assertFalse(workspace.scroll_area.isHidden())
-            self.assertIn("2026-06-01", "\n".join(texts))
-            self.assertIn(result.bundle_id, "\n".join(texts))
-            self.assertIn("Thoma", "\n".join(texts))
+            self.assertEqual(workspace.selected_period_start(), "2026-06-01")
+            self.assertIn(
+                result.bundle_id,
+                [
+                    run.bundle_id
+                    for period in workspace._catalog.periods
+                    for run in period.runs
+                ],
+            )
             self.assertEqual(shell.controller.session.state, before_state)
 
             row = workspace.row_widget(result.bundle_id)
@@ -566,6 +589,7 @@ class AppShellTest(unittest.TestCase):
 
             shell.left_host.history_button.click()
             workspace = shell.left_host.history_workspace
+            workspace._select_period("2026-06-01")
             row = workspace.row_widget(bundle.bundle_id)
             self.assertIsNotNone(row)
             row.click()
@@ -607,6 +631,7 @@ class AppShellTest(unittest.TestCase):
             self.assertTrue(result.success)
             shell.left_host.history_button.click()
             workspace = shell.left_host.history_workspace
+            workspace._select_period("2026-06-01")
 
             with patch(
                 "run_workspace.history_snapshot_preview.render_history_snapshot_preview"

@@ -6,6 +6,11 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from localization import tr
+from run_workspace.history_browser_catalog import (
+    HISTORY_MODE_ABYSS,
+    HISTORY_MODE_DPS_DUMMY,
+    HISTORY_MODE_PVP,
+)
 from run_workspace.history_snapshot import (
     HistorySnapshotBundle,
     HistorySnapshotBundleError,
@@ -39,6 +44,15 @@ class HistoryRightPanelHost(QWidget):
         self._bundle: HistorySnapshotBundle | None = None
         self._bundle_dir: Path | None = None
         self._selected: tuple[int, int] | None = None
+        self._history_mode = HISTORY_MODE_ABYSS
+        self.retranslate_ui()
+
+    def set_history_mode(self, mode: str) -> None:
+        if mode not in (HISTORY_MODE_ABYSS, HISTORY_MODE_DPS_DUMMY, HISTORY_MODE_PVP):
+            mode = HISTORY_MODE_ABYSS
+        if mode != self._history_mode:
+            self._history_mode = mode
+            self._clear_snapshot()
         self.retranslate_ui()
 
     def set_snapshot_details(
@@ -62,7 +76,12 @@ class HistoryRightPanelHost(QWidget):
         self._render_snapshot()
 
     def retranslate_ui(self) -> None:
-        self.empty_label.setText(tr("app_shell.history.viewer.empty"))
+        key = (
+            "app_shell.history.viewer.pvp_empty"
+            if self._history_mode == HISTORY_MODE_PVP
+            else "app_shell.history.viewer.empty"
+        )
+        self.empty_label.setText(tr(key))
         if self.run_panel is not None:
             self.run_panel.retranslate_ui()
 

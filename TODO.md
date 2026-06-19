@@ -60,7 +60,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - right-panel source ownership has been refactored into `ui/right_panel/{common,live_run,history,pvp,settings}` plus `dock.py`/`header.py`; `ui/right_panel_prototype.py`, `ui/account_data_page.py`, and old PvP right-panel exports remain compatibility shims. PvP page/stage constants are canonical in `ui/right_panel/pvp/_shared.py`; PvP Assignment/Weapons now use scoped normal AppShell controller/workspace state, `CharacterWeaponWorkspace`, and `RunRightPanelWidget` with per-seat runtime weapon equipment state instead of mutating normal account equipment. Next PvP build-flow gaps are Artifact Browser routing/equipment, executable scoped GCSIM, and portable `.gttpvp` asset packaging;
   - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, a painted pixel-aligned icon grid via `ui/utils/pixel_icon_grid.py`, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
   - AppShell left workspace navigation exists with Character/Weapon, lazy-created Artifacts, GCSIM Browser, the `ui/history_browser/` grouped History bundle foundation, and PvP Decks/Play/Draft v0 workspace pages. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; activating History must preserve the live session and replace its visible panel with a snapshot-bound, read-only instance of the same shared mode-specific Run presentation under the contract in `docs/handoff/HISTORY_BROWSER.md`;
-  - continue History left-browser UX: typed live-session ownership lives in `run_workspace/session.py`; immutable Snapshot Bundle v2 captures every occupied slot and local assets, while selected Abyss/DPS Dummy snapshots now use the shared right-panel view-model and read-only Run panel. Next are internal mode tabs, expandable Abyss periods, and compact visual rows; right-command routing and durable GCSIM history attachment remain future work;
+  - History visual MVP now has separate right-header Abyss/DPS Dummy/PvP modes, automatic reload, a read-only cache/snapshot period catalog, compact enemy/HP preview, period dropdown, visual rows, and shared read-only snapshot details. Next are smoke-driven polish, fuller DPS Dummy capture, real PvP History, filters/export, and durable GCSIM history attachment;
   - keep roster clicks as quick-pick add/remove and right-panel slot clicks as selected build/details target toggle;
   - AppShell quick-pick marker latency is fixed with incremental visible-card marker updates; roster clicks now update markers immediately and defer/coalesce right-panel refreshes through a short scheduler;
   - AppShell filters now use session-cached character/weapon asset lists plus the reusable painted icon grid. The grid computes integer physical-pixel item/gap rectangles under fractional startup downscale and prepares cached HiDPI pixmaps outside paint events. Right-panel slot selection does not reload portrait/weapon PNGs, fitted right-panel PNG canvases are cached per DPR/source, and remaining performance work is to reduce first bonus-strip chip rebuild cost on high-DPI screens;
@@ -164,10 +164,10 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   immutable snapshot bundles from the configured root; grouped storage and row
   selection exist. Selection now opens an isolated read-only instance of the
   shared Run panel, and normal browsing no longer generates a PNG preview.
-- Snapshot v2 now captures frozen display details for every occupied slot and
-  production Save copies declared visible assets into the bundle. The next
-  stage is internal mode tabs, expandable Abyss period groups, compact visual
-  rows, and newest-first ordering. The full contract is in
+- Snapshot v2 captures frozen display details/assets for every occupied slot.
+  The visual MVP adds separate History header modes, cached/saved Abyss period
+  navigation, enemy/HP preview, compact visual rows, newest-first ordering, and
+  the shared read-only selected snapshot panel. The full contract is in
   `docs/handoff/HISTORY_BROWSER.md`.
 - Backend-only `run_workspace/history_snapshot.py` defines the autonomous
   immutable bundle schema/service and grouped storage:

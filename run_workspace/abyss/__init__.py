@@ -32,12 +32,14 @@ from .source_data import (
 from .source_data_cache import (
     AbyssMonsterIconCacheEntry,
     AbyssSourceDataCacheError,
+    CachedAbyssFloorRecord,
     IconCacheResult,
     cache_abyss_floor_monster_icons,
     cached_abyss_floor_source_data_path,
     cached_abyss_floor_monster_icon_dir,
     has_cached_abyss_floor_source_data,
     load_cached_abyss_floor_source_data,
+    list_cached_abyss_floor_source_data,
     save_abyss_floor_source_data,
 )
 
@@ -62,6 +64,7 @@ __all__ = [
     "HP_SOURCE_NANOKA_RESOLVED",
     "HP_SOURCE_UNAVAILABLE",
     "IconCacheResult",
+    "CachedAbyssFloorRecord",
     "build_abyss_floor_source_data_from_reports",
     "calculate_factual_dps",
     "calculate_side_factual_dps",
@@ -72,6 +75,7 @@ __all__ = [
     "current_floor12_fixture",
     "has_cached_abyss_floor_source_data",
     "load_cached_abyss_floor_source_data",
+    "list_cached_abyss_floor_source_data",
     "load_abyss_floor12_source_data",
     "period_url_for_start",
     "rebuild_abyss_floor_source_data_with_rows",

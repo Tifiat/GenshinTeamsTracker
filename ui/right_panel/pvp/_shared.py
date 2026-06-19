@@ -21,6 +21,11 @@ from ui.utils.pixel_icon_grid import (
     PixelIconGridOutline,
 )
 from ui.utils.ui_palette import (
+    UI_ACCENT_PVP_BAN,
+    UI_ACCENT_PVP_IMMUNE,
+    UI_ACCENT_PVP_PICK,
+    UI_ACCENT_PVP_PLAYER_1,
+    UI_ACCENT_PVP_PLAYER_2,
     UI_ACCENT_TEAM_1,
     UI_ACCENT_TEAM_2,
     UI_BG_APP,
@@ -59,6 +64,11 @@ PVP_DRAFT_STAGE_VALUES = (
 PVP_SEATS = ("player_1", "player_2")
 PVP_TIMER_CHAMBERS = ("1", "2", "3")
 PVP_BROWSER_PROJECT_ROOT = Path(__file__).resolve().parents[3]
+PVP_DRAFT_PLAYER_1_ACCENT = UI_ACCENT_PVP_PLAYER_1
+PVP_DRAFT_PLAYER_2_ACCENT = UI_ACCENT_PVP_PLAYER_2
+PVP_DRAFT_PICK_ACCENT = UI_ACCENT_PVP_PICK
+PVP_DRAFT_BAN_ACCENT = UI_ACCENT_PVP_BAN
+PVP_DRAFT_IMMUNE_ACCENT = UI_ACCENT_PVP_IMMUNE
 
 WEAPON_TYPE_FILTER_BY_ID = {
     1: "sword",
@@ -233,6 +243,15 @@ QFrame#pvp-postdraft-target-player-2 {{
     border: 1px solid {UI_BORDER_PANEL};
     border-radius: 8px;
     background: {UI_BG_PANEL};
+}}
+QFrame#pvp_draft_result_zone[seat="player_1"][zone="picked"] {{
+    border-color: {PVP_DRAFT_PLAYER_1_ACCENT};
+}}
+QFrame#pvp_draft_result_zone[seat="player_2"][zone="picked"] {{
+    border-color: {PVP_DRAFT_PLAYER_2_ACCENT};
+}}
+QFrame#pvp_draft_result_zone[zone="banned"] {{
+    border-color: {PVP_DRAFT_BAN_ACCENT};
 }}
 QPushButton#pvp_postdraft_player_toggle {{
     min-height: 24px;
@@ -582,7 +601,12 @@ def build_pvp_draft_grid_item(
     active_seat = _text(entry.get("active_seat"))
     result_owner = result_seat or _text(entry.get("picked_by")) or _text(entry.get("banned_by"))
     accent_seat = active_seat if legal else result_owner
-    accent = UI_ACCENT_TEAM_1 if accent_seat == "player_1" else UI_ACCENT_TEAM_2
+    player_accent = (
+        PVP_DRAFT_PLAYER_1_ACCENT
+        if accent_seat == "player_1"
+        else PVP_DRAFT_PLAYER_2_ACCENT
+    )
+    accent = PVP_DRAFT_BAN_ACCENT if result_zone == "banned" else player_accent
     outline = None
     if legal or result_zone:
         outline = PixelIconGridOutline(
@@ -595,8 +619,8 @@ def build_pvp_draft_grid_item(
     badges: list[PixelIconGridBadge] = []
     if not result_zone:
         for seat, position, color in (
-            ("player_1", "bottom_left", UI_ACCENT_TEAM_1),
-            ("player_2", "bottom_right", UI_ACCENT_TEAM_2),
+            ("player_1", "bottom_left", PVP_DRAFT_PLAYER_1_ACCENT),
+            ("player_2", "bottom_right", PVP_DRAFT_PLAYER_2_ACCENT),
         ):
             if seat not in owner_seats:
                 continue
@@ -660,12 +684,11 @@ def _draft_unified_pool_summary(
     board: Mapping[str, Any],
     entries: list[Mapping[str, Any]],
 ) -> str:
-    progress = _mapping(board.get("progress"))
     shared_count = sum(1 for entry in entries if len(_owner_seats(entry)) > 1)
     return tr("app_shell.pvp.draft.unified_pool_summary").format(
         pool=len(entries),
         shared=shared_count,
-        legal=int(progress.get("legal_target_count") or 0),
+        legal=sum(bool(entry.get("is_current_legal_target")) for entry in entries),
     )
 
 

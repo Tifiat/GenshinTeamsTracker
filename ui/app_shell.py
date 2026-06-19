@@ -52,6 +52,7 @@ from hoyolab_export.team_card_data import (
 )
 from localization import get_language, tr
 from ui.character_browser.icon_grid_adapter import build_asset_grid_items
+from ui.character_browser.filter_bar import CharacterFilterBar
 from run_workspace.right_panel_prototype_view_model import (
     FACT_DPS_HP_MODE_MULTI_TARGET,
     FACT_DPS_HP_MODE_SOLO,
@@ -85,14 +86,8 @@ from run_workspace.session import (
 )
 from run_workspace.team_builder import TeamBuilderState
 from ui.character_assets import (
-    CHARACTER_RARITY_FILTERS,
-    CHARACTER_STANDARD_FILTER,
-    CHARACTER_TRAIT_FILTERS,
-    ELEMENT_FILTERS,
     FILTER_ASSETS_DIR,
     STANDARD_FILTER_ALL,
-    STANDARD_FILTER_EXCLUDE,
-    STANDARD_FILTER_ONLY,
     WEAPON_RARITY_FILTERS,
     WEAPON_TYPE_FILTERS,
     character_matches_filters,
@@ -100,7 +95,6 @@ from ui.character_assets import (
     load_account_character_asset_items,
     load_account_weapon_stack_asset_items,
     metadata_int,
-    standard_character_filter_icon,
 )
 from ui.right_panel.settings.account_data import AccountDataPage
 from ui.pvp_browser.placeholders import PvpRightDockPlaceholder
@@ -2977,25 +2971,15 @@ class CharacterWeaponWorkspace(QWidget):
         self.character_title_label = QLabel(tr("asset_panel.characters"))
         root.addWidget(self.character_title_label)
         root.addSpacing(6)
-        root.addLayout(
-            self._build_filter_row(
-                (
-                    (ELEMENT_FILTERS, self._character_element_filters, self.reload_characters),
-                    (WEAPON_TYPE_FILTERS, self._character_weapon_filters, self.reload_characters),
-                    (
-                        CHARACTER_RARITY_FILTERS,
-                        self._character_rarity_filters,
-                        self.reload_characters,
-                    ),
-                    (
-                        CHARACTER_TRAIT_FILTERS,
-                        self._character_trait_filters,
-                        self.reload_characters,
-                    ),
-                ),
-                trailing_widgets=(self._make_standard_filter_button(),),
-            )
+        self.character_filter_bar = CharacterFilterBar()
+        self._character_element_filters = self.character_filter_bar.element_filters
+        self._character_weapon_filters = self.character_filter_bar.weapon_filters
+        self._character_rarity_filters = self.character_filter_bar.rarity_filters
+        self._character_trait_filters = self.character_filter_bar.trait_filters
+        self.character_filter_bar.filters_changed.connect(
+            self._on_character_filters_changed,
         )
+        root.addWidget(self.character_filter_bar)
         root.addSpacing(6)
         self.char_area, self.char_widget, self.char_grid = self._make_grid_area(
             surface="app_shell_character_grid",
@@ -3179,6 +3163,10 @@ class CharacterWeaponWorkspace(QWidget):
             standard=self._character_standard_filter,
         )
 
+    def _on_character_filters_changed(self) -> None:
+        self._character_standard_filter = self.character_filter_bar.standard_filter
+        self.reload_characters()
+
     def reload_weapons(self) -> None:
         total_start = perf_now()
         self._weapon_cards_by_key = {}
@@ -3306,48 +3294,6 @@ class CharacterWeaponWorkspace(QWidget):
             row.addWidget(widget)
         row.addStretch()
         return row
-
-    def _make_standard_filter_button(self) -> QPushButton:
-        _value, _icon_name, _tooltip_key = CHARACTER_STANDARD_FILTER
-        button = QPushButton("")
-        button.setObjectName("app_shell_filter_button")
-        button.setCheckable(False)
-        button.setFixedSize(FILTER_BUTTON_SIZE, FILTER_BUTTON_SIZE)
-        button.setIconSize(QSize(FILTER_BUTTON_ICON_SIZE, FILTER_BUTTON_ICON_SIZE))
-        button.setStyleSheet(FILTER_BUTTON_STYLE)
-        button.setIcon(standard_character_filter_icon(STANDARD_FILTER_ALL, size=FILTER_BUTTON_ICON_SIZE))
-        button.setProperty("standardOnly", False)
-
-        def cycle_standard_filter() -> None:
-            total_start = perf_now()
-            if self._character_standard_filter == STANDARD_FILTER_ALL:
-                self._character_standard_filter = STANDARD_FILTER_ONLY
-            elif self._character_standard_filter == STANDARD_FILTER_ONLY:
-                self._character_standard_filter = STANDARD_FILTER_EXCLUDE
-            else:
-                self._character_standard_filter = STANDARD_FILTER_ALL
-            button.setProperty(
-                "standardOnly",
-                self._character_standard_filter == STANDARD_FILTER_ONLY,
-            )
-            button.style().unpolish(button)
-            button.style().polish(button)
-            button.setIcon(
-                standard_character_filter_icon(
-                    self._character_standard_filter,
-                    size=FILTER_BUTTON_ICON_SIZE,
-                )
-            )
-            button.repaint()
-            QTimer.singleShot(0, self.reload_characters)
-            log_perf(
-                "filter_standard_toggle",
-                total=perf_ms(total_start),
-                standard=self._character_standard_filter,
-            )
-
-        button.clicked.connect(cycle_standard_filter)
-        return button
 
     def _weapon_matches_filters(self, asset: dict) -> bool:
         metadata = asset.get("metadata")

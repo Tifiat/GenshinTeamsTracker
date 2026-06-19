@@ -110,6 +110,7 @@ from ui.artifact_browser.window import (
 from run_workspace.perf import perf_enabled
 from localization import get_language, set_language, tr
 from ui.character_assets import STANDARD_FILTER_ONLY, load_account_weapon_stack_asset_items
+from ui.character_browser.filter_bar import CharacterFilterBar
 from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
@@ -174,6 +175,10 @@ class AppShellTest(unittest.TestCase):
         self.assertIsInstance(
             shell.left_host.character_weapon_workspace,
             CharacterWeaponWorkspace,
+        )
+        self.assertIsInstance(
+            shell.left_host.character_weapon_workspace.character_filter_bar,
+            CharacterFilterBar,
         )
         self.assertEqual(shell.left_host.stack.currentIndex(), 0)
         self.assertEqual(shell.left_host.stack.count(), 5)

@@ -145,7 +145,9 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   a permanent selected PNG preview. The remaining left-browser contract lives
   in `docs/handoff/HISTORY_BROWSER.md`.
 - `ui/character_browser/`: narrow adapters that translate character/weapon
-  asset records into reusable generic browser/grid item models.
+  asset records into reusable generic browser/grid item models, plus the shared
+  `CharacterFilterBar` used by normal AppShell Characters and the PvP Draft
+  pool.
 - AppShell top-level browser/workspace UI must live in its own `ui/<area>_browser/`
   package when it grows beyond shell routing/glue. `ui/app_shell.py` coordinates
   workspace/right-dock policy and may instantiate those widgets, but it should
@@ -565,8 +567,10 @@ two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
 weapon assignment, timers, and winner summary. Decks mode v0, Play/local match
 setup v0, Draft board visual MVP, and local post-draft
 Assignment/Weapon/Timers/Completed result v0 are implemented. Timers/results
-is a playable left Draft scene with six elapsed-time inputs, totals/result, and
-cached current Abyss enemy display; future room admission still needs explicit
+is a playable left Draft scene with six instances of the shared live-Abyss
+wheel/keyboard timer editor, wave-separated enemies, solo/multi HP, a
+total/chevron/difference scoreboard, and cached current Abyss data; future room
+admission still needs explicit
 Abyss-period agreement/server-authority validation. Left/main PvP
 workspaces live under `ui/pvp_browser/`; PvP right-dock ownership lives under
 `ui/right_panel/pvp/`.
@@ -576,9 +580,10 @@ validates by converting presets to backend `DraftDeck`. Play chooses Player
 1/Player 2 local deck presets and starts an in-memory local
 `FreeDraftController`. Draft consumes the backend `unified_pool`, renders one
 dense image-backed painted character pool with two-sided seat constellation
-badges, sends legal pick/ban clicks through backend action payloads, shows a
-painted 22-action order strip, and reuses the same grid-item adapter for visual
-right-panel pick/ban zones. It can complete the full Free Draft schedule
+badges, shares the normal character filter bar and pool/player scopes, sends
+legal pick/ban clicks through backend action payloads, shows a semantic
+action-colored 22-position order strip, and reuses the same grid-item adapter
+for visual right-panel pick/ban zones. It can complete the full Free Draft schedule
 locally, then continues through the scoped AppShell build pipeline, manual
 timers, and read-only result summary. Candidate PvP follow-ups live in
 `docs/handoff/PVP_UI_ROADMAP.md`; do not treat older post-draft polish wording

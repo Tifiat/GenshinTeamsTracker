@@ -292,26 +292,9 @@ Current v0 scope:
 ## Draft Stage
 
 Draft board v0 is implemented for local manual play through the full Free Draft
-schedule. It remains a working intermediate board, not the target readable UX.
-
-Current implemented v0:
-
-- Player 1 board;
-- Player 2 board;
-- current action banner;
-- picks/bans pools;
-- timeline/action log;
-- immune/extra-ban placeholders later.
-
-Right panel remains compact:
-
-- current phase/action;
-- legal target count;
-- selected card details;
-- reset/auto-step/dev controls;
-- later room/invite links.
-
-The right panel must not contain the full draft board.
+schedule as a readable visual prototype. The old duplicated Player 1/Player 2
+text-card boards, moving debug/status strip, and right-panel debug summary are
+not accepted fallbacks.
 
 Target readable Draft phase:
 
@@ -359,12 +342,19 @@ Current v0 scope:
 - The board renders `unified_pool.entries` through the shared painted
   `PixelIconGrid` path used by character/weapon browsers. The removed
   QWidget-per-card Draft implementation is not an accepted fallback.
+- The pool header is a segmented `Unified pool / Player 1 / Player 2` scope.
+  The pool reuses the same `CharacterFilterBar` as the normal AppShell
+  Characters workspace, so element, weapon type, rarity, trait, and Standard
+  filters have one implementation and one behavior contract.
 - Pool portraits carry Player 1/Player 2 constellation badges on opposite
   sides. Legal portraits use the active seat accent and accept the backend
   action payload; illegal portraits are dimmed and non-clickable.
 - A painted two-row 22-position order strip flattens the backend `timeline`.
-  Completed positions show portraits, the current action is highlighted by
-  seat, and pending positions keep the action number/type visible.
+  Empty positions use a large turn number plus a translucent semantic action
+  fill; completed positions show an uncluttered portrait while retaining the
+  action fill. Player identity uses amber/purple accents, while pick/ban/immune
+  use neutral/red/gold action colors. Do not reuse normal team green/blue for
+  either Draft players or Draft actions.
 - Picked/banned entries are omitted from the main pool and rendered through
   the same Draft grid-item adapter in right-panel result zones. Picks use the
   readable character-grid size; bans use compact portraits.
@@ -513,13 +503,18 @@ Hot-seat layout direction:
   and weapon assignment. In the target flow, it follows artifact equipment and
   optional PvP GCSIM when those stages exist.
 - Timers/results should reuse scoped PvP team/build data for display rather
-  than resurrecting custom target-slot panels. Timer inputs accept `mm:ss` or
-  raw seconds and require valid values for both players before finalization.
+  than resurrecting custom target-slot panels. The six timer inputs are
+  `CompactTimerInputWidget` instances shared with the normal Abyss timer path:
+  mouse wheel, Up/Down, Left/Right, Enter, focus selection, clamping, and
+  two-digit segment normalization must not be reimplemented in PvP. All six
+  values are required before finalization.
 - Finalization calls `FreeDraftController.set_match_timers(...)`; lower total
   time wins and equal totals draw through the backend result model.
 - The left Draft workspace now owns the playable timer scene: three chamber
-  rows, both players' elapsed-time inputs, totals/current leader, cached current
-  Abyss period and enemy lineups when available, and the finalization command.
+  rows, both players' elapsed-time inputs, a readable total/difference
+  scoreboard with winner/loser chevrons, cached current Abyss period, separate
+  enemy wave rows, per-half solo/multi-target HP summaries, and the finalization
+  command.
   The right dock remains scoped team/build details and does not regain the live
   Abyss chamber table. Missing cached Abyss data is an explicit unavailable
   state, not invented monster data.
@@ -604,10 +599,12 @@ Current v0 scope:
 - Play/setup v0 is implemented. It owns `Start local draft`, creates an
   in-memory local `FreeDraftController`, and switches to Draft.
 - Draft board visual MVP is implemented. It renders the backend `unified_pool`
-  as a dense image-backed `PixelIconGrid`, shows two-sided constellation
-  badges, exposes a 22-action painted order strip, reuses the same item adapter
-  for right-panel picks/bans, and can complete the full Free Draft schedule
-  locally. The old yellow text-card/debug-summary path has been removed.
+  as a dense image-backed `PixelIconGrid`, exposes shared pool/player scope tabs
+  and the normal AppShell character filters, shows two-sided constellation
+  badges, exposes a semantic action-colored 22-position order strip, reuses the
+  same item adapter for right-panel picks/bans, and can complete the full Free
+  Draft schedule locally. The old yellow text-card/debug-summary path has been
+  removed.
 - Post-draft local flow now uses one scoped normal AppShell build context per
   seat. Character clicks use normal sequential quick-pick, right-panel slot
   clicks select the build target, weapon clicks use the normal selected-slot

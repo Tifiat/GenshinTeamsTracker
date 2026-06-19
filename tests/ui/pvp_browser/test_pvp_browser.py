@@ -19,6 +19,7 @@ from hoyolab_export.account_equipment import (
 )
 from hoyolab_export.artifact_db import connect_db, init_db
 from localization import tr
+from ui.character_browser.filter_bar import CharacterFilterBar
 from ui.pvp_browser.build_flow import (
     PvpRuntimeEquipmentState,
     PvpScopedCharacterWeaponWorkspace,
@@ -480,7 +481,12 @@ class PvpBrowserTest(unittest.TestCase):
         ]
 
         self.assertIsInstance(draft, PvpDraftWorkspace)
-        self.assertIn(tr("app_shell.pvp.draft.ban"), draft.action_title_label.text())
+        self.assertIn("ban", draft.order_strip.active_action_type())
+        self.assertIsInstance(draft.character_filter_bar, CharacterFilterBar)
+        self.assertEqual(
+            set(draft._pool_scope_buttons),
+            {"all", "player_1", "player_2"},
+        )
         self.assertFalse(
             [
                 frame
@@ -498,6 +504,15 @@ class PvpBrowserTest(unittest.TestCase):
                 for item in draft.pool_items_by_character_id.values()
             )
         )
+
+        draft.character_filter_bar.rarity_filters.add(4)
+        draft.character_filter_bar.filters_changed.emit()
+        QApplication.processEvents()
+        self.assertFalse(draft.pool_items_by_character_id)
+
+        draft.character_filter_bar.reset()
+        QApplication.processEvents()
+        self.assertEqual(draft.pool_grid.item_count(), len(pool_entries))
         self.assertEqual(
             len(set(draft.legal_character_ids)),
             board["progress"]["legal_target_count"],
@@ -776,10 +791,14 @@ class PvpBrowserTest(unittest.TestCase):
         timer_widget = workspace.draft_workspace.findChild(PvpTimersResultWidget)
         self.assertIsNotNone(timer_widget)
         self.assertFalse(timer_widget.finalize_button.isEnabled())
-        for index, text in enumerate(("01:00", "01:00", "01:00")):
-            timer_widget.timer_edit("player_1", index).setText(text)
-        for index, text in enumerate(("01:10", "01:00", "01:00")):
-            timer_widget.timer_edit("player_2", index).setText(text)
+        for index in range(3):
+            self.assertTrue(
+                timer_widget.set_timer_seconds_for_test("player_1", index, 60)
+            )
+        for index, seconds in enumerate((70, 60, 60)):
+            self.assertTrue(
+                timer_widget.set_timer_seconds_for_test("player_2", index, seconds)
+            )
         self.assertTrue(workspace.timers_ready())
         self.assertTrue(timer_widget.finalize_button.isEnabled())
         self.assertIs(
@@ -796,6 +815,9 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertEqual(result.winner_seat, "player_1")
         self.assertEqual(result.seconds_difference, 10)
         self.assertTrue(timer_widget.finalize_button.isHidden())
+        self.assertEqual(timer_widget.difference_label.text(), "00:10")
+        self.assertEqual(timer_widget.left_chevron.property("outcome"), "winner")
+        self.assertEqual(timer_widget.right_chevron.property("outcome"), "loser")
         summary_text = "\n".join(
             label.text()
             for label in workspace.draft_workspace.findChildren(QLabel)

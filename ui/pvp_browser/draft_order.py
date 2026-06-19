@@ -10,15 +10,19 @@ from PySide6.QtWidgets import QWidget
 from localization import tr
 from ui.utils.hidpi_pixmap import load_hidpi_pixmap
 from ui.utils.ui_palette import (
-    UI_ACCENT_TEAM_1,
-    UI_ACCENT_TEAM_2,
     UI_BG_INSET,
     UI_BG_PANEL_RAISED,
     UI_BORDER_DEFAULT,
     UI_SELECTION_NEUTRAL_FILL,
-    UI_STATE_DANGER,
     UI_TEXT_MUTED,
     UI_TEXT_PRIMARY,
+)
+from ui.right_panel.pvp._shared import (
+    PVP_DRAFT_BAN_ACCENT,
+    PVP_DRAFT_IMMUNE_ACCENT,
+    PVP_DRAFT_PICK_ACCENT,
+    PVP_DRAFT_PLAYER_1_ACCENT,
+    PVP_DRAFT_PLAYER_2_ACCENT,
 )
 
 
@@ -84,6 +88,12 @@ class PvpDraftOrderStrip(QWidget):
             if row["status"] == "active":
                 return int(row["number"])
         return 0
+
+    def active_action_type(self) -> str:
+        for row in self._positions:
+            if row["status"] == "active":
+                return str(row["action_type"])
+        return ""
 
     def sizeHint(self) -> QSize:  # noqa: N802 - Qt override
         return QSize(1, 132)
@@ -163,17 +173,19 @@ class PvpDraftOrderStrip(QWidget):
         row: Mapping[str, Any],
         rect: QRect,
     ) -> None:
-        seat_color = UI_ACCENT_TEAM_1 if row["seat"] == "player_1" else UI_ACCENT_TEAM_2
+        seat_color = (
+            PVP_DRAFT_PLAYER_1_ACCENT
+            if row["seat"] == "player_1"
+            else PVP_DRAFT_PLAYER_2_ACCENT
+        )
         status = str(row["status"])
         action_type = str(row["action_type"])
+        action_color = _draft_action_color(action_type)
         border_color = seat_color if status in {"active", "complete"} else UI_BORDER_DEFAULT
-        fill_color = UI_BG_PANEL_RAISED if status == "complete" else UI_BG_INSET
-        if status == "active":
-            fill_color = seat_color
-        fill = QColor(fill_color)
-        fill.setAlpha(52 if status == "active" else 255)
+        fill = QColor(action_color if status in {"active", "complete"} else UI_BG_INSET)
+        fill.setAlpha(95 if status == "active" else 46 if status == "complete" else 255)
         painter.setBrush(fill)
-        painter.setPen(QPen(QColor(border_color), 3 if status == "active" else 1))
+        painter.setPen(QPen(QColor(border_color), 3 if status == "active" else 2 if status == "complete" else 1))
         painter.drawRoundedRect(QRectF(rect), 5, 5)
 
         pixmap = self._prepared.get(index)
@@ -181,24 +193,24 @@ class PvpDraftOrderStrip(QWidget):
             source = QRectF(0, 0, pixmap.width(), pixmap.height())
             target = _aspect_fit_rect(source, QRectF(rect.adjusted(2, 2, -2, -2)))
             painter.drawPixmap(target, pixmap, source)
-            shade = QColor(UI_SELECTION_NEUTRAL_FILL)
-            shade.setAlpha(28)
+            shade = QColor(action_color)
+            shade.setAlpha(34)
             painter.fillRect(QRectF(rect), shade)
-
-        font = painter.font()
-        font.setBold(True)
-        font.setPointSize(9)
-        painter.setFont(font)
-        painter.setPen(QColor(UI_TEXT_PRIMARY if status != "pending" else UI_TEXT_MUTED))
-        painter.drawText(rect.adjusted(5, 2, -4, -2), Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft, str(row["number"]))
-
-        action_label = (
-            tr("app_shell.pvp.draft.ban")
-            if action_type == "ban_character"
-            else tr("app_shell.pvp.draft.pick")
-        )
-        painter.setPen(QColor(UI_STATE_DANGER if action_type == "ban_character" else seat_color))
-        painter.drawText(rect.adjusted(4, 2, -4, -2), Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight, action_label[:1].upper())
+        else:
+            font = painter.font()
+            font.setBold(True)
+            font.setPointSize(18)
+            painter.setFont(font)
+            painter.setPen(QColor(UI_TEXT_PRIMARY if status == "active" else UI_TEXT_MUTED))
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(row["number"]))
+            font.setPointSize(7)
+            painter.setFont(font)
+            painter.setPen(QColor(action_color))
+            painter.drawText(
+                rect.adjusted(3, 2, -3, -3),
+                Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
+                _draft_action_short_label(action_type),
+            )
 
 
 def _aspect_fit_rect(source: QRectF, bounds: QRectF) -> QRectF:
@@ -213,6 +225,24 @@ def _aspect_fit_rect(source: QRectF, bounds: QRectF) -> QRectF:
         width,
         height,
     )
+
+
+def _draft_action_color(action_type: str) -> str:
+    value = str(action_type or "").casefold()
+    if "ban" in value:
+        return PVP_DRAFT_BAN_ACCENT
+    if "immune" in value or "immun" in value:
+        return PVP_DRAFT_IMMUNE_ACCENT
+    return PVP_DRAFT_PICK_ACCENT
+
+
+def _draft_action_short_label(action_type: str) -> str:
+    value = str(action_type or "").casefold()
+    if "ban" in value:
+        return tr("app_shell.pvp.draft.ban").upper()
+    if "immune" in value or "immun" in value:
+        return tr("app_shell.pvp.draft.immune").upper()
+    return tr("app_shell.pvp.draft.pick").upper()
 
 
 __all__ = ["PvpDraftOrderStrip"]

@@ -45,8 +45,9 @@ Draft board v0:
   Player 2 decks through the same conversion path, creates an in-memory local
   `FreeDraftController`, and switches to Draft.
 - Draft board visual MVP renders the backend `to_board_dict()` read model in
-  the left PvP workspace through a dense image-backed grid and a flattened
-  22-action order strip, lets legal character portraits call
+  the left PvP workspace through a dense image-backed grid with shared
+  pool/player scopes and normal AppShell character filters plus a semantic
+  action-colored 22-position order strip, lets legal character portraits call
   `FreeDraftController.apply_current_action(...)`, refreshes only from backend
   projection after actions, and shows completed picks/bans in shared visual
   right-panel grids when the Free Draft schedule ends.
@@ -60,8 +61,9 @@ Draft board v0:
   team/weapon data through `FreeDraftController.set_team_assignment(...)` and
   `set_weapon_assignment(...)`. Both Ready transitions the left Draft workspace
   to a playable Timers/results scene with three chamber rows, both players'
-  elapsed-time inputs, totals/current leader, and cached current Abyss enemy
-  lineups when available; result finalization still uses
+  shared Abyss-style elapsed-time inputs, a total/difference scoreboard,
+  cached current Abyss wave lineups, and solo/multi-target HP summaries when
+  available; result finalization still uses
   `set_match_timers(...)`.
 - Decks exposes `.gttpvp` export, and Play exposes per-seat profile import/local
   provider selection. Imported packages stay in a managed temporary provider

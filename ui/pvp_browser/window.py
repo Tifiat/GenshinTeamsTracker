@@ -8,6 +8,7 @@ from typing import Any
 from PySide6.QtCore import QEvent, QObject, QSize, QTimer, Qt, Signal
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -27,6 +28,7 @@ from run_workspace.abyss.source_data_runtime import (
     load_current_cached_abyss_floor_source_data,
 )
 from ui.character_browser.icon_grid_adapter import build_asset_grid_items
+from ui.character_browser.filter_bar import CharacterFilterBar
 from run_workspace.pvp.deck_preset import (
     DEFAULT_PVP_DECK_PRESET_DIR,
     DeckPresetError,
@@ -99,6 +101,7 @@ from ui.right_panel.pvp._shared import (
     PVP_DRAFT_STAGE_TIMERS_RESULTS,
     PVP_DRAFT_STAGE_VALUES,
     PVP_DRAFT_STAGE_WEAPONS,
+    PVP_DRAFT_IMMUNE_ACCENT,
     PVP_PAGE_DECKS,
     PVP_PAGE_DRAFT,
     PVP_PAGE_PLAY,
@@ -138,6 +141,7 @@ from ui.utils.ui_palette import (
     UI_ACCENT_TEAM_2,
     UI_BG_APP,
     UI_BG_BUTTON,
+    UI_BG_BUTTON_CHECKED,
     UI_BG_PANEL,
     UI_BG_PANEL_RAISED,
     UI_BORDER_DEFAULT,
@@ -353,6 +357,20 @@ QFrame#pvp_draft_empty {{
     border: 1px solid {UI_BORDER_PANEL};
     border-radius: 8px;
     background: {UI_BG_PANEL};
+}}
+QPushButton#pvp_draft_pool_scope {{
+    min-height: 27px;
+    padding: 3px 12px;
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 5px;
+    background: {UI_BG_BUTTON};
+    color: {UI_TEXT_SECONDARY};
+    font-weight: 800;
+}}
+QPushButton#pvp_draft_pool_scope:checked {{
+    border-color: {PVP_DRAFT_IMMUNE_ACCENT};
+    background: {UI_BG_BUTTON_CHECKED};
+    color: {UI_TEXT_PRIMARY};
 }}
 QFrame#pvp_draft_banner[complete="true"] {{
     border-color: {UI_STATE_SUCCESS};
@@ -1217,6 +1235,9 @@ class PvpDraftWorkspace(QWidget):
         self._draft_pool_frame: QFrame | None = None
         self._draft_pool_info_label: QLabel | None = None
         self._draft_pool_empty_label: QLabel | None = None
+        self._pool_scope = "all"
+        self._pool_scope_buttons: dict[str, QPushButton] = {}
+        self.character_filter_bar: CharacterFilterBar | None = None
         self.pool_items_by_character_id: dict[str, Any] = {}
         self.legal_character_ids: tuple[str, ...] = ()
         self._draft_actions_by_character_id: dict[str, dict[str, Any]] = {}
@@ -1255,15 +1276,6 @@ class PvpDraftWorkspace(QWidget):
         board_layout.setContentsMargins(12, 12, 12, 12)
         board_layout.setSpacing(8)
 
-        self.action_title_label = QLabel()
-        self.action_title_label.setObjectName("pvp_deck_info_line")
-        self.action_title_label.setWordWrap(True)
-        board_layout.addWidget(self.action_title_label)
-
-        self.action_detail_label = QLabel()
-        self.action_detail_label.setObjectName("small_muted")
-        self.action_detail_label.setWordWrap(True)
-        board_layout.addWidget(self.action_detail_label)
         self.order_strip = PvpDraftOrderStrip()
         board_layout.addWidget(self.order_strip)
         root.addWidget(self.board_frame)
@@ -1314,7 +1326,7 @@ class PvpDraftWorkspace(QWidget):
         session = self._active_session
         has_session = session is not None
         self.empty_frame.setVisible(not has_session)
-        self.board_frame.setVisible(has_session)
+        self.board_frame.setVisible(False)
         self.scroll_area.setVisible(has_session)
         self.status_label.setText(self._status_text)
         self.status_label.setVisible(bool(self._status_text))
@@ -1347,10 +1359,9 @@ class PvpDraftWorkspace(QWidget):
         }
         board = {} if post_draft_stage else session.board_dict()
         complete = True if post_draft_stage else _draft_is_complete(board)
+        self.board_frame.setVisible(stage == PVP_DRAFT_STAGE_DRAFT)
         self.board_frame.setProperty("complete", complete)
         _refresh_qss(self.board_frame)
-        self.action_title_label.setText(_draft_stage_title(board, stage))
-        self.action_detail_label.setText(_draft_stage_detail(board, stage, self._view_state))
         self.order_strip.setVisible(stage == PVP_DRAFT_STAGE_DRAFT)
         self.order_strip.set_board(
             board,
@@ -1404,25 +1415,17 @@ class PvpDraftWorkspace(QWidget):
         self.title_label.setText(tr("app_shell.pvp.draft.title"))
         self.empty_title_label.setText(tr("app_shell.pvp.draft.no_active_title"))
         self.empty_body_label.setText(tr("app_shell.pvp.draft.no_active_body"))
+        self._refresh_pool_scope_texts()
         self.refresh()
-
-    def update_timer_view_state(self, view_state: Mapping[str, Any]) -> None:
-        """Refresh timer progress text without rebuilding the active UI tree."""
-        self._view_state = dict(view_state)
-        stage = _draft_stage(self._view_state)
-        if stage in {
-            PVP_DRAFT_STAGE_TIMERS_RESULTS,
-            PVP_DRAFT_STAGE_COMPLETED_RESULT,
-        }:
-            self.action_detail_label.setText(
-                _draft_stage_detail({}, stage, self._view_state)
-            )
 
     def _build_unified_pool(
         self,
         board: Mapping[str, Any],
         draft_complete: bool,
     ) -> QFrame:
+        self.pool_items_by_character_id.clear()
+        self.legal_character_ids = ()
+        self._draft_actions_by_character_id.clear()
         pool_frame = self._draft_pool_frame
         if pool_frame is None:
             pool_frame = QFrame()
@@ -1431,9 +1434,31 @@ class PvpDraftWorkspace(QWidget):
             layout.setContentsMargins(10, 10, 10, 10)
             layout.setSpacing(7)
 
-            title = QLabel(tr("app_shell.pvp.draft.unified_pool_title"))
-            title.setObjectName("pvp_deck_info_line")
-            layout.addWidget(title)
+            scope_row = QHBoxLayout()
+            scope_row.setContentsMargins(0, 0, 0, 0)
+            scope_row.setSpacing(4)
+            scope_group = QButtonGroup(pool_frame)
+            scope_group.setExclusive(True)
+            for scope in ("all", "player_1", "player_2"):
+                button = QPushButton()
+                button.setObjectName("pvp_draft_pool_scope")
+                button.setCheckable(True)
+                button.setChecked(scope == self._pool_scope)
+                button.clicked.connect(
+                    lambda _checked=False, value=scope: self._set_pool_scope(value)
+                )
+                scope_group.addButton(button)
+                scope_row.addWidget(button)
+                self._pool_scope_buttons[scope] = button
+            scope_row.addStretch(1)
+            layout.addLayout(scope_row)
+            self._refresh_pool_scope_texts()
+
+            self.character_filter_bar = CharacterFilterBar(pool_frame)
+            self.character_filter_bar.filters_changed.connect(
+                self._refresh_draft_pool_filters,
+            )
+            layout.addWidget(self.character_filter_bar)
 
             self._draft_pool_info_label = QLabel()
             self._draft_pool_info_label.setObjectName("small_muted")
@@ -1464,7 +1489,7 @@ class PvpDraftWorkspace(QWidget):
         pool_frame.setProperty("active", not draft_complete)
         _refresh_qss(pool_frame)
 
-        entries = _draft_main_pool_entries(board)
+        entries = self._filtered_draft_pool_entries(board)
         if self._draft_pool_info_label is not None:
             self._draft_pool_info_label.setText(_draft_unified_pool_summary(board, entries))
         if self._draft_pool_empty_label is not None:
@@ -1498,6 +1523,63 @@ class PvpDraftWorkspace(QWidget):
             self.pool_grid.set_items(items)
         self.legal_character_ids = tuple(legal_ids)
         return pool_frame
+
+    def _set_pool_scope(self, scope: str) -> None:
+        if scope not in {"all", "player_1", "player_2"} or scope == self._pool_scope:
+            return
+        self._pool_scope = scope
+        self._refresh_draft_pool_filters()
+
+    def _refresh_pool_scope_texts(self) -> None:
+        labels = {
+            "all": tr("app_shell.pvp.draft.pool_scope_all"),
+            "player_1": tr("app_shell.pvp.draft.pool_scope_player_1"),
+            "player_2": tr("app_shell.pvp.draft.pool_scope_player_2"),
+        }
+        for scope, button in self._pool_scope_buttons.items():
+            button.setText(labels[scope])
+
+    def _refresh_draft_pool_filters(self) -> None:
+        if self._active_session is None:
+            return
+        board = self._active_session.board_dict()
+        self._build_unified_pool(board, _draft_is_complete(board))
+
+    def _filtered_draft_pool_entries(
+        self,
+        board: Mapping[str, Any],
+    ) -> list[Mapping[str, Any]]:
+        entries = _draft_main_pool_entries(board)
+        if self._pool_scope != "all":
+            entries = [
+                entry
+                for entry in entries
+                if self._pool_scope in tuple(entry.get("owner_seats") or ())
+            ]
+        filters = self.character_filter_bar
+        if filters is not None:
+            entries = [
+                entry
+                for entry in entries
+                if (
+                    (asset := self._character_assets_by_id.get(_text(entry.get("character_id"))))
+                    is not None
+                    and character_matches_filters(
+                        asset,
+                        filters.element_filters,
+                        filters.weapon_filters,
+                        filters.rarity_filters,
+                        trait_filters=filters.trait_filters,
+                        standard_filter=filters.standard_filter,
+                    )
+                )
+            ]
+        entries.sort(
+            key=lambda entry: character_sort_key(
+                self._character_assets_by_id.get(_text(entry.get("character_id")), {})
+            )
+        )
+        return entries
 
     def click_legal_character_for_test(self, character_id: str | None = None) -> bool:
         target = character_id or (self.legal_character_ids[0] if self.legal_character_ids else "")
@@ -2075,7 +2157,7 @@ class PvpWorkspace(QWidget):
             self.state_changed.emit()
             return False
         self.draft_stage = PVP_DRAFT_STAGE_ASSIGNMENT
-        self._last_draft_status = tr("app_shell.pvp.post.assignment_started")
+        self._last_draft_status = ""
         self._sync_draft_workspace()
         self.state_changed.emit()
         return True
@@ -2221,12 +2303,9 @@ class PvpWorkspace(QWidget):
             self._sync_draft_workspace()
             self.state_changed.emit()
             return False
-        self._last_draft_status = tr("app_shell.pvp.post.ready_accepted").format(
-            seat=_seat_label(seat),
-        )
+        self._last_draft_status = ""
         if context.both_ready():
             self.draft_stage = PVP_DRAFT_STAGE_TIMERS_RESULTS
-            self._last_draft_status = tr("app_shell.pvp.post.timers_started")
         self._sync_play_workspace()
         self._sync_draft_workspace()
         self.active_draft_changed.emit()
@@ -2266,7 +2345,6 @@ class PvpWorkspace(QWidget):
         if seat not in PVP_SEATS or not (0 <= index < len(PVP_TIMER_CHAMBERS)):
             return
         self.timer_texts_by_seat[seat][index] = text
-        self.draft_workspace.update_timer_view_state(self._draft_view_state())
         self.state_changed.emit()
 
     def timers_ready(self) -> bool:
@@ -2309,7 +2387,7 @@ class PvpWorkspace(QWidget):
         }
         session.controller.set_match_timers(timers["player_1"], timers["player_2"])
         self.draft_stage = PVP_DRAFT_STAGE_COMPLETED_RESULT
-        self._last_draft_status = tr("app_shell.pvp.post.result_finalized")
+        self._last_draft_status = ""
         self._sync_play_workspace()
         self._sync_draft_workspace()
         self.active_draft_changed.emit()

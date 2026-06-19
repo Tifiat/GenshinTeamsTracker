@@ -108,15 +108,20 @@ Mirror the primary project owner under `tests/`:
   routing, removal of accepted targets from the pool, the full 22-position
   order strip, right-panel pick/ban grids built through the same item adapter,
   uncluttered result portraits without pool ownership overlays, and a
-  collapsed-by-default secondary action log. MVP build-flow tests assert
+  collapsed-by-default secondary action log. The Draft suite also pins the
+  shared `CharacterFilterBar`, unified/player scope controls, semantic
+  action-slot state, and empty-filter cleanup so hidden stale items cannot stay
+  legal. MVP build-flow tests assert
   that scoped PvP assignment uses the
   normal AppShell quick-pick marker contract: team-colored `1-4` markers for
   team 1 and team 2, no PvP-only `SEL` badges, no grey disabled
   assigned-character overlays, and no custom PvP target-slot hierarchy in place
   of `RunRightPanelWidget`. They also cover normal slot-target selection,
-  stable width-neutral seat highlighting, playable timer inputs through the
-  left Draft scene, six-value readiness, backend result finalization, and the
-  completed winner/difference state. Abyss-period admission tests remain a
+  stable width-neutral seat highlighting, shared Abyss-style wheel/keyboard
+  timer inputs through the left Draft scene, separate enemy-wave and
+  solo/multi-target HP rendering, six-value readiness, backend result
+  finalization, and the completed total/chevron/difference scoreboard state.
+  Abyss-period admission tests remain a
   required future suite when that backend gate is implemented. They also cover
   selected-slot weapon assignment, Ready backend commits, both-Ready timer
   transition, imported-profile provider routing, per-seat scoped PvP runtime

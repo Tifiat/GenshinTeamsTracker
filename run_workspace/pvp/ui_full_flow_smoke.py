@@ -172,16 +172,12 @@ def _enter_timers_and_finalize(workspace: PvpWorkspace, app: QApplication) -> bo
     timer_widget = workspace.draft_workspace.findChild(PvpTimersResultWidget)
     if timer_widget is None:
         return False
-    for index, text in enumerate(("01:00", "01:00", "01:00")):
-        edit = timer_widget.timer_edit("player_1", index)
-        if edit is None:
+    for index in range(3):
+        if not timer_widget.set_timer_seconds_for_test("player_1", index, 60):
             return False
-        edit.setText(text)
-    for index, text in enumerate(("01:10", "01:00", "01:00")):
-        edit = timer_widget.timer_edit("player_2", index)
-        if edit is None:
+    for index, seconds in enumerate((70, 60, 60)):
+        if not timer_widget.set_timer_seconds_for_test("player_2", index, seconds):
             return False
-        edit.setText(text)
     if not timer_widget.finalize_button.isEnabled():
         return False
     timer_widget.finalize_button.click()

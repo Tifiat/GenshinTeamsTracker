@@ -287,10 +287,16 @@ right column patched in place.
   result/export. Do not add top-level Team/Timers/Result/Artifacts/GCSIM PvP
   header tabs unless a later product decision changes this.
 - Timers/results is a left Draft scene, not a second live-Abyss right panel. It
-  reuses cached `AbyssFloorSourceData` for period/enemy display and commits
-  elapsed times through the PvP controller; the right dock remains the two
-  scoped build/detail zones. Future online room admission must compare local
-  source period identity with a server-authoritative current Abyss period.
+  reuses cached `AbyssFloorSourceData` for period/enemy/wave/HP display and the
+  shared `ui/right_panel/common/timer_input.py` editor used by live Abyss, then
+  commits elapsed times through the PvP controller. Its large scoreboard shows
+  both totals, winner/loser chevrons, and the time difference; the right dock
+  remains the two scoped build/detail zones. Future online room admission must
+  compare local source period identity with a server-authoritative current
+  Abyss period.
+- Normal Characters and the Draft unified pool share
+  `ui/character_browser/filter_bar.py::CharacterFilterBar`; new Draft filters
+  must extend that shared control rather than copy filter QSS/state handling.
 - PvP Decks character/weapon selection grids also use the shared painted icon
   grid. Preserve edit-mode viewport tint, selected outlines, inactive overlay,
   custom tooltips, overlay scrollbars, and stable test helper handles instead

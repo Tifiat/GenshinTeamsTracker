@@ -117,10 +117,15 @@ Mirror the primary project owner under `tests/`:
   team 1 and team 2, no PvP-only `SEL` badges, no grey disabled
   assigned-character overlays, and no custom PvP target-slot hierarchy in place
   of `RunRightPanelWidget`. They also cover normal slot-target selection,
-  stable width-neutral seat highlighting, shared Abyss-style wheel/keyboard
-  timer inputs through the left Draft scene, separate enemy-wave and
+  stable width-neutral seat highlighting driven by configurable global PvP
+  player colors, action-colored translucent Draft-slot overlays, shared
+  Abyss-style `10:00..05:00` remaining-clock wheel/keyboard timer inputs through
+  the left Draft scene, remaining-to-elapsed backend conversion, separate enemy
+  wave and
   solo/multi-target HP rendering, six-value readiness, backend result
-  finalization, and the completed total/chevron/difference scoreboard state.
+  finalization, and the completed elapsed-seconds total/chevron/difference
+  scoreboard state. Account-settings tests pin both PvP color swatches and the
+  reset-to-default behavior.
   Abyss-period admission tests remain a
   required future suite when that backend gate is implemented. They also cover
   selected-slot weapon assignment, Ready backend commits, both-Ready timer

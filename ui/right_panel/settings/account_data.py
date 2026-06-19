@@ -4,9 +4,11 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QProcess, QTimer, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
+    QColorDialog,
     QFileDialog,
     QFrame,
     QHBoxLayout,
@@ -42,6 +44,11 @@ from run_workspace.gcsim.settings import (
     set_gcsim_boosted_energy_enabled,
 )
 from ui.utils.toggle_switch import ToggleSwitch
+from ui.utils.pvp_colors import (
+    pvp_player_color,
+    reset_pvp_player_colors,
+    set_pvp_player_color as persist_pvp_player_color,
+)
 from ui.widgets.loader import HoYoLABLoadingDialog
 from ui.widgets.overlays.login_hint import HoYoLABLoginHintOverlay
 
@@ -90,6 +97,7 @@ class AccountDataPage(QWidget):
     language_changed = Signal()
     fact_dps_multi_target_changed = Signal(bool)
     gcsim_boosted_energy_changed = Signal(bool)
+    pvp_player_colors_changed = Signal(str, str)
 
     def __init__(
         self,
@@ -253,6 +261,45 @@ class AccountDataPage(QWidget):
         self.gcsim_boosted_energy_label.setToolTip(tooltip)
         self.gcsim_boosted_energy_switch.setToolTip(tooltip)
         root.addWidget(gcsim_frame)
+
+        pvp_frame = QFrame()
+        pvp_frame.setObjectName("InfoBlock")
+        pvp_layout = QVBoxLayout(pvp_frame)
+        pvp_layout.setContentsMargins(8, 8, 8, 8)
+        pvp_layout.setSpacing(8)
+        self.pvp_settings_label = QLabel(tr("settings.pvp.title"))
+        self.pvp_settings_label.setObjectName("SectionTitle")
+        pvp_layout.addWidget(self.pvp_settings_label)
+        self.pvp_color_labels: dict[str, QLabel] = {}
+        self.pvp_color_buttons: dict[str, QPushButton] = {}
+        for seat in ("player_1", "player_2"):
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(8)
+            label = QLabel(
+                tr("settings.pvp.player_color").format(
+                    player=1 if seat == "player_1" else 2
+                )
+            )
+            button = QPushButton()
+            button.setObjectName("pvp_color_swatch")
+            button.setMinimumWidth(104)
+            button.clicked.connect(
+                lambda _checked=False, current_seat=seat: self.choose_pvp_player_color(
+                    current_seat
+                )
+            )
+            self.pvp_color_labels[seat] = label
+            self.pvp_color_buttons[seat] = button
+            row.addWidget(label, 1)
+            row.addWidget(button)
+            pvp_layout.addLayout(row)
+        self.pvp_colors_reset_button = QPushButton(tr("settings.pvp.colors_reset"))
+        self.pvp_colors_reset_button.setObjectName("GhostButton")
+        self.pvp_colors_reset_button.clicked.connect(self.reset_pvp_colors)
+        pvp_layout.addWidget(self.pvp_colors_reset_button)
+        root.addWidget(pvp_frame)
+        self._refresh_pvp_color_controls()
         root.addStretch(1)
 
     def _dialog_parent(self) -> QWidget:
@@ -679,6 +726,52 @@ class AccountDataPage(QWidget):
         )
         self.gcsim_boosted_energy_changed.emit(bool(enabled))
 
+    def choose_pvp_player_color(self, seat: str) -> None:
+        current = QColor(
+            pvp_player_color(seat, settings_file=self._settings_file)
+        )
+        selected = QColorDialog.getColor(
+            current,
+            self._dialog_parent(),
+            tr("settings.pvp.color_dialog_title"),
+        )
+        if selected.isValid():
+            self.set_pvp_player_color(seat, selected.name())
+
+    def set_pvp_player_color(self, seat: str, color: str) -> None:
+        persist_pvp_player_color(
+            seat,
+            color,
+            settings_file=self._settings_file,
+        )
+        self._refresh_pvp_color_controls()
+        self._emit_pvp_player_colors_changed()
+
+    def reset_pvp_colors(self) -> None:
+        reset_pvp_player_colors(settings_file=self._settings_file)
+        self._refresh_pvp_color_controls()
+        self._emit_pvp_player_colors_changed()
+
+    def _emit_pvp_player_colors_changed(self) -> None:
+        self.pvp_player_colors_changed.emit(
+            pvp_player_color("player_1", settings_file=self._settings_file),
+            pvp_player_color("player_2", settings_file=self._settings_file),
+        )
+
+    def _refresh_pvp_color_controls(self) -> None:
+        for seat, button in self.pvp_color_buttons.items():
+            color = pvp_player_color(seat, settings_file=self._settings_file)
+            qcolor = QColor(color)
+            foreground = "#111318" if qcolor.lightness() >= 150 else "#ffffff"
+            button.setText(color.upper())
+            button.setStyleSheet(
+                "QPushButton#pvp_color_swatch {"
+                f"background: {color}; color: {foreground};"
+                "border: 1px solid #dce5f7; border-radius: 5px;"
+                "font-weight: 800; padding: 4px 8px;"
+                "}"
+            )
+
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.account.title"))
         self.hoyolab_label.setText(tr("common.hoyolab"))
@@ -698,6 +791,14 @@ class AccountDataPage(QWidget):
         self.gcsim_boosted_energy_description.setText(
             tr("settings.gcsim.boosted_energy.description")
         )
+        self.pvp_settings_label.setText(tr("settings.pvp.title"))
+        self.pvp_color_labels["player_1"].setText(
+            tr("settings.pvp.player_color").format(player=1)
+        )
+        self.pvp_color_labels["player_2"].setText(
+            tr("settings.pvp.player_color").format(player=2)
+        )
+        self.pvp_colors_reset_button.setText(tr("settings.pvp.colors_reset"))
         tooltip = tr("settings.gcsim.boosted_energy.description")
         self.gcsim_boosted_energy_label.setToolTip(tooltip)
         self.gcsim_boosted_energy_switch.setToolTip(tooltip)

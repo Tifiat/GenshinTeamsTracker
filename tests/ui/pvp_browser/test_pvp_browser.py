@@ -28,6 +28,7 @@ from ui.pvp_browser.build_flow import (
 from ui.pvp_browser.window import PvpDecksWorkspace, PvpDraftWorkspace, PvpWorkspace
 from ui.pvp_browser.timers import PvpTimersResultWidget
 from ui.right_panel.pvp._shared import (
+    PVP_DRAFT_BAN_ACCENT,
     PVP_DRAFT_STAGE_ASSIGNMENT,
     PVP_DRAFT_STAGE_COMPLETED_RESULT,
     PVP_DRAFT_STAGE_DRAFT,
@@ -37,6 +38,7 @@ from ui.right_panel.pvp._shared import (
     PVP_PAGE_PLAY,
 )
 from ui.right_panel.common.slot_card import RightPanelSlotCardWidget
+from ui.right_panel.common.seat_accent_frame import PvpSeatAccentFrame
 from ui.right_panel.common.team_card import RightPanelTeamCardWidget
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
 from ui.right_panel.pvp.draft.panel import (
@@ -47,6 +49,7 @@ from ui.right_panel.pvp.draft.panel import (
 from ui.right_panel.pvp.host import PvpRightPanelHost
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
 from ui.utils.pixel_icon_grid import PixelIconGrid
+from ui.utils.pvp_colors import pvp_player_color
 
 
 class PvpBrowserTest(unittest.TestCase):
@@ -528,6 +531,20 @@ class PvpBrowserTest(unittest.TestCase):
         )
         self.assertEqual(draft.order_strip.position_count(), 22)
         self.assertEqual(draft.order_strip.active_position(), 1)
+        active_visual = draft.order_strip.position_visual(1)
+        self.assertEqual(active_visual["overlay_color"], PVP_DRAFT_BAN_ACCENT)
+        self.assertGreater(active_visual["overlay_alpha"], 34)
+        pending_pick = next(
+            row
+            for row in draft.order_strip._positions
+            if "pick" in row["action_type"]
+        )
+        pick_visual = draft.order_strip.position_visual(pending_pick["number"])
+        self.assertEqual(
+            pick_visual["overlay_color"],
+            pvp_player_color(pending_pick["seat"]),
+        )
+        self.assertEqual(pick_visual["overlay_alpha"], 34)
 
     def test_pvp_draft_legal_click_applies_one_backend_action(self) -> None:
         workspace, _panel = self._started_draft_workspace(character_count=12)
@@ -721,8 +738,32 @@ class PvpBrowserTest(unittest.TestCase):
         player_2_index = draft_panel.match_layout.indexOf(player_2_zone)
         self.assertEqual(draft_panel.match_layout.stretch(player_1_index), 1)
         self.assertEqual(draft_panel.match_layout.stretch(player_2_index), 0)
+        draft_panel.resize(660, 760)
+        draft_panel.show()
+        QApplication.processEvents()
+        self.assertLessEqual(
+            draft_panel.match_frame.width(),
+            draft_panel.match_scroll.viewport().width(),
+        )
+        self.assertEqual(player_1_zone.x(), 0)
+        workspace.toggle_build_seat_collapsed("player_1")
+        QApplication.processEvents()
+        self.assertLessEqual(
+            draft_panel.match_frame.width(),
+            draft_panel.match_scroll.viewport().width(),
+        )
+        self.assertTrue(
+            all(
+                zone.maximumHeight() < 100
+                for zone in draft_panel.target_zone_frames_by_seat.values()
+            )
+        )
+        workspace.toggle_build_seat_collapsed("player_1")
+        QApplication.processEvents()
+        draft_panel.hide()
         for seat in ("player_1", "player_2"):
             source_zone = workspace.draft_workspace.source_zone_frames_by_seat[seat]
+            self.assertIsInstance(source_zone, PvpSeatAccentFrame)
             scoped_sources = source_zone.findChildren(PvpScopedCharacterWeaponWorkspace)
             self.assertEqual(len(scoped_sources), 1, seat)
             source = workspace.build_source_workspace(seat)
@@ -793,9 +834,9 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertFalse(timer_widget.finalize_button.isEnabled())
         for index in range(3):
             self.assertTrue(
-                timer_widget.set_timer_seconds_for_test("player_1", index, 60)
+                timer_widget.set_timer_seconds_for_test("player_1", index, 540)
             )
-        for index, seconds in enumerate((70, 60, 60)):
+        for index, seconds in enumerate((530, 540, 540)):
             self.assertTrue(
                 timer_widget.set_timer_seconds_for_test("player_2", index, seconds)
             )
@@ -815,7 +856,7 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertEqual(result.winner_seat, "player_1")
         self.assertEqual(result.seconds_difference, 10)
         self.assertTrue(timer_widget.finalize_button.isHidden())
-        self.assertEqual(timer_widget.difference_label.text(), "00:10")
+        self.assertIn("10", timer_widget.difference_label.text())
         self.assertEqual(timer_widget.left_chevron.property("outcome"), "winner")
         self.assertEqual(timer_widget.right_chevron.property("outcome"), "loser")
         summary_text = "\n".join(
@@ -1327,7 +1368,7 @@ class PvpBrowserTest(unittest.TestCase):
         )
         self.assertTrue(workspace.handle_build_character_clicked("player_1", asset))
         self.assertIsNotNone(workspace.build_flow_context)
-        workspace.set_timer_text("player_1", 0, "01:00")
+        workspace.set_timer_text("player_1", 0, "09:00")
 
         workspace.clear_active_draft()
 

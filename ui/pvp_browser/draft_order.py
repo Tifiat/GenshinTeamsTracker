@@ -10,20 +10,15 @@ from PySide6.QtWidgets import QWidget
 from localization import tr
 from ui.utils.hidpi_pixmap import load_hidpi_pixmap
 from ui.utils.ui_palette import (
-    UI_BG_INSET,
-    UI_BG_PANEL_RAISED,
     UI_BORDER_DEFAULT,
-    UI_SELECTION_NEUTRAL_FILL,
     UI_TEXT_MUTED,
     UI_TEXT_PRIMARY,
 )
 from ui.right_panel.pvp._shared import (
     PVP_DRAFT_BAN_ACCENT,
     PVP_DRAFT_IMMUNE_ACCENT,
-    PVP_DRAFT_PICK_ACCENT,
-    PVP_DRAFT_PLAYER_1_ACCENT,
-    PVP_DRAFT_PLAYER_2_ACCENT,
 )
+from ui.utils.pvp_colors import pvp_player_color
 
 
 class PvpDraftOrderStrip(QWidget):
@@ -94,6 +89,11 @@ class PvpDraftOrderStrip(QWidget):
             if row["status"] == "active":
                 return str(row["action_type"])
         return ""
+
+    def position_visual(self, number: int) -> dict[str, Any]:
+        if not (1 <= int(number) <= len(self._positions)):
+            return {}
+        return _position_visual(self._positions[int(number) - 1])
 
     def sizeHint(self) -> QSize:  # noqa: N802 - Qt override
         return QSize(1, 132)
@@ -173,17 +173,13 @@ class PvpDraftOrderStrip(QWidget):
         row: Mapping[str, Any],
         rect: QRect,
     ) -> None:
-        seat_color = (
-            PVP_DRAFT_PLAYER_1_ACCENT
-            if row["seat"] == "player_1"
-            else PVP_DRAFT_PLAYER_2_ACCENT
-        )
+        visual = _position_visual(row)
         status = str(row["status"])
         action_type = str(row["action_type"])
-        action_color = _draft_action_color(action_type)
-        border_color = seat_color if status in {"active", "complete"} else UI_BORDER_DEFAULT
-        fill = QColor(action_color if status in {"active", "complete"} else UI_BG_INSET)
-        fill.setAlpha(95 if status == "active" else 46 if status == "complete" else 255)
+        action_color = str(visual["overlay_color"])
+        border_color = str(visual["border_color"])
+        fill = QColor(action_color)
+        fill.setAlpha(int(visual["overlay_alpha"]))
         painter.setBrush(fill)
         painter.setPen(QPen(QColor(border_color), 3 if status == "active" else 2 if status == "complete" else 1))
         painter.drawRoundedRect(QRectF(rect), 5, 5)
@@ -194,7 +190,7 @@ class PvpDraftOrderStrip(QWidget):
             target = _aspect_fit_rect(source, QRectF(rect.adjusted(2, 2, -2, -2)))
             painter.drawPixmap(target, pixmap, source)
             shade = QColor(action_color)
-            shade.setAlpha(34)
+            shade.setAlpha(34 if status != "active" else 48)
             painter.fillRect(QRectF(rect), shade)
         else:
             font = painter.font()
@@ -227,13 +223,29 @@ def _aspect_fit_rect(source: QRectF, bounds: QRectF) -> QRectF:
     )
 
 
-def _draft_action_color(action_type: str) -> str:
+def _draft_action_color(action_type: str, *, seat_color: str) -> str:
     value = str(action_type or "").casefold()
     if "ban" in value:
         return PVP_DRAFT_BAN_ACCENT
     if "immune" in value or "immun" in value:
         return PVP_DRAFT_IMMUNE_ACCENT
-    return PVP_DRAFT_PICK_ACCENT
+    return seat_color
+
+
+def _position_visual(row: Mapping[str, Any]) -> dict[str, Any]:
+    seat_color = pvp_player_color(str(row["seat"]))
+    status = str(row["status"])
+    action_color = _draft_action_color(
+        str(row["action_type"]),
+        seat_color=seat_color,
+    )
+    return {
+        "overlay_color": action_color,
+        "overlay_alpha": 76 if status == "active" else 34,
+        "border_color": (
+            action_color if status in {"active", "complete"} else UI_BORDER_DEFAULT
+        ),
+    }
 
 
 def _draft_action_short_label(action_type: str) -> str:

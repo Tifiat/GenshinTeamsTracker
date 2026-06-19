@@ -10,6 +10,13 @@ from run_workspace.app_settings import (
     read_app_settings,
     set_app_bool_setting,
 )
+from ui.utils.pvp_colors import (
+    PVP_PLAYER_1_COLOR_DEFAULT,
+    PVP_PLAYER_2_COLOR_DEFAULT,
+    pvp_player_color,
+    reset_pvp_player_colors,
+    set_pvp_player_color,
+)
 
 
 class AppSettingsTest(unittest.TestCase):
@@ -43,6 +50,39 @@ class AppSettingsTest(unittest.TestCase):
             )
 
         self.assertFalse(enabled)
+
+    def test_pvp_player_colors_are_scoped_settings_with_stable_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            settings_file = Path(tmp) / "settings.json"
+
+            self.assertEqual(
+                pvp_player_color("player_1", settings_file=settings_file),
+                PVP_PLAYER_1_COLOR_DEFAULT,
+            )
+            self.assertEqual(
+                pvp_player_color("player_2", settings_file=settings_file),
+                PVP_PLAYER_2_COLOR_DEFAULT,
+            )
+            set_pvp_player_color(
+                "player_1",
+                "#123ABC",
+                settings_file=settings_file,
+            )
+            self.assertEqual(
+                pvp_player_color("player_1", settings_file=settings_file),
+                "#123abc",
+            )
+
+            reset_pvp_player_colors(settings_file=settings_file)
+
+            self.assertEqual(
+                pvp_player_color("player_1", settings_file=settings_file),
+                PVP_PLAYER_1_COLOR_DEFAULT,
+            )
+            self.assertEqual(
+                pvp_player_color("player_2", settings_file=settings_file),
+                PVP_PLAYER_2_COLOR_DEFAULT,
+            )
 
 
 if __name__ == "__main__":

@@ -506,18 +506,32 @@ Hot-seat layout direction:
   than resurrecting custom target-slot panels. The six timer inputs are
   `CompactTimerInputWidget` instances shared with the normal Abyss timer path:
   mouse wheel, Up/Down, Left/Right, Enter, focus selection, clamping, and
-  two-digit segment normalization must not be reimplemented in PvP. All six
-  values are required before finalization.
+  two-digit segment normalization must not be reimplemented in PvP. Each input
+  records the clock remaining when that player's second team finishes the
+  chamber, starts at `10:00`, and is clamped to the normal editable Abyss range
+  down to `05:00`. All six values are required before finalization. UI converts
+  each remaining value to elapsed seconds (`600 - remaining`) before committing
+  `ChamberTimer` data; it must never submit the clock value as elapsed time.
 - Finalization calls `FreeDraftController.set_match_timers(...)`; lower total
   time wins and equal totals draw through the backend result model.
 - The left Draft workspace now owns the playable timer scene: three chamber
-  rows, both players' elapsed-time inputs, a readable total/difference
+  rows, both players' remaining-clock inputs, a readable elapsed-seconds
+  total/difference
   scoreboard with winner/loser chevrons, cached current Abyss period, separate
   enemy wave rows, per-half solo/multi-target HP summaries, and the finalization
   command.
   The right dock remains scoped team/build details and does not regain the live
   Abyss chamber table. Missing cached Abyss data is an explicit unavailable
   state, not invented monster data.
+- PvP player colors have one UI source of truth in `ui/utils/pvp_colors.py`.
+  Picks, ownership badges, result-zone outlines, post-draft seat accents, and
+  timer labels must resolve from that source instead of copying literals or the
+  normal green/blue team colors. Account settings expose both player colors and
+  a reset-to-default action. Seat accents must be painted inside existing frame
+  geometry so changing color/collapse state never changes right-dock width or
+  content alignment. Draft order overlays remain translucent when inactive:
+  picks use the acting player's color, bans use the ban semantic red, and immune
+  actions keep their dedicated semantic color.
 - Future match admission must validate Abyss period identity before Draft
   starts. Local/hot-seat profiles must resolve to the same period; a mismatch
   must be checked against the current authoritative period and require stale

@@ -27,6 +27,7 @@ from run_workspace.abyss.source_data import AbyssFloorSourceData
 from run_workspace.abyss.source_data_runtime import (
     load_current_cached_abyss_floor_source_data,
 )
+from run_workspace.models import ABYSS_CHAMBER_START_SECONDS
 from ui.character_browser.icon_grid_adapter import build_asset_grid_items
 from ui.character_browser.filter_bar import CharacterFilterBar
 from run_workspace.pvp.deck_preset import (
@@ -94,6 +95,7 @@ from ui.utils.pixel_icon_grid import (
 from ui.utils.tooltips import install_custom_tooltip
 from ui.pvp_browser.draft_order import PvpDraftOrderStrip
 from ui.pvp_browser.timers import PvpTimersResultWidget
+from ui.right_panel.common.seat_accent_frame import PvpSeatAccentFrame
 from ui.right_panel.pvp._shared import (
     PVP_DRAFT_STAGE_ASSIGNMENT,
     PVP_DRAFT_STAGE_COMPLETED_RESULT,
@@ -122,7 +124,7 @@ from ui.right_panel.pvp._shared import (
     _draft_stage_title,
     _draft_unified_pool_summary,
     _mapping,
-    _parse_timer_text,
+    _parse_pvp_remaining_timer_text,
     _picked_character_ids,
     _postdraft_source_object_name,
     _pvp_deck_inactive_fill,
@@ -137,8 +139,6 @@ from ui.right_panel.pvp._shared import (
     _weapon_type_filter_keys,
 )
 from ui.utils.ui_palette import (
-    UI_ACCENT_TEAM_1,
-    UI_ACCENT_TEAM_2,
     UI_BG_APP,
     UI_BG_BUTTON,
     UI_BG_BUTTON_CHECKED,
@@ -404,12 +404,6 @@ QFrame#pvp-postdraft-source-player-2 {{
     border: 1px solid {UI_BORDER_PANEL};
     border-radius: 8px;
     background: {UI_BG_PANEL};
-}}
-QFrame#pvp-postdraft-source-player-1 {{
-    border-left: 4px solid {UI_ACCENT_TEAM_1};
-}}
-QFrame#pvp-postdraft-source-player-2 {{
-    border-left: 4px solid {UI_ACCENT_TEAM_2};
 }}
 QWidget#pvp-postdraft-source-grid-wrap,
 QWidget#pvp-postdraft-source-grid-content,
@@ -1418,6 +1412,15 @@ class PvpDraftWorkspace(QWidget):
         self._refresh_pool_scope_texts()
         self.refresh()
 
+    def refresh_player_colors(self) -> None:
+        self.order_strip.update()
+        for frame in self.source_zone_frames_by_seat.values():
+            if isinstance(frame, PvpSeatAccentFrame):
+                frame.refresh_player_color()
+        if self._timers_result_widget is not None:
+            self._timers_result_widget.refresh_player_colors()
+        self.refresh()
+
     def _build_unified_pool(
         self,
         board: Mapping[str, Any],
@@ -1636,8 +1639,10 @@ class PvpDraftWorkspace(QWidget):
             seat_context = context.seat(seat)
             if seat_context is None:
                 continue
-            section = QFrame()
-            section.setObjectName(_postdraft_source_object_name(seat))
+            section = PvpSeatAccentFrame(
+                seat,
+                object_name=_postdraft_source_object_name(seat),
+            )
             section.setProperty("seat", seat)
             section.setProperty("scopedBuildSource", True)
             section_layout = QVBoxLayout(section)
@@ -2349,7 +2354,10 @@ class PvpWorkspace(QWidget):
 
     def timers_ready(self) -> bool:
         return all(
-            _parse_timer_text(self.timer_texts_by_seat[seat][index]) is not None
+            _parse_pvp_remaining_timer_text(
+                self.timer_texts_by_seat[seat][index]
+            )
+            is not None
             for seat in PVP_SEATS
             for index in range(len(PVP_TIMER_CHAMBERS))
         )
@@ -2375,10 +2383,13 @@ class PvpWorkspace(QWidget):
                     ChamberTimer(
                         room_id="local",
                         chamber_id=PVP_TIMER_CHAMBERS[index],
-                        elapsed_seconds=_parse_timer_text(
-                            self.timer_texts_by_seat[seat][index],
-                        )
-                        or 0,
+                        elapsed_seconds=ABYSS_CHAMBER_START_SECONDS
+                        - (
+                            _parse_pvp_remaining_timer_text(
+                                self.timer_texts_by_seat[seat][index],
+                            )
+                            or ABYSS_CHAMBER_START_SECONDS
+                        ),
                     )
                     for index in range(len(PVP_TIMER_CHAMBERS))
                 ),

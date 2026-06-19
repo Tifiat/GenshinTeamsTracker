@@ -101,16 +101,19 @@ class PvpTimersResultWidgetTest(unittest.TestCase):
         )
         first = widget.timer_input("player_1", 0)
         self.assertIsNotNone(first)
-        first.sec_edit.wheelEvent(_wheel_event(120))
-        self.assertEqual(first.seconds_left, 1)
+        self.assertEqual(first.seconds_left, 600)
+        first.sec_edit.wheelEvent(_wheel_event(-120))
+        self.assertEqual(first.seconds_left, 599)
 
         for index in range(3):
-            self.assertTrue(widget.set_timer_seconds_for_test("player_1", index, 60))
-        for index, seconds in enumerate((70, 60, 60)):
+            self.assertTrue(widget.set_timer_seconds_for_test("player_1", index, 540))
+        for index, seconds in enumerate((530, 540, 540)):
             self.assertTrue(widget.set_timer_seconds_for_test("player_2", index, seconds))
 
         self.assertTrue(widget.finalize_button.isEnabled())
-        self.assertEqual(widget.difference_label.text(), "00:10")
+        self.assertIn("10", widget.difference_label.text())
+        self.assertIn("180", widget.total_labels["player_1"].text())
+        self.assertIn("190", widget.total_labels["player_2"].text())
         self.assertEqual(widget.left_chevron.text(), "▲")
         self.assertEqual(widget.right_chevron.text(), "▼")
         self.assertEqual(widget.left_chevron.property("outcome"), "winner")

@@ -173,9 +173,9 @@ def _enter_timers_and_finalize(workspace: PvpWorkspace, app: QApplication) -> bo
     if timer_widget is None:
         return False
     for index in range(3):
-        if not timer_widget.set_timer_seconds_for_test("player_1", index, 60):
+        if not timer_widget.set_timer_seconds_for_test("player_1", index, 540):
             return False
-    for index, seconds in enumerate((70, 60, 60)):
+    for index, seconds in enumerate((530, 540, 540)):
         if not timer_widget.set_timer_seconds_for_test("player_2", index, seconds):
             return False
     if not timer_widget.finalize_button.isEnabled():

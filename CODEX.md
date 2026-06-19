@@ -568,8 +568,13 @@ weapon assignment, timers, and winner summary. Decks mode v0, Play/local match
 setup v0, Draft board visual MVP, and local post-draft
 Assignment/Weapon/Timers/Completed result v0 are implemented. Timers/results
 is a playable left Draft scene with six instances of the shared live-Abyss
-wheel/keyboard timer editor, wave-separated enemies, solo/multi HP, a
-total/chevron/difference scoreboard, and cached current Abyss data; future room
+wheel/keyboard timer editor. Inputs are remaining clocks clamped to
+`10:00..05:00`; UI converts them to elapsed seconds for backend results and the
+total/chevron/difference scoreboard. The scene also shows wave-separated
+enemies, solo/multi HP, and cached current Abyss data. PvP player colors are
+configurable from Account settings through one shared palette source; all Draft
+and post-draft seat accents derive from it without changing widget geometry.
+Future room
 admission still needs explicit
 Abyss-period agreement/server-authority validation. Left/main PvP
 workspaces live under `ui/pvp_browser/`; PvP right-dock ownership lives under

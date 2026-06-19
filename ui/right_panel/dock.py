@@ -83,6 +83,9 @@ class RightOperationsDock(QFrame):
         )
         self.header.pvp_page_requested.connect(self.show_pvp_page)
         self.header.account_requested.connect(self.show_account_page)
+        self.account_page.pvp_player_colors_changed.connect(
+            self._on_pvp_player_colors_changed
+        )
         pvp_workspace = getattr(self.pvp_operation_widget, "workspace", None)
         if pvp_workspace is not None and hasattr(pvp_workspace, "page_changed"):
             pvp_workspace.page_changed.connect(self._on_pvp_page_changed)
@@ -143,6 +146,11 @@ class RightOperationsDock(QFrame):
         self._pvp_page = page_id
         if self.current_page() == RIGHT_DOCK_PAGE_PVP:
             self.header.show_pvp_control(self._pvp_page)
+
+    def _on_pvp_player_colors_changed(self, _player_1: str, _player_2: str) -> None:
+        refresh = getattr(self.pvp_operation_widget, "refresh_player_colors", None)
+        if callable(refresh):
+            refresh()
 
     def retranslate_ui(self) -> None:
         self.header.retranslate_ui()

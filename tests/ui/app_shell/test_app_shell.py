@@ -115,6 +115,10 @@ from ui.utils.drag_scroll import DragScrollArea
 from ui.utils.marquee_label import MarqueeButton
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea, OverlayVerticalScrollbar
 from ui.utils.toggle_switch import FilterActionButton, SortIconButton
+from ui.utils.pvp_colors import (
+    PVP_PLAYER_1_COLOR_DEFAULT,
+    PVP_PLAYER_2_COLOR_DEFAULT,
+)
 from run_workspace.app_settings import read_app_settings
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
 from run_workspace.right_panel_prototype_view_model import (
@@ -1962,6 +1966,38 @@ class AppShellTest(unittest.TestCase):
                 read_app_settings(settings_file).get(
                     "gcsim_boosted_energy_enabled"
                 )
+            )
+
+    def test_account_page_persists_and_resets_pvp_player_colors(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            settings_file = Path(tmp) / "settings.json"
+            page = AccountDataPage(settings_file=settings_file)
+            changes: list[tuple[str, str]] = []
+            page.pvp_player_colors_changed.connect(
+                lambda player_1, player_2: changes.append((player_1, player_2))
+            )
+
+            page.set_pvp_player_color("player_1", "#123abc")
+            self._app.processEvents()
+
+            self.assertEqual(
+                read_app_settings(settings_file)["pvp_player_1_color"],
+                "#123abc",
+            )
+            self.assertEqual(page.pvp_color_buttons["player_1"].text(), "#123ABC")
+            self.assertEqual(changes[-1][0], "#123abc")
+
+            page.reset_pvp_colors()
+            self._app.processEvents()
+
+            settings = read_app_settings(settings_file)
+            self.assertEqual(
+                settings["pvp_player_1_color"],
+                PVP_PLAYER_1_COLOR_DEFAULT,
+            )
+            self.assertEqual(
+                settings["pvp_player_2_color"],
+                PVP_PLAYER_2_COLOR_DEFAULT,
             )
 
     def test_app_shell_gcsim_boosted_energy_change_clears_sim_results(self) -> None:

@@ -61,10 +61,12 @@ Draft board v0:
   team/weapon data through `FreeDraftController.set_team_assignment(...)` and
   `set_weapon_assignment(...)`. Both Ready transitions the left Draft workspace
   to a playable Timers/results scene with three chamber rows, both players'
-  shared Abyss-style elapsed-time inputs, a total/difference scoreboard,
+  shared Abyss-style remaining-clock inputs (`10:00..05:00`), an elapsed-seconds
+  total/difference scoreboard,
   cached current Abyss wave lineups, and solo/multi-target HP summaries when
-  available; result finalization still uses
-  `set_match_timers(...)`.
+  available. The UI converts remaining clock to elapsed seconds before result
+  finalization through `set_match_timers(...)`; backend `ChamberTimer` identity
+  and lower-elapsed-total winner semantics remain unchanged.
 - Decks exposes `.gttpvp` export, and Play exposes per-seat profile import/local
   provider selection. Imported packages stay in a managed temporary provider
   and are never restored into the main application database.

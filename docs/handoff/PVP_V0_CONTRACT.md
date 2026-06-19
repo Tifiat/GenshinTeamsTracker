@@ -455,9 +455,12 @@ Weapon availability:
    - online ready/confirm is future transport behavior.
 
 7. Timers/results
-   - record room/chamber timers for both players;
-   - compute total timer;
-   - lower total timer wins;
+   - record the remaining Abyss clock when team 2 finishes each chamber for both
+     players, using the shared `10:00..05:00` Abyss editor contract;
+   - convert remaining clock to elapsed seconds before creating backend chamber
+     timers;
+   - compute each player's total elapsed seconds;
+   - lower elapsed total wins;
    - show seconds difference.
 
 8. Result summary

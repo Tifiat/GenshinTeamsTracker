@@ -42,6 +42,13 @@ class PvpRightPanelHost(QWidget):
         self.play_panel.retranslate_ui()
         self.draft_panel.retranslate_ui()
 
+    def refresh_player_colors(self) -> None:
+        self.draft_panel.refresh_player_colors()
+        draft_workspace = getattr(self.workspace, "draft_workspace", None)
+        refresh = getattr(draft_workspace, "refresh_player_colors", None)
+        if callable(refresh):
+            refresh()
+
     def _sync_page_from_workspace(self, page_id: str) -> None:
         if page_id == PVP_PAGE_PLAY:
             widget = self.play_panel

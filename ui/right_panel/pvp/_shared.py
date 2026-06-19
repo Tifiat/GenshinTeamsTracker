@@ -9,6 +9,10 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QFrame, QGridLayout, QVBoxLayout, QWidget
 
 from localization import tr
+from run_workspace.models import (
+    ABYSS_CHAMBER_START_SECONDS,
+    ABYSS_TIMER_EDIT_MIN_SECONDS,
+)
 from run_workspace.pvp.deck_preset import character_id_from_asset, weapon_ref_from_asset
 from run_workspace.pvp.weapon_identity import weapon_observed_stack_key
 from ui.character_assets import metadata_int
@@ -23,9 +27,6 @@ from ui.utils.pixel_icon_grid import (
 from ui.utils.ui_palette import (
     UI_ACCENT_PVP_BAN,
     UI_ACCENT_PVP_IMMUNE,
-    UI_ACCENT_PVP_PICK,
-    UI_ACCENT_PVP_PLAYER_1,
-    UI_ACCENT_PVP_PLAYER_2,
     UI_ACCENT_TEAM_1,
     UI_ACCENT_TEAM_2,
     UI_BG_APP,
@@ -41,6 +42,7 @@ from ui.utils.ui_palette import (
     UI_TEXT_PRIMARY,
     UI_TEXT_SECONDARY,
 )
+from ui.utils.pvp_colors import pvp_player_color
 
 PVP_DECK_ROW_ACTION_SIZE = 24
 PVP_DECK_UI_ICON_SIZE = 24
@@ -64,9 +66,6 @@ PVP_DRAFT_STAGE_VALUES = (
 PVP_SEATS = ("player_1", "player_2")
 PVP_TIMER_CHAMBERS = ("1", "2", "3")
 PVP_BROWSER_PROJECT_ROOT = Path(__file__).resolve().parents[3]
-PVP_DRAFT_PLAYER_1_ACCENT = UI_ACCENT_PVP_PLAYER_1
-PVP_DRAFT_PLAYER_2_ACCENT = UI_ACCENT_PVP_PLAYER_2
-PVP_DRAFT_PICK_ACCENT = UI_ACCENT_PVP_PICK
 PVP_DRAFT_BAN_ACCENT = UI_ACCENT_PVP_BAN
 PVP_DRAFT_IMMUNE_ACCENT = UI_ACCENT_PVP_IMMUNE
 
@@ -243,15 +242,6 @@ QFrame#pvp-postdraft-target-player-2 {{
     border: 1px solid {UI_BORDER_PANEL};
     border-radius: 8px;
     background: {UI_BG_PANEL};
-}}
-QFrame#pvp_draft_result_zone[seat="player_1"][zone="picked"] {{
-    border-color: {PVP_DRAFT_PLAYER_1_ACCENT};
-}}
-QFrame#pvp_draft_result_zone[seat="player_2"][zone="picked"] {{
-    border-color: {PVP_DRAFT_PLAYER_2_ACCENT};
-}}
-QFrame#pvp_draft_result_zone[zone="banned"] {{
-    border-color: {PVP_DRAFT_BAN_ACCENT};
 }}
 QPushButton#pvp_postdraft_player_toggle {{
     min-height: 24px;
@@ -601,10 +591,8 @@ def build_pvp_draft_grid_item(
     active_seat = _text(entry.get("active_seat"))
     result_owner = result_seat or _text(entry.get("picked_by")) or _text(entry.get("banned_by"))
     accent_seat = active_seat if legal else result_owner
-    player_accent = (
-        PVP_DRAFT_PLAYER_1_ACCENT
-        if accent_seat == "player_1"
-        else PVP_DRAFT_PLAYER_2_ACCENT
+    player_accent = pvp_player_color(
+        accent_seat if accent_seat in PVP_SEATS else "player_1"
     )
     accent = PVP_DRAFT_BAN_ACCENT if result_zone == "banned" else player_accent
     outline = None
@@ -619,8 +607,8 @@ def build_pvp_draft_grid_item(
     badges: list[PixelIconGridBadge] = []
     if not result_zone:
         for seat, position, color in (
-            ("player_1", "bottom_left", PVP_DRAFT_PLAYER_1_ACCENT),
-            ("player_2", "bottom_right", PVP_DRAFT_PLAYER_2_ACCENT),
+            ("player_1", "bottom_left", pvp_player_color("player_1")),
+            ("player_2", "bottom_right", pvp_player_color("player_2")),
         ):
             if seat not in owner_seats:
                 continue
@@ -1016,12 +1004,21 @@ def _parse_timer_text(text: str) -> int | None:
     return minutes * 60 + seconds
 
 
+def _parse_pvp_remaining_timer_text(text: str) -> int | None:
+    seconds = _parse_timer_text(text)
+    if seconds is None:
+        return None
+    if not ABYSS_TIMER_EDIT_MIN_SECONDS <= seconds <= ABYSS_CHAMBER_START_SECONDS:
+        return None
+    return seconds
+
+
 def _timer_total_seconds(view_state: Mapping[str, Any], seat: str) -> int:
     total = 0
     for index in range(len(PVP_TIMER_CHAMBERS)):
-        seconds = _parse_timer_text(_timer_text(view_state, seat, index))
-        if seconds is not None:
-            total += seconds
+        remaining = _parse_pvp_remaining_timer_text(_timer_text(view_state, seat, index))
+        if remaining is not None:
+            total += ABYSS_CHAMBER_START_SECONDS - remaining
     return total
 
 
@@ -1029,7 +1026,7 @@ def _valid_timer_count(view_state: Mapping[str, Any], seat: str) -> int:
     return sum(
         1
         for index in range(len(PVP_TIMER_CHAMBERS))
-        if _parse_timer_text(_timer_text(view_state, seat, index)) is not None
+        if _parse_pvp_remaining_timer_text(_timer_text(view_state, seat, index)) is not None
     )
 
 

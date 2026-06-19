@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from typing import Any
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -18,6 +17,7 @@ from PySide6.QtWidgets import (
 from localization import tr
 from run_workspace.right_panel_prototype_view_model import RightPanelPrototypeViewModel
 from ui.right_panel.common.slot_card import RightPanelSlotCardWidget
+from ui.right_panel.common.seat_accent_frame import PvpSeatAccentFrame
 from ui.right_panel.live_run.panel import RunRightPanelWidget
 from ui.right_panel.pvp._shared import (
     PVP_DECKS_RIGHT_PANEL_STYLE,
@@ -42,28 +42,17 @@ from ui.right_panel.pvp._shared import (
 )
 from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultZoneWidget
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
-from ui.utils.ui_palette import UI_ACCENT_TEAM_1, UI_ACCENT_TEAM_2
 
 
-class PvpPostDraftSeatFrame(QFrame):
-    """Seat container with an accent painted inside its existing geometry."""
+class PvpPostDraftSeatFrame(PvpSeatAccentFrame):
+    """Right-dock seat container using the shared non-layout accent."""
 
     def __init__(self, seat: str, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.seat = seat
-        self.setObjectName(_postdraft_target_object_name(seat))
-        self.setProperty("seat", seat)
-
-    def paintEvent(self, event) -> None:  # noqa: N802 - Qt override
-        super().paintEvent(event)
-        color = UI_ACCENT_TEAM_1 if self.seat == "player_1" else UI_ACCENT_TEAM_2
-        painter = QPainter(self)
-        try:
-            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-            painter.setPen(QPen(QColor(color), 2))
-            painter.drawLine(8, 1, max(8, self.width() - 9), 1)
-        finally:
-            painter.end()
+        super().__init__(
+            seat,
+            parent,
+            object_name=_postdraft_target_object_name(seat),
+        )
 
 
 class PvpPostDraftRunPanel(RunRightPanelWidget):
@@ -82,6 +71,7 @@ class PvpPostDraftRunPanel(RunRightPanelWidget):
             show_run_actions=False,
         )
         self.setObjectName("pvp_postdraft_run_panel")
+        self.setMinimumWidth(0)
 
     def slot_widgets(self) -> list[RightPanelSlotCardWidget]:
         return list(self._slot_widgets)
@@ -306,6 +296,14 @@ class PvpDraftRightPanel(QWidget):
         self.play_button.setText(tr("app_shell.pvp.draft.back_to_play"))
         self.refresh()
 
+    def refresh_player_colors(self) -> None:
+        for frame in self.target_zone_frames_by_seat.values():
+            if isinstance(frame, PvpSeatAccentFrame):
+                frame.refresh_player_color()
+        for frame in self.result_zone_frames.values():
+            frame.refresh_player_color()
+        self.refresh()
+
     def _refresh_stage_button(self, board: Mapping[str, Any], stage: str) -> None:
         if stage == PVP_DRAFT_STAGE_DRAFT:
             self.stage_button.setText(tr("app_shell.pvp.post.continue_assignment"))
@@ -401,7 +399,7 @@ class PvpDraftRightPanel(QWidget):
                 continue
             zone = PvpPostDraftSeatFrame(seat)
             zone_layout = QVBoxLayout(zone)
-            zone_layout.setContentsMargins(7, 7, 7, 7)
+            zone_layout.setContentsMargins(0, 7, 0, 7)
             zone_layout.setSpacing(5)
             self.target_zone_frames_by_seat[seat] = zone
 

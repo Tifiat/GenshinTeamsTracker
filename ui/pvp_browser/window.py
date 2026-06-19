@@ -86,7 +86,7 @@ from ui.utils.pixel_icon_grid import (
     PixelIconGridMetrics,
 )
 from ui.utils.tooltips import install_custom_tooltip
-from ui.right_panel.common.slot_parts import RightPanelPortraitMiniBox, slot_portrait_fallback
+from ui.pvp_browser.draft_order import PvpDraftOrderStrip
 from ui.right_panel.pvp._shared import (
     PVP_DRAFT_STAGE_ASSIGNMENT,
     PVP_DRAFT_STAGE_COMPLETED_RESULT,
@@ -102,24 +102,19 @@ from ui.right_panel.pvp._shared import (
     _PVP_DECK_ICON_PIXMAP_CACHE,
     _active_draft_summary_lines,
     _asset_image_path,
+    build_pvp_draft_grid_item,
     _character_assets_by_id,
     _clear_layout,
     _compact_issue_codes,
-    _completed_draft_lines,
     _draft_action_from_unified_pool,
     _draft_action_label,
-    _draft_card_status_label,
     _draft_is_complete,
     _draft_main_pool_entries,
-    _draft_panel_status_lines,
     _draft_stage,
     _draft_stage_detail,
     _draft_stage_title,
-    _draft_unified_card_text,
     _draft_unified_pool_summary,
-    _entry_display_name_for_id,
     _mapping,
-    _owner_seats,
     _parse_timer_text,
     _picked_character_ids,
     _postdraft_source_object_name,
@@ -357,11 +352,6 @@ QFrame#pvp_draft_empty {{
 }}
 QFrame#pvp_draft_banner[complete="true"] {{
     border-color: {UI_STATE_SUCCESS};
-    background: #18291f;
-}}
-QFrame#pvp_draft_pool_frame[active="true"] {{
-    border-color: {UI_STATE_SUCCESS};
-    background: #18291f;
 }}
 QScrollArea#pvp_draft_scroll {{
     background: transparent;
@@ -371,88 +361,10 @@ QWidget#pvp_draft_scroll_viewport,
 QWidget#pvp_draft_scroll_content {{
     background: transparent;
 }}
-QFrame#pvp_draft_card {{
-    border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 8px;
-    background: {UI_BG_PANEL_RAISED};
-    color: {UI_TEXT_SECONDARY};
-}}
-QFrame#pvp_draft_card[legalTarget="true"] {{
-    border-color: {UI_STATE_SUCCESS};
-    background: #203b28;
-    color: {UI_TEXT_PRIMARY};
-}}
-QFrame#pvp_draft_card[ownerP1="true"] {{
-    border-left: 4px solid {UI_ACCENT_TEAM_1};
-}}
-QFrame#pvp_draft_card[ownerP2="true"] {{
-    border-right: 4px solid {UI_ACCENT_TEAM_2};
-}}
-QFrame#pvp_draft_card[sharedOwner="true"] {{
-    border-color: #d6b35f;
-    background: #2d2d28;
-}}
-QFrame#pvp_draft_card[status="blocked"],
-QFrame#pvp_draft_card[status="invalid"] {{
-    border-color: #69512d;
-    background: #352a1d;
-    color: {UI_TEXT_SECONDARY};
-}}
-QFrame#pvp_draft_card:disabled {{
-    color: {UI_TEXT_MUTED};
-}}
-QLabel#pvp-draft-card-portrait,
-QLabel#pvp-draft-card-portrait-empty {{
-    border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 6px;
-    background: {UI_BG_BUTTON};
-    color: {UI_TEXT_MUTED};
-    font-size: 18px;
-    font-weight: 900;
-}}
-QLabel#pvp-draft-card-name {{
-    color: {UI_TEXT_PRIMARY};
+QWidget#pvp_draft_unified_pool_grid,
+QWidget#pvp_draft_order_strip {{
     background: transparent;
     border: none;
-    font-size: 12px;
-    font-weight: 800;
-}}
-QLabel#pvp-draft-card-meta,
-QLabel#pvp-draft-card-status {{
-    color: {UI_TEXT_SECONDARY};
-    background: transparent;
-    border: none;
-    font-size: 10px;
-    font-weight: 700;
-}}
-QLabel#pvp-draft-card-action {{
-    min-height: 20px;
-    border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 5px;
-    background: {UI_BG_BUTTON};
-    color: {UI_TEXT_SECONDARY};
-    font-size: 10px;
-    font-weight: 900;
-}}
-QFrame#pvp_draft_card[legalTarget="true"] QLabel#pvp-draft-card-action {{
-    border-color: {UI_STATE_SUCCESS};
-    background: #24452d;
-    color: {UI_TEXT_PRIMARY};
-}}
-QLabel#pvp-draft-owner-p1,
-QLabel#pvp-draft-owner-p2 {{
-    min-height: 18px;
-    border-radius: 4px;
-    color: {UI_TEXT_PRIMARY};
-    font-size: 10px;
-    font-weight: 900;
-    padding: 0px 4px;
-}}
-QLabel#pvp-draft-owner-p1 {{
-    background: {UI_ACCENT_TEAM_1};
-}}
-QLabel#pvp-draft-owner-p2 {{
-    background: {UI_ACCENT_TEAM_2};
 }}
 QLabel#pvp_draft_pool_empty {{
     color: {UI_TEXT_MUTED};
@@ -1282,147 +1194,6 @@ class PvpPlayWorkspace(QWidget):
         self.refresh()
 
 
-class PvpDraftUnifiedCardButton(QFrame):
-    card_clicked = Signal(dict)
-
-    def __init__(
-        self,
-        *,
-        entry: Mapping[str, Any],
-        portrait_path: str = "",
-        draft_complete: bool,
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self.character_id = _text(entry.get("character_id"))
-        self.owner_seats = tuple(_owner_seats(entry))
-        status = _text(entry.get("status")) or "available"
-        zone = _text(entry.get("zone")) or "pool"
-        action = entry.get("action")
-        self.action_payload = dict(action) if isinstance(action, Mapping) else {}
-        legal = (
-            bool(entry.get("is_current_legal_target"))
-            and bool(self.action_payload)
-            and not draft_complete
-        )
-        self._legal = legal
-        self._card_text = _draft_unified_card_text(entry)
-        self.setObjectName("pvp_draft_card")
-        self.setFixedSize(156, 118)
-        self.setProperty("characterId", self.character_id)
-        self.setProperty("status", status)
-        self.setProperty("zone", zone)
-        self.setProperty("legalTarget", legal)
-        self.setProperty("ownerP1", "player_1" in self.owner_seats)
-        self.setProperty("ownerP2", "player_2" in self.owner_seats)
-        self.setProperty("sharedOwner", len(self.owner_seats) > 1)
-        self.setEnabled(legal)
-        self.setCursor(
-            Qt.CursorShape.PointingHandCursor
-            if legal
-            else Qt.CursorShape.ArrowCursor
-        )
-
-        root = QVBoxLayout(self)
-        root.setContentsMargins(6, 6, 6, 6)
-        root.setSpacing(4)
-
-        top = QHBoxLayout()
-        top.setContentsMargins(0, 0, 0, 0)
-        top.setSpacing(6)
-        root.addLayout(top)
-
-        display_name = _text(entry.get("display_name")) or self.character_id
-        self.portrait_label = RightPanelPortraitMiniBox(
-            box_size=QSize(58, 58),
-            object_name="pvp-draft-card-portrait",
-            empty_object_name="pvp-draft-card-portrait-empty",
-        )
-        portrait_loaded = self.portrait_label.set_portrait(
-            image_path=portrait_path,
-            fallback_text=slot_portrait_fallback(display_name, 0),
-            empty=False,
-            surface="pvp_draft_unified_card",
-        )
-        self.setProperty("hasPortraitPixmap", portrait_loaded)
-        self.setProperty("hasImage", bool(portrait_path))
-        top.addWidget(self.portrait_label, alignment=Qt.AlignmentFlag.AlignLeft)
-
-        text_col = QVBoxLayout()
-        text_col.setContentsMargins(0, 0, 0, 0)
-        text_col.setSpacing(2)
-        top.addLayout(text_col, 1)
-
-        self.name_label = QLabel(display_name)
-        self.name_label.setObjectName("pvp-draft-card-name")
-        self.name_label.setWordWrap(False)
-        text_col.addWidget(self.name_label)
-
-        meta_text = " ".join(
-            part
-            for part in (
-                _text(entry.get("element")),
-                _text(entry.get("weapon_type")),
-                f"Lv.{int(entry.get('level') or 0)}" if entry.get("level") else "",
-            )
-            if part
-        )
-        self.meta_label = QLabel(meta_text)
-        self.meta_label.setObjectName("pvp-draft-card-meta")
-        self.meta_label.setWordWrap(False)
-        text_col.addWidget(self.meta_label)
-
-        action_text = (
-            _draft_action_label(_text(self.action_payload.get("type")))
-            if legal
-            else _draft_card_status_label(status)
-        )
-        self.action_label = QLabel(action_text)
-        self.action_label.setObjectName("pvp-draft-card-action")
-        self.action_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        text_col.addWidget(self.action_label)
-
-        owner_row = QHBoxLayout()
-        owner_row.setContentsMargins(0, 0, 0, 0)
-        owner_row.setSpacing(4)
-        root.addLayout(owner_row)
-        per_seat = _mapping(entry.get("per_seat"))
-        for seat in ("player_1", "player_2"):
-            if seat not in self.owner_seats:
-                continue
-            owner = QLabel(
-                f"{_seat_short_label(seat)} C{int(_mapping(per_seat.get(seat)).get('constellation') or 0)}"
-            )
-            owner.setObjectName(
-                "pvp-draft-owner-p1"
-                if seat == "player_1"
-                else "pvp-draft-owner-p2"
-            )
-            owner.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            owner_row.addWidget(owner)
-        owner_row.addStretch(1)
-
-        self.status_label = QLabel(_draft_card_status_label(status))
-        self.status_label.setObjectName("pvp-draft-card-status")
-        root.addWidget(self.status_label)
-        _refresh_qss(self)
-        _refresh_qss(self.portrait_label)
-
-    def text(self) -> str:
-        return self._card_text
-
-    def click(self) -> None:
-        if self._legal:
-            self.card_clicked.emit(dict(self.action_payload))
-
-    def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt override
-        if event.button() == Qt.MouseButton.LeftButton and self._legal:
-            self.card_clicked.emit(dict(self.action_payload))
-            event.accept()
-            return
-        super().mousePressEvent(event)
-
-
 class PvpDraftWorkspace(QWidget):
     card_clicked = Signal(dict)
 
@@ -1436,9 +1207,13 @@ class PvpDraftWorkspace(QWidget):
         self._build_flow_context: Any | None = None
         self._character_assets_by_id: dict[str, dict[str, Any]] = {}
         self._weapon_assets_by_stack_key: dict[str, dict[str, Any]] = {}
-        self.card_buttons_by_character_id: dict[str, PvpDraftUnifiedCardButton] = {}
-        self.card_buttons_by_key = self.card_buttons_by_character_id
-        self.legal_card_buttons: list[PvpDraftUnifiedCardButton] = []
+        self.pool_grid: PixelIconGrid | None = None
+        self._draft_pool_frame: QFrame | None = None
+        self._draft_pool_info_label: QLabel | None = None
+        self._draft_pool_empty_label: QLabel | None = None
+        self.pool_items_by_character_id: dict[str, Any] = {}
+        self.legal_character_ids: tuple[str, ...] = ()
+        self._draft_actions_by_character_id: dict[str, dict[str, Any]] = {}
         self.source_zone_frames_by_seat: dict[str, QFrame] = {}
         self._scoped_build_source_frame: QFrame | None = None
         self._scoped_build_context_id: int | None = None
@@ -1481,6 +1256,8 @@ class PvpDraftWorkspace(QWidget):
         self.action_detail_label.setObjectName("small_muted")
         self.action_detail_label.setWordWrap(True)
         board_layout.addWidget(self.action_detail_label)
+        self.order_strip = PvpDraftOrderStrip()
+        board_layout.addWidget(self.order_strip)
         root.addWidget(self.board_frame)
 
         self.scroll_area = OverlayVerticalScrollArea()
@@ -1496,23 +1273,6 @@ class PvpDraftWorkspace(QWidget):
         self.scroll_layout.setSpacing(10)
         self.scroll_area.setWidget(self.scroll_content)
         root.addWidget(self.scroll_area, 1)
-
-        self.completed_frame = QFrame()
-        self.completed_frame.setObjectName("pvp_draft_completed")
-        completed_layout = QVBoxLayout(self.completed_frame)
-        completed_layout.setContentsMargins(10, 10, 10, 10)
-        completed_layout.setSpacing(5)
-        self.completed_title_label = QLabel()
-        self.completed_title_label.setObjectName("pvp_deck_info_line")
-        completed_layout.addWidget(self.completed_title_label)
-        self.completed_labels: list[QLabel] = []
-        for _index in range(5):
-            label = QLabel()
-            label.setObjectName("pvp_deck_info_line")
-            label.setWordWrap(True)
-            completed_layout.addWidget(label)
-            self.completed_labels.append(label)
-        root.addWidget(self.completed_frame)
 
         self.status_label = QLabel()
         self.status_label.setObjectName("small_muted")
@@ -1546,11 +1306,11 @@ class PvpDraftWorkspace(QWidget):
         self.empty_frame.setVisible(not has_session)
         self.board_frame.setVisible(has_session)
         self.scroll_area.setVisible(has_session)
-        self.completed_frame.setVisible(has_session)
         self.status_label.setText(self._status_text)
         self.status_label.setVisible(bool(self._status_text))
-        self.card_buttons_by_key.clear()
-        self.legal_card_buttons.clear()
+        self.pool_items_by_character_id.clear()
+        self.legal_character_ids = ()
+        self._draft_actions_by_character_id.clear()
 
         if session is None:
             self.source_zone_frames_by_seat.clear()
@@ -1558,10 +1318,14 @@ class PvpDraftWorkspace(QWidget):
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._detach_build_source_widgets()
+            self._draft_pool_frame = None
+            self._draft_pool_info_label = None
+            self._draft_pool_empty_label = None
+            self.pool_grid = None
             _clear_layout(self.scroll_layout)
             self.board_frame.setProperty("complete", False)
             _refresh_qss(self.board_frame)
-            self._refresh_completed(None)
+            self.order_strip.set_board({}, portrait_paths={})
             return
 
         stage = _draft_stage(self._view_state)
@@ -1577,11 +1341,23 @@ class PvpDraftWorkspace(QWidget):
         _refresh_qss(self.board_frame)
         self.action_title_label.setText(_draft_stage_title(board, stage))
         self.action_detail_label.setText(_draft_stage_detail(board, stage, self._view_state))
+        self.order_strip.setVisible(stage == PVP_DRAFT_STAGE_DRAFT)
+        self.order_strip.set_board(
+            board,
+            portrait_paths={
+                character_id: _asset_image_path(asset)
+                for character_id, asset in self._character_assets_by_id.items()
+            },
+        )
 
         if stage in {
             PVP_DRAFT_STAGE_ASSIGNMENT,
             PVP_DRAFT_STAGE_WEAPONS,
         }:
+            self._draft_pool_frame = None
+            self._draft_pool_info_label = None
+            self._draft_pool_empty_label = None
+            self.pool_grid = None
             self._refresh_scoped_build_source_scroll_stage()
         elif stage in {
             PVP_DRAFT_STAGE_TIMERS_RESULTS,
@@ -1591,6 +1367,10 @@ class PvpDraftWorkspace(QWidget):
             self._source_title_labels_by_seat.clear()
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
+            self._draft_pool_frame = None
+            self._draft_pool_info_label = None
+            self._draft_pool_empty_label = None
+            self.pool_grid = None
             self._detach_build_source_widgets()
             _clear_layout(self.scroll_layout)
             self.scroll_layout.addWidget(self._build_timers_results_stage(stage))
@@ -1601,16 +1381,16 @@ class PvpDraftWorkspace(QWidget):
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._detach_build_source_widgets()
-            _clear_layout(self.scroll_layout)
-            self.scroll_layout.addWidget(self._build_unified_pool(board, complete))
-            self.scroll_layout.addStretch(1)
-        self._refresh_completed(board if stage == PVP_DRAFT_STAGE_DRAFT else None)
+            pool_frame = self._build_unified_pool(board, complete)
+            if self.scroll_layout.indexOf(pool_frame) < 0:
+                _clear_layout(self.scroll_layout)
+                self.scroll_layout.addWidget(pool_frame)
+                self.scroll_layout.addStretch(1)
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.draft.title"))
         self.empty_title_label.setText(tr("app_shell.pvp.draft.no_active_title"))
         self.empty_body_label.setText(tr("app_shell.pvp.draft.no_active_body"))
-        self.completed_title_label.setText(tr("app_shell.pvp.draft.completed_title"))
         self.refresh()
 
     def _build_unified_pool(
@@ -1618,54 +1398,90 @@ class PvpDraftWorkspace(QWidget):
         board: Mapping[str, Any],
         draft_complete: bool,
     ) -> QFrame:
-        pool_frame = QFrame()
-        pool_frame.setObjectName("pvp_draft_pool_frame")
+        pool_frame = self._draft_pool_frame
+        if pool_frame is None:
+            pool_frame = QFrame()
+            pool_frame.setObjectName("pvp_draft_pool_frame")
+            layout = QVBoxLayout(pool_frame)
+            layout.setContentsMargins(10, 10, 10, 10)
+            layout.setSpacing(7)
+
+            title = QLabel(tr("app_shell.pvp.draft.unified_pool_title"))
+            title.setObjectName("pvp_deck_info_line")
+            layout.addWidget(title)
+
+            self._draft_pool_info_label = QLabel()
+            self._draft_pool_info_label.setObjectName("small_muted")
+            self._draft_pool_info_label.setWordWrap(True)
+            layout.addWidget(self._draft_pool_info_label)
+
+            self.pool_grid = PixelIconGrid(
+                metrics=PixelIconGridMetrics(
+                    item_width=72,
+                    item_height=72,
+                    gap_x=5,
+                    gap_y=5,
+                    margin_top=2,
+                    margin_bottom=2,
+                ),
+                surface="pvp_draft_unified_pool",
+            )
+            self.pool_grid.setObjectName("pvp_draft_unified_pool_grid")
+            self.pool_grid.item_clicked.connect(self._on_pool_item_clicked)
+            layout.addWidget(self.pool_grid)
+
+            self._draft_pool_empty_label = QLabel(tr("app_shell.pvp.draft.pool_empty"))
+            self._draft_pool_empty_label.setObjectName("pvp_draft_pool_empty")
+            self._draft_pool_empty_label.setWordWrap(True)
+            layout.addWidget(self._draft_pool_empty_label)
+
+            self._draft_pool_frame = pool_frame
         pool_frame.setProperty("active", not draft_complete)
         _refresh_qss(pool_frame)
-        layout = QVBoxLayout(pool_frame)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(7)
-
-        title = QLabel(tr("app_shell.pvp.draft.unified_pool_title"))
-        title.setObjectName("pvp_deck_info_line")
-        layout.addWidget(title)
 
         entries = _draft_main_pool_entries(board)
-        info = QLabel(_draft_unified_pool_summary(board, entries))
-        info.setObjectName("small_muted")
-        info.setWordWrap(True)
-        layout.addWidget(info)
+        if self._draft_pool_info_label is not None:
+            self._draft_pool_info_label.setText(_draft_unified_pool_summary(board, entries))
+        if self._draft_pool_empty_label is not None:
+            self._draft_pool_empty_label.setVisible(not entries)
+        if self.pool_grid is not None:
+            self.pool_grid.setVisible(bool(entries))
 
         if not entries:
-            empty = QLabel(tr("app_shell.pvp.draft.pool_empty"))
-            empty.setObjectName("pvp_draft_pool_empty")
-            empty.setWordWrap(True)
-            layout.addWidget(empty)
+            if self.pool_grid is not None:
+                self.pool_grid.set_items(())
             return pool_frame
 
-        grid_widget = QWidget()
-        grid_layout = QGridLayout(grid_widget)
-        grid_layout.setContentsMargins(0, 0, 0, 0)
-        grid_layout.setHorizontalSpacing(6)
-        grid_layout.setVerticalSpacing(6)
-        columns = 5
-        for index, entry_value in enumerate(entries):
+        items = []
+        legal_ids: list[str] = []
+        for entry_value in entries:
             entry = _mapping(entry_value)
             character_id = _text(entry.get("character_id"))
-            button = PvpDraftUnifiedCardButton(
-                entry=entry,
+            item = build_pvp_draft_grid_item(
+                entry,
                 portrait_path=_asset_image_path(
                     self._character_assets_by_id.get(character_id),
                 ),
-                draft_complete=draft_complete,
             )
-            button.card_clicked.connect(self.card_clicked.emit)
-            self.card_buttons_by_character_id[button.character_id] = button
-            if button.property("legalTarget"):
-                self.legal_card_buttons.append(button)
-            grid_layout.addWidget(button, index // columns, index % columns)
-        layout.addWidget(grid_widget)
+            items.append(item)
+            self.pool_items_by_character_id[character_id] = item
+            action = item.properties.get("action")
+            if item.enabled and isinstance(action, Mapping) and action:
+                legal_ids.append(character_id)
+                self._draft_actions_by_character_id[character_id] = dict(action)
+        if self.pool_grid is not None:
+            self.pool_grid.set_items(items)
+        self.legal_character_ids = tuple(legal_ids)
         return pool_frame
+
+    def click_legal_character_for_test(self, character_id: str | None = None) -> bool:
+        target = character_id or (self.legal_character_ids[0] if self.legal_character_ids else "")
+        return bool(self.pool_grid and target and self.pool_grid.click_item_for_test(target))
+
+    def _on_pool_item_clicked(self, character_id: str) -> None:
+        action = self._draft_actions_by_character_id.get(character_id)
+        if action:
+            self.card_clicked.emit(dict(action))
 
     def _detach_build_source_widgets(self) -> None:
         context = self._build_flow_context
@@ -1805,16 +1621,6 @@ class PvpDraftWorkspace(QWidget):
         gcsim.setWordWrap(True)
         layout.addWidget(gcsim)
         return frame
-
-    def _refresh_completed(self, board: Mapping[str, Any] | None) -> None:
-        visible = bool(board and _draft_is_complete(board))
-        self.completed_frame.setVisible(visible)
-        lines = _completed_draft_lines(board) if visible and board is not None else []
-        for index, label in enumerate(self.completed_labels):
-            text = lines[index] if index < len(lines) else ""
-            label.setText(text)
-            label.setVisible(bool(text))
-
 
 class PvpWorkspace(QWidget):
     state_changed = Signal()
@@ -2630,16 +2436,11 @@ from ui.right_panel.pvp.host import PvpRightPanelHost
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
 
 
-PvpDraftCardButton = PvpDraftUnifiedCardButton
-
-
 __all__ = [
     "PVP_PAGE_DECKS",
     "PVP_PAGE_DRAFT",
     "PVP_PAGE_PLAY",
     "PvpActiveDraftSession",
-    "PvpDraftCardButton",
-    "PvpDraftUnifiedCardButton",
     "PvpDraftRightPanel",
     "PvpDraftWorkspace",
     "PvpDeckAssetIconLabel",

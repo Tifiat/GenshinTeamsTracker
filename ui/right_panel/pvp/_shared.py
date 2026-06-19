@@ -13,7 +13,13 @@ from run_workspace.pvp.deck_preset import character_id_from_asset, weapon_ref_fr
 from run_workspace.pvp.weapon_identity import weapon_observed_stack_key
 from ui.character_assets import metadata_int
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
-from ui.utils.pixel_icon_grid import PixelIconGrid, PixelIconGridFill, PixelIconGridOutline
+from ui.utils.pixel_icon_grid import (
+    PixelIconGrid,
+    PixelIconGridBadge,
+    PixelIconGridFill,
+    PixelIconGridItem,
+    PixelIconGridOutline,
+)
 from ui.utils.ui_palette import (
     UI_ACCENT_TEAM_1,
     UI_ACCENT_TEAM_2,
@@ -25,6 +31,7 @@ from ui.utils.ui_palette import (
     UI_BORDER_PANEL,
     UI_STATE_DANGER,
     UI_STATE_SUCCESS,
+    UI_SELECTION_NEUTRAL_FILL,
     UI_TEXT_MUTED,
     UI_TEXT_PRIMARY,
     UI_TEXT_SECONDARY,
@@ -136,36 +143,24 @@ QLabel#pvp_draft_result_title {{
     font-size: 12px;
     font-weight: 800;
 }}
-QWidget#pvp-draft-result-chip-grid {{
+QWidget#pvp_draft_result_player_row,
+QWidget#pvp_draft_result_pick_grid,
+QWidget#pvp_draft_result_ban_grid {{
     background: transparent;
     border: none;
 }}
-QFrame#pvp-draft-result-pick-chip,
-QFrame#pvp-draft-result-ban-chip {{
-    border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 6px;
-    background: {UI_BG_PANEL_RAISED};
-}}
-QFrame#pvp-draft-result-ban-chip {{
-    background: {UI_BG_BUTTON};
-}}
-QLabel#pvp-draft-result-portrait {{
-    border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 5px;
-    background: {UI_BG_BUTTON};
-    color: {UI_TEXT_MUTED};
+QPushButton#pvp_draft_log_toggle {{
+    min-height: 24px;
+    padding: 2px 6px;
+    border: none;
+    background: transparent;
+    color: {UI_TEXT_SECONDARY};
     font-size: 11px;
-    font-weight: 900;
+    font-weight: 700;
+    text-align: left;
 }}
-QLabel#pvp-draft-result-portrait[hasPixmap="true"] {{
-    background: transparent;
-}}
-QLabel#pvp-draft-result-chip-name {{
+QPushButton#pvp_draft_log_toggle:hover {{
     color: {UI_TEXT_PRIMARY};
-    background: transparent;
-    border: none;
-    font-size: 10px;
-    font-weight: 800;
 }}
 QPushButton#icon_button,
 QPushButton#row_save_button,
@@ -576,6 +571,79 @@ def _draft_main_pool_entries(board: Mapping[str, Any]) -> list[Mapping[str, Any]
         for entry in _unified_pool_entries(board)
         if _text(entry.get("zone")) == "pool"
     ]
+
+
+def build_pvp_draft_grid_item(
+    entry: Mapping[str, Any],
+    *,
+    portrait_path: str,
+    result_seat: str = "",
+    result_zone: str = "",
+) -> PixelIconGridItem:
+    """Build the shared portrait-first item used by Draft pool and results."""
+    character_id = _text(entry.get("character_id"))
+    owner_seats = _owner_seats(entry)
+    per_seat = _mapping(entry.get("per_seat"))
+    legal = bool(entry.get("is_current_legal_target")) and not result_zone
+    active_seat = _text(entry.get("active_seat"))
+    result_owner = result_seat or _text(entry.get("picked_by")) or _text(entry.get("banned_by"))
+    accent_seat = active_seat if legal else result_owner
+    accent = UI_ACCENT_TEAM_1 if accent_seat == "player_1" else UI_ACCENT_TEAM_2
+    outline = None
+    if legal or result_zone:
+        outline = PixelIconGridOutline(
+            color=accent,
+            width=3 if legal else 2,
+            radius=5,
+            fill_color=accent if legal else "",
+            fill_alpha=24 if legal else 0,
+        )
+    badges: list[PixelIconGridBadge] = []
+    for seat, position, color in (
+        ("player_1", "bottom_left", UI_ACCENT_TEAM_1),
+        ("player_2", "bottom_right", UI_ACCENT_TEAM_2),
+    ):
+        if seat not in owner_seats:
+            continue
+        constellation = int(_mapping(per_seat.get(seat)).get("constellation") or 0)
+        badges.append(
+            PixelIconGridBadge(
+                text=f"C{constellation}",
+                color=color,
+                position=position,
+                width=24,
+                height=18,
+                margin=2,
+                font_size=8,
+            )
+        )
+    status = _text(entry.get("status")) or "available"
+    return PixelIconGridItem(
+        item_id=character_id,
+        icon_path=portrait_path,
+        label=_text(entry.get("display_name")) or character_id,
+        tooltip=_draft_unified_card_text(entry),
+        enabled=legal,
+        outline=outline,
+        overlay_fill=(
+            None
+            if legal or result_zone
+            else PixelIconGridFill(color=UI_SELECTION_NEUTRAL_FILL, alpha=118)
+        ),
+        badges=tuple(badges),
+        properties={
+            "characterId": character_id,
+            "status": status,
+            "zone": result_zone or _text(entry.get("zone")) or "pool",
+            "legalTarget": legal,
+            "ownerP1": "player_1" in owner_seats,
+            "ownerP2": "player_2" in owner_seats,
+            "sharedOwner": len(owner_seats) > 1,
+            "hasImage": bool(portrait_path),
+            "action": dict(entry.get("action")) if isinstance(entry.get("action"), Mapping) else {},
+        },
+        pixmap_cache_key_parts=("pvp_draft", character_id),
+    )
 
 
 def _draft_entries_by_id(board: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:

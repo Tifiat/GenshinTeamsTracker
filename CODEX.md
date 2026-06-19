@@ -563,19 +563,21 @@ PvP UI direction exists at `docs/handoff/PVP_UI_ROADMAP.md`. The backend
 implementation target is a full local Hot-seat / Ghost Deck offline loop with
 two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
 weapon assignment, timers, and winner summary. Decks mode v0, Play/local match
-setup v0, Draft board v0, and local post-draft Assignment/Weapon/Timers/
-Completed result v0 are implemented with current PvP UI widgets under
-`ui/pvp_browser/`; target PvP right-panel ownership is `ui/right_panel/pvp/`.
+setup v0, Draft board visual MVP, and local post-draft
+Assignment/Weapon/Timers/Completed result v0 are implemented. Left/main PvP
+workspaces live under `ui/pvp_browser/`; PvP right-dock ownership lives under
+`ui/right_panel/pvp/`.
 Decks persists `gtt.pvp_deck_preset` JSON under
 `data/pvp/decks/`, shows account characters/weapons in view/edit mode, and
 validates by converting presets to backend `DraftDeck`. Play chooses Player
 1/Player 2 local deck presets and starts an in-memory local
 `FreeDraftController`. Draft consumes the backend `unified_pool`, renders one
-readable character pool, sends legal pick/ban clicks through backend action
-payloads, shows right-panel pick/ban zones, and can complete the full Free
-Draft schedule locally, then continues through assignment, weapon assignment,
-manual timers, and read-only result summary in the corrected two-player visual
-source/target match layout. Candidate PvP follow-ups live in
+dense image-backed painted character pool with two-sided seat constellation
+badges, sends legal pick/ban clicks through backend action payloads, shows a
+painted 22-action order strip, and reuses the same grid-item adapter for visual
+right-panel pick/ban zones. It can complete the full Free Draft schedule
+locally, then continues through the scoped AppShell build pipeline, manual
+timers, and read-only result summary. Candidate PvP follow-ups live in
 `docs/handoff/PVP_UI_ROADMAP.md`; do not treat older post-draft polish wording
 as fixed priority.
 Shared observed weapon-stack identity for Deck presets and

@@ -102,7 +102,13 @@ Mirror the primary project owner under `tests/`:
   `character_id`, per-seat ownership/constellation markers, legal click mapping,
   illegal no-op behavior, same-deck seat-state independence, and a deterministic
   full Free Draft completion through UI card clicks, plus post-draft transition
-  guards. MVP build-flow tests assert that scoped PvP assignment uses the
+  guards. Draft visual regression coverage requires one painted
+  `PixelIconGrid` pool rather than QWidget/text cards, image paths for pool and
+  result items, opposite-side P1/P2 constellation badges, legal-only click
+  routing, removal of accepted targets from the pool, the full 22-position
+  order strip, right-panel pick/ban grids built through the same item adapter,
+  and a collapsed-by-default secondary action log. MVP build-flow tests assert
+  that scoped PvP assignment uses the
   normal AppShell quick-pick marker contract: team-colored `1-4` markers for
   team 1 and team 2, no PvP-only `SEL` badges, no grey disabled
   assigned-character overlays, and no custom PvP target-slot hierarchy in place

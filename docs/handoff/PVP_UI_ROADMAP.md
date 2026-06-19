@@ -356,16 +356,25 @@ Current v0 scope:
   to Play.
 - Starting from Play creates an in-memory `FreeDraftController` and switches to
   Draft.
-- The board renders cards from `to_board_dict()["unified_pool"]["entries"]`,
-  marks legal/available/blocked states, resolves local portraits on the UI
-  side, and sends legal clicks through the backend action payload exposed on
-  the entry.
-- Picked/banned entries are omitted from the main pool and rendered in
-  visual right-panel result zones from `unified_pool.result_zones`.
+- The board renders `unified_pool.entries` through the shared painted
+  `PixelIconGrid` path used by character/weapon browsers. The removed
+  QWidget-per-card Draft implementation is not an accepted fallback.
+- Pool portraits carry Player 1/Player 2 constellation badges on opposite
+  sides. Legal portraits use the active seat accent and accept the backend
+  action payload; illegal portraits are dimmed and non-clickable.
+- A painted two-row 22-position order strip flattens the backend `timeline`.
+  Completed positions show portraits, the current action is highlighted by
+  seat, and pending positions keep the action number/type visible.
+- Picked/banned entries are omitted from the main pool and rendered through
+  the same Draft grid-item adapter in right-panel result zones. Picks use the
+  readable character-grid size; bans use compact portraits.
+- The right Draft panel keeps current action/progress prominent, does not show
+  the old five-line debug summary, and keeps the action log collapsed by
+  default.
 - After each accepted or rejected action, UI state is rebuilt from the backend
   projection.
-- When the schedule completes, pick/ban clicks are disabled and final picks,
-  bans, and action-log count remain visible.
+- When the schedule completes, pick/ban clicks are disabled, all order
+  positions are filled, and final visual pick/ban zones remain visible.
 - After pick/ban completion, current v0 continues through internal Assignment,
   Weapon assignment, Timers/results, and Completed result stages for local
   hot-seat play.
@@ -582,9 +591,11 @@ Current v0 scope:
 - `Start local draft` is not part of Decks; Play/setup owns that action.
 - Play/setup v0 is implemented. It owns `Start local draft`, creates an
   in-memory local `FreeDraftController`, and switches to Draft.
-- Draft board v0 is implemented. It renders the backend `unified_pool`, lets the
-  user click legal pick/ban targets through the controller, shows right-panel
-  pick/ban zones, and can complete the full Free Draft schedule locally.
+- Draft board visual MVP is implemented. It renders the backend `unified_pool`
+  as a dense image-backed `PixelIconGrid`, shows two-sided constellation
+  badges, exposes a 22-action painted order strip, reuses the same item adapter
+  for right-panel picks/bans, and can complete the full Free Draft schedule
+  locally. The old yellow text-card/debug-summary path has been removed.
 - Post-draft local flow now uses one scoped normal AppShell build context per
   seat. Character clicks use normal sequential quick-pick, right-panel slot
   clicks select the build target, weapon clicks use the normal selected-slot

@@ -181,7 +181,8 @@ def _complete_draft(workspace: PvpWorkspace, app: QApplication) -> None:
         guard += 1
         if guard >= 40:
             raise RuntimeError("draft did not complete")
-        workspace.draft_workspace.legal_card_buttons[0].click()
+        if not workspace.draft_workspace.click_legal_character_for_test():
+            raise RuntimeError("draft has no clickable legal portrait")
         app.processEvents()
 
 

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication
 from ui.utils.hidpi_pixmap import HidpiPixmapResult
 from ui.utils.pixel_icon_grid import (
     PixelIconGrid,
+    PixelIconGridBadge,
     PixelIconGridItem,
     PixelIconGridMetrics,
     PixelIconGridOutline,
@@ -124,6 +125,26 @@ class PixelIconGridLayoutTest(unittest.TestCase):
             updated = grid.update_item(
                 "a",
                 outline=PixelIconGridOutline(color="#35d07f"),
+            )
+
+        self.assertTrue(updated)
+        self.assertEqual(load.call_count, 1)
+
+    def test_badge_only_update_does_not_reload_pixmaps(self) -> None:
+        grid = PixelIconGrid(metrics=PixelIconGridMetrics(item_width=72, gap_x=2))
+        with patch(
+            "ui.utils.pixel_icon_grid.load_hidpi_pixmap",
+            return_value=HidpiPixmapResult(QPixmap(), False, 1.0),
+        ) as load:
+            grid.set_items([PixelIconGridItem(item_id="a", icon_path="a.png")])
+            self.assertEqual(load.call_count, 1)
+
+            updated = grid.update_item(
+                "a",
+                badges=(
+                    PixelIconGridBadge("C1", "#35d07f", "bottom_left"),
+                    PixelIconGridBadge("C6", "#4e91ff", "bottom_right"),
+                ),
             )
 
         self.assertTrue(updated)

@@ -44,11 +44,12 @@ Draft board v0:
 - Play/local setup v0 lists saved deck presets, validates selected Player 1 and
   Player 2 decks through the same conversion path, creates an in-memory local
   `FreeDraftController`, and switches to Draft.
-- Draft board v0 renders the backend `to_board_dict()` read model in the left
-  PvP workspace, lets legal character cards call
+- Draft board visual MVP renders the backend `to_board_dict()` read model in
+  the left PvP workspace through a dense image-backed grid and a flattened
+  22-action order strip, lets legal character portraits call
   `FreeDraftController.apply_current_action(...)`, refreshes only from backend
-  projection after actions, and shows completed picks/bans/action-log summary
-  when the Free Draft schedule ends.
+  projection after actions, and shows completed picks/bans in shared visual
+  right-panel grids when the Free Draft schedule ends.
 - Draft board v0 is playable through the full local Free Draft schedule and now
   consumes the dedicated backend `unified_pool` projection for the readable
   main pool/right-panel pick-ban zones.

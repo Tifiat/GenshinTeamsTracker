@@ -83,6 +83,19 @@ class PixelIconGridOverlayIcon:
 
 
 @dataclass(frozen=True)
+class PixelIconGridBadge:
+    text: str
+    color: str
+    position: str = "bottom_left"
+    width: int = 24
+    height: int = 20
+    margin: int = 4
+    fill_alpha: int = UI_SELECTION_BADGE_FILL_ALPHA
+    text_color: str = UI_TEXT_ON_ACCENT
+    font_size: int = 10
+
+
+@dataclass(frozen=True)
 class PixelIconGridItem:
     item_id: str
     icon_path: str
@@ -92,6 +105,7 @@ class PixelIconGridItem:
     outline: PixelIconGridOutline | None = None
     overlay_fill: PixelIconGridFill | None = None
     overlay_icons: tuple[PixelIconGridOverlayIcon, ...] = ()
+    badges: tuple[PixelIconGridBadge, ...] = ()
     properties: dict[str, Any] = field(default_factory=dict)
     pixmap_cache_key_parts: tuple[object, ...] = ()
 
@@ -382,6 +396,8 @@ class PixelIconGrid(QWidget):
                 icon_rect = self._icon_physical_rect(item, rect)
                 for overlay_index, overlay in enumerate(item.overlay_icons):
                     self._draw_overlay_icon(painter, item, overlay, overlay_index, icon_rect)
+                for badge in item.badges:
+                    self._draw_item_badge(painter, badge, icon_rect)
         finally:
             painter.end()
 
@@ -547,6 +563,38 @@ class PixelIconGrid(QWidget):
             _logical_rect(badge, self._layout.dpr),
             Qt.AlignmentFlag.AlignCenter,
             outline.badge_text,
+        )
+
+    def _draw_item_badge(
+        self,
+        painter: QPainter,
+        badge: PixelIconGridBadge,
+        frame: QRect,
+    ) -> None:
+        width = max(1, int(round(badge.width * self._layout.dpr)))
+        height = max(1, int(round(badge.height * self._layout.dpr)))
+        margin = max(0, int(round(badge.margin * self._layout.dpr)))
+        left = frame.left() + margin
+        top = frame.bottom() - height - margin + 1
+        if badge.position.endswith("right"):
+            left = frame.right() - width - margin + 1
+        if badge.position.startswith("top"):
+            top = frame.top() + margin
+        badge_rect = QRect(left, top, width, height)
+        fill = QColor(badge.color)
+        fill.setAlpha(max(0, min(255, int(badge.fill_alpha))))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(fill)
+        painter.drawRoundedRect(_logical_rect(badge_rect, self._layout.dpr), 5, 5)
+        painter.setPen(QColor(badge.text_color))
+        font = painter.font()
+        font.setBold(True)
+        font.setPointSize(badge.font_size)
+        painter.setFont(font)
+        painter.drawText(
+            _logical_rect(badge_rect, self._layout.dpr),
+            Qt.AlignmentFlag.AlignCenter,
+            badge.text,
         )
 
     def _draw_overlay_icon(

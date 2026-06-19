@@ -38,7 +38,6 @@ from ui.right_panel.common.slot_card import RightPanelSlotCardWidget
 from ui.right_panel.common.team_card import RightPanelTeamCardWidget
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
 from ui.right_panel.pvp.draft.panel import PvpDraftRightPanel, PvpPostDraftRunPanel
-from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultChipWidget
 from ui.right_panel.pvp.host import PvpRightPanelHost
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
 from ui.utils.pixel_icon_grid import PixelIconGrid
@@ -484,40 +483,45 @@ class PvpBrowserTest(unittest.TestCase):
                 if frame.objectName() == "pvp_draft_zone"
             ]
         )
-        self.assertEqual(len(draft.card_buttons_by_character_id), len(pool_entries))
-        self.assertFalse(draft.findChildren(QPushButton, "pvp_draft_card"))
-        self.assertGreaterEqual(
-            len(draft.findChildren(QFrame, "pvp_draft_card")),
-            len(pool_entries),
-        )
+        self.assertIsInstance(draft.pool_grid, PixelIconGrid)
+        self.assertEqual(draft.pool_grid.item_count(), len(pool_entries))
+        self.assertEqual(len(draft.pool_items_by_character_id), len(pool_entries))
+        self.assertFalse(draft.findChildren(QFrame, "pvp_draft_card"))
         self.assertTrue(
             all(
-                button.property("hasPortraitPixmap")
-                for button in draft.card_buttons_by_character_id.values()
+                item.icon_path and item.properties["hasImage"]
+                for item in draft.pool_items_by_character_id.values()
             )
         )
         self.assertEqual(
-            len({button.character_id for button in draft.legal_card_buttons}),
+            len(set(draft.legal_character_ids)),
             board["progress"]["legal_target_count"],
         )
-        self.assertGreater(len(draft.legal_card_buttons), 0)
-        self.assertIn("20000000", draft.card_buttons_by_character_id)
-        shared_button = draft.card_buttons_by_character_id["20000000"]
-        self.assertTrue(shared_button.property("sharedOwner"))
-        self.assertIn("P1 C6", shared_button.text())
-        self.assertIn("P2 C6", shared_button.text())
+        self.assertGreater(len(draft.legal_character_ids), 0)
+        self.assertIn("20000000", draft.pool_items_by_character_id)
+        shared_item = draft.pool_items_by_character_id["20000000"]
+        self.assertTrue(shared_item.properties["sharedOwner"])
+        self.assertEqual({badge.text for badge in shared_item.badges}, {"C6"})
+        self.assertEqual(
+            {badge.position for badge in shared_item.badges},
+            {"bottom_left", "bottom_right"},
+        )
+        self.assertEqual(draft.order_strip.position_count(), 22)
+        self.assertEqual(draft.order_strip.active_position(), 1)
 
     def test_pvp_draft_legal_click_applies_one_backend_action(self) -> None:
         workspace, _panel = self._started_draft_workspace(character_count=12)
         draft = workspace.draft_workspace
-        first_legal = draft.legal_card_buttons[0]
+        first_legal = draft.legal_character_ids[0]
+        pool_grid = draft.pool_grid
 
-        first_legal.click()
+        self.assertTrue(draft.click_legal_character_for_test(first_legal))
         QApplication.processEvents()
 
         board = workspace.active_draft_session.board_dict()
         self.assertEqual(len(board["action_log"]), 1)
         self.assertEqual(board["progress"]["actions_accepted"], 1)
+        self.assertIs(draft.pool_grid, pool_grid)
         self.assertIn(
             tr("app_shell.pvp.draft.action_accepted").split("{", 1)[0],
             workspace.last_draft_status(),
@@ -546,26 +550,27 @@ class PvpBrowserTest(unittest.TestCase):
     def test_pvp_draft_result_entries_leave_main_pool_and_right_panel_zones_update(self) -> None:
         workspace, _panel = self._started_draft_workspace(character_count=12)
         draft_panel = PvpDraftRightPanel(workspace)
-        first_legal = workspace.draft_workspace.legal_card_buttons[0]
-        banned_id = first_legal.character_id
+        banned_id = workspace.draft_workspace.legal_character_ids[0]
+        banned_grid = draft_panel.result_zone_widgets[("player_1", "banned")].grid
 
-        first_legal.click()
+        self.assertTrue(workspace.draft_workspace.click_legal_character_for_test(banned_id))
         QApplication.processEvents()
 
         board = workspace.active_draft_session.board_dict()
         self.assertEqual(len(board["action_log"]), 1)
-        self.assertNotIn(banned_id, workspace.draft_workspace.card_buttons_by_character_id)
+        self.assertNotIn(banned_id, workspace.draft_workspace.pool_items_by_character_id)
         self.assertIn(
             banned_id,
             board["unified_pool"]["result_zones"]["player_1"]["banned"],
         )
         banned_zone = draft_panel.result_zone_widgets[("player_1", "banned")]
         picked_zone = draft_panel.result_zone_widgets[("player_1", "picked")]
-        self.assertIn(banned_id, banned_zone.chips_by_character_id)
-        self.assertTrue(
-            banned_zone.chips_by_character_id[banned_id].property("hasPortraitPixmap")
-        )
-        self.assertFalse(picked_zone.chips_by_character_id)
+        self.assertIn(banned_id, banned_zone.items_by_character_id)
+        self.assertTrue(banned_zone.items_by_character_id[banned_id].icon_path)
+        self.assertFalse(picked_zone.items_by_character_id)
+        self.assertIsInstance(banned_zone.grid, PixelIconGrid)
+        self.assertIs(banned_zone.grid, banned_grid)
+        self.assertTrue(draft_panel.log_labels[0].isHidden())
         self.assertFalse(draft_panel.findChildren(QLabel, "pvp_draft_result_picks"))
         self.assertFalse(draft_panel.findChildren(QLabel, "pvp_draft_result_bans"))
 
@@ -576,19 +581,19 @@ class PvpBrowserTest(unittest.TestCase):
         )
 
         initial_entries = workspace.active_draft_session.board_dict()["unified_pool"]["entries"]
-        self.assertEqual(len(workspace.draft_workspace.card_buttons_by_character_id), 24)
+        self.assertEqual(len(workspace.draft_workspace.pool_items_by_character_id), 24)
         self.assertEqual(
             sum(1 for entry in initial_entries if entry["character_id"] == "20000000"),
             1,
         )
         self.assertTrue(
-            workspace.draft_workspace.card_buttons_by_character_id["20000000"].property(
+            workspace.draft_workspace.pool_items_by_character_id["20000000"].properties[
                 "sharedOwner"
-            )
+            ]
         )
 
         while len(workspace.active_draft_session.board_dict()["action_log"]) < 5:
-            workspace.draft_workspace.legal_card_buttons[0].click()
+            workspace.draft_workspace.click_legal_character_for_test()
             QApplication.processEvents()
 
         board = workspace.active_draft_session.board_dict()
@@ -613,39 +618,30 @@ class PvpBrowserTest(unittest.TestCase):
         while not workspace.active_draft_session.board_dict()["status"]["draft_finished"]:
             guard += 1
             self.assertLess(guard, 40)
-            self.assertTrue(workspace.draft_workspace.legal_card_buttons)
-            workspace.draft_workspace.legal_card_buttons[0].click()
+            self.assertTrue(workspace.draft_workspace.legal_character_ids)
+            workspace.draft_workspace.click_legal_character_for_test()
             QApplication.processEvents()
 
         board = workspace.active_draft_session.board_dict()
         self.assertEqual(board["progress"]["actions_accepted"], 22)
         self.assertEqual(len(board["action_log"]), 22)
         self.assertTrue(board["status"]["draft_finished"])
-        self.assertFalse(workspace.draft_workspace.legal_card_buttons)
+        self.assertFalse(workspace.draft_workspace.legal_character_ids)
         self.assertTrue(
             all(
-                not button.property("legalTarget")
-                for button in workspace.draft_workspace.card_buttons_by_character_id.values()
+                not item.properties["legalTarget"]
+                for item in workspace.draft_workspace.pool_items_by_character_id.values()
             )
         )
         self.assertTrue(
-            draft_panel.result_zone_widgets[("player_1", "picked")].chips_by_character_id
+            draft_panel.result_zone_widgets[("player_1", "picked")].items_by_character_id
         )
         self.assertTrue(
-            draft_panel.result_zone_widgets[("player_2", "picked")].chips_by_character_id
+            draft_panel.result_zone_widgets[("player_2", "picked")].items_by_character_id
         )
-        self.assertGreater(
-            len(draft_panel.findChildren(PvpDraftResultChipWidget)),
-            0,
-        )
-        completed_text = "\n".join(
-            label.text()
-            for label in workspace.draft_workspace.completed_labels
-            if label.text()
-        )
-        self.assertIn(tr("app_shell.pvp.draft.player_1"), completed_text)
-        self.assertIn(tr("app_shell.pvp.draft.player_2"), completed_text)
-        self.assertIn("Action log: 22", completed_text)
+        self.assertEqual(workspace.draft_workspace.order_strip.position_count(), 22)
+        self.assertEqual(workspace.draft_workspace.order_strip.active_position(), 0)
+        self.assertFalse(draft_panel.status_frame.isVisible())
 
     def test_pvp_post_draft_full_local_flow_reaches_result_summary(self) -> None:
         workspace, _panel = self._started_draft_workspace(
@@ -1471,8 +1467,8 @@ class PvpBrowserTest(unittest.TestCase):
         while not workspace.active_draft_session.board_dict()["status"]["draft_finished"]:
             guard += 1
             self.assertLess(guard, 40)
-            self.assertTrue(workspace.draft_workspace.legal_card_buttons)
-            workspace.draft_workspace.legal_card_buttons[0].click()
+            self.assertTrue(workspace.draft_workspace.legal_character_ids)
+            workspace.draft_workspace.click_legal_character_for_test()
             QApplication.processEvents()
 
     def _assign_all_picks_to_teams(self, workspace: PvpWorkspace) -> None:

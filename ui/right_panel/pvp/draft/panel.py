@@ -6,6 +6,7 @@ from typing import Any
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QFrame,
+    QHBoxLayout,
     QLabel,
     QPushButton,
     QSizePolicy,
@@ -26,14 +27,13 @@ from ui.right_panel.pvp._shared import (
     PVP_PAGE_PLAY,
     PVP_SEATS,
     _asset_image_path,
+    build_pvp_draft_grid_item,
     _clear_layout,
     _draft_action_detail,
     _draft_action_log_lines,
     _draft_action_title,
     _draft_is_complete,
-    _draft_panel_status_lines,
     _draft_result_zone_title,
-    _entry_display_name_for_id,
     _is_post_draft_stage,
     _mapping,
     _postdraft_target_object_name,
@@ -151,19 +151,27 @@ class PvpDraftRightPanel(QWidget):
         self.result_zone_frames: dict[tuple[str, str], PvpDraftResultZoneWidget] = {}
         self.result_zone_widgets = self.result_zone_frames
         for seat in ("player_1", "player_2"):
+            seat_row = QWidget()
+            seat_row.setObjectName("pvp_draft_result_player_row")
+            seat_layout = QHBoxLayout(seat_row)
+            seat_layout.setContentsMargins(0, 0, 0, 0)
+            seat_layout.setSpacing(6)
             for zone in ("picked", "banned"):
                 frame = PvpDraftResultZoneWidget(
                     seat=seat,
                     zone=zone,
                     title=_draft_result_zone_title(seat, zone),
                 )
-                root.addWidget(frame)
+                seat_layout.addWidget(frame, 3 if zone == "picked" else 1)
                 key = (seat, zone)
                 self.result_zone_frames[key] = frame
+            root.addWidget(seat_row)
 
-        self.log_title_label = QLabel()
-        self.log_title_label.setObjectName("pvp_deck_info_line")
-        root.addWidget(self.log_title_label)
+        self._log_expanded = False
+        self.log_toggle_button = QPushButton()
+        self.log_toggle_button.setObjectName("pvp_draft_log_toggle")
+        self.log_toggle_button.clicked.connect(self._toggle_log)
+        root.addWidget(self.log_toggle_button)
 
         self.log_labels: list[QLabel] = []
         for _index in range(5):
@@ -198,8 +206,8 @@ class PvpDraftRightPanel(QWidget):
         self.empty_label.setVisible(not has_session)
         self.action_frame.setVisible(False)
         self.match_scroll.setVisible(False)
-        self.status_frame.setVisible(has_session)
-        self.log_title_label.setVisible(has_session)
+        self.status_frame.setVisible(False)
+        self.log_toggle_button.setVisible(has_session)
         self.clear_button.setVisible(has_session)
         self.clear_button.setEnabled(has_session)
         self.stage_button.setVisible(has_session)
@@ -220,7 +228,7 @@ class PvpDraftRightPanel(QWidget):
 
         stage = self.workspace.draft_stage
         post_draft_stage = _is_post_draft_stage(stage)
-        self.status_frame.setVisible(has_session and not post_draft_stage)
+        self.status_frame.setVisible(False)
         self.clear_button.setVisible(has_session and not post_draft_stage)
         self.play_button.setVisible(not post_draft_stage)
         self.action_frame.setVisible(not post_draft_stage)
@@ -233,7 +241,7 @@ class PvpDraftRightPanel(QWidget):
                 label.setVisible(False)
             for frame in self.result_zone_frames.values():
                 frame.setVisible(False)
-            self.log_title_label.setVisible(False)
+            self.log_toggle_button.setVisible(False)
             return
 
         board = session.board_dict()
@@ -243,15 +251,9 @@ class PvpDraftRightPanel(QWidget):
         _clear_layout(self.match_layout)
         self._clear_match_registries()
         self.match_scroll.setVisible(post_draft_stage)
-        status_lines = (
-            _draft_panel_status_lines(board, stage=stage, workspace=self.workspace)
-            if not post_draft_stage
-            else []
-        )
-        for index, label in enumerate(self.status_labels):
-            text = status_lines[index] if index < len(status_lines) else ""
-            label.setText(text)
-            label.setVisible(bool(text))
+        for label in self.status_labels:
+            label.clear()
+            label.setVisible(False)
 
         self._refresh_stage_button(board, stage)
 
@@ -266,16 +268,17 @@ class PvpDraftRightPanel(QWidget):
             frame.setVisible(show_draft_summary)
 
         log_lines = _draft_action_log_lines(board, limit=len(self.log_labels))
-        self.log_title_label.setVisible(show_draft_summary)
+        self.log_toggle_button.setVisible(show_draft_summary)
+        self._refresh_log_toggle_text()
         for index, label in enumerate(self.log_labels):
             text = log_lines[index] if index < len(log_lines) else ""
             label.setText(text)
-            label.setVisible(show_draft_summary and bool(text))
+            label.setVisible(show_draft_summary and self._log_expanded and bool(text))
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.draft.title"))
         self.empty_label.setText(tr("app_shell.pvp.draft.no_active_body"))
-        self.log_title_label.setText(tr("app_shell.pvp.draft.action_log_title"))
+        self._refresh_log_toggle_text()
         self.clear_button.setText(tr("app_shell.pvp.draft.abandon"))
         self.play_button.setText(tr("app_shell.pvp.draft.back_to_play"))
         self.refresh()
@@ -294,29 +297,49 @@ class PvpDraftRightPanel(QWidget):
         *,
         seat: str,
         zone: str,
-    ) -> list[dict[str, Any]]:
+    ) -> list[Any]:
         result_zones = _mapping(_mapping(board.get("unified_pool")).get("result_zones"))
         seat_zones = _mapping(result_zones.get(seat))
         character_ids = seat_zones.get(zone)
         if not isinstance(character_ids, list):
             return []
-        items: list[dict[str, Any]] = []
+        entries = _mapping(board.get("unified_pool")).get("entries")
+        entries_by_id = (
+            {
+                str(_mapping(entry).get("character_id") or ""): _mapping(entry)
+                for entry in entries
+            }
+            if isinstance(entries, list)
+            else {}
+        )
+        items: list[Any] = []
         for character_id_value in character_ids:
             character_id = str(character_id_value or "").strip()
             if not character_id:
                 continue
             items.append(
-                {
-                    "character_id": character_id,
-                    "name": _entry_display_name_for_id(board, character_id),
-                    "portrait_path": _asset_image_path(
+                build_pvp_draft_grid_item(
+                    entries_by_id.get(character_id, {"character_id": character_id}),
+                    portrait_path=_asset_image_path(
                         self.workspace.draft_workspace._character_assets_by_id.get(
                             character_id,
                         )
                     ),
-                }
+                    result_seat=seat,
+                    result_zone=zone,
+                )
             )
         return items
+
+    def _toggle_log(self) -> None:
+        self._log_expanded = not self._log_expanded
+        self.refresh()
+
+    def _refresh_log_toggle_text(self) -> None:
+        prefix = "v" if self._log_expanded else ">"
+        self.log_toggle_button.setText(
+            f"{prefix} {tr('app_shell.pvp.draft.action_log_title')}"
+        )
 
     def _on_stage_button_clicked(self) -> None:
         stage = self.workspace.draft_stage

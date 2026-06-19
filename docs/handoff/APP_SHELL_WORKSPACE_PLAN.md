@@ -286,6 +286,11 @@ right column patched in place.
   Artifact equipment, optional PvP GCSIM, Timers/results, and Completed
   result/export. Do not add top-level Team/Timers/Result/Artifacts/GCSIM PvP
   header tabs unless a later product decision changes this.
+- Timers/results is a left Draft scene, not a second live-Abyss right panel. It
+  reuses cached `AbyssFloorSourceData` for period/enemy display and commits
+  elapsed times through the PvP controller; the right dock remains the two
+  scoped build/detail zones. Future online room admission must compare local
+  source period identity with a server-authoritative current Abyss period.
 - PvP Decks character/weapon selection grids also use the shared painted icon
   grid. Preserve edit-mode viewport tint, selected outlines, inactive overlay,
   custom tooltips, overlay scrollbars, and stable test helper handles instead

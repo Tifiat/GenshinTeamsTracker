@@ -22,6 +22,10 @@ from PySide6.QtWidgets import (
 
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
 from localization import tr
+from run_workspace.abyss.source_data import AbyssFloorSourceData
+from run_workspace.abyss.source_data_runtime import (
+    load_current_cached_abyss_floor_source_data,
+)
 from ui.character_browser.icon_grid_adapter import build_asset_grid_items
 from run_workspace.pvp.deck_preset import (
     DEFAULT_PVP_DECK_PRESET_DIR,
@@ -87,6 +91,7 @@ from ui.utils.pixel_icon_grid import (
 )
 from ui.utils.tooltips import install_custom_tooltip
 from ui.pvp_browser.draft_order import PvpDraftOrderStrip
+from ui.pvp_browser.timers import PvpTimersResultWidget
 from ui.right_panel.pvp._shared import (
     PVP_DRAFT_STAGE_ASSIGNMENT,
     PVP_DRAFT_STAGE_COMPLETED_RESULT,
@@ -107,7 +112,6 @@ from ui.right_panel.pvp._shared import (
     _clear_layout,
     _compact_issue_codes,
     _draft_action_from_unified_pool,
-    _draft_action_label,
     _draft_is_complete,
     _draft_main_pool_entries,
     _draft_stage,
@@ -1196,6 +1200,8 @@ class PvpPlayWorkspace(QWidget):
 
 class PvpDraftWorkspace(QWidget):
     card_clicked = Signal(dict)
+    timer_text_changed = Signal(str, int, str)
+    finalize_result_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -1218,6 +1224,8 @@ class PvpDraftWorkspace(QWidget):
         self._scoped_build_source_frame: QFrame | None = None
         self._scoped_build_context_id: int | None = None
         self._source_title_labels_by_seat: dict[str, QLabel] = {}
+        self._timers_result_widget: PvpTimersResultWidget | None = None
+        self._abyss_source_data: AbyssFloorSourceData | None = None
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 18, 18, 18)
@@ -1291,11 +1299,13 @@ class PvpDraftWorkspace(QWidget):
         character_assets: Iterable[dict[str, Any]] = (),
         weapon_assets: Iterable[dict[str, Any]] = (),
         build_flow_context: Any | None = None,
+        abyss_source_data: AbyssFloorSourceData | None = None,
     ) -> None:
         self._active_session = session
         self._status_text = status_text
         self._view_state = dict(view_state or {})
         self._build_flow_context = build_flow_context
+        self._abyss_source_data = abyss_source_data
         self._character_assets_by_id = _character_assets_by_id(character_assets)
         self._weapon_assets_by_stack_key = _weapon_assets_by_stack_key(weapon_assets)
         self.refresh()
@@ -1372,15 +1382,18 @@ class PvpDraftWorkspace(QWidget):
             self._draft_pool_empty_label = None
             self.pool_grid = None
             self._detach_build_source_widgets()
-            _clear_layout(self.scroll_layout)
-            self.scroll_layout.addWidget(self._build_timers_results_stage(stage))
-            self.scroll_layout.addStretch(1)
+            timers_widget = self._build_timers_results_stage(stage)
+            if self.scroll_layout.indexOf(timers_widget) < 0:
+                _clear_layout(self.scroll_layout)
+                self.scroll_layout.addWidget(timers_widget)
+                self.scroll_layout.addStretch(1)
         else:
             self.source_zone_frames_by_seat.clear()
             self._source_title_labels_by_seat.clear()
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._detach_build_source_widgets()
+            self._timers_result_widget = None
             pool_frame = self._build_unified_pool(board, complete)
             if self.scroll_layout.indexOf(pool_frame) < 0:
                 _clear_layout(self.scroll_layout)
@@ -1392,6 +1405,18 @@ class PvpDraftWorkspace(QWidget):
         self.empty_title_label.setText(tr("app_shell.pvp.draft.no_active_title"))
         self.empty_body_label.setText(tr("app_shell.pvp.draft.no_active_body"))
         self.refresh()
+
+    def update_timer_view_state(self, view_state: Mapping[str, Any]) -> None:
+        """Refresh timer progress text without rebuilding the active UI tree."""
+        self._view_state = dict(view_state)
+        stage = _draft_stage(self._view_state)
+        if stage in {
+            PVP_DRAFT_STAGE_TIMERS_RESULTS,
+            PVP_DRAFT_STAGE_COMPLETED_RESULT,
+        }:
+            self.action_detail_label.setText(
+                _draft_stage_detail({}, stage, self._view_state)
+            )
 
     def _build_unified_pool(
         self,
@@ -1576,51 +1601,24 @@ class PvpDraftWorkspace(QWidget):
             if source.parent() is not section:
                 source.setParent(section)
 
-    def _build_timers_results_stage(self, stage: str) -> QFrame:
-        frame = QFrame()
-        frame.setObjectName("pvp_postready_left_panel")
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(10, 10, 10, 10)
-        layout.setSpacing(8)
-        title = QLabel(
-            tr("app_shell.pvp.post.result_summary_title")
-            if stage == PVP_DRAFT_STAGE_COMPLETED_RESULT
-            else tr("app_shell.pvp.post.timers_title")
-        )
-        title.setObjectName("pvp_draft_result_title")
-        layout.addWidget(title)
-        timer_texts = _mapping(self._view_state.get("timer_texts"))
-        build_status = _mapping(self._view_state.get("build_status"))
-        lines = [
-            tr("app_shell.pvp.post.ready_status").format(
-                ready=tr("app_shell.pvp.post.ready_yes")
-                if all(
-                    _mapping(_mapping(build_status.get("seats")).get(seat)).get("ready")
-                    for seat in PVP_SEATS
-                )
-                else tr("app_shell.pvp.post.ready_no"),
+    def _build_timers_results_stage(self, stage: str) -> PvpTimersResultWidget:
+        if self._timers_result_widget is None:
+            self._timers_result_widget = PvpTimersResultWidget()
+            self._timers_result_widget.timer_text_changed.connect(
+                self.timer_text_changed,
             )
-        ]
-        for seat in PVP_SEATS:
-            values = timer_texts.get(seat)
-            if isinstance(values, list):
-                lines.append(
-                    tr("app_shell.pvp.post.timer_chamber_line").format(
-                        seat=_seat_label(seat),
-                        chamber=" / ".join(PVP_TIMER_CHAMBERS),
-                        total=", ".join(_text(value) or "--:--" for value in values),
-                    )
-                )
-        for line in lines:
-            label = QLabel(line)
-            label.setObjectName("pvp_deck_info_line")
-            label.setWordWrap(True)
-            layout.addWidget(label)
-        gcsim = QLabel(tr("app_shell.pvp.post.gcsim_not_run"))
-        gcsim.setObjectName("small_muted")
-        gcsim.setWordWrap(True)
-        layout.addWidget(gcsim)
-        return frame
+            self._timers_result_widget.finalize_requested.connect(
+                self.finalize_result_requested,
+            )
+        timer_texts = _mapping(self._view_state.get("timer_texts"))
+        result = self._view_state.get("result")
+        self._timers_result_widget.set_state(
+            completed=stage == PVP_DRAFT_STAGE_COMPLETED_RESULT,
+            timer_texts=timer_texts,
+            result=result if isinstance(result, Mapping) else None,
+            source_data=self._abyss_source_data,
+        )
+        return self._timers_result_widget
 
 class PvpWorkspace(QWidget):
     state_changed = Signal()
@@ -1635,11 +1633,17 @@ class PvpWorkspace(QWidget):
         deck_dir: str | Path = DEFAULT_PVP_DECK_PRESET_DIR,
         character_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
         weapon_assets_provider: Callable[[], Iterable[dict[str, Any]]] | None = None,
+        abyss_source_data_provider: Callable[[], AbyssFloorSourceData | None] | None = None,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("PvpWorkspace")
         self.db_path = Path(db_path)
         self.deck_dir = resolve_deck_preset_dir(deck_dir)
+        self._abyss_source_data_provider = (
+            abyss_source_data_provider or load_current_cached_abyss_floor_source_data
+        )
+        self._abyss_source_data_loaded = False
+        self._abyss_source_data: AbyssFloorSourceData | None = None
         self.active_page_id = PVP_PAGE_DECKS
         self.active_draft_session: PvpActiveDraftSession | None = None
         self._last_play_status = ""
@@ -1682,6 +1686,10 @@ class PvpWorkspace(QWidget):
         self.stack.addWidget(self.draft_workspace)
         self.decks_workspace.state_changed.connect(self._on_decks_state_changed)
         self.draft_workspace.card_clicked.connect(self.apply_draft_card_click)
+        self.draft_workspace.timer_text_changed.connect(self.set_timer_text)
+        self.draft_workspace.finalize_result_requested.connect(
+            self.finalize_match_result,
+        )
         self._sync_play_workspace()
         self._sync_draft_workspace()
 
@@ -2034,7 +2042,7 @@ class PvpWorkspace(QWidget):
             return False
         action_type, character_id = action_request
         try:
-            action = session.controller.apply_current_action(
+            session.controller.apply_current_action(
                 character_id,
                 expected_action_type=action_type,
             )
@@ -2047,10 +2055,7 @@ class PvpWorkspace(QWidget):
             self.state_changed.emit()
             return False
 
-        self._last_draft_status = tr("app_shell.pvp.draft.action_accepted").format(
-            action=_draft_action_label(action.action_type),
-            target=character_id,
-        )
+        self._last_draft_status = ""
         self._sync_play_workspace()
         self._sync_draft_workspace()
         self.active_draft_changed.emit()
@@ -2261,6 +2266,7 @@ class PvpWorkspace(QWidget):
         if seat not in PVP_SEATS or not (0 <= index < len(PVP_TIMER_CHAMBERS)):
             return
         self.timer_texts_by_seat[seat][index] = text
+        self.draft_workspace.update_timer_view_state(self._draft_view_state())
         self.state_changed.emit()
 
     def timers_ready(self) -> bool:
@@ -2323,6 +2329,8 @@ class PvpWorkspace(QWidget):
             seat: [""] * len(PVP_TIMER_CHAMBERS)
             for seat in PVP_SEATS
         }
+        self._abyss_source_data_loaded = False
+        self._abyss_source_data = None
 
     def _dispose_build_flow_context(self) -> None:
         context = self.build_flow_context
@@ -2378,7 +2386,19 @@ class PvpWorkspace(QWidget):
                 for seat in PVP_SEATS
             },
             "build_status": build_status,
+            "result": (
+                self.active_draft_session.controller.state.match_result.to_dict()
+                if self.active_draft_session is not None
+                and self.active_draft_session.controller.state.match_result is not None
+                else None
+            ),
         }
+
+    def _current_abyss_source_data(self) -> AbyssFloorSourceData | None:
+        if not self._abyss_source_data_loaded:
+            self._abyss_source_data_loaded = True
+            self._abyss_source_data = self._abyss_source_data_provider()
+        return self._abyss_source_data
 
     def _on_decks_state_changed(self) -> None:
         self._sync_play_workspace()
@@ -2395,6 +2415,14 @@ class PvpWorkspace(QWidget):
             character_assets=self.character_assets,
             weapon_assets=self.weapon_assets,
             build_flow_context=self.build_flow_context,
+            abyss_source_data=(
+                self._current_abyss_source_data()
+                if self.draft_stage in {
+                    PVP_DRAFT_STAGE_TIMERS_RESULTS,
+                    PVP_DRAFT_STAGE_COMPLETED_RESULT,
+                }
+                else None
+            ),
         )
 
 

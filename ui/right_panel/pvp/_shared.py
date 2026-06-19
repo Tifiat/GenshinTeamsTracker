@@ -234,12 +234,6 @@ QFrame#pvp-postdraft-target-player-2 {{
     border-radius: 8px;
     background: {UI_BG_PANEL};
 }}
-QFrame#pvp-postdraft-target-player-1 {{
-    border-left: 4px solid {UI_ACCENT_TEAM_1};
-}}
-QFrame#pvp-postdraft-target-player-2 {{
-    border-left: 4px solid {UI_ACCENT_TEAM_2};
-}}
 QPushButton#pvp_postdraft_player_toggle {{
     min-height: 24px;
     padding: 2px 6px;
@@ -599,24 +593,25 @@ def build_pvp_draft_grid_item(
             fill_alpha=24 if legal else 0,
         )
     badges: list[PixelIconGridBadge] = []
-    for seat, position, color in (
-        ("player_1", "bottom_left", UI_ACCENT_TEAM_1),
-        ("player_2", "bottom_right", UI_ACCENT_TEAM_2),
-    ):
-        if seat not in owner_seats:
-            continue
-        constellation = int(_mapping(per_seat.get(seat)).get("constellation") or 0)
-        badges.append(
-            PixelIconGridBadge(
-                text=f"C{constellation}",
-                color=color,
-                position=position,
-                width=24,
-                height=18,
-                margin=2,
-                font_size=8,
+    if not result_zone:
+        for seat, position, color in (
+            ("player_1", "bottom_left", UI_ACCENT_TEAM_1),
+            ("player_2", "bottom_right", UI_ACCENT_TEAM_2),
+        ):
+            if seat not in owner_seats:
+                continue
+            constellation = int(_mapping(per_seat.get(seat)).get("constellation") or 0)
+            badges.append(
+                PixelIconGridBadge(
+                    text=f"C{constellation}",
+                    color=color,
+                    position=position,
+                    width=24,
+                    height=18,
+                    margin=2,
+                    font_size=8,
+                )
             )
-        )
     status = _text(entry.get("status")) or "available"
     return PixelIconGridItem(
         item_id=character_id,

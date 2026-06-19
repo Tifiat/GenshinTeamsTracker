@@ -32,6 +32,15 @@ The first implementation target is local Hot-seat / Ghost Deck PvP:
 7. Record room/chamber timers for both players.
 8. Compute winner by lower total timer and show seconds difference.
 
+The match room also needs a stable Abyss period identity. In local/hot-seat
+mode both seat profiles must agree on that identity before play; if they do
+not, the application resolves the current period and requires stale source
+data to be refreshed. In future online mode the room server advertises the
+authoritative current period during create/join, and a client with mismatched
+Abyss data cannot enter the playable Draft until it updates. This is a future
+admission/validation mechanism, not part of the currently implemented local
+backend reducer.
+
 Hot-seat is both a development path and a real offline/training mode. It should
 not be throwaway code.
 

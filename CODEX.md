@@ -564,7 +564,10 @@ implementation target is a full local Hot-seat / Ghost Deck offline loop with
 two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
 weapon assignment, timers, and winner summary. Decks mode v0, Play/local match
 setup v0, Draft board visual MVP, and local post-draft
-Assignment/Weapon/Timers/Completed result v0 are implemented. Left/main PvP
+Assignment/Weapon/Timers/Completed result v0 are implemented. Timers/results
+is a playable left Draft scene with six elapsed-time inputs, totals/result, and
+cached current Abyss enemy display; future room admission still needs explicit
+Abyss-period agreement/server-authority validation. Left/main PvP
 workspaces live under `ui/pvp_browser/`; PvP right-dock ownership lives under
 `ui/right_panel/pvp/`.
 Decks persists `gtt.pvp_deck_preset` JSON under

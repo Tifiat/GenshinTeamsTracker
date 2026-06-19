@@ -25,6 +25,7 @@ from ui.pvp_browser.build_flow import (
     _asset_weapon_keys,
 )
 from ui.pvp_browser.window import PvpDecksWorkspace, PvpDraftWorkspace, PvpWorkspace
+from ui.pvp_browser.timers import PvpTimersResultWidget
 from ui.right_panel.pvp._shared import (
     PVP_DRAFT_STAGE_ASSIGNMENT,
     PVP_DRAFT_STAGE_COMPLETED_RESULT,
@@ -37,7 +38,11 @@ from ui.right_panel.pvp._shared import (
 from ui.right_panel.common.slot_card import RightPanelSlotCardWidget
 from ui.right_panel.common.team_card import RightPanelTeamCardWidget
 from ui.right_panel.pvp.decks.panel import PvpDecksRightPanel
-from ui.right_panel.pvp.draft.panel import PvpDraftRightPanel, PvpPostDraftRunPanel
+from ui.right_panel.pvp.draft.panel import (
+    PvpDraftRightPanel,
+    PvpPostDraftRunPanel,
+    PvpPostDraftSeatFrame,
+)
 from ui.right_panel.pvp.host import PvpRightPanelHost
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
 from ui.utils.pixel_icon_grid import PixelIconGrid
@@ -522,10 +527,7 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertEqual(len(board["action_log"]), 1)
         self.assertEqual(board["progress"]["actions_accepted"], 1)
         self.assertIs(draft.pool_grid, pool_grid)
-        self.assertIn(
-            tr("app_shell.pvp.draft.action_accepted").split("{", 1)[0],
-            workspace.last_draft_status(),
-        )
+        self.assertEqual(workspace.last_draft_status(), "")
 
     def test_pvp_draft_illegal_click_does_not_apply_action(self) -> None:
         workspace, _panel = self._started_draft_workspace(character_count=12)
@@ -567,6 +569,7 @@ class PvpBrowserTest(unittest.TestCase):
         picked_zone = draft_panel.result_zone_widgets[("player_1", "picked")]
         self.assertIn(banned_id, banned_zone.items_by_character_id)
         self.assertTrue(banned_zone.items_by_character_id[banned_id].icon_path)
+        self.assertFalse(banned_zone.items_by_character_id[banned_id].badges)
         self.assertFalse(picked_zone.items_by_character_id)
         self.assertIsInstance(banned_zone.grid, PixelIconGrid)
         self.assertIs(banned_zone.grid, banned_grid)
@@ -695,6 +698,7 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertFalse(draft_panel.findChildren(QFrame, "pvp-timer-area"))
         self.assertFalse(hasattr(draft_panel, "timer_inputs_by_key"))
         for seat, zone in draft_panel.target_zone_frames_by_seat.items():
+            self.assertIsInstance(zone, PvpPostDraftSeatFrame)
             self.assertEqual(len(zone.findChildren(RightPanelTeamCardWidget)), 2, seat)
         player_1_zone = draft_panel.target_zone_frames_by_seat["player_1"]
         player_2_zone = draft_panel.target_zone_frames_by_seat["player_2"]
@@ -769,13 +773,21 @@ class PvpBrowserTest(unittest.TestCase):
             QApplication.processEvents()
 
         self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_TIMERS_RESULTS)
+        timer_widget = workspace.draft_workspace.findChild(PvpTimersResultWidget)
+        self.assertIsNotNone(timer_widget)
+        self.assertFalse(timer_widget.finalize_button.isEnabled())
         for index, text in enumerate(("01:00", "01:00", "01:00")):
-            workspace.set_timer_text("player_1", index, text)
+            timer_widget.timer_edit("player_1", index).setText(text)
         for index, text in enumerate(("01:10", "01:00", "01:00")):
-            workspace.set_timer_text("player_2", index, text)
+            timer_widget.timer_edit("player_2", index).setText(text)
         self.assertTrue(workspace.timers_ready())
+        self.assertTrue(timer_widget.finalize_button.isEnabled())
+        self.assertIs(
+            workspace.draft_workspace.findChild(PvpTimersResultWidget),
+            timer_widget,
+        )
 
-        self.assertTrue(workspace.finalize_match_result())
+        timer_widget.finalize_button.click()
         QApplication.processEvents()
 
         result = workspace.active_draft_session.controller.state.match_result
@@ -783,6 +795,7 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result.winner_seat, "player_1")
         self.assertEqual(result.seconds_difference, 10)
+        self.assertTrue(timer_widget.finalize_button.isHidden())
         summary_text = "\n".join(
             label.text()
             for label in workspace.draft_workspace.findChildren(QLabel)

@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QColor, QPainter, QPen
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -41,6 +42,28 @@ from ui.right_panel.pvp._shared import (
 )
 from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultZoneWidget
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
+from ui.utils.ui_palette import UI_ACCENT_TEAM_1, UI_ACCENT_TEAM_2
+
+
+class PvpPostDraftSeatFrame(QFrame):
+    """Seat container with an accent painted inside its existing geometry."""
+
+    def __init__(self, seat: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.seat = seat
+        self.setObjectName(_postdraft_target_object_name(seat))
+        self.setProperty("seat", seat)
+
+    def paintEvent(self, event) -> None:  # noqa: N802 - Qt override
+        super().paintEvent(event)
+        color = UI_ACCENT_TEAM_1 if self.seat == "player_1" else UI_ACCENT_TEAM_2
+        painter = QPainter(self)
+        try:
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            painter.setPen(QPen(QColor(color), 2))
+            painter.drawLine(8, 1, max(8, self.width() - 9), 1)
+        finally:
+            painter.end()
 
 
 class PvpPostDraftRunPanel(RunRightPanelWidget):
@@ -376,9 +399,7 @@ class PvpDraftRightPanel(QWidget):
             seat_context = build_context.seat(seat)
             if seat_context is None:
                 continue
-            zone = QFrame()
-            zone.setObjectName(_postdraft_target_object_name(seat))
-            zone.setProperty("seat", seat)
+            zone = PvpPostDraftSeatFrame(seat)
             zone_layout = QVBoxLayout(zone)
             zone_layout.setContentsMargins(7, 7, 7, 7)
             zone_layout.setSpacing(5)
@@ -594,4 +615,8 @@ class PvpDraftRightPanel(QWidget):
             )
             self.team_slot_buttons_by_key[(seat, team_index, slot_index)] = slot_widget
 
-__all__ = ["PvpDraftRightPanel", "PvpPostDraftRunPanel"]
+__all__ = [
+    "PvpDraftRightPanel",
+    "PvpPostDraftRunPanel",
+    "PvpPostDraftSeatFrame",
+]

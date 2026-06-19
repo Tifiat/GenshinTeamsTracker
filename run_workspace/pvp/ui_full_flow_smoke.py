@@ -18,6 +18,7 @@ from PySide6.QtWidgets import QApplication
 
 from hoyolab_export.artifact_db import connect_db, init_db
 from ui.pvp_browser.build_flow import _asset_weapon_keys
+from ui.pvp_browser.timers import PvpTimersResultWidget
 from ui.pvp_browser.window import PvpWorkspace
 from ui.right_panel.pvp._shared import PVP_DRAFT_STAGE_COMPLETED_RESULT
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
@@ -99,11 +100,7 @@ def _run_synthetic_smoke(app: QApplication) -> int:
         if not workspace.weapons_ready():
             print("failed: scoped ready validation")
             return 1
-        for index, text in enumerate(("01:00", "01:00", "01:00")):
-            workspace.set_timer_text("player_1", index, text)
-        for index, text in enumerate(("01:10", "01:00", "01:00")):
-            workspace.set_timer_text("player_2", index, text)
-        if not workspace.finalize_match_result():
+        if not _enter_timers_and_finalize(workspace, app):
             print("failed: finalize result")
             return 1
 
@@ -155,11 +152,7 @@ def _run_account_smoke(
     if not workspace.weapons_ready():
         print("failed: scoped ready validation")
         return 1
-    for index, text in enumerate(("01:00", "01:00", "01:00")):
-        workspace.set_timer_text("player_1", index, text)
-    for index, text in enumerate(("01:10", "01:00", "01:00")):
-        workspace.set_timer_text("player_2", index, text)
-    if not workspace.finalize_match_result():
+    if not _enter_timers_and_finalize(workspace, app):
         print(f"failed: finalize result: {workspace.last_draft_status()}")
         return 1
 
@@ -173,6 +166,27 @@ def _run_account_smoke(
         f"diff={result.seconds_difference}s, decks={deck_1}/{deck_2}"
     )
     return 0
+
+
+def _enter_timers_and_finalize(workspace: PvpWorkspace, app: QApplication) -> bool:
+    timer_widget = workspace.draft_workspace.findChild(PvpTimersResultWidget)
+    if timer_widget is None:
+        return False
+    for index, text in enumerate(("01:00", "01:00", "01:00")):
+        edit = timer_widget.timer_edit("player_1", index)
+        if edit is None:
+            return False
+        edit.setText(text)
+    for index, text in enumerate(("01:10", "01:00", "01:00")):
+        edit = timer_widget.timer_edit("player_2", index)
+        if edit is None:
+            return False
+        edit.setText(text)
+    if not timer_widget.finalize_button.isEnabled():
+        return False
+    timer_widget.finalize_button.click()
+    app.processEvents()
+    return workspace.draft_stage == PVP_DRAFT_STAGE_COMPLETED_RESULT
 
 
 def _complete_draft(workspace: PvpWorkspace, app: QApplication) -> None:

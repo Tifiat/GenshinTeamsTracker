@@ -33,7 +33,7 @@ class PvpDraftOrderStrip(QWidget):
         self._pixmap_cache: dict[tuple[object, ...], QPixmap | None] = {}
         self._prepared: dict[int, QPixmap] = {}
         self._prepared_signature: tuple[object, ...] | None = None
-        self.setMinimumHeight(112)
+        self.setMinimumHeight(132)
 
     def set_board(
         self,
@@ -86,7 +86,7 @@ class PvpDraftOrderStrip(QWidget):
         return 0
 
     def sizeHint(self) -> QSize:  # noqa: N802 - Qt override
-        return QSize(1, 112)
+        return QSize(1, 132)
 
     def event(self, event) -> bool:
         if event.type() in (
@@ -108,16 +108,19 @@ class PvpDraftOrderStrip(QWidget):
             columns = (len(self._positions) + 1) // 2
             gap = 4
             margin = 2
-            cell_width = max(28, min(62, (self.width() - margin * 2 - gap * (columns - 1)) // columns))
-            cell_height = max(46, (self.height() - margin * 2 - gap) // 2)
-            content_width = columns * cell_width + max(0, columns - 1) * gap
+            available_width = self.width() - margin * 2 - gap * (columns - 1)
+            available_height = self.height() - margin * 2 - gap
+            cell_size = max(28, min(62, available_width // columns, available_height // 2))
+            content_width = columns * cell_size + max(0, columns - 1) * gap
+            content_height = cell_size * 2 + gap
             start_x = max(margin, (self.width() - content_width) // 2)
+            start_y = max(margin, (self.height() - content_height) // 2)
             for index, row in enumerate(self._positions):
                 rect = QRect(
-                    start_x + (index % columns) * (cell_width + gap),
-                    margin + (index // columns) * (cell_height + gap),
-                    cell_width,
-                    cell_height,
+                    start_x + (index % columns) * (cell_size + gap),
+                    start_y + (index // columns) * (cell_size + gap),
+                    cell_size,
+                    cell_size,
                 )
                 self._draw_position(painter, index, row, rect)
         finally:
@@ -176,7 +179,8 @@ class PvpDraftOrderStrip(QWidget):
         pixmap = self._prepared.get(index)
         if pixmap is not None:
             source = QRectF(0, 0, pixmap.width(), pixmap.height())
-            painter.drawPixmap(QRectF(rect.adjusted(2, 2, -2, -2)), pixmap, source)
+            target = _aspect_fit_rect(source, QRectF(rect.adjusted(2, 2, -2, -2)))
+            painter.drawPixmap(target, pixmap, source)
             shade = QColor(UI_SELECTION_NEUTRAL_FILL)
             shade.setAlpha(28)
             painter.fillRect(QRectF(rect), shade)
@@ -195,6 +199,20 @@ class PvpDraftOrderStrip(QWidget):
         )
         painter.setPen(QColor(UI_STATE_DANGER if action_type == "ban_character" else seat_color))
         painter.drawText(rect.adjusted(4, 2, -4, -2), Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight, action_label[:1].upper())
+
+
+def _aspect_fit_rect(source: QRectF, bounds: QRectF) -> QRectF:
+    if source.width() <= 0 or source.height() <= 0:
+        return bounds
+    scale = min(bounds.width() / source.width(), bounds.height() / source.height())
+    width = source.width() * scale
+    height = source.height() * scale
+    return QRectF(
+        bounds.x() + (bounds.width() - width) / 2,
+        bounds.y() + (bounds.height() - height) / 2,
+        width,
+        height,
+    )
 
 
 __all__ = ["PvpDraftOrderStrip"]

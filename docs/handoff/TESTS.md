@@ -107,12 +107,17 @@ Mirror the primary project owner under `tests/`:
   result items, opposite-side P1/P2 constellation badges, legal-only click
   routing, removal of accepted targets from the pool, the full 22-position
   order strip, right-panel pick/ban grids built through the same item adapter,
-  and a collapsed-by-default secondary action log. MVP build-flow tests assert
+  uncluttered result portraits without pool ownership overlays, and a
+  collapsed-by-default secondary action log. MVP build-flow tests assert
   that scoped PvP assignment uses the
   normal AppShell quick-pick marker contract: team-colored `1-4` markers for
   team 1 and team 2, no PvP-only `SEL` badges, no grey disabled
   assigned-character overlays, and no custom PvP target-slot hierarchy in place
   of `RunRightPanelWidget`. They also cover normal slot-target selection,
+  stable width-neutral seat highlighting, playable timer inputs through the
+  left Draft scene, six-value readiness, backend result finalization, and the
+  completed winner/difference state. Abyss-period admission tests remain a
+  required future suite when that backend gate is implemented. They also cover
   selected-slot weapon assignment, Ready backend commits, both-Ready timer
   transition, imported-profile provider routing, per-seat scoped PvP runtime
   weapon state, no mutation of normal account equipment tables, no initial

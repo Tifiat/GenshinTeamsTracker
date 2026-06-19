@@ -59,13 +59,18 @@ Draft board v0:
   `RunRightPanelWidget`. Ready converts that scoped state and commits validated
   team/weapon data through `FreeDraftController.set_team_assignment(...)` and
   `set_weapon_assignment(...)`. Both Ready transitions the left Draft workspace
-  to Timers/results; result finalization still uses
+  to a playable Timers/results scene with three chamber rows, both players'
+  elapsed-time inputs, totals/current leader, and cached current Abyss enemy
+  lineups when available; result finalization still uses
   `set_match_timers(...)`.
 - Decks exposes `.gttpvp` export, and Play exposes per-seat profile import/local
   provider selection. Imported packages stay in a managed temporary provider
   and are never restored into the main application database.
 - Decks/Play/Draft v0 do not persist sessions/history and do not mutate normal
   TeamBuilder/Run state.
+- Abyss-period match admission is still a backend gap. Future local matches
+  must reject/refresh mismatched seat periods, while future online create/join
+  must validate clients against a server-authoritative current period.
 - The UI roadmap and stage direction are owned by
   `PVP_UI_ROADMAP.md`; this file should remain backend/status focused.
 

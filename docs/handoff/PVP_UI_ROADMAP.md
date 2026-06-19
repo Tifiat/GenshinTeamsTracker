@@ -517,6 +517,18 @@ Hot-seat layout direction:
   raw seconds and require valid values for both players before finalization.
 - Finalization calls `FreeDraftController.set_match_timers(...)`; lower total
   time wins and equal totals draw through the backend result model.
+- The left Draft workspace now owns the playable timer scene: three chamber
+  rows, both players' elapsed-time inputs, totals/current leader, cached current
+  Abyss period and enemy lineups when available, and the finalization command.
+  The right dock remains scoped team/build details and does not regain the live
+  Abyss chamber table. Missing cached Abyss data is an explicit unavailable
+  state, not invented monster data.
+- Future match admission must validate Abyss period identity before Draft
+  starts. Local/hot-seat profiles must resolve to the same period; a mismatch
+  must be checked against the current authoritative period and require stale
+  data to be updated. Online room create/join must use the server-advertised
+  current period as authority and block/ask the client to refresh when its
+  profile period differs. This admission gate is not implemented yet.
 - Factual DPS, restarts, technical-loss UI, bundle/export actions, and GCSIM
   scoring are still future work.
 

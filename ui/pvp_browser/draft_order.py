@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from PySide6.QtCore import QEvent, QRect, QRectF, QSize, Qt
@@ -23,6 +24,23 @@ from ui.right_panel.pvp._shared import (
 from ui.utils.pvp_colors import pvp_player_color
 
 
+PVP_DRAFT_ORDER_SLOT_SIZE = 72
+PVP_DRAFT_ORDER_GAP = 5
+PVP_DRAFT_ORDER_MARGIN = 2
+PVP_DRAFT_ORDER_TURN_WIDTH = 210
+PVP_DRAFT_ORDER_TURN_HEIGHT = 86
+PVP_DRAFT_ORDER_MAX_SIDE_ROWS = 4
+
+
+@dataclass(frozen=True)
+class _DraftOrderLayout:
+    height: int
+    left_group_rect: QRect
+    right_group_rect: QRect
+    turn_rect: QRect
+    position_rects: tuple[QRect, ...]
+
+
 class PvpDraftOrderStrip(QWidget):
     """Painted 22-action Draft order; portraits fill accepted positions."""
 
@@ -34,7 +52,7 @@ class PvpDraftOrderStrip(QWidget):
         self._pixmap_cache: dict[tuple[object, ...], QPixmap | None] = {}
         self._prepared: dict[int, QPixmap] = {}
         self._prepared_signature: tuple[object, ...] | None = None
-        self.setMinimumHeight(132)
+        self.setMinimumHeight(self._layout_geometry(max(1, self.width())).height)
 
     def set_board(
         self,
@@ -75,6 +93,7 @@ class PvpDraftOrderStrip(QWidget):
         self._positions = tuple(positions)
         self._portrait_paths = dict(portrait_paths)
         self._prepared_signature = None
+        self._refresh_minimum_height()
         self.update()
 
     def position_count(self) -> int:
@@ -100,8 +119,23 @@ class PvpDraftOrderStrip(QWidget):
             return {}
         return _position_visual(self._positions[int(number) - 1])
 
+    def layout_visual(self, width: int | None = None) -> dict[str, Any]:
+        geometry = self._layout_geometry(width or max(1, self.width()))
+        return {
+            "height": geometry.height,
+            "turn_rect": geometry.turn_rect,
+            "position_rects": tuple(geometry.position_rects),
+            "has_overlap": _rects_overlap(
+                (geometry.turn_rect, *geometry.position_rects),
+            ),
+        }
+
     def sizeHint(self) -> QSize:  # noqa: N802 - Qt override
-        return QSize(1, 132)
+        return QSize(1, self._layout_geometry(max(1, self.width())).height)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - Qt override
+        super().resizeEvent(event)
+        self._refresh_minimum_height()
 
     def event(self, event) -> bool:
         if event.type() in (
@@ -125,11 +159,7 @@ class PvpDraftOrderStrip(QWidget):
             painter.end()
 
     def _draw_grouped_positions(self, painter: QPainter) -> None:
-        gap = 5
-        margin = 2
-        center_width = min(255, max(155, self.width() // 5))
-        side_width = max(110, (self.width() - center_width - margin * 2 - 28) // 2)
-        available_height = max(60, self.height() - margin * 2 - gap)
+        geometry = self._layout_geometry(max(1, self.width()))
         left_rows = [
             (index, row)
             for index, row in enumerate(self._positions)
@@ -140,36 +170,16 @@ class PvpDraftOrderStrip(QWidget):
             for index, row in enumerate(self._positions)
             if row["seat"] == "player_2"
         ]
-        columns = max(1, max((len(left_rows) + 1) // 2, (len(right_rows) + 1) // 2))
-        cell_size = max(28, min(58, available_height // 2, side_width // columns))
-        content_width = columns * cell_size + max(0, columns - 1) * gap
-        content_height = cell_size * 2 + gap
-        start_y = max(margin, (self.height() - content_height) // 2)
-        center_rect = QRect(
-            max(margin + content_width + 8, (self.width() - center_width) // 2),
-            start_y,
-            center_width,
-            content_height,
-        )
-        left_x = max(margin, center_rect.left() - 10 - content_width)
-        right_x = min(
-            self.width() - margin - content_width,
-            center_rect.right() + 10,
-        )
         self._draw_position_group(
             painter,
             left_rows,
-            QRect(left_x, start_y, content_width, content_height),
-            cell_size,
-            gap,
+            geometry.left_group_rect,
         )
-        self._draw_current_action_card(painter, center_rect)
+        self._draw_current_action_card(painter, geometry.turn_rect)
         self._draw_position_group(
             painter,
             right_rows,
-            QRect(right_x, start_y, content_width, content_height),
-            cell_size,
-            gap,
+            geometry.right_group_rect,
         )
 
     def _draw_position_group(
@@ -177,16 +187,20 @@ class PvpDraftOrderStrip(QWidget):
         painter: QPainter,
         rows: list[tuple[int, Mapping[str, Any]]],
         bounds: QRect,
-        cell_size: int,
-        gap: int,
     ) -> None:
-        columns = max(1, (len(rows) + 1) // 2)
+        if not rows:
+            return
+        columns = _columns_for_bounds(bounds)
         for local_index, (index, row) in enumerate(rows):
             rect = QRect(
-                bounds.left() + (local_index % columns) * (cell_size + gap),
-                bounds.top() + (local_index // columns) * (cell_size + gap),
-                cell_size,
-                cell_size,
+                bounds.left()
+                + (local_index % columns)
+                * (PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP),
+                bounds.top()
+                + (local_index // columns)
+                * (PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP),
+                PVP_DRAFT_ORDER_SLOT_SIZE,
+                PVP_DRAFT_ORDER_SLOT_SIZE,
             )
             self._draw_position(painter, index, row, rect)
 
@@ -194,8 +208,9 @@ class PvpDraftOrderStrip(QWidget):
         visual = _current_action_visual(self._positions)
         title = visual["title"]
         detail = visual["detail"]
-        accent = visual["accent"]
-        painter.setPen(QPen(QColor(accent), 2))
+        border_color = visual["border_color"]
+        action_color = visual["action_color"]
+        painter.setPen(QPen(QColor(border_color), 2))
         fill = QColor(UI_BG_INSET)
         fill.setAlpha(178)
         painter.setBrush(fill)
@@ -216,11 +231,106 @@ class PvpDraftOrderStrip(QWidget):
         detail_font.setBold(True)
         detail_font.setPointSize(max(15, min(24, rect.width() // 8)))
         painter.setFont(detail_font)
-        painter.setPen(QColor(accent))
+        painter.setPen(QColor(action_color))
         painter.drawText(
             rect.adjusted(8, rect.height() // 2 - 5, -8, -8),
             Qt.AlignmentFlag.AlignCenter,
             detail,
+        )
+
+    def _refresh_minimum_height(self) -> None:
+        geometry = self._layout_geometry(max(1, self.width()))
+        self.setMinimumHeight(geometry.height)
+        self.updateGeometry()
+
+    def _layout_geometry(self, width: int) -> "_DraftOrderLayout":
+        left_count = sum(1 for row in self._positions if row["seat"] == "player_1")
+        right_count = sum(1 for row in self._positions if row["seat"] == "player_2")
+        max_count = max(left_count, right_count, 1)
+        available_width = max(1, int(width))
+        turn_width = min(
+            PVP_DRAFT_ORDER_TURN_WIDTH,
+            max(156, available_width - PVP_DRAFT_ORDER_MARGIN * 2),
+        )
+        for rows in range(2, PVP_DRAFT_ORDER_MAX_SIDE_ROWS + 1):
+            columns = _columns_for_count(max_count, rows)
+            group_width = _group_width(columns)
+            group_height = _group_height(rows)
+            total_width = (
+                PVP_DRAFT_ORDER_MARGIN * 2
+                + group_width * 2
+                + turn_width
+                + PVP_DRAFT_ORDER_GAP * 4
+            )
+            if total_width <= available_width:
+                total_content_width = total_width - PVP_DRAFT_ORDER_MARGIN * 2
+                left = max(PVP_DRAFT_ORDER_MARGIN, (available_width - total_content_width) // 2)
+                top = PVP_DRAFT_ORDER_MARGIN
+                left_rect = QRect(left, top, group_width, group_height)
+                turn_rect = QRect(
+                    left_rect.right() + 1 + PVP_DRAFT_ORDER_GAP * 2,
+                    top + max(0, (group_height - PVP_DRAFT_ORDER_TURN_HEIGHT) // 2),
+                    turn_width,
+                    PVP_DRAFT_ORDER_TURN_HEIGHT,
+                )
+                right_rect = QRect(
+                    turn_rect.right() + 1 + PVP_DRAFT_ORDER_GAP * 2,
+                    top,
+                    group_width,
+                    group_height,
+                )
+                return _DraftOrderLayout(
+                    height=max(group_height, PVP_DRAFT_ORDER_TURN_HEIGHT)
+                    + PVP_DRAFT_ORDER_MARGIN * 2,
+                    left_group_rect=left_rect,
+                    right_group_rect=right_rect,
+                    turn_rect=turn_rect,
+                    position_rects=_position_rects(left_rect, left_count)
+                    + _position_rects(right_rect, right_count),
+                )
+
+        rows = PVP_DRAFT_ORDER_MAX_SIDE_ROWS
+        columns = _columns_for_count(max_count, rows)
+        group_width = _group_width(columns)
+        group_height = _group_height(rows)
+        side_by_side_width = group_width * 2 + PVP_DRAFT_ORDER_GAP * 2
+        top = PVP_DRAFT_ORDER_MARGIN
+        turn_rect = QRect(
+            max(PVP_DRAFT_ORDER_MARGIN, (available_width - turn_width) // 2),
+            top,
+            turn_width,
+            PVP_DRAFT_ORDER_TURN_HEIGHT,
+        )
+        group_top = turn_rect.bottom() + 1 + PVP_DRAFT_ORDER_GAP * 2
+        if side_by_side_width + PVP_DRAFT_ORDER_MARGIN * 2 <= available_width:
+            left = max(PVP_DRAFT_ORDER_MARGIN, (available_width - side_by_side_width) // 2)
+            left_rect = QRect(left, group_top, group_width, group_height)
+            right_rect = QRect(
+                left_rect.right() + 1 + PVP_DRAFT_ORDER_GAP * 2,
+                group_top,
+                group_width,
+                group_height,
+            )
+            return _DraftOrderLayout(
+                height=group_top + group_height + PVP_DRAFT_ORDER_MARGIN,
+                left_group_rect=left_rect,
+                right_group_rect=right_rect,
+                turn_rect=turn_rect,
+                position_rects=_position_rects(left_rect, left_count)
+                + _position_rects(right_rect, right_count),
+            )
+
+        left = max(PVP_DRAFT_ORDER_MARGIN, (available_width - group_width) // 2)
+        left_rect = QRect(left, group_top, group_width, group_height)
+        right_top = left_rect.bottom() + 1 + PVP_DRAFT_ORDER_GAP * 2
+        right_rect = QRect(left, right_top, group_width, group_height)
+        return _DraftOrderLayout(
+            height=right_top + group_height + PVP_DRAFT_ORDER_MARGIN,
+            left_group_rect=left_rect,
+            right_group_rect=right_rect,
+            turn_rect=turn_rect,
+            position_rects=_position_rects(left_rect, left_count)
+            + _position_rects(right_rect, right_count),
         )
 
     def _prepare_pixmaps(self) -> None:
@@ -241,7 +351,7 @@ class PvpDraftOrderStrip(QWidget):
                 continue
             result = load_hidpi_pixmap(
                 path,
-                QSize(62, 52),
+                QSize(PVP_DRAFT_ORDER_SLOT_SIZE, PVP_DRAFT_ORDER_SLOT_SIZE),
                 dpr=self.devicePixelRatioF(),
                 aspect_mode=Qt.AspectRatioMode.KeepAspectRatio,
                 transform_mode=Qt.TransformationMode.SmoothTransformation,
@@ -262,7 +372,6 @@ class PvpDraftOrderStrip(QWidget):
     ) -> None:
         visual = _position_visual(row)
         status = str(row["status"])
-        action_type = str(row["action_type"])
         action_color = str(visual["overlay_color"])
         border_color = str(visual["border_color"])
         fill = QColor(action_color)
@@ -282,18 +391,10 @@ class PvpDraftOrderStrip(QWidget):
         else:
             font = painter.font()
             font.setBold(True)
-            font.setPointSize(18)
+            font.setPointSize(25)
             painter.setFont(font)
             painter.setPen(QColor(UI_TEXT_PRIMARY if status == "active" else UI_TEXT_MUTED))
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(row["number"]))
-            font.setPointSize(7)
-            painter.setFont(font)
-            painter.setPen(QColor(action_color))
-            painter.drawText(
-                rect.adjusted(3, 2, -3, -3),
-                Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignHCenter,
-                _draft_action_short_label(action_type),
-            )
 
 
 def _aspect_fit_rect(source: QRectF, bounds: QRectF) -> QRectF:
@@ -332,7 +433,60 @@ def _position_visual(row: Mapping[str, Any]) -> dict[str, Any]:
         "border_color": (
             action_color if status in {"active", "complete"} else UI_BORDER_DEFAULT
         ),
+        "draw_action_label": False,
     }
+
+
+def _columns_for_count(count: int, rows: int) -> int:
+    return max(1, (max(1, int(count)) + max(1, int(rows)) - 1) // max(1, int(rows)))
+
+
+def _group_width(columns: int) -> int:
+    return (
+        max(1, int(columns)) * PVP_DRAFT_ORDER_SLOT_SIZE
+        + max(0, int(columns) - 1) * PVP_DRAFT_ORDER_GAP
+    )
+
+
+def _group_height(rows: int) -> int:
+    return (
+        max(1, int(rows)) * PVP_DRAFT_ORDER_SLOT_SIZE
+        + max(0, int(rows) - 1) * PVP_DRAFT_ORDER_GAP
+    )
+
+
+def _position_rects(bounds: QRect, count: int) -> tuple[QRect, ...]:
+    if count <= 0:
+        return ()
+    columns = _columns_for_bounds(bounds)
+    return tuple(
+        QRect(
+            bounds.left()
+            + (index % columns) * (PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP),
+            bounds.top()
+            + (index // columns) * (PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP),
+            PVP_DRAFT_ORDER_SLOT_SIZE,
+            PVP_DRAFT_ORDER_SLOT_SIZE,
+        )
+        for index in range(count)
+    )
+
+
+def _columns_for_bounds(bounds: QRect) -> int:
+    return max(
+        1,
+        (bounds.width() + PVP_DRAFT_ORDER_GAP)
+        // (PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP),
+    )
+
+
+def _rects_overlap(rects: tuple[QRect, ...]) -> bool:
+    normalized = tuple(rect for rect in rects if not rect.isNull())
+    for index, first in enumerate(normalized):
+        for second in normalized[index + 1 :]:
+            if first.intersects(second):
+                return True
+    return False
 
 
 def _current_action_visual(rows: tuple[dict[str, Any], ...]) -> dict[str, str]:
@@ -344,34 +498,27 @@ def _current_action_visual(rows: tuple[dict[str, Any], ...]) -> dict[str, str]:
         return {
             "title": tr("app_shell.pvp.draft.turn_complete"),
             "detail": tr("app_shell.pvp.draft.completed"),
-            "accent": UI_STATE_SUCCESS if complete else UI_TEXT_MUTED,
+            "border_color": UI_STATE_SUCCESS if complete else UI_TEXT_MUTED,
+            "action_color": UI_STATE_SUCCESS if complete else UI_TEXT_MUTED,
             "seat": "",
             "action_type": "",
         }
     action_type = str(active["action_type"])
     seat = str(active["seat"])
+    seat_color = pvp_player_color(seat)
     return {
         "title": tr("app_shell.pvp.draft.turn_title").format(
             player=_draft_seat_display(seat),
         ),
         "detail": _draft_action_turn_label(action_type),
-        "accent": _draft_action_color(
+        "border_color": seat_color,
+        "action_color": _draft_action_color(
             action_type,
-            seat_color=pvp_player_color(seat),
+            seat_color=seat_color,
         ),
         "seat": seat,
         "action_type": action_type,
     }
-
-
-def _draft_action_short_label(action_type: str) -> str:
-    value = str(action_type or "").casefold()
-    if "ban" in value:
-        return tr("app_shell.pvp.draft.ban").upper()
-    if "immune" in value or "immun" in value:
-        return tr("app_shell.pvp.draft.immune").upper()
-    return tr("app_shell.pvp.draft.pick").upper()
-
 
 def _draft_action_turn_label(action_type: str) -> str:
     value = str(action_type or "").casefold()

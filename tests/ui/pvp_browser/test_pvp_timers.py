@@ -10,7 +10,7 @@ configure_startup_ui_scale()
 
 from PySide6.QtCore import QPoint, QPointF, Qt
 from PySide6.QtGui import QColor, QImage, QWheelEvent
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtWidgets import QApplication, QFrame, QLabel
 
 from run_workspace.abyss.source_data import (
     AbyssEnemySourceRow,
@@ -18,7 +18,11 @@ from run_workspace.abyss.source_data import (
     AbyssFloorSourceData,
     AbyssPeriod,
 )
-from ui.pvp_browser.timers import PvpTimersResultWidget
+from ui.pvp_browser.timers import (
+    PVP_TIMER_HP_COLUMN_WIDTH,
+    PVP_TIMER_INPUT_COLUMN_WIDTH,
+    PvpTimersResultWidget,
+)
 
 
 class PvpTimersResultWidgetTest(unittest.TestCase):
@@ -87,8 +91,10 @@ class PvpTimersResultWidgetTest(unittest.TestCase):
             side = widget._side_widgets[(1, 1)]
             enemy_labels = side.findChildren(QLabel, "pvp_timer_enemy_name")
             self.assertEqual([label.text() for label in enemy_labels], ["x2 Test Automaton"])
-            self.assertEqual(side.solo_value.text(), "1 234 567")
-            self.assertEqual(side.multi_value.text(), "2 345 678")
+            hp = widget._hp_widgets[(1, 1)]
+            self.assertGreaterEqual(hp.width(), PVP_TIMER_HP_COLUMN_WIDTH)
+            self.assertEqual(hp.solo_value.text(), "1 234 567")
+            self.assertEqual(hp.multi_value.text(), "2 345 678")
             self.assertFalse(widget.finalize_button.isEnabled())
             self.assertTrue(widget.set_timer_seconds_for_test("player_1", 0, 540))
             self.assertIn("60", widget.total_labels["player_1"].text())
@@ -129,6 +135,44 @@ class PvpTimersResultWidgetTest(unittest.TestCase):
         self.assertEqual(widget.right_chevron.text(), "▼")
         self.assertEqual(widget.left_chevron.property("outcome"), "winner")
         self.assertEqual(widget.right_chevron.property("outcome"), "loser")
+
+    def test_pvp_timers_use_fixed_timer_hp_and_dps_table_columns(self) -> None:
+        widget = PvpTimersResultWidget()
+        widget.resize(900, 700)
+        widget.show()
+        widget.set_state(
+            completed=False,
+            timer_texts={"player_1": ["", "", ""], "player_2": ["", "", ""]},
+            result=None,
+            source_data=None,
+        )
+        QApplication.processEvents()
+
+        timer_inputs = [
+            widget.timer_input(seat, index)
+            for index in range(3)
+            for seat in ("player_1", "player_2")
+        ]
+        self.assertTrue(all(timer is not None for timer in timer_inputs))
+        self.assertEqual(
+            {timer.width() for timer in timer_inputs if timer is not None},
+            {PVP_TIMER_INPUT_COLUMN_WIDTH},
+        )
+        self.assertEqual(
+            {timer.mapTo(widget, QPoint(0, 0)).x() for timer in timer_inputs if timer is not None},
+            {next(timer for timer in timer_inputs if timer is not None).mapTo(widget, QPoint(0, 0)).x()},
+        )
+        hp_widths = {hp.width() for hp in widget._hp_widgets.values()}
+        self.assertEqual(len(hp_widths), 1)
+        self.assertGreaterEqual(next(iter(hp_widths)), PVP_TIMER_HP_COLUMN_WIDTH)
+        self.assertTrue(widget.findChild(QFrame, "pvp_timer_dps_table"))
+        self.assertFalse(widget.findChildren(QFrame, "pvp_timer_dps_card"))
+
+        self.assertTrue(widget.set_timer_seconds_for_test("player_2", 1, 530))
+        self.assertIn("70", widget.total_labels["player_2"].text())
+        self.assertIn("70", widget.difference_label.text())
+
+        widget.hide()
 
 
 def _wheel_event(delta: int) -> QWheelEvent:

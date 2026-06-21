@@ -106,8 +106,10 @@ Mirror the primary project owner under `tests/`:
   `PixelIconGrid` pool rather than QWidget/text cards, image paths for pool and
   result items, opposite-side P1/P2 constellation badges, legal-only click
   routing, removal of accepted targets from the pool, the full 22-position
-  order strip, right-panel pick/ban grids built through the same item adapter,
-  uncluttered result portraits without pool ownership overlays, and a
+  order strip, fixed 72x72 draft-order slots that reflow vertically without
+  overlapping the central turn board at narrow/medium/wide widths, no tiny
+  action labels inside order slots, right-panel pick/ban grids built through
+  the same item adapter, uncluttered result portraits without pool ownership overlays, and a
   collapsed-by-default secondary action log. The Draft suite also pins the
   shared `CharacterFilterBar`, unified/player scope controls, semantic
   action-slot state, and empty-filter cleanup so hidden stale items cannot stay
@@ -121,10 +123,11 @@ Mirror the primary project owner under `tests/`:
   player colors, action-colored translucent Draft-slot overlays, shared
   Abyss-style `10:00..05:00` remaining-clock wheel/keyboard timer inputs through
   the left Draft scene, remaining-to-elapsed backend conversion, separate enemy
-  wave and
-  solo/multi-target HP rendering, six-value readiness, backend result
-  finalization, and the completed elapsed-seconds total/chevron/difference
-  scoreboard state. Account-settings tests pin both PvP color swatches and the
+  wave and solo/multi-target HP rendering in fixed table columns, equal-width
+  timer columns across all chambers, table-style Solo/Multi DPS summary,
+  six-value readiness, backend result finalization, and the completed
+  elapsed-seconds total/chevron/difference scoreboard state. Account-settings
+  tests pin both PvP color swatches and the
   reset-to-default behavior.
   Abyss-period admission tests remain a
   required future suite when that backend gate is implemented. They also cover

@@ -44,6 +44,10 @@ from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultZoneWidg
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 
 
+PVP_POSTDRAFT_RUN_PANEL_MIN_HEIGHT = 470
+PVP_POSTDRAFT_EXPANDED_MIN_HEIGHT = 540
+
+
 class PvpPostDraftSeatFrame(PvpSeatAccentFrame):
     """Right-dock seat container using the shared non-layout accent."""
 
@@ -558,13 +562,23 @@ class PvpDraftRightPanel(QWidget):
                 if margins is not None
                 else 14
             )
+            zone.setMinimumHeight(0)
             zone.setMaximumHeight(button_height + vertical_margins)
             zone.setSizePolicy(
                 QSizePolicy.Policy.Expanding,
                 QSizePolicy.Policy.Fixed,
             )
             return
+        panel = zone.findChild(PvpPostDraftRunPanel, "pvp_postdraft_run_panel")
+        if panel is not None:
+            panel.setMinimumHeight(PVP_POSTDRAFT_RUN_PANEL_MIN_HEIGHT)
+        panel_height = (
+            max(PVP_POSTDRAFT_EXPANDED_MIN_HEIGHT, panel.sizeHint().height())
+            if panel is not None
+            else PVP_POSTDRAFT_EXPANDED_MIN_HEIGHT
+        )
         zone.setMaximumHeight(16777215)
+        zone.setMinimumHeight(panel_height)
         zone.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,

@@ -52,6 +52,10 @@ from ui.utils.ui_palette import (
 from ui.utils.pvp_colors import pvp_player_color
 
 
+PVP_TIMER_HP_COLUMN_WIDTH = 210
+PVP_TIMER_INPUT_COLUMN_WIDTH = 280
+
+
 def pvp_timers_style() -> str:
     player_1_color = pvp_player_color("player_1")
     player_2_color = pvp_player_color("player_2")
@@ -78,8 +82,8 @@ QWidget#pvp_timer_wave {{ background: transparent; border: none; }}
 QLabel#pvp_timer_wave_title {{ color: {UI_TEXT_MUTED}; font-size: 10px; font-weight: 800; }}
 QLabel#pvp_timer_enemy_name {{ color: {UI_TEXT_SECONDARY}; font-size: 11px; }}
 QFrame#pvp_timer_hp {{
-    min-width: 188px;
-    max-width: 230px;
+    min-width: {PVP_TIMER_HP_COLUMN_WIDTH}px;
+    max-width: {PVP_TIMER_HP_COLUMN_WIDTH}px;
     border: 1px solid {UI_BORDER_DEFAULT};
     border-radius: 5px;
     background: {UI_BG_BUTTON};
@@ -88,6 +92,12 @@ QLabel#pvp_timer_hp_title {{ color: {UI_TEXT_MUTED}; font-size: 11px; font-weigh
 QLabel#pvp_timer_hp_value {{ color: {UI_TEXT_PRIMARY}; font-size: 12px; font-weight: 900; }}
 QLabel#pvp_timer_player_1 {{ color: {player_1_color}; font-weight: 900; }}
 QLabel#pvp_timer_player_2 {{ color: {player_2_color}; font-weight: 900; }}
+QWidget#pvp_timer_input_column {{
+    min-width: {PVP_TIMER_INPUT_COLUMN_WIDTH}px;
+    max-width: {PVP_TIMER_INPUT_COLUMN_WIDTH}px;
+    background: transparent;
+    border: none;
+}}
 #TimerEditorFrame {{
     min-height: 38px;
     border-radius: 5px;
@@ -135,18 +145,22 @@ QLabel#pvp_timer_difference[winnerSeat="player_2"] {{
     border-color: {player_2_color};
     color: {player_2_color};
 }}
-QFrame#pvp_timer_dps_card {{
+QFrame#pvp_timer_dps_table {{
     border: 1px solid {UI_BORDER_DEFAULT};
     border-radius: 5px;
     background: {UI_BG_INSET};
 }}
-QLabel#pvp_timer_dps_title {{ font-size: 12px; font-weight: 900; }}
+QLabel#pvp_timer_dps_header {{
+    color: {UI_TEXT_MUTED};
+    font-size: 11px;
+    font-weight: 900;
+}}
+QLabel#pvp_timer_dps_player {{ font-size: 12px; font-weight: 900; }}
 QLabel#pvp_timer_dps_value {{
     color: {UI_TEXT_PRIMARY};
     font-size: 13px;
     font-weight: 900;
 }}
-QLabel#pvp_timer_dps_muted {{ color: {UI_TEXT_MUTED}; font-size: 11px; font-weight: 700; }}
 QPushButton#pvp_timer_finalize {{
     min-height: 32px;
     border: 1px solid {UI_STATE_SUCCESS};
@@ -185,28 +199,6 @@ class PvpChamberSideWidget(QFrame):
         self.waves_layout.setSpacing(3)
         layout.addWidget(self.waves_widget, 1)
 
-        self.hp_frame = QFrame()
-        self.hp_frame.setObjectName("pvp_timer_hp")
-        hp_layout = QGridLayout(self.hp_frame)
-        hp_layout.setContentsMargins(7, 5, 7, 5)
-        hp_layout.setHorizontalSpacing(8)
-        hp_layout.setVerticalSpacing(2)
-        self.solo_title = QLabel(tr("app_shell.pvp.post.timer_hp_solo"))
-        self.solo_title.setObjectName("pvp_timer_hp_title")
-        self.solo_value = QLabel("—")
-        self.solo_value.setObjectName("pvp_timer_hp_value")
-        self.solo_value.setAlignment(Qt.AlignmentFlag.AlignRight)
-        self.multi_title = QLabel(tr("app_shell.pvp.post.timer_hp_multi"))
-        self.multi_title.setObjectName("pvp_timer_hp_title")
-        self.multi_value = QLabel("—")
-        self.multi_value.setObjectName("pvp_timer_hp_value")
-        self.multi_value.setAlignment(Qt.AlignmentFlag.AlignRight)
-        hp_layout.addWidget(self.solo_title, 0, 0)
-        hp_layout.addWidget(self.solo_value, 0, 1)
-        hp_layout.addWidget(self.multi_title, 1, 0)
-        hp_layout.addWidget(self.multi_value, 1, 1)
-        layout.addWidget(self.hp_frame)
-
     def set_source_data(self, source_data: AbyssFloorSourceData | None) -> None:
         self.side_label.setText(
             tr(
@@ -232,9 +224,35 @@ class PvpChamberSideWidget(QFrame):
             for wave, wave_rows in sorted(rows_by_wave.items()):
                 self.waves_layout.addWidget(_build_wave_widget(wave, wave_rows))
 
-        summary = _side_summary(source_data, self.chamber, self.side)
-        self.solo_value.setText(_format_hp(None if summary is None else summary.solo_target_hp))
-        self.multi_value.setText(_format_hp(None if summary is None else summary.multi_target_hp))
+
+
+class PvpHpSummaryWidget(QFrame):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("pvp_timer_hp")
+        self.setFixedWidth(PVP_TIMER_HP_COLUMN_WIDTH)
+        layout = QGridLayout(self)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setHorizontalSpacing(10)
+        layout.setVerticalSpacing(3)
+        self.solo_title = QLabel(tr("app_shell.pvp.post.timer_hp_solo"))
+        self.solo_title.setObjectName("pvp_timer_hp_title")
+        self.solo_value = QLabel("-")
+        self.solo_value.setObjectName("pvp_timer_hp_value")
+        self.solo_value.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.multi_title = QLabel(tr("app_shell.pvp.post.timer_hp_multi"))
+        self.multi_title.setObjectName("pvp_timer_hp_title")
+        self.multi_value = QLabel("-")
+        self.multi_value.setObjectName("pvp_timer_hp_value")
+        self.multi_value.setAlignment(Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(self.solo_title, 0, 0)
+        layout.addWidget(self.solo_value, 0, 1)
+        layout.addWidget(self.multi_title, 1, 0)
+        layout.addWidget(self.multi_value, 1, 1)
+
+    def set_values(self, *, solo_hp: int | None, multi_hp: int | None) -> None:
+        self.solo_value.setText(_format_hp(solo_hp))
+        self.multi_value.setText(_format_hp(multi_hp))
 
 
 class PvpTimersResultWidget(QFrame):
@@ -248,6 +266,7 @@ class PvpTimersResultWidget(QFrame):
         self._timer_inputs: dict[tuple[str, int], CompactTimerInputWidget] = {}
         self._timer_touched: dict[tuple[str, int], bool] = {}
         self._side_widgets: dict[tuple[int, int], PvpChamberSideWidget] = {}
+        self._hp_widgets: dict[tuple[int, int], PvpHpSummaryWidget] = {}
         self._source_data: AbyssFloorSourceData | None = None
         self._updating = False
 
@@ -280,14 +299,14 @@ class PvpTimersResultWidget(QFrame):
                 tr("app_shell.pvp.post.timer_chamber_title").format(chamber=chamber_id)
             )
             chamber_label.setObjectName("pvp_timer_chamber_title")
-            grid.addWidget(chamber_label, 0, 0)
+            grid.addWidget(chamber_label, 0, 0, 1, 3)
 
             timer_column = QWidget()
             timer_column.setObjectName("pvp_timer_input_column")
-            timer_column.setMinimumWidth(170)
+            timer_column.setFixedWidth(PVP_TIMER_INPUT_COLUMN_WIDTH)
             timer_layout = QVBoxLayout(timer_column)
             timer_layout.setContentsMargins(0, 0, 0, 0)
-            timer_layout.setSpacing(5)
+            timer_layout.setSpacing(6)
             timer_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
             for seat in PVP_SEATS:
                 seat_label = QLabel(
@@ -307,6 +326,7 @@ class PvpTimersResultWidget(QFrame):
                     initial_seconds=ABYSS_CHAMBER_START_SECONDS,
                     wide=True,
                 )
+                timer.setFixedWidth(PVP_TIMER_INPUT_COLUMN_WIDTH)
                 timer.seconds_changed.connect(
                     lambda seconds, s=seat, i=chamber_index: self._on_timer_changed(
                         s, i, seconds
@@ -323,10 +343,14 @@ class PvpTimersResultWidget(QFrame):
                 )
                 self._side_widgets[(chamber_index + 1, side)] = side_widget
                 grid.addWidget(side_widget, side, 0)
+                hp_widget = PvpHpSummaryWidget()
+                self._hp_widgets[(chamber_index + 1, side)] = hp_widget
+                grid.addWidget(hp_widget, side, 1)
 
-            grid.addWidget(timer_column, 1, 1, 2, 1)
+            grid.addWidget(timer_column, 1, 2, 2, 1)
             grid.setColumnStretch(0, 1)
             grid.setColumnStretch(1, 0)
+            grid.setColumnStretch(2, 0)
             root.addWidget(frame)
 
         scoreboard = QFrame()
@@ -363,43 +387,47 @@ class PvpTimersResultWidget(QFrame):
         score_layout.addStretch(1)
         scoreboard_layout.addLayout(score_layout)
 
-        dps_layout = QHBoxLayout()
-        dps_layout.setContentsMargins(0, 0, 0, 0)
-        dps_layout.setSpacing(8)
+        self.dps_table_frame = QFrame()
+        self.dps_table_frame.setObjectName("pvp_timer_dps_table")
+        dps_layout = QGridLayout(self.dps_table_frame)
+        dps_layout.setContentsMargins(10, 7, 10, 7)
+        dps_layout.setHorizontalSpacing(18)
+        dps_layout.setVerticalSpacing(4)
         self.dps_value_labels: dict[tuple[str, str], QLabel] = {}
-        for seat in PVP_SEATS:
-            card = QFrame()
-            card.setObjectName("pvp_timer_dps_card")
-            card_layout = QGridLayout(card)
-            card_layout.setContentsMargins(9, 6, 9, 6)
-            card_layout.setHorizontalSpacing(8)
-            card_layout.setVerticalSpacing(3)
-            title = QLabel(
+        for column, text in enumerate(
+            (
+                "",
+                tr("app_shell.pvp.post.timer_average_dps_solo"),
+                tr("app_shell.pvp.post.timer_average_dps_multi"),
+            )
+        ):
+            header = QLabel(text)
+            header.setObjectName("pvp_timer_dps_header")
+            header.setAlignment(
+                Qt.AlignmentFlag.AlignRight if column else Qt.AlignmentFlag.AlignLeft
+            )
+            dps_layout.addWidget(header, 0, column)
+        for row, seat in enumerate(PVP_SEATS, start=1):
+            player_label = QLabel(
                 tr("app_shell.pvp.post.timer_average_dps_title").format(
                     player=1 if seat == "player_1" else 2,
                 )
             )
-            title.setObjectName(
+            player_label.setObjectName(
                 "pvp_timer_player_1" if seat == "player_1" else "pvp_timer_player_2"
             )
-            card_layout.addWidget(title, 0, 0, 1, 2)
-            for row, mode in enumerate(("solo", "multi"), start=1):
-                label = QLabel(
-                    tr(
-                        "app_shell.pvp.post.timer_average_dps_solo"
-                        if mode == "solo"
-                        else "app_shell.pvp.post.timer_average_dps_multi"
-                    )
-                )
-                label.setObjectName("pvp_timer_dps_muted")
+            player_label.setProperty("seat", seat)
+            dps_layout.addWidget(player_label, row, 0)
+            for column, mode in enumerate(("solo", "multi"), start=1):
                 value = QLabel("-")
                 value.setObjectName("pvp_timer_dps_value")
                 value.setAlignment(Qt.AlignmentFlag.AlignRight)
                 self.dps_value_labels[(seat, mode)] = value
-                card_layout.addWidget(label, row, 0)
-                card_layout.addWidget(value, row, 1)
-            dps_layout.addWidget(card, 1)
-        scoreboard_layout.addLayout(dps_layout)
+                dps_layout.addWidget(value, row, column)
+        dps_layout.setColumnStretch(0, 1)
+        dps_layout.setColumnStretch(1, 0)
+        dps_layout.setColumnStretch(2, 0)
+        scoreboard_layout.addWidget(self.dps_table_frame)
         root.addWidget(scoreboard)
 
         self.finalize_button = QPushButton(tr("app_shell.pvp.post.finalize_result"))
@@ -580,6 +608,12 @@ class PvpTimersResultWidget(QFrame):
             )
         for widget in self._side_widgets.values():
             widget.set_source_data(source_data)
+        for (chamber, side), widget in self._hp_widgets.items():
+            summary = _side_summary(source_data, chamber, side)
+            widget.set_values(
+                solo_hp=None if summary is None else summary.solo_target_hp,
+                multi_hp=None if summary is None else summary.multi_target_hp,
+            )
 
 
 def _build_wave_widget(wave: int, rows: list[AbyssEnemySourceRow]) -> QWidget:

@@ -461,7 +461,10 @@ Weapon availability:
      timers;
    - compute each player's total elapsed seconds;
    - lower elapsed total wins;
-   - show seconds difference.
+   - show seconds difference;
+   - UI must present the stage as a fixed table of chamber monsters, solo/multi
+     HP, shared timer inputs, elapsed totals/difference, and average Solo/Multi
+     DPS; do not introduce PvP-only timer clones.
 
 8. Result summary
    - show players, teams, weapons, timers, winner, and validation state;

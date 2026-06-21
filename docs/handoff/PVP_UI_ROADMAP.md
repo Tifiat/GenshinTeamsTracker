@@ -349,12 +349,18 @@ Current v0 scope:
 - Pool portraits carry Player 1/Player 2 constellation badges on opposite
   sides. Legal portraits use the active seat accent and accept the backend
   action payload; illegal portraits are dimmed and non-clickable.
-- A painted two-row 22-position order strip flattens the backend `timeline`.
-  Empty positions use a large turn number plus a translucent semantic action
-  fill; completed positions show an uncluttered portrait while retaining the
-  action fill. Player identity uses amber/purple accents, while pick/ban/immune
-  use neutral/red/gold action colors. Do not reuse normal team green/blue for
-  either Draft players or Draft actions.
+- A painted 22-position order strip flattens the backend `timeline`. Draft
+  order slots have a fixed visual size of 72x72 and must never shrink below
+  the character-card size. If the window is too narrow, the strip grows
+  vertically and reflows around the central turn board; slots must not overlap
+  that board. Empty positions use a large turn number plus a translucent
+  semantic action fill and no tiny `BAN`/`PICK` label; completed positions show
+  an uncluttered portrait while retaining the action fill. The central turn
+  board uses the active player's border color and action-colored
+  `BAN/PICK/IMMUNE` text. Player identity uses the shared PvP player colors,
+  while pick/ban/immune semantics use translucent player/red/gold action
+  overlays. Do not reuse normal team green/blue for Draft players or Draft
+  actions.
 - Picked/banned entries are omitted from the main pool and rendered through
   the same Draft grid-item adapter in right-panel result zones. Picks use the
   readable character-grid size; bans use compact portraits.
@@ -391,6 +397,11 @@ Current v0 scope:
   PvP `RunSessionController` / `TeamBuilderState`. Right-panel slot clicks keep
   their normal behavior: selected build/details target toggle, not character
   assignment.
+- The Draft right panel has separate layouts for pick/ban summary and
+  post-draft build stages. Draft stage right-dock content is a large readable
+  pick/ban/result summary; Assignment/Weapons must show the scoped build panel
+  with full 8-slot seat cards. A collapsed player is a compact row only and
+  must not compress the expanded player's cards or ready button.
 - When assignment is committed to the PvP draft backend, convert the scoped
   `TeamBuilderState` team slots into the backend `character_id` assignment and
   call `FreeDraftController.set_team_assignment(...)`. Backend validation
@@ -520,6 +531,11 @@ Hot-seat layout direction:
   scoreboard with winner/loser chevrons, cached current Abyss period, separate
   enemy wave rows, per-half solo/multi-target HP summaries, and the finalization
   command.
+  The chamber rows use a fixed table layout: monsters/waves column, equal-width
+  HP column, and equal-width timer column. The two player timer inputs are
+  stacked inside the timer column and must stay the same size and x-position in
+  every chamber. The bottom DPS summary is a table (`Player | Solo DPS | Multi
+  DPS`) with right-aligned numbers, not independent cards.
   The right dock remains scoped team/build details and does not regain the live
   Abyss chamber table. Missing cached Abyss data is an explicit unavailable
   state, not invented monster data.

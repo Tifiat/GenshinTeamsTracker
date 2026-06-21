@@ -90,6 +90,16 @@ class PvpTimersResultWidgetTest(unittest.TestCase):
             self.assertEqual(side.solo_value.text(), "1 234 567")
             self.assertEqual(side.multi_value.text(), "2 345 678")
             self.assertFalse(widget.finalize_button.isEnabled())
+            self.assertTrue(widget.set_timer_seconds_for_test("player_1", 0, 540))
+            self.assertIn("60", widget.total_labels["player_1"].text())
+            self.assertEqual(
+                widget.dps_value_labels[("player_1", "solo")].text(),
+                "20 576",
+            )
+            self.assertEqual(
+                widget.dps_value_labels[("player_1", "multi")].text(),
+                "39 095",
+            )
 
     def test_pvp_timers_reuse_common_wheel_controls_and_scoreboard(self) -> None:
         widget = PvpTimersResultWidget()
@@ -104,6 +114,7 @@ class PvpTimersResultWidgetTest(unittest.TestCase):
         self.assertEqual(first.seconds_left, 600)
         first.sec_edit.wheelEvent(_wheel_event(-120))
         self.assertEqual(first.seconds_left, 599)
+        self.assertIn("1", widget.total_labels["player_1"].text())
 
         for index in range(3):
             self.assertTrue(widget.set_timer_seconds_for_test("player_1", index, 540))

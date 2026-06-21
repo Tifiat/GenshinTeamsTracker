@@ -78,18 +78,18 @@ QWidget#pvp_timer_wave {{ background: transparent; border: none; }}
 QLabel#pvp_timer_wave_title {{ color: {UI_TEXT_MUTED}; font-size: 10px; font-weight: 800; }}
 QLabel#pvp_timer_enemy_name {{ color: {UI_TEXT_SECONDARY}; font-size: 11px; }}
 QFrame#pvp_timer_hp {{
-    min-width: 158px;
-    max-width: 185px;
+    min-width: 188px;
+    max-width: 230px;
     border: 1px solid {UI_BORDER_DEFAULT};
     border-radius: 5px;
     background: {UI_BG_BUTTON};
 }}
-QLabel#pvp_timer_hp_title {{ color: {UI_TEXT_MUTED}; font-size: 10px; font-weight: 800; }}
-QLabel#pvp_timer_hp_value {{ color: {UI_TEXT_PRIMARY}; font-size: 11px; font-weight: 900; }}
+QLabel#pvp_timer_hp_title {{ color: {UI_TEXT_MUTED}; font-size: 11px; font-weight: 800; }}
+QLabel#pvp_timer_hp_value {{ color: {UI_TEXT_PRIMARY}; font-size: 12px; font-weight: 900; }}
 QLabel#pvp_timer_player_1 {{ color: {player_1_color}; font-weight: 900; }}
 QLabel#pvp_timer_player_2 {{ color: {player_2_color}; font-weight: 900; }}
 #TimerEditorFrame {{
-    min-height: 28px;
+    min-height: 38px;
     border-radius: 5px;
     border: 1px solid {UI_BORDER_DEFAULT};
     background: {UI_BG_INSET};
@@ -101,17 +101,17 @@ QLabel#pvp_timer_player_2 {{ color: {player_2_color}; font-weight: 900; }}
     background: transparent;
     color: {UI_TEXT_PRIMARY};
     font-family: Consolas, "Courier New", monospace;
-    font-size: 14px;
+    font-size: 20px;
     font-weight: 800;
     padding: 0px;
 }}
 #TimerSegmentEdit:focus {{ color: {UI_TEXT_ON_ACCENT}; background: {UI_BG_BUTTON_HOVER}; }}
 #TimerSegmentEdit:read-only {{ color: {UI_TEXT_MUTED}; background: {UI_BG_BUTTON}; }}
-#TimerSeparator {{ color: {UI_TEXT_PRIMARY}; font-size: 12px; }}
+#TimerSeparator {{ color: {UI_TEXT_PRIMARY}; font-size: 18px; font-weight: 900; }}
 QLabel#pvp_timer_score_player_1,
-QLabel#pvp_timer_score_player_2 {{ color: {UI_TEXT_PRIMARY}; font-size: 16px; font-weight: 900; }}
-QLabel#pvp_timer_score_player_1 {{ border-left: 3px solid {player_1_color}; padding-left: 8px; }}
-QLabel#pvp_timer_score_player_2 {{ border-right: 3px solid {player_2_color}; padding-right: 8px; }}
+QLabel#pvp_timer_score_player_2 {{ font-size: 17px; font-weight: 900; }}
+QLabel#pvp_timer_score_player_1 {{ color: {player_1_color}; }}
+QLabel#pvp_timer_score_player_2 {{ color: {player_2_color}; }}
 QLabel#pvp_timer_chevron {{ font-size: 19px; font-weight: 900; }}
 QLabel#pvp_timer_chevron[outcome="winner"] {{ color: {UI_STATE_SUCCESS}; }}
 QLabel#pvp_timer_chevron[outcome="loser"] {{ color: {UI_STATE_DANGER}; }}
@@ -127,6 +127,26 @@ QLabel#pvp_timer_difference {{
     font-weight: 900;
     padding: 4px 10px;
 }}
+QLabel#pvp_timer_difference[winnerSeat="player_1"] {{
+    border-color: {player_1_color};
+    color: {player_1_color};
+}}
+QLabel#pvp_timer_difference[winnerSeat="player_2"] {{
+    border-color: {player_2_color};
+    color: {player_2_color};
+}}
+QFrame#pvp_timer_dps_card {{
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 5px;
+    background: {UI_BG_INSET};
+}}
+QLabel#pvp_timer_dps_title {{ font-size: 12px; font-weight: 900; }}
+QLabel#pvp_timer_dps_value {{
+    color: {UI_TEXT_PRIMARY};
+    font-size: 13px;
+    font-weight: 900;
+}}
+QLabel#pvp_timer_dps_muted {{ color: {UI_TEXT_MUTED}; font-size: 11px; font-weight: 700; }}
 QPushButton#pvp_timer_finalize {{
     min-height: 32px;
     border: 1px solid {UI_STATE_SUCCESS};
@@ -228,6 +248,7 @@ class PvpTimersResultWidget(QFrame):
         self._timer_inputs: dict[tuple[str, int], CompactTimerInputWidget] = {}
         self._timer_touched: dict[tuple[str, int], bool] = {}
         self._side_widgets: dict[tuple[int, int], PvpChamberSideWidget] = {}
+        self._source_data: AbyssFloorSourceData | None = None
         self._updating = False
 
         root = QVBoxLayout(self)
@@ -261,7 +282,14 @@ class PvpTimersResultWidget(QFrame):
             chamber_label.setObjectName("pvp_timer_chamber_title")
             grid.addWidget(chamber_label, 0, 0)
 
-            for column, seat in enumerate(PVP_SEATS, start=1):
+            timer_column = QWidget()
+            timer_column.setObjectName("pvp_timer_input_column")
+            timer_column.setMinimumWidth(170)
+            timer_layout = QVBoxLayout(timer_column)
+            timer_layout.setContentsMargins(0, 0, 0, 0)
+            timer_layout.setSpacing(5)
+            timer_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+            for seat in PVP_SEATS:
                 seat_label = QLabel(
                     tr("app_shell.pvp.post.timer_player_short").format(
                         player=1 if seat == "player_1" else 2,
@@ -271,12 +299,13 @@ class PvpTimersResultWidget(QFrame):
                     "pvp_timer_player_1" if seat == "player_1" else "pvp_timer_player_2"
                 )
                 seat_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                grid.addWidget(seat_label, 0, column)
+                timer_layout.addWidget(seat_label)
 
                 timer = CompactTimerInputWidget(
                     minimum_seconds=ABYSS_TIMER_EDIT_MIN_SECONDS,
                     maximum_seconds=ABYSS_CHAMBER_START_SECONDS,
                     initial_seconds=ABYSS_CHAMBER_START_SECONDS,
+                    wide=True,
                 )
                 timer.seconds_changed.connect(
                     lambda seconds, s=seat, i=chamber_index: self._on_timer_changed(
@@ -285,14 +314,7 @@ class PvpTimersResultWidget(QFrame):
                 )
                 self._timer_inputs[(seat, chamber_index)] = timer
                 self._timer_touched[(seat, chamber_index)] = False
-                grid.addWidget(
-                    timer,
-                    1,
-                    column,
-                    2,
-                    1,
-                    Qt.AlignmentFlag.AlignCenter,
-                )
+                timer_layout.addWidget(timer)
 
             for side in (1, 2):
                 side_widget = PvpChamberSideWidget(
@@ -302,20 +324,24 @@ class PvpTimersResultWidget(QFrame):
                 self._side_widgets[(chamber_index + 1, side)] = side_widget
                 grid.addWidget(side_widget, side, 0)
 
+            grid.addWidget(timer_column, 1, 1, 2, 1)
             grid.setColumnStretch(0, 1)
             grid.setColumnStretch(1, 0)
-            grid.setColumnStretch(2, 0)
             root.addWidget(frame)
 
         scoreboard = QFrame()
         scoreboard.setObjectName("pvp_timer_scoreboard")
-        score_layout = QHBoxLayout(scoreboard)
-        score_layout.setContentsMargins(12, 8, 12, 8)
+        scoreboard_layout = QVBoxLayout(scoreboard)
+        scoreboard_layout.setContentsMargins(12, 8, 12, 8)
+        scoreboard_layout.setSpacing(8)
+        score_layout = QHBoxLayout()
+        score_layout.setContentsMargins(0, 0, 0, 0)
         score_layout.setSpacing(10)
         self.total_labels: dict[str, QLabel] = {}
         self.total_labels["player_1"] = QLabel()
         self.total_labels["player_1"].setObjectName("pvp_timer_score_player_1")
-        score_layout.addWidget(self.total_labels["player_1"], 1)
+        score_layout.addStretch(1)
+        score_layout.addWidget(self.total_labels["player_1"])
 
         self.left_chevron = QLabel("·")
         self.left_chevron.setObjectName("pvp_timer_chevron")
@@ -333,7 +359,47 @@ class PvpTimersResultWidget(QFrame):
         self.total_labels["player_2"] = QLabel()
         self.total_labels["player_2"].setObjectName("pvp_timer_score_player_2")
         self.total_labels["player_2"].setAlignment(Qt.AlignmentFlag.AlignRight)
-        score_layout.addWidget(self.total_labels["player_2"], 1)
+        score_layout.addWidget(self.total_labels["player_2"])
+        score_layout.addStretch(1)
+        scoreboard_layout.addLayout(score_layout)
+
+        dps_layout = QHBoxLayout()
+        dps_layout.setContentsMargins(0, 0, 0, 0)
+        dps_layout.setSpacing(8)
+        self.dps_value_labels: dict[tuple[str, str], QLabel] = {}
+        for seat in PVP_SEATS:
+            card = QFrame()
+            card.setObjectName("pvp_timer_dps_card")
+            card_layout = QGridLayout(card)
+            card_layout.setContentsMargins(9, 6, 9, 6)
+            card_layout.setHorizontalSpacing(8)
+            card_layout.setVerticalSpacing(3)
+            title = QLabel(
+                tr("app_shell.pvp.post.timer_average_dps_title").format(
+                    player=1 if seat == "player_1" else 2,
+                )
+            )
+            title.setObjectName(
+                "pvp_timer_player_1" if seat == "player_1" else "pvp_timer_player_2"
+            )
+            card_layout.addWidget(title, 0, 0, 1, 2)
+            for row, mode in enumerate(("solo", "multi"), start=1):
+                label = QLabel(
+                    tr(
+                        "app_shell.pvp.post.timer_average_dps_solo"
+                        if mode == "solo"
+                        else "app_shell.pvp.post.timer_average_dps_multi"
+                    )
+                )
+                label.setObjectName("pvp_timer_dps_muted")
+                value = QLabel("-")
+                value.setObjectName("pvp_timer_dps_value")
+                value.setAlignment(Qt.AlignmentFlag.AlignRight)
+                self.dps_value_labels[(seat, mode)] = value
+                card_layout.addWidget(label, row, 0)
+                card_layout.addWidget(value, row, 1)
+            dps_layout.addWidget(card, 1)
+        scoreboard_layout.addLayout(dps_layout)
         root.addWidget(scoreboard)
 
         self.finalize_button = QPushButton(tr("app_shell.pvp.post.finalize_result"))
@@ -351,6 +417,7 @@ class PvpTimersResultWidget(QFrame):
     ) -> None:
         self._updating = True
         try:
+            self._source_data = source_data
             for key, timer in self._timer_inputs.items():
                 seat, index = key
                 values = timer_texts.get(seat)
@@ -370,7 +437,7 @@ class PvpTimersResultWidget(QFrame):
         finally:
             self._updating = False
         self._refresh_validation()
-        self._refresh_scoreboard(completed=completed, result=result or {})
+        self._refresh_scoreboard_current(completed=completed, result=result or {})
 
     def timer_input(self, seat: str, index: int) -> CompactTimerInputWidget | None:
         return self._timer_inputs.get((seat, index))
@@ -391,7 +458,7 @@ class PvpTimersResultWidget(QFrame):
             return
         self._timer_touched[(seat, index)] = True
         self._refresh_validation()
-        self._refresh_scoreboard(completed=False, result={})
+        self._refresh_scoreboard_current(completed=False, result={})
         self.timer_text_changed.emit(seat, index, _format_seconds(seconds))
 
     def _refresh_validation(self) -> None:
@@ -402,18 +469,18 @@ class PvpTimersResultWidget(QFrame):
             timer.style().polish(timer)
         self.finalize_button.setEnabled(ready)
 
-    def _refresh_scoreboard(self, *, completed: bool, result: Mapping[str, Any]) -> None:
-        totals: dict[str, int | None] = {}
+    def _refresh_scoreboard_current(
+        self,
+        *,
+        completed: bool,
+        result: Mapping[str, Any],
+    ) -> None:
+        totals: dict[str, int] = {}
         for seat in PVP_SEATS:
             keys = [(seat, index) for index in range(len(PVP_TIMER_CHAMBERS))]
-            total = (
-                sum(
-                    ABYSS_CHAMBER_START_SECONDS
-                    - self._timer_inputs[key].seconds_left
-                    for key in keys
-                )
-                if all(self._timer_touched[key] for key in keys)
-                else None
+            total = sum(
+                ABYSS_CHAMBER_START_SECONDS - self._timer_inputs[key].seconds_left
+                for key in keys
             )
             if completed:
                 result_totals = result.get("totals")
@@ -423,52 +490,64 @@ class PvpTimersResultWidget(QFrame):
             self.total_labels[seat].setText(
                 tr("app_shell.pvp.post.timer_player_total_seconds").format(
                     player=1 if seat == "player_1" else 2,
-                    seconds="--" if total is None else int(total),
+                    seconds=int(total),
                 )
             )
 
         winner = str(result.get("winner_seat") or "") if completed else ""
         difference = int(result.get("seconds_difference") or 0) if completed else 0
-        if not completed and totals["player_1"] is not None and totals["player_2"] is not None:
-            difference = abs(int(totals["player_1"]) - int(totals["player_2"]))
+        if not completed:
+            difference = abs(totals["player_1"] - totals["player_2"])
             if totals["player_1"] < totals["player_2"]:
                 winner = "player_1"
             elif totals["player_2"] < totals["player_1"]:
                 winner = "player_2"
 
-        if totals["player_1"] is None or totals["player_2"] is None:
-            self._set_score_state(
+        if not winner:
+            self._set_score_state_current(
                 "neutral",
                 "neutral",
-                "·",
-                "·",
-                _format_score_seconds(None),
-            )
-        elif not winner:
-            self._set_score_state(
-                "neutral", "neutral", "◆", "◆", _format_score_seconds(0)
+                "-",
+                "-",
+                _format_score_seconds(0),
+                "",
             )
         elif winner == "player_1":
-            self._set_score_state(
-                "winner", "loser", "▲", "▼", _format_score_seconds(difference)
+            self._set_score_state_current(
+                "winner",
+                "loser",
+                "\u25b2",
+                "\u25bc",
+                _format_score_seconds(difference),
+                "player_1",
             )
         else:
-            self._set_score_state(
-                "loser", "winner", "▼", "▲", _format_score_seconds(difference)
+            self._set_score_state_current(
+                "loser",
+                "winner",
+                "\u25bc",
+                "\u25b2",
+                _format_score_seconds(difference),
+                "player_2",
             )
+        self._refresh_dps_summary(totals)
         self.finalize_button.setVisible(not completed)
 
-    def _set_score_state(
+    def _set_score_state_current(
         self,
         left_outcome: str,
         right_outcome: str,
         left_text: str,
         right_text: str,
         difference: str,
+        winner_seat: str,
     ) -> None:
         self.left_chevron.setText(left_text)
         self.right_chevron.setText(right_text)
         self.difference_label.setText(difference)
+        self.difference_label.setProperty("winnerSeat", winner_seat)
+        self.difference_label.style().unpolish(self.difference_label)
+        self.difference_label.style().polish(self.difference_label)
         for label, outcome in (
             (self.left_chevron, left_outcome),
             (self.right_chevron, right_outcome),
@@ -476,6 +555,17 @@ class PvpTimersResultWidget(QFrame):
             label.setProperty("outcome", outcome)
             label.style().unpolish(label)
             label.style().polish(label)
+
+    def _refresh_dps_summary(self, totals: Mapping[str, int]) -> None:
+        solo_hp, multi_hp = _source_hp_totals(self._source_data)
+        for seat in PVP_SEATS:
+            total_seconds = max(0, int(totals.get(seat) or 0))
+            solo_label = self.dps_value_labels.get((seat, "solo"))
+            multi_label = self.dps_value_labels.get((seat, "multi"))
+            if solo_label is not None:
+                solo_label.setText(_format_dps(solo_hp, total_seconds))
+            if multi_label is not None:
+                multi_label.setText(_format_dps(multi_hp, total_seconds))
 
     def _set_source_data(self, source_data: AbyssFloorSourceData | None) -> None:
         if source_data is None:
@@ -558,6 +648,23 @@ def _format_score_seconds(seconds: int | None) -> str:
 
 def _format_hp(value: int | None) -> str:
     return "—" if value is None else f"{int(value):,}".replace(",", " ")
+
+
+def _source_hp_totals(source_data: AbyssFloorSourceData | None) -> tuple[int, int]:
+    if source_data is None:
+        return 0, 0
+    solo = 0
+    multi = 0
+    for summary in source_data.side_summaries:
+        solo += max(0, int(summary.solo_target_hp or 0))
+        multi += max(0, int(summary.multi_target_hp or 0))
+    return solo, multi
+
+
+def _format_dps(hp: int, total_seconds: int) -> str:
+    if hp <= 0 or total_seconds <= 0:
+        return "-"
+    return f"{int(round(hp / total_seconds)):,}".replace(",", " ")
 
 
 def _clear_layout(layout: QVBoxLayout) -> None:

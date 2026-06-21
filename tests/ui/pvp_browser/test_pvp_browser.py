@@ -485,6 +485,14 @@ class PvpBrowserTest(unittest.TestCase):
 
         self.assertIsInstance(draft, PvpDraftWorkspace)
         self.assertIn("ban", draft.order_strip.active_action_type())
+        current_visual = draft.order_strip.current_action_visual()
+        self.assertEqual(current_visual["seat"], "player_1")
+        self.assertIn("ban", current_visual["action_type"])
+        self.assertIn(tr("app_shell.pvp.draft.player_1"), current_visual["title"])
+        self.assertEqual(
+            current_visual["detail"],
+            tr("app_shell.pvp.draft.turn_ban").upper(),
+        )
         self.assertIsInstance(draft.character_filter_bar, CharacterFilterBar)
         self.assertEqual(
             set(draft._pool_scope_buttons),
@@ -545,6 +553,11 @@ class PvpBrowserTest(unittest.TestCase):
             pvp_player_color(pending_pick["seat"]),
         )
         self.assertEqual(pick_visual["overlay_alpha"], 34)
+
+        draft_panel = PvpDraftRightPanel(workspace)
+        QApplication.processEvents()
+        self.assertTrue(draft_panel.title_label.isHidden())
+        self.assertTrue(draft_panel.action_frame.isHidden())
 
     def test_pvp_draft_legal_click_applies_one_backend_action(self) -> None:
         workspace, _panel = self._started_draft_workspace(character_count=12)

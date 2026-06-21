@@ -31,8 +31,8 @@ class PvpDraftResultZoneWidget(QFrame):
         self.setProperty("zone", zone)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(7, 6, 7, 6)
-        layout.setSpacing(5)
+        layout.setContentsMargins(8, 7, 8, 7)
+        layout.setSpacing(6)
 
         self.title_label = QLabel(title)
         self.title_label.setObjectName("pvp_draft_result_title")
@@ -41,10 +41,10 @@ class PvpDraftResultZoneWidget(QFrame):
         picked = zone == "picked"
         self.grid = PixelIconGrid(
             metrics=PixelIconGridMetrics(
-                item_width=72 if picked else 42,
-                item_height=72 if picked else 42,
-                gap_x=4,
-                gap_y=4,
+                item_width=78 if picked else 52,
+                item_height=78 if picked else 52,
+                gap_x=5,
+                gap_y=5,
             ),
             surface=f"pvp_draft_result_{zone}",
         )

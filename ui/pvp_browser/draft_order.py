@@ -11,6 +11,8 @@ from localization import tr
 from ui.utils.hidpi_pixmap import load_hidpi_pixmap
 from ui.utils.ui_palette import (
     UI_BORDER_DEFAULT,
+    UI_BG_INSET,
+    UI_STATE_SUCCESS,
     UI_TEXT_MUTED,
     UI_TEXT_PRIMARY,
 )
@@ -90,6 +92,9 @@ class PvpDraftOrderStrip(QWidget):
                 return str(row["action_type"])
         return ""
 
+    def current_action_visual(self) -> dict[str, str]:
+        return _current_action_visual(self._positions)
+
     def position_visual(self, number: int) -> dict[str, Any]:
         if not (1 <= int(number) <= len(self._positions)):
             return {}
@@ -115,26 +120,108 @@ class PvpDraftOrderStrip(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
         try:
-            columns = (len(self._positions) + 1) // 2
-            gap = 4
-            margin = 2
-            available_width = self.width() - margin * 2 - gap * (columns - 1)
-            available_height = self.height() - margin * 2 - gap
-            cell_size = max(28, min(62, available_width // columns, available_height // 2))
-            content_width = columns * cell_size + max(0, columns - 1) * gap
-            content_height = cell_size * 2 + gap
-            start_x = max(margin, (self.width() - content_width) // 2)
-            start_y = max(margin, (self.height() - content_height) // 2)
-            for index, row in enumerate(self._positions):
-                rect = QRect(
-                    start_x + (index % columns) * (cell_size + gap),
-                    start_y + (index // columns) * (cell_size + gap),
-                    cell_size,
-                    cell_size,
-                )
-                self._draw_position(painter, index, row, rect)
+            self._draw_grouped_positions(painter)
         finally:
             painter.end()
+
+    def _draw_grouped_positions(self, painter: QPainter) -> None:
+        gap = 5
+        margin = 2
+        center_width = min(255, max(155, self.width() // 5))
+        side_width = max(110, (self.width() - center_width - margin * 2 - 28) // 2)
+        available_height = max(60, self.height() - margin * 2 - gap)
+        left_rows = [
+            (index, row)
+            for index, row in enumerate(self._positions)
+            if row["seat"] == "player_1"
+        ]
+        right_rows = [
+            (index, row)
+            for index, row in enumerate(self._positions)
+            if row["seat"] == "player_2"
+        ]
+        columns = max(1, max((len(left_rows) + 1) // 2, (len(right_rows) + 1) // 2))
+        cell_size = max(28, min(58, available_height // 2, side_width // columns))
+        content_width = columns * cell_size + max(0, columns - 1) * gap
+        content_height = cell_size * 2 + gap
+        start_y = max(margin, (self.height() - content_height) // 2)
+        center_rect = QRect(
+            max(margin + content_width + 8, (self.width() - center_width) // 2),
+            start_y,
+            center_width,
+            content_height,
+        )
+        left_x = max(margin, center_rect.left() - 10 - content_width)
+        right_x = min(
+            self.width() - margin - content_width,
+            center_rect.right() + 10,
+        )
+        self._draw_position_group(
+            painter,
+            left_rows,
+            QRect(left_x, start_y, content_width, content_height),
+            cell_size,
+            gap,
+        )
+        self._draw_current_action_card(painter, center_rect)
+        self._draw_position_group(
+            painter,
+            right_rows,
+            QRect(right_x, start_y, content_width, content_height),
+            cell_size,
+            gap,
+        )
+
+    def _draw_position_group(
+        self,
+        painter: QPainter,
+        rows: list[tuple[int, Mapping[str, Any]]],
+        bounds: QRect,
+        cell_size: int,
+        gap: int,
+    ) -> None:
+        columns = max(1, (len(rows) + 1) // 2)
+        for local_index, (index, row) in enumerate(rows):
+            rect = QRect(
+                bounds.left() + (local_index % columns) * (cell_size + gap),
+                bounds.top() + (local_index // columns) * (cell_size + gap),
+                cell_size,
+                cell_size,
+            )
+            self._draw_position(painter, index, row, rect)
+
+    def _draw_current_action_card(self, painter: QPainter, rect: QRect) -> None:
+        visual = _current_action_visual(self._positions)
+        title = visual["title"]
+        detail = visual["detail"]
+        accent = visual["accent"]
+        painter.setPen(QPen(QColor(accent), 2))
+        fill = QColor(UI_BG_INSET)
+        fill.setAlpha(178)
+        painter.setBrush(fill)
+        painter.drawRoundedRect(QRectF(rect), 8, 8)
+
+        title_font = painter.font()
+        title_font.setBold(True)
+        title_font.setPointSize(max(10, min(16, rect.width() // 14)))
+        painter.setFont(title_font)
+        painter.setPen(QColor(UI_TEXT_MUTED))
+        painter.drawText(
+            rect.adjusted(8, 8, -8, -rect.height() // 2),
+            Qt.AlignmentFlag.AlignCenter,
+            title,
+        )
+
+        detail_font = painter.font()
+        detail_font.setBold(True)
+        detail_font.setPointSize(max(15, min(24, rect.width() // 8)))
+        painter.setFont(detail_font)
+        painter.setPen(QColor(accent))
+        painter.drawText(
+            rect.adjusted(8, rect.height() // 2 - 5, -8, -8),
+            Qt.AlignmentFlag.AlignCenter,
+            detail,
+        )
 
     def _prepare_pixmaps(self) -> None:
         signature = (
@@ -248,6 +335,35 @@ def _position_visual(row: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _current_action_visual(rows: tuple[dict[str, Any], ...]) -> dict[str, str]:
+    active = next((row for row in rows if row["status"] == "active"), None)
+    complete = bool(rows) and active is None and all(
+        row["status"] == "complete" for row in rows
+    )
+    if active is None:
+        return {
+            "title": tr("app_shell.pvp.draft.turn_complete"),
+            "detail": tr("app_shell.pvp.draft.completed"),
+            "accent": UI_STATE_SUCCESS if complete else UI_TEXT_MUTED,
+            "seat": "",
+            "action_type": "",
+        }
+    action_type = str(active["action_type"])
+    seat = str(active["seat"])
+    return {
+        "title": tr("app_shell.pvp.draft.turn_title").format(
+            player=_draft_seat_display(seat),
+        ),
+        "detail": _draft_action_turn_label(action_type),
+        "accent": _draft_action_color(
+            action_type,
+            seat_color=pvp_player_color(seat),
+        ),
+        "seat": seat,
+        "action_type": action_type,
+    }
+
+
 def _draft_action_short_label(action_type: str) -> str:
     value = str(action_type or "").casefold()
     if "ban" in value:
@@ -255,6 +371,21 @@ def _draft_action_short_label(action_type: str) -> str:
     if "immune" in value or "immun" in value:
         return tr("app_shell.pvp.draft.immune").upper()
     return tr("app_shell.pvp.draft.pick").upper()
+
+
+def _draft_action_turn_label(action_type: str) -> str:
+    value = str(action_type or "").casefold()
+    if "ban" in value:
+        return tr("app_shell.pvp.draft.turn_ban").upper()
+    if "immune" in value or "immun" in value:
+        return tr("app_shell.pvp.draft.turn_immune").upper()
+    return tr("app_shell.pvp.draft.turn_pick").upper()
+
+
+def _draft_seat_display(seat: str) -> str:
+    if seat == "player_2":
+        return tr("app_shell.pvp.draft.player_2")
+    return tr("app_shell.pvp.draft.player_1")
 
 
 __all__ = ["PvpDraftOrderStrip"]

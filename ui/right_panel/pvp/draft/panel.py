@@ -178,7 +178,7 @@ class PvpDraftRightPanel(QWidget):
                 seat_layout.addWidget(frame, 3 if zone == "picked" else 1)
                 key = (seat, zone)
                 self.result_zone_frames[key] = frame
-            root.addWidget(seat_row)
+            root.addWidget(seat_row, 1)
 
         self._log_expanded = False
         self.log_toggle_button = QPushButton()
@@ -216,6 +216,7 @@ class PvpDraftRightPanel(QWidget):
     def refresh(self) -> None:
         session = self.workspace.active_draft_session
         has_session = session is not None
+        self.title_label.setVisible(not has_session)
         self.empty_label.setVisible(not has_session)
         self.action_frame.setVisible(False)
         self.match_scroll.setVisible(False)
@@ -244,7 +245,7 @@ class PvpDraftRightPanel(QWidget):
         self.status_frame.setVisible(False)
         self.clear_button.setVisible(has_session and not post_draft_stage)
         self.play_button.setVisible(not post_draft_stage)
-        self.action_frame.setVisible(not post_draft_stage)
+        self.action_frame.setVisible(False)
         if post_draft_stage:
             self._refresh_postdraft_match_panel(stage)
             self.match_scroll.setVisible(True)
@@ -259,8 +260,8 @@ class PvpDraftRightPanel(QWidget):
 
         board = session.board_dict()
         if not post_draft_stage:
-            self.action_label.setText(_draft_action_title(board))
-            self.action_detail_label.setText(_draft_action_detail(board))
+            self.action_label.setText("")
+            self.action_detail_label.setText("")
         _clear_layout(self.match_layout)
         self._clear_match_registries()
         self.match_scroll.setVisible(post_draft_stage)

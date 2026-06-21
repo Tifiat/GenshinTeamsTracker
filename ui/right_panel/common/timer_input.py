@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QIntValidator, QKeyEvent
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QWidget
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QSizePolicy, QWidget
 
 from run_workspace.models import (
     adjust_abyss_timer_seconds_with_second_wheel,
@@ -86,6 +86,7 @@ class CompactTimerInputWidget(QFrame):
         minimum_seconds: int = 0,
         maximum_seconds: int = 600,
         initial_seconds: int = 0,
+        wide: bool = False,
     ) -> None:
         super().__init__(parent)
         self.setObjectName("TimerEditorFrame")
@@ -103,7 +104,10 @@ class CompactTimerInputWidget(QFrame):
         self.min_edit = TimerSegmentEdit(self, "minutes")
         self.min_edit.setObjectName("TimerSegmentEdit")
         self.min_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.min_edit.setFixedWidth(ABYSS_TIMER_SEGMENT_WIDTH)
+        if wide:
+            self.min_edit.setMinimumWidth(ABYSS_TIMER_SEGMENT_WIDTH)
+        else:
+            self.min_edit.setFixedWidth(ABYSS_TIMER_SEGMENT_WIDTH)
 
         colon = QLabel(":")
         colon.setObjectName("TimerSeparator")
@@ -113,12 +117,19 @@ class CompactTimerInputWidget(QFrame):
         self.sec_edit = TimerSegmentEdit(self, "seconds")
         self.sec_edit.setObjectName("TimerSegmentEdit")
         self.sec_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.sec_edit.setFixedWidth(ABYSS_TIMER_SEGMENT_WIDTH)
+        if wide:
+            self.sec_edit.setMinimumWidth(ABYSS_TIMER_SEGMENT_WIDTH)
+        else:
+            self.sec_edit.setFixedWidth(ABYSS_TIMER_SEGMENT_WIDTH)
 
-        layout.addWidget(self.min_edit)
+        layout.addWidget(self.min_edit, 1 if wide else 0)
         layout.addWidget(colon)
-        layout.addWidget(self.sec_edit)
-        self.setFixedWidth(ABYSS_TIMER_FRAME_WIDTH)
+        layout.addWidget(self.sec_edit, 1 if wide else 0)
+        if wide:
+            self.setMinimumWidth(ABYSS_TIMER_FRAME_WIDTH)
+            self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        else:
+            self.setFixedWidth(ABYSS_TIMER_FRAME_WIDTH)
 
         self.min_edit.textEdited.connect(
             lambda _text: self._mark_segment_dirty("minutes")

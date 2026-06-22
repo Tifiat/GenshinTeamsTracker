@@ -25,7 +25,7 @@ from ui.pvp_browser.build_flow import (
     PvpScopedCharacterWeaponWorkspace,
     _asset_weapon_keys,
 )
-from ui.pvp_browser.draft_order import PVP_DRAFT_ORDER_SLOT_SIZE
+from ui.pvp_browser.draft_order import PVP_DRAFT_ORDER_GAP, PVP_DRAFT_ORDER_SLOT_SIZE
 from ui.pvp_browser.window import PvpDecksWorkspace, PvpDraftWorkspace, PvpWorkspace
 from ui.pvp_browser.timers import PvpTimersResultWidget
 from ui.right_panel.pvp._shared import (
@@ -50,6 +50,7 @@ from ui.right_panel.pvp.draft.panel import (
 from ui.right_panel.pvp.host import PvpRightPanelHost
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
 from ui.utils.pixel_icon_grid import PixelIconGrid
+from ui.utils.icon_utils import contrast_icon_color
 from ui.utils.pvp_colors import pvp_player_color
 
 
@@ -540,6 +541,12 @@ class PvpBrowserTest(unittest.TestCase):
             {badge.position for badge in shared_item.badges},
             {"bottom_left", "bottom_right"},
         )
+        self.assertTrue(
+            all(
+                badge.text_color == contrast_icon_color(badge.color)
+                for badge in shared_item.badges
+            )
+        )
         self.assertEqual(draft.order_strip.position_count(), 22)
         self.assertEqual(draft.order_strip.active_position(), 1)
         active_visual = draft.order_strip.position_visual(1)
@@ -558,7 +565,15 @@ class PvpBrowserTest(unittest.TestCase):
         )
         self.assertEqual(pick_visual["overlay_alpha"], 34)
         self.assertFalse(pick_visual["draw_action_label"])
-        for width in (370, 520, 620, 860, 1030, 1365):
+        expected_rows_by_width = {
+            370: 11,
+            520: 6,
+            620: 4,
+            860: 3,
+            1030: 3,
+            1365: 2,
+        }
+        for width, expected_rows in expected_rows_by_width.items():
             layout_visual = draft.order_strip.layout_visual(width)
             self.assertFalse(layout_visual["has_overlap"], width)
             self.assertGreaterEqual(layout_visual["height"], PVP_DRAFT_ORDER_SLOT_SIZE)
@@ -584,9 +599,17 @@ class PvpBrowserTest(unittest.TestCase):
                     any(rect.left() > turn_rect.right() for rect in side_slots),
                     (width, turn_rect, side_slots),
                 )
-            if width >= 1030:
-                row_count = len({rect.y() for rect in layout_visual["position_rects"]})
-                self.assertLessEqual(row_count, 3, width)
+            left_group = layout_visual["left_group_rect"]
+            right_group = layout_visual["right_group_rect"]
+            self.assertLess(left_group.right(), layout_visual["turn_rect"].left(), width)
+            self.assertGreater(right_group.left(), layout_visual["turn_rect"].right(), width)
+            row_count = len({rect.y() for rect in layout_visual["position_rects"]})
+            self.assertLessEqual(row_count, expected_rows, width)
+            if width >= 620:
+                columns = (left_group.width() + PVP_DRAFT_ORDER_GAP) // (
+                    PVP_DRAFT_ORDER_SLOT_SIZE + PVP_DRAFT_ORDER_GAP
+                )
+                self.assertGreaterEqual(columns, 3, width)
 
         draft_panel = PvpDraftRightPanel(workspace)
         QApplication.processEvents()
@@ -649,6 +672,7 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertIn(banned_id, banned_zone.items_by_character_id)
         self.assertTrue(banned_zone.items_by_character_id[banned_id].icon_path)
         self.assertFalse(banned_zone.items_by_character_id[banned_id].badges)
+        self.assertIsNone(banned_zone.items_by_character_id[banned_id].outline)
         self.assertFalse(picked_zone.items_by_character_id)
         self.assertIsInstance(banned_zone.grid, PixelIconGrid)
         self.assertIs(banned_zone.grid, banned_grid)

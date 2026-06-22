@@ -16,6 +16,7 @@ from run_workspace.models import (
 from run_workspace.pvp.deck_preset import character_id_from_asset, weapon_ref_from_asset
 from run_workspace.pvp.weapon_identity import weapon_observed_stack_key
 from ui.character_assets import metadata_int
+from ui.utils.icon_utils import contrast_icon_color
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 from ui.utils.pixel_icon_grid import (
     PixelIconGrid,
@@ -596,13 +597,13 @@ def build_pvp_draft_grid_item(
     )
     accent = PVP_DRAFT_BAN_ACCENT if result_zone == "banned" else player_accent
     outline = None
-    if legal or result_zone:
+    if legal:
         outline = PixelIconGridOutline(
             color=accent,
-            width=3 if legal else 2,
+            width=3,
             radius=5,
-            fill_color=accent if legal else "",
-            fill_alpha=24 if legal else 0,
+            fill_color=accent,
+            fill_alpha=24,
         )
     badges: list[PixelIconGridBadge] = []
     if not result_zone:
@@ -622,6 +623,7 @@ def build_pvp_draft_grid_item(
                     height=18,
                     margin=2,
                     font_size=8,
+                    text_color=contrast_icon_color(color),
                 )
             )
     status = _text(entry.get("status")) or "available"

@@ -1342,9 +1342,23 @@ class PvpDraftWorkspace(QWidget):
             self.board_frame.setProperty("complete", False)
             _refresh_qss(self.board_frame)
             self.order_strip.set_board({}, portrait_paths={})
+            self.scroll_area.setHorizontalScrollBarPolicy(
+                Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            )
             return
 
         stage = _draft_stage(self._view_state)
+        timers_stage = stage in {
+            PVP_DRAFT_STAGE_TIMERS_RESULTS,
+            PVP_DRAFT_STAGE_COMPLETED_RESULT,
+        }
+        self.scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+            if timers_stage
+            else Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        if not timers_stage:
+            self.scroll_area.horizontalScrollBar().setValue(0)
         post_draft_stage = stage in {
             PVP_DRAFT_STAGE_ASSIGNMENT,
             PVP_DRAFT_STAGE_WEAPONS,

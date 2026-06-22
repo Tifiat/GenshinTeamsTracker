@@ -28,6 +28,7 @@ PVP_DRAFT_ORDER_SLOT_SIZE = 72
 PVP_DRAFT_ORDER_GAP = 5
 PVP_DRAFT_ORDER_MARGIN = 2
 PVP_DRAFT_ORDER_TURN_WIDTH = 210
+PVP_DRAFT_ORDER_TURN_MIN_WIDTH = 156
 PVP_DRAFT_ORDER_TURN_HEIGHT = 86
 PVP_DRAFT_ORDER_MAX_SIDE_ROWS = 4
 
@@ -123,6 +124,8 @@ class PvpDraftOrderStrip(QWidget):
         geometry = self._layout_geometry(width or max(1, self.width()))
         return {
             "height": geometry.height,
+            "left_group_rect": geometry.left_group_rect,
+            "right_group_rect": geometry.right_group_rect,
             "turn_rect": geometry.turn_rect,
             "position_rects": tuple(geometry.position_rects),
             "has_overlap": _rects_overlap(
@@ -250,44 +253,51 @@ class PvpDraftOrderStrip(QWidget):
         available_width = max(1, int(width))
         turn_width = min(
             PVP_DRAFT_ORDER_TURN_WIDTH,
-            max(156, available_width - PVP_DRAFT_ORDER_MARGIN * 2),
+            max(
+                PVP_DRAFT_ORDER_TURN_MIN_WIDTH,
+                available_width - PVP_DRAFT_ORDER_MARGIN * 2,
+            ),
         )
-        for rows in range(2, PVP_DRAFT_ORDER_MAX_SIDE_ROWS + 1):
-            columns = _columns_for_count(max_count, rows)
-            group_width = _group_width(columns)
-            group_height = _group_height(rows)
-            total_width = (
-                PVP_DRAFT_ORDER_MARGIN * 2
-                + group_width * 2
-                + turn_width
-                + PVP_DRAFT_ORDER_GAP * 4
-            )
-            if total_width <= available_width:
-                total_content_width = total_width - PVP_DRAFT_ORDER_MARGIN * 2
-                left = max(PVP_DRAFT_ORDER_MARGIN, (available_width - total_content_width) // 2)
-                top = PVP_DRAFT_ORDER_MARGIN
-                left_rect = QRect(left, top, group_width, group_height)
-                turn_rect = QRect(
-                    left_rect.right() + 1 + PVP_DRAFT_ORDER_GAP * 2,
-                    top + max(0, (group_height - PVP_DRAFT_ORDER_TURN_HEIGHT) // 2),
-                    turn_width,
-                    PVP_DRAFT_ORDER_TURN_HEIGHT,
+        for rows in range(2, max(PVP_DRAFT_ORDER_MAX_SIDE_ROWS, max_count) + 1):
+            for candidate_turn_width in _turn_width_candidates(turn_width):
+                columns = _columns_for_count(max_count, rows)
+                group_width = _group_width(columns)
+                group_height = _group_height(rows)
+                total_width = (
+                    PVP_DRAFT_ORDER_MARGIN * 2
+                    + group_width * 2
+                    + candidate_turn_width
+                    + PVP_DRAFT_ORDER_GAP * 4
                 )
-                right_rect = QRect(
-                    turn_rect.right() + 1 + PVP_DRAFT_ORDER_GAP * 2,
-                    top,
-                    group_width,
-                    group_height,
-                )
-                return _DraftOrderLayout(
-                    height=max(group_height, PVP_DRAFT_ORDER_TURN_HEIGHT)
-                    + PVP_DRAFT_ORDER_MARGIN * 2,
-                    left_group_rect=left_rect,
-                    right_group_rect=right_rect,
-                    turn_rect=turn_rect,
-                    position_rects=_position_rects(left_rect, left_count)
-                    + _position_rects(right_rect, right_count),
-                )
+                if total_width <= available_width:
+                    total_content_width = total_width - PVP_DRAFT_ORDER_MARGIN * 2
+                    left = max(
+                        PVP_DRAFT_ORDER_MARGIN,
+                        (available_width - total_content_width) // 2,
+                    )
+                    top = PVP_DRAFT_ORDER_MARGIN
+                    left_rect = QRect(left, top, group_width, group_height)
+                    turn_rect = QRect(
+                        left_rect.right() + 1 + PVP_DRAFT_ORDER_GAP * 2,
+                        top + max(0, (group_height - PVP_DRAFT_ORDER_TURN_HEIGHT) // 2),
+                        candidate_turn_width,
+                        PVP_DRAFT_ORDER_TURN_HEIGHT,
+                    )
+                    right_rect = QRect(
+                        turn_rect.right() + 1 + PVP_DRAFT_ORDER_GAP * 2,
+                        top,
+                        group_width,
+                        group_height,
+                    )
+                    return _DraftOrderLayout(
+                        height=max(group_height, PVP_DRAFT_ORDER_TURN_HEIGHT)
+                        + PVP_DRAFT_ORDER_MARGIN * 2,
+                        left_group_rect=left_rect,
+                        right_group_rect=right_rect,
+                        turn_rect=turn_rect,
+                        position_rects=_position_rects(left_rect, left_count)
+                        + _position_rects(right_rect, right_count),
+                    )
 
         rows = PVP_DRAFT_ORDER_MAX_SIDE_ROWS
         columns = _columns_for_count(max_count, rows)
@@ -453,6 +463,23 @@ def _group_height(rows: int) -> int:
         max(1, int(rows)) * PVP_DRAFT_ORDER_SLOT_SIZE
         + max(0, int(rows) - 1) * PVP_DRAFT_ORDER_GAP
     )
+
+
+def _turn_width_candidates(width: int) -> tuple[int, ...]:
+    values: list[int] = []
+    for candidate in (
+        int(width),
+        190,
+        172,
+        PVP_DRAFT_ORDER_TURN_MIN_WIDTH,
+    ):
+        clamped = min(
+            PVP_DRAFT_ORDER_TURN_WIDTH,
+            max(PVP_DRAFT_ORDER_TURN_MIN_WIDTH, int(candidate)),
+        )
+        if clamped not in values:
+            values.append(clamped)
+    return tuple(values)
 
 
 def _position_rects(bounds: QRect, count: int) -> tuple[QRect, ...]:

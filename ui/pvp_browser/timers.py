@@ -52,8 +52,11 @@ from ui.utils.ui_palette import (
 from ui.utils.pvp_colors import pvp_player_color
 
 
+PVP_TIMER_HP_COLUMN_MIN_WIDTH = 126
 PVP_TIMER_HP_COLUMN_WIDTH = 210
-PVP_TIMER_INPUT_COLUMN_WIDTH = 280
+PVP_TIMER_INPUT_COLUMN_MIN_WIDTH = 128
+PVP_TIMER_INPUT_COLUMN_WIDTH = 220
+PVP_TIMER_MONSTERS_COLUMN_MIN_WIDTH = 74
 
 
 def pvp_timers_style() -> str:
@@ -82,8 +85,6 @@ QWidget#pvp_timer_wave {{ background: transparent; border: none; }}
 QLabel#pvp_timer_wave_title {{ color: {UI_TEXT_MUTED}; font-size: 10px; font-weight: 800; }}
 QLabel#pvp_timer_enemy_name {{ color: {UI_TEXT_SECONDARY}; font-size: 11px; }}
 QFrame#pvp_timer_hp {{
-    min-width: {PVP_TIMER_HP_COLUMN_WIDTH}px;
-    max-width: {PVP_TIMER_HP_COLUMN_WIDTH}px;
     border: 1px solid {UI_BORDER_DEFAULT};
     border-radius: 5px;
     background: {UI_BG_BUTTON};
@@ -93,8 +94,6 @@ QLabel#pvp_timer_hp_value {{ color: {UI_TEXT_PRIMARY}; font-size: 12px; font-wei
 QLabel#pvp_timer_player_1 {{ color: {player_1_color}; font-weight: 900; }}
 QLabel#pvp_timer_player_2 {{ color: {player_2_color}; font-weight: 900; }}
 QWidget#pvp_timer_input_column {{
-    min-width: {PVP_TIMER_INPUT_COLUMN_WIDTH}px;
-    max-width: {PVP_TIMER_INPUT_COLUMN_WIDTH}px;
     background: transparent;
     border: none;
 }}
@@ -127,7 +126,7 @@ QLabel#pvp_timer_chevron[outcome="winner"] {{ color: {UI_STATE_SUCCESS}; }}
 QLabel#pvp_timer_chevron[outcome="loser"] {{ color: {UI_STATE_DANGER}; }}
 QLabel#pvp_timer_chevron[outcome="neutral"] {{ color: {UI_TEXT_MUTED}; }}
 QLabel#pvp_timer_difference {{
-    min-width: 84px;
+    min-width: 64px;
     border: 1px solid {UI_BORDER_DEFAULT};
     border-radius: 5px;
     background: {UI_BG_INSET};
@@ -183,6 +182,11 @@ class PvpChamberSideWidget(QFrame):
         self.chamber = chamber
         self.side = side
         self.setObjectName("pvp_timer_side")
+        self.setMinimumWidth(PVP_TIMER_MONSTERS_COLUMN_MIN_WIDTH)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Ignored,
+            QSizePolicy.Policy.Preferred,
+        )
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(7, 5, 7, 5)
@@ -194,6 +198,11 @@ class PvpChamberSideWidget(QFrame):
 
         self.waves_widget = QWidget()
         self.waves_widget.setObjectName("pvp_timer_waves")
+        self.waves_widget.setMinimumWidth(0)
+        self.waves_widget.setSizePolicy(
+            QSizePolicy.Policy.Ignored,
+            QSizePolicy.Policy.Preferred,
+        )
         self.waves_layout = QVBoxLayout(self.waves_widget)
         self.waves_layout.setContentsMargins(0, 0, 0, 0)
         self.waves_layout.setSpacing(3)
@@ -216,6 +225,12 @@ class PvpChamberSideWidget(QFrame):
         if not rows:
             unavailable = QLabel(tr("app_shell.pvp.post.timer_monsters_unavailable"))
             unavailable.setObjectName("pvp_timer_muted")
+            unavailable.setWordWrap(True)
+            unavailable.setMinimumWidth(0)
+            unavailable.setSizePolicy(
+                QSizePolicy.Policy.Ignored,
+                QSizePolicy.Policy.Preferred,
+            )
             self.waves_layout.addWidget(unavailable)
         else:
             rows_by_wave: dict[int, list[AbyssEnemySourceRow]] = defaultdict(list)
@@ -230,7 +245,12 @@ class PvpHpSummaryWidget(QFrame):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("pvp_timer_hp")
-        self.setFixedWidth(PVP_TIMER_HP_COLUMN_WIDTH)
+        self.setMinimumWidth(PVP_TIMER_HP_COLUMN_MIN_WIDTH)
+        self.setMaximumWidth(PVP_TIMER_HP_COLUMN_WIDTH)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Preferred,
+        )
         layout = QGridLayout(self)
         layout.setContentsMargins(8, 6, 8, 6)
         layout.setHorizontalSpacing(10)
@@ -263,6 +283,11 @@ class PvpTimersResultWidget(QFrame):
         super().__init__(parent)
         self.setObjectName("pvp_timers_workspace")
         self.setStyleSheet(pvp_timers_style())
+        self.setMinimumWidth(0)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
         self._timer_inputs: dict[tuple[str, int], CompactTimerInputWidget] = {}
         self._timer_touched: dict[tuple[str, int], bool] = {}
         self._side_widgets: dict[tuple[int, int], PvpChamberSideWidget] = {}
@@ -303,7 +328,12 @@ class PvpTimersResultWidget(QFrame):
 
             timer_column = QWidget()
             timer_column.setObjectName("pvp_timer_input_column")
-            timer_column.setFixedWidth(PVP_TIMER_INPUT_COLUMN_WIDTH)
+            timer_column.setMinimumWidth(PVP_TIMER_INPUT_COLUMN_MIN_WIDTH)
+            timer_column.setMaximumWidth(PVP_TIMER_INPUT_COLUMN_WIDTH)
+            timer_column.setSizePolicy(
+                QSizePolicy.Policy.Preferred,
+                QSizePolicy.Policy.Fixed,
+            )
             timer_layout = QVBoxLayout(timer_column)
             timer_layout.setContentsMargins(0, 0, 0, 0)
             timer_layout.setSpacing(6)
@@ -326,7 +356,8 @@ class PvpTimersResultWidget(QFrame):
                     initial_seconds=ABYSS_CHAMBER_START_SECONDS,
                     wide=True,
                 )
-                timer.setFixedWidth(PVP_TIMER_INPUT_COLUMN_WIDTH)
+                timer.setMinimumWidth(PVP_TIMER_INPUT_COLUMN_MIN_WIDTH)
+                timer.setMaximumWidth(PVP_TIMER_INPUT_COLUMN_WIDTH)
                 timer.seconds_changed.connect(
                     lambda seconds, s=seat, i=chamber_index: self._on_timer_changed(
                         s, i, seconds
@@ -351,6 +382,8 @@ class PvpTimersResultWidget(QFrame):
             grid.setColumnStretch(0, 1)
             grid.setColumnStretch(1, 0)
             grid.setColumnStretch(2, 0)
+            grid.setColumnMinimumWidth(1, PVP_TIMER_HP_COLUMN_MIN_WIDTH)
+            grid.setColumnMinimumWidth(2, PVP_TIMER_INPUT_COLUMN_MIN_WIDTH)
             root.addWidget(frame)
 
         scoreboard = QFrame()
@@ -360,10 +393,16 @@ class PvpTimersResultWidget(QFrame):
         scoreboard_layout.setSpacing(8)
         score_layout = QHBoxLayout()
         score_layout.setContentsMargins(0, 0, 0, 0)
-        score_layout.setSpacing(10)
+        score_layout.setSpacing(6)
         self.total_labels: dict[str, QLabel] = {}
         self.total_labels["player_1"] = QLabel()
         self.total_labels["player_1"].setObjectName("pvp_timer_score_player_1")
+        self.total_labels["player_1"].setWordWrap(True)
+        self.total_labels["player_1"].setMinimumWidth(0)
+        self.total_labels["player_1"].setSizePolicy(
+            QSizePolicy.Policy.Ignored,
+            QSizePolicy.Policy.Preferred,
+        )
         score_layout.addStretch(1)
         score_layout.addWidget(self.total_labels["player_1"])
 
@@ -383,6 +422,12 @@ class PvpTimersResultWidget(QFrame):
         self.total_labels["player_2"] = QLabel()
         self.total_labels["player_2"].setObjectName("pvp_timer_score_player_2")
         self.total_labels["player_2"].setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.total_labels["player_2"].setWordWrap(True)
+        self.total_labels["player_2"].setMinimumWidth(0)
+        self.total_labels["player_2"].setSizePolicy(
+            QSizePolicy.Policy.Ignored,
+            QSizePolicy.Policy.Preferred,
+        )
         score_layout.addWidget(self.total_labels["player_2"])
         score_layout.addStretch(1)
         scoreboard_layout.addLayout(score_layout)
@@ -391,7 +436,7 @@ class PvpTimersResultWidget(QFrame):
         self.dps_table_frame.setObjectName("pvp_timer_dps_table")
         dps_layout = QGridLayout(self.dps_table_frame)
         dps_layout.setContentsMargins(10, 7, 10, 7)
-        dps_layout.setHorizontalSpacing(18)
+        dps_layout.setHorizontalSpacing(8)
         dps_layout.setVerticalSpacing(4)
         self.dps_value_labels: dict[tuple[str, str], QLabel] = {}
         for column, text in enumerate(
@@ -403,6 +448,12 @@ class PvpTimersResultWidget(QFrame):
         ):
             header = QLabel(text)
             header.setObjectName("pvp_timer_dps_header")
+            header.setWordWrap(True)
+            header.setMinimumWidth(0)
+            header.setSizePolicy(
+                QSizePolicy.Policy.Ignored,
+                QSizePolicy.Policy.Preferred,
+            )
             header.setAlignment(
                 Qt.AlignmentFlag.AlignRight if column else Qt.AlignmentFlag.AlignLeft
             )
@@ -417,11 +468,22 @@ class PvpTimersResultWidget(QFrame):
                 "pvp_timer_player_1" if seat == "player_1" else "pvp_timer_player_2"
             )
             player_label.setProperty("seat", seat)
+            player_label.setWordWrap(True)
+            player_label.setMinimumWidth(0)
+            player_label.setSizePolicy(
+                QSizePolicy.Policy.Ignored,
+                QSizePolicy.Policy.Preferred,
+            )
             dps_layout.addWidget(player_label, row, 0)
             for column, mode in enumerate(("solo", "multi"), start=1):
                 value = QLabel("-")
                 value.setObjectName("pvp_timer_dps_value")
                 value.setAlignment(Qt.AlignmentFlag.AlignRight)
+                value.setMinimumWidth(0)
+                value.setSizePolicy(
+                    QSizePolicy.Policy.Ignored,
+                    QSizePolicy.Policy.Preferred,
+                )
                 self.dps_value_labels[(seat, mode)] = value
                 dps_layout.addWidget(value, row, column)
         dps_layout.setColumnStretch(0, 1)
@@ -644,7 +706,9 @@ def _build_wave_widget(wave: int, rows: list[AbyssEnemySourceRow]) -> QWidget:
         layout.addWidget(icon)
         name = QLabel(f"x{int(row.enemy_count)} {row.primary_display_name}")
         name.setObjectName("pvp_timer_enemy_name")
-        name.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        name.setWordWrap(True)
+        name.setMinimumWidth(0)
+        name.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         layout.addWidget(name)
     layout.addStretch(1)
     return widget

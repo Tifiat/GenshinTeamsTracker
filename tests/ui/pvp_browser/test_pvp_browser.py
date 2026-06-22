@@ -9,7 +9,7 @@ from unittest.mock import patch
 from ui.utils.app_scaling import configure_startup_ui_scale
 
 configure_startup_ui_scale()
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, QPoint, Qt
 from PySide6.QtGui import QColor, QKeyEvent, QPixmap
 from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton, QSizePolicy
 
@@ -558,7 +558,7 @@ class PvpBrowserTest(unittest.TestCase):
         )
         self.assertEqual(pick_visual["overlay_alpha"], 34)
         self.assertFalse(pick_visual["draw_action_label"])
-        for width in (620, 860, 1280):
+        for width in (370, 520, 620, 860, 1030, 1365):
             layout_visual = draft.order_strip.layout_visual(width)
             self.assertFalse(layout_visual["has_overlap"], width)
             self.assertGreaterEqual(layout_visual["height"], PVP_DRAFT_ORDER_SLOT_SIZE)
@@ -569,6 +569,24 @@ class PvpBrowserTest(unittest.TestCase):
                     rect.intersects(layout_visual["turn_rect"]),
                     (width, rect, layout_visual["turn_rect"]),
                 )
+            if width >= 520:
+                turn_rect = layout_visual["turn_rect"]
+                side_slots = [
+                    rect
+                    for rect in layout_visual["position_rects"]
+                    if rect.top() <= turn_rect.bottom() and rect.bottom() >= turn_rect.top()
+                ]
+                self.assertTrue(
+                    any(rect.right() < turn_rect.left() for rect in side_slots),
+                    (width, turn_rect, side_slots),
+                )
+                self.assertTrue(
+                    any(rect.left() > turn_rect.right() for rect in side_slots),
+                    (width, turn_rect, side_slots),
+                )
+            if width >= 1030:
+                row_count = len({rect.y() for rect in layout_visual["position_rects"]})
+                self.assertLessEqual(row_count, 3, width)
 
         draft_panel = PvpDraftRightPanel(workspace)
         QApplication.processEvents()
@@ -767,13 +785,22 @@ class PvpBrowserTest(unittest.TestCase):
         player_2_index = draft_panel.match_layout.indexOf(player_2_zone)
         self.assertEqual(draft_panel.match_layout.stretch(player_1_index), 1)
         self.assertEqual(draft_panel.match_layout.stretch(player_2_index), 0)
-        draft_panel.resize(660, 760)
+        draft_panel.resize(660, 520)
         draft_panel.show()
         QApplication.processEvents()
         p1_panel = draft_panel.postdraft_run_panels_by_seat["player_1"]
         self.assertGreaterEqual(player_1_zone.minimumHeight(), 540)
         self.assertGreaterEqual(p1_panel.minimumHeight(), 470)
         self.assertGreaterEqual(p1_panel.height(), 300)
+        self.assertTrue(
+            all(row.isHidden() for row in draft_panel.result_zone_rows_by_seat.values())
+        )
+        self.assertGreaterEqual(draft_panel.match_scroll.viewport().height(), 430)
+        slot_bottom = max(
+            slot.mapTo(draft_panel.match_frame, QPoint(0, 0)).y() + slot.height()
+            for slot in p1_panel.slot_widgets()
+        )
+        self.assertLessEqual(slot_bottom, draft_panel.match_scroll.viewport().height())
         self.assertLessEqual(
             draft_panel.match_frame.width(),
             draft_panel.match_scroll.viewport().width(),

@@ -167,9 +167,11 @@ class PvpDraftRightPanel(QWidget):
 
         self.result_zone_frames: dict[tuple[str, str], PvpDraftResultZoneWidget] = {}
         self.result_zone_widgets = self.result_zone_frames
+        self.result_zone_rows_by_seat: dict[str, QWidget] = {}
         for seat in ("player_1", "player_2"):
             seat_row = QWidget()
             seat_row.setObjectName("pvp_draft_result_player_row")
+            self.result_zone_rows_by_seat[seat] = seat_row
             seat_layout = QHBoxLayout(seat_row)
             seat_layout.setContentsMargins(0, 0, 0, 0)
             seat_layout.setSpacing(6)
@@ -241,6 +243,8 @@ class PvpDraftRightPanel(QWidget):
                 label.setVisible(False)
             for frame in self.result_zone_frames.values():
                 frame.setVisible(False)
+            for row in self.result_zone_rows_by_seat.values():
+                row.setVisible(False)
             self.stage_button.setVisible(False)
             return
 
@@ -259,6 +263,8 @@ class PvpDraftRightPanel(QWidget):
                 label.setVisible(False)
             for frame in self.result_zone_frames.values():
                 frame.setVisible(False)
+            for row in self.result_zone_rows_by_seat.values():
+                row.setVisible(False)
             self.log_toggle_button.setVisible(False)
             return
 
@@ -284,6 +290,8 @@ class PvpDraftRightPanel(QWidget):
             frame.set_title(_draft_result_zone_title(seat, zone))
             frame.set_items(self._result_zone_items(board, seat=seat, zone=zone))
             frame.setVisible(show_draft_summary)
+        for row in self.result_zone_rows_by_seat.values():
+            row.setVisible(show_draft_summary)
 
         log_lines = _draft_action_log_lines(board, limit=len(self.log_labels))
         self.log_toggle_button.setVisible(show_draft_summary)

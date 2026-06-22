@@ -765,6 +765,7 @@ class PvpBrowserTest(unittest.TestCase):
         QApplication.processEvents()
 
         self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_ASSIGNMENT)
+        self.assertTrue(workspace.draft_workspace.title_label.isHidden())
         board = workspace.active_draft_session.board_dict()
         self.assertEqual(
             set(workspace.draft_workspace.source_zone_frames_by_seat),
@@ -800,9 +801,24 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertFalse(draft_panel.findChildren(QFrame, "pvp-team-half"))
         self.assertFalse(draft_panel.findChildren(QFrame, "pvp-timer-area"))
         self.assertFalse(hasattr(draft_panel, "timer_inputs_by_key"))
+        self.assertEqual(
+            {
+                button.parentWidget().objectName()
+                for button in draft_panel.postdraft_toggle_buttons_by_seat.values()
+            },
+            {"pvp_postdraft_target_toggle_row"},
+        )
+        self.assertEqual(
+            {
+                button.parentWidget().objectName()
+                for button in workspace.draft_workspace._source_toggle_buttons_by_seat.values()
+            },
+            {"pvp_postdraft_source_toggle_row"},
+        )
         for seat, zone in draft_panel.target_zone_frames_by_seat.items():
             self.assertIsInstance(zone, PvpPostDraftSeatFrame)
             self.assertEqual(len(zone.findChildren(RightPanelTeamCardWidget)), 2, seat)
+            self.assertFalse(zone.findChildren(QPushButton, "pvp_postdraft_player_toggle"))
         player_1_zone = draft_panel.target_zone_frames_by_seat["player_1"]
         player_2_zone = draft_panel.target_zone_frames_by_seat["player_2"]
         player_1_index = draft_panel.match_layout.indexOf(player_1_zone)
@@ -838,8 +854,14 @@ class PvpBrowserTest(unittest.TestCase):
         )
         self.assertTrue(
             all(
-                zone.maximumHeight() < 100
+                zone.maximumHeight() == 0 and zone.isHidden()
                 for zone in draft_panel.target_zone_frames_by_seat.values()
+            )
+        )
+        self.assertTrue(
+            all(
+                zone.isHidden()
+                for zone in workspace.draft_workspace.source_zone_frames_by_seat.values()
             )
         )
         workspace.toggle_build_seat_collapsed("player_1")
@@ -857,6 +879,9 @@ class PvpBrowserTest(unittest.TestCase):
             self.assertEqual(len(scoped_sources), 1, seat)
             source = workspace.build_source_workspace(seat)
             self.assertIsInstance(source, PvpScopedCharacterWeaponWorkspace)
+            self.assertIsNone(source.weapon_title_label)
+            self.assertIsNone(source.character_title_label)
+            self.assertIs(source.parentWidget(), source_zone)
             character_grid = source.char_grid
             weapon_grid = source.weapon_grid
             picks = board["unified_pool"]["result_zones"][seat]["picked"]
@@ -918,6 +943,7 @@ class PvpBrowserTest(unittest.TestCase):
             QApplication.processEvents()
 
         self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_TIMERS_RESULTS)
+        self.assertTrue(workspace.draft_workspace.title_label.isHidden())
         timer_widget = workspace.draft_workspace.findChild(PvpTimersResultWidget)
         self.assertIsNotNone(timer_widget)
         self.assertFalse(timer_widget.finalize_button.isEnabled())
@@ -941,6 +967,7 @@ class PvpBrowserTest(unittest.TestCase):
 
         result = workspace.active_draft_session.controller.state.match_result
         self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_COMPLETED_RESULT)
+        self.assertTrue(workspace.draft_workspace.title_label.isHidden())
         self.assertIsNotNone(result)
         self.assertEqual(result.winner_seat, "player_1")
         self.assertEqual(result.seconds_difference, 10)
@@ -1220,19 +1247,41 @@ class PvpBrowserTest(unittest.TestCase):
         p2_zone = draft_panel.target_zone_frames_by_seat["player_2"]
         p2_toggle = draft_panel.postdraft_toggle_buttons_by_seat["player_2"]
 
-        self.assertLessEqual(p2_zone.maximumHeight(), p2_toggle.sizeHint().height() + 14)
+        self.assertTrue(p2_zone.isHidden())
+        self.assertEqual(p2_zone.maximumHeight(), 0)
+        self.assertEqual(p2_toggle.parentWidget().objectName(), "pvp_postdraft_target_toggle_row")
         self.assertGreater(p1_zone.maximumHeight(), p1_zone.minimumHeight())
         self.assertEqual(
             p2_toggle.sizePolicy().horizontalPolicy(),
             QSizePolicy.Policy.Expanding,
         )
+        self.assertTrue(
+            workspace.draft_workspace.source_zone_frames_by_seat["player_2"].isHidden()
+        )
 
+        workspace.toggle_build_seat_collapsed("player_2")
+        QApplication.processEvents()
+        p1_index = draft_panel.match_layout.indexOf(p1_zone)
+        p2_index = draft_panel.match_layout.indexOf(p2_zone)
+        self.assertFalse(p1_zone.isHidden())
+        self.assertFalse(p2_zone.isHidden())
+        self.assertEqual(draft_panel.match_layout.stretch(p1_index), 1)
+        self.assertEqual(draft_panel.match_layout.stretch(p2_index), 1)
+        self.assertFalse(
+            workspace.draft_workspace.source_zone_frames_by_seat["player_1"].isHidden()
+        )
+        self.assertFalse(
+            workspace.draft_workspace.source_zone_frames_by_seat["player_2"].isHidden()
+        )
+
+        workspace.toggle_build_seat_collapsed("player_2")
+        QApplication.processEvents()
         workspace.toggle_build_seat_collapsed("player_1")
         QApplication.processEvents()
-        self.assertLessEqual(
-            draft_panel.target_zone_frames_by_seat["player_1"].maximumHeight(),
-            draft_panel.postdraft_toggle_buttons_by_seat["player_1"].sizeHint().height()
-            + 14,
+        self.assertTrue(draft_panel.target_zone_frames_by_seat["player_1"].isHidden())
+        self.assertEqual(draft_panel.target_zone_frames_by_seat["player_1"].maximumHeight(), 0)
+        self.assertTrue(
+            workspace.draft_workspace.source_zone_frames_by_seat["player_1"].isHidden()
         )
 
     def test_pvp_runtime_weapon_state_matches_allowed_key_from_numeric_type(self) -> None:

@@ -6,7 +6,14 @@ from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QFrame, QGridLayout, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFrame,
+    QGridLayout,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from localization import tr
 from run_workspace.models import (
@@ -252,7 +259,7 @@ QPushButton#pvp_postdraft_player_toggle {{
     color: {UI_TEXT_PRIMARY};
     font-size: 12px;
     font-weight: 900;
-    text-align: left;
+    text-align: center;
 }}
 QPushButton#pvp_postdraft_player_toggle:hover {{
     color: #f1d486;
@@ -680,6 +687,26 @@ def _draft_unified_pool_summary(
         shared=shared_count,
         legal=sum(bool(entry.get("is_current_legal_target")) for entry in entries),
     )
+
+
+def _postdraft_seat_toggle_text(
+    seat: str,
+    *,
+    collapsed: bool,
+    ready: bool,
+) -> str:
+    prefix = ">" if collapsed else "v"
+    ready_marker = " ready" if ready else ""
+    return f"{prefix} {_seat_label(seat)}{ready_marker}"
+
+
+def _configure_postdraft_seat_toggle(button: QPushButton) -> QPushButton:
+    button.setObjectName("pvp_postdraft_player_toggle")
+    button.setSizePolicy(
+        QSizePolicy.Policy.Expanding,
+        QSizePolicy.Policy.Fixed,
+    )
+    return button
 
 
 def _draft_unified_card_text(entry: Mapping[str, Any]) -> str:

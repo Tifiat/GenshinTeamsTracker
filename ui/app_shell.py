@@ -2916,11 +2916,15 @@ class CharacterWeaponWorkspace(QWidget):
         parent: QWidget | None = None,
         *,
         db_path: str | Path = ARTIFACT_DB_PATH,
+        show_section_titles: bool = True,
     ) -> None:
         super().__init__(parent)
         self.db_path = db_path
+        self._show_section_titles = bool(show_section_titles)
         self._resize_timer: QTimer | None = None
         self._initial_grid_built = False
+        self._needs_visible_grid_update = False
+        self._pending_show_grid_update = False
         self._character_element_filters: set[str] = set()
         self._character_weapon_filters: set[str] = set()
         self._character_rarity_filters: set[int] = set()
@@ -2944,9 +2948,11 @@ class CharacterWeaponWorkspace(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        self.weapon_title_label = QLabel(tr("asset_panel.weapons"))
-        root.addWidget(self.weapon_title_label)
-        root.addSpacing(6)
+        self.weapon_title_label: QLabel | None = None
+        if self._show_section_titles:
+            self.weapon_title_label = QLabel(tr("asset_panel.weapons"))
+            root.addWidget(self.weapon_title_label)
+            root.addSpacing(6)
         root.addLayout(
             self._build_filter_row(
                 (
@@ -2968,9 +2974,11 @@ class CharacterWeaponWorkspace(QWidget):
         root.addWidget(self.weapon_area, 1)
 
         root.addSpacing(6)
-        self.character_title_label = QLabel(tr("asset_panel.characters"))
-        root.addWidget(self.character_title_label)
-        root.addSpacing(6)
+        self.character_title_label: QLabel | None = None
+        if self._show_section_titles:
+            self.character_title_label = QLabel(tr("asset_panel.characters"))
+            root.addWidget(self.character_title_label)
+            root.addSpacing(6)
         self.character_filter_bar = CharacterFilterBar()
         self._character_element_filters = self.character_filter_bar.element_filters
         self._character_weapon_filters = self.character_filter_bar.weapon_filters
@@ -2994,28 +3002,54 @@ class CharacterWeaponWorkspace(QWidget):
         root.addWidget(self.char_area, 3)
 
     def retranslate_ui(self) -> None:
-        self.weapon_title_label.setText(tr("asset_panel.weapons"))
-        self.character_title_label.setText(tr("asset_panel.characters"))
+        if self.weapon_title_label is not None:
+            self.weapon_title_label.setText(tr("asset_panel.weapons"))
+        if self.character_title_label is not None:
+            self.character_title_label.setText(tr("asset_panel.characters"))
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
         if not self._initial_grid_built:
             self._initial_grid_built = True
-            QTimer.singleShot(0, self.update_grids)
+            self._pending_show_grid_update = True
+            QTimer.singleShot(0, self._run_pending_show_grid_update)
+        elif self._needs_visible_grid_update:
+            self._needs_visible_grid_update = False
+            self._pending_show_grid_update = True
+            QTimer.singleShot(0, self._run_pending_show_grid_update)
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         if self._initial_grid_built:
-            self.update_grids_delayed()
+            if self.isVisible():
+                self.update_grids_delayed()
+            else:
+                self._needs_visible_grid_update = True
 
     def update_grids_delayed(self) -> None:
         if self._resize_timer is None:
             self._resize_timer = QTimer(self)
             self._resize_timer.setSingleShot(True)
-            self._resize_timer.timeout.connect(self.update_grids)
+            self._resize_timer.timeout.connect(self._run_delayed_grid_update)
         self._resize_timer.start(75)
 
+    def _run_delayed_grid_update(self) -> None:
+        if not self.isVisible():
+            self._needs_visible_grid_update = True
+            return
+        self.update_grids()
+
+    def _run_pending_show_grid_update(self) -> None:
+        if not self._pending_show_grid_update:
+            return
+        self._pending_show_grid_update = False
+        if not self.isVisible():
+            self._needs_visible_grid_update = True
+            return
+        self.update_grids()
+
     def update_grids(self) -> None:
+        self._pending_show_grid_update = False
         self.reload_characters()
         self.reload_weapons()
 

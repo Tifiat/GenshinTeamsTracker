@@ -37,8 +37,9 @@ from ui.right_panel.pvp._shared import (
     _draft_result_zone_title,
     _is_post_draft_stage,
     _mapping,
+    _configure_postdraft_seat_toggle,
+    _postdraft_seat_toggle_text,
     _postdraft_target_object_name,
-    _seat_label,
 )
 from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultZoneWidget
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
@@ -406,6 +407,30 @@ class PvpDraftRightPanel(QWidget):
             return
         _clear_layout(self.match_layout)
         self._clear_match_registries()
+        toggle_row = QWidget()
+        toggle_row.setObjectName("pvp_postdraft_target_toggle_row")
+        toggle_layout = QHBoxLayout(toggle_row)
+        toggle_layout.setContentsMargins(0, 0, 0, 0)
+        toggle_layout.setSpacing(6)
+        for seat in PVP_SEATS:
+            seat_context = build_context.seat(seat)
+            if seat_context is None:
+                continue
+            collapsed = self.workspace.is_build_seat_collapsed(seat)
+            toggle = _configure_postdraft_seat_toggle(QPushButton())
+            toggle.setText(
+                _postdraft_seat_toggle_text(
+                    seat,
+                    collapsed=collapsed,
+                    ready=seat_context.ready,
+                )
+            )
+            toggle.clicked.connect(
+                lambda _checked=False, s=seat: self._toggle_postdraft_seat(s)
+            )
+            self.postdraft_toggle_buttons_by_seat[seat] = toggle
+            toggle_layout.addWidget(toggle, 1)
+        self.match_layout.addWidget(toggle_row, 0)
         for seat in PVP_SEATS:
             seat_context = build_context.seat(seat)
             if seat_context is None:
@@ -417,20 +442,6 @@ class PvpDraftRightPanel(QWidget):
             self.target_zone_frames_by_seat[seat] = zone
 
             collapsed = self.workspace.is_build_seat_collapsed(seat)
-            toggle_prefix = ">" if collapsed else "v"
-            ready_marker = " ready" if seat_context.ready else ""
-            toggle = QPushButton(f"{toggle_prefix} {_seat_label(seat)}{ready_marker}")
-            toggle.setObjectName("pvp_postdraft_player_toggle")
-            toggle.setSizePolicy(
-                QSizePolicy.Policy.Expanding,
-                QSizePolicy.Policy.Fixed,
-            )
-            toggle.clicked.connect(
-                lambda _checked=False, s=seat: self._toggle_postdraft_seat(s)
-            )
-            self.postdraft_toggle_buttons_by_seat[seat] = toggle
-            zone_layout.addWidget(toggle)
-
             panel = PvpPostDraftRunPanel(
                 seat_context.right_panel_model()
             )
@@ -471,6 +482,7 @@ class PvpDraftRightPanel(QWidget):
                 not collapsed and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}
             )
             zone_layout.addWidget(ready_button)
+            zone.setVisible(not collapsed)
             self.match_layout.addWidget(zone, 0 if collapsed else 1)
         self._update_match_panel(stage)
         self._last_match_stage = stage
@@ -533,9 +545,13 @@ class PvpDraftRightPanel(QWidget):
             collapsed = self.workspace.is_build_seat_collapsed(seat)
             toggle = self.postdraft_toggle_buttons_by_seat.get(seat)
             if toggle is not None:
-                toggle_prefix = ">" if collapsed else "v"
-                ready_marker = " ready" if seat_context.ready else ""
-                toggle.setText(f"{toggle_prefix} {_seat_label(seat)}{ready_marker}")
+                toggle.setText(
+                    _postdraft_seat_toggle_text(
+                        seat,
+                        collapsed=collapsed,
+                        ready=seat_context.ready,
+                    )
+                )
             panel.set_model(seat_context.right_panel_model())
             panel.setVisible(not collapsed)
             self._register_target_run_panel_slots(panel, seat, seat_context)
@@ -551,7 +567,8 @@ class PvpDraftRightPanel(QWidget):
             zone_index = self.match_layout.indexOf(zone)
             if zone_index >= 0:
                 self.match_layout.setStretch(zone_index, 0 if collapsed else 1)
-            self._sync_postdraft_zone_size(zone, toggle, collapsed)
+            zone.setVisible(not collapsed)
+            self._sync_postdraft_zone_size(zone, collapsed)
 
     def _toggle_postdraft_seat(self, seat: str) -> None:
         self.workspace.toggle_build_seat_collapsed(seat)
@@ -559,19 +576,11 @@ class PvpDraftRightPanel(QWidget):
     def _sync_postdraft_zone_size(
         self,
         zone: QFrame,
-        toggle: QPushButton | None,
         collapsed: bool,
     ) -> None:
         if collapsed:
-            button_height = toggle.sizeHint().height() if toggle is not None else 24
-            margins = zone.layout().contentsMargins() if zone.layout() is not None else None
-            vertical_margins = (
-                margins.top() + margins.bottom()
-                if margins is not None
-                else 14
-            )
             zone.setMinimumHeight(0)
-            zone.setMaximumHeight(button_height + vertical_margins)
+            zone.setMaximumHeight(0)
             zone.setSizePolicy(
                 QSizePolicy.Policy.Expanding,
                 QSizePolicy.Policy.Fixed,

@@ -72,26 +72,26 @@ QFrame#pvp_timer_scoreboard {{
     border-radius: 7px;
     background: {UI_BG_PANEL};
 }}
-QLabel#pvp_timer_title {{ color: {UI_TEXT_PRIMARY}; font-size: 14px; font-weight: 900; }}
-QLabel#pvp_timer_chamber_title {{ color: {UI_TEXT_PRIMARY}; font-size: 13px; font-weight: 900; }}
-QLabel#pvp_timer_muted {{ color: {UI_TEXT_MUTED}; font-size: 11px; }}
+QLabel#pvp_timer_title {{ color: {UI_TEXT_PRIMARY}; font-size: 15px; font-weight: 900; }}
+QLabel#pvp_timer_chamber_title {{ color: {UI_TEXT_PRIMARY}; font-size: 14px; font-weight: 900; }}
+QLabel#pvp_timer_muted {{ color: {UI_TEXT_MUTED}; font-size: 12px; }}
 QFrame#pvp_timer_side {{
     border: 1px solid {UI_BORDER_DEFAULT};
     border-radius: 5px;
     background: {UI_BG_INSET};
 }}
-QLabel#pvp_timer_side_title {{ color: {UI_TEXT_PRIMARY}; font-size: 11px; font-weight: 900; }}
+QLabel#pvp_timer_side_title {{ color: {UI_TEXT_PRIMARY}; font-size: 12px; font-weight: 900; }}
 QWidget#pvp_timer_waves {{ background: transparent; border: none; }}
 QWidget#pvp_timer_wave {{ background: transparent; border: none; }}
-QLabel#pvp_timer_wave_title {{ color: {UI_TEXT_MUTED}; font-size: 10px; font-weight: 800; }}
-QLabel#pvp_timer_enemy_name {{ color: {UI_TEXT_SECONDARY}; font-size: 11px; }}
+QLabel#pvp_timer_wave_title {{ color: {UI_TEXT_MUTED}; font-size: 11px; font-weight: 800; }}
+QLabel#pvp_timer_enemy_name {{ color: {UI_TEXT_SECONDARY}; font-size: 12px; }}
 QFrame#pvp_timer_hp {{
     border: 1px solid {UI_BORDER_DEFAULT};
     border-radius: 5px;
     background: {UI_BG_BUTTON};
 }}
-QLabel#pvp_timer_hp_title {{ color: {UI_TEXT_MUTED}; font-size: 11px; font-weight: 800; }}
-QLabel#pvp_timer_hp_value {{ color: {UI_TEXT_PRIMARY}; font-size: 12px; font-weight: 900; }}
+QLabel#pvp_timer_hp_title {{ color: {UI_TEXT_MUTED}; font-size: 12px; font-weight: 800; }}
+QLabel#pvp_timer_hp_value {{ color: {UI_TEXT_PRIMARY}; font-size: 13px; font-weight: 900; }}
 QLabel#pvp_timer_player_1 {{ color: {player_1_color}; font-weight: 900; }}
 QLabel#pvp_timer_player_2 {{ color: {player_2_color}; font-weight: 900; }}
 QWidget#pvp_timer_input_column {{
@@ -152,13 +152,13 @@ QFrame#pvp_timer_dps_table {{
 }}
 QLabel#pvp_timer_dps_header {{
     color: {UI_TEXT_MUTED};
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 900;
 }}
-QLabel#pvp_timer_dps_player {{ font-size: 12px; font-weight: 900; }}
+QLabel#pvp_timer_dps_player {{ font-size: 13px; font-weight: 900; }}
 QLabel#pvp_timer_dps_value {{
     color: {UI_TEXT_PRIMARY};
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 900;
 }}
 QPushButton#pvp_timer_finalize {{

@@ -80,7 +80,7 @@ class PvpScopedCharacterWeaponWorkspace(CharacterWeaponWorkspace):
         character_assets: Iterable[dict[str, Any]] = (),
         weapon_assets: Iterable[dict[str, Any]] = (),
     ) -> None:
-        super().__init__(parent, db_path=db_path)
+        super().__init__(parent, db_path=db_path, show_section_titles=False)
         self.seat = str(seat)
         self.setObjectName("PvpScopedCharacterWeaponWorkspace")
         self.setProperty("pvpScopedSourceWorkspace", True)

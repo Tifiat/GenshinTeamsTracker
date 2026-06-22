@@ -126,6 +126,8 @@ from ui.right_panel.pvp._shared import (
     _mapping,
     _parse_pvp_remaining_timer_text,
     _picked_character_ids,
+    _configure_postdraft_seat_toggle,
+    _postdraft_seat_toggle_text,
     _postdraft_source_object_name,
     _pvp_deck_inactive_fill,
     _pvp_deck_item_properties,
@@ -1212,6 +1214,7 @@ class PvpPlayWorkspace(QWidget):
 
 class PvpDraftWorkspace(QWidget):
     card_clicked = Signal(dict)
+    seat_toggle_requested = Signal(str)
     timer_text_changed = Signal(str, int, str)
     finalize_result_requested = Signal()
 
@@ -1236,9 +1239,9 @@ class PvpDraftWorkspace(QWidget):
         self.legal_character_ids: tuple[str, ...] = ()
         self._draft_actions_by_character_id: dict[str, dict[str, Any]] = {}
         self.source_zone_frames_by_seat: dict[str, QFrame] = {}
+        self._source_toggle_buttons_by_seat: dict[str, QPushButton] = {}
         self._scoped_build_source_frame: QFrame | None = None
         self._scoped_build_context_id: int | None = None
-        self._source_title_labels_by_seat: dict[str, QLabel] = {}
         self._timers_result_widget: PvpTimersResultWidget | None = None
         self._abyss_source_data: AbyssFloorSourceData | None = None
 
@@ -1319,6 +1322,7 @@ class PvpDraftWorkspace(QWidget):
     def refresh(self) -> None:
         session = self._active_session
         has_session = session is not None
+        self.title_label.setVisible(False)
         self.empty_frame.setVisible(not has_session)
         self.board_frame.setVisible(False)
         self.scroll_area.setVisible(has_session)
@@ -1330,7 +1334,7 @@ class PvpDraftWorkspace(QWidget):
 
         if session is None:
             self.source_zone_frames_by_seat.clear()
-            self._source_title_labels_by_seat.clear()
+            self._source_toggle_buttons_by_seat.clear()
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._detach_build_source_widgets()
@@ -1393,7 +1397,7 @@ class PvpDraftWorkspace(QWidget):
             PVP_DRAFT_STAGE_COMPLETED_RESULT,
         }:
             self.source_zone_frames_by_seat.clear()
-            self._source_title_labels_by_seat.clear()
+            self._source_toggle_buttons_by_seat.clear()
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._draft_pool_frame = None
@@ -1408,7 +1412,7 @@ class PvpDraftWorkspace(QWidget):
                 self.scroll_layout.addStretch(1)
         else:
             self.source_zone_frames_by_seat.clear()
-            self._source_title_labels_by_seat.clear()
+            self._source_toggle_buttons_by_seat.clear()
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._detach_build_source_widgets()
@@ -1626,7 +1630,7 @@ class PvpDraftWorkspace(QWidget):
             self._update_scoped_build_source_stage()
             return
         self.source_zone_frames_by_seat.clear()
-        self._source_title_labels_by_seat.clear()
+        self._source_toggle_buttons_by_seat.clear()
         self._scoped_build_source_frame = None
         self._scoped_build_context_id = context_id
         self._detach_build_source_widgets()
@@ -1649,6 +1653,30 @@ class PvpDraftWorkspace(QWidget):
             empty.setWordWrap(True)
             layout.addWidget(empty)
             return frame
+        toggle_row = QWidget()
+        toggle_row.setObjectName("pvp_postdraft_source_toggle_row")
+        toggle_layout = QHBoxLayout(toggle_row)
+        toggle_layout.setContentsMargins(0, 0, 0, 0)
+        toggle_layout.setSpacing(6)
+        for seat in PVP_SEATS:
+            seat_context = context.seat(seat)
+            if seat_context is None:
+                continue
+            collapsed = seat in context.collapsed_seats
+            toggle = _configure_postdraft_seat_toggle(QPushButton())
+            toggle.setText(
+                _postdraft_seat_toggle_text(
+                    seat,
+                    collapsed=collapsed,
+                    ready=seat_context.ready,
+                )
+            )
+            toggle.clicked.connect(
+                lambda _checked=False, s=seat: self._toggle_postdraft_source_seat(s)
+            )
+            self._source_toggle_buttons_by_seat[seat] = toggle
+            toggle_layout.addWidget(toggle, 1)
+        layout.addWidget(toggle_row)
         for seat in PVP_SEATS:
             seat_context = context.seat(seat)
             if seat_context is None:
@@ -1662,21 +1690,13 @@ class PvpDraftWorkspace(QWidget):
             section_layout = QVBoxLayout(section)
             section_layout.setContentsMargins(8, 8, 8, 8)
             section_layout.setSpacing(6)
-            title = QLabel(
-                tr("app_shell.pvp.post.scoped_source_title").format(
-                    seat=_seat_label(seat),
-                    characters=seat_context.filled_character_count(),
-                    weapons=seat_context.filled_weapon_count(),
-                )
-            )
-            title.setObjectName("pvp_draft_result_title")
-            self._source_title_labels_by_seat[seat] = title
-            section_layout.addWidget(title)
             source = seat_context.source_workspace
             source.setParent(section)
             section_layout.addWidget(source, 1)
             self.source_zone_frames_by_seat[seat] = section
-            layout.addWidget(section, 1)
+            collapsed = seat in context.collapsed_seats
+            section.setVisible(not collapsed)
+            layout.addWidget(section, 0 if collapsed else 1)
         return frame
 
     def _update_scoped_build_source_stage(self) -> None:
@@ -1685,22 +1705,33 @@ class PvpDraftWorkspace(QWidget):
             return
         for seat in PVP_SEATS:
             seat_context = context.seat(seat)
-            title = self._source_title_labels_by_seat.get(seat)
             section = self.source_zone_frames_by_seat.get(seat)
-            if seat_context is None or title is None or section is None:
+            if seat_context is None or section is None:
                 self._scoped_build_source_frame = None
                 self._refresh_scoped_build_source_scroll_stage()
                 return
-            title.setText(
-                tr("app_shell.pvp.post.scoped_source_title").format(
-                    seat=_seat_label(seat),
-                    characters=seat_context.filled_character_count(),
-                    weapons=seat_context.filled_weapon_count(),
+            collapsed = seat in context.collapsed_seats
+            toggle = self._source_toggle_buttons_by_seat.get(seat)
+            if toggle is not None:
+                toggle.setText(
+                    _postdraft_seat_toggle_text(
+                        seat,
+                        collapsed=collapsed,
+                        ready=seat_context.ready,
+                    )
                 )
-            )
+            section.setVisible(not collapsed)
+            if self._scoped_build_source_frame is not None:
+                source_layout = self._scoped_build_source_frame.layout()
+                section_index = source_layout.indexOf(section) if source_layout else -1
+                if section_index >= 0:
+                    source_layout.setStretch(section_index, 0 if collapsed else 1)
             source = seat_context.source_workspace
             if source.parent() is not section:
                 source.setParent(section)
+
+    def _toggle_postdraft_source_seat(self, seat: str) -> None:
+        self.seat_toggle_requested.emit(seat)
 
     def _build_timers_results_stage(self, stage: str) -> PvpTimersResultWidget:
         if self._timers_result_widget is None:
@@ -1787,6 +1818,9 @@ class PvpWorkspace(QWidget):
         self.stack.addWidget(self.draft_workspace)
         self.decks_workspace.state_changed.connect(self._on_decks_state_changed)
         self.draft_workspace.card_clicked.connect(self.apply_draft_card_click)
+        self.draft_workspace.seat_toggle_requested.connect(
+            self.toggle_build_seat_collapsed
+        )
         self.draft_workspace.timer_text_changed.connect(self.set_timer_text)
         self.draft_workspace.finalize_result_requested.connect(
             self.finalize_match_result,

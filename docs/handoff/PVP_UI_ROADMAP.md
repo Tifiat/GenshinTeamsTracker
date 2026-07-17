@@ -652,11 +652,27 @@ Current v0 scope:
   clicks select the build target, weapon clicks use the normal selected-slot
   equipment path, and seat Ready commits converted team/weapon assignments
   through the PvP backend controller. Each seat is a vertical accordion section
-  whose color-tinted right header controls both left and right bodies; there are
-  no duplicate left-side controls and no right-side painted accent strip.
+  whose color-tinted right header controls both left and right bodies. The left
+  side has a passive matching seat header, not a second control. Both panes trim
+  themselves to their shared global viewport span, use the same header height
+  and section spacing, and assign equal section heights when both are
+  expanded; player boundaries therefore stay pixel-aligned across the shell
+  even though the left and right navigation headers have different heights.
+  A collapsed seat keeps the same compact header row in both panes. There is no
+  right-side painted accent strip.
   Collapse-only changes synchronously update visibility without refreshing the
   right model or reloading the left grids. Source workspace reparenting stays
-  under the PvP widget tree to avoid transient empty Qt windows. Occupied
+  under the PvP widget tree, and post-draft widgets receive a stable parent
+  before any `show`/`setVisible(true)` call, to avoid transient empty Qt windows.
+  Removed layout children are hidden immediately before deferred deletion so a
+  resize cannot repaint the previous draft stage for one frame. The scoped
+  character picker has a fixed single-row viewport for the deterministic eight
+  picks with a small vertical allowance. The weapon picker requests exactly its
+  current grid height (one row for a small pool, as many rows as a larger pool
+  needs), while remaining shrinkable to one row when the player section/window
+  cannot provide that height; only that real shortage enables vertical scroll.
+  Any unused section height stays below both pickers instead of separating
+  them. Occupied
   single-copy weapon selection now exchanges weapons like the normal
   account-equipment pipeline. When both seats are Ready, timers and the future
   GCSIM route move to the left Draft workspace.

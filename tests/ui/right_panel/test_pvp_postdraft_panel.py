@@ -12,9 +12,8 @@ from PySide6.QtWidgets import QApplication, QPushButton
 from tests.ui.pvp_browser import test_pvp_browser as pvp_fixtures
 from ui.pvp_browser.window import PvpWorkspace
 from ui.right_panel.common.slot_card import RightPanelSlotCardWidget
+from ui.right_panel.pvp._shared import PVP_POSTDRAFT_HEADER_HEIGHT
 from ui.right_panel.pvp.draft.panel import (
-    PVP_POSTDRAFT_EXPANDED_MIN_HEIGHT,
-    PVP_POSTDRAFT_RUN_PANEL_MIN_HEIGHT,
     PvpDraftRightPanel,
 )
 from ui.right_panel.pvp.play.panel import PvpPlayRightPanel
@@ -71,8 +70,8 @@ class PvpPostDraftRightPanelLayoutTest(unittest.TestCase):
 
         self.assertFalse(p1_zone.isHidden())
         self.assertEqual(len(p1_zone.findChildren(RightPanelSlotCardWidget)), 8)
-        self.assertGreaterEqual(p1_panel.minimumHeight(), PVP_POSTDRAFT_RUN_PANEL_MIN_HEIGHT)
-        self.assertGreaterEqual(p1_zone.minimumHeight(), PVP_POSTDRAFT_EXPANDED_MIN_HEIGHT)
+        self.assertEqual(p1_panel.minimumHeight(), 0)
+        self.assertEqual(p1_zone.minimumHeight(), 0)
         self.assertIs(p1_ready.parentWidget(), p1_zone)
         self.assertEqual(
             p1_zone.findChildren(QPushButton, "pvp_postdraft_player_toggle"),
@@ -89,8 +88,8 @@ class PvpPostDraftRightPanelLayoutTest(unittest.TestCase):
         self.assertTrue(
             draft_panel.postdraft_run_panels_by_seat["player_2"].isHidden()
         )
-        self.assertGreater(p2_zone.maximumHeight(), 0)
-        self.assertEqual(p2_zone.maximumHeight(), p2_zone.minimumHeight())
+        self.assertEqual(p2_zone.maximumHeight(), PVP_POSTDRAFT_HEADER_HEIGHT)
+        self.assertEqual(p2_zone.minimumHeight(), PVP_POSTDRAFT_HEADER_HEIGHT)
         self.assertIs(p2_toggle.parentWidget(), p2_zone)
         self.assertEqual(p2_zone.layout().indexOf(p2_toggle), 0)
         self.assertEqual(p2_toggle.property("seat"), "player_2")
@@ -103,7 +102,8 @@ class PvpPostDraftRightPanelLayoutTest(unittest.TestCase):
             draft_panel.postdraft_run_panels_by_seat["player_2"].isHidden()
         )
         self.assertEqual(len(p2_zone.findChildren(RightPanelSlotCardWidget)), 8)
-        self.assertGreaterEqual(p2_zone.minimumHeight(), PVP_POSTDRAFT_EXPANDED_MIN_HEIGHT)
+        self.assertEqual(p2_zone.minimumHeight(), 0)
+        self.assertGreater(p2_zone.maximumHeight(), p2_zone.minimumHeight())
         self.assertTrue(p2_toggle.isChecked())
 
         p2_toggle.click()
@@ -112,7 +112,8 @@ class PvpPostDraftRightPanelLayoutTest(unittest.TestCase):
         self.assertTrue(
             draft_panel.postdraft_run_panels_by_seat["player_2"].isHidden()
         )
-        self.assertEqual(p2_zone.maximumHeight(), p2_zone.minimumHeight())
+        self.assertEqual(p2_zone.maximumHeight(), PVP_POSTDRAFT_HEADER_HEIGHT)
+        self.assertEqual(p2_zone.minimumHeight(), PVP_POSTDRAFT_HEADER_HEIGHT)
         self.assertFalse(p2_toggle.isChecked())
 
 

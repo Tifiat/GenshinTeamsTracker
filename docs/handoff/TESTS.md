@@ -157,7 +157,17 @@ Mirror the primary project owner under `tests/`:
   right-panel accordion hierarchy, absence of a right painted side accent,
   collapse/expand without model/grid refresh, safe non-window source
   reparenting, and normal AppShell-compatible occupied-weapon swap behavior in
-  scoped runtime state.
+  scoped runtime state. Geometry regression tests must show both seat sections
+  expanded at usable shell sizes for the 1408x640 minimum, 1600x900, and
+  1920x1080 monitor profiles and pin equal left/right visual Y coordinates,
+  equal seat heights, one physical character row, and the fixed character
+  viewport. A dedicated content-sizing regression must show the weapon viewport
+  matching the full natural multi-row grid when space exists and shrinking with
+  vertical scroll only when the containing player section/window is too short.
+  The assignment
+  transition test installs an application event filter and rejects every newly
+  shown top-level QWidget; this covers parentless `setVisible(true)` regressions
+  that a `setParent(None)`-only assertion misses.
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.

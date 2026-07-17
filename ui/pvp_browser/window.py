@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -107,6 +108,8 @@ from ui.right_panel.pvp._shared import (
     PVP_PAGE_DECKS,
     PVP_PAGE_DRAFT,
     PVP_PAGE_PLAY,
+    PVP_POSTDRAFT_HEADER_HEIGHT,
+    PVP_POSTDRAFT_SECTION_SPACING,
     PVP_SEATS,
     PVP_TIMER_CHAMBERS,
     _PVP_DECK_ICON_PIXMAP_CACHE,
@@ -116,6 +119,7 @@ from ui.right_panel.pvp._shared import (
     _character_assets_by_id,
     _clear_layout,
     _compact_issue_codes,
+    _configure_postdraft_seat_label,
     _draft_action_from_unified_pool,
     _draft_is_complete,
     _draft_main_pool_entries,
@@ -131,6 +135,7 @@ from ui.right_panel.pvp._shared import (
     _pvp_deck_item_properties,
     _pvp_deck_outline,
     _pvp_weapon_sort_key,
+    _refresh_postdraft_seat_label_style,
     _refresh_qss,
     _seat_label,
     _seat_short_label,
@@ -1236,6 +1241,8 @@ class PvpDraftWorkspace(QWidget):
         self.legal_character_ids: tuple[str, ...] = ()
         self._draft_actions_by_character_id: dict[str, dict[str, Any]] = {}
         self.source_zone_frames_by_seat: dict[str, QFrame] = {}
+        self.source_body_widgets_by_seat: dict[str, QWidget] = {}
+        self.source_header_labels_by_seat: dict[str, QLabel] = {}
         self._scoped_build_source_frame: QFrame | None = None
         self._scoped_build_context_id: int | None = None
         self._timers_result_widget: PvpTimersResultWidget | None = None
@@ -1330,6 +1337,8 @@ class PvpDraftWorkspace(QWidget):
 
         if session is None:
             self.source_zone_frames_by_seat.clear()
+            self.source_body_widgets_by_seat.clear()
+            self.source_header_labels_by_seat.clear()
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._detach_build_source_widgets()
@@ -1344,6 +1353,8 @@ class PvpDraftWorkspace(QWidget):
             self.scroll_area.setHorizontalScrollBarPolicy(
                 Qt.ScrollBarPolicy.ScrollBarAlwaysOff
             )
+            self.set_postdraft_alignment_margins(0, 0)
+            self.lock_postdraft_content_height(None)
             return
 
         stage = _draft_stage(self._view_state)
@@ -1364,6 +1375,9 @@ class PvpDraftWorkspace(QWidget):
             PVP_DRAFT_STAGE_TIMERS_RESULTS,
             PVP_DRAFT_STAGE_COMPLETED_RESULT,
         }
+        if stage not in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}:
+            self.set_postdraft_alignment_margins(0, 0)
+            self.lock_postdraft_content_height(None)
         board = {} if post_draft_stage else session.board_dict()
         complete = True if post_draft_stage else _draft_is_complete(board)
         self.board_frame.setVisible(stage == PVP_DRAFT_STAGE_DRAFT)
@@ -1392,6 +1406,8 @@ class PvpDraftWorkspace(QWidget):
             PVP_DRAFT_STAGE_COMPLETED_RESULT,
         }:
             self.source_zone_frames_by_seat.clear()
+            self.source_body_widgets_by_seat.clear()
+            self.source_header_labels_by_seat.clear()
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._draft_pool_frame = None
@@ -1406,6 +1422,8 @@ class PvpDraftWorkspace(QWidget):
                 self.scroll_layout.addStretch(1)
         else:
             self.source_zone_frames_by_seat.clear()
+            self.source_body_widgets_by_seat.clear()
+            self.source_header_labels_by_seat.clear()
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._detach_build_source_widgets()
@@ -1428,6 +1446,8 @@ class PvpDraftWorkspace(QWidget):
         for frame in self.source_zone_frames_by_seat.values():
             if isinstance(frame, PvpSeatAccentFrame):
                 frame.refresh_player_color()
+        for seat, label in self.source_header_labels_by_seat.items():
+            _refresh_postdraft_seat_label_style(label, seat=seat)
         if self._timers_result_widget is not None:
             self._timers_result_widget.refresh_player_colors()
         self.refresh()
@@ -1617,6 +1637,36 @@ class PvpDraftWorkspace(QWidget):
                 source.hide()
                 source.setParent(self)
 
+    def set_postdraft_alignment_margins(self, top: int, bottom: int) -> None:
+        desired = (0, max(0, int(top)), 0, max(0, int(bottom)))
+        margins = self.scroll_layout.contentsMargins()
+        current = (
+            margins.left(),
+            margins.top(),
+            margins.right(),
+            margins.bottom(),
+        )
+        if current != desired:
+            self.scroll_layout.setContentsMargins(*desired)
+            self.scroll_layout.invalidate()
+            self.scroll_layout.activate()
+
+    def lock_postdraft_content_height(self, height: int | None) -> None:
+        if height is None:
+            self.scroll_content.setMinimumHeight(0)
+            self.scroll_content.setMaximumHeight(16777215)
+            self.scroll_content.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Preferred,
+            )
+            return
+        self.scroll_content.setFixedHeight(max(1, int(height)))
+        self.scroll_content.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
+        self.scroll_area.verticalScrollBar().setValue(0)
+
     def _refresh_scoped_build_source_scroll_stage(self) -> None:
         context_id = id(self._build_flow_context) if self._build_flow_context else None
         if (
@@ -1627,21 +1677,23 @@ class PvpDraftWorkspace(QWidget):
             self._update_scoped_build_source_stage()
             return
         self.source_zone_frames_by_seat.clear()
+        self.source_body_widgets_by_seat.clear()
+        self.source_header_labels_by_seat.clear()
         self._scoped_build_source_frame = None
         self._scoped_build_context_id = context_id
         self._detach_build_source_widgets()
         _clear_layout(self.scroll_layout)
-        self.scroll_layout.addWidget(self._build_scoped_build_source_stage())
-        self.scroll_layout.addStretch(1)
+        self.scroll_layout.addWidget(self._build_scoped_build_source_stage(), 1)
 
     def _build_scoped_build_source_stage(self) -> QFrame:
-        frame = QFrame()
+        frame = QFrame(self.scroll_content)
         frame.setObjectName("pvp_scoped_build_source_frame")
         self._scoped_build_source_frame = frame
         self._scoped_build_context_id = id(self._build_flow_context) if self._build_flow_context else None
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(PVP_POSTDRAFT_SECTION_SPACING)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         context = self._build_flow_context
         if context is None:
             empty = QLabel(tr("app_shell.pvp.post.build_context_missing"))
@@ -1655,24 +1707,42 @@ class PvpDraftWorkspace(QWidget):
                 continue
             section = PvpSeatAccentFrame(
                 seat,
+                frame,
                 object_name=_postdraft_source_object_name(seat),
             )
             section.setProperty("seat", seat)
             section.setProperty("scopedBuildSource", True)
             section_layout = QVBoxLayout(section)
-            section_layout.setContentsMargins(8, 8, 8, 8)
-            section_layout.setSpacing(6)
+            section_layout.setContentsMargins(0, 0, 0, 0)
+            section_layout.setSpacing(PVP_POSTDRAFT_SECTION_SPACING)
+
+            header = _configure_postdraft_seat_label(
+                QLabel(section),
+                seat=seat,
+            )
+            section_layout.addWidget(header)
+            self.source_header_labels_by_seat[seat] = header
+
+            body = QWidget(section)
+            body.setObjectName("pvp_postdraft_source_body")
+            body_layout = QVBoxLayout(body)
+            body_layout.setContentsMargins(8, 0, 8, 8)
+            body_layout.setSpacing(0)
             source = seat_context.source_workspace
-            source.setParent(section)
-            section_layout.addWidget(source, 1)
-            # Keep the child logically shown and collapse only its stable
-            # parent section. Explicitly hiding/showing the heavy grid child
+            source.setParent(body)
+            body_layout.addWidget(source, 1)
+            section_layout.addWidget(body, 1)
+            collapsed = seat in context.collapsed_seats
+            layout.addWidget(section, 0 if collapsed else 1)
+            # Keep the heavy child logically shown and collapse only its body
+            # wrapper. Explicitly hiding/showing the grid child itself
             # schedules an unnecessary delayed grid reload on every expand.
             source.show()
             self.source_zone_frames_by_seat[seat] = section
-            collapsed = seat in context.collapsed_seats
-            section.setVisible(not collapsed)
-            layout.addWidget(section, 0 if collapsed else 1)
+            self.source_body_widgets_by_seat[seat] = body
+            body.setVisible(not collapsed)
+            section.setVisible(True)
+            self._sync_scoped_source_zone_size(section, collapsed)
         return frame
 
     def _update_scoped_build_source_stage(self) -> None:
@@ -1682,22 +1752,44 @@ class PvpDraftWorkspace(QWidget):
         for seat in PVP_SEATS:
             seat_context = context.seat(seat)
             section = self.source_zone_frames_by_seat.get(seat)
-            if seat_context is None or section is None:
+            body = self.source_body_widgets_by_seat.get(seat)
+            if seat_context is None or section is None or body is None:
                 self._scoped_build_source_frame = None
                 self._refresh_scoped_build_source_scroll_stage()
                 return
             collapsed = seat in context.collapsed_seats
-            section.setVisible(not collapsed)
+            body.setVisible(not collapsed)
+            section.setVisible(True)
+            self._sync_scoped_source_zone_size(section, collapsed)
             if self._scoped_build_source_frame is not None:
                 source_layout = self._scoped_build_source_frame.layout()
                 section_index = source_layout.indexOf(section) if source_layout else -1
                 if section_index >= 0:
                     source_layout.setStretch(section_index, 0 if collapsed else 1)
+                    source_layout.invalidate()
+                    source_layout.activate()
             source = seat_context.source_workspace
-            if source.parent() is not section:
+            if source.parent() is not body:
                 source.hide()
-                source.setParent(section)
+                source.setParent(body)
                 source.show()
+
+    @staticmethod
+    def _sync_scoped_source_zone_size(section: QFrame, collapsed: bool) -> None:
+        if collapsed:
+            section.setMinimumHeight(PVP_POSTDRAFT_HEADER_HEIGHT)
+            section.setMaximumHeight(PVP_POSTDRAFT_HEADER_HEIGHT)
+            section.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Fixed,
+            )
+            return
+        section.setMinimumHeight(0)
+        section.setMaximumHeight(16777215)
+        section.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
 
     def _build_timers_results_stage(self, stage: str) -> PvpTimersResultWidget:
         if self._timers_result_widget is None:

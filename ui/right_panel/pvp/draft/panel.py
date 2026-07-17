@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QPoint, Qt, QTimer
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -25,6 +25,8 @@ from ui.right_panel.pvp._shared import (
     PVP_DRAFT_STAGE_DRAFT,
     PVP_DRAFT_STAGE_WEAPONS,
     PVP_PAGE_PLAY,
+    PVP_POSTDRAFT_HEADER_HEIGHT,
+    PVP_POSTDRAFT_SECTION_SPACING,
     PVP_SEATS,
     _asset_image_path,
     build_pvp_draft_grid_item,
@@ -43,10 +45,6 @@ from ui.right_panel.pvp._shared import (
 )
 from ui.right_panel.pvp.draft.pick_ban.result_zone import PvpDraftResultZoneWidget
 from ui.utils.overlay_scroll import OverlayVerticalScrollArea
-
-
-PVP_POSTDRAFT_RUN_PANEL_MIN_HEIGHT = 470
-PVP_POSTDRAFT_EXPANDED_MIN_HEIGHT = 540
 
 
 class PvpPostDraftSeatFrame(QFrame):
@@ -124,7 +122,7 @@ class PvpDraftRightPanel(QWidget):
         self.match_frame.setObjectName("pvp_postdraft_match_panel")
         self.match_layout = QVBoxLayout(self.match_frame)
         self.match_layout.setContentsMargins(0, 0, 0, 0)
-        self.match_layout.setSpacing(6)
+        self.match_layout.setSpacing(PVP_POSTDRAFT_SECTION_SPACING)
         self.match_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.match_scroll = OverlayVerticalScrollArea()
         self.match_scroll.setObjectName("pvp_postdraft_match_scroll")
@@ -237,6 +235,7 @@ class PvpDraftRightPanel(QWidget):
         self.message_label.setVisible(bool(self.message_label.text()))
 
         if session is None:
+            self._reset_postdraft_pane_geometry()
             _clear_layout(self.match_layout)
             self._clear_match_registries()
             for label in (*self.status_labels, *self.log_labels):
@@ -258,6 +257,10 @@ class PvpDraftRightPanel(QWidget):
         if post_draft_stage:
             self._refresh_postdraft_match_panel(stage)
             self.match_scroll.setVisible(True)
+            if stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}:
+                self._schedule_postdraft_pane_geometry_sync()
+            else:
+                self._reset_postdraft_pane_geometry()
             self.stage_button.setVisible(False)
             for label in (*self.status_labels, *self.log_labels):
                 label.clear()
@@ -269,6 +272,7 @@ class PvpDraftRightPanel(QWidget):
             self.log_toggle_button.setVisible(False)
             return
 
+        self._reset_postdraft_pane_geometry()
         board = session.board_dict()
         if not post_draft_stage:
             self.action_label.setText("")
@@ -301,6 +305,162 @@ class PvpDraftRightPanel(QWidget):
             text = log_lines[index] if index < len(log_lines) else ""
             label.setText(text)
             label.setVisible(show_draft_summary and self._log_expanded and bool(text))
+
+    def showEvent(self, event) -> None:  # noqa: N802 - Qt override
+        super().showEvent(event)
+        self._schedule_postdraft_pane_geometry_sync()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - Qt override
+        super().resizeEvent(event)
+        self._schedule_postdraft_pane_geometry_sync()
+
+    def _schedule_postdraft_pane_geometry_sync(self) -> None:
+        if self.workspace.draft_stage not in {
+            PVP_DRAFT_STAGE_ASSIGNMENT,
+            PVP_DRAFT_STAGE_WEAPONS,
+        }:
+            return
+        QTimer.singleShot(0, self._sync_postdraft_pane_geometry)
+
+    def _reset_postdraft_pane_geometry(self) -> None:
+        self.match_layout.setContentsMargins(0, 0, 0, 0)
+        self.match_frame.setMinimumHeight(0)
+        self.match_frame.setMaximumHeight(16777215)
+        self.match_frame.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
+        self.workspace.draft_workspace.set_postdraft_alignment_margins(0, 0)
+        self.workspace.draft_workspace.lock_postdraft_content_height(None)
+
+    def _sync_postdraft_pane_geometry(self) -> None:
+        if self.workspace.draft_stage not in {
+            PVP_DRAFT_STAGE_ASSIGNMENT,
+            PVP_DRAFT_STAGE_WEAPONS,
+        }:
+            self._reset_postdraft_pane_geometry()
+            return
+        left_viewport = self.workspace.draft_workspace.scroll_area.viewport()
+        right_viewport = self.match_scroll.viewport()
+        if (
+            not left_viewport.isVisible()
+            or not right_viewport.isVisible()
+            or left_viewport.width() <= 0
+            or left_viewport.height() <= 0
+            or right_viewport.width() <= 0
+            or right_viewport.height() <= 0
+        ):
+            return
+
+        left_top = left_viewport.mapToGlobal(QPoint(0, 0)).y()
+        right_top = right_viewport.mapToGlobal(QPoint(0, 0)).y()
+        left_bottom = left_top + left_viewport.height()
+        right_bottom = right_top + right_viewport.height()
+        shared_top = max(left_top, right_top)
+        shared_bottom = min(left_bottom, right_bottom)
+        if shared_bottom <= shared_top:
+            return
+
+        # These outer scroll areas are stage hosts, not seat-body scrollers.
+        # Lock their content to the viewport so focused controls or stale size
+        # hints cannot grow/scroll one pane independently. Weapon and run-card
+        # bodies retain their own overlay scroll areas inside each fixed zone.
+        self.workspace.draft_workspace.lock_postdraft_content_height(
+            left_viewport.height()
+        )
+        self.match_frame.setFixedHeight(right_viewport.height())
+        self.match_frame.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
+        self.match_scroll.verticalScrollBar().setValue(0)
+
+        left_top_margin = shared_top - left_top
+        left_bottom_margin = left_bottom - shared_bottom
+        right_top_margin = shared_top - right_top
+        right_bottom_margin = right_bottom - shared_bottom
+        self.workspace.draft_workspace.set_postdraft_alignment_margins(
+            left_top_margin,
+            left_bottom_margin,
+        )
+        desired_right = (
+            0,
+            right_top_margin,
+            0,
+            right_bottom_margin,
+        )
+        margins = self.match_layout.contentsMargins()
+        current_right = (
+            margins.left(),
+            margins.top(),
+            margins.right(),
+            margins.bottom(),
+        )
+        if current_right != desired_right:
+            self.match_layout.setContentsMargins(*desired_right)
+        self._apply_synchronized_postdraft_zone_heights(
+            shared_bottom - shared_top
+        )
+        self.match_layout.invalidate()
+        self.match_layout.activate()
+
+    def _apply_synchronized_postdraft_zone_heights(self, shared_height: int) -> None:
+        available = max(
+            0,
+            int(shared_height) - PVP_POSTDRAFT_SECTION_SPACING,
+        )
+        collapsed = {
+            seat: self.workspace.is_build_seat_collapsed(seat)
+            for seat in PVP_SEATS
+        }
+        if all(collapsed.values()):
+            heights = {
+                seat: PVP_POSTDRAFT_HEADER_HEIGHT
+                for seat in PVP_SEATS
+            }
+        elif collapsed["player_1"]:
+            heights = {
+                "player_1": PVP_POSTDRAFT_HEADER_HEIGHT,
+                "player_2": max(
+                    PVP_POSTDRAFT_HEADER_HEIGHT,
+                    available - PVP_POSTDRAFT_HEADER_HEIGHT,
+                ),
+            }
+        elif collapsed["player_2"]:
+            heights = {
+                "player_1": max(
+                    PVP_POSTDRAFT_HEADER_HEIGHT,
+                    available - PVP_POSTDRAFT_HEADER_HEIGHT,
+                ),
+                "player_2": PVP_POSTDRAFT_HEADER_HEIGHT,
+            }
+        else:
+            player_1_height = available // 2
+            heights = {
+                "player_1": player_1_height,
+                "player_2": available - player_1_height,
+            }
+
+        left_zones = self.workspace.draft_workspace.source_zone_frames_by_seat
+        for seat, height in heights.items():
+            height = max(PVP_POSTDRAFT_HEADER_HEIGHT, int(height))
+            for zone in (
+                left_zones.get(seat),
+                self.target_zone_frames_by_seat.get(seat),
+            ):
+                if zone is None:
+                    continue
+                zone.setMinimumHeight(height)
+                zone.setMaximumHeight(height)
+                zone.setSizePolicy(
+                    QSizePolicy.Policy.Expanding,
+                    QSizePolicy.Policy.Fixed,
+                )
+        left_frame = self.workspace.draft_workspace._scoped_build_source_frame
+        left_layout = left_frame.layout() if left_frame is not None else None
+        if left_layout is not None:
+            left_layout.invalidate()
+            left_layout.activate()
 
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.pvp.draft.title"))
@@ -411,15 +571,15 @@ class PvpDraftRightPanel(QWidget):
             seat_context = build_context.seat(seat)
             if seat_context is None:
                 continue
-            zone = PvpPostDraftSeatFrame(seat)
+            zone = PvpPostDraftSeatFrame(seat, self.match_frame)
             zone_layout = QVBoxLayout(zone)
-            zone_layout.setContentsMargins(0, 7, 0, 7)
-            zone_layout.setSpacing(5)
+            zone_layout.setContentsMargins(0, 0, 0, 0)
+            zone_layout.setSpacing(PVP_POSTDRAFT_SECTION_SPACING)
             self.target_zone_frames_by_seat[seat] = zone
 
             collapsed = self.workspace.is_build_seat_collapsed(seat)
             toggle = _configure_postdraft_seat_toggle(
-                QPushButton(),
+                QPushButton(zone),
                 seat=seat,
             )
             toggle.setChecked(not collapsed)
@@ -437,7 +597,8 @@ class PvpDraftRightPanel(QWidget):
             zone_layout.addWidget(toggle)
 
             panel = PvpPostDraftRunPanel(
-                seat_context.right_panel_model()
+                seat_context.right_panel_model(),
+                zone,
             )
             panel.setProperty("seat", seat)
             panel.slot_selected.connect(
@@ -458,12 +619,14 @@ class PvpDraftRightPanel(QWidget):
                     target_slot_index,
                 )
             )
-            panel.setVisible(not collapsed)
             self.postdraft_run_panels_by_seat[seat] = panel
             self._register_target_run_panel_slots(panel, seat, seat_context)
-            zone_layout.addWidget(panel)
+            zone_layout.addWidget(panel, 1)
 
-            ready_button = QPushButton(tr("app_shell.pvp.post.ready_button"))
+            ready_button = QPushButton(
+                tr("app_shell.pvp.post.ready_button"),
+                zone,
+            )
             ready_button.setObjectName("pvp_primary_button")
             ready_button.setEnabled(
                 not seat_context.ready and seat_context.ready_candidate()
@@ -472,12 +635,17 @@ class PvpDraftRightPanel(QWidget):
                 lambda _checked=False, s=seat: self.workspace.ready_build_seat(s)
             )
             self.postdraft_ready_buttons_by_seat[seat] = ready_button
-            ready_button.setVisible(
-                not collapsed and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}
-            )
             zone_layout.addWidget(ready_button)
-            zone.setVisible(True)
             self.match_layout.addWidget(zone, 0 if collapsed else 1)
+            # Visibility is applied only after every widget has a stable
+            # parent. Showing panel/Ready while parentless promoted each one
+            # to a transient top-level Qt window during this transition.
+            panel.setVisible(not collapsed)
+            ready_button.setVisible(
+                not collapsed
+                and stage in {PVP_DRAFT_STAGE_ASSIGNMENT, PVP_DRAFT_STAGE_WEAPONS}
+            )
+            zone.setVisible(True)
         self._update_match_panel(stage)
         self._last_match_stage = stage
 
@@ -596,6 +764,10 @@ class PvpDraftRightPanel(QWidget):
             zone.setVisible(True)
             self._sync_postdraft_zone_size(zone, collapsed)
             self._last_collapsed_by_seat[seat] = collapsed
+        self.match_layout.invalidate()
+        self.match_layout.activate()
+        self._sync_postdraft_pane_geometry()
+        self._schedule_postdraft_pane_geometry_sync()
 
     def _toggle_postdraft_seat(self, seat: str) -> None:
         self.workspace.toggle_build_seat_collapsed(seat)
@@ -605,19 +777,9 @@ class PvpDraftRightPanel(QWidget):
         zone: QFrame,
         collapsed: bool,
     ) -> None:
-        toggle = zone.findChild(QPushButton, "pvp_postdraft_player_toggle")
-        layout = zone.layout()
-        margins = layout.contentsMargins() if layout is not None else None
-        vertical_margins = (
-            margins.top() + margins.bottom()
-            if margins is not None
-            else 14
-        )
         if collapsed:
-            header_height = toggle.sizeHint().height() if toggle is not None else 28
-            collapsed_height = header_height + vertical_margins
-            zone.setMinimumHeight(collapsed_height)
-            zone.setMaximumHeight(collapsed_height)
+            zone.setMinimumHeight(PVP_POSTDRAFT_HEADER_HEIGHT)
+            zone.setMaximumHeight(PVP_POSTDRAFT_HEADER_HEIGHT)
             zone.setSizePolicy(
                 QSizePolicy.Policy.Expanding,
                 QSizePolicy.Policy.Fixed,
@@ -625,30 +787,11 @@ class PvpDraftRightPanel(QWidget):
             return
         panel = zone.findChild(PvpPostDraftRunPanel, "pvp_postdraft_run_panel")
         if panel is not None:
-            panel.setMinimumHeight(PVP_POSTDRAFT_RUN_PANEL_MIN_HEIGHT)
-        panel_height = (
-            max(PVP_POSTDRAFT_EXPANDED_MIN_HEIGHT, panel.sizeHint().height())
-            if panel is not None
-            else PVP_POSTDRAFT_EXPANDED_MIN_HEIGHT
-        )
-        header_height = toggle.sizeHint().height() if toggle is not None else 28
-        ready_button = zone.findChild(QPushButton, "pvp_primary_button")
-        ready_height = (
-            ready_button.sizeHint().height()
-            if ready_button is not None and ready_button.isVisible()
-            else 0
-        )
-        visible_spacing_count = 2 if ready_height else 1
-        spacing = layout.spacing() if layout is not None else 5
-        expanded_height = (
-            panel_height
-            + header_height
-            + ready_height
-            + vertical_margins
-            + visible_spacing_count * spacing
-        )
+            # RunRightPanelWidget already owns an overlay scroll area, so it
+            # can use the exact half-height assigned by the outer accordion.
+            panel.setMinimumHeight(0)
         zone.setMaximumHeight(16777215)
-        zone.setMinimumHeight(expanded_height)
+        zone.setMinimumHeight(0)
         zone.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,

@@ -9,10 +9,19 @@ from unittest.mock import patch
 from ui.utils.app_scaling import configure_startup_ui_scale
 
 configure_startup_ui_scale()
-from PySide6.QtCore import QEvent, QPoint, Qt
+from PySide6.QtCore import QEvent, QObject, QPoint, Qt
 from PySide6.QtGui import QColor, QKeyEvent, QPixmap
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton, QSizePolicy
+from PySide6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from hoyolab_export.account_equipment import (
     equip_weapon,
@@ -23,6 +32,7 @@ from localization import tr
 from ui.app_shell import AppShellController
 from ui.character_browser.filter_bar import CharacterFilterBar
 from ui.pvp_browser.build_flow import (
+    PVP_SCOPED_CHARACTER_ROW_HEIGHT,
     PvpRuntimeEquipmentState,
     PvpScopedCharacterWeaponWorkspace,
     _asset_weapon_keys,
@@ -39,6 +49,7 @@ from ui.right_panel.pvp._shared import (
     PVP_PAGE_DECKS,
     PVP_PAGE_DRAFT,
     PVP_PAGE_PLAY,
+    PVP_POSTDRAFT_HEADER_HEIGHT,
 )
 from ui.right_panel.common.slot_card import RightPanelSlotCardWidget
 from ui.right_panel.common.seat_accent_frame import PvpSeatAccentFrame
@@ -845,9 +856,8 @@ class PvpBrowserTest(unittest.TestCase):
         draft_panel.show()
         QApplication.processEvents()
         p1_panel = draft_panel.postdraft_run_panels_by_seat["player_1"]
-        self.assertGreaterEqual(player_1_zone.minimumHeight(), 540)
-        self.assertGreaterEqual(p1_panel.minimumHeight(), 470)
-        self.assertGreaterEqual(p1_panel.height(), 300)
+        self.assertEqual(player_1_zone.minimumHeight(), 0)
+        self.assertEqual(p1_panel.minimumHeight(), 0)
         self.assertTrue(
             all(row.isHidden() for row in draft_panel.result_zone_rows_by_seat.values())
         )
@@ -870,7 +880,7 @@ class PvpBrowserTest(unittest.TestCase):
         )
         self.assertTrue(
             all(
-                zone.isVisible()
+                not zone.isHidden()
                 and zone.maximumHeight() == zone.minimumHeight()
                 and zone.maximumHeight() > 0
                 for zone in draft_panel.target_zone_frames_by_seat.values()
@@ -884,16 +894,18 @@ class PvpBrowserTest(unittest.TestCase):
         )
         self.assertTrue(
             all(
-                zone.isHidden()
+                not zone.isHidden()
+                and zone.minimumHeight() == PVP_POSTDRAFT_HEADER_HEIGHT
+                and zone.maximumHeight() == PVP_POSTDRAFT_HEADER_HEIGHT
                 for zone in workspace.draft_workspace.source_zone_frames_by_seat.values()
             )
         )
         workspace.toggle_build_seat_collapsed("player_1")
         QApplication.processEvents()
-        self.assertGreaterEqual(player_1_zone.minimumHeight(), 540)
-        self.assertGreaterEqual(
+        self.assertEqual(player_1_zone.minimumHeight(), 0)
+        self.assertEqual(
             draft_panel.postdraft_run_panels_by_seat["player_1"].minimumHeight(),
-            470,
+            0,
         )
         draft_panel.hide()
         for seat in ("player_1", "player_2"):
@@ -905,7 +917,14 @@ class PvpBrowserTest(unittest.TestCase):
             self.assertIsInstance(source, PvpScopedCharacterWeaponWorkspace)
             self.assertIsNone(source.weapon_title_label)
             self.assertIsNone(source.character_title_label)
-            self.assertIs(source.parentWidget(), source_zone)
+            self.assertIs(
+                source.parentWidget(),
+                workspace.draft_workspace.source_body_widgets_by_seat[seat],
+            )
+            self.assertEqual(
+                source.char_area.height(),
+                PVP_SCOPED_CHARACTER_ROW_HEIGHT,
+            )
             character_grid = source.char_grid
             weapon_grid = source.weapon_grid
             picks = board["unified_pool"]["result_zones"][seat]["picked"]
@@ -1284,8 +1303,11 @@ class PvpBrowserTest(unittest.TestCase):
             p2_toggle.sizePolicy().horizontalPolicy(),
             QSizePolicy.Policy.Expanding,
         )
-        self.assertTrue(
+        self.assertFalse(
             workspace.draft_workspace.source_zone_frames_by_seat["player_2"].isHidden()
+        )
+        self.assertTrue(
+            workspace.draft_workspace.source_body_widgets_by_seat["player_2"].isHidden()
         )
 
         with patch.object(
@@ -1336,7 +1358,246 @@ class PvpBrowserTest(unittest.TestCase):
             draft_panel.target_zone_frames_by_seat["player_1"].minimumHeight(),
         )
         self.assertTrue(
-            workspace.draft_workspace.source_zone_frames_by_seat["player_1"].isHidden()
+            workspace.draft_workspace.source_body_widgets_by_seat["player_1"].isHidden()
+        )
+
+    def test_postdraft_player_sections_align_across_panes_at_supported_sizes(self) -> None:
+        workspace, _panel = self._started_draft_workspace(
+            character_count=24,
+            deck_names=("Mirror",),
+        )
+        self._complete_draft(workspace)
+        self.assertTrue(workspace.continue_to_assignment())
+
+        root = QWidget()
+        outer = QHBoxLayout(root)
+        outer.setContentsMargins(6, 6, 6, 6)
+        outer.setSpacing(4)
+
+        left_column = QWidget(root)
+        left_layout = QVBoxLayout(left_column)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(4)
+        left_header = QLabel("left navigation", left_column)
+        left_header.setFixedHeight(24)
+        left_layout.addWidget(left_header)
+        left_layout.addWidget(workspace, 1)
+        outer.addWidget(left_column, 1)
+
+        right_column = QWidget(root)
+        right_column.setFixedWidth(640)
+        right_layout = QVBoxLayout(right_column)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(0)
+        right_header = QLabel("right navigation", right_column)
+        right_header.setFixedHeight(31)
+        right_layout.addWidget(right_header)
+        draft_panel = PvpDraftRightPanel(workspace, right_column)
+        right_layout.addWidget(draft_panel, 1)
+        outer.addWidget(right_column)
+
+        root.show()
+        draft_panel.postdraft_toggle_buttons_by_seat["player_2"].click()
+        QApplication.processEvents()
+        QApplication.processEvents()
+        self.addCleanup(root.close)
+
+        # Heights are usable shell heights after desktop/window chrome for the
+        # three target monitor profiles (minimum, 1600x900, 1920x1080).
+        for width, height in ((1408, 640), (1600, 850), (1920, 941)):
+            root.resize(width, height)
+            QApplication.processEvents()
+            draft_panel._sync_postdraft_pane_geometry()
+            QApplication.processEvents()
+
+            left_zones = workspace.draft_workspace.source_zone_frames_by_seat
+            right_zones = draft_panel.target_zone_frames_by_seat
+            left_viewport = workspace.draft_workspace.scroll_area.viewport()
+            right_viewport = draft_panel.match_scroll.viewport()
+            left_content = workspace.draft_workspace.scroll_content
+            left_frame = workspace.draft_workspace._scoped_build_source_frame
+            right_frame = draft_panel.match_frame
+            self.assertEqual(
+                workspace.draft_workspace.scroll_area.verticalScrollBar().value(),
+                0,
+            )
+            self.assertEqual(draft_panel.match_scroll.verticalScrollBar().value(), 0)
+            for seat in ("player_1", "player_2"):
+                left_zone = left_zones[seat]
+                right_zone = right_zones[seat]
+                # Compose the visual coordinate from the scroll viewport and
+                # non-native content offsets. The offscreen Qt plugin returns
+                # an incorrect mapToGlobal() for a lower child after a prior
+                # top-level test closes, while these are the coordinates used
+                # by QAbstractScrollArea for painting.
+                left_y = (
+                    left_viewport.mapToGlobal(QPoint(0, 0)).y()
+                    + left_content.y()
+                    + left_frame.y()
+                    + left_zone.y()
+                )
+                right_y = (
+                    right_viewport.mapToGlobal(QPoint(0, 0)).y()
+                    + right_frame.y()
+                    + right_zone.y()
+                )
+                self.assertEqual(
+                    left_y,
+                    right_y,
+                    (width, height, seat),
+                )
+                self.assertEqual(left_zone.height(), right_zone.height())
+
+                source = workspace.build_source_workspace(seat)
+                self.assertEqual(
+                    source.char_area.height(),
+                    PVP_SCOPED_CHARACTER_ROW_HEIGHT,
+                )
+                self.assertEqual(source.char_area.verticalScrollBar().maximum(), 0)
+                self.assertEqual(
+                    source.weapon_area.height(),
+                    source.weapon_area.property("naturalContentHeight"),
+                )
+                self.assertEqual(source.weapon_area.verticalScrollBar().maximum(), 0)
+                character_rows = {
+                    round(source.char_grid.item_logical_rect(item_id).y())
+                    for item_id in source.char_grid.item_ids()
+                }
+                self.assertEqual(len(character_rows), 1)
+
+            self.assertLessEqual(
+                abs(left_zones["player_1"].height() - left_zones["player_2"].height()),
+                1,
+            )
+        draft_panel.postdraft_toggle_buttons_by_seat["player_1"].click()
+        QApplication.processEvents()
+        QApplication.processEvents()
+        for seat in ("player_1", "player_2"):
+            left_zone = workspace.draft_workspace.source_zone_frames_by_seat[seat]
+            right_zone = draft_panel.target_zone_frames_by_seat[seat]
+            self.assertEqual(
+                left_zone.y(),
+                right_zone.y(),
+            )
+            self.assertEqual(left_zone.height(), right_zone.height())
+        self.assertEqual(
+            workspace.draft_workspace.source_zone_frames_by_seat[
+                "player_1"
+            ].height(),
+            PVP_POSTDRAFT_HEADER_HEIGHT,
+        )
+
+    def test_scoped_picker_sizes_weapons_to_rows_then_scrolls_for_window_shortage(
+        self,
+    ) -> None:
+        characters = _valid_character_assets(8)
+        weapons = [
+            _weapon_asset(
+                str(11401 + index),
+                f"Sword {index}",
+                weapon_type=1,
+                weapon_type_name="Sword",
+                known_count=1,
+            )
+            for index in range(20)
+        ]
+        allowed_weapon_keys = {
+            key
+            for weapon in weapons
+            for key in _asset_weapon_keys(weapon)
+        }
+        source = PvpScopedCharacterWeaponWorkspace(
+            seat="player_1",
+            allowed_character_ids={
+                _asset_character_id(character)
+                for character in characters
+            },
+            allowed_weapon_keys=allowed_weapon_keys,
+            character_assets=characters,
+            weapon_assets=weapons,
+        )
+        self.addCleanup(source.close)
+        source.resize(700, 500)
+        source.show()
+        source.update_grids()
+        QTest.qWait(20)
+
+        natural_height = source.weapon_grid.sizeHint().height()
+        self.assertEqual(source.weapon_grid.item_count(), 20)
+        self.assertGreater(natural_height, PVP_SCOPED_CHARACTER_ROW_HEIGHT)
+        self.assertEqual(
+            source.weapon_area.property("naturalContentHeight"),
+            natural_height,
+        )
+        self.assertEqual(source.weapon_area.height(), natural_height)
+        self.assertEqual(source.weapon_area.verticalScrollBar().maximum(), 0)
+        self.assertEqual(source.char_area.height(), PVP_SCOPED_CHARACTER_ROW_HEIGHT)
+
+        source.resize(700, 230)
+        QTest.qWait(20)
+
+        self.assertEqual(
+            source.weapon_area.property("naturalContentHeight"),
+            natural_height,
+        )
+        self.assertLess(source.weapon_area.height(), natural_height)
+        self.assertGreater(source.weapon_area.verticalScrollBar().maximum(), 0)
+        self.assertEqual(source.char_area.height(), PVP_SCOPED_CHARACTER_ROW_HEIGHT)
+
+    def test_assignment_transition_does_not_show_new_top_level_widgets(self) -> None:
+        workspace, _panel = self._started_draft_workspace(
+            character_count=24,
+            deck_names=("Mirror",),
+        )
+        self._complete_draft(workspace)
+        draft_panel = PvpDraftRightPanel(workspace)
+        previous_pool_frame = workspace.draft_workspace._draft_pool_frame
+        self.assertIsNotNone(previous_pool_frame)
+
+        root = QWidget()
+        layout = QHBoxLayout(root)
+        layout.addWidget(workspace, 1)
+        layout.addWidget(draft_panel)
+        root.resize(1408, 720)
+        root.show()
+        QApplication.processEvents()
+        self.addCleanup(root.close)
+
+        known_visible_windows = {
+            id(widget)
+            for widget in QApplication.topLevelWidgets()
+            if widget.isVisible()
+        }
+
+        class TopLevelShowProbe(QObject):
+            def __init__(self) -> None:
+                super().__init__()
+                self.widgets: list[QWidget] = []
+
+            def eventFilter(self, watched, event) -> bool:  # noqa: N802
+                if (
+                    event.type() == QEvent.Type.Show
+                    and isinstance(watched, QWidget)
+                    and watched.isWindow()
+                    and id(watched) not in known_visible_windows
+                ):
+                    self.widgets.append(watched)
+                return False
+
+        probe = TopLevelShowProbe()
+        QApplication.instance().installEventFilter(probe)
+        try:
+            draft_panel.stage_button.click()
+            QApplication.processEvents()
+            QApplication.processEvents()
+        finally:
+            QApplication.instance().removeEventFilter(probe)
+
+        self.assertEqual(workspace.draft_stage, PVP_DRAFT_STAGE_ASSIGNMENT)
+        self.assertTrue(previous_pool_frame.isHidden())
+        self.assertEqual(
+            [f"{widget.__class__.__name__}:{widget.objectName()}" for widget in probe.widgets],
+            [],
         )
 
     def test_postdraft_source_detach_never_promotes_workspace_to_window(self) -> None:

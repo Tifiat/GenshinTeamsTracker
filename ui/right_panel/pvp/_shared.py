@@ -9,6 +9,7 @@ from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
+    QLabel,
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
@@ -73,6 +74,8 @@ PVP_DRAFT_STAGE_VALUES = (
 )
 PVP_SEATS = ("player_1", "player_2")
 PVP_TIMER_CHAMBERS = ("1", "2", "3")
+PVP_POSTDRAFT_HEADER_HEIGHT = 36
+PVP_POSTDRAFT_SECTION_SPACING = 6
 PVP_BROWSER_PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PVP_DRAFT_BAN_ACCENT = UI_ACCENT_PVP_BAN
 PVP_DRAFT_IMMUNE_ACCENT = UI_ACCENT_PVP_IMMUNE
@@ -714,7 +717,30 @@ def _configure_postdraft_seat_toggle(
         QSizePolicy.Policy.Expanding,
         QSizePolicy.Policy.Fixed,
     )
+    button.setFixedHeight(PVP_POSTDRAFT_HEADER_HEIGHT)
     return button
+
+
+def _configure_postdraft_seat_label(
+    label: QLabel,
+    *,
+    seat: str,
+) -> QLabel:
+    """Build the passive left-side half of a post-draft seat header."""
+
+    label.setObjectName("pvp_postdraft_player_label")
+    label.setProperty("seat", _text(seat))
+    label.setText(_seat_label(seat))
+    label.setAlignment(
+        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+    )
+    label.setSizePolicy(
+        QSizePolicy.Policy.Expanding,
+        QSizePolicy.Policy.Fixed,
+    )
+    label.setFixedHeight(PVP_POSTDRAFT_HEADER_HEIGHT)
+    _refresh_postdraft_seat_label_style(label, seat=seat)
+    return label
 
 
 def _refresh_postdraft_seat_toggle_style(
@@ -746,6 +772,30 @@ QPushButton#pvp_postdraft_player_toggle:hover {{
     border-color: rgba({rgb}, 160);
     background: rgba({rgb}, 58);
     color: {UI_TEXT_PRIMARY};
+}}
+"""
+    )
+
+
+def _refresh_postdraft_seat_label_style(
+    label: QLabel,
+    *,
+    seat: str,
+) -> None:
+    color = QColor(pvp_player_color(seat))
+    if not color.isValid():
+        color = QColor(UI_TEXT_PRIMARY)
+    rgb = f"{color.red()}, {color.green()}, {color.blue()}"
+    label.setStyleSheet(
+        f"""
+QLabel#pvp_postdraft_player_label {{
+    padding: 0px 10px;
+    border: 1px solid rgba({rgb}, 92);
+    border-radius: 6px;
+    background: rgba({rgb}, 44);
+    color: {color.name()};
+    font-size: 12px;
+    font-weight: 900;
 }}
 """
     )
@@ -1513,6 +1563,10 @@ def _clear_layout(layout) -> None:
         if child_layout is not None:
             _clear_layout(child_layout)
         if widget is not None:
+            # deleteLater() leaves the old QWidget paintable until Qt handles
+            # DeferredDelete. Hide it immediately so a resize during a stage
+            # transition cannot resurrect stale draft content for one frame.
+            widget.hide()
             widget.deleteLater()
 
 

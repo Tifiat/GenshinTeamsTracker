@@ -5,8 +5,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QTimer
-from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtWidgets import QFrame, QSizePolicy, QWidget
 
 from hoyolab_export.account_equipment import EquipmentChangeResult, EquipmentError
 from hoyolab_export.artifact_db import ARTIFACT_DB_PATH
@@ -31,10 +31,13 @@ from run_workspace.pvp.weapon_identity import (
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS
 from run_workspace.team_builder import TeamBuilderSlotState
 from ui.app_shell import AppShellController, CharacterWeaponWorkspace
+from ui.utils.overlay_scroll import OverlayVerticalScrollArea
 
 
 PVP_BUILD_TEAM_COUNT = 2
 PVP_BUILD_TEAM_SIZE = 4
+PVP_SCOPED_CHARACTER_ROW_HEIGHT = 80
+PVP_SCOPED_WEAPON_SINGLE_ROW_HEIGHT = 66
 _WEAPON_TYPE_BY_ID = {
     1: "SWORD",
     10: "CATALYST",
@@ -42,6 +45,34 @@ _WEAPON_TYPE_BY_ID = {
     12: "BOW",
     13: "POLEARM",
 }
+
+
+class _PvpContentSizedWeaponArea(OverlayVerticalScrollArea):
+    """Request the full weapon grid height while remaining vertically shrinkable."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent, auto_hide_ms=850)
+        self._content_height_hint = 0
+
+    def set_content_height_hint(self, height: int) -> None:
+        height = max(0, int(height))
+        if self._content_height_hint == height:
+            return
+        self._content_height_hint = height
+        self.updateGeometry()
+
+    def sizeHint(self) -> QSize:  # noqa: N802 - Qt override
+        hint = super().sizeHint()
+        return QSize(hint.width(), self._content_height_hint)
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802 - Qt override
+        hint = super().minimumSizeHint()
+        return QSize(
+            hint.width(),
+            min(self._content_height_hint, PVP_SCOPED_WEAPON_SINGLE_ROW_HEIGHT),
+        )
+
+
 _WEAPON_TYPE_ALIASES = {
     "sword": "SWORD",
     "one_handed_sword": "SWORD",
@@ -100,6 +131,95 @@ class PvpScopedCharacterWeaponWorkspace(CharacterWeaponWorkspace):
             _strip_asset_owner_badges(asset)
             for asset in weapon_assets
         ]
+        self._picker_geometry_timer = QTimer(self)
+        self._picker_geometry_timer.setSingleShot(True)
+        self._picker_geometry_timer.timeout.connect(
+            self._sync_content_sized_picker_geometry
+        )
+        self._configure_scoped_picker_geometry()
+
+    def _configure_scoped_picker_geometry(self) -> None:
+        """Give the deterministic eight-character row only the height it needs."""
+
+        root = self.layout()
+        if (
+            root is not None
+            and not isinstance(self.weapon_area, _PvpContentSizedWeaponArea)
+        ):
+            previous_area = self.weapon_area
+            weapon_widget = previous_area.takeWidget()
+            content_sized_area = _PvpContentSizedWeaponArea(self)
+            content_sized_area.setWidgetResizable(True)
+            content_sized_area.setHorizontalScrollBarPolicy(
+                Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+            )
+            if weapon_widget is not None:
+                content_sized_area.setWidget(weapon_widget)
+            root.replaceWidget(previous_area, content_sized_area)
+            self.weapon_area = content_sized_area
+            previous_area.hide()
+            previous_area.deleteLater()
+
+        if root is not None:
+            weapon_index = root.indexOf(self.weapon_area)
+            character_index = root.indexOf(self.char_area)
+            if weapon_index >= 0:
+                root.setStretch(weapon_index, 0)
+            if character_index >= 0:
+                root.setStretch(character_index, 0)
+            root.addStretch(1)
+
+        self.weapon_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.weapon_area.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Preferred,
+        )
+        self.weapon_area.setMinimumHeight(0)
+
+        self.char_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.char_area.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.char_area.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Fixed,
+        )
+        self.char_area.setFixedHeight(PVP_SCOPED_CHARACTER_ROW_HEIGHT)
+        self._schedule_content_sized_picker_geometry()
+
+    def reload_weapons(self) -> None:
+        super().reload_weapons()
+        self._schedule_content_sized_picker_geometry()
+
+    def _schedule_content_sized_picker_geometry(self) -> None:
+        timer = getattr(self, "_picker_geometry_timer", None)
+        if timer is not None:
+            timer.start(0)
+
+    def _sync_content_sized_picker_geometry(self) -> None:
+        item_count = self.weapon_grid.item_count()
+        natural_height = (
+            max(1, self.weapon_grid.sizeHint().height())
+            if item_count
+            else 0
+        )
+        root = self.layout()
+        self.weapon_area.setProperty(
+            "naturalContentHeight",
+            natural_height,
+        )
+        if isinstance(self.weapon_area, _PvpContentSizedWeaponArea):
+            self.weapon_area.set_content_height_hint(natural_height)
+        if root is not None:
+            root.invalidate()
+            root.activate()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - Qt override
+        # PixelIconGrid recalculates its physical columns on resize. Rebuilding
+        # every card as accordion sections change height only causes a visible
+        # second layout pass and is unnecessary for the fixed scoped asset set.
+        QWidget.resizeEvent(self, event)
+        self._schedule_content_sized_picker_geometry()
 
     def _character_asset_items(self) -> tuple[list[dict], float, str]:
         if self._pvp_character_assets:

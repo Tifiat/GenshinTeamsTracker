@@ -153,7 +153,11 @@ Mirror the primary project owner under `tests/`:
   should also verify the default deck path, first/second activation timing, that
   edit tint is scoped to the card grid viewports when this area changes, and
   that collapsed/inactive PvP seats do not reserve large empty right-panel
-  geometry.
+  geometry. Post-draft UI regressions should additionally pin the vertical
+  right-panel accordion hierarchy, absence of a right painted side accent,
+  collapse/expand without model/grid refresh, safe non-window source
+  reparenting, and normal AppShell-compatible occupied-weapon swap behavior in
+  scoped runtime state.
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.

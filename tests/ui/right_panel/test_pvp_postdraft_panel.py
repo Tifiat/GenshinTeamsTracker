@@ -74,23 +74,46 @@ class PvpPostDraftRightPanelLayoutTest(unittest.TestCase):
         self.assertGreaterEqual(p1_panel.minimumHeight(), PVP_POSTDRAFT_RUN_PANEL_MIN_HEIGHT)
         self.assertGreaterEqual(p1_zone.minimumHeight(), PVP_POSTDRAFT_EXPANDED_MIN_HEIGHT)
         self.assertIs(p1_ready.parentWidget(), p1_zone)
-        self.assertFalse(p1_zone.findChildren(QPushButton, "pvp_postdraft_player_toggle"))
-        self.assertEqual(p1_toggle.parentWidget().objectName(), "pvp_postdraft_target_toggle_row")
+        self.assertEqual(
+            p1_zone.findChildren(QPushButton, "pvp_postdraft_player_toggle"),
+            [p1_toggle],
+        )
+        self.assertIs(p1_toggle.parentWidget(), p1_zone)
+        self.assertEqual(p1_zone.layout().indexOf(p1_toggle), 0)
+        self.assertEqual(p1_zone.layout().contentsMargins().left(), 0)
+        self.assertEqual(p1_zone.layout().contentsMargins().right(), 0)
+        self.assertEqual(p1_toggle.property("seat"), "player_1")
+        self.assertTrue(p1_toggle.isChecked())
 
-        self.assertTrue(p2_zone.isHidden())
-        self.assertEqual(p2_zone.maximumHeight(), 0)
-        self.assertEqual(p2_toggle.parentWidget().objectName(), "pvp_postdraft_target_toggle_row")
+        self.assertFalse(p2_zone.isHidden())
+        self.assertTrue(
+            draft_panel.postdraft_run_panels_by_seat["player_2"].isHidden()
+        )
+        self.assertGreater(p2_zone.maximumHeight(), 0)
+        self.assertEqual(p2_zone.maximumHeight(), p2_zone.minimumHeight())
+        self.assertIs(p2_toggle.parentWidget(), p2_zone)
+        self.assertEqual(p2_zone.layout().indexOf(p2_toggle), 0)
+        self.assertEqual(p2_toggle.property("seat"), "player_2")
+        self.assertFalse(p2_toggle.isChecked())
 
-        workspace.toggle_build_seat_collapsed("player_2")
+        p2_toggle.click()
         QApplication.processEvents()
         self.assertFalse(p2_zone.isHidden())
+        self.assertFalse(
+            draft_panel.postdraft_run_panels_by_seat["player_2"].isHidden()
+        )
         self.assertEqual(len(p2_zone.findChildren(RightPanelSlotCardWidget)), 8)
         self.assertGreaterEqual(p2_zone.minimumHeight(), PVP_POSTDRAFT_EXPANDED_MIN_HEIGHT)
+        self.assertTrue(p2_toggle.isChecked())
 
-        workspace.toggle_build_seat_collapsed("player_2")
+        p2_toggle.click()
         QApplication.processEvents()
-        self.assertTrue(p2_zone.isHidden())
-        self.assertEqual(p2_zone.maximumHeight(), 0)
+        self.assertFalse(p2_zone.isHidden())
+        self.assertTrue(
+            draft_panel.postdraft_run_panels_by_seat["player_2"].isHidden()
+        )
+        self.assertEqual(p2_zone.maximumHeight(), p2_zone.minimumHeight())
+        self.assertFalse(p2_toggle.isChecked())
 
 
 if __name__ == "__main__":

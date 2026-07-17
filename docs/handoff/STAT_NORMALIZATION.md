@@ -2,6 +2,12 @@
 
 Research date: 2026-05-18
 
+Implementation status reviewed: 2026-07-17. The recommended pure normalization
+layer is implemented in `hoyolab_export/stat_normalization.py`, is covered by
+tests, and feeds current GCSIM config block generation. Keep this file as the
+stat/unit contract; there is no remaining generic "implement stat
+normalization" backend task.
+
 Scope: handoff only. No app code, generated account/cache data, HoYoLAB import, UI behavior, or history/state schemas were changed for this note.
 
 Label meanings:
@@ -320,9 +326,9 @@ GCSIM:
 - `pkg/core/info/convert.go`: proto stat -> GCSIM stat conversion, including ignored unsupported stat types.
 - `docs/handoff/GCSIM.md`: local app integration handoff.
 
-## 10. Recommended Next Small Code Step
+## 10. Historical Recommended Code Step (Implemented)
 
-MVP recommendation:
+Implemented recommendation:
 
 Add a pure `stat_normalization` module and tests:
 
@@ -330,7 +336,9 @@ Add a pure `stat_normalization` module and tests:
 - Convert artifact percent-point `raw_value` to decimal ratio for normalized/GCSIM usage.
 - Preserve raw source value and source unit.
 - Convert `ArtifactBuildSnapshot.stat_totals` into a `NormalizedStatBlock`.
-- Leave final totals, set bonus formulas, resonances, weapon passives, and GCSIM config generation unimplemented.
+- Keep final/right-panel totals, set bonus formulas, resonances, and weapon
+  passives outside artifact `add stats`; current GCSIM config generation follows
+  this boundary.
 
 Suggested tests:
 

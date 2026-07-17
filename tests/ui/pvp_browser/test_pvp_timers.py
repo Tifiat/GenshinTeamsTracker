@@ -181,6 +181,9 @@ class PvpTimersResultWidgetTest(unittest.TestCase):
         self.assertGreaterEqual(next(iter(hp_widths)), PVP_TIMER_HP_COLUMN_MIN_WIDTH)
         self.assertLessEqual(next(iter(hp_widths)), PVP_TIMER_HP_COLUMN_WIDTH)
         hp = widget._hp_widgets[(1, 1)]
+        self.assertGreaterEqual(hp.width(), PVP_TIMER_HP_COLUMN_MIN_WIDTH)
+        self.assertGreaterEqual(hp.multi_title.width(), hp.multi_title.sizeHint().width())
+        self.assertGreaterEqual(hp.solo_title.width(), hp.solo_title.sizeHint().width())
         self.assertLessEqual(
             abs(
                 hp.solo_title.mapTo(hp, QPoint(0, 0)).y()

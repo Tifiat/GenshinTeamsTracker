@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -252,14 +252,15 @@ QFrame#pvp-postdraft-target-player-2 {{
     background: {UI_BG_PANEL};
 }}
 QPushButton#pvp_postdraft_player_toggle {{
-    min-height: 24px;
-    padding: 2px 6px;
-    border: none;
-    background: transparent;
+    min-height: 28px;
+    padding: 3px 10px;
+    border: 1px solid {UI_BORDER_DEFAULT};
+    border-radius: 6px;
+    background: {UI_BG_BUTTON};
     color: {UI_TEXT_PRIMARY};
     font-size: 12px;
     font-weight: 900;
-    text-align: center;
+    text-align: left;
 }}
 QPushButton#pvp_postdraft_player_toggle:hover {{
     color: #f1d486;
@@ -695,18 +696,59 @@ def _postdraft_seat_toggle_text(
     collapsed: bool,
     ready: bool,
 ) -> str:
-    prefix = ">" if collapsed else "v"
-    ready_marker = " ready" if ready else ""
+    prefix = "▸" if collapsed else "▾"
+    ready_marker = " ✓" if ready else ""
     return f"{prefix} {_seat_label(seat)}{ready_marker}"
 
 
-def _configure_postdraft_seat_toggle(button: QPushButton) -> QPushButton:
+def _configure_postdraft_seat_toggle(
+    button: QPushButton,
+    *,
+    seat: str,
+) -> QPushButton:
     button.setObjectName("pvp_postdraft_player_toggle")
+    button.setProperty("seat", _text(seat))
+    button.setCheckable(True)
+    _refresh_postdraft_seat_toggle_style(button, seat=seat)
     button.setSizePolicy(
         QSizePolicy.Policy.Expanding,
         QSizePolicy.Policy.Fixed,
     )
     return button
+
+
+def _refresh_postdraft_seat_toggle_style(
+    button: QPushButton,
+    *,
+    seat: str,
+) -> None:
+    color = QColor(pvp_player_color(seat))
+    if not color.isValid():
+        color = QColor(UI_TEXT_PRIMARY)
+    rgb = f"{color.red()}, {color.green()}, {color.blue()}"
+    button.setStyleSheet(
+        f"""
+QPushButton#pvp_postdraft_player_toggle {{
+    min-height: 28px;
+    padding: 3px 10px;
+    border: 1px solid rgba({rgb}, 92);
+    border-radius: 6px;
+    background: rgba({rgb}, 28);
+    color: {color.name()};
+    font-size: 12px;
+    font-weight: 900;
+    text-align: left;
+}}
+QPushButton#pvp_postdraft_player_toggle:checked {{
+    background: rgba({rgb}, 44);
+}}
+QPushButton#pvp_postdraft_player_toggle:hover {{
+    border-color: rgba({rgb}, 160);
+    background: rgba({rgb}, 58);
+    color: {UI_TEXT_PRIMARY};
+}}
+"""
+    )
 
 
 def _draft_unified_card_text(entry: Mapping[str, Any]) -> str:

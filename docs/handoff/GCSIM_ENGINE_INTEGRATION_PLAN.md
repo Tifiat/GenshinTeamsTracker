@@ -2,6 +2,8 @@
 
 Planning date: 2026-06-04
 
+Status reviewed: 2026-07-17
+
 Scope: implementation-direction handoff for GTT-modified GCSIM engine integration. This is not a final Codex implementation task and not a rigid architecture freeze. It records the current product/engineering vector, open questions, and contracts that future Codex tasks must respect unless a later handoff explicitly supersedes them.
 
 Related references:
@@ -10,6 +12,80 @@ Related references:
 - `docs/handoff/STAT_NORMALIZATION.md` - project stat normalization and GCSIM stat-key mapping notes.
 - `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` - Run Workspace boundary, factual DPS vs sim DPS split, and snapshot/session state rules.
 - `docs/handoff/ABYSS_ENEMY_DATA.md` - Abyss source-data pipeline and enemy rows.
+- `docs/handoff/ARTIFACT_OPTIMIZER.md` - separate real-account artifact-id
+  search backend and the future bounded GCSIM top-M evaluator boundary.
+
+## Current Authoritative Status
+
+The functional backend for the current selected-team Abyss Browser path is
+implemented. Do not start another broad "finish the GCSIM backend" task without
+a concrete failing scenario. The working path already covers:
+
+- transactional engine acquisition/update, ordered GTT patches, build/runtime
+  validation, active/rollback metadata, and bounded generated-engine cleanup;
+- a patched `gtt-gcsim.exe` contract with `-gtt-info`, structured
+  `gtt-wave-scenario-v1` payloads, sequential `group_clear` waves, artifact
+  preflight, execution, and result parsing;
+- selected runtime TeamBuilder state -> stable account/equipment ids -> full
+  generated GCSIM config, with controlled readiness failures and no localized
+  display-name identity guesses;
+- current cached Abyss chamber/side data -> enemy type resolution -> explicit
+  wave/HP payload, selected-chamber and sequential C1-C3 Browser runs;
+- runtime Sim DPS results in typed `RunSessionState`, compact right-panel rows,
+  stale-input clearing, and immutable Abyss History Snapshot serialization when
+  the user saves the run;
+- a diagnostic DPS Dummy execution path, boosted-energy settings, retention,
+  and backend/dev coverage reports.
+
+The remaining GCSIM work is primarily product UI, orchestration, and release
+engineering, not missing config/run backend fundamentals:
+
+- finish the Browser presentation, readable/no-code rotation UX, result detail
+  navigation, readiness wording, and settings polish;
+- replace the stale `History persistence: disabled` runtime wording. Abyss
+  Browser results are not auto-saved per simulation, but current session results
+  are included when the user invokes normal Run Save;
+- add progress/cancellation and, only after measurement, optional bounded
+  parallel batch scheduling; the safe current C1-C3 worker is sequential;
+- attach DPS Dummy simulation results to typed DPS Dummy session/snapshot state;
+- produce and release-validate the known-good bundled executable and build the
+  dependency-aware advanced update UI;
+- keep Traveler and entities genuinely absent from the active upstream GCSIM
+  registry as controlled unavailable cases rather than app mapping bugs.
+
+The tiny committed `gcsim_key_mapping_seed_v1.json` remains a dev/audit fixture,
+not the production Browser mapping owner. Normal Browser runs use account SQLite
+character/weapon keys resolved during import, active-registry artifact-set
+resolution, and the enemy registry/Snap fallback pipeline. Coverage reports
+should find real exceptions and upstream gaps; they are not a requirement to
+hand-curate every automatically resolvable entity into one global mapping file.
+
+Status-review verification on 2026-07-17:
+
+- all 233 `tests/run_workspace/gcsim/` tests passed;
+- all 18 `tests/ui/gcsim_browser/` worker/report tests passed;
+- the focused History builder test confirmed typed GCSIM runtime results become
+  immutable `sim_dps` summaries separate from factual DPS;
+- the local entity coverage report inspected 414 catalog entities: characters
+  102 ready / 15 missing / 7 deferred Traveler, weapons 225 ready / 6 missing,
+  artifact sets 58 ready / 1 missing, with no ambiguous rows. Missing rows are
+  current active-registry/upstream gaps unless a concrete identity bug proves
+  otherwise.
+
+Concurrent work boundary: PvP UI work is active in parallel. Do not refactor
+`ui/app_shell.py` or introduce scoped PvP GCSIM as part of the normal GCSIM UI
+pass. Until the later AppShell refactor, keep GCSIM work inside the existing
+hooks and prefer `ui/gcsim_browser/`, `ui/right_panel/live_run/gcsim/`, and
+`run_workspace/gcsim/`. PvP-scoped simulation remains owned by the PvP handoff.
+
+Artifact Optimizer boundary: `run_workspace/artifact_optimizer/` now owns real
+account artifact-id candidate search. GCSIM `-substatOptim*` remains a
+theoretical substat allocator and must not replace that search. A later bounded
+optimizer batch may convert retained candidates to `ArtifactBuildSnapshot`,
+generate configs through the existing adapters, and use GCSIM as the expensive
+top-M final evaluator with progress/cancellation/cache. Do not add that batch
+loop to the normal Browser hot path without an explicit character, rotation,
+target, CPU budget, and stale-input contract.
 
 ## 1. Product Direction
 
@@ -182,7 +258,7 @@ The first GCSIM UI should be a browser tab/page near the existing character/weap
 
 Contracts:
 
-- Consume the current runtime team composition from Run Workspace/right panel through `selected_team_config.py`; do not use localized display names or the old dev `team_names` bridge as Browser identity; do not add right-panel persistence.
+- Consume the current runtime team composition from Run Workspace/right panel through `selected_team_config.py`; do not use localized display names or the old dev `team_names` bridge as Browser identity. Runtime results belong to typed Run Session state; widgets only display/command that state.
 - Abyss mode has Team 1 / Team 2 tabs. Team 1 maps to first-half Abyss enemies, Team 2 maps to second-half Abyss enemies. DPS Dummy mode has one team tab.
 - Show compact team readiness cards with character, weapon, artifact set summary, and ready/issues. Full build editing stays in the existing account/artifact UI.
 - Provide GCSIM total-stats tooltip/report per character so users can compare GCSIM-computed totals with the app/right-panel totals.
@@ -190,11 +266,11 @@ Contracts:
 - The existing solo/multi target toggle must control which targets are sent to GCSIM. Current generated wave policy remains `group_clear`; stack/rolling replacement is future work.
 - Show temporary run defaults in the browser, for example iterations and boosted-energy status. Boosted energy is settings-controlled from Account -> GCSIM and disabled unless explicitly enabled; later these defaults can move to a fuller GCSIM settings section/control.
 - Raw GCSIM rotation-code input is required in the MVP. A visual/button-based rotation builder can be added later, but must not replace direct code input.
-- Current implemented Abyss run action is `Run selected chamber`: the active Team 1/Team 2 tab maps to Abyss side 1/2, the selected C1/C2/C3 button maps to `abyss_chamber`, the rotation editor text is used as the shell, and a Qt worker under `ui/gcsim_browser/run_worker.py` runs selected-runtime-team config generation plus generated wave backend path asynchronously. AppShell passes the current cached Abyss source-data identity already used by the Browser/right-panel preview (`period_start`, `floor`); the run worker must not fall back to backend smoke defaults such as `2026-02-16` when current UI source-data exists. Results include config/scenario paths, source identity, scenario waves/targets/total HP, observed duration, DPS summary, average total damage per sim run, warnings, failed action buckets, incomplete characters, grouped readiness summaries, and controlled error category in the GCSIM Browser Results panel. A selected-chamber runtime result is converted into a runtime-only `RightPanelGcsimChamberResult` and replaces only the matching team/chamber/side row; compatible existing rows for other chambers on the same team/side are retained, and unrelated team/side rows are not overwritten. Diagnostic warning `abyss_preview_scenario_source_mismatch` is reserved for preview/run source identity drift.
+- Current implemented Abyss run action is `Run selected chamber`: the active Team 1/Team 2 tab maps to Abyss side 1/2, the selected C1/C2/C3 button maps to `abyss_chamber`, the rotation editor text is used as the shell, and a Qt worker under `ui/gcsim_browser/run_worker.py` runs selected-runtime-team config generation plus generated wave backend path asynchronously. AppShell passes the current cached Abyss source-data identity already used by the Browser/right-panel preview (`period_start`, `floor`); the run worker must not fall back to backend smoke defaults such as `2026-02-16` when current UI source-data exists. Results include config/scenario paths, source identity, scenario waves/targets/total HP, observed duration, DPS summary, average total damage per sim run, warnings, failed action buckets, incomplete characters, grouped readiness summaries, and controlled error category in the GCSIM Browser Results panel. A selected-chamber result is converted into `RightPanelGcsimChamberResult`, stored in typed Run Session state, and replaces only the matching team/chamber/side row; compatible existing rows for other chambers on the same team/side are retained, and unrelated team/side rows are not overwritten. Diagnostic warning `abyss_preview_scenario_source_mismatch` is reserved for preview/run source identity drift.
 - Current implemented DPS Dummy action reuses the selected Team 1 state and manual rotation shell, assembles config through the same selected-runtime-team adapter, and runs the active artifact without Abyss source identity or generated wave scenario. The report includes diagnostic energy mode, dummy target HP/resist/source when parseable from the shell/config, and average total damage per sim run wording. It deliberately does not create history, no-code rotation, right-panel persistence, or enemy/source defaults, and damage correctness remains unclaimed.
-- Current implemented batch action is `Run 3 chambers`: it maps the active Team 1/Team 2 tab to side 1/2, uses the same current cached Abyss source identity and rotation editor text, then runs C1/C2/C3 sequentially in the same Qt worker. Do not parallelize those three GCSIM processes yet. The browser shows a compact batch report with per-chamber status, observed duration, DPS summary, average total damage per sim run, scenario total HP/waves/targets, warnings, and error category. The same batch result is converted into runtime-only `RightPanelGcsimChamberResult` rows owned by `AppShellController`; the active team's right-panel Sim DPS cells show compact `clear time / DPS` text, the other team remains `not run`, and results are cleared on obvious input changes such as team/equipment/source/target-mode/rotation/energy-mode changes. Sim DPS cells now have custom tooltips with status, clear time, DPS, average total damage per sim run, scenario HP, target mode, period/floor, config/scenario paths, short rotation hash, warnings/issues, stale mismatch reasons, and explicit `DPS correctness claim: false` plus `History persistence: disabled`. No SQLite/history persistence or right-panel sim detail popup is implemented yet.
+- Current implemented batch action is `Run 3 chambers`: it maps the active Team 1/Team 2 tab to side 1/2, uses the same current cached Abyss source identity and rotation editor text, then runs C1/C2/C3 sequentially in the same Qt worker. Do not parallelize those three GCSIM processes yet. The browser shows a compact batch report with per-chamber status, observed duration, DPS summary, average total damage per sim run, scenario total HP/waves/targets, warnings, and error category. The same batch result is converted into typed-session `RightPanelGcsimChamberResult` rows; the active team's right-panel Sim DPS cells show compact `clear time / DPS` text, the other team remains `not run`, and results are cleared on obvious input changes such as team/equipment/source/target-mode/rotation/energy-mode changes. Normal Run Save serializes these current Abyss session results into immutable History Snapshot `sim_dps` summaries. There is no separate auto-save after every simulation and no SQLite GCSIM archive. The current tooltip/report text that says `History persistence: disabled` is stale and should be replaced during the UI pass with wording that explains save-with-run-snapshot behavior.
 - Future GCSIM run scheduler should treat the current sequential `Run 3 chambers` behavior as the safe MVP, then support bounded parallel chamber runs when the user's machine can handle them. It needs `max_workers`/auto mode, isolated `run_dir`/config/scenario/stdout/stderr per chamber, ordered C1/C2/C3 result aggregation, and cancellation/progress handling.
-- Later GCSIM Browser/right-panel work should polish sim result tooltip visuals/details, define stale/result history policy, move temporary defaults into fuller settings when needed, and improve navigation between right-panel Sim DPS cells and Browser result details.
+- Later GCSIM Browser/right-panel work should polish sim result tooltip visuals/details, expose the existing save-with-run-snapshot policy clearly, move temporary defaults into fuller settings when needed, and improve navigation between right-panel Sim DPS cells and Browser result details.
 - First UI work should prioritize readiness/report/config/result visibility over visual polish.
 
 Manual smoke checklist for the current backend-MVP:
@@ -203,7 +279,7 @@ Manual smoke checklist for the current backend-MVP:
 - Not-ready selected team -> run attempt shows readable readiness blockers.
 - `Run selected chamber` -> the matching right-panel Sim DPS cell updates.
 - `Run 3 chambers` -> all three matching right-panel Sim DPS cells update.
-- Hover Sim DPS -> tooltip shows status, config/scenario paths, target identity, and no-correctness/no-history notes.
+- Hover Sim DPS -> tooltip shows status, config/scenario paths, target identity, no-correctness wording, and correct save-with-run-snapshot behavior.
 - Toggle Account/Data -> GCSIM boosted energy -> previous Sim DPS clears and the next run reports the new energy mode.
 - DPS Dummy -> runs without Abyss source-data and shows energy/dummy target diagnostics.
 
@@ -241,18 +317,27 @@ The UI should show a confirmation/warning before heavy batch simulation, explain
 
 ## 11. Result Handling / JSON Boundary
 
-A practical first result boundary can use GCSIM JSON result files/objects as the interchange format. This is acceptable because saved run history will need durable result metadata anyway.
+The implemented result boundary uses GCSIM JSON result files/objects as the
+interchange format. `artifact_runner.py` tolerates omitted protobuf-default
+fields and converts the output into a compact backend summary. Browser workers
+add selection/scenario/readiness/error metadata, and successful Abyss rows are
+converted into typed Run Session results. Normal Run Save then maps those rows
+to immutable History Snapshot `sim_dps` summaries.
 
-Result parsing should extract at least:
+Current parsing/reporting extracts:
 
 - sim DPS statistics;
 - duration / clear-time statistics;
 - total damage;
 - warnings and failed actions;
-- target/character/element breakdowns where useful;
-- engine version/hash;
-- GTT patch/capability metadata;
-- scenario/team/build/enemy hashes.
+- scenario identity, target mode, generated paths, and compact readiness/error
+  diagnostics;
+- rotation hash and enough team/chamber/side identity to invalidate or replace
+  the correct runtime result.
+
+Deeper target/character/element breakdowns, complete release engine hashes in
+saved snapshots, and a dedicated result-details UI remain optional product
+extensions rather than backend-MVP blockers.
 
 The parser must tolerate missing default/zero fields because GCSIM results are protobuf JSON where default values may be omitted.
 
@@ -260,62 +345,35 @@ If a later Go API/shared-library/native result object is designed, it should sti
 
 ## 12. Suggested Implementation Phases
 
-This is a direction, not a mandatory Codex task split. Codex may propose safer boundaries after inspecting the current repo.
+Historical phases 1-10 are complete for the current Abyss Browser MVP: engine
+store/update, build artifact, GTT capability marker, config generation, selected
+runtime-team adapter, `group_clear` waves, current Abyss scenarios, JSON result
+parsing, typed session writeback, right-panel summaries, and save-with-run-
+snapshot History attachment all exist.
 
-1. Documentation/preflight:
-   - keep this handoff updated;
-   - identify current repo entrypoints for engine storage/settings and Run Workspace integration.
-2. Local engine update/patch manager experiment:
-   - official source folder -> new local engine folder;
-   - dummy GTT patch application;
-   - manifest creation;
-   - active/rollback behavior;
-   - no real wave scheduler yet.
-3. Build artifact / shipped fallback preparation:
-   - build a local runtime artifact from patched source;
-   - record artifact path/hash in the manifest;
-   - keep the release-shipped known-good engine as a non-deletable trusted fallback;
-   - do not require ordinary users to have Go/Git for out-of-box calculations.
-4. Dependency-aware update UX:
-   - detect Go/Git readiness;
-   - expose automatic install/manual install/already-installed/cancel paths;
-   - treat `winget` as optional and always keep the current engine active on dependency failure.
-5. GTT engine API skeleton:
-   - engine info/capabilities;
-   - validate scenario;
-   - run scenario;
-   - result metadata.
-6. Key mapping and config/scenario generation foundation:
-   - character/weapon/artifact/enemy key mapping;
-   - Traveler deferred;
-   - character max-level helper;
-   - talent order helper.
-7. Vanilla-compatible GCSIM run through the GTT boundary:
-   - one team/scenario;
-   - single target and simultaneous multi-target target models;
-   - parse result into a backend object;
-   - no right-panel integration yet unless explicitly scoped.
-8. Sequential wave scheduler patch:
-   - spawn queue;
-   - group-clear and rolling-replacement experiments;
-   - scenario metadata;
-   - smoke configs.
-9. Abyss scenario integration:
-   - consume existing Abyss cache/enemy rows;
-   - generate chamber/side scenarios;
-   - run batch simulations with resource budgeting;
-   - produce sim DPS and sim timer objects.
-10. Right-panel/UI integration:
-    - fill prepared Sim DPS cells;
-    - show stale-result warnings;
-    - expose engine/scenario metadata compactly;
-    - keep detailed controls outside cramped TeamCard/right-dock cells.
+Current implementation sequence:
 
-## 13. First Codex Task Direction
+1. GCSIM Browser UI pass inside `ui/gcsim_browser/`: replace placeholders,
+   improve team/target/readiness/result presentation, and correct stale History
+   wording without refactoring AppShell ownership.
+2. Rotation product pass: retain raw code, add readable parsing/presets, then
+   decide whether a constrained no-code builder is worth maintaining.
+3. Run orchestration pass: progress, cancellation, run-artifact/debug retention
+   controls, and measured optional bounded parallelism.
+4. DPS Dummy state pass: attach successful results to typed DPS Dummy session
+   and immutable snapshot data, separate from factual DPS.
+5. Release pass: build and validate the bundled known-good executable, package
+   it outside user-writable engine retention, and add dependency-aware advanced
+   update UI.
+6. Correctness/coverage pass: maintain real rotation smokes, audit current
+   registry gaps, and add explicit mapping overrides only for proven exceptions.
 
-The first Codex task after this handoff should not implement full GCSIM or UI integration. It should inspect the repo and propose/prepare the smallest safe experiment for the local engine update/patch manager boundary.
+## 13. Historical Backend Implementation Record
 
-The first task should verify where engine folders/settings/manifests can live, how to keep the experiment isolated from production UI, and how to test transactional active/rollback behavior without requiring network/app-wide runs.
+The original first-task direction was completed. The detailed record below is
+kept for engine/patch debugging and release validation; it is not the current
+task queue. Use the authoritative status and current implementation sequence at
+the top of this file for new work.
 
 Current implementation state:
 
@@ -371,7 +429,7 @@ Current implementation state:
   mapping/current-build selection.
 - GCSIM level text helper has been added in `run_workspace/gcsim/config_level.py`. It formats future config levels from account `level` plus optional `promote_level`: `80,5 -> 80/80`, `80,6 -> 80/90`, `70,4 -> 70/70`, `70,5 -> 70/80`, missing promote on breakpoint levels assumes after ascension with a warning, and final/special caps use `90/90`, `95/95`, and `100/100`. Missing level returns controlled `missing_level`.
 - Backend character config block builder has been added in `run_workspace/gcsim/config_blocks.py`. It renders a single prepared character/equipment block from explicit mapping refs, level helper data, constellation/talents, weapon data, artifact set counts, and artifact-snapshot-only normalized `add stats`. Not-ready inputs return issues and no partial config text. This still does not generate full configs, create mappings, query account/UI storage, run artifacts, or wire UI.
-- Backend/dev full-config assembler has been added in `run_workspace/gcsim/config_assembly.py`, with shell-only rotation fixture `run_workspace/gcsim/smoke_fixtures/rotation_chasca_ororon_furina_bennett.txt`. The fixture preserves Chasca/Ororon/Furina/Bennett options/energy/active/script plus a placeholder target, while generated character blocks and generated `-gtt-wave-scenario` remain the account/team and enemy truth sources. Explicit prepared-input adapter and CLI bridge have been added in `run_workspace/gcsim/prepared_config_adapter.py`; default synthetic fixture `run_workspace/gcsim/smoke_fixtures/prepared_team_chasca_ororon_furina_bennett.json` can generate four ready blocks and assemble a full config only when all prepared data is ready. Account SQLite backend/dev bridge has been added in `run_workspace/gcsim/account_prepared_config.py`; it reads real account character rows and ready stored character/weapon GCSIM keys, uses current-equipped weapons when available, reports deterministic dev weapon candidates when not, normalizes displayed talent levels through `run_workspace/gcsim/config_talents.py`, uses current-equipped artifact owner rows plus artifact main/sub stat totals when available, and can run an end-to-end account-prepared + manual shell + generated Abyss wave compatibility smoke with dev-only boosted energy. Missing/incomplete current artifacts stay controlled not-ready, not silent synthetic fallback. Browser production wiring now uses `run_workspace/gcsim/selected_team_config.py`: it consumes selected TeamBuilder/AppShell state, resolves account data by stable ids, never chooses dev fallback weapons, uses Account/GCSIM settings-controlled boosted energy, feeds grouped readiness summaries through `run_workspace/gcsim/readiness_summary.py`, writes runtime right-panel Sim DPS rows for Abyss selected-chamber and 3-chamber Browser runs, shows Sim DPS tooltips with explicit no-history/no-correctness notes, and reports DPS Dummy target/energy diagnostics without claiming damage correctness. `account_prepared_config.py` remains a dev CLI/smoke bridge.
+- Backend/dev full-config assembler has been added in `run_workspace/gcsim/config_assembly.py`, with shell-only rotation fixture `run_workspace/gcsim/smoke_fixtures/rotation_chasca_ororon_furina_bennett.txt`. The fixture preserves Chasca/Ororon/Furina/Bennett options/energy/active/script plus a placeholder target, while generated character blocks and generated `-gtt-wave-scenario` remain the account/team and enemy truth sources. Explicit prepared-input adapter and CLI bridge have been added in `run_workspace/gcsim/prepared_config_adapter.py`; default synthetic fixture `run_workspace/gcsim/smoke_fixtures/prepared_team_chasca_ororon_furina_bennett.json` can generate four ready blocks and assemble a full config only when all prepared data is ready. Account SQLite backend/dev bridge has been added in `run_workspace/gcsim/account_prepared_config.py`; it reads real account character rows and ready stored character/weapon GCSIM keys, uses current-equipped weapons when available, reports deterministic dev weapon candidates when not, normalizes displayed talent levels through `run_workspace/gcsim/config_talents.py`, uses current-equipped artifact owner rows plus artifact main/sub stat totals when available, and can run an end-to-end account-prepared + manual shell + generated Abyss wave compatibility smoke with dev-only boosted energy. Missing/incomplete current artifacts stay controlled not-ready, not silent synthetic fallback. Browser production wiring now uses `run_workspace/gcsim/selected_team_config.py`: it consumes selected TeamBuilder/AppShell state, resolves account data by stable ids, never chooses dev fallback weapons, uses Account/GCSIM settings-controlled boosted energy, feeds grouped readiness summaries through `run_workspace/gcsim/readiness_summary.py`, writes typed-session right-panel Sim DPS rows for Abyss selected-chamber and 3-chamber Browser runs, includes current Abyss results in normal Run Save snapshots, and reports DPS Dummy target/energy diagnostics without claiming damage correctness. `account_prepared_config.py` remains a dev CLI/smoke bridge.
 - Tests in `tests/run_workspace/gcsim/test_gcsim_engine_store.py` pin success activation, patch failure rollback, smoke failure rollback, manifest metadata, and old-active availability.
 - Official GitHub source acquisition exists in `run_workspace/gcsim/source_acquisition.py`. It resolves official `genshinsim/gcsim` releases through the GitHub API, downloads the release source zip, extracts the single top-level source tree into `data/gcsim/sources/`, and rejects unsafe/corrupt archives.
 - Backend/dev update command exists at `python -m run_workspace.gcsim.engine_update --release latest`. It downloads official source, calls `GcsimEngineStore.prepare_engine_update(...)`, applies the selected replaceable patch backend, runs a source-layout smoke check for `go.mod`, `cmd/gcsim/main.go`, `pkg/simulator`, and `pkg/model`, writes source/patch/check metadata into the manifest, and activates only on success.
@@ -385,4 +443,8 @@ Current implementation state:
   After the structured payload patch, it built official upstream `v2.42.2`, activated engine `gcsim-v2.42.2-20260604175430`, produced `build/gtt-gcsim.exe` with sha256 `c06aa07af8924b3bafb7ad9097bc3e5e39f9570e99958dd43cd20c3a760b6921`, and `-gtt-info` returned `gtt_patch_version=gtt-wave-scenario-v1` plus `gtt_wave_scheduler_prototype` and `gtt_wave_scenario_payload` with `sequential_waves=true`.
 - A real local sequential-wave prototype smoke also succeeded on 2026-06-04 through `run_smoke`. The smoke used `iteration=1`, `duration=10`, a single finite-HP target, Bennett, and `kill_target(...)` sysfunc calls so the observable is duration rather than damage. Without the GTT directive, the sim ended after the first killed target with `duration_mean=0.0333333`. With `# gtt_wave_prototype duplicate_first_target=1`, the patched engine spawned one more copy of the first target and continued to `duration_mean=1.03333`. This proves continuation/spawn inside one iteration, but not real Abyss wave modeling.
 - A real local structured payload smoke also succeeded on 2026-06-04 through `run_smoke --gtt-wave-scenario scenario.json`. With the same simple config and a two-wave `group_clear` payload, no-payload duration remained `0.0333333`, while payload duration was `1.03333`. A bad payload with `spawn_policy="rolling"` failed clearly with `unsupported spawn_policy "rolling"; expected "group_clear"` instead of silently falling back to vanilla.
-- Next real-engine tasks should add real shipped binary packaging/validation, config generation, stronger simulation smoke configs, and app-side scenario payload generation from typed run/enemy data. Do not wire this into UI until engine preparation, config generation, and result boundaries are validated.
+- Engine/config/scenario/result backend preparation is complete for the current
+  Abyss Browser MVP. Remaining engine-side work is release packaging/validation
+  of the shipped binary plus targeted patch maintenance when a real regression
+  or new wave policy requires it. Do not reopen completed config generation or
+  app-side scenario generation as generic tasks.

@@ -173,8 +173,12 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   the legacy right panel, online transport, and History; AppShell currently has
   PvP Decks/Play/Draft v0, including local manual pick/ban clicks wired through
   the Free Draft controller.
-- `run_workspace/gcsim/`: isolated backend/dev foundation for local GCSIM engine
-  lifecycle, patching, artifact builds, cleanup, and Browser MVP runs. The
+- `run_workspace/gcsim/`: functional backend for the current selected-runtime-
+  team Abyss Browser path: local engine lifecycle/patching/builds, generated
+  configs and Abyss wave scenarios, artifact execution/result parsing, typed
+  Run Session writeback, cleanup, and coverage diagnostics. Current Abyss sim
+  results are included in immutable History when normal Run Save succeeds; DPS
+  Dummy result attachment remains diagnostic/future. The
   update path prunes generated engines to active + one previous successful +
   one latest failed, deletes rebuildable `.go/build-cache` after successful Go
   probe/build unless explicitly kept, and preserves `.go/pkg/mod` as the small
@@ -532,13 +536,25 @@ Important direction:
 - Run snapshots should preserve characters, weapons, constellations/refinements when available, artifacts, active set bonuses, relevant stats, timers, and run metadata.
 - Artifact Browser integration should feed artifact builds/build presets into Team Builder and TeamCard. When saving a run, snapshot actual selected build data, not only a live preset id.
 - Use "DPS" or "factual DPS" for HP/time results and reserve "sim DPS" for simulator output.
-- GCSIM is an active backend/dev + Browser MVP track, while PvP remains a
-  future architecture driver. Keep interfaces flexible enough for simulator
+- GCSIM backend is complete for the current selected-team Abyss Browser MVP;
+  remaining normal GCSIM work is primarily Browser UI, run orchestration, DPS
+  Dummy result attachment, and release packaging. PvP remains a separate
+  architecture driver. Keep interfaces flexible enough for simulator
   results, tournament rulesets, draft flows, and PvP result export later.
   Detailed GCSIM research is in `docs/handoff/GCSIM.md` and current engine/UI
   state is in `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`; read them before
   implementing engine download, runner, config generation, or result parsing.
-- Before coding new History, saved GCSIM result persistence, or the production
+- `run_workspace/artifact_optimizer/`: isolated read-only real-account artifact
+  search backend. It supports fixed/excluded/equipped/main-stat filters,
+  minimum stats and 4p/2p+2p set counts, deterministic top-K, branch/range/set
+  pruning, explicit `exact` versus `best_found` diagnostics, conversion back to
+  `ArtifactBuildSnapshot`, and an optional expensive final-evaluator rerank
+  seam. Its raw weighted-stat objective does not apply set effects, passives,
+  reactions, rotations, or enemy assumptions. GCSIM's theoretical substat
+  optimizer is not a substitute for this real-artifact-id search. Read
+  `docs/handoff/ARTIFACT_OPTIMIZER.md` before optimizer work; do not wire it
+  into AppShell while the parallel PvP UI pass is active.
+- Before coding new History, DPS Dummy GCSIM result persistence, or the production
   AppShell switch, read `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. The
   next Run Workspace stage is typed run/session state plus immutable Abyss/DPS
   Dummy snapshots; right-panel widgets display/command that state but must not
@@ -574,6 +590,19 @@ total/chevron/difference scoreboard. The scene also shows wave-separated
 enemies, solo/multi HP, and cached current Abyss data. PvP player colors are
 configurable from Account settings through one shared palette source; all Draft
 and post-draft seat accents derive from it without changing widget geometry.
+Post-draft Assignment/Weapon players are vertical right-panel accordion
+sections. Each full-width color-tinted header sits directly above its own body
+and toggles that seat in both panes; the left body keeps its painted player
+accent, while the right container must not paint a side stripe or reserve extra
+horizontal geometry. Do not reintroduce side-by-side top controls or duplicate
+left-side player toggles. Collapse-only updates synchronously change visibility
+without calling the right model refresh or left grid reload. During post-draft
+layout rebuilds, live scoped source workspaces must be hidden and reparented
+under the PvP workspace, never through `setParent(None)`, because a parentless
+visible Qt widget can flash as an empty top-level window. Scoped runtime weapon
+equipment follows normal AppShell semantics: an occupied single-copy weapon
+swaps with the selected character's current weapon when present, and all
+affected visible slots/owner badges refresh.
 Future room
 admission still needs explicit
 Abyss-period agreement/server-authority validation. Left/main PvP

@@ -126,8 +126,6 @@ from ui.right_panel.pvp._shared import (
     _mapping,
     _parse_pvp_remaining_timer_text,
     _picked_character_ids,
-    _configure_postdraft_seat_toggle,
-    _postdraft_seat_toggle_text,
     _postdraft_source_object_name,
     _pvp_deck_inactive_fill,
     _pvp_deck_item_properties,
@@ -1214,7 +1212,6 @@ class PvpPlayWorkspace(QWidget):
 
 class PvpDraftWorkspace(QWidget):
     card_clicked = Signal(dict)
-    seat_toggle_requested = Signal(str)
     timer_text_changed = Signal(str, int, str)
     finalize_result_requested = Signal()
 
@@ -1239,7 +1236,6 @@ class PvpDraftWorkspace(QWidget):
         self.legal_character_ids: tuple[str, ...] = ()
         self._draft_actions_by_character_id: dict[str, dict[str, Any]] = {}
         self.source_zone_frames_by_seat: dict[str, QFrame] = {}
-        self._source_toggle_buttons_by_seat: dict[str, QPushButton] = {}
         self._scoped_build_source_frame: QFrame | None = None
         self._scoped_build_context_id: int | None = None
         self._timers_result_widget: PvpTimersResultWidget | None = None
@@ -1334,7 +1330,6 @@ class PvpDraftWorkspace(QWidget):
 
         if session is None:
             self.source_zone_frames_by_seat.clear()
-            self._source_toggle_buttons_by_seat.clear()
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._detach_build_source_widgets()
@@ -1397,7 +1392,6 @@ class PvpDraftWorkspace(QWidget):
             PVP_DRAFT_STAGE_COMPLETED_RESULT,
         }:
             self.source_zone_frames_by_seat.clear()
-            self._source_toggle_buttons_by_seat.clear()
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._draft_pool_frame = None
@@ -1412,7 +1406,6 @@ class PvpDraftWorkspace(QWidget):
                 self.scroll_layout.addStretch(1)
         else:
             self.source_zone_frames_by_seat.clear()
-            self._source_toggle_buttons_by_seat.clear()
             self._scoped_build_source_frame = None
             self._scoped_build_context_id = None
             self._detach_build_source_widgets()
@@ -1618,7 +1611,11 @@ class PvpDraftWorkspace(QWidget):
         for seat_context in getattr(context, "seats", {}).values():
             source = getattr(seat_context, "source_workspace", None)
             if source is not None:
-                source.setParent(None)
+                # Keep the live source workspace inside the PvP workspace while
+                # its old section is deleted. Reparenting a visible QWidget to
+                # None briefly promotes it to a top-level Qt window.
+                source.hide()
+                source.setParent(self)
 
     def _refresh_scoped_build_source_scroll_stage(self) -> None:
         context_id = id(self._build_flow_context) if self._build_flow_context else None
@@ -1630,7 +1627,6 @@ class PvpDraftWorkspace(QWidget):
             self._update_scoped_build_source_stage()
             return
         self.source_zone_frames_by_seat.clear()
-        self._source_toggle_buttons_by_seat.clear()
         self._scoped_build_source_frame = None
         self._scoped_build_context_id = context_id
         self._detach_build_source_widgets()
@@ -1653,30 +1649,6 @@ class PvpDraftWorkspace(QWidget):
             empty.setWordWrap(True)
             layout.addWidget(empty)
             return frame
-        toggle_row = QWidget()
-        toggle_row.setObjectName("pvp_postdraft_source_toggle_row")
-        toggle_layout = QHBoxLayout(toggle_row)
-        toggle_layout.setContentsMargins(0, 0, 0, 0)
-        toggle_layout.setSpacing(6)
-        for seat in PVP_SEATS:
-            seat_context = context.seat(seat)
-            if seat_context is None:
-                continue
-            collapsed = seat in context.collapsed_seats
-            toggle = _configure_postdraft_seat_toggle(QPushButton())
-            toggle.setText(
-                _postdraft_seat_toggle_text(
-                    seat,
-                    collapsed=collapsed,
-                    ready=seat_context.ready,
-                )
-            )
-            toggle.clicked.connect(
-                lambda _checked=False, s=seat: self._toggle_postdraft_source_seat(s)
-            )
-            self._source_toggle_buttons_by_seat[seat] = toggle
-            toggle_layout.addWidget(toggle, 1)
-        layout.addWidget(toggle_row)
         for seat in PVP_SEATS:
             seat_context = context.seat(seat)
             if seat_context is None:
@@ -1693,6 +1665,10 @@ class PvpDraftWorkspace(QWidget):
             source = seat_context.source_workspace
             source.setParent(section)
             section_layout.addWidget(source, 1)
+            # Keep the child logically shown and collapse only its stable
+            # parent section. Explicitly hiding/showing the heavy grid child
+            # schedules an unnecessary delayed grid reload on every expand.
+            source.show()
             self.source_zone_frames_by_seat[seat] = section
             collapsed = seat in context.collapsed_seats
             section.setVisible(not collapsed)
@@ -1711,15 +1687,6 @@ class PvpDraftWorkspace(QWidget):
                 self._refresh_scoped_build_source_scroll_stage()
                 return
             collapsed = seat in context.collapsed_seats
-            toggle = self._source_toggle_buttons_by_seat.get(seat)
-            if toggle is not None:
-                toggle.setText(
-                    _postdraft_seat_toggle_text(
-                        seat,
-                        collapsed=collapsed,
-                        ready=seat_context.ready,
-                    )
-                )
             section.setVisible(not collapsed)
             if self._scoped_build_source_frame is not None:
                 source_layout = self._scoped_build_source_frame.layout()
@@ -1728,10 +1695,9 @@ class PvpDraftWorkspace(QWidget):
                     source_layout.setStretch(section_index, 0 if collapsed else 1)
             source = seat_context.source_workspace
             if source.parent() is not section:
+                source.hide()
                 source.setParent(section)
-
-    def _toggle_postdraft_source_seat(self, seat: str) -> None:
-        self.seat_toggle_requested.emit(seat)
+                source.show()
 
     def _build_timers_results_stage(self, stage: str) -> PvpTimersResultWidget:
         if self._timers_result_widget is None:
@@ -1818,9 +1784,6 @@ class PvpWorkspace(QWidget):
         self.stack.addWidget(self.draft_workspace)
         self.decks_workspace.state_changed.connect(self._on_decks_state_changed)
         self.draft_workspace.card_clicked.connect(self.apply_draft_card_click)
-        self.draft_workspace.seat_toggle_requested.connect(
-            self.toggle_build_seat_collapsed
-        )
         self.draft_workspace.timer_text_changed.connect(self.set_timer_text)
         self.draft_workspace.finalize_result_requested.connect(
             self.finalize_match_result,
@@ -2477,7 +2440,8 @@ class PvpWorkspace(QWidget):
         for seat_context in getattr(context, "seats", {}).values():
             source = getattr(seat_context, "source_workspace", None)
             if source is not None:
-                source.setParent(None)
+                source.hide()
+                source.setParent(self)
                 source.deleteLater()
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt override

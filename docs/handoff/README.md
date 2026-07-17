@@ -11,12 +11,13 @@ Current maps:
 - `ACCOUNT_SQLITE_STORAGE.md` - clean local SQLite account characters, talents, and observed weapon stacks.
 - `ACCOUNT_EQUIPMENT_STATE_DESIGN.md` - design and implemented service/UI status for persistent current weapon/artifact equipment state, separate from build presets and HoYoLAB observations.
 - `ARTIFACT_BROWSER_EQUIPMENT_UX.md` - Artifact Browser equip-mode UX, current equipment zone, preset apply behavior, and artifact/preset/weapon owner side-icon model.
+- `ARTIFACT_OPTIMIZER.md` - real-account Artifact Optimizer backend, search/diagnostic contract, official Genshin Optimizer research, GCSIM boundary, and next evaluator stages.
 - `ABYSS_ENEMY_DATA.md` - Abyss enemy data source research.
 - `ABYSS_ENEMY_DATA_AUDIT_TASK.md` - original prompt for the Abyss enemy data audit.
 - `ABYSS_HP_FIXTURE.md` - historical `2026-05-16` Floor 12 HP research/debug fixture and source-join notes; not current runtime factual-DPS truth.
 - `ABYSS_MECHANICS_NOTES.md` - Abyss enemy mechanics parser tags and source notes.
 - `GCSIM.md` - GCSIM research and integration notes.
-- `GCSIM_ENGINE_INTEGRATION_PLAN.md` - working implementation-direction plan for GTT-modified GCSIM engine updates, local patching, sequential Abyss waves, resource budgeting, and UI result boundaries.
+- `GCSIM_ENGINE_INTEGRATION_PLAN.md` - authoritative current GCSIM status plus the historical implementation record for engine updates, patches, selected-team configs, sequential Abyss waves, typed results/history, and remaining UI/release work.
 - `FAR_FUTURE_TODO.md` - non-MVP PvP, analytics, draft bot, support/donation, monetization, and optional AI companion ideas.
 - `PVP_V0_CONTRACT.md` - stable PvP v0 product/backend contract for the full offline hot-seat loop: deck JSON, pick/ban, teams, weapons, timers, and winner summary.
 - `PVP_BACKEND_STATUS.md` - implementation-oriented PvP backend status:
@@ -40,6 +41,12 @@ Current maps:
 
 Durable backend modules:
 
+- `run_workspace/artifact_optimizer/` - read-only real-account artifact search
+  with fixed/excluded/equipped/main-stat filters, set/stat constraints,
+  branch-and-bound pruning, explicit exact/best-found diagnostics, snapshot
+  conversion, and an optional expensive final-evaluator seam. Tests live in
+  `tests/run_workspace/artifact_optimizer/`; details and CLI examples are in
+  `ARTIFACT_OPTIMIZER.md`.
 - `run_workspace/pvp/` - backend-only PvP v0 foundation for deck JSON,
   `DeckValidationReport`, Free Draft v0 schedule/reducer/action log,
   post-draft team and weapon assignment validation, match timer/result

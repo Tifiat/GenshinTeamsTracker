@@ -80,9 +80,10 @@ does not switch `main.py`.
   history. They are not the future history model.
 - `docs/handoff/GCSIM.md` and
   `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md` document simulator
-  integration. Backend/dev GCSIM and Browser MVP paths exist, but durable saved
-  GCSIM results must attach to typed run/session state or snapshots, not UI
-  widgets.
+  integration. Current Abyss Browser results attach to typed Run Session state,
+  and normal Run Save serializes them into immutable `sim_dps` snapshot
+  summaries. DPS Dummy result attachment remains future work. UI widgets are
+  not result persistence owners.
 
 ## Production Switch Blockers
 
@@ -150,12 +151,14 @@ Recommended first dataclasses or equivalents:
   - `selected_team_index`;
   - `selected_slot_index`;
   - `external_bonuses_enabled`;
-  - `last_sim_result_id` or compact sim status only.
+  - compact current simulation state; current Abyss ownership is the typed
+    chamber-result tuple on `AbyssRunState`.
 - `AbyssRunState`
   - season/period identity when available;
   - chamber rows, each with team 1/team 2 timer left seconds;
   - optional chamber enemy/HP context;
-  - calculated factual result rows.
+  - calculated factual result rows;
+  - current GCSIM chamber/side/team results used by the right panel and Save.
 - `DpsDummyRunState`
   - target label/id;
   - target HP or dummy setup;
@@ -257,7 +260,8 @@ Abyss snapshots should contain:
   - total elapsed seconds;
   - optional enemy/HP context by side;
   - factual DPS per side only when HP is known;
-  - optional simplified sim DPS result references later;
+  - saved sim DPS result references when the live Abyss session contains GCSIM
+    chamber results;
   - warnings, for example clamped timers or missing HP data.
 - total elapsed seconds across chambers.
 
@@ -399,10 +403,12 @@ widgets, or GCSIM adapters.
 
 ## GCSIM Boundary
 
-Backend/dev GCSIM and the AppShell Browser MVP already exist. Their current
-runtime outputs are session/UI results, not saved history. Durable GCSIM results
-must plug into typed run/session state and immutable snapshots before they are
-treated as saved records.
+Backend/dev GCSIM and the AppShell Browser MVP already exist. Current Abyss
+Browser outputs are stored in typed Run Session state, and normal Run Save maps
+them into immutable History Snapshot `sim_dps` summaries. Simulation runs are
+not auto-saved individually and there is no separate SQLite GCSIM archive. DPS
+Dummy output is still diagnostic and is not yet attached to typed session or
+snapshot state.
 
 Integration rules:
 
@@ -411,8 +417,8 @@ Integration rules:
 - GCSIM runner executes outside the UI thread and stores/parses sim results.
 - GCSIM result metadata attaches to run/session state or saved snapshots as
   `sim DPS`, not `factual DPS`.
-- Current Browser MVP targets Abyss chamber flows first; DPS Dummy remains a
-  later consumer.
+- Current Browser MVP has production-selected-team Abyss chamber flows and a
+  diagnostic DPS Dummy runner; durable DPS Dummy state remains later work.
 - Detailed GCSIM controls use a larger drawer/workspace/overlay; the right dock
   shows only compact status/action and summary values.
 - Read `docs/handoff/GCSIM.md`,
@@ -446,12 +452,12 @@ Integration rules:
 9. Done: snapshot-to-shared-right-panel adapters and the contracted
    read-only/hidden control policy drive an isolated shared Run panel; normal
    row selection does not generate a permanent PNG preview.
-10. Replace provisional browsing content with Abyss/DPS Dummy tabs, expandable
-   Abyss period groups, compact visual rows, and newest-first ordering.
-11. Attach Browser/GCSIM results to session/snapshot metadata as `sim DPS` and
-   keep them separate from factual DPS.
-12. Add DPS Dummy current factual-DPS inputs/results and GCSIM DPS Dummy
-   integration as separate follow-up work.
+10. Done: History has Abyss/DPS Dummy modes, period navigation, compact visual
+    rows, newest-first ordering, and shared read-only snapshot details.
+11. Done for Abyss: Browser/GCSIM chamber results attach to typed session state
+    and snapshot metadata as `sim DPS`, separate from factual DPS.
+12. Add DPS Dummy current factual-DPS inputs/results and attach the existing
+    diagnostic GCSIM DPS Dummy run to typed session/snapshot state.
 
 ## Non-Goals For The Next Stage
 

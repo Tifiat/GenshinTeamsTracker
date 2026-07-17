@@ -11,6 +11,7 @@ from ui.utils.app_scaling import configure_startup_ui_scale
 configure_startup_ui_scale()
 from PySide6.QtCore import QEvent, QPoint, Qt
 from PySide6.QtGui import QColor, QKeyEvent, QPixmap
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication, QFrame, QLabel, QPushButton, QSizePolicy
 
 from hoyolab_export.account_equipment import (
@@ -19,6 +20,7 @@ from hoyolab_export.account_equipment import (
 )
 from hoyolab_export.artifact_db import connect_db, init_db
 from localization import tr
+from ui.app_shell import AppShellController
 from ui.character_browser.filter_bar import CharacterFilterBar
 from ui.pvp_browser.build_flow import (
     PvpRuntimeEquipmentState,
@@ -806,19 +808,33 @@ class PvpBrowserTest(unittest.TestCase):
                 button.parentWidget().objectName()
                 for button in draft_panel.postdraft_toggle_buttons_by_seat.values()
             },
-            {"pvp_postdraft_target_toggle_row"},
+            {"pvp-postdraft-target-player-1", "pvp-postdraft-target-player-2"},
+        )
+        self.assertFalse(
+            workspace.draft_workspace.findChildren(
+                QPushButton,
+                "pvp_postdraft_player_toggle",
+            )
         )
         self.assertEqual(
             {
-                button.parentWidget().objectName()
-                for button in workspace.draft_workspace._source_toggle_buttons_by_seat.values()
+                seat: button.property("seat")
+                for seat, button in draft_panel.postdraft_toggle_buttons_by_seat.items()
             },
-            {"pvp_postdraft_source_toggle_row"},
+            {"player_1": "player_1", "player_2": "player_2"},
         )
         for seat, zone in draft_panel.target_zone_frames_by_seat.items():
             self.assertIsInstance(zone, PvpPostDraftSeatFrame)
+            self.assertNotIsInstance(zone, PvpSeatAccentFrame)
             self.assertEqual(len(zone.findChildren(RightPanelTeamCardWidget)), 2, seat)
-            self.assertFalse(zone.findChildren(QPushButton, "pvp_postdraft_player_toggle"))
+            self.assertEqual(
+                zone.findChildren(QPushButton, "pvp_postdraft_player_toggle"),
+                [draft_panel.postdraft_toggle_buttons_by_seat[seat]],
+            )
+            self.assertEqual(
+                zone.layout().indexOf(draft_panel.postdraft_toggle_buttons_by_seat[seat]),
+                0,
+            )
         player_1_zone = draft_panel.target_zone_frames_by_seat["player_1"]
         player_2_zone = draft_panel.target_zone_frames_by_seat["player_2"]
         player_1_index = draft_panel.match_layout.indexOf(player_1_zone)
@@ -854,8 +870,16 @@ class PvpBrowserTest(unittest.TestCase):
         )
         self.assertTrue(
             all(
-                zone.maximumHeight() == 0 and zone.isHidden()
+                zone.isVisible()
+                and zone.maximumHeight() == zone.minimumHeight()
+                and zone.maximumHeight() > 0
                 for zone in draft_panel.target_zone_frames_by_seat.values()
+            )
+        )
+        self.assertTrue(
+            all(
+                panel.isHidden()
+                for panel in draft_panel.postdraft_run_panels_by_seat.values()
             )
         )
         self.assertTrue(
@@ -1231,7 +1255,7 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertEqual(calls, ["refresh"])
         self.assertIn(("player_1", 0, 0), draft_panel.team_slot_buttons_by_key)
 
-    def test_pvp_collapsed_postdraft_seat_is_compact_full_width_toggle(self) -> None:
+    def test_pvp_postdraft_accordion_header_controls_both_panes_without_reload(self) -> None:
         workspace, _panel = self._started_draft_workspace(
             character_count=24,
             deck_names=("Mirror",),
@@ -1245,11 +1269,16 @@ class PvpBrowserTest(unittest.TestCase):
 
         p1_zone = draft_panel.target_zone_frames_by_seat["player_1"]
         p2_zone = draft_panel.target_zone_frames_by_seat["player_2"]
+        p2_panel = draft_panel.postdraft_run_panels_by_seat["player_2"]
         p2_toggle = draft_panel.postdraft_toggle_buttons_by_seat["player_2"]
+        p2_source = workspace.build_source_workspace("player_2")
 
-        self.assertTrue(p2_zone.isHidden())
-        self.assertEqual(p2_zone.maximumHeight(), 0)
-        self.assertEqual(p2_toggle.parentWidget().objectName(), "pvp_postdraft_target_toggle_row")
+        self.assertFalse(p2_zone.isHidden())
+        self.assertTrue(p2_panel.isHidden())
+        self.assertGreater(p2_zone.maximumHeight(), 0)
+        self.assertEqual(p2_zone.maximumHeight(), p2_zone.minimumHeight())
+        self.assertIs(p2_toggle.parentWidget(), p2_zone)
+        self.assertEqual(p2_zone.layout().indexOf(p2_toggle), 0)
         self.assertGreater(p1_zone.maximumHeight(), p1_zone.minimumHeight())
         self.assertEqual(
             p2_toggle.sizePolicy().horizontalPolicy(),
@@ -1259,8 +1288,19 @@ class PvpBrowserTest(unittest.TestCase):
             workspace.draft_workspace.source_zone_frames_by_seat["player_2"].isHidden()
         )
 
-        workspace.toggle_build_seat_collapsed("player_2")
-        QApplication.processEvents()
+        with patch.object(
+            p2_source,
+            "update_grids",
+            wraps=p2_source.update_grids,
+        ) as update_grids, patch.object(
+            p2_panel,
+            "set_model",
+            wraps=p2_panel.set_model,
+        ) as set_model:
+            p2_toggle.click()
+            QTest.qWait(100)
+            self.assertEqual(update_grids.call_count, 0)
+            self.assertEqual(set_model.call_count, 0)
         p1_index = draft_panel.match_layout.indexOf(p1_zone)
         p2_index = draft_panel.match_layout.indexOf(p2_zone)
         self.assertFalse(p1_zone.isHidden())
@@ -1274,15 +1314,47 @@ class PvpBrowserTest(unittest.TestCase):
             workspace.draft_workspace.source_zone_frames_by_seat["player_2"].isHidden()
         )
 
-        workspace.toggle_build_seat_collapsed("player_2")
+        with patch.object(
+            p2_source,
+            "update_grids",
+            wraps=p2_source.update_grids,
+        ) as update_grids, patch.object(
+            p2_panel,
+            "set_model",
+            wraps=p2_panel.set_model,
+        ) as set_model:
+            p2_toggle.click()
+            QTest.qWait(100)
+            self.assertEqual(update_grids.call_count, 0)
+            self.assertEqual(set_model.call_count, 0)
+        draft_panel.postdraft_toggle_buttons_by_seat["player_1"].click()
         QApplication.processEvents()
-        workspace.toggle_build_seat_collapsed("player_1")
-        QApplication.processEvents()
-        self.assertTrue(draft_panel.target_zone_frames_by_seat["player_1"].isHidden())
-        self.assertEqual(draft_panel.target_zone_frames_by_seat["player_1"].maximumHeight(), 0)
+        self.assertFalse(draft_panel.target_zone_frames_by_seat["player_1"].isHidden())
+        self.assertTrue(draft_panel.postdraft_run_panels_by_seat["player_1"].isHidden())
+        self.assertEqual(
+            draft_panel.target_zone_frames_by_seat["player_1"].maximumHeight(),
+            draft_panel.target_zone_frames_by_seat["player_1"].minimumHeight(),
+        )
         self.assertTrue(
             workspace.draft_workspace.source_zone_frames_by_seat["player_1"].isHidden()
         )
+
+    def test_postdraft_source_detach_never_promotes_workspace_to_window(self) -> None:
+        workspace, _panel = self._started_draft_workspace(
+            character_count=24,
+            deck_names=("Mirror",),
+        )
+        self._complete_draft(workspace)
+        self.assertTrue(workspace.continue_to_assignment())
+        draft_workspace = workspace.draft_workspace
+
+        draft_workspace._detach_build_source_widgets()
+
+        for seat in ("player_1", "player_2"):
+            source = workspace.build_source_workspace(seat)
+            self.assertIs(source.parentWidget(), draft_workspace)
+            self.assertFalse(source.isWindow())
+            self.assertTrue(source.isHidden())
 
     def test_pvp_runtime_weapon_state_matches_allowed_key_from_numeric_type(self) -> None:
         weapon = _weapon_asset(
@@ -1308,6 +1380,133 @@ class PvpBrowserTest(unittest.TestCase):
 
         self.assertIsNotNone(persisted_weapon)
         self.assertEqual(persisted_weapon["pvp_weapon_stack_key"], allowed_key)
+
+    def test_pvp_runtime_occupied_weapon_swaps_with_target_weapon(self) -> None:
+        first_weapon = _weapon_asset(
+            "11401",
+            "First Sword",
+            weapon_type=1,
+            weapon_type_name="Sword",
+            known_count=1,
+        )
+        second_weapon = _weapon_asset(
+            "11402",
+            "Second Sword",
+            weapon_type=1,
+            weapon_type_name="Sword",
+            known_count=1,
+        )
+        first_key = "11401|sword|4|90|5"
+        second_key = "11402|sword|4|90|5"
+        state = PvpRuntimeEquipmentState.from_assets(
+            seat="player_1",
+            allowed_character_ids=("20000000", "20000001"),
+            allowed_weapon_keys=(first_key, second_key),
+            weapon_assets=(first_weapon, second_weapon),
+        )
+        first_character = {
+            "id": "20000000",
+            "name": "First Sword User",
+            "weapon_type": 1,
+        }
+        second_character = {
+            "id": "20000001",
+            "name": "Second Sword User",
+            "weapon_type": 1,
+        }
+        state.assign_weapon_to_character(
+            "20000000",
+            first_character,
+            first_weapon["metadata"]["weapon"],
+        )
+        state.assign_weapon_to_character(
+            "20000001",
+            second_character,
+            second_weapon["metadata"]["weapon"],
+        )
+
+        result, selected_weapon = state.assign_weapon_to_character(
+            "20000000",
+            first_character,
+            second_weapon["metadata"]["weapon"],
+        )
+
+        self.assertEqual(
+            selected_weapon["pvp_weapon_stack_key"],
+            second_key,
+        )
+        self.assertEqual(
+            state.weapon_for_character("20000001")["pvp_weapon_stack_key"],
+            first_key,
+        )
+        self.assertEqual(set(result.affected_character_ids), {20000000, 20000001})
+        self.assertEqual(
+            set(result.affected_weapon_fingerprints),
+            {first_key, second_key},
+        )
+
+    def test_pvp_runtime_weapon_swap_refreshes_both_visible_slots(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            portrait_path, weapon_path = _create_test_asset_images(temp_dir)
+            characters = [
+                _character_asset(
+                    "20000000",
+                    "First Sword User",
+                    weapon_type=1,
+                    image_path=portrait_path,
+                ),
+                _character_asset(
+                    "20000001",
+                    "Second Sword User",
+                    weapon_type=1,
+                    image_path=portrait_path,
+                ),
+            ]
+            weapons = [
+                _weapon_asset(
+                    "11401",
+                    "First Sword",
+                    weapon_type=1,
+                    weapon_type_name="Sword",
+                    known_count=1,
+                    image_path=weapon_path,
+                ),
+                _weapon_asset(
+                    "11402",
+                    "Second Sword",
+                    weapon_type=1,
+                    weapon_type_name="Sword",
+                    known_count=1,
+                    image_path=weapon_path,
+                ),
+            ]
+            first_key = "11401|sword|4|90|5"
+            second_key = "11402|sword|4|90|5"
+            db_path = Path(temp_dir) / "pvp-weapon-swap.sqlite"
+            _seed_pvp_build_db(db_path, characters=characters, weapons=weapons)
+            state = PvpRuntimeEquipmentState.from_assets(
+                seat="player_1",
+                allowed_character_ids=("20000000", "20000001"),
+                allowed_weapon_keys=(first_key, second_key),
+                weapon_assets=weapons,
+            )
+            controller = AppShellController.empty(
+                equipment_db_path=db_path,
+                equipment_state=state,
+            )
+
+            self.assertTrue(controller.add_or_replace_character(characters[0]))
+            self.assertTrue(controller.assign_weapon_to_selected_slot(weapons[0]))
+            self.assertTrue(controller.add_or_replace_character(characters[1]))
+            self.assertTrue(controller.assign_weapon_to_selected_slot(weapons[1]))
+            controller.toggle_slot_selection(0, 0)
+
+            self.assertTrue(controller.assign_weapon_to_selected_slot(weapons[1]))
+
+            first_slot = controller.state.team(0).slot(0)
+            second_slot = controller.state.team(0).slot(1)
+            self.assertEqual(first_slot.weapon.id, "11402")
+            self.assertEqual(second_slot.weapon.id, "11401")
 
     def test_pvp_ready_uses_scoped_weapon_stack_key_not_display_type(self) -> None:
         workspace, _panel = self._started_draft_workspace(

@@ -250,11 +250,20 @@ class PvpRuntimeEquipmentState:
             and owner_id != character_id
         ]
         affected_character_ids = {character_id}
+        affected_weapon_keys = {weapon_key}
+        if current_key:
+            affected_weapon_keys.add(current_key)
         if len(owners) >= known_count:
             if len(owners) != 1:
                 raise EquipmentError(f"No available PvP copy for weapon stack {weapon_key!r}")
             previous_owner = owners[0]
-            self.weapons_by_character.pop(previous_owner, None)
+            if current is None:
+                self.weapons_by_character.pop(previous_owner, None)
+            else:
+                # Match the normal account-equipment service: when the target
+                # already has a weapon, an occupied single-copy selection is a
+                # swap, not a one-way steal from the previous owner.
+                self.weapons_by_character[previous_owner] = dict(current)
             affected_character_ids.add(previous_owner)
 
         self.weapons_by_character[character_id] = _pvp_weapon_ref(weapon, weapon_key)
@@ -268,7 +277,7 @@ class PvpRuntimeEquipmentState:
                     for value in sorted(affected_character_ids)
                     if value.isdigit()
                 ),
-                affected_weapon_fingerprints=(weapon_key,),
+                affected_weapon_fingerprints=tuple(sorted(affected_weapon_keys)),
             ),
             dict(self.weapons_by_character[character_id]),
         )

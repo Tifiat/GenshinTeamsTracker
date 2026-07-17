@@ -248,12 +248,17 @@ right column patched in place.
 - GCSIM Browser MVP exists as a left workspace in AppShell. It can prepare
   account-backed configs and run selected or three-chamber dev flows through the
   backend GCSIM bridge.
-- Browser runtime results may update compact right-panel Sim DPS cells, but they
-  are not durable saved history. Treat them as current-session runtime results
-  until immutable run snapshots/history are implemented.
+- Browser results update typed current-session state and compact right-panel Sim
+  DPS cells. Normal Run Save includes current Abyss results in immutable History
+  Snapshot `sim_dps` summaries; runs are not auto-saved individually. DPS Dummy
+  result attachment remains future work.
 - Normal GCSIM Browser belongs to `live_run`: it uses the current live-run teams
   selected in Characters/Weapons or Artifact Browser, and it updates summaries
   on the shared live-run right panel through controller state.
+- While the PvP window is being developed in parallel, do not refactor
+  `ui/app_shell.py` for normal GCSIM work. Keep the next UI pass within existing
+  AppShell hooks and the `ui/gcsim_browser/` / `ui/right_panel/live_run/gcsim/`
+  ownership boundary; defer cross-workspace AppShell cleanup.
 
 ### PvP Workspace
 
@@ -851,9 +856,9 @@ Sizing note:
   slot and production Save materializes declared visible assets inside the
   bundle without changing live team state. The next stage is the contracted
   History tabs, period groups, and compact visual rows.
-- GCSIM Browser runtime output may update current-session Sim DPS rows, but it
-  is not durable saved history until explicit session/snapshot attachment is
-  implemented.
+- GCSIM Browser output updates current-session Sim DPS rows, and current Abyss
+  results are attached to immutable History when normal Run Save succeeds.
+  DPS Dummy result attachment is still pending.
 
 ## Implementation Guardrails
 

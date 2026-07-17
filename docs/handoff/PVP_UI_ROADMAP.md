@@ -400,8 +400,15 @@ Current v0 scope:
 - The Draft right panel has separate layouts for pick/ban summary and
   post-draft build stages. Draft stage right-dock content is a large readable
   pick/ban/result summary; Assignment/Weapons must show the scoped build panel
-  with full 8-slot seat cards. A collapsed player is a compact row only and
-  must not compress the expanded player's cards or ready button.
+  with full 8-slot seat cards. Players are vertical accordion sections: each
+  full-width player header lives immediately above that player's right-panel
+  body and controls the matching body in both the left source workspace and
+  right build panel. The right header uses a subtle player-color background;
+  the left section keeps the matching painted accent. Right seat containers
+  must not paint a side stripe because it clips at the frame edge or shifts the
+  pixel-tuned card geometry when given layout space. Do not duplicate controls
+  above the left source sections. A collapsed player keeps only its compact
+  header and must not compress the expanded player's cards or ready button.
 - When assignment is committed to the PvP draft backend, convert the scoped
   `TeamBuilderState` team slots into the backend `character_id` assignment and
   call `FreeDraftController.set_team_assignment(...)`. Backend validation
@@ -426,6 +433,11 @@ Current v0 scope:
   database, but the UI must reuse normal weapon grid behavior, owner/exhaustion
   markers where applicable, selected-target weapon-type filtering, and right
   panel weapon mini-box rendering.
+- Scoped runtime equipment must match normal AppShell weapon semantics. When
+  the only available copy is owned by another character and the selected target
+  already has a compatible weapon, the two characters exchange weapons; it is
+  not a one-way steal. Both visible slots and owner badges refresh from the
+  affected-character result.
 - When weapon assignment is committed to the PvP draft backend, convert scoped
   equipment state into the backend weapon-stack identity contract and call
   `FreeDraftController.set_weapon_assignment(...)`. Do not invent localized-name,
@@ -639,8 +651,15 @@ Current v0 scope:
   seat. Character clicks use normal sequential quick-pick, right-panel slot
   clicks select the build target, weapon clicks use the normal selected-slot
   equipment path, and seat Ready commits converted team/weapon assignments
-  through the PvP backend controller. When both seats are Ready, timers and the
-  future GCSIM route move to the left Draft workspace.
+  through the PvP backend controller. Each seat is a vertical accordion section
+  whose color-tinted right header controls both left and right bodies; there are
+  no duplicate left-side controls and no right-side painted accent strip.
+  Collapse-only changes synchronously update visibility without refreshing the
+  right model or reloading the left grids. Source workspace reparenting stays
+  under the PvP widget tree to avoid transient empty Qt windows. Occupied
+  single-copy weapon selection now exchanges weapons like the normal
+  account-equipment pipeline. When both seats are Ready, timers and the future
+  GCSIM route move to the left Draft workspace.
 
 Right-panel architecture status before more PvP growth:
 

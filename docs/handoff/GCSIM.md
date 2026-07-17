@@ -4,7 +4,7 @@ Research date: 2026-05-17
 
 Scope: research handoff only. No app code, TODO, CODEX, account data, cache data, HoYoLAB import, or UI behavior was touched for this research.
 
-Implementation direction note: active planning for the GTT-modified GCSIM engine, update/patch model, sequential Abyss waves, resource budgeting, and UI result boundaries lives in `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`. Keep this file as the source/research reference unless a later task explicitly updates both files.
+Implementation direction note: authoritative current backend/UI/release status for the GTT-modified GCSIM engine lives in `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`. Keep this file as the historical upstream/source research reference; do not use its original MVP ordering as the current task queue.
 
 Label meanings used below:
 
@@ -497,7 +497,10 @@ MVP recommendation:
 Not MVP:
 
 - Full Abyss simulation.
-- Account artifact optimizer.
+- Account artifact optimization inside the GCSIM integration itself. A separate
+  real-account backend now exists in `run_workspace/artifact_optimizer/`; see
+  `docs/handoff/ARTIFACT_OPTIMIZER.md`. GCSIM may later rerank its bounded top-M
+  candidates, but its theoretical substat optimizer does not select real ids.
 - Automatic rotation generation.
 - KQM/default build guessing.
 - Weapon/artifact recommendation scraping.

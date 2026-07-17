@@ -52,9 +52,9 @@ from ui.utils.ui_palette import (
 from ui.utils.pvp_colors import pvp_player_color
 
 
-PVP_TIMER_RESULT_MIN_WIDTH = 760
-PVP_TIMER_HP_COLUMN_MIN_WIDTH = 150
-PVP_TIMER_HP_COLUMN_WIDTH = 168
+PVP_TIMER_RESULT_MIN_WIDTH = 800
+PVP_TIMER_HP_COLUMN_MIN_WIDTH = 212
+PVP_TIMER_HP_COLUMN_WIDTH = 212
 PVP_TIMER_INPUT_COLUMN_MIN_WIDTH = 150
 PVP_TIMER_INPUT_COLUMN_WIDTH = 168
 PVP_TIMER_MONSTERS_COLUMN_MIN_WIDTH = 360
@@ -90,8 +90,8 @@ QFrame#pvp_timer_hp {{
     border-radius: 5px;
     background: {UI_BG_BUTTON};
 }}
-QLabel#pvp_timer_hp_title {{ color: {UI_TEXT_MUTED}; font-size: 12px; font-weight: 800; }}
-QLabel#pvp_timer_hp_value {{ color: {UI_TEXT_PRIMARY}; font-size: 13px; font-weight: 900; }}
+QLabel#pvp_timer_hp_title {{ color: {UI_TEXT_MUTED}; font-size: 13px; font-weight: 800; }}
+QLabel#pvp_timer_hp_value {{ color: {UI_TEXT_PRIMARY}; font-size: 14px; font-weight: 900; }}
 QLabel#pvp_timer_player_1 {{ color: {player_1_color}; font-weight: 900; }}
 QLabel#pvp_timer_player_2 {{ color: {player_2_color}; font-weight: 900; }}
 QWidget#pvp_timer_input_column {{
@@ -253,8 +253,8 @@ class PvpHpSummaryWidget(QFrame):
             QSizePolicy.Policy.Preferred,
         )
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 5, 8, 5)
-        layout.setSpacing(3)
+        layout.setContentsMargins(10, 6, 10, 6)
+        layout.setSpacing(4)
         self.solo_title = QLabel(tr("app_shell.pvp.post.timer_hp_solo"))
         self.solo_title.setObjectName("pvp_timer_hp_title")
         self.solo_value = QLabel("-")
@@ -267,9 +267,9 @@ class PvpHpSummaryWidget(QFrame):
         self.multi_value.setAlignment(Qt.AlignmentFlag.AlignRight)
         for label in (self.solo_title, self.multi_title):
             label.setWordWrap(False)
-            label.setMinimumWidth(78)
+            label.setMinimumWidth(96)
         for label in (self.solo_value, self.multi_value):
-            label.setMinimumWidth(58)
+            label.setMinimumWidth(64)
 
         layout.addStretch(1)
         for title, value in (
@@ -278,7 +278,7 @@ class PvpHpSummaryWidget(QFrame):
         ):
             row = QHBoxLayout()
             row.setContentsMargins(0, 0, 0, 0)
-            row.setSpacing(8)
+            row.setSpacing(10)
             row.addWidget(title, 1)
             row.addWidget(value, 0)
             layout.addLayout(row)

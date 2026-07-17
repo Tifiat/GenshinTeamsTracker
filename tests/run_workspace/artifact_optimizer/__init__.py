@@ -1,0 +1,1 @@
+"""Artifact optimizer backend tests."""

@@ -57,7 +57,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Future AppShell tasks:
   - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the compact chamber/result area has live in-memory Abyss timer and factual-DPS behavior, active-mode Reset is typed, RUN-page Save writes immutable grouped backend bundles, and History displays selected snapshots through an isolated read-only instance of the shared Run presentation without a permanent PNG preview. The approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
   - keep the reduced fixed-width right operations dock around `ui.right_panel.live_run.panel.RunRightPanelWidget`; it must not be user-resizable or expand with the window;
-  - right-panel source ownership has been refactored into `ui/right_panel/{common,live_run,history,pvp,settings}` plus `dock.py`/`header.py`; `ui/right_panel_prototype.py`, `ui/account_data_page.py`, and old PvP right-panel exports remain compatibility shims. PvP page/stage constants are canonical in `ui/right_panel/pvp/_shared.py`; PvP Assignment/Weapons use scoped normal AppShell controller/workspace state, `CharacterWeaponWorkspace`, and `RunRightPanelWidget` with per-seat runtime weapon equipment state instead of mutating normal account equipment. Draft now shares the normal character filter bar, uses configurable shared player colors plus semantic action overlays in its fixed 72x72 no-overlap order strip, and the left Timers scene shares the live-Abyss `10:00..05:00` remaining-clock editor while showing waves, equal-column solo/multi HP, elapsed-second totals, winner/loser chevrons, difference, and a table-style Solo/Multi DPS summary. Next PvP build-flow gaps are Artifact Browser routing/equipment, executable scoped GCSIM, portable `.gttpvp` asset packaging, and a period-admission gate that validates both local seats or future online clients against the authoritative current Abyss period;
+  - right-panel source ownership has been refactored into `ui/right_panel/{common,live_run,history,pvp,settings}` plus `dock.py`/`header.py`; `ui/right_panel_prototype.py`, `ui/account_data_page.py`, and old PvP right-panel exports remain compatibility shims. PvP page/stage constants are canonical in `ui/right_panel/pvp/_shared.py`; PvP Assignment/Weapons use scoped normal AppShell controller/workspace state, `CharacterWeaponWorkspace`, and `RunRightPanelWidget` with per-seat runtime weapon equipment state instead of mutating normal account equipment. Post-draft players are vertical right-panel accordion sections: each full-width color-tinted player header sits directly above its own body and collapses/expands that body together with the matching left source section. The right sections have no painted side accent that can clip or shift the pixel-tuned content; the left source retains the shared player-color strip. Collapse-only transitions update visibility synchronously without rebuilding the right model or reloading the left grids, and live source workspaces stay parented under PvP during layout rebuilds so Qt never promotes them to transient top-level windows. Scoped weapon assignment mirrors normal AppShell move/swap semantics, including exchanging the target's previous weapon with the prior owner when an occupied single-copy stack is selected. Draft now shares the normal character filter bar, uses configurable shared player colors plus semantic action overlays in its fixed 72x72 no-overlap order strip, and the left Timers scene shares the live-Abyss `10:00..05:00` remaining-clock editor while showing waves, readable fixed-width solo/multi HP, elapsed-second totals, winner/loser chevrons, difference, and a table-style Solo/Multi DPS summary. Next PvP build-flow gaps are Artifact Browser routing/equipment, executable scoped GCSIM, portable `.gttpvp` asset packaging, and a period-admission gate that validates both local seats or future online clients against the authoritative current Abyss period;
   - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, a painted pixel-aligned icon grid via `ui/utils/pixel_icon_grid.py`, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
   - AppShell left workspace navigation exists with Character/Weapon, lazy-created Artifacts, GCSIM Browser, the `ui/history_browser/` grouped History bundle foundation, and PvP Decks/Play/Draft v0 workspace pages. PvP Draft now uses one image-backed painted unified pool, opposite-side seat constellation badges, a painted 22-action order strip, and shared painted right-panel pick/ban grids; the old yellow QWidget/text-card Draft path is removed. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; activating History must preserve the live session and replace its visible panel with a snapshot-bound, read-only instance of the same shared mode-specific Run presentation under the contract in `docs/handoff/HISTORY_BROWSER.md`;
   - History visual MVP now has separate right-header Abyss/DPS Dummy/PvP modes, automatic reload, a read-only cache/snapshot period catalog, compact enemy/HP preview, period dropdown, visual rows, and shared read-only snapshot details. Next are smoke-driven polish, fuller DPS Dummy capture, real PvP History, filters/export, and durable GCSIM history attachment;
@@ -386,7 +386,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 10. GCSIM Integration
 
-- GCSIM now has backend/dev infrastructure plus an AppShell Browser backend-MVP product path for selected runtime teams. It is usable for current Browser prepare/run diagnostics and runtime right-panel Sim DPS rows; the Browser has a first compact UI pass with context/rotation tabs/run summary, while production packaging, mapping coverage, saved-result persistence/history policy, no-code rotations, and final polish remain future work.
+- GCSIM backend is functionally complete for the current selected-runtime-team Abyss Browser MVP. It prepares full configs, builds current cached Abyss scenarios, runs a selected chamber or sequential C1-C3 through the patched artifact, parses results, writes typed Run Session/right-panel Sim DPS rows, and includes current Abyss sim results in immutable History when the user saves the run. Remaining work is primarily Browser UI, run orchestration, DPS Dummy state attachment, and release packaging rather than another broad backend implementation phase.
 - Read before GCSIM work:
   - `docs/handoff/GCSIM.md` for upstream research and CLI/result behavior;
   - `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md` for the current GTT engine lifecycle, patch stack, Browser MVP, cleanup/retention policy, and production-readiness sequence;
@@ -396,18 +396,21 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - patch stack and `-gtt-info` capability validation owned by the dedicated GCSIM handoff rather than this root TODO;
   - active-artifact runner plus backend/dev config readiness, key mapping reports, account-prepared config bridge, selected-runtime-team config adapter, and Abyss wave scenario bridge; `account_prepared_config.py` remains a dev/smoke bridge, not the Browser product team source;
   - AppShell GCSIM Browser workspace prepares/runs from the current selected TeamBuilder/AppShell team state, not localized-name `team_names`; missing characters/weapons/artifact sets/artifacts/talents/levels/refinement/rotation errors produce grouped readiness summaries;
-  - Abyss Browser selected-chamber and `Run 3 chambers` actions require the current cached Abyss source identity and never fall back to backend smoke defaults; both write runtime-only right-panel Sim DPS rows for matching team/chamber/side when a run result exists;
+  - Abyss Browser selected-chamber and `Run 3 chambers` actions require the current cached Abyss source identity and never fall back to backend smoke defaults; both write typed-session right-panel Sim DPS rows for matching team/chamber/side when a run result exists;
   - DPS Dummy has a diagnostic backend run path that uses the selected team and manual rotation shell without Abyss identity, history persistence, no-code rotation support, or damage-correctness claims;
   - GCSIM boosted/infinite energy is an explicit Account/GCSIM setting (`gcsim_boosted_energy_enabled`) that injects/replaces `energy every interval=480,720 amount=100;` only when enabled and clears stale runtime Sim DPS results when changed; dev CLI energy override remains in `account_prepared_config.py`;
-  - Sim DPS cells have runtime-only tooltips with status, clear time, DPS, average total damage per sim run, source/config paths, target mode, stale reasons, warnings/issues, and explicit no-DPS-correctness/no-history notes; Browser runtime results are not saved history;
+  - Sim DPS cells have tooltips with status, clear time, DPS, average total damage per sim run, source/config paths, target mode, stale reasons, warnings/issues, and explicit no-DPS-correctness notes. The current `History persistence: disabled` wording is stale: simulations are not auto-saved individually, but current Abyss session results are serialized as `sim_dps` summaries by normal Run Save;
   - normal GCSIM Browser blocked-run output is compact/readiness-first with debug issue counts/codes instead of raw issue dict walls; the prepare/preflight path is exposed as `Check readiness`, with raw diagnostics kept behind Advanced/Debug UI;
   - DPS Dummy reports energy mode and dummy target HP/resist/source for diagnostics;
   - generated GCSIM engines are retention-pruned to active + one previous successful + one latest failed; `.go/build-cache` is rebuildable and cleaned after successful probe/build unless explicitly kept; `.go/pkg/mod` remains as the small module cache; manual cleanup dry-run command is `python -m run_workspace.gcsim.cleanup`.
 - Real next work:
-  - create/curate production project-id-to-GCSIM mappings for characters, weapons, artifact sets, and enemy type overrides where automatic registry matching is insufficient;
-  - decide production packaging/shipped fallback artifact policy and release validation for `gtt-gcsim.exe`;
-  - connect GCSIM results to typed run/session state and immutable saved snapshots/history instead of treating Browser runs as durable results;
-  - finish production mapping coverage, user-facing readiness/error polish, no-code rotation editing policy, run retention/debug keep-artifacts controls, cancellation/progress, and final AppShell/GCSIM UI polish.
+  - finish the GCSIM Browser UI inside `ui/gcsim_browser/`: replace placeholder presentation, improve team/target/readiness/result details, correct save/history wording, and keep raw rotation code as the working expert input;
+  - add readable rotation parsing/presets and decide later whether a constrained no-code action builder is maintainable;
+  - add progress/cancellation, run-artifact/debug retention controls, and only after measurement optional bounded parallel chamber scheduling; current C1-C3 execution is deliberately sequential;
+  - attach successful DPS Dummy results to typed DPS Dummy session/snapshot state and History; the current DPS Dummy run is diagnostic only;
+  - produce and release-validate the bundled known-good `gtt-gcsim.exe`, then add dependency-aware advanced update UX without requiring Go/Git for normal use;
+  - treat global mapping reports as coverage/audit tools. Normal Browser identity already comes from stored account character/weapon keys, active-registry artifact-set resolution, and enemy registry/Snap matching; add explicit curated overrides only for proven exceptions, while Traveler/upstream-missing entities remain controlled unavailable cases;
+  - while PvP UI work is active, do not refactor `ui/app_shell.py` or implement scoped PvP GCSIM from this track. Use existing AppShell hooks and keep normal GCSIM UI work under `ui/gcsim_browser/` and `ui/right_panel/live_run/gcsim/` until the later AppShell refactor.
 
 ## 11. KQM / Standard Builds Research
 
@@ -418,21 +421,31 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 12. Artifact Optimizer
 
-- Future advanced feature: find the strongest build on the account for a selected team and rotation.
-- Target DPS Dummy / simulator workspace first. Do not attempt full Abyss optimization initially.
-- Full optimization across four characters, thousands of artifacts, set bonuses, off-pieces, and multiple rooms is combinatorially huge. Use heuristics, not full brute force.
-- Potential staged approach:
-  - use current or standard build;
-  - run simulation;
-  - estimate damage share;
-  - choose candidate set templates;
-  - select top-N artifacts per slot/stat weighting;
-  - generate limited candidate builds;
-  - simulate top-M candidates;
-  - cache results;
-  - show "best found", not "absolute optimum".
-- Investigate whether current GCSIM already has usable optimizer-like functionality.
-- Keep the user's simplified idea for research: use default standards, test set templates quickly, identify promising configurations, apply filters, then search best artifacts matching the configuration.
+- Backend v0 exists in `run_workspace/artifact_optimizer/`; authoritative
+  contract, CLI, official Genshin Optimizer research, real-data smoke, GCSIM
+  boundary, and next stages live in `docs/handoff/ARTIFACT_OPTIMIZER.md`.
+- Implemented: read-only real SQLite artifact loading, fixed/excluded/equipped/
+  rarity/level/main-stat filters, 4p and 2p+2p minimum set templates, minimum
+  stats, deterministic top-K, unique ids, snapshot conversion, branch/range/set
+  pruning, lossy per-slot/per-set shortlist, combination cap, explicit
+  `exact`/`best_found` diagnostics, and an optional expensive final-evaluator
+  rerank seam.
+- GCSIM's substat optimizer is theoretical allocation and cannot select real
+  account artifact ids. Real search stays in the GTT backend; bounded GCSIM
+  simulation belongs later as a top-M final evaluator.
+- Next heavy backend stage: build a selected-character/DPS Dummy optimization
+  request, add a cheap character-aware nonlinear damage proxy, then a bounded
+  cancellable GCSIM batch evaluator with persistent engine/config/scenario
+  cache and stale-input identity. Do not start with full Abyss or four-character
+  global allocation.
+- Keep set effects/passives/reactions/rotation/enemy assumptions out of raw
+  artifact totals; the character formula/GCSIM evaluator owns them. Until that
+  evaluator exists, linear weights are a proxy and recommendations are not a
+  DPS-correctness claim.
+- Multi-character allocation is a later separate solver. Sequential searches
+  with excluded ids prevent reuse but are greedy, not a global optimum.
+- UI comes after the request/evaluator contract stabilizes and must live in its
+  own feature package. While PvP UI work is active, do not refactor AppShell.
 
 ## 13. Offline Profile
 

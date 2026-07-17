@@ -12,8 +12,6 @@ Related references:
 - `docs/handoff/STAT_NORMALIZATION.md` - project stat normalization and GCSIM stat-key mapping notes.
 - `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` - Run Workspace boundary, factual DPS vs sim DPS split, and snapshot/session state rules.
 - `docs/handoff/ABYSS_ENEMY_DATA.md` - Abyss source-data pipeline and enemy rows.
-- `docs/handoff/ARTIFACT_OPTIMIZER.md` - separate real-account artifact-id
-  search backend and the future bounded GCSIM top-M evaluator boundary.
 
 ## Current Authoritative Status
 
@@ -78,14 +76,92 @@ pass. Until the later AppShell refactor, keep GCSIM work inside the existing
 hooks and prefer `ui/gcsim_browser/`, `ui/right_panel/live_run/gcsim/`, and
 `run_workspace/gcsim/`. PvP-scoped simulation remains owned by the PvP handoff.
 
-Artifact Optimizer boundary: `run_workspace/artifact_optimizer/` now owns real
-account artifact-id candidate search. GCSIM `-substatOptim*` remains a
-theoretical substat allocator and must not replace that search. A later bounded
-optimizer batch may convert retained candidates to `ArtifactBuildSnapshot`,
-generate configs through the existing adapters, and use GCSIM as the expensive
-top-M final evaluator with progress/cancellation/cache. Do not add that batch
-loop to the normal Browser hot path without an explicit character, rotation,
-target, CPU budget, and stale-input contract.
+## Account Inventory Optimization Direction
+
+The target is not a separate linear-stat Artifact Optimizer. It is a GCSIM
+operation bound to one exact prepared four-character simulation: team,
+weapons, talents, rotation, target/scenario, options, energy mode, and engine
+identity. It must choose twenty real artifact ids from the account inventory,
+five per character, with no cross-character reuse, then maximize whole-team sim
+DPS for that exact simulation.
+
+Verified upstream behavior on 2026-07-17:
+
+- the source comment in `pkg/optimization/substats.go` says the user first sets
+  the team, weapons, artifact sets/main stats, and rotation;
+- `-substatOptimFull` then searches ER and other fixed/liquid substat counts for
+  the characters, rewrites optimized `add stats` lines, and runs the config;
+- it has no artifact-inventory input, artifact ids, equip ownership, set/main
+  template search, or global real-item assignment output;
+- GCSIM itself does apply modeled set effects from `add set` lines. GTT already
+  emits those lines from selected real set counts in `config_blocks.py` and
+  `selected_team_config.py`.
+
+Therefore the first implementation does not need a new Go patch, but it is more
+than a database adapter. Add an application-side orchestration/search layer
+under `run_workspace/gcsim/`:
+
+1. Copy/freeze the prepared config and account inventory snapshot. The official
+   full optimizer overwrites its config input, so never point it at the live
+   generated source config.
+2. Add a dedicated optimizer invocation wrapper, or safely extend the current
+   artifact runner's hardcoded command, to support `-substatOptimFull`,
+   `-options`, optimized-config capture, timeout/cancellation, and diagnostics.
+3. Run a compatibility smoke against the currently patched artifact for a
+   static/DPS Dummy target, then for `gtt-wave-scenario`. Patch the engine only
+   if an actual incompatibility is observed. For ordinary candidate evaluation,
+   the existing `-c ... -out ...` runner contract is already sufficient.
+4. Use upstream substat optimization as a theoretical per-character target for
+   fixed set/main-stat assumptions. It is guidance/pruning evidence, not an
+   inventory solution.
+5. Generate bounded real per-character build candidates across viable set and
+   main-stat templates, then solve one joint four-character assignment with a
+   global artifact-id uniqueness constraint. Never optimize four characters
+   greedily in sequence.
+6. Render retained joint assignments through the existing selected-team config
+   adapters so real main/sub totals become normalized `add stats` and active
+   set counts become `add set`. Evaluate the entire team/rotation in GCSIM.
+7. Use a staged search: cheap inventory/set/stat feasibility and theoretical
+   target proximity first, bounded whole-team GCSIM evaluations second. Record
+   evaluated/pruned budgets and report `best_found`; do not brute-force the raw
+   Cartesian inventory.
+8. Add progress, cancellation, persistent cache, stale-input identity, and a
+   typed result containing rank/DPS/baseline delta plus five artifact ids and
+   snapshot-ready totals for each character. The optimizer never mutates
+   equipment or presets.
+
+Off-piece handling is part of candidate optimization, not post-processing. A
+4p build has five possible free-slot shapes, and a 2p+2p build must jointly
+assign slots to set A, set B, and the free piece. Main-stat availability and a
+strong off-set sands/goblet/circlet can make the best free slot different from
+the weakest-looking set piece. Generate top-K complete builds under set-count
+constraints; never select five set artifacts and then discard one.
+
+The theoretical substat output is also not a sufficient distance metric for
+real artifacts. Use controlled one-roll perturbation simulations around each
+retained theoretical config to estimate character/stat-specific marginal team-
+DPS values, while preserving ER/burst-readiness thresholds as hard/discontinuous
+constraints. Those local weights may rank inventory candidates cheaply, but
+full GCSIM remains the final evaluator for retained joint assignments.
+
+Set selection must not be limited to currently equipped sets. The outer search
+should enumerate inventory-feasible 4p/2p+2p/off-piece plus main-stat templates,
+screen full four-character set-template combinations at a common roll budget,
+rerun substat optimization for retained templates, and use bounded low-iteration
+GCSIM beam/coordinate/restart search before expensive actual-artifact refinement.
+Simply swapping set names while keeping a fixed `100/200` crit line is useful
+only as a rough diagnostic: it misses changed optimal stat allocation, ER
+thresholds, conditional uptime, non-stacking team effects, and reaction/rotation
+interactions. Exact global enumeration through a black-box simulator is not a
+realistic product promise; automatic mode should search beyond equipped sets
+and report the strongest evaluated result within an explicit budget.
+
+Cache/stale identity must include the engine hash/version, full source config
+and rotation, target/scenario, simulation options/iterations, account inventory
+snapshot, and complete twenty-artifact assignment. The future UI may show one
+row per character with five artifact cards and `Save preset`, plus a validated
+`Save all presets`; detailed naming/collision ideas are recorded in TODO section
+12. Keep this UI out of the current PvP/AppShell refactor window.
 
 ## 1. Product Direction
 

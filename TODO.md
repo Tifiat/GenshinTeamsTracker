@@ -419,33 +419,116 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Research whether this data is actually KQM standards, where it is stored, whether it can be used legally/technically, and what it contains: artifacts, talents, weapons, rotations, assumptions.
 - Future uses: simulator fallback, draft bot, account-independent team estimates, comparing user builds to standard baseline.
 
-## 12. Artifact Optimizer
+## 12. GCSIM Account Artifact Optimizer
 
-- Backend v0 exists in `run_workspace/artifact_optimizer/`; authoritative
-  contract, CLI, official Genshin Optimizer research, real-data smoke, GCSIM
-  boundary, and next stages live in `docs/handoff/ARTIFACT_OPTIMIZER.md`.
-- Implemented: read-only real SQLite artifact loading, fixed/excluded/equipped/
-  rarity/level/main-stat filters, 4p and 2p+2p minimum set templates, minimum
-  stats, deterministic top-K, unique ids, snapshot conversion, branch/range/set
-  pruning, lossy per-slot/per-set shortlist, combination cap, explicit
-  `exact`/`best_found` diagnostics, and an optional expensive final-evaluator
-  rerank seam.
-- GCSIM's substat optimizer is theoretical allocation and cannot select real
-  account artifact ids. Real search stays in the GTT backend; bounded GCSIM
-  simulation belongs later as a top-M final evaluator.
-- Next heavy backend stage: build a selected-character/DPS Dummy optimization
-  request, add a cheap character-aware nonlinear damage proxy, then a bounded
-  cancellable GCSIM batch evaluator with persistent engine/config/scenario
-  cache and stale-input identity. Do not start with full Abyss or four-character
-  global allocation.
-- Keep set effects/passives/reactions/rotation/enemy assumptions out of raw
-  artifact totals; the character formula/GCSIM evaluator owns them. Until that
-  evaluator exists, linear weights are a proxy and recommendations are not a
-  DPS-correctness claim.
-- Multi-character allocation is a later separate solver. Sequential searches
-  with excluded ids prevent reuse but are greedy, not a global optimum.
-- UI comes after the request/evaluator contract stabilizes and must live in its
-  own feature package. While PvP UI work is active, do not refactor AppShell.
+- Product goal: for one already-prepared GCSIM simulation identity (the full
+  four-character team, weapons, talents, constellation/refinement, rotation,
+  target/scenario, energy/options, and engine version), find the best simulated
+  team configuration that can actually be equipped from all artifacts in the
+  local account database. The result must assign five real artifact ids to
+  every character and must never reuse one artifact across two characters.
+- Current upstream contract is narrower than that goal. `-substatOptim` /
+  `-substatOptimFull` optimize abstract KQM-style fixed/liquid substat counts
+  for all characters in a prepared config. Upstream explicitly assumes the
+  user has already selected the team, weapons, artifact sets/main stats, and
+  rotation. It outputs optimized `add stats` lines, not real artifact ids, and
+  has no account-inventory input or cross-character ownership model.
+- Set effects are not a blocker in the GCSIM path. Our selected-team config
+  bridge already resolves real set counts to `add set="..." count=N`; GCSIM
+  applies the modeled 2p/4p effects. The normal UI/stat snapshot still does not
+  calculate those formulas itself, but the optimizer must use sim DPS from
+  GCSIM rather than UI totals as its final objective.
+- First implementation should not require another Go engine patch. Add an
+  application-side optimizer runner/helper around the active artifact:
+  - copy the prepared config into an optimizer run directory because
+    `-substatOptimFull` overwrites its config input;
+  - extend or wrap the current hardcoded artifact-run command so it can invoke
+    the official optimizer flags/options and preserve stdout/config output;
+  - add a compatibility smoke for the current patched engine, first with DPS
+    Dummy/static targets and then with `gtt-wave-scenario`. Add a new engine
+    patch only if a concrete compatibility/performance blocker is proven.
+- `substatOptimFull` is useful as a theoretical target/profile generator, but
+  it cannot finish the account problem alone. The external joint optimizer must:
+  1. freeze an immutable source simulation/config identity and a read-only
+     artifact inventory snapshot for the whole run;
+  2. obtain theoretical per-character ER/damage stat directions from GCSIM for
+     the current set/main-stat assumptions;
+  3. generate bounded real five-artifact candidates for each character across
+     viable 4p, 2p+2p, off-piece, and main-stat templates;
+  4. combine candidates jointly across all four characters while enforcing
+     global artifact-id uniqueness. Do not optimize characters greedily one by
+     one because that can waste a contested artifact and miss the best team;
+  5. render each retained joint assignment into one full team config with real
+     artifact main/sub totals and `add set` lines, then evaluate whole-team sim
+     DPS through the ordinary GCSIM runner;
+  6. use staged/bounded search, progress, cancellation, and persistent result
+     caching. A naive simulation of the full Cartesian inventory is impossible;
+  7. return `best_found` plus the evaluated-search budget/provenance, never an
+     unconditional global-optimum claim unless a later exact solver can prove it.
+- Real-build matching must model off-pieces as part of the constraint, not as
+  "pick five set pieces and discard the worst one":
+  - for 4p + off-piece, the free slot can be any of the five positions and must
+    be chosen jointly with the four set pieces;
+  - for 2p + 2p + off-piece, slot ownership between set A, set B, and the free
+    piece is also part of the search;
+  - sands/goblet/circlet main-stat availability and the value of a much stronger
+    off-set piece can change which slot should be free;
+  - candidate generation should use set-count constraints / dynamic search and
+    retain top-K whole builds, never a post-hoc "remove weakest artifact" rule.
+- Do not rank real builds only by Euclidean closeness to the optimized total
+  substat vector. Around each theoretical config, estimate character-specific
+  marginal team-DPS value for one additional roll of each relevant stat by
+  controlled GCSIM perturbations, preserve discontinuous ER/burst-readiness
+  thresholds explicitly, use those weights for cheap candidate ranking, and
+  still verify retained joint assignments with full GCSIM runs.
+- Automatic set search is required; fixed/current sets should be only a fast
+  mode, not the product ceiling. Use a staged outer set/main-stat search:
+  1. derive only set/main-stat templates that are actually feasible from the
+     account inventory, including 4p, 2p+2p, and off-piece shapes;
+  2. compare set-team templates under a common roll budget, rerunning theoretical
+     substat optimization for each retained template rather than swapping set
+     names at a fixed `100/200` stat line;
+  3. use low-iteration GCSIM screening plus beam/coordinate/restart search to
+     retain promising combinations of four characters' sets;
+  4. fit real artifacts jointly and run higher-iteration full simulations only
+     for the best actual no-conflict assignments;
+  5. expose search budgets/modes such as fixed sets versus automatic bounded
+     set search, while reporting all automatic results as `best_found`.
+- A fixed `100/200` comparison can be a cheap diagnostic for one set swap, but
+  it is biased: set stat bonuses, ER thresholds, conditional uptime, duplicate
+  team buffs/debuffs, reaction ownership, and changed optimal main/substats all
+  affect the result. The meaningful comparison unit is a full four-character
+  set template with substats re-optimized and the actual rotation simulated.
+- Cache identity must cover at least engine hash/version, source config and
+  rotation, target/scenario, simulation options/iterations, account inventory
+  snapshot identity, and the complete per-character artifact-id assignment.
+  Changing any of these makes an optimization result stale.
+- Backend result contract should preserve rank/team sim DPS/baseline delta and,
+  for every character, stable character id, five artifact ids by position,
+  set counts, raw/normalized stat totals, source config identity, warnings, and
+  enough provenance to recreate an `ArtifactBuildSnapshot`. Optimization must
+  not silently equip artifacts or mutate existing presets.
+- Future UI/preset ideas to preserve:
+  - a results window/overlay with one row per character, character identity,
+    the five selected artifact cards, active sets/stats, and a per-row
+    `Save preset` action;
+  - optional `Save all presets` only after all four rows pass uniqueness and
+    storage validation;
+  - preset names should clearly include the optimized character, team/config
+    identity, `gcsim-best`, and rank, following a deterministic collision-safe
+    naming policy. The user's example direction is
+    `kinich_bennett_iansan-...-gcsim_best_option`; final slug/order rules remain
+    a UI/storage decision;
+  - saving uses the existing Artifact Browser build-preset service for the
+    corresponding character. It does not auto-equip, overwrite an existing
+    preset, or hide conflicts without explicit user action;
+  - show baseline vs optimized sim DPS and state clearly that the result is the
+    best evaluated account option for this exact rotation/scenario, not a
+    universal character build.
+- Durable architecture/current-engine notes live in
+  `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`. While PvP UI work is active,
+  keep this backend work under `run_workspace/gcsim/` and do not refactor
+  AppShell or build the final results UI yet.
 
 ## 13. Offline Profile
 

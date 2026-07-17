@@ -544,16 +544,18 @@ Important direction:
   Detailed GCSIM research is in `docs/handoff/GCSIM.md` and current engine/UI
   state is in `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`; read them before
   implementing engine download, runner, config generation, or result parsing.
-- `run_workspace/artifact_optimizer/`: isolated read-only real-account artifact
-  search backend. It supports fixed/excluded/equipped/main-stat filters,
-  minimum stats and 4p/2p+2p set counts, deterministic top-K, branch/range/set
-  pruning, explicit `exact` versus `best_found` diagnostics, conversion back to
-  `ArtifactBuildSnapshot`, and an optional expensive final-evaluator rerank
-  seam. Its raw weighted-stat objective does not apply set effects, passives,
-  reactions, rotations, or enemy assumptions. GCSIM's theoretical substat
-  optimizer is not a substitute for this real-artifact-id search. Read
-  `docs/handoff/ARTIFACT_OPTIMIZER.md` before optimizer work; do not wire it
-  into AppShell while the parallel PvP UI pass is active.
+- Future account artifact optimization belongs inside the GCSIM application
+  boundary, not in a separate raw-stat optimizer package. The product target is
+  one joint four-character assignment of real account artifact ids for an exact
+  prepared rotation/scenario, with global no-reuse and whole-team sim DPS as
+  the objective. Upstream `-substatOptimFull` optimizes theoretical substat
+  allocation after team/weapons/sets/main stats/rotation are chosen; it does
+  not consume inventory or return artifact ids. Use it as a theoretical target
+  generator, then perform bounded external joint candidate search and ordinary
+  GCSIM evaluation. The first prototype should be an application-side helper,
+  not a new engine patch unless a compatibility/performance smoke proves one is
+  necessary. Detailed contract and future preset-result UI ideas are in TODO
+  section 12 and `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`.
 - Before coding new History, DPS Dummy GCSIM result persistence, or the production
   AppShell switch, read `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. The
   next Run Workspace stage is typed run/session state plus immutable Abyss/DPS

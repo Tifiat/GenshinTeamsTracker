@@ -264,7 +264,9 @@ MVP recommendation:
 
 - Do not depend on GCSIM default/standard builds for first integration.
 - First generate configs from the user's selected account/build data.
-- Treat `-substatOptimFull` as a later research feature for account-independent estimates or bot heuristics.
+- For the account-inventory optimization follow-up, use
+  `-substatOptimFull` as a theoretical ER/damage substat target for an exact
+  prepared config, not as a real-artifact resolver.
 
 Risk:
 
@@ -325,21 +327,33 @@ Needs follow-up:
 Confirmed:
 
 - GCSIM has substat optimizer functionality.
-- It can run simulations repeatedly with custom stat allocation logic.
+- It can run simulations repeatedly with custom stat allocation logic across
+  the characters in the prepared team.
 - It is available via CLI, not web, according to docs.
-- It can output an optimized config, not a selected list of account artifact ids.
+- Upstream source explicitly assumes the user has already selected the team,
+  weapons, artifact sets/main stats, and rotation. It optimizes ER and other
+  abstract substat counts, then outputs optimized `add stats` config lines.
+- It cannot consume an account inventory or output a selected list of real
+  artifact ids. It does not own cross-character artifact uniqueness.
+- Fixed `add set` counts are part of the prepared config, and GCSIM applies the
+  modeled set effects during candidate simulations.
 
 Unconfirmed:
 
 - No complete account artifact inventory optimizer was confirmed.
 - No direct GOOD/Artiscan artifact inventory search API was confirmed in this pass.
 
-MVP recommendation:
+Current direction:
 
-- Do not use optimizer in the first GCSIM integration.
-- Later, test optimizer only in DPS Dummy workspace with explicit warnings:
-  - "best found / simulated estimate", not "absolute optimum".
-  - Separate from the user's real selected artifact build.
+- Use `-substatOptimFull` first as a theoretical target/profile generator for
+  the exact prepared rotation/config.
+- Build an external application-side joint inventory search that assigns real
+  artifacts to all four characters without reuse and evaluates retained whole-
+  team candidates through normal GCSIM runs.
+- A first prototype should not patch the Go engine. Add a helper/runner and
+  compatibility smoke; patch only for a proven blocker.
+- Report "best evaluated account option for this config", not an unconditional
+  absolute optimum.
 
 Risk:
 
@@ -348,8 +362,11 @@ Risk:
 
 Needs follow-up:
 
-- Inspect `pkg/optimization` more deeply when optimizer becomes a concrete feature.
-- Determine whether Genshin Optimizer export/import paths in the web UI can help bridge real artifact inventories, but do not assume it.
+- Design the bounded joint candidate-search strategy and cache identity; a
+  naive Cartesian simulation is impossible.
+- Decide which viable set/main-stat templates enter the first search budget.
+- Add typed result-to-build-preset save APIs only after the optimizer result
+  contract is stable.
 
 ## 9. Output / Result Parsing
 
@@ -497,10 +514,11 @@ MVP recommendation:
 Not MVP:
 
 - Full Abyss simulation.
-- Account artifact optimization inside the GCSIM integration itself. A separate
-  real-account backend now exists in `run_workspace/artifact_optimizer/`; see
-  `docs/handoff/ARTIFACT_OPTIMIZER.md`. GCSIM may later rerank its bounded top-M
-  candidates, but its theoretical substat optimizer does not select real ids.
+- Joint real-account artifact optimization. It is now the explicit follow-up
+  described in `GCSIM_ENGINE_INTEGRATION_PLAN.md`: upstream substat optimization
+  supplies theoretical guidance, while an external application-side search
+  owns real ids, global no-reuse, candidate generation, and bounded GCSIM
+  evaluation.
 - Automatic rotation generation.
 - KQM/default build guessing.
 - Weapon/artifact recommendation scraping.

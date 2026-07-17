@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from PySide6.QtCore import QEvent, QMargins, QPoint, QRect, QRectF, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
+from PySide6.QtGui import QBrush, QColor, QLinearGradient, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QWidget
 
 from ui.utils.hidpi_pixmap import (
@@ -57,6 +57,7 @@ class PixelIconGridOutline:
     badge_fill_alpha: int = UI_SELECTION_BADGE_FILL_ALPHA
     badge_text_color: str = UI_TEXT_ON_ACCENT
     font_size: int = 10
+    right_color: str = ""
 
 
 @dataclass(frozen=True)
@@ -510,11 +511,27 @@ class PixelIconGrid(QWidget):
             int(round(outline.overhang * self._layout.dpr)),
             int(round(outline.overhang * self._layout.dpr)),
         )
+        logical_frame = _logical_rect(frame, self._layout.dpr)
         pen_color = QColor(outline.color)
         pen_color.setAlpha(max(0, min(255, int(outline.alpha))))
+        pen_brush = QBrush(pen_color)
+        if outline.right_color:
+            right_color = QColor(outline.right_color)
+            right_color.setAlpha(max(0, min(255, int(outline.alpha))))
+            gradient = QLinearGradient(
+                logical_frame.left(),
+                logical_frame.center().y(),
+                logical_frame.right(),
+                logical_frame.center().y(),
+            )
+            gradient.setColorAt(0.0, pen_color)
+            gradient.setColorAt(0.499, pen_color)
+            gradient.setColorAt(0.501, right_color)
+            gradient.setColorAt(1.0, right_color)
+            pen_brush = QBrush(gradient)
         painter.setPen(
             QPen(
-                pen_color,
+                pen_brush,
                 max(1.0, outline.width / self._layout.dpr),
                 Qt.PenStyle.SolidLine,
                 Qt.PenCapStyle.SquareCap,
@@ -528,7 +545,7 @@ class PixelIconGrid(QWidget):
         else:
             painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(
-            _logical_rect(frame, self._layout.dpr),
+            logical_frame,
             outline.radius,
             outline.radius,
         )

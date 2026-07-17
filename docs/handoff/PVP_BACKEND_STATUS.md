@@ -1,6 +1,6 @@
 # PvP Backend Status
 
-Last updated: 2026-06-18.
+Last updated: 2026-07-17.
 
 Purpose: implementation-oriented status for the backend-only PvP v0 foundation.
 The stable product contract lives in `PVP_V0_CONTRACT.md`. Ruleset/source
@@ -67,9 +67,14 @@ Draft board v0:
   available. The UI converts remaining clock to elapsed seconds before result
   finalization through `set_match_timers(...)`; backend `ChamberTimer` identity
   and lower-elapsed-total winner semantics remain unchanged.
-- Decks exposes `.gttpvp` export, and Play exposes per-seat profile import/local
-  provider selection. Imported packages stay in a managed temporary provider
-  and are never restored into the main application database.
+- Decks exposes a development `.gttpvp` export action, and Play exposes per-seat
+  profile import/local provider selection. Imported packages stay in a managed
+  temporary provider and are never restored into the main application database.
+  This is not yet a finalized/share-safe profile format: export copies the full
+  DB before filtering only a subset of account rows, bitmap assets are absent,
+  SQLite/deck/asset integrity is not fully validated, and Draft still uses one
+  host portrait map. The authoritative gap/target is
+  `PVP_PROFILE_PACKAGE.md`.
 - Decks/Play/Draft v0 do not persist sessions/history and do not mutate normal
   TeamBuilder/Run state.
 - Abyss-period match admission is still a backend gap. Future local matches
@@ -247,6 +252,8 @@ Recommended local checks:
 
 Still out of scope / not implemented:
 
+- finalized two-seat provider with independent seat visual-asset maps;
+- portable/privacy-allowlisted `.gttpvp` export and full package validation;
 - scoped PvP artifact equipment context and executable scoped PvP GCSIM routing
   against the local/imported provider boundary;
 - online/P2P/relay transport;

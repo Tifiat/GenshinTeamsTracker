@@ -24,8 +24,8 @@ Mirror the primary project owner under `tests/`:
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Decks UI preset
   persistence/conversion and root-resolved default path coverage
   (`test_deck_preset.py`), observed weapon-stack identity helper coverage
-  (`test_weapon_identity.py`), PvP `.gttpvp` profile package/provider coverage
-  (`test_profile_package.py`), Free Draft
+  (`test_weapon_identity.py`), current development PvP `.gttpvp` envelope/temp
+  provider coverage (`test_profile_package.py`), Free Draft
   schedule/reducer/action log, team/weapon assignment validation, and
   timer/result behavior, local-account deck export provider/report behavior,
   draft-system registry behavior, deterministic Free Draft planner/account
@@ -106,7 +106,9 @@ Mirror the primary project owner under `tests/`:
   `PixelIconGrid` pool rather than QWidget/text cards, image paths for pool and
   result items, opposite-side P1/P2 constellation badges, legal-only click
   routing, removal of accepted targets from the pool, the full 22-position
-  order strip, fixed 72x72 draft-order slots that reflow vertically without
+  order strip, owner-colored frames independent of active turn, split Player 1
+  left / Player 2 right frames for shared cards, owner badges retained on
+  disabled cards, fixed 72x72 draft-order slots that reflow vertically without
   overlapping the central turn board at narrow/medium/wide widths, no tiny
   action labels inside order slots, right-panel pick/ban grids built through
   the same item adapter, uncluttered result portraits without pool ownership overlays, and a
@@ -168,6 +170,12 @@ Mirror the primary project owner under `tests/`:
   transition test installs an application event filter and rejects every newly
   shown top-level QWidget; this covers parentless `setVisible(true)` regressions
   that a `setParent(None)`-only assertion misses.
+  Future finalized profile-package coverage must additionally prove two
+  providers can expose the same character id with different constellation/image
+  data, deterministic player-scope/shared Pick/shared Ban image selection,
+  allowlisted SQLite/privacy contents, asset portability after source deletion,
+  deck/DB/asset/hash validation, managed cleanup, and zero mutation of the main
+  DB/local deck directory. See `PVP_PROFILE_PACKAGE.md`.
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.

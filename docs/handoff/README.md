@@ -24,6 +24,9 @@ Current maps:
 - `PVP_UI_ROADMAP.md` - PvP AppShell/UI roadmap: Decks-first direction,
   left/main vs right-panel split, local Play setup, unified-pool Draft target,
   current v0 stages, and target scoped PvP build flow.
+- `PVP_PROFILE_PACKAGE.md` - canonical second-player provider and portable
+  `.gttpvp` package handoff: current prototype gaps, seat-specific image rules,
+  privacy/import boundaries, and the ordered path to a second-account archive.
 - `PVP_REFERENCE_SITE_AUDIT.md` - Abyss Draft and Gentor reference-site findings used by the PvP v0 contract.
 - `PVP_MODE_PLAN.md` - PvP planning history for local hot-seat Free Draft, deck JSON, future relay lobby, roadmap, risks, and resolved/open questions.
 - `PVP_RULESETS_AUDIT.md` - PvP/tournament ruleset source audit.

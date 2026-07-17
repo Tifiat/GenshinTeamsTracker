@@ -50,6 +50,7 @@ from ui.right_panel.pvp._shared import (
     PVP_PAGE_DRAFT,
     PVP_PAGE_PLAY,
     PVP_POSTDRAFT_HEADER_HEIGHT,
+    build_pvp_draft_grid_item,
 )
 from ui.right_panel.common.slot_card import RightPanelSlotCardWidget
 from ui.right_panel.common.seat_accent_frame import PvpSeatAccentFrame
@@ -549,6 +550,13 @@ class PvpBrowserTest(unittest.TestCase):
         self.assertIn("20000000", draft.pool_items_by_character_id)
         shared_item = draft.pool_items_by_character_id["20000000"]
         self.assertTrue(shared_item.properties["sharedOwner"])
+        self.assertIsNotNone(shared_item.outline)
+        self.assertEqual(shared_item.outline.color, pvp_player_color("player_1"))
+        self.assertEqual(
+            shared_item.outline.right_color,
+            pvp_player_color("player_2"),
+        )
+        self.assertEqual(shared_item.outline.fill_alpha, 0)
         self.assertEqual({badge.text for badge in shared_item.badges}, {"C6"})
         self.assertEqual(
             {badge.position for badge in shared_item.badges},
@@ -628,6 +636,87 @@ class PvpBrowserTest(unittest.TestCase):
         QApplication.processEvents()
         self.assertTrue(draft_panel.title_label.isHidden())
         self.assertTrue(draft_panel.action_frame.isHidden())
+
+    def test_pvp_draft_pool_card_frame_encodes_owner_not_active_turn(self) -> None:
+        p1_color = pvp_player_color("player_1")
+        p2_color = pvp_player_color("player_2")
+        cases = (
+            (
+                "p1-only",
+                ["player_1"],
+                "player_2",
+                True,
+                (("C1", "bottom_left", p1_color),),
+            ),
+            (
+                "p2-only",
+                ["player_2"],
+                "player_1",
+                False,
+                (("C5", "bottom_right", p2_color),),
+            ),
+            (
+                "shared",
+                ["player_1", "player_2"],
+                "player_2",
+                True,
+                (
+                    ("C1", "bottom_left", p1_color),
+                    ("C5", "bottom_right", p2_color),
+                ),
+            ),
+        )
+        for character_id, owner_seats, active_seat, legal, expected_badges in cases:
+            with self.subTest(character_id=character_id):
+                entry = {
+                    "character_id": character_id,
+                    "display_name": character_id,
+                    "owner_seats": owner_seats,
+                    "active_seat": active_seat,
+                    "is_current_legal_target": legal,
+                    "zone": "pool",
+                    "per_seat": {
+                        "player_1": {"constellation": 1},
+                        "player_2": {"constellation": 5},
+                    },
+                    "action": (
+                        {"type": "pick_character", "character_id": character_id}
+                        if legal
+                        else None
+                    ),
+                }
+                item = build_pvp_draft_grid_item(
+                    entry,
+                    portrait_path="portrait.png",
+                )
+                entry["active_seat"] = (
+                    "player_1" if active_seat == "player_2" else "player_2"
+                )
+                opposite_turn_item = build_pvp_draft_grid_item(
+                    entry,
+                    portrait_path="portrait.png",
+                )
+
+                owner_colors = tuple(pvp_player_color(seat) for seat in owner_seats)
+                self.assertIsNotNone(item.outline)
+                self.assertEqual(item.outline.color, owner_colors[0])
+                self.assertEqual(
+                    item.outline.right_color,
+                    owner_colors[1] if len(owner_colors) > 1 else "",
+                )
+                self.assertEqual(item.outline.fill_alpha, 0)
+                self.assertEqual(item.outline, opposite_turn_item.outline)
+                self.assertEqual(item.badges, opposite_turn_item.badges)
+                self.assertEqual(
+                    tuple(
+                        (badge.text, badge.position, badge.color)
+                        for badge in item.badges
+                    ),
+                    expected_badges,
+                )
+                self.assertEqual(item.properties["ownerP1"], "player_1" in owner_seats)
+                self.assertEqual(item.properties["ownerP2"], "player_2" in owner_seats)
+                self.assertEqual(item.properties["sharedOwner"], len(owner_seats) > 1)
 
     def test_pvp_draft_legal_click_applies_one_backend_action(self) -> None:
         workspace, _panel = self._started_draft_workspace(character_count=12)

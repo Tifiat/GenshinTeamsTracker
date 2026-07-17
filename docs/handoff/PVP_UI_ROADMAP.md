@@ -41,9 +41,12 @@ remains in `PVP_BACKEND_STATUS.md`.
   normal TeamBuilder / Run state unless a future explicit bridge is designed.
 - Post-draft Assignment, Weapon assignment, Timers/results, and read-only
   completed result summary v0 are implemented for local hot-seat matches.
-  Profile package import/export actions are also available. Artifact Browser
-  routing, executable scoped PvP GCSIM, online play, ruleset costs, immune
-  picks, result PNG/export, and PvP History are still not implemented.
+  Development-only profile package import/export actions are also available,
+  but the current package is not yet portable, privacy-safe, or a finalized
+  exchange schema. Artifact Browser routing, executable scoped PvP GCSIM,
+  online play, ruleset costs, immune picks, result PNG/export, and PvP History
+  are still not implemented. Package/provider truth lives in
+  `PVP_PROFILE_PACKAGE.md`.
 
 ## Core Model
 
@@ -110,11 +113,13 @@ scoped instance of the normal live-run build pipeline:
   never mutates normal account equipment. Imported/future remote players read
   source data from their `.gttpvp` package while still receiving a fresh PvP
   runtime equipment state for the current match.
-- The PvP profile package format is `.gttpvp`, a versioned ZIP containing
-  `manifest.json`, `decks.json`, and `account_slice.sqlite`. It is not `.npz`:
-  NumPy adds no useful contract here. Import must validate archive entries and
-  materialize only the SQLite member to a managed temp path, not unpack an
-  arbitrary folder tree.
+- `.gttpvp` is the intended versioned ZIP container. The current internal v1
+  prototype contains `manifest.json`, `decks.json`, and
+  `account_slice.sqlite`; its buttons and version number do not make it the
+  finalized public schema. It is not `.npz`: NumPy adds no useful contract
+  here. Import must validate archive entries and materialize only validated
+  provider data/assets to a managed temp path, not unpack an arbitrary folder
+  tree.
 - Target `.gttpvp` packages contain deck presets, a deduplicated account slice
   for characters/weapons/artifacts/presets used by those decks, and the bitmap
   assets needed for autonomous display on another machine. Current package
@@ -251,14 +256,19 @@ Card identity and presentation note:
 - The earlier risk with one shared visual card was ambiguity, not a rule that
   opponent images are forbidden. A shared card is acceptable when it has
   explicit ownership markers and per-seat metadata.
-- If a character belongs to both players, preserve the displayed/base
-  HoYoLAB constellation badge and add the other player's constellation/ownership
-  badge on the opposite corner. Use split/two-color ownership styling or another
-  clear dual-owner marker without hardcoding final colors here.
-- Future local/export/online paths may provide or resolve images by
-  `character_id`, but draft/session logic must work without image paths. Prefer
-  local cache, bundled/common fallback icons, or client-side asset resolution;
-  do not assume a future server hosts images.
+- Ownership styling never follows the active turn. A Player-1-only card has a
+  full Player 1 frame and left constellation badge; a Player-2-only card has a
+  full Player 2 frame and right badge; a shared card has a frame split Player 1
+  on the left / Player 2 on the right and both badges on their corresponding
+  sides.
+- Per-seat images are presentation data resolved by the seat provider. Player
+  scope tabs show that player's image. In the unified pool, a single-owner card
+  uses its owner's image; a shared Pick uses the acting player's image and a
+  shared Ban uses the opponent's image. The full fallback/result-zone rules and
+  package boundary live in `PVP_PROFILE_PACKAGE.md`.
+- Draft/session logic must work without image paths. Prefer package/local cache,
+  bundled/common fallback icons, or client-side asset resolution; do not assume
+  a future server hosts images.
 
 ## Play / Local Match Setup
 
@@ -346,9 +356,11 @@ Current v0 scope:
   The pool reuses the same `CharacterFilterBar` as the normal AppShell
   Characters workspace, so element, weapon type, rarity, trait, and Standard
   filters have one implementation and one behavior contract.
-- Pool portraits carry Player 1/Player 2 constellation badges on opposite
-  sides. Legal portraits use the active seat accent and accept the backend
-  action payload; illegal portraits are dimmed and non-clickable.
+- Pool portraits encode ownership, not the current turn: single-owner frames
+  use that owner's color, shared frames split Player 1 left / Player 2 right,
+  and constellation badges stay on their seat's side. Legal portraits accept
+  the backend action payload; illegal portraits are dimmed and non-clickable
+  without losing their ownership frame.
 - A painted 22-position order strip flattens the backend `timeline`. Draft
   order slots have a fixed visual size of 72x72 and must never shrink below
   the character-card size. If the window is too narrow, the strip grows
@@ -377,7 +389,8 @@ Current v0 scope:
 - Current v0 skips Artifact equipment and scoped PvP GCSIM, but the target
   architecture must prepare right-panel slots/stages for them.
 - Online mode, ruleset cost rendering, immune picks, session files, PvP History
-  writes, and export are not implemented in current v0.
+  writes, and result export are not implemented in current v0. The separate
+  profile-package prototype exists but is not a finalized portable export.
 
 ## Team Assignment
 
@@ -690,6 +703,7 @@ Right-panel architecture status before more PvP growth:
 
 Current v0 limitations / later work:
 
+- finalized two-seat provider and portable/privacy-safe profile package;
 - online;
 - History;
 - PNG/export result card;

@@ -3,8 +3,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from PySide6.QtCore import QEvent, QPoint
-from PySide6.QtGui import QPixmap
+from PySide6.QtCore import QEvent, QPoint, QRect, Qt
+from PySide6.QtGui import QColor, QPainter, QPixmap
 from PySide6.QtWidgets import QApplication
 
 from ui.utils.hidpi_pixmap import HidpiPixmapResult
@@ -124,11 +124,43 @@ class PixelIconGridLayoutTest(unittest.TestCase):
 
             updated = grid.update_item(
                 "a",
-                outline=PixelIconGridOutline(color="#35d07f"),
+                outline=PixelIconGridOutline(
+                    color="#35d07f",
+                    right_color="#4e91ff",
+                ),
             )
 
         self.assertTrue(updated)
         self.assertEqual(load.call_count, 1)
+
+    def test_split_outline_paints_left_and_right_owner_colors(self) -> None:
+        canvas = QPixmap(80, 80)
+        canvas.fill(Qt.GlobalColor.transparent)
+        grid = PixelIconGrid(metrics=PixelIconGridMetrics(item_width=72))
+        painter = QPainter(canvas)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+        try:
+            grid._draw_outline(
+                painter,
+                PixelIconGridOutline(
+                    color="#16c7e8",
+                    right_color="#d8ed35",
+                    width=4,
+                    radius=0,
+                    alpha=255,
+                ),
+                QRect(4, 4, 72, 72),
+            )
+        finally:
+            painter.end()
+
+        image = canvas.toImage()
+        left = QColor("#16c7e8")
+        right = QColor("#d8ed35")
+        for point in (QPoint(5, 40), QPoint(20, 5)):
+            self.assertEqual(image.pixelColor(point), left, point)
+        for point in (QPoint(74, 40), QPoint(60, 5)):
+            self.assertEqual(image.pixelColor(point), right, point)
 
     def test_badge_only_update_does_not_reload_pixmaps(self) -> None:
         grid = PixelIconGrid(metrics=PixelIconGridMetrics(item_width=72, gap_x=2))

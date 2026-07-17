@@ -600,21 +600,14 @@ def build_pvp_draft_grid_item(
     owner_seats = _owner_seats(entry)
     per_seat = _mapping(entry.get("per_seat"))
     legal = bool(entry.get("is_current_legal_target")) and not result_zone
-    active_seat = _text(entry.get("active_seat"))
-    result_owner = result_seat or _text(entry.get("picked_by")) or _text(entry.get("banned_by"))
-    accent_seat = active_seat if legal else result_owner
-    player_accent = pvp_player_color(
-        accent_seat if accent_seat in PVP_SEATS else "player_1"
-    )
-    accent = PVP_DRAFT_BAN_ACCENT if result_zone == "banned" else player_accent
     outline = None
-    if legal:
+    if not result_zone and owner_seats:
+        owner_colors = tuple(pvp_player_color(seat) for seat in owner_seats)
         outline = PixelIconGridOutline(
-            color=accent,
+            color=owner_colors[0],
+            right_color=(owner_colors[1] if len(owner_colors) > 1 else ""),
             width=3,
             radius=5,
-            fill_color=accent,
-            fill_alpha=24,
         )
     badges: list[PixelIconGridBadge] = []
     if not result_zone:

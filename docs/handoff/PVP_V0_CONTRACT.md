@@ -303,10 +303,11 @@ Character and weapon identity is data-first:
 - images, portraits, icons, and badges are optional presentation assets;
 - draft/session logic and validation must work without image paths.
 
-Allowed future presentation paths:
+Allowed presentation paths:
 
 - local v0 can resolve images from the host account/catalog assets;
-- export bundles may later include visual assets or an asset manifest;
+- portable profile packages must include required visual assets through a
+  package-relative asset manifest;
 - future online opponent decks may provide optional visual refs/assets;
 - a bundled/common PvP icon pack keyed by `character_id` is allowed.
 
@@ -314,10 +315,12 @@ Do not assume a future server hosts images. Prefer local cache, bundled/common
 fallback assets, or client-side asset resolution unless a later online design
 proves server-hosted media is needed.
 
-The main shared-card risk is visual ambiguity: a HoYoLAB constellation badge on
-one corner can be confused with the other player's constellation. A unified
-draft card is acceptable when it exposes explicit owner markers and places the
-second player's constellation/ownership badge separately.
+Ownership styling must not follow the active turn. A Player-1-only card uses a
+Player 1 frame and left constellation badge; a Player-2-only card uses a Player
+2 frame and right badge; a shared card splits the outer frame Player 1 on the
+left / Player 2 on the right and places both constellation badges on their
+corresponding sides. Seat-specific image selection for shared Pick/Ban actions
+is defined in `PVP_PROFILE_PACKAGE.md`.
 
 ## Deck Validation
 
@@ -561,12 +564,16 @@ PvP profile/provider model:
 - imported or future remote players use a scoped provider backed by a managed
   temporary SQLite database for source data plus a fresh scoped runtime
   equipment state for the match;
-- `.gttpvp` is the PvP profile package format. It is a versioned ZIP with
-  `manifest.json`, `decks.json`, and `account_slice.sqlite`;
-- package export deduplicates characters/weapons across selected deck presets
-  and keeps identity data-first;
-- package import validates archive entries and materializes only the SQLite DB
-  member to a temp path. It must not restore into the main app database.
+- `.gttpvp` is the intended versioned PvP profile container. The current
+  internal v1 ZIP (`manifest.json`, `decks.json`, `account_slice.sqlite`) is a
+  development prototype, not a stable/share-safe public contract;
+- the finalized exporter must construct an explicit minimal allowlisted data
+  slice and package-relative asset manifest instead of copying the full app DB;
+- package import must validate the archive, hashes, SQLite schema/integrity,
+  deck references, and assets before materializing a managed temporary
+  provider. It must not restore into the main app database;
+- the canonical implementation/status detail is
+  `PVP_PROFILE_PACKAGE.md`.
 
 The restricted PvP roster must still use stable backend identity:
 `character_id` for characters and the observed weapon-stack identity contract
@@ -665,6 +672,12 @@ When implementation starts, add tests before or alongside UI:
   data only in the manual smoke command.
 - session bundle JSON roundtrip and verifier replay checks for tampered actions,
   hashes, missing decks, and unknown draft systems.
+- two seat providers with the same character id but different constellation and
+  image data, deterministic Player-scope/shared Pick/shared Ban image selection,
+  and ownership styling that does not change with the active seat.
+- portable profile package privacy/schema allowlisting, asset portability,
+  cross-reference/hash validation, cleanup, and proof that import never mutates
+  the main DB or local deck directory.
 - ruleset/balance application reports for id/fallback/unmatched mapping,
   character and weapon costs, unsupported/report-only ruleset features, and
   compact session-bundle summaries.
@@ -700,9 +713,8 @@ Stage C: deck JSON import and sample deck fixtures.
 - Allow development flow where Player 2 receives a copied/manually edited deck
   JSON.
 - Do not require deck builder UI before reducer work.
-- Status: JSON loading, synthetic sample fixtures, and backend local-account
-  Free Draft export are implemented; deck builder/exporter UI remains future
-  work.
+- Status: JSON loading, synthetic sample fixtures, backend local-account Free
+  Draft export, and Decks preset UI are implemented.
 
 Stage D: Free Draft v0 reducer/action log.
 
@@ -739,24 +751,27 @@ Stage F: Free Draft controller/projection backend.
   initial, after-two-actions, and final/result board states. Board projection
   dictionaries can be checked with
   `validate_free_draft_board_projection_dict(...)`.
-- Next UI step: refactor the Draft workspace to consume `unified_pool` for the
-  readable visual pool and right-panel pick/ban zones.
+- The current Draft UI consumes this `unified_pool` for the readable visual pool
+  and right-panel pick/ban zones.
 
 Stage G: local hot-seat UI.
 
 - Setup.
-- Draft board, currently playable through the full schedule as an intermediate
-  per-seat technical board.
-- Future readable Draft UI: unified character pool plus right-panel picks/bans.
+- Readable unified-pool Draft board plus right-panel picks/bans.
 - Team/weapon assignment.
 - Timer/result summary.
+- Status: implemented as a playable local hot-seat loop through read-only
+  result summary. Artifact equipment, scoped GCSIM, History, and result export
+  remain later stages.
 
 Stage H: deck builder/exporter UI.
 
 - Build a deck from the existing imported account characters/weapons.
 - Validate under Free Draft and later rulesets.
-- Export deck JSON.
-- Status: backend account export exists; no UI/deck-builder surface is wired.
+- Export deck/profile data.
+- Status: Decks preset UI and a development `.gttpvp` button/provider exist.
+  Finalized two-seat schema plus portable/privacy-safe profile export/import are
+  still the next stage; see `PVP_PROFILE_PACKAGE.md`.
 
 Stage I: iterate toward offline PvP MVP.
 

@@ -444,7 +444,10 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
 
         self.assertEqual(summary.schema_version, "")
         self.assertEqual(summary.sim_version, "")
+        self.assertIsNone(summary.iterations)
         self.assertIsNone(summary.dps_mean)
+        self.assertIsNone(summary.dps_sd)
+        self.assertIsNone(summary.dps_se)
         self.assertIsNone(summary.duration_mean)
         self.assertIsNone(summary.total_damage_mean)
         self.assertEqual(summary.warnings, ())
@@ -457,7 +460,8 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
                 "schemaVersion": "2",
                 "simVersion": "v-test",
                 "statistics": {
-                    "dps": {"mean": "10.5"},
+                    "iterations": "16",
+                    "dps": {"mean": "10.5", "sd": "2"},
                     "duration": {"mean": 3},
                     "totalDamage": {"mean": "31.5"},
                     "failedActions": [{"line": 1}],
@@ -468,7 +472,10 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
 
         self.assertEqual(summary.schema_version, "2")
         self.assertEqual(summary.sim_version, "v-test")
+        self.assertEqual(summary.iterations, 16)
         self.assertEqual(summary.dps_mean, 10.5)
+        self.assertEqual(summary.dps_sd, 2.0)
+        self.assertEqual(summary.dps_se, 0.5)
         self.assertEqual(summary.duration_mean, 3.0)
         self.assertEqual(summary.total_damage_mean, 31.5)
         self.assertEqual(summary.failed_actions, ('{"line": 1}',))

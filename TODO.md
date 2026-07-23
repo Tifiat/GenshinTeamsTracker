@@ -419,14 +419,94 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Research whether this data is actually KQM standards, where it is stored, whether it can be used legally/technically, and what it contains: artifacts, talents, weapons, rotations, assumptions.
 - Future uses: simulator fallback, draft bot, account-independent team estimates, comparing user builds to standard baseline.
 
-## 12. GCSIM Account Artifact Optimizer
+## 12. GCSIM Set Targets and Selected-Set Artifact Optimizer
 
-- Product goal: for one already-prepared GCSIM simulation identity (the full
-  four-character team, weapons, talents, constellation/refinement, rotation,
-  target/scenario, energy/options, and engine version), find the best simulated
-  team configuration that can actually be equipped from all artifacts in the
-  local account database. The result must assign five real artifact ids to
-  every character and must never reuse one artifact across two characters.
+- Implementation status (2026-07-23): the theoretical heuristic `4p only` path
+  is executable end to end, but it is not yet a release-reliable product and the
+  real-account selected-set operation is still unimplemented.
+  Existing code now has:
+  - exact 5-star theoretical main-stat rendering and mixed 4-star-only 4p + one
+    explicit 5-star offpiece across all five slots;
+  - validated full-team/one-wearer 4p set overrides and a bound candidate API;
+  - a source-backed engine-scoped catalog that distinguishes complete 2p+4p
+    packages, excludes comments/tests, records rarity/required set params, and
+    currently exposes 46 optimizer-ready pinned packages (47 complete modeled;
+    Husk is held out until a frozen `stacks` policy exists);
+  - strict manifest tree + executable SHA + catalog binding and a pinned
+    `gcsim-v2.42.2` renderer contract;
+  - a cancellable two-stage `-substatOptim` -> ordinary-sim `Popen` runner with
+    typed diagnostics/timeouts, below-normal Windows priority, explicit workers,
+    `GOMAXPROCS`, and semantic result validation;
+  - iterations/DPS SD/SE parsing and a content-addressed atomic persistent cache;
+  - an immutable proof-carrying materialization/evaluation boundary, private
+    executable snapshots, exact frozen process environment, a cancellable CPU-
+    bounded ordinary-sim scheduler, and hard stage/overall budgets;
+  - a generic equal-roll response scan, complete supported 4p physical coverage,
+    recall-first survivor selection, and bounded full-team coordinate/beam/exact-
+    pair composition with deterministic `best_found` provenance;
+  - `farming_advisor.py`, which executes response discovery and then the cheap
+    set/team race without requiring the caller to guess per-character profiles.
+    With one carried layout/profile per wearer the base domain is 312 physical
+    states: `4 * (38 five-star packages + 8 four-star packages * 5 offpieces)`;
+  - an experimental `farming_layout_scan.py`: it reduces the
+    legal 420 sands/goblet/circlet combinations per wearer through 22 generic
+    one-slot coordinate layouts, keeps bounded values per slot, and evaluates a
+    small Cartesian finalist set without character-name hardcodes;
+  - `farming_auto_advisor.py`, which wires layout scan -> response scan -> 4p
+    set/team screening under one wall-clock deadline. It returns heuristic
+    `best_found`, not a global-completion claim;
+  - `farming_finalist_optimizer.py`, which takes the canonical bounded
+    `FullTeamPhysicalState` prefix through real upstream `substatOptim` and a
+    separate ordinary static-target simulation with frozen workers, fixed
+    validation iterations, stage/overall deadlines, cancellation, exact persisted
+    output/hash evidence, canonical optimized top-N and per-wearer `add stats`.
+    The runner snapshots exact input/optimized/result bytes once, rejects evidence
+    changed during/after simulation, and rebinds input/cache identity to the frozen
+    request/state. Optimized output may change only the canonical substat row;
+    roll units, fixed/liquid totals, main-stat-aware caps and 4-star rarity are
+    checked against the pinned upstream contract;
+  - `farming_optimized_advisor.py`, which joins automatic layout/response/set-team
+    screening and the real finalist race under one cancellable outer deadline.
+  The active pinned v2.42.2 engine currently passes the strict manifest/tree/
+  executable/catalog trust check, and the full GCSIM unit suite passes 459 tests
+  in the project virtual environment. The repository-wide suite passes 1312
+  tests as of 2026-07-23. Its Qt teardown still emits two non-failing pre-existing
+  `CustomTooltipController.owner` traces from `ui/utils/tooltips.py`; that file
+  was outside this backend change and remains a separate UI cleanup.
+- Still missing before `Find set combinations` is a reliable final product:
+  set-aware response/main-layout refinement (the current scans learn on one
+  baseline physical state), cheap roll redistribution around set bonuses/caps,
+  adaptive higher-iteration reracing of close leaders, persistent cache wiring
+  for finalist runs, offline oracle/adversarial recall benchmarks, progress
+  callbacks and user-facing percent/delta/uncertainty/tie semantics over the
+  backend top-N. The real inventory candidate generator + joint no-reuse solver,
+  set-parameter policies such as Husk starting stacks, 2p+2p, preset-save adapter,
+  and UI also remain.
+- Reuse the existing selected-team/rotation/readiness/config boundary, active
+  engine runner/update store, stat normalization, Artifact SQLite inventory and
+  build summaries, Browser worker/session boundaries, and Artifact Browser preset
+  service. Do not create a parallel team/rotation source or a second preset store.
+- Accepted product split (2026-07-19): expose two separate operations for one
+  frozen team/rotation/static-target simulation identity:
+  1. `Find set combinations` is an equal-investment/farming advisor. It ignores
+     the account inventory, re-optimizes abstract substat rolls for retained
+     full-team set/main-stat candidates, and returns top-N theoretical set
+     combinations.
+  2. `Find artifacts for target sets` searches the real account only under the
+     four explicitly selected set packages. Targets may be loaded from a
+     theoretical result or edited manually. It returns real artifact ids with
+     global no-reuse and whole-team GCSIM validation.
+- These operations may be launched sequentially but are not one automatic
+  global-account optimizer. The account operation does not silently try every
+  other set, and the farming result does not consider current artifact quality.
+  This is deliberate: the user chooses which theoretical or known high-quality
+  off-meta set package is worth testing against the account.
+- `farming_advisor.py` remains the cheap screening half of operation 1 and its
+  caller supplies bounded main layouts. `farming_auto_advisor.py` adds automatic
+  bounded layout discovery. The one-call backend path is now
+  `farming_optimized_advisor.py`: it screens, then sends only its canonical
+  bounded finalists through the real upstream optimizer. Its fixed validation-
+  iteration top-N is still heuristic, not the later adaptive reliable product.
 - Current upstream contract is narrower than that goal. `-substatOptim` /
   `-substatOptimFull` optimize abstract KQM-style fixed/liquid substat counts
   for all characters in a prepared config. Upstream explicitly assumes the
@@ -438,23 +518,37 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   applies the modeled 2p/4p effects. The normal UI/stat snapshot still does not
   calculate those formulas itself, but the optimizer must use sim DPS from
   GCSIM rather than UI totals as its final objective.
-- First implementation should not require another Go engine patch. Add an
-  application-side optimizer runner/helper around the active artifact:
-  - copy the prepared config into an optimizer run directory because
-    `-substatOptimFull` overwrites its config input;
-  - extend or wrap the current hardcoded artifact-run command so it can invoke
-    the official optimizer flags/options and preserve stdout/config output;
-  - add a compatibility smoke for the current patched engine, first with DPS
-    Dummy/static targets and then with `gtt-wave-scenario`. Add a new engine
-    patch only if a concrete compatibility/performance blocker is proven.
-- `substatOptimFull` is useful as a theoretical target/profile generator, but
-  it cannot finish the account problem alone. The external joint optimizer must:
+- Phase 1 required no additional Go engine patch. The application-side bound
+  optimizer runner now:
+  - prefers `-substatOptim -out optimized.txt`, followed by a separate ordinary
+    sim of that optimized config. If `-substatOptimFull` is used for a smoke,
+    copy the prepared config into an isolated run directory because it overwrites
+    its config input;
+  - invokes the official optimizer flags/options and preserves stdout/config
+    output in an isolated run directory;
+  - runs the optimizer only against the pinned static single-target benchmark:
+    one target row, exactly one explicit `hp=999999999`, no `type=` profile that
+    could overwrite HP, and no GTT wave directive. Any disposable
+    `substatOptimFull` compatibility
+    smoke uses the same target. Do
+    not pass `gtt-wave-scenario` into the theoretical optimizer path and do not
+    add another engine patch merely to make that combination work. Regular
+    Abyss/wave simulations remain a separate product path; optimizer results
+    must be labelled as specific to their frozen static target;
+  - has a passing real-artifact static-target compatibility smoke. Add a new
+    engine patch only if a different concrete compatibility/performance blocker
+    is proven after measurement.
+- `substatOptim -out` is the preferred theoretical target/profile generator;
+  `substatOptimFull` is only a disposable compatibility smoke. Neither mode
+  directly decides which real artifacts are best. For the selected-
+  set account operation, the external joint optimizer must:
   1. freeze an immutable source simulation/config identity and a read-only
      artifact inventory snapshot for the whole run;
-  2. obtain theoretical per-character ER/damage stat directions from GCSIM for
-     the current set/main-stat assumptions;
-  3. generate bounded real five-artifact candidates for each character across
-     viable 4p, 2p+2p, off-piece, and main-stat templates;
+  2. accept one explicit target set package per character and obtain theoretical
+     ER/damage stat directions from GCSIM for those set/main-stat assumptions;
+  3. generate bounded real five-artifact candidates for each character only
+     under those target packages, including legal main-stat alternatives and
+     every possible off-piece slot;
   4. combine candidates jointly across all four characters while enforcing
      global artifact-id uniqueness. Do not optimize characters greedily one by
      one because that can waste a contested artifact and miss the best team;
@@ -481,19 +575,155 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   controlled GCSIM perturbations, preserve discontinuous ER/burst-readiness
   thresholds explicitly, use those weights for cheap candidate ranking, and
   still verify retained joint assignments with full GCSIM runs.
-- Automatic set search is required; fixed/current sets should be only a fast
-  mode, not the product ceiling. Use a staged outer set/main-stat search:
-  1. derive only set/main-stat templates that are actually feasible from the
-     account inventory, including 4p, 2p+2p, and off-piece shapes;
-  2. compare set-team templates under a common roll budget, rerunning theoretical
-     substat optimization for each retained template rather than swapping set
-     names at a fixed `100/200` stat line;
-  3. use low-iteration GCSIM screening plus beam/coordinate/restart search to
-     retain promising combinations of four characters' sets;
-  4. fit real artifacts jointly and run higher-iteration full simulations only
-     for the best actual no-conflict assignments;
-  5. expose search budgets/modes such as fixed sets versus automatic bounded
-     set search, while reporting all automatic results as `best_found`.
+- Set-combination search is the separate inventory-independent farming mode:
+  1. start from full four-character set/main-stat states, not independent final
+     per-character rankings;
+  2. cheaply screen a broad neighborhood with ordinary simulations, then rerun
+     the substat optimizer for retained set/main states so ER and other rolls are
+     redistributed before final ranking. Screening is recall-first and must not
+     leave raw stats unchanged for sets that grant crit/ER/ATK/etc.; use a cheap
+     proxy redistribution around caps/thresholds or retain those branches;
+  3. use coordinate/beam/multi-start search: try one-character set or one-slot
+     main-stat changes, retain several full-team states, repeat, and include
+     selected two-character changes so ownership transfers such as moving a
+     unique team-buff set are not trapped by a bad intermediate state;
+  4. output top-N with absolute sim DPS, percent of the best validated candidate,
+     delta, uncertainty/tie labeling, and the abstract main/substat allocation;
+  5. provide a fast `4p only` domain and an explicit `Include 2p+2p` option.
+     In equal-investment mode, collapse concrete 2p sets only when their exact
+     modeled 2p effect signatures are simulator-equivalent; keep the equivalent
+     names for display. Do not confuse this with inventory-mode equivalence;
+  6. search only complete `4p` or `2p+2p` packages. Explicitly exclude one
+     active `2p` plus three unmatched pieces, as well as zero-active-bonus/
+     rainbow packages, from the product search domain;
+  7. report all results as `best_found` for the stated search budget.
+- Backend checkpoints after the 2026-07-23 theoretical 4p hardening pass:
+  - DONE: separate exact main-stat renderer, legal 5-star layouts, all five
+    4-star-set offpiece shapes, frozen set overrides, equal-roll signed exchange
+    profiles, engine-scoped complete-bonus catalog, iterations/DPS SD/SE parsing,
+    cancellable two-stage runner, actual executable hashing, strict bound engine
+    context, one-process Auto workers, and cache storage/identity primitives;
+  - DONE: trusted active engine; proof-carrying ordinary-sim response evaluator/
+    scheduler; persistent cache; frozen environment/config/executable identity;
+    response-profile scan; bounded 4p set/team advisor; cancellation, hard
+    deadlines and deterministic best-so-far provenance. Missing SD remains
+    unknown uncertainty, never zero noise;
+  - DONE/EXPERIMENTAL: contract-tested bounded generic main-layout coordinate/
+    Cartesian scan plus automatic layout -> response -> set/team wrapper;
+  - DONE/EXPERIMENTAL: canonical screened finalists -> real `substatOptim` ->
+    fixed-iteration ordinary-sim top-N, plus the combined cancellable one-call
+    wrapper. Exact runner byte snapshots, optimizer-owned config diffs, roll-
+    budget semantics and deterministic request/state/cache provenance fail closed;
+    a fresh outer timer before each child run accounts for materialization/factory
+    time already spent. Arbitrary blocking Python inside an injected factory is
+    still a documented non-production preemption seam. The exported low-level
+    ordinary evaluator now shares the exact static-target guard, and batches
+    bind an invariant rotation/target/config-shell hash so a direct caller cannot
+    compare different simulations under one claimed context;
+    This is `BEST_FOUND` inside the screened domain only;
+  - NEXT: implement explicit parameter variants for sets such as Husk instead of
+    silently assuming zero/default stacks;
+  - NEXT: add set-aware response/layout refinement, cheap roll adaptation,
+    adaptive high-iteration close-leader reracing, finalist persistent cache/
+    progress, user-facing ranking semantics and an offline oracle gate before
+    calling the 4p ranking reliable;
+  - LATER: define content-identical artifact multiplicity semantics before
+    claiming twenty distinct real ids.
+- Performance measurements on the current 8-core/16-thread machine put supported
+  four-character static-target optimizer states at roughly 16-26 seconds each,
+  depending on the fixture/options. Naive sequential full optimization of 100
+  states is therefore roughly 26-43 minutes and 200 states roughly 52-85 minutes.
+  This requires a cheap screen, bounded survivor set, persistent cache,
+  cancellation, and a 10-50-state benchmark before setting Quick/Balanced/Deep
+  budgets.
+- Accepted fast-search direction (2026-07-19): pruning applies to expensive full
+  `substatOptim` calls, not to basic set/stat coverage. Every optimizer-ready
+  complete 4p package must receive at least one cheap real team simulation on
+  every possible wearer/layout/offpiece variant, and
+  every supported stat/main-stat axis must appear in a generic profile bank.
+  Generate that bank from the stat schema and legal slot rules (HP/ATK/DEF, EM,
+  ER-safe, crit, mixed and threshold/extreme layouts), never from character-name
+  allowlists or popularity data. This is what lets the same code retain an
+  unexpected EM-heavy Furina or a future character when the frozen rotation
+  gives that stat real team-DPS value.
+- Fast farming search should use a rotation-conditioned multi-fidelity race:
+  1. discover a small diverse bank of stat/main-stat profiles with coarse
+     low/mid/high response probes at a fixed roll budget;
+  2. perform the complete wearer x optimizer-ready 4p package x carried-layout/
+     4-star-offpiece screen and retain the
+     union of top-DPS, uncertain, per-profile, and response-novel candidates;
+  3. adapt survivors with a few coarse roll exchanges so CR/ER/ATK/etc. set
+     bonuses are not penalized by stale allocations;
+  4. compose full teams with multi-start coordinate/beam search plus selected
+     pair changes, so duplicate team buffs and set transfers are evaluated by
+     the real simulator;
+  5. spend the remaining deadline on full upstream re-optimization of the best
+     and behaviorally distinct finalists, then high-iteration validation.
+  A hard deadline returns typed `best_found` plus coverage/provenance rather than
+  silently extending the run.
+  Axis coverage happens in the small response-discovery stage; do not multiply
+  every set by every generic profile. For each wearer, carry a small response-
+  selected/diversity-preserving subset into the set scan, and require every
+  large, nonlinear, or uncertain direction to survive. Thus a detected EM-heavy
+  branch is tested across that wearer's sets without spending the Cartesian
+  `sets x all profiles` budget.
+- Earlier cheap-screen measurements on one representative rotation were about
+  0.17/0.25/0.65 seconds for ordinary 10/25/100-iteration runs and 14.6-16.7
+  seconds for one full optimizer run. A fresh 2026-07-22 ordinary-run check on a
+  different fixture was slower: about 0.79 seconds at 10 iterations and 1.24 at
+  25; a bounded batch of twenty 10-iteration candidates on an eight-CPU budget
+  took about 2.91 seconds. The exact base 4p physical domain is 312, not the old
+  ~200 estimate, before multiplying carried layouts/profiles. Therefore keep the
+  five-minute envelope as an unproven prototype target and derive finalist count
+  from measured remaining time rather than preserving the old 25-60 second
+  screen estimate.
+- Independent short CLI runs use unrelated random seeds; the fresh 10-iteration
+  sample showed roughly 2.9-4.5% relative SE. Never hard-prune on a one-roll delta.
+  Screening must keep a wide uncertainty band and stat/profile novelty. For a
+  stronger fast evaluator, prefer a companion/batch adapter over the pinned
+  engine packages that reuses parsed config, common seed cohorts, and upstream's
+  expected-DPS collector; this changes orchestration, not combat formulas. The
+  ordinary-CLI version remains a valid first prototype only with conservative
+  survivor rules and full optimizer validation.
+- A real-engine automatic-advisor smoke passed on 2026-07-22 with one Bennett
+  wearer, a static `hp=999999999` target, no wave scenario, 10 iterations,
+  eight-CPU scheduler budget, cache disabled, two retained values per main-stat
+  slot and two layouts. Wall/reported time was 12.688 s inside a 90 s cap:
+  layout discovery completed 22 coordinate + 8 Cartesian requests in 1.985 s;
+  response completed 11/11 planned/materialized probes in 0.734 s and carried
+  `baseline` + `focus/atk%`; the set screen completed 156 physical states / 312
+  profile candidates with 312 successes and zero issues in 9.969 s; the one-
+  wearer composer exhausted its survivor domain in 8 evaluations and returned
+  heuristic `BEST_FOUND` at 2115.05 DPS. This proves the bounded real execution
+  path and budget accounting, not four-wearer performance or ranking recall.
+- A separate real-engine finalist smoke on 2026-07-22 passed one exact Bennett /
+  Unfinished Reverie / ATK%-Pyro%-ATK% state through the new actual optimizer
+  race: four workers, 25 fixed validation iterations, static `hp=999999999`
+  target, no wave, 1.469 s reported wall time, typed `BEST_FOUND`, persisted
+  optimized allocations, 2632.86 DPS mean and 67.76 SE. This proves the runner/
+  evidence boundary on a tiny one-finalist fixture, not four-wearer latency or
+  ranking recall.
+- A post-hardening real-engine smoke on 2026-07-23 repeated Bennett / Unfinished
+  Reverie / ATK%-Pyro%-ATK% through the exact pinned dummy-target contract with
+  four workers and 10 iterations. It returned typed `BEST_FOUND`, 32322.13 DPS
+  mean and 4233.22 SE while passing strict byte-snapshot, roll-budget and frozen-
+  provenance validation. This is compatibility evidence only, not a benchmark.
+- Do not call the fast mode reliable until it passes an oracle gate: compare it
+  with offline Deep/exhaustive searches on reduced set domains and adversarial
+  fixtures for off-field EM ownership, HP/healing-to-team-buff conversion, DEF
+  scaling, ER cliffs, Fav/crit, unusual mains, and duplicate team buffs. Record
+  where an oracle winner would have been removed. Initial acceptance targets:
+  oracle winner present in the reported/survivor top five in at least 95-99% of
+  the benchmark corpus, best-DPS regret no more than 1%, no miss above 2%, all
+  adversarial fixtures passing, and p95 runtime within the selected budget. If
+  this fails, widen the generic bank/beam/pair budget; do not add character-name
+  exceptions.
+- Current coverage limitation: pinned v2.42.2 does not implement Iansan and does
+  not know the owned `A Day Carved From Rising Winds` set. The official v2.43.4
+  registry checked on 2026-07-19 still lacks Iansan, although the newer line adds
+  the set. The example Kinich/Bennett/Iansan/Emilie team is therefore not a valid
+  first integration fixture; unsupported entities remain controlled not-ready
+  results until upstream or an explicit character implementation patch exists.
 - A fixed `100/200` comparison can be a cheap diagnostic for one set swap, but
   it is biased: set stat bonuses, ER thresholds, conditional uptime, duplicate
   team buffs/debuffs, reaction ownership, and changed optimal main/substats all
@@ -501,7 +731,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   set template with substats re-optimized and the actual rotation simulated.
 - Cache identity must cover at least engine hash/version, source config and
   rotation, target/scenario, simulation options/iterations, account inventory
-  snapshot identity, and the complete per-character artifact-id assignment.
+  snapshot identity when applicable, optimizer mode, target set packages, and
+  the complete per-character artifact-id assignment for real-build results.
   Changing any of these makes an optimization result stale.
 - Backend result contract should preserve rank/team sim DPS/baseline delta and,
   for every character, stable character id, five artifact ids by position,
@@ -509,6 +740,16 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   enough provenance to recreate an `ArtifactBuildSnapshot`. Optimization must
   not silently equip artifacts or mutate existing presets.
 - Future UI/preset ideas to preserve:
+  - make Artifact Optimizer a dedicated subwindow/overlay inside the GCSIM
+    workspace, not another AppShell mode. It has two clearly separated views:
+    `Set combinations / farming` and `Artifacts for target sets`;
+  - the set-combination result list exposes top-N rows such as best, `99%`,
+    `85%`, while distinguishing a real delta from simulation noise. Each row
+    has `Use as target sets`, which fills the second view without equipping or
+    mutating the account;
+  - the selected-set view allows fast manual editing of the four target set
+    packages, reruns real-artifact matching, and immediately shows sim DPS for
+    the frozen current rotation/static target;
   - a results window/overlay with one row per character, character identity,
     the five selected artifact cards, active sets/stats, and a per-row
     `Save preset` action;
@@ -523,8 +764,43 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
     corresponding character. It does not auto-equip, overwrite an existing
     preset, or hide conflicts without explicit user action;
   - show baseline vs optimized sim DPS and state clearly that the result is the
-    best evaluated account option for this exact rotation/scenario, not a
-    universal character build.
+    best evaluated account option under the explicitly selected sets for this
+    exact rotation/static target, not a universal character build or an account-
+    wide all-set optimum.
+  - before implementing this UI, reread the Current Authoritative Status and
+    first Browser UI contract in `GCSIM_ENGINE_INTEGRATION_PLAN.md`, this TODO
+    section, and the existing Artifact Browser preset/equipment contract. Reuse
+    the frozen current Browser team, rotation, target, and settings rather than
+    inventing duplicate state.
+- Stat-response simplification is allowed as a search-budget decision, not a
+  static character-role table. Use the optimizer result plus controlled sweeps
+  across reachable stat ranges to classify a character/config as roughly
+  `flat/set-only`, `threshold`, `damage`, or `mixed`. A flat/threshold support
+  should focus on required set/ER/HP/Fav/healing regions and low opportunity
+  cost to teammates; a mixed character such as Furina keeps multiple candidate
+  branches. One zero local derivative is not enough to hard-prune a stat because
+  caps and thresholds are discontinuous.
+- CPU/responsiveness contract:
+  - expose `Auto` plus an explicit logical-CPU budget; Auto should reserve at
+    least one logical processor for the UI/OS (`max(1, logical_cpus - 1)` as
+    the initial default), and run long GCSIM work below normal process priority
+    on Windows;
+  - explicitly write GCSIM `workers` into optimizer configs. Schedule candidate
+    processes so the sum of `workers` across all live GCSIM processes never
+    exceeds the CPU budget; also set `GOMAXPROCS` to the assigned worker count.
+    Start with one GCSIM process using the whole budget and benchmark before
+    adding candidate-level parallelism. Never combine several processes that
+    each use GCSIM's current default 20 workers;
+  - run orchestration outside the UI thread, show progress/current best, support
+    per-candidate timeout and total time/search budgets;
+  - replace the blocking `subprocess.run` boundary for long optimizer work with
+    a cancellable `Popen` session. Cancel must be thread-safe, stop queueing new
+    candidates, terminate only the disposable active GCSIM process (never use
+    `QThread.terminate()`), preserve completed per-candidate cache entries, and
+    return a typed `cancelled` result with best-so-far candidates. Each candidate
+    uses an isolated run directory, and cancelled/partial result files are not
+    parsed. A Windows Job Object is optional future hardening if the engine ever
+    starts child processes.
 - Durable architecture/current-engine notes live in
   `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`. While PvP UI work is active,
   keep this backend work under `run_workspace/gcsim/` and do not refactor

@@ -544,18 +544,60 @@ Important direction:
   Detailed GCSIM research is in `docs/handoff/GCSIM.md` and current engine/UI
   state is in `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`; read them before
   implementing engine download, runner, config generation, or result parsing.
-- Future account artifact optimization belongs inside the GCSIM application
-  boundary, not in a separate raw-stat optimizer package. The product target is
-  one joint four-character assignment of real account artifact ids for an exact
-  prepared rotation/scenario, with global no-reuse and whole-team sim DPS as
-  the objective. Upstream `-substatOptimFull` optimizes theoretical substat
-  allocation after team/weapons/sets/main stats/rotation are chosen; it does
-  not consume inventory or return artifact ids. Use it as a theoretical target
-  generator, then perform bounded external joint candidate search and ordinary
-  GCSIM evaluation. The first prototype should be an application-side helper,
-  not a new engine patch unless a compatibility/performance smoke proves one is
-  necessary. Detailed contract and future preset-result UI ideas are in TODO
-  section 12 and `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`.
+- Future artifact optimization belongs inside the GCSIM application boundary,
+  not in a separate raw-stat optimizer package. Keep two product operations
+  distinct: an inventory-independent equal-investment top-N set/farming advisor,
+  and a joint no-reuse real-account search constrained to four explicit target
+  set packages loaded from a result or edited by the user. Upstream
+  substat optimization supplies theoretical stat allocation for fixed
+  sets/main stats/rotation; it neither consumes inventory nor returns artifact
+  ids. Prefer the two-stage `-substatOptim -out optimized.txt` plus ordinary sim
+  boundary; Full may be used only on a disposable config copy. Run
+  optimizer work against the pinned static single-target benchmark: one target
+  row, exactly one explicit `hp=999999999`, no `type=` profile and no GTT wave
+  directive. Keep it separate from `gtt-wave-scenario`, and do not patch the
+  engine merely to combine those paths. Detailed contract, CPU/cancellation
+  requirements, and future subwindow/
+  preset UI ideas are in TODO section 12 and
+  `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`.
+- The artifact optimizer backend under `run_workspace/gcsim/` now has an
+  executable, proof-carrying **end-to-end theoretical heuristic 4p** boundary. In addition to
+  the exact theoretical renderers, set catalog, strict engine binding and
+  two-stage optimizer runner, it has a cancellable CPU-bounded ordinary-sim
+  scheduler, immutable executable/environment/config identities, persistent
+  cache wiring, response-profile scan, complete 4p wearer/set/offpiece screen,
+  recall-first survivor selection, and bounded full-team coordinate/beam/exact-
+  pair composition. `farming_advisor.py` connects response discovery to the
+  cheap 4p set/team search and returns typed `best_found` evidence under an
+  explicit budget. At one carried layout/profile per wearer the current pinned
+  domain is 312 physical states: four wearers times 38 5-star packages plus
+  eight 4-star packages with five offpiece shapes. `farming_layout_scan.py` is an
+  experimental generic main-stat stage that reduces the legal 420 layouts via
+  22 one-slot coordinate probes per wearer and a bounded Cartesian finalist
+  pass. `farming_auto_advisor.py` wires layout discovery -> response discovery ->
+  set/team screening under one deadline. `farming_finalist_optimizer.py` takes a
+  bounded canonical prefix of exact full-team states through real upstream
+  `substatOptim` plus an ordinary static-target simulation at frozen worker and
+  validation-iteration budgets. It snapshots exact runner input/optimized/result
+  bytes, permits only the canonical optimizer-owned substat-row rewrite, validates
+  roll totals/caps/4-star rarity, and rejects hidden/multiline sensitive GCSIM
+  statements using semicolon-aware structural validation before line-oriented
+  rendering. It rebinds input/cache identity to the frozen request/state before
+  returning canonical optimized top-N evidence and per-wearer
+  `add stats` allocations. `farming_optimized_advisor.py` joins the
+  automatic screen and finalist race under one cancellable outer deadline. Both
+  discovery and the combined ranking remain experimental heuristics.
+- Do not describe that backend as the final set optimizer or a global optimum.
+  Response/main-layout discovery currently starts from caller-supplied baseline
+  physical states, so set bonuses can change a stat direction after it was
+  pruned. Set-aware refinement/full-bank guards and cheap roll adaptation,
+  adaptive higher-iteration reracing of close leaders, user-facing percent/delta/
+  tie semantics, persistent finalist-cache wiring, progress callbacks, oracle
+  benchmarks, set-parameter variants, the real-inventory joint no-reuse solver,
+  2p+2p, preset adapter, and UI remain. The current `BEST_FOUND` is only the best
+  successfully optimized state inside the heuristic screened finalist domain.
+  The active v2.42.2 engine is currently trusted by the strict manifest/tree/exe/
+  catalog context; keep that check fail closed after any engine update.
 - Before coding new History, DPS Dummy GCSIM result persistence, or the production
   AppShell switch, read `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. The
   next Run Workspace stage is typed run/session state plus immutable Abyss/DPS

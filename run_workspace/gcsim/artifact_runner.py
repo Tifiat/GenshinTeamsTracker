@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -49,7 +50,10 @@ ArtifactRunner = Callable[
 class GcsimResultSummary:
     schema_version: str = ""
     sim_version: str = ""
+    iterations: int | None = None
     dps_mean: float | None = None
+    dps_sd: float | None = None
+    dps_se: float | None = None
     duration_mean: float | None = None
     total_damage_mean: float | None = None
     warnings: tuple[str, ...] = ()
@@ -60,7 +64,10 @@ class GcsimResultSummary:
         return {
             "schema_version": self.schema_version,
             "sim_version": self.sim_version,
+            "iterations": self.iterations,
             "dps_mean": self.dps_mean,
+            "dps_sd": self.dps_sd,
+            "dps_se": self.dps_se,
             "duration_mean": self.duration_mean,
             "total_damage_mean": self.total_damage_mean,
             "warnings": list(self.warnings),
@@ -682,10 +689,15 @@ def parse_gcsim_result_payload(payload: object) -> GcsimResultSummary:
     statistics = _dict_value(payload, "statistics")
     if statistics is None:
         statistics = {}
+    iterations = _integer_value(statistics.get("iterations"))
+    dps_sd = _stat_number(statistics, "sd", "dps")
     return GcsimResultSummary(
         schema_version=_text_value(payload, "schema_version", "schemaVersion"),
         sim_version=_text_value(payload, "sim_version", "simVersion"),
+        iterations=iterations,
         dps_mean=_stat_mean(statistics, "dps"),
+        dps_sd=dps_sd,
+        dps_se=_standard_error(dps_sd, iterations),
         duration_mean=_stat_mean(statistics, "duration"),
         total_damage_mean=_stat_mean(statistics, "total_damage", "totalDamage"),
         warnings=_string_list_value(statistics, "warnings"),
@@ -775,16 +787,38 @@ def _stat_mean(statistics: Mapping, *keys: str) -> float | None:
     return _number_value(item.get("mean"))
 
 
+def _stat_number(statistics: Mapping, field: str, *keys: str) -> float | None:
+    item = _dict_value(statistics, *keys)
+    if item is None:
+        return None
+    return _number_value(item.get(field))
+
+
+def _integer_value(value: object) -> int | None:
+    number = _number_value(value)
+    if number is None or not math.isfinite(number) or number < 0 or not number.is_integer():
+        return None
+    return int(number)
+
+
+def _standard_error(sd: float | None, iterations: int | None) -> float | None:
+    if sd is None or iterations is None or iterations <= 0:
+        return None
+    return float(sd) / math.sqrt(iterations)
+
+
 def _number_value(value: object) -> float | None:
     if isinstance(value, bool) or value is None:
         return None
     if isinstance(value, (int, float)):
-        return float(value)
+        number = float(value)
+        return number if math.isfinite(number) else None
     if isinstance(value, str):
         try:
-            return float(value)
+            number = float(value)
         except ValueError:
             return None
+        return number if math.isfinite(number) else None
     return None
 
 

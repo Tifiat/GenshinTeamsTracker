@@ -421,6 +421,41 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 12. GCSIM Set Targets and Selected-Set Artifact Optimizer
 
+- Authoritative detailed handoffs:
+  - `docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md` documents the current
+    theoretical backend, invariants, source map, performance knobs, known
+    correctness gaps, and future account-search seams;
+  - `docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md` is the ordered
+    milestone plan to separate theoretical `4p` and theoretical `2p+2p`
+    actions plus a Quick/Balanced/Deep selected-target account artifact search.
+    Future task specifications should take one pipeline milestone/task packet
+    at a time instead of treating this whole section as one implementation task.
+- Product controls are not one merged optimizer button. Preserve separate
+  `Find best 4p set combinations`, `Find best 2p+2p set combinations`, and
+  `Find artifacts for target sets` operations. The account operation has
+  explicit Quick/Balanced/Deep depth budgets; complete `2p+2p` is a separate
+  theoretical command and a supported explicit account target shape, never a
+  hidden multiplier on the normal `4p` command.
+- New P0 before real account search: Artiscan main-stat reconstruction is
+  max-level 5-star-only and ignores level; active inventory
+  generation/completeness is not represented, while lock/location are not
+  stored. Fix or explicitly fail closed on the numeric and active-inventory
+  readiness gaps. Details and acceptance gates are in milestones 1-2 of the
+  account optimizer pipeline.
+- KNOWN ACCEPTED ISSUE (explicit user decision): `content_fingerprint`
+  intentionally deduplicates the same artifact observed through account data
+  and Artiscan. Two genuinely distinct artifacts with completely identical
+  content can therefore collapse into one `artifacts.id`, but that case is
+  considered negligibly rare. This is not a blocker or an optimizer work item;
+  do not redesign artifact multiplicity unless the product decision is
+  explicitly reopened.
+- DONE M0 (2026-07-23): `optimizer_product_contracts.py` now owns schema-v1
+  backend contracts for the three operations, canonical `FourPiece` and
+  unordered distinct-set `TwoPlusTwo`, typed Quick/Balanced/Deep account depth,
+  frozen source/request/budget identities, distinct cache/provenance namespaces,
+  common terminal/progress/top-N/uncertainty semantics, and a lossless adapter
+  over the current theoretical `4p` result. No later search, inventory, preset,
+  or UI milestone was implemented. NEXT is Milestone 1 inventory readiness.
 - Implementation status (2026-07-23): the theoretical heuristic `4p only` path
   is executable end to end, but it is not yet a release-reliable product and the
   real-account selected-set operation is still unimplemented.
@@ -468,8 +503,8 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - `farming_optimized_advisor.py`, which joins automatic layout/response/set-team
     screening and the real finalist race under one cancellable outer deadline.
   The active pinned v2.42.2 engine currently passes the strict manifest/tree/
-  executable/catalog trust check, and the full GCSIM unit suite passes 459 tests
-  in the project virtual environment. The repository-wide suite passes 1312
+  executable/catalog trust check, and the full GCSIM unit suite passes 471 tests
+  in the project virtual environment. The repository-wide suite passes 1324
   tests as of 2026-07-23. Its Qt teardown still emits two non-failing pre-existing
   `CustomTooltipController.owner` traces from `ui/utils/tooltips.py`; that file
   was outside this backend change and remains a separate UI cleanup.
@@ -477,25 +512,26 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   set-aware response/main-layout refinement (the current scans learn on one
   baseline physical state), cheap roll redistribution around set bonuses/caps,
   adaptive higher-iteration reracing of close leaders, persistent cache wiring
-  for finalist runs, offline oracle/adversarial recall benchmarks, progress
-  callbacks and user-facing percent/delta/uncertainty/tie semantics over the
-  backend top-N. The real inventory candidate generator + joint no-reuse solver,
-  set-parameter policies such as Husk starting stacks, 2p+2p, preset-save adapter,
-  and UI also remain.
+  for finalist runs, offline oracle/adversarial recall benchmarks, native
+  progress production, and UI consumption of the common percent/delta/
+  uncertainty contract. The real inventory candidate generator + joint
+  no-reuse solver, set-parameter policies such as Husk starting stacks, 2p+2p,
+  preset-save adapter, and UI also remain.
 - Reuse the existing selected-team/rotation/readiness/config boundary, active
   engine runner/update store, stat normalization, Artifact SQLite inventory and
   build summaries, Browser worker/session boundaries, and Artifact Browser preset
   service. Do not create a parallel team/rotation source or a second preset store.
-- Accepted product split (2026-07-19): expose two separate operations for one
-  frozen team/rotation/static-target simulation identity:
-  1. `Find set combinations` is an equal-investment/farming advisor. It ignores
-     the account inventory, re-optimizes abstract substat rolls for retained
-     full-team set/main-stat candidates, and returns top-N theoretical set
-     combinations.
-  2. `Find artifacts for target sets` searches the real account only under the
-     four explicitly selected set packages. Targets may be loaded from a
-     theoretical result or edited manually. It returns real artifact ids with
-     global no-reuse and whole-team GCSIM validation.
+- Accepted product split, frozen by the M0 contract: expose three separate
+  operations for one frozen team/rotation/static-target simulation identity:
+  1. `Find best 4p set combinations` is an inventory-independent
+     equal-investment/farming operation over complete theoretical `4p` packages.
+  2. `Find best 2p+2p set combinations` is a separate, deeper theoretical
+     operation over complete unordered packages made from different set keys.
+  3. `Find artifacts for target sets` searches the real account only under the
+     four explicitly selected set packages and a typed Quick/Balanced/Deep
+     depth. Targets may be loaded from a theoretical result or edited manually.
+     It returns real artifact ids with global no-reuse and whole-team GCSIM
+     validation.
 - These operations may be launched sequentially but are not one automatic
   global-account optimizer. The account operation does not silently try every
   other set, and the farming result does not consider current artifact quality.
@@ -589,10 +625,12 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
      unique team-buff set are not trapped by a bad intermediate state;
   4. output top-N with absolute sim DPS, percent of the best validated candidate,
      delta, uncertainty/tie labeling, and the abstract main/substat allocation;
-  5. provide a fast `4p only` domain and an explicit `Include 2p+2p` option.
-     In equal-investment mode, collapse concrete 2p sets only when their exact
-     modeled 2p effect signatures are simulator-equivalent; keep the equivalent
-     names for display. Do not confuse this with inventory-mode equivalence;
+  5. provide separate `Find best 4p` and `Find best 2p+2p` commands so the pair
+     domain never silently multiplies the normal fast search. In theoretical
+     equal-investment `2p+2p` mode, collapse concrete 2p sets only when their
+     exact modeled 2p effect signatures are simulator-equivalent; keep the
+     equivalent names for display. Do not confuse this with inventory-mode
+     equivalence;
   6. search only complete `4p` or `2p+2p` packages. Explicitly exclude one
      active `2p` plus three unmatched pieces, as well as zero-active-bonus/
      rainbow packages, from the product search domain;
@@ -627,15 +665,18 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
     adaptive high-iteration close-leader reracing, finalist persistent cache/
     progress, user-facing ranking semantics and an offline oracle gate before
     calling the 4p ranking reliable;
-  - LATER: define content-identical artifact multiplicity semantics before
-    claiming twenty distinct real ids.
+  - NEXT/P0 FOR ACCOUNT SEARCH: implement accurate rarity/level main-stat import
+    and active inventory generation/completeness semantics before treating the
+    represented account inventory as optimizer-ready. Keep the explicitly
+    accepted `content_fingerprint` deduplication policy unchanged.
 - Performance measurements on the current 8-core/16-thread machine put supported
   four-character static-target optimizer states at roughly 16-26 seconds each,
   depending on the fixture/options. Naive sequential full optimization of 100
   states is therefore roughly 26-43 minutes and 200 states roughly 52-85 minutes.
   This requires a cheap screen, bounded survivor set, persistent cache,
-  cancellation, and a 10-50-state benchmark before setting Quick/Balanced/Deep
-  budgets.
+  cancellation, and a 10-50-state benchmark before setting the theoretical
+  command budget. Account Quick/Balanced/Deep values are a separate later
+  benchmark over the real-inventory pipeline.
 - Accepted fast-search direction (2026-07-19): pruning applies to expensive full
   `substatOptim` calls, not to basic set/stat coverage. Every optimizer-ready
   complete 4p package must receive at least one cheap real team simulation on

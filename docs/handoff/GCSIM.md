@@ -6,6 +6,13 @@ Scope: research handoff only. No app code, TODO, CODEX, account data, cache data
 
 Implementation direction note: authoritative current backend/UI/release status for the GTT-modified GCSIM engine lives in `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`. Keep this file as the historical upstream/source research reference; do not use its original MVP ordering as the current task queue.
 
+Optimizer direction note: use
+`docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md` for current optimizer
+mechanics and `docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md` for
+the ordered path to the real-account button. Those documents preserve separate
+theoretical `4p`, theoretical `2p+2p`, and Quick/Balanced/Deep selected-target
+account operations.
+
 Label meanings used below:
 
 - Confirmed: verified from GCSIM docs, release metadata, or source inspection.
@@ -367,10 +374,12 @@ Current direction:
 - A first prototype should not patch the Go engine. Add a helper/runner and a
   static-target compatibility smoke; do not spend another patch on optimizer
   wave-scenario compatibility. Patch only for a different proven blocker.
-- The target set-package product accepts complete `4p` builds and, behind an
-  explicit deeper option, complete `2p+2p` builds. It deliberately excludes
-  `2p+1+1+1` and rainbow/no-active-bonus packages. The current executable
-  heuristic implements `4p only`; 2p+2p is still future work.
+- The target set-package product has separate theoretical actions for complete
+  `4p` and complete `2p+2p` builds. The selected-target account operation
+  accepts either shape and exposes independent Quick/Balanced/Deep budgets. It
+  deliberately excludes `2p+1+1+1` and rainbow/no-active-bonus packages. The
+  current executable heuristic implements `4p only`; 2p+2p is still future
+  work.
 - The target fast `4p` design does not pre-classify characters or skip unpopular
   optimizer-ready sets. It cheap-simulates every complete supported package on
   every wearer/layout/offpiece variant against a universal bank

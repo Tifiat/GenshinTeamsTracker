@@ -591,13 +591,39 @@ Important direction:
   Response/main-layout discovery currently starts from caller-supplied baseline
   physical states, so set bonuses can change a stat direction after it was
   pruned. Set-aware refinement/full-bank guards and cheap roll adaptation,
-  adaptive higher-iteration reracing of close leaders, user-facing percent/delta/
-  tie semantics, persistent finalist-cache wiring, progress callbacks, oracle
-  benchmarks, set-parameter variants, the real-inventory joint no-reuse solver,
-  2p+2p, preset adapter, and UI remain. The current `BEST_FOUND` is only the best
-  successfully optimized state inside the heuristic screened finalist domain.
+  adaptive higher-iteration reracing of close leaders, native progress
+  production and UI consumption of the common percent/delta/tie contract,
+  persistent finalist-cache wiring, oracle benchmarks, set-parameter variants,
+  the real-inventory joint no-reuse solver, 2p+2p, preset adapter, and UI remain.
+  The current `BEST_FOUND` is only the best successfully optimized state inside
+  the heuristic screened finalist domain.
   The active v2.42.2 engine is currently trusted by the strict manifest/tree/exe/
   catalog context; keep that check fail closed after any engine update.
+- Optimizer pipeline Milestone 0 is complete in
+  `run_workspace/gcsim/optimizer_product_contracts.py`. It defines schema-v1
+  typed identities for separate theoretical `4p`, theoretical `2p+2p`, and
+  selected-target account operations; canonical parameter-ready `FourPiece` and
+  unordered distinct-set `TwoPlusTwo`; account-only Quick/Balanced/Deep depth;
+  per-operation cache/provenance namespaces; common terminal/progress/top-N/
+  uncertainty contracts; and a lossless adapter over the current theoretical
+  `4p` result. Concrete preset parameters and every later search/inventory/UI
+  stage remain unimplemented. Milestone 1 inventory readiness is next.
+- Before any optimizer implementation task, read
+  `docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md` for current mechanics and
+  `docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md` for ordering.
+  Preserve separate theoretical `4p`, theoretical `2p+2p`, and selected-target
+  real-account operations; the account operation uses explicit
+  Quick/Balanced/Deep budget presets. Do not collapse them into one implicit
+  all-set/all-inventory command.
+- Real-account optimizer P0 is numeric/import/snapshot truth, not search tuning.
+  Artiscan main-stat import is max-level 5-star-only and ignores level, and no
+  authoritative active inventory generation/completeness contract exists. Fix
+  or fail closed on those gaps before account search. Content-identical artifact
+  collapse through `content_fingerprint` is a separate accepted known issue,
+  not a blocker: the user explicitly required this cross-source deduplication
+  so one item observed through account data and Artiscan does not become two.
+  Do not redesign identity/multiplicity unless that product decision is
+  explicitly reopened.
 - Before coding new History, DPS Dummy GCSIM result persistence, or the production
   AppShell switch, read `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. The
   next Run Workspace stage is typed run/session state plus immutable Abyss/DPS
@@ -736,7 +762,13 @@ Current Artiscan state:
 - Backend parser/import helper exists for Artiscan/GOOD JSON.
 - Artiscan main stat numeric values use deterministic max main-stat values by rarity/stat key.
 - `location` and `lock` are ignored in the MVP.
-- Exact content twins may collapse into one artifact through `content_fingerprint`.
+- KNOWN ACCEPTED ISSUE (explicit user decision): exact content twins may collapse
+  into one artifact through `content_fingerprint`. This intentionally preserves
+  cross-source deduplication when the same item is observed through account data
+  and Artiscan. Two genuinely distinct, exactly identical artifacts are
+  therefore undercounted, but that case is considered negligibly rare. It is
+  not an optimizer blocker; do not change this identity policy unless the user
+  explicitly reopens it.
 - First-day/future improvement: automatic proc counting for imported artifacts.
 
 ## Main UI State

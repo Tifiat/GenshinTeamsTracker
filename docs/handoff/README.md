@@ -17,6 +17,8 @@ Current maps:
 - `ABYSS_MECHANICS_NOTES.md` - Abyss enemy mechanics parser tags and source notes.
 - `GCSIM.md` - GCSIM research and integration notes.
 - `GCSIM_ENGINE_INTEGRATION_PLAN.md` - authoritative current GCSIM status plus the historical implementation record for engine updates, patches, selected-team configs, sequential Abyss waves, typed results/history, and remaining UI/release work.
+- `GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md` - current theoretical optimizer architecture, schema-v1 product contracts, invariants, budgets, provenance, account-data seams, correctness traps, and performance/reliability guidance.
+- `GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md` - ordered milestones from the current theoretical backend to separate `4p`/`2p+2p` farming actions and a cancellable Quick/Balanced/Deep real-account artifact optimizer; M0 contracts are complete and M1 inventory readiness is next.
 - `FAR_FUTURE_TODO.md` - non-MVP PvP, analytics, draft bot, support/donation, monetization, and optional AI companion ideas.
 - `PVP_V0_CONTRACT.md` - stable PvP v0 product/backend contract for the full offline hot-seat loop: deck JSON, pick/ban, teams, weapons, timers, and winner summary.
 - `PVP_BACKEND_STATUS.md` - implementation-oriented PvP backend status:

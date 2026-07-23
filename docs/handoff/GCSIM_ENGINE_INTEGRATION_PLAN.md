@@ -9,6 +9,11 @@ Scope: implementation-direction handoff for GTT-modified GCSIM engine integratio
 Related references:
 
 - `docs/handoff/GCSIM.md` - original GCSIM research notes and upstream source pointers.
+- `docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md` - optimizer-specific
+  current architecture, invariants, performance controls, and extension seams.
+- `docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md` - ordered,
+  independently specifiable milestones to the theoretical set actions and
+  real-account artifact optimizer.
 - `docs/handoff/STAT_NORMALIZATION.md` - project stat normalization and GCSIM stat-key mapping notes.
 - `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` - Run Workspace boundary, factual DPS vs sim DPS split, and snapshot/session state rules.
 - `docs/handoff/ABYSS_ENEMY_DATA.md` - Abyss source-data pipeline and enemy rows.
@@ -78,14 +83,30 @@ hooks and prefer `ui/gcsim_browser/`, `ui/right_panel/live_run/gcsim/`, and
 
 ## Set Targets and Selected-Set Artifact Optimization Direction
 
+Detailed optimizer mechanics now live in
+`GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md`; the implementation sequence and final
+multi-action UI contract live in
+`GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md`. Keep this section as the concise
+engine-integration boundary rather than growing a second optimizer roadmap.
+
+Pipeline Milestone 0 is complete in
+`run_workspace/gcsim/optimizer_product_contracts.py`: the three operation
+identities, target packages, account depths, cache/provenance namespaces,
+terminal/progress/top-N semantics, and current theoretical `4p` adapter are
+schema-v1 contracts. No later optimizer algorithm, concrete depth registry, or
+UI was added in that milestone; Milestone 1 inventory readiness is next.
+
 Accepted product split on 2026-07-19:
 
-1. `Find set combinations` is an inventory-independent equal-investment/farming
-   advisor. It returns top-N full-team set combinations with re-optimized
-   abstract stats and tells the user what may be worth farming.
+1. The inventory-independent equal-investment/farming advisor has two separate
+   commands: `Find best 4p` and `Find best 2p+2p`. Each returns its own top-N
+   full-team set combinations with re-optimized abstract stats and tells the
+   user what may be worth farming. A `2p+2p` package always contains two
+   different set keys.
 2. `Find artifacts for target sets` searches real account artifacts only for
-   four explicit target set packages. The targets may come from one farming
-   result or be edited manually. It returns twenty real artifact ids, five per
+   four explicit target set packages and exposes separate `Quick`, `Balanced`,
+   and `Deep` depth controls. The targets may come from one farming result or be
+   edited manually. It returns twenty canonical stored artifact ids, five per
    character, with no cross-character reuse.
 
 The two operations may be used sequentially, but the second one is deliberately
@@ -243,8 +264,9 @@ opportunity cost while a Furina-like mixed contributor retains several broad
 branches. Treat this as budget allocation; one zero local derivative is not a
 safe proof because ER, HP, crit/Fav, and other effects have thresholds/caps.
 
-The farming advisor should expose `4p only` as the fast domain and an explicit
-`Include 2p+2p` option. For equal-investment search, concrete set names with the
+The farming advisor should expose separate `Find best 4p` and `Find best
+2p+2p` commands rather than silently multiplying the pair domain into the fast
+`4p` action. For equal-investment `2p+2p` search, concrete set names with the
 same exact modeled 2p effect may share one simulator signature; retain their
 equivalent names for display. This avoids multiplying identical ATK/EM/ER/etc.
 2p effects while preserving distinct conditional effects. The accepted search
@@ -265,9 +287,10 @@ Sequentially full-optimizing 100 states is therefore roughly 26-43 minutes and
 200 states roughly 52-85 minutes before broader beam rounds. This is a
 feasibility range, not a stable performance promise. Before fixing UX budgets,
 benchmark a 10-50-state screen/retain run and compare candidate-level
-parallelism. Quick/Balanced/Deep
-must be explicit total-time/evaluation budgets that can always return cached
-best-so-far; never wait for the complete combinatorial domain.
+parallelism. The theoretical actions need explicit versioned total-time/
+evaluation budgets. The selected-target account operation separately exposes
+Quick/Balanced/Deep presets that can always return cached best-so-far; neither
+track waits for the complete combinatorial domain.
 
 The concrete fast-search contract is rotation-conditioned multi-fidelity
 racing, not a static role/set heuristic. Expensive optimization is pruned only
@@ -407,9 +430,13 @@ Optimizer-specific correctness checklist and remaining blockers:
   line-oriented renderers. The exported ordinary evaluator applies that same
   guard and scheduler batches bind an invariant config-shell hash in addition
   to the caller context. The static target is pinned to `hp=999999999`;
-- define inventory multiplicity semantics for content-identical items before
-  claiming twenty distinct real ids. Until then, report the current imported DB
-  identity semantics explicitly.
+- KNOWN ACCEPTED ISSUE (explicit user decision): cross-source
+  `content_fingerprint` deduplication may collapse two genuinely distinct,
+  completely identical artifacts into one canonical id. This prevents the same
+  artifact observed through account data and Artiscan from becoming two copies;
+  the exact-twin case is considered negligibly rare. It is not an optimizer
+  blocker or a multiplicity migration task. Keep the current policy unless the
+  product decision is explicitly reopened.
 
 Entity readiness remains a controlled product limitation, not an optimizer bug.
 The pinned v2.42.2 engine lacks Iansan and the owned `A Day Carved From Rising
@@ -447,10 +474,12 @@ session-factory construction themselves are small test/orchestration seams that
 cannot be hard-preempted while arbitrary Python is blocked; add checkpoints or
 offloading if either becomes materially expensive.
 
-Cache/stale identity includes optimizer mode, engine hash/version, full source
-config/rotation/static target, simulation options/iterations/workers, target
-set packages, account inventory snapshot when applicable, and complete twenty-
-artifact assignment for real-build results.
+Keep cache and provenance identities separate. Simulation-cache identity
+contains the engine hash/version, exact compiled config, and execution/fidelity
+options; it intentionally excludes real artifact ids when they do not change
+the compiled config. Assignment/result provenance separately contains optimizer
+mode, source request, target packages, account inventory snapshot, complete
+twenty-artifact assignment, search preset, and the compiled-config witness hash.
 
 ## 1. Product Direction
 
@@ -757,7 +786,9 @@ Independent backend-only optimizer track while PvP/AppShell work continues:
    oracle/adversarial recall gate.
 6. Selected-set real inventory candidate generation plus joint no-reuse solver
    and ordinary GCSIM validation.
-7. Optional deeper `2p+2p` farming/account support.
+7. Add the separate required `2p+2p` tracks: selected-target account support
+   and the independent theoretical `Find best 2p+2p` command. Do not fold either
+   into the normal theoretical `4p` action.
 8. Only then draw the optimizer subwindow using the existing Browser team,
    rotation, settings, runner status, and Artifact Browser preset services.
 

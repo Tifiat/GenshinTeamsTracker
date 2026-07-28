@@ -45,6 +45,7 @@ from .farming_evaluator import (
     prepare_bound_gcsim_farming_joint_evaluation,
 )
 from .farming_profile_config import (
+    GCSIM_AUTOMATIC_RESPONSE_STAT_AXES,
     GCSIM_BALANCED_REFERENCE_WEIGHTS,
     GCSIM_SCREENING_STAT_AXES,
     GCSIM_SUBSTAT_ROLL_VALUES,
@@ -73,6 +74,11 @@ from .optimizer_config import (
     render_five_star_main_stat_line,
 )
 from .optimizer_engine_context import GcsimOptimizerEngineContext
+from .optimizer_theoretical_packages import (
+    freeze_gcsim_theoretical_pair_packages,
+    gcsim_theoretical_pair_domain_sha256,
+    render_gcsim_theoretical_pair_rows,
+)
 
 
 GCSIM_FARMING_PIPELINE_CONTEXT_SCHEMA = 1
@@ -270,6 +276,11 @@ class GcsimFarmingMaterializedProbe:
             timeout_seconds=timeout_seconds,
             environment=resolved_environment,
             environment_is_frozen=True,
+            synthetic_set_keys=tuple(
+                set_key
+                for _wearer, set_key in self.set_assignments
+                if engine_context.catalog.get(set_key) is None
+            ),
         )
 
 
@@ -286,6 +297,7 @@ def materialize_gcsim_one_wearer_candidate(
     reference_weights: Sequence[StatWeight] = GCSIM_BALANCED_REFERENCE_WEIGHTS,
     environment: Mapping[str, str] | None = None,
     environment_is_frozen: bool = False,
+    two_plus_two_packages: Mapping[str, object] | None = None,
 ) -> GcsimFarmingMaterializedProbe:
     """Render one wearer probe while every other wearer stays explicitly frozen."""
 
@@ -330,6 +342,7 @@ def materialize_gcsim_one_wearer_candidate(
         reference_weights=reference_weights,
         environment=environment,
         environment_is_frozen=environment_is_frozen,
+        two_plus_two_packages=two_plus_two_packages,
     )
 
 
@@ -345,6 +358,7 @@ def materialize_gcsim_full_team_probe_state(
     reference_weights: Sequence[StatWeight] = GCSIM_BALANCED_REFERENCE_WEIGHTS,
     environment: Mapping[str, str] | None = None,
     environment_is_frozen: bool = False,
+    two_plus_two_packages: Mapping[str, object] | None = None,
 ) -> GcsimFarmingMaterializedProbe:
     """Render an exact full-team state through set, main, and profile layers."""
 
@@ -373,8 +387,25 @@ def materialize_gcsim_full_team_probe_state(
         worker_count=fidelity.worker_count,
         environment_is_frozen=environment_is_frozen,
     )
+    pair_packages = freeze_gcsim_theoretical_pair_packages(
+        two_plus_two_packages
+    )
+    carrier = next(
+        (
+            capability
+            for capability in engine_context.catalog.sets
+            if capability.optimizer_four_piece_ready
+            and capability.max_rarity == 5
+        ),
+        None,
+    )
+    if pair_packages and carrier is None:
+        raise GcsimFarmingPipelineError(
+            "theoretical pairs require one modeled five-star carrier set"
+        )
 
     set_assignments: list[tuple[str, str]] = []
+    renderer_set_assignments: list[tuple[str, str]] = []
     layout_assignments: list[
         tuple[str, str, GcsimFiveStarMainStatLayout]
     ] = []
@@ -398,6 +429,16 @@ def materialize_gcsim_full_team_probe_state(
         layout = wearer_layouts[layout_id]
         profile = profiles_by_id[choice.profile_id]
         set_assignments.append((wearer, choice.state.set_key))
+        renderer_set_assignments.append(
+            (
+                wearer,
+                (
+                    carrier.key
+                    if choice.state.set_key in pair_packages
+                    else choice.state.set_key
+                ),
+            )
+        )
         layout_assignments.append((wearer, layout_id, layout))
         profile_assignments.append((wearer, choice.profile_id))
         resolved_layouts[wearer] = layout
@@ -408,7 +449,7 @@ def materialize_gcsim_full_team_probe_state(
 
     candidate_render = prepare_gcsim_four_piece_optimizer_candidate(
         prepared,
-        set_assignments=dict(set_assignments),
+        set_assignments=dict(renderer_set_assignments),
         main_stat_layouts=resolved_layouts,
         set_catalog=engine_context.catalog,
         four_star_offpiece_slots=offpieces,
@@ -424,8 +465,18 @@ def materialize_gcsim_full_team_probe_state(
             f"status={candidate_render.status!r}, issues={details!r}"
         )
     try:
+        pair_config = candidate_render.config_text
+        for wearer, package_key in set_assignments:
+            package = pair_packages.get(package_key)
+            if package is not None:
+                pair_config = render_gcsim_theoretical_pair_rows(
+                    pair_config,
+                    wearer=wearer,
+                    carrier_set_key=carrier.key,
+                    package=package,
+                )
         profile_render = render_gcsim_screening_profile_config(
-            candidate_render.config_text,
+            pair_config,
             main_stat_layouts=resolved_layouts,
             profiles=resolved_profiles,
             four_star_offpiece_slots=offpieces,
@@ -454,6 +505,11 @@ def materialize_gcsim_full_team_probe_state(
         fidelity=fidelity,
         environment=effective_environment,
         environment_is_frozen=True,
+        package_domain_sha256=(
+            gcsim_theoretical_pair_domain_sha256(pair_packages)
+            if pair_packages
+            else ""
+        ),
     )
     return GcsimFarmingMaterializedProbe(
         state=state,
@@ -489,6 +545,7 @@ def build_gcsim_farming_evaluation_context_sha256(
     fidelity: GcsimFarmingScreeningFidelity,
     environment: Mapping[str, str] | None = None,
     environment_is_frozen: bool = False,
+    package_domain_sha256: str = "",
 ) -> str:
     """Build the stable domain digest consumed by ``FullTeamComposerRequest``."""
 
@@ -579,6 +636,7 @@ def build_gcsim_farming_evaluation_context_sha256(
         "investment_signature": investment_signature,
         "fidelity": fidelity.to_dict(),
         "environment": [list(item) for item in effective_environment.items()],
+        "package_domain_sha256": package_domain_sha256,
     }
     return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
 
@@ -616,6 +674,7 @@ class GcsimFarmingFullTeamBatchSimulator:
         enable_cache: bool = True,
         session_factory: FarmingSessionFactory | None = None,
         scheduler_factory: SchedulerFactory | None = None,
+        two_plus_two_packages: Mapping[str, object] | None = None,
     ) -> None:
         _require_trusted_engine_context(engine_context)
         canonical_wearers = _validated_wearer_ids(wearer_ids)
@@ -659,6 +718,9 @@ class GcsimFarmingFullTeamBatchSimulator:
         self.investment_signature = investment_signature
         self.fidelity = fidelity
         self.scheduler_budget = scheduler_budget
+        self.two_plus_two_packages = freeze_gcsim_theoretical_pair_packages(
+            two_plus_two_packages
+        )
         self.environment = MappingProxyType(
             _normalized_effective_environment(
                 environment,
@@ -678,6 +740,13 @@ class GcsimFarmingFullTeamBatchSimulator:
                 fidelity=fidelity,
                 environment=self.environment,
                 environment_is_frozen=True,
+                package_domain_sha256=(
+                    gcsim_theoretical_pair_domain_sha256(
+                        self.two_plus_two_packages
+                    )
+                    if self.two_plus_two_packages
+                    else ""
+                ),
             )
         )
         if scheduler_factory is None:
@@ -758,6 +827,7 @@ class GcsimFarmingFullTeamBatchSimulator:
                 reference_weights=self.reference_weights,
                 environment=self.environment,
                 environment_is_frozen=True,
+                two_plus_two_packages=self.two_plus_two_packages,
             )
             )
         materialized = tuple(materialized_rows)
@@ -1082,7 +1152,7 @@ def _validate_profile_bank(profile_bank: StatProfileBank) -> None:
     )
     expected_axes = tuple(
         (axis.key, axis.probe_delta, axis.unit)
-        for axis in GCSIM_SCREENING_STAT_AXES
+        for axis in GCSIM_AUTOMATIC_RESPONSE_STAT_AXES
     )
     if actual_axes != expected_axes:
         raise GcsimFarmingPipelineError(
@@ -1115,6 +1185,8 @@ def _validated_reference_weights(
     total = sum(weights.values())
     if not math.isfinite(total) or total <= 0:
         raise GcsimFarmingPipelineError("reference weight total must be positive")
+    if math.isclose(total, 1.0, rel_tol=0.0, abs_tol=1e-12):
+        total = 1.0
     return tuple(
         StatWeight(axis_key=axis, weight=weights[axis] / total)
         for axis in GCSIM_SUBSTAT_ROLL_VALUES

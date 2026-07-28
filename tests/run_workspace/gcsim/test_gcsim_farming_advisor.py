@@ -27,6 +27,7 @@ class GcsimFourPieceAdvisorTest(unittest.TestCase):
             root = Path(tmp)
             search_template = _search_request(root)
             factory = SuccessfulSchedulerFactory()
+            progress = []
             request = GcsimFourPieceAdvisorRequest(
                 response_scan_request=_response_request(root, max_profiles=2),
                 screening_scheduler_budget=(
@@ -45,6 +46,9 @@ class GcsimFourPieceAdvisorTest(unittest.TestCase):
                     request,
                     enable_cache=False,
                     scheduler_factory=factory,
+                    progress_callback=lambda stage: progress.append(
+                        (stage, len(factory.calls))
+                    ),
                 ).run()
 
             self.assertEqual(result.status, GcsimFourPieceAdvisorStatus.BEST_FOUND)
@@ -52,6 +56,12 @@ class GcsimFourPieceAdvisorTest(unittest.TestCase):
             self.assertIsNotNone(result.search)
             self.assertIsNotNone(result.best_found)
             self.assertGreaterEqual(len(factory.calls), 3)
+            self.assertEqual(
+                tuple(stage for stage, _ in progress),
+                ("response_scan", "joint_search"),
+            )
+            self.assertEqual(progress[0][1], 0)
+            self.assertLess(progress[1][1], len(factory.calls))
             self.assertEqual(
                 result.response_scan.selection.selection_for("bennett").profile_ids,
                 ("baseline",),

@@ -2,7 +2,7 @@
 
 Research date: 2026-05-18
 
-Implementation status reviewed: 2026-07-17. The recommended pure normalization
+Implementation status reviewed: 2026-07-26. The recommended pure normalization
 layer is implemented in `hoyolab_export/stat_normalization.py`, is covered by
 tests, and feeds current GCSIM config block generation. Keep this file as the
 stat/unit contract; there is no remaining generic "implement stat
@@ -65,7 +65,9 @@ Confirmed source files:
   - Emits warnings for uncomputed final totals, missing artifact summary, unsupported Traveler, omitted passives/formulas.
 - `hoyolab_export/team_card_data.py`
   - `CharacterDetailsData` wraps `CharacterStatSnapshot`.
-  - GCSIM config generation and key mapping are explicitly not implemented.
+  - Its original readiness warning predates the now-implemented selected-team
+    GCSIM config path; it remains a display/snapshot boundary, not the optimizer
+    materializer.
 - `docs/handoff/GCSIM.md`
   - Dedicated GCSIM integration research handoff.
 
@@ -272,11 +274,19 @@ MVP recommendation:
 
 Confirmed:
 
-- `CharacterDetailsData.gcsim_readiness` currently reports:
-  - `gcsim_config_generation_not_implemented`
-  - stored account character/weapon GCSIM key fields may be available, but
-    config generation is not wired yet
-  - `final_totals_not_computed`
+- Selected-team GCSIM config generation is implemented under
+  `run_workspace/gcsim/selected_team_config.py`, `config_blocks.py`, and
+  `config_assembly.py`.
+- Stored ready account character/weapon GCSIM keys feed that path.
+- Registry-checked artifact-set resolution exists for normal selected builds.
+- `CharacterDetailsData` may still report display/final-total limitations; that
+  does not mean the GCSIM config backend is missing.
+- The artifact optimizer owns a strict arbitrary-five-ID materializer in
+  `run_workspace/gcsim/optimizer_artifact_materializer.py`. It aggregates exact
+  selected IDs from immutable run input and replaces candidate artifact blocks
+  without querying current equipment or presets.
+- Optimizer set references carry both concrete database `set_uid` and the
+  active-catalog-validated GCSIM set key.
 - GCSIM character, weapon, and set keys are separate from stat keys.
 
 Current character/weapon key boundary:
@@ -287,15 +297,12 @@ Current character/weapon key boundary:
 - The resolver uses local HoYoWiki stats caches for English names and local
   prepared GCSIM shortcut sources for accepted keys. It does not use localized
   display names, does not fetch network data, and does not run a GCSIM artifact.
-- Ready stored keys can become `GcsimMappingRef` inputs for future config
-  generation; missing/ambiguous/unsupported rows remain not-ready.
+- Ready stored keys become `GcsimMappingRef` inputs in the current config path;
+  missing/ambiguous/unsupported rows remain controlled not-ready cases.
 
 Needs follow-up:
 
-- Build mapping from artifact `set_uid`/names to GCSIM set keys.
 - Decide Traveler handling for GCSIM separately; account Traveler cannot be blindly mapped to one elemental Traveler variant.
-- Wire selected team/current build adapters to consume stored ready
-  character/weapon keys.
 
 MVP recommendation:
 

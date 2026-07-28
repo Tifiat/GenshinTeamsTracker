@@ -20,7 +20,75 @@ Mirror the primary project owner under `tests/`:
 - `tests/run_workspace/abyss/` - Run Workspace Abyss source data, factual DPS,
   runtime fixture/cache behavior.
 - `tests/run_workspace/gcsim/` - backend GCSIM lifecycle, config generation,
-  mapping, wave scenarios, cleanup, artifact runner.
+  mapping, wave scenarios, cleanup, artifact runner, and optimizer contracts.
+  Milestone 0R coverage pins schema v4, separate `.v4` operation namespaces,
+  `stat_space=static_build_contribution`, and fail-closed pre-v4 payloads.
+  Milestone 3 coverage includes hand-checkable reduced exhaustive account and
+  theoretical `4p` oracles, global no-reuse, replacement witnesses,
+  adversarial zero- through four-wearer states, and pruning-winner survival.
+  Milestone 4 coverage includes package-scoped database-reachable main layouts,
+  exact multi-scale roll exchanges, isolated-loss/joint-win EM, set-aware
+  reopening, renamed-character invariance, unusual-main/threshold/support
+  branches, and complete branch traces. Milestone 5 coverage includes exact
+  ordered top-K parity, set-feasible upper-bound laziness, every offpiece/`5p`
+  shape, low-CV threshold survival, conflict shadow repair, identical-content
+  fingerprints, and database-row-order invariance. Milestone 6 coverage
+  includes reduced-oracle score parity, wearer-order
+  invariance, evidence-driven contested-piece reassignment, coordinated
+  three-wearer repair, and distinct pool/bound/cancel/deadline outcomes.
+  Milestone 7 coverage includes enrichment recovery, coupled-EM finalist
+  protection, exact-config run sharing with physical witness retention,
+  cached/uncached semantic parity, cancellation cache safety, common
+  high-fidelity evidence, and close-leader rerace uncertainty. Milestone 8
+  coverage includes exact/sampled structural reference anchors, every selected
+  concrete 4p package combination, exact twenty-ID witnesses, production
+  scheduler adapters, typed infeasible-package reporting, cancellation, and
+  pre-GCSIM minimum-stat rejection over exact-five artifact stats plus proved
+  unconditional static 2p stats. This includes Emblem-like +20% ER
+  (`er=0.20`), same-
+  `ModKey` render-order overwrite, exclusion of conditional/parameterized
+  effects, and fail-closed feedback-enrichment rechecks. Milestone 9 coverage includes modeled
+  5-star all-set derivation, required rotational package coverage, randomized
+  reduced-frontier/exhaustive parity, an exceptional-real-artifact weak-set
+  winner, impossible-floor zero-GCSIM pruning, and deterministic exact-DPS
+  ties. Milestone 10 coverage includes canonical pair identity, exact
+  `2+2+1`/`3+2` reduced-oracle parity, production two-row response configs,
+  contested physical IDs, selected-pool twenty-ID proposals, all-set pair
+  coverage, and the low-conflict seed. Milestone 11 coverage includes mandatory
+  joint/mixed EM layouts, five-star product defaults, parameterized-set
+  defaults, percent-to-best, higher-fidelity close-leader reraces, typed
+  live `LAYOUT_SCAN`/`RESPONSE_SCAN`/`JOINT_SEARCH`/`RERACE` transitions before
+  their corresponding blocking runs,
+  fail-closed ER reference weights/manual response profiles, all-success rerace
+  selection independent of display `top_n`, distinct original/rerace provenance, patched
+  `optimize_er=0;fine_tune=0`, and persistent verified finalist cache hits after
+  transient run directories are removed. Milestone 12 coverage includes
+  pair-aware layout/response discovery, engine-derived conservative 2p
+  signatures, complete concrete-pair aliases, modifier-key collision proof,
+  `UNIQUE_SOURCE`/same-`ModKey` single-alias behavior, explicit two-row pair
+  configs, canonical `3+2` metadata, and a coordinated four-wearer reduced
+  oracle. Account coverage separately pins schema-v4 static-build minimum-stat
+  rejection before GCSIM and the no-auto-ER policy. Milestone 13 coverage pins
+  selected-pool parameter preservation, final-sheet ER conversion, mode/CPU
+  request freezing, ephemeral result invalidation, progress/current-best UI,
+  cancellation, and explicit single/team save semantics including atomic
+  rollback, idempotence, exact reused-preset validation, and no equipment
+  writes. Milestone 14 foundations cover strict oracle parity/recall/regret,
+  benchmark matrix completeness, independent-context scheduler semantics,
+  complete-reference/deep-layout response screening, and full selected-plan
+  identity. The current full GCSIM
+  backend suite passed 618/618 tests in 160.976s on 2026-07-28; use
+  `.venv\Scripts\python.exe -m unittest discover -s tests -t . -p
+  "test_gcsim*.py"`.
+  The directly affected AppShell/GCSIM Browser modules passed 202/202 tests in
+  129.178s on 2026-07-28. The broader `tests/ui` run passed 312 tests and had
+  one unrelated existing PvP layout failure at
+  `PvpBrowserTest.test_postdraft_player_sections_align_across_panes_at_supported_sizes`
+  (`0 != 7`); no optimizer/AppShell/GCSIM Browser test failed.
+  Active-engine compatibility smokes are explicit and outside the portable
+  unit suite: `python -m
+  run_workspace.gcsim.optimizer_reduced_oracle_smoke` and `python -m
+  run_workspace.gcsim.optimizer_main_response_smoke`.
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Decks UI preset
   persistence/conversion and root-resolved default path coverage
   (`test_deck_preset.py`), observed weapon-stack identity helper coverage

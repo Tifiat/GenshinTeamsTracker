@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field, replace
 from enum import Enum
 import math
@@ -28,6 +28,9 @@ from .farming_response_scan import GcsimResponseScanRequest
 from .farming_search import ScreeningSurvivorBudget
 from .farming_team_search import FullTeamComposerBudget
 from .optimizer_cache import GcsimOptimizerCacheStore
+from .optimizer_theoretical_packages import (
+    freeze_gcsim_theoretical_pair_packages,
+)
 
 
 class GcsimAutomaticAdvisorError(RuntimeError):
@@ -54,6 +57,8 @@ class GcsimAutomaticAdvisorRequest:
     composer_budget: FullTeamComposerBudget
     screening_candidate_timeout_seconds: float
     overall_deadline_seconds: float
+    allowed_set_rarities: tuple[int, ...] = (4, 5)
+    two_plus_two_packages: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not isinstance(self.layout_scan_request, GcsimMainLayoutScanRequest):
@@ -70,6 +75,27 @@ class GcsimAutomaticAdvisorRequest:
                 raise GcsimAutomaticAdvisorError(
                     f"{field_name} must be finite and positive"
                 )
+        rarities = tuple(self.allowed_set_rarities)
+        if (
+            not rarities
+            or any(value not in (4, 5) for value in rarities)
+            or len(set(rarities)) != len(rarities)
+        ):
+            raise GcsimAutomaticAdvisorError(
+                "allowed_set_rarities must be a unique non-empty subset of (4, 5)"
+            )
+        object.__setattr__(self, "allowed_set_rarities", rarities)
+        try:
+            packages = freeze_gcsim_theoretical_pair_packages(
+                self.two_plus_two_packages
+            )
+        except ValueError as exc:
+            raise GcsimAutomaticAdvisorError(str(exc)) from exc
+        object.__setattr__(self, "two_plus_two_packages", packages)
+        if packages != self.layout_scan_request.two_plus_two_packages:
+            raise GcsimAutomaticAdvisorError(
+                "automatic and layout-scan 2p+2p domains must match exactly"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +174,7 @@ class GcsimAutomaticAdvisorSession:
         session_factory: FarmingSessionFactory | None = None,
         scheduler_factory: SchedulerFactory | None = None,
         clock: Callable[[], float] = monotonic,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> None:
         if not isinstance(request, GcsimAutomaticAdvisorRequest):
             raise GcsimAutomaticAdvisorError(
@@ -159,10 +186,26 @@ class GcsimAutomaticAdvisorSession:
         self._session_factory = session_factory
         self._scheduler_factory = scheduler_factory
         self._clock = clock
+        if progress_callback is not None and not callable(progress_callback):
+            raise GcsimAutomaticAdvisorError(
+                "progress_callback must be callable or None"
+            )
+        self._progress_callback = progress_callback
         self._cancel_event = Event()
         self._lock = Lock()
         self._active = None
         self._started = False
+
+    def set_progress_callback(self, callback: Callable[[str], None]) -> None:
+        if self._started:
+            raise RuntimeError("cannot replace progress callback after run starts")
+        if not callable(callback):
+            raise GcsimAutomaticAdvisorError("progress callback must be callable")
+        self._progress_callback = callback
+
+    def _notify_progress(self, stage: str) -> None:
+        if self._progress_callback is not None:
+            self._progress_callback(stage)
 
     def cancel(self) -> None:
         self._cancel_event.set()
@@ -215,6 +258,7 @@ class GcsimAutomaticAdvisorSession:
         try:
             if self._cancel_event.is_set():
                 layout_session.cancel()
+            self._notify_progress("layout_scan")
             layout = layout_session.run()
         finally:
             self._clear_active(layout_session)
@@ -259,6 +303,7 @@ class GcsimAutomaticAdvisorSession:
             candidate_timeout_seconds=self.request.response_candidate_timeout_seconds,
             reference_weights=source.reference_weights,
             baseline_profile_id=source.baseline_profile_id,
+            two_plus_two_packages=self.request.two_plus_two_packages,
             environment=source.environment,
             environment_is_frozen=True,
         )
@@ -272,6 +317,8 @@ class GcsimAutomaticAdvisorSession:
             screening_candidate_timeout_seconds=(
                 self.request.screening_candidate_timeout_seconds
             ),
+            allowed_set_rarities=self.request.allowed_set_rarities,
+            two_plus_two_packages=self.request.two_plus_two_packages,
         )
         advisor_session = GcsimFourPieceAdvisorSession(
             advisor_request,
@@ -280,6 +327,7 @@ class GcsimAutomaticAdvisorSession:
             session_factory=self._session_factory,
             scheduler_factory=self._scheduler_factory,
             clock=self._clock,
+            progress_callback=self._progress_callback,
         )
         if self._clock() >= deadline:
             advisor_session.cancel()

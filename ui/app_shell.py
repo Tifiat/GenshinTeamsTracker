@@ -8,7 +8,7 @@ from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any
 from uuid import uuid4
 
@@ -125,6 +125,7 @@ from ui.gcsim_browser.run_worker import (
     right_panel_gcsim_results_from_browser_batch_payload,
     split_gcsim_browser_warnings,
 )
+from ui.gcsim_browser.optimizer_worker import GcsimBrowserOptimizerWorker
 from ui.right_panel.constants import (
     RIGHT_DOCK_PAGE_ACCOUNT,
     RIGHT_DOCK_PAGE_HISTORY,
@@ -136,6 +137,16 @@ from ui.right_panel.dock import RightOperationsDock
 from ui.right_panel.live_run.panel import RunRightPanelWidget
 from run_workspace.gcsim.selected_team_config import (
     build_selected_team_full_config_report,
+)
+from run_workspace.gcsim.optimizer_ui_adapter import (
+    GcsimOptimizerUiErFloorInput,
+    GcsimOptimizerUiLaunchRequest,
+    GcsimOptimizerUiMinimumInput,
+    GcsimOptimizerUiMode,
+)
+from run_workspace.gcsim.optimizer_save import (
+    save_gcsim_optimizer_team_preset,
+    save_gcsim_optimizer_wearer_preset,
 )
 from run_workspace.gcsim.readiness_summary import (
     build_gcsim_readiness_summary,
@@ -1575,6 +1586,21 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.rotation_text_changed.connect(
             self._on_gcsim_rotation_text_changed
         )
+        self.left_host.gcsim_browser_workspace.optimizer_start_requested.connect(
+            self._on_gcsim_optimizer_start_requested
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_cancel_requested.connect(
+            self._on_gcsim_optimizer_cancel_requested
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_save_wearer_requested.connect(
+            self._on_gcsim_optimizer_save_wearer_requested
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_save_team_requested.connect(
+            self._on_gcsim_optimizer_save_team_requested
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_team_changed.connect(
+            lambda _index: self._sync_gcsim_browser_context()
+        )
         self.left_host.history_workspace.snapshot_selected.connect(
             self._on_history_snapshot_selected
         )
@@ -1586,6 +1612,8 @@ class AppShell(QWidget):
             | None
         ) = None
         self._gcsim_browser_run_rotation_text = ""
+        self._gcsim_optimizer_thread: QThread | None = None
+        self._gcsim_optimizer_worker: GcsimBrowserOptimizerWorker | None = None
 
         self._right_panel_refresh_pending = False
         self._right_panel_refresh_timer = QTimer(self)
@@ -1886,6 +1914,162 @@ class AppShell(QWidget):
                 self.controller.gcsim_run_settings().boosted_energy_enabled
             ),
         )
+        optimizer_team_index = max(
+            0,
+            min(
+                1,
+                int(self.left_host.gcsim_browser_workspace.team_tabs.currentIndex()),
+            ),
+        )
+        if self.controller.mode == MODE_DPS_DUMMY:
+            optimizer_team_index = 0
+        optimizer_team = self.controller.gcsim_browser_selected_team(
+            optimizer_team_index
+        )
+        names, source_sets = _gcsim_optimizer_team_context(optimizer_team)
+        self.left_host.gcsim_browser_workspace.set_optimizer_context(
+            character_names_by_slot=names,
+            source_set_keys_by_slot=source_sets,
+            boosted_energy_label=_gcsim_browser_energy_mode_label(
+                self.controller.gcsim_run_settings().boosted_energy_enabled
+            ),
+            context_identity=hashlib.sha256(
+                json.dumps(
+                    {
+                        "selected_team": optimizer_team,
+                        "boosted_energy": self.controller.gcsim_run_settings().boosted_energy_enabled,
+                    },
+                    sort_keys=True,
+                    ensure_ascii=False,
+                    default=str,
+                ).encode("utf-8")
+            ).hexdigest(),
+        )
+
+    def _on_gcsim_optimizer_start_requested(
+        self,
+        team_index: int,
+        rotation_shell_text: str,
+        raw_options: object,
+    ) -> None:
+        workspace = self.left_host.gcsim_browser_workspace
+        if self._gcsim_optimizer_thread is not None:
+            workspace.set_optimizer_error(tr("gcsim.optimizer.error.already_running"))
+            return
+        if self._gcsim_browser_run_thread is not None:
+            workspace.set_optimizer_error(tr("gcsim.optimizer.error.sim_running"))
+            return
+        options = dict(raw_options) if isinstance(raw_options, Mapping) else {}
+        normalized_team_index = max(0, min(1, int(team_index)))
+        selected_team = self.controller.gcsim_browser_selected_team(
+            normalized_team_index
+        )
+        if not _selected_team_has_characters(selected_team):
+            workspace.set_optimizer_error(tr("gcsim.optimizer.error.empty_team"))
+            return
+        try:
+            request = GcsimOptimizerUiLaunchRequest(
+                database_path=str(self.controller.equipment_db_path),
+                selected_team=selected_team,
+                team_index=normalized_team_index,
+                rotation_shell_text=rotation_shell_text,
+                mode=GcsimOptimizerUiMode(str(options.get("mode") or "")),
+                selected_set_keys_by_slot=tuple(
+                    options.get("selected_set_keys_by_slot") or ()
+                ),
+                include_2p2p=bool(options.get("include_2p2p")),
+                minimum_stats=tuple(
+                    GcsimOptimizerUiMinimumInput(**dict(item))
+                    for item in options.get("minimum_stats") or ()
+                ),
+                er_floors=tuple(
+                    GcsimOptimizerUiErFloorInput(**dict(item))
+                    for item in options.get("er_floors") or ()
+                ),
+                cpu_budget=int(options.get("cpu_budget") or 0),
+                boosted_energy_enabled=(
+                    self.controller.gcsim_run_settings().boosted_energy_enabled
+                ),
+            )
+        except Exception as exc:
+            workspace.set_optimizer_error(str(exc))
+            return
+
+        worker = GcsimBrowserOptimizerWorker(request)
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.progress.connect(workspace.set_optimizer_progress)
+        worker.finished.connect(self._on_gcsim_optimizer_finished)
+        worker.failed.connect(self._on_gcsim_optimizer_failed)
+        worker.finished.connect(thread.quit)
+        worker.failed.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        worker.failed.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._clear_gcsim_optimizer_refs)
+        self._gcsim_optimizer_thread = thread
+        self._gcsim_optimizer_worker = worker
+        workspace.set_optimizer_busy(True)
+        thread.start()
+
+    def _on_gcsim_optimizer_cancel_requested(self) -> None:
+        if self._gcsim_optimizer_worker is not None:
+            self._gcsim_optimizer_worker.cancel()
+
+    def _on_gcsim_optimizer_finished(self, result: object) -> None:
+        self.left_host.gcsim_browser_workspace.set_optimizer_result(result)
+
+    def _on_gcsim_optimizer_failed(self, message: str) -> None:
+        self.left_host.gcsim_browser_workspace.set_optimizer_error(message)
+
+    def _clear_gcsim_optimizer_refs(self) -> None:
+        self._gcsim_optimizer_thread = None
+        self._gcsim_optimizer_worker = None
+        self.left_host.gcsim_browser_workspace.set_optimizer_busy(False)
+
+    def _on_gcsim_optimizer_save_wearer_requested(
+        self,
+        result: object,
+        team_slot: int,
+        name: str,
+    ) -> None:
+        panel = self.left_host.gcsim_browser_workspace.optimizer_panel
+        try:
+            saved = save_gcsim_optimizer_wearer_preset(
+                self.controller.equipment_db_path,
+                result=result,
+                team_slot=int(team_slot),
+                name=name,
+                character_name=panel.character_names_by_slot.get(int(team_slot), ""),
+            )
+        except Exception as exc:
+            panel.save_status.setText(tr("gcsim.optimizer.save_failed", error=exc))
+            return
+        panel.mark_wearer_saved(saved.team_slot, saved.build_id, saved.name)
+        self.left_host.refresh_account_data()
+
+    def _on_gcsim_optimizer_save_team_requested(
+        self,
+        result: object,
+        name: str,
+    ) -> None:
+        panel = self.left_host.gcsim_browser_workspace.optimizer_panel
+        try:
+            saved = save_gcsim_optimizer_team_preset(
+                self.controller.equipment_db_path,
+                result=result,
+                name=name,
+                character_names_by_slot=panel.character_names_by_slot,
+                existing_build_ids_by_slot=panel.saved_build_ids_by_slot,
+            )
+        except Exception as exc:
+            panel.save_status.setText(tr("gcsim.optimizer.save_failed", error=exc))
+            return
+        for row in saved.wearer_presets:
+            panel.mark_wearer_saved(row.team_slot, row.build_id, row.name)
+        panel.mark_team_saved(saved.team_preset_id, saved.name)
+        self.left_host.refresh_account_data()
 
     def _on_gcsim_prepare_requested(
         self,
@@ -2124,6 +2308,7 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.set_actions_busy(False)
 
     def _on_artifact_browser_equipment_changed(self, result: object) -> None:
+        self.left_host.gcsim_browser_workspace.invalidate_optimizer_results()
         affected_ids = {
             str(character_id)
             for character_id in getattr(result, "affected_character_ids", ()) or ()
@@ -2145,6 +2330,7 @@ class AppShell(QWidget):
             self.schedule_right_panel_refresh()
 
     def _on_account_data_changed(self, reset_runtime_state: bool) -> None:
+        self.left_host.gcsim_browser_workspace.invalidate_optimizer_results()
         self.cancel_pending_equipment_hydration()
         self.cancel_pending_right_panel_refresh(reason="account_data_changed")
         if self._weapon_filter_sync_timer.isActive():
@@ -2903,6 +3089,50 @@ def _selected_team_has_characters(selected_team: dict[str, Any]) -> bool:
         if slot.get("character") or _mapping(details.get("account_character")):
             return True
     return False
+
+
+def _gcsim_optimizer_team_context(
+    selected_team: Mapping[str, Any],
+) -> tuple[dict[int, str], dict[int, tuple[str, ...]]]:
+    names: dict[int, str] = {}
+    sets: dict[int, tuple[str, ...]] = {}
+    raw_slots = selected_team.get("slots")
+    if not isinstance(raw_slots, list):
+        return names, sets
+    for fallback_index, raw_slot in enumerate(raw_slots, start=1):
+        if not isinstance(raw_slot, Mapping):
+            continue
+        slot = int(raw_slot.get("slot_index", fallback_index - 1)) + 1
+        details = _mapping(raw_slot.get("character_details_data"))
+        character = _mapping(details.get("account_character")) or _mapping(
+            raw_slot.get("character")
+        )
+        names[slot] = (
+            _text(character.get("catalog_english_name"))
+            or _text(character.get("name"))
+            or _text(character.get("gcsim_character_key"))
+            or f"slot{slot}"
+        )
+        snapshot = _mapping(details.get("stat_snapshot"))
+        artifact = _mapping(snapshot.get("artifact"))
+        summary = _mapping(artifact.get("summary"))
+        values: list[str] = []
+        for row in summary.get("set_counts") or ():
+            if not isinstance(row, Mapping):
+                continue
+            key = _text(
+                row.get("gcsim_set_key")
+                or row.get("set_key")
+                or row.get("gcsim_key")
+                or row.get("key")
+                or row.get("set_uid")
+            ).casefold()
+            key = "".join(character for character in key if character.isalnum())
+            count = _optional_int(row.get("count") or row.get("piece_count")) or 0
+            if key and count >= 2:
+                values.append(key)
+        sets[slot] = tuple(dict.fromkeys(values))
+    return names, sets
 
 
 

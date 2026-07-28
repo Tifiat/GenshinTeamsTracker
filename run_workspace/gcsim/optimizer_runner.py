@@ -79,11 +79,12 @@ GCSIM_OPTIMIZER_OPTION_KEYS = (
     "total_liquid_substats",
     "indiv_liquid_cap",
     "fixed_substats_count",
+    "optimize_er",
     "fine_tune",
     "show_substat_scalars",
 )
 GCSIM_OPTIMIZER_BOOLEAN_OPTION_KEYS = frozenset(
-    {"fine_tune", "show_substat_scalars"}
+    {"optimize_er", "fine_tune", "show_substat_scalars"}
 )
 
 

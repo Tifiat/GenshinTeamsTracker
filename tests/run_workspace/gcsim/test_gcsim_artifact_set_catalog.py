@@ -163,7 +163,7 @@ func init() {}
         with self.assertRaises(TypeError):
             catalog._by_key["other"] = first  # type: ignore[index]
 
-    def test_parameterized_set_is_modeled_but_not_phase_one_optimizer_ready(self) -> None:
+    def test_parameterized_set_is_ready_with_pinned_engine_defaults(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_set(
@@ -187,9 +187,9 @@ func NewSet(count int, param map[string]float64) {
 
             self.assertTrue(capability.complete_four_piece_modeled)
             self.assertEqual(capability.parameter_keys, ("stacks",))
-            self.assertFalse(capability.optimizer_four_piece_ready)
+            self.assertTrue(capability.optimizer_four_piece_ready)
             self.assertEqual(catalog.modeled_four_piece_keys, ("husk",))
-            self.assertEqual(catalog.optimizer_ready_four_piece_keys, ())
+            self.assertEqual(catalog.optimizer_ready_four_piece_keys, ("husk",))
 
 
 def _write_set(root: Path, *, package: str, key: str, source: str) -> None:

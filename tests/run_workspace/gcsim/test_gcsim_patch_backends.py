@@ -70,6 +70,7 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
         self.assertIn("0002-gtt-sequential-wave-prototype.patch", patch_files)
         self.assertIn("0003-gtt-wave-scenario-payload.patch", patch_files)
         self.assertIn("0004-gtt-dynamic-wave-stats.patch", patch_files)
+        self.assertIn("0005-gtt-explicit-er-optimizer-policy.patch", patch_files)
         self.assertLess(
             patch_files.index("0001-gtt-engine-marker.patch"),
             patch_files.index("0002-gtt-sequential-wave-prototype.patch"),
@@ -81,6 +82,10 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
         self.assertLess(
             patch_files.index("0003-gtt-wave-scenario-payload.patch"),
             patch_files.index("0004-gtt-dynamic-wave-stats.patch"),
+        )
+        self.assertLess(
+            patch_files.index("0004-gtt-dynamic-wave-stats.patch"),
+            patch_files.index("0005-gtt-explicit-er-optimizer-policy.patch"),
         )
 
     def test_missing_git_is_controlled_failure_and_preserves_old_active(self) -> None:

@@ -15,8 +15,10 @@ content hashes for every reproducible input and successful optimizer output.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
+import base64
+import binascii
 import hashlib
 import json
 import math
@@ -56,8 +58,16 @@ from .optimizer_backend import (
     resolve_gcsim_optimizer_worker_count,
 )
 from .optimizer_config import GcsimFiveStarMainStatLayout
-from .optimizer_cache import build_gcsim_optimizer_cache_identity_from_sha256
+from .optimizer_cache import (
+    GcsimOptimizerCacheStore,
+    build_gcsim_optimizer_cache_identity_from_sha256,
+)
 from .optimizer_engine_context import GcsimOptimizerEngineContext
+from .optimizer_theoretical_packages import (
+    freeze_gcsim_theoretical_pair_packages,
+    gcsim_theoretical_pair_domain_sha256,
+    render_gcsim_theoretical_pair_rows,
+)
 from .optimizer_runner import (
     DEFAULT_GCSIM_OPTIMIZED_CONFIG_FILENAME,
     DEFAULT_GCSIM_OPTIMIZER_INPUT_FILENAME,
@@ -67,6 +77,7 @@ from .optimizer_runner import (
     GcsimOptimizerRunStatus,
     GcsimOptimizerSession,
     GcsimOptimizerSessionStatus,
+    GcsimOptimizerStageDiagnostic,
     GcsimOptimizerStageName,
     GcsimOptimizerStageStatus,
     freeze_gcsim_optimizer_environment,
@@ -98,6 +109,12 @@ _ANY_SET_RE = re.compile(
 _EXACT_SET_RE = re.compile(
     r'^\s*(?P<wearer>[a-z]+)\s+add\s+set\s*=\s*"'
     r'(?P<set>[a-z0-9]+)"\s+count\s*=\s*4\s*;\s*$',
+    re.IGNORECASE,
+)
+_EXACT_PAIR_SET_RE = re.compile(
+    r'^\s*(?P<wearer>[a-z]+)\s+add\s+set\s*=\s*"'
+    r'(?P<set>[a-z0-9]+)"\s+count\s*=\s*2'
+    r'(?:\s+\+params=\[[^\]\r\n]*\])?\s*;\s*$',
     re.IGNORECASE,
 )
 
@@ -188,6 +205,7 @@ class GcsimFinalistOptimizerRequest:
     finalists: tuple[FullTeamPhysicalState, ...]
     budget: GcsimFinalistOptimizerBudget
     optimizer_options: Mapping[str, int | float] = field(default_factory=dict)
+    two_plus_two_packages: Mapping[str, object] = field(default_factory=dict)
     environment: Mapping[str, str] = field(default_factory=dict, repr=False)
     environment_is_frozen: bool = field(default=False, repr=False, compare=False)
     validation_config_text: str = field(init=False, repr=False)
@@ -238,6 +256,13 @@ class GcsimFinalistOptimizerRequest:
         if len({state.key for state in finalists}) != len(finalists):
             raise GcsimFinalistOptimizerError("finalists must be physically unique")
 
+        try:
+            pair_packages = freeze_gcsim_theoretical_pair_packages(
+                self.two_plus_two_packages
+            )
+        except ValueError as exc:
+            raise GcsimFinalistOptimizerError(str(exc)) from exc
+
         for state in finalists:
             if tuple(choice.wearer_id for choice in state.choices) != wearer_ids:
                 raise GcsimFinalistOptimizerError(
@@ -250,6 +275,12 @@ class GcsimFinalistOptimizerRequest:
                         "finalist references an unknown wearer/layout pair: "
                         f"{(choice.wearer_id, choice.main_stat_layout_id)!r}"
                     )
+                if choice.set_key in pair_packages:
+                    if choice.offpiece_slot:
+                        raise GcsimFinalistOptimizerError(
+                            "five-star theoretical pairs do not use rarity offpieces"
+                        )
+                    continue
                 capability = self.engine_context.catalog.get(choice.set_key)
                 if capability is None:
                     raise GcsimFinalistOptimizerError(
@@ -330,6 +361,7 @@ class GcsimFinalistOptimizerRequest:
             "optimizer_options",
             MappingProxyType(normalized_options),
         )
+        object.__setattr__(self, "two_plus_two_packages", pair_packages)
         object.__setattr__(
             self,
             "environment",
@@ -559,6 +591,7 @@ class GcsimFinalistOptimizerAttempt:
     cache_identity_sha256: str = ""
     runner_result: GcsimOptimizerRunResult | None = field(default=None, repr=False)
     outcome: GcsimFinalistOptimizerOutcome | None = None
+    cache_hit: bool = False
     error: str = ""
 
     def __post_init__(self) -> None:
@@ -572,6 +605,8 @@ class GcsimFinalistOptimizerAttempt:
             )
         if not isinstance(self.status, GcsimFinalistAttemptStatus):
             raise GcsimFinalistOptimizerError("attempt status must be typed")
+        if not isinstance(self.cache_hit, bool):
+            raise GcsimFinalistOptimizerError("attempt cache_hit must be a bool")
         for field_name in ("optimizer_input_sha256", "cache_identity_sha256"):
             value = getattr(self, field_name)
             if value and not _is_sha256(value):
@@ -615,6 +650,10 @@ class GcsimFinalistOptimizerAttempt:
                     "passed attempt lacks coherent optimizer evidence"
                 )
         else:
+            if self.cache_hit:
+                raise GcsimFinalistOptimizerError(
+                    "only a passed attempt may be a cache hit"
+                )
             if self.outcome is not None or not self.error:
                 raise GcsimFinalistOptimizerError(
                     "non-passed attempt must carry an error and no outcome"
@@ -675,6 +714,30 @@ class GcsimFinalistOptimizerResult:
     successful_count: int
     attempts: tuple[GcsimFinalistOptimizerAttempt, ...]
     outcomes: tuple[GcsimFinalistOptimizerOutcome, ...]
+
+    @property
+    def all_successful_outcomes(
+        self,
+    ) -> tuple[GcsimFinalistOptimizerOutcome, ...]:
+        """Return every passed outcome in canonical rank order.
+
+        ``outcomes`` remains the public/display top-N projection. Reliability
+        passes such as close-leader reracing must use the complete successful
+        attempt evidence instead of treating that projection as the evaluated
+        domain.
+        """
+
+        return tuple(
+            sorted(
+                (
+                    attempt.outcome
+                    for attempt in self.attempts
+                    if attempt.status is GcsimFinalistAttemptStatus.PASSED
+                    and attempt.outcome is not None
+                ),
+                key=_outcome_rank_key,
+            )
+        )
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "attempts", tuple(self.attempts))
@@ -789,21 +852,12 @@ class GcsimFinalistOptimizerResult:
                     attempt.state,
                     self.request_snapshot,
                 )
-        successful = tuple(
-            attempt.outcome
-            for attempt in self.attempts
-            if attempt.status is GcsimFinalistAttemptStatus.PASSED
-            and attempt.outcome is not None
-        )
+        successful = self.all_successful_outcomes
         if self.successful_count != len(successful):
             raise GcsimFinalistOptimizerError(
                 "result successful_count differs from its audit trace"
             )
-        expected_outcomes = tuple(
-            sorted(successful, key=_outcome_rank_key)[
-                : self.request_snapshot.budget.top_n
-            ]
-        )
+        expected_outcomes = successful[: self.request_snapshot.budget.top_n]
         if self.outcomes != expected_outcomes:
             raise GcsimFinalistOptimizerError(
                 "result outcomes are not the canonical top-N successful attempts"
@@ -886,6 +940,7 @@ class GcsimFinalistOptimizerSession:
         request: GcsimFinalistOptimizerRequest,
         *,
         session_factory: OptimizerSessionFactory | None = None,
+        cache_store: GcsimOptimizerCacheStore | None = None,
         clock: Callable[[], float] = monotonic,
     ) -> None:
         if not isinstance(request, GcsimFinalistOptimizerRequest):
@@ -896,6 +951,14 @@ class GcsimFinalistOptimizerSession:
             raise GcsimFinalistOptimizerError("clock must be callable")
         self.request = request
         self._session_factory = session_factory or GcsimOptimizerSession
+        if cache_store is not None and not isinstance(
+            cache_store,
+            GcsimOptimizerCacheStore,
+        ):
+            raise GcsimFinalistOptimizerError(
+                "cache_store must be a GcsimOptimizerCacheStore or None"
+            )
+        self._cache_store = cache_store
         self._clock = clock
         self._cancel_event = Event()
         self._lock = Lock()
@@ -948,6 +1011,36 @@ class GcsimFinalistOptimizerSession:
             run_request = execution.request
             input_sha = _text_sha256(str(run_request.config_text))
             cache_sha = execution.cache_identity.cache_key
+            cached_result = self._load_cached_result(execution.cache_identity)
+            if cached_result is not None:
+                try:
+                    outcome = _accepted_outcome(
+                        ordinal=ordinal,
+                        state=state,
+                        request=self.request,
+                        run_request=run_request,
+                        cache_identity_sha256=cache_sha,
+                        result=cached_result,
+                        require_live_files=False,
+                    )
+                except Exception:
+                    # A stale/corrupt entry is never evidence; run normally.
+                    pass
+                else:
+                    attempts.append(
+                        GcsimFinalistOptimizerAttempt(
+                            ordinal=ordinal,
+                            state=state,
+                            status=GcsimFinalistAttemptStatus.PASSED,
+                            runner_status=cached_result.status.value,
+                            optimizer_input_sha256=input_sha,
+                            cache_identity_sha256=cache_sha,
+                            runner_result=cached_result,
+                            outcome=outcome,
+                            cache_hit=True,
+                        )
+                    )
+                    continue
             terminal = self._terminal_status(deadline)
             if terminal is not None:
                 attempts.append(
@@ -1107,6 +1200,10 @@ class GcsimFinalistOptimizerSession:
                         )
                     )
                 else:
+                    self._store_cached_result(
+                        execution.cache_identity,
+                        raw_result,
+                    )
                     attempts.append(
                         GcsimFinalistOptimizerAttempt(
                             ordinal=ordinal,
@@ -1135,6 +1232,29 @@ class GcsimFinalistOptimizerSession:
             else GcsimFinalistOptimizerStatus.NO_SUCCESS
         )
         return self._result(started, status, attempts)
+
+    def _load_cached_result(self, identity):
+        if self._cache_store is None:
+            return None
+        payload = self._cache_store.get(identity)
+        if payload is None:
+            return None
+        try:
+            return _optimizer_run_result_from_cache(payload)
+        except Exception:
+            return None
+
+    def _store_cached_result(self, identity, result) -> None:
+        if self._cache_store is None:
+            return
+        try:
+            self._cache_store.put(
+                identity,
+                _optimizer_run_result_to_cache(result),
+            )
+        except Exception:
+            # Cache availability must never turn a valid simulation into failure.
+            pass
 
     def _materialize_execution(self, state, deadline):
         remaining = deadline - self._clock()
@@ -1237,6 +1357,145 @@ def run_gcsim_finalist_optimizer(
     return GcsimFinalistOptimizerSession(request, **session_options).run()
 
 
+def _optimizer_run_result_to_cache(
+    result: GcsimOptimizerRunResult,
+) -> dict[str, object]:
+    """Serialize complete immutable runner evidence for a persistent cache hit."""
+
+    if result.status is not GcsimOptimizerRunStatus.PASSED:
+        raise GcsimFinalistOptimizerError(
+            "only passed optimizer results may be cached"
+        )
+    return {
+        "runner": result.to_dict(),
+        "input_config_base64": base64.b64encode(
+            result.input_config_bytes
+        ).decode("ascii"),
+        "optimized_config_base64": base64.b64encode(
+            result.optimized_config_bytes
+        ).decode("ascii"),
+        "result_json_base64": base64.b64encode(
+            result.result_json_bytes
+        ).decode("ascii"),
+    }
+
+
+def _optimizer_run_result_from_cache(
+    payload: Mapping[str, object],
+) -> GcsimOptimizerRunResult:
+    raw = payload.get("runner")
+    if not isinstance(raw, Mapping):
+        raise GcsimFinalistOptimizerError("cached runner payload is missing")
+
+    def decoded(name: str) -> bytes:
+        value = payload.get(name)
+        if not isinstance(value, str) or not value:
+            raise GcsimFinalistOptimizerError(
+                f"cached {name} is missing"
+            )
+        try:
+            return base64.b64decode(value, validate=True)
+        except (ValueError, binascii.Error) as exc:
+            raise GcsimFinalistOptimizerError(
+                f"cached {name} is invalid"
+            ) from exc
+
+    input_bytes = decoded("input_config_base64")
+    optimized_bytes = decoded("optimized_config_base64")
+    result_bytes = decoded("result_json_base64")
+    try:
+        summary = parse_gcsim_result_payload(
+            json.loads(result_bytes.decode("utf-8"))
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, GcsimResultParseError) as exc:
+        raise GcsimFinalistOptimizerError(
+            "cached result JSON is invalid"
+        ) from exc
+    optimize = _optimizer_stage_from_cache(
+        raw.get("optimize"),
+        GcsimOptimizerStageName.OPTIMIZE,
+    )
+    simulate = _optimizer_stage_from_cache(
+        raw.get("simulate"),
+        GcsimOptimizerStageName.SIMULATE,
+    )
+    try:
+        return GcsimOptimizerRunResult(
+            status=GcsimOptimizerRunStatus(str(raw.get("status", ""))),
+            success=raw.get("success"),
+            session_status=GcsimOptimizerSessionStatus(
+                str(raw.get("session_status", ""))
+            ),
+            engine_id=str(raw.get("engine_id", "")),
+            engine_path=str(raw.get("engine_path", "")),
+            artifact_path=str(raw.get("artifact_path", "")),
+            artifact_source=str(raw.get("artifact_source", "")),
+            artifact_sha256=str(raw.get("artifact_sha256", "")),
+            engine_binding_sha256=str(
+                raw.get("engine_binding_sha256", "")
+            ),
+            run_dir=str(raw.get("run_dir", "")),
+            input_config_path=str(raw.get("input_config_path", "")),
+            optimized_config_path=str(raw.get("optimized_config_path", "")),
+            result_path=str(raw.get("result_path", "")),
+            input_config_bytes=input_bytes,
+            optimized_config_bytes=optimized_bytes,
+            result_json_bytes=result_bytes,
+            input_config_sha256=str(raw.get("input_config_sha256", "")),
+            optimized_config_sha256=str(
+                raw.get("optimized_config_sha256", "")
+            ),
+            result_json_sha256=str(raw.get("result_json_sha256", "")),
+            optimize=optimize,
+            simulate=simulate,
+            summary=summary,
+            elapsed_seconds=float(raw.get("elapsed_seconds", 0.0)),
+            error=str(raw.get("error", "")),
+        )
+    except (TypeError, ValueError) as exc:
+        raise GcsimFinalistOptimizerError(
+            "cached runner evidence is incoherent"
+        ) from exc
+
+
+def _optimizer_stage_from_cache(
+    value: object,
+    expected_name: GcsimOptimizerStageName,
+):
+    if not isinstance(value, Mapping):
+        raise GcsimFinalistOptimizerError(
+            f"cached {expected_name.value} diagnostic is missing"
+        )
+    command = value.get("command")
+    if (
+        not isinstance(command, Sequence)
+        or isinstance(command, (str, bytes))
+    ):
+        raise GcsimFinalistOptimizerError(
+            f"cached {expected_name.value} command is invalid"
+        )
+    try:
+        diagnostic = GcsimOptimizerStageDiagnostic(
+            name=GcsimOptimizerStageName(str(value.get("name", ""))),
+            status=GcsimOptimizerStageStatus(str(value.get("status", ""))),
+            command=tuple(str(item) for item in command),
+            returncode=value.get("returncode"),
+            stdout=str(value.get("stdout", "")),
+            stderr=str(value.get("stderr", "")),
+            elapsed_seconds=float(value.get("elapsed_seconds", 0.0)),
+            error=str(value.get("error", "")),
+        )
+    except (TypeError, ValueError) as exc:
+        raise GcsimFinalistOptimizerError(
+            f"cached {expected_name.value} diagnostic is invalid"
+        ) from exc
+    if diagnostic.name is not expected_name:
+        raise GcsimFinalistOptimizerError(
+            f"cached {expected_name.value} diagnostic has another stage"
+        )
+    return diagnostic
+
+
 def _expire_optimizer_session_safely(
     deadline_expired: Event,
     session: OptimizerSessionLike,
@@ -1252,8 +1511,27 @@ def _prepare_bound_finalist_candidate(
     request: GcsimFinalistOptimizerRequest,
     state: FullTeamPhysicalState,
 ) -> GcsimBoundOptimizerCandidate:
+    pair_packages = request.two_plus_two_packages
+    carrier = next(
+        (
+            capability
+            for capability in request.engine_context.catalog.sets
+            if capability.optimizer_four_piece_ready
+            and capability.max_rarity == 5
+        ),
+        None,
+    )
+    if pair_packages and carrier is None:
+        raise GcsimFinalistOptimizerError(
+            "theoretical pairs require one modeled five-star carrier set"
+        )
     set_assignments = {
-        choice.wearer_id: choice.set_key for choice in state.choices
+        choice.wearer_id: (
+            carrier.key
+            if choice.set_key in pair_packages
+            else choice.set_key
+        )
+        for choice in state.choices
     }
     main_stat_layouts = {
         choice.wearer_id: request.layout_catalog[choice.wearer_id][
@@ -1281,6 +1559,24 @@ def _prepare_bound_finalist_candidate(
         raise GcsimFinalistOptimizerError(
             "finalist optimizer candidate is not ready: "
             + (issue_text or bound.candidate.status)
+        )
+    pair_config = bound.candidate.config_text
+    for choice in state.choices:
+        package = pair_packages.get(choice.set_key)
+        if package is not None:
+            pair_config = render_gcsim_theoretical_pair_rows(
+                pair_config,
+                wearer=choice.wearer_id,
+                carrier_set_key=carrier.key,
+                package=package,
+            )
+    if pair_config != bound.candidate.config_text:
+        bound = replace(
+            bound,
+            candidate=replace(
+                bound.candidate,
+                config_text=pair_config,
+            ),
         )
     return bound
 
@@ -1316,6 +1612,7 @@ def _accepted_outcome(
     run_request: GcsimOptimizerRunRequest,
     cache_identity_sha256: str,
     result: GcsimOptimizerRunResult,
+    require_live_files: bool = True,
 ) -> GcsimFinalistOptimizerOutcome:
     if result.status is not GcsimOptimizerRunStatus.PASSED:
         raise GcsimFinalistOptimizerError("optimizer result did not pass")
@@ -1357,41 +1654,42 @@ def _accepted_outcome(
             "finalist run request lost its engine or CPU-worker binding"
         )
 
-    run_dir = _required_directory(result.run_dir, "run_dir")
-    input_path = _required_child_file(
-        run_dir,
-        result.input_config_path,
-        DEFAULT_GCSIM_OPTIMIZER_INPUT_FILENAME,
-        "optimizer input",
-    )
-    optimized_path = _required_child_file(
-        run_dir,
-        result.optimized_config_path,
-        DEFAULT_GCSIM_OPTIMIZED_CONFIG_FILENAME,
-        "optimized config",
-    )
-    result_path = _required_child_file(
-        run_dir,
-        result.result_path,
-        DEFAULT_GCSIM_OPTIMIZER_RESULT_FILENAME,
-        "simulation result",
-    )
-    try:
-        current_input_bytes = input_path.read_bytes()
-        current_optimized_bytes = optimized_path.read_bytes()
-        current_result_bytes = result_path.read_bytes()
-    except OSError as exc:
-        raise GcsimFinalistOptimizerError(
-            f"could not read optimizer evidence: {exc}"
-        ) from exc
-    if (
-        current_input_bytes != result.input_config_bytes
-        or current_optimized_bytes != result.optimized_config_bytes
-        or current_result_bytes != result.result_json_bytes
-    ):
-        raise GcsimFinalistOptimizerError(
-            "optimizer evidence files changed after the runner byte snapshot"
+    if require_live_files:
+        run_dir = _required_directory(result.run_dir, "run_dir")
+        input_path = _required_child_file(
+            run_dir,
+            result.input_config_path,
+            DEFAULT_GCSIM_OPTIMIZER_INPUT_FILENAME,
+            "optimizer input",
         )
+        optimized_path = _required_child_file(
+            run_dir,
+            result.optimized_config_path,
+            DEFAULT_GCSIM_OPTIMIZED_CONFIG_FILENAME,
+            "optimized config",
+        )
+        result_path = _required_child_file(
+            run_dir,
+            result.result_path,
+            DEFAULT_GCSIM_OPTIMIZER_RESULT_FILENAME,
+            "simulation result",
+        )
+        try:
+            current_input_bytes = input_path.read_bytes()
+            current_optimized_bytes = optimized_path.read_bytes()
+            current_result_bytes = result_path.read_bytes()
+        except OSError as exc:
+            raise GcsimFinalistOptimizerError(
+                f"could not read optimizer evidence: {exc}"
+            ) from exc
+        if (
+            current_input_bytes != result.input_config_bytes
+            or current_optimized_bytes != result.optimized_config_bytes
+            or current_result_bytes != result.result_json_bytes
+        ):
+            raise GcsimFinalistOptimizerError(
+                "optimizer evidence files changed after the runner byte snapshot"
+            )
     try:
         input_text = result.input_config_bytes.decode("utf-8")
         optimized_text = result.optimized_config_bytes.decode("utf-8")
@@ -1416,7 +1714,11 @@ def _accepted_outcome(
         ) from exc
     _validate_optimizer_owned_config_diff(input_text, optimized_text, state)
     _validate_optimizer_substat_budget(optimized_text, state, request)
-    _validate_exact_set_evidence(optimized_text, state)
+    _validate_exact_set_evidence(
+        optimized_text,
+        state,
+        request.two_plus_two_packages,
+    )
     allocations = _extract_allocations(optimized_text, state)
     try:
         result_payload = json.loads(result_bytes.decode("utf-8"))
@@ -1795,12 +2097,15 @@ def _substat_budget_contract(
         "fixed_substats_count",
         DEFAULT_FIXED_SUBSTATS_COUNT,
     )
-    capability = request.engine_context.catalog.get(choice.set_key)
-    if capability is None or capability.max_rarity not in (4, 5):
-        raise GcsimFinalistOptimizerError(
-            f"cannot derive substat rarity for set {choice.set_key!r}"
-        )
-    four_star_count = 4 if capability.max_rarity == 4 else 0
+    if choice.set_key in request.two_plus_two_packages:
+        four_star_count = 0
+    else:
+        capability = request.engine_context.catalog.get(choice.set_key)
+        if capability is None or capability.max_rarity not in (4, 5):
+            raise GcsimFinalistOptimizerError(
+                f"cannot derive substat rarity for set {choice.set_key!r}"
+            )
+        four_star_count = 4 if capability.max_rarity == 4 else 0
     expected_liquid = max(
         total_liquid - FOUR_STAR_LIQUID_ROLL_PENALTY * four_star_count,
         0,
@@ -1851,19 +2156,49 @@ def _matches_gcsim_six_digit_float(observed: float, expected: float) -> bool:
 def _validate_exact_set_evidence(
     optimized_text: str,
     state: FullTeamPhysicalState,
+    pair_packages: Mapping[str, object] | None = None,
 ) -> None:
-    observed: list[tuple[str, str]] = []
+    packages = pair_packages or {}
+    observed: list[tuple[str, str, int]] = []
     for raw_line in optimized_text.splitlines():
         if _ANY_SET_RE.match(raw_line) is None:
             continue
         exact = _EXACT_SET_RE.match(raw_line)
-        if exact is None:
+        if exact is not None:
+            observed.append((exact.group("wearer"), exact.group("set"), 4))
+            continue
+        pair = _EXACT_PAIR_SET_RE.match(raw_line)
+        if pair is None:
             raise GcsimFinalistOptimizerError(
                 "optimized config contains a non-canonical artifact-set row"
             )
-        observed.append((exact.group("wearer"), exact.group("set")))
-    expected = tuple((choice.wearer_id, choice.set_key) for choice in state.choices)
-    if tuple(observed) != expected:
+        observed.append((pair.group("wearer"), pair.group("set"), 2))
+    expected = []
+    for choice in state.choices:
+        package = packages.get(choice.set_key)
+        if package is not None:
+            expected.extend(
+                (
+                    choice.wearer_id,
+                    set_ref.gcsim_set_key,
+                    2,
+                )
+                for set_ref in (package.set_a, package.set_b)
+            )
+        elif choice.set_key.startswith("pair_"):
+            rows = [
+                item
+                for item in observed
+                if item[0] == choice.wearer_id and item[2] == 2
+            ]
+            if len(rows) != 2 or rows[0][1] == rows[1][1]:
+                raise GcsimFinalistOptimizerError(
+                    "optimized config does not preserve a complete distinct 2p+2p package"
+                )
+            expected.extend(rows)
+        else:
+            expected.append((choice.wearer_id, choice.set_key, 4))
+    if tuple(observed) != tuple(expected):
         raise GcsimFinalistOptimizerError(
             "optimized config does not preserve the exact finalist set assignments"
         )
@@ -1989,6 +2324,13 @@ def _request_payload(request: GcsimFinalistOptimizerRequest) -> dict[str, object
         "environment": [
             [key, value] for key, value in sorted(request.environment.items())
         ],
+        "two_plus_two_domain_sha256": (
+            gcsim_theoretical_pair_domain_sha256(
+                request.two_plus_two_packages
+            )
+            if request.two_plus_two_packages
+            else ""
+        ),
     }
 
 

@@ -148,20 +148,6 @@ def prepare_gcsim_four_piece_optimizer_candidate(
                     set_key,
                 )
             )
-        elif not capability.optimizer_four_piece_ready:
-            issues.append(
-                GcsimOptimizerCandidateIssue(
-                    OPTIMIZER_CANDIDATE_SET_PARAMETERS_REQUIRED,
-                    f"set_assignments.{character_key}",
-                    (
-                        "Artifact set requires an explicit frozen parameter "
-                        "policy that Phase-1 does not implement: "
-                        + ", ".join(capability.parameter_keys)
-                    ),
-                    character_key,
-                    set_key,
-                )
-            )
         if capability.max_rarity == 4:
             required_four_star_characters.add(character_key)
         elif capability.max_rarity != 5:

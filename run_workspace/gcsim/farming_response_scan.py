@@ -54,6 +54,9 @@ from .farming_search import (
 )
 from .optimizer_cache import GcsimOptimizerCacheStore
 from .optimizer_engine_context import GcsimOptimizerEngineContext
+from .optimizer_theoretical_packages import (
+    freeze_gcsim_theoretical_pair_packages,
+)
 
 
 class GcsimResponseScanError(RuntimeError):
@@ -82,6 +85,7 @@ class GcsimResponseScanRequest:
     candidate_timeout_seconds: float
     reference_weights: tuple[StatWeight, ...] = GCSIM_BALANCED_REFERENCE_WEIGHTS
     baseline_profile_id: str = PROFILE_BASELINE
+    two_plus_two_packages: Mapping[str, object] = field(default_factory=dict)
     environment: Mapping[str, str] = field(default_factory=dict, repr=False)
     environment_is_frozen: bool = field(default=False, repr=False, compare=False)
 
@@ -89,6 +93,13 @@ class GcsimResponseScanRequest:
         object.__setattr__(self, "wearer_ids", tuple(self.wearer_ids))
         object.__setattr__(self, "baseline_states", tuple(self.baseline_states))
         object.__setattr__(self, "reference_weights", tuple(self.reference_weights))
+        try:
+            pair_packages = freeze_gcsim_theoretical_pair_packages(
+                self.two_plus_two_packages
+            )
+        except ValueError as exc:
+            raise GcsimResponseScanError(str(exc)) from exc
+        object.__setattr__(self, "two_plus_two_packages", pair_packages)
         if not isinstance(self.layout_catalog, Mapping):
             raise GcsimResponseScanError("layout_catalog must be a mapping")
         try:
@@ -140,6 +151,14 @@ class GcsimResponseScanRequest:
         if tuple(state.state.wearer_id for state in self.baseline_states) != self.wearer_ids:
             raise GcsimResponseScanError(
                 "baseline_states must match wearer_ids in canonical order"
+            )
+        if pair_packages and any(
+            state.state.set_key not in pair_packages or state.state.offpiece_slot
+            for state in self.baseline_states
+        ):
+            raise GcsimResponseScanError(
+                "pair-aware response baselines must reference the frozen 2p+2p "
+                "domain without offpieces"
             )
         if any(
             state.profile_id != self.baseline_profile_id
@@ -357,6 +376,7 @@ class GcsimResponseScanSession:
                 reference_weights=self.request.reference_weights,
                 environment=self.request.environment,
                 environment_is_frozen=True,
+                two_plus_two_packages=self.request.two_plus_two_packages,
             )
             probe_key_by_candidate_key[candidate.key] = proof.candidate_keys
             previous = proof_by_probe_key.setdefault(proof.candidate_keys, proof)

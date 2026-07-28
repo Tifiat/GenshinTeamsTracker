@@ -88,9 +88,14 @@ class GcsimArtifactSetCapability:
 
     @property
     def optimizer_four_piece_ready(self) -> bool:
-        """Whether Phase-1 can render the complete package without set params."""
+        """Whether GCSIM can render the complete package.
 
-        return self.complete_four_piece_modeled and not self.parameter_keys
+        Parameter keys are provenance metadata, not a blanket blocker.  When
+        no explicit values are supplied, the pinned engine's own omitted-
+        parameter behavior is the frozen policy.
+        """
+
+        return self.complete_four_piece_modeled
 
     def to_dict(self) -> dict[str, object]:
         return {

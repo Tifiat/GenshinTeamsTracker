@@ -9,8 +9,8 @@ stage: caller-provided bounded main-stat layouts and later expensive
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass, replace
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field, replace
 from enum import Enum
 import math
 from threading import Event, Lock
@@ -33,6 +33,9 @@ from .farming_response_scan import (
 from .farming_search import ScreeningSurvivorBudget
 from .farming_team_search import FullTeamComposerBudget
 from .optimizer_cache import GcsimOptimizerCacheStore
+from .optimizer_theoretical_packages import (
+    freeze_gcsim_theoretical_pair_packages,
+)
 
 
 class GcsimFourPieceAdvisorError(RuntimeError):
@@ -56,6 +59,8 @@ class GcsimFourPieceAdvisorRequest:
     composer_budget: FullTeamComposerBudget
     overall_deadline_seconds: float
     screening_candidate_timeout_seconds: float
+    allowed_set_rarities: tuple[int, ...] = (4, 5)
+    two_plus_two_packages: Mapping[str, object] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not isinstance(self.response_scan_request, GcsimResponseScanRequest):
@@ -71,6 +76,27 @@ class GcsimFourPieceAdvisorRequest:
                 raise GcsimFourPieceAdvisorError(
                     f"{field_name} must be finite and positive"
                 )
+        rarities = tuple(self.allowed_set_rarities)
+        if (
+            not rarities
+            or any(value not in (4, 5) for value in rarities)
+            or len(set(rarities)) != len(rarities)
+        ):
+            raise GcsimFourPieceAdvisorError(
+                "allowed_set_rarities must be a unique non-empty subset of (4, 5)"
+            )
+        object.__setattr__(self, "allowed_set_rarities", rarities)
+        try:
+            packages = freeze_gcsim_theoretical_pair_packages(
+                self.two_plus_two_packages
+            )
+        except ValueError as exc:
+            raise GcsimFourPieceAdvisorError(str(exc)) from exc
+        object.__setattr__(self, "two_plus_two_packages", packages)
+        if packages != self.response_scan_request.two_plus_two_packages:
+            raise GcsimFourPieceAdvisorError(
+                "advisor and response-scan 2p+2p domains must match exactly"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -117,6 +143,7 @@ class GcsimFourPieceAdvisorSession:
         session_factory: FarmingSessionFactory | None = None,
         scheduler_factory: SchedulerFactory | None = None,
         clock: Callable[[], float] = monotonic,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> None:
         if not isinstance(request, GcsimFourPieceAdvisorRequest):
             raise GcsimFourPieceAdvisorError(
@@ -128,10 +155,26 @@ class GcsimFourPieceAdvisorSession:
         self._session_factory = session_factory
         self._scheduler_factory = scheduler_factory
         self._clock = clock
+        if progress_callback is not None and not callable(progress_callback):
+            raise GcsimFourPieceAdvisorError(
+                "progress_callback must be callable or None"
+            )
+        self._progress_callback = progress_callback
         self._cancel_event = Event()
         self._lock = Lock()
         self._active: GcsimResponseScanSession | GcsimFourPieceSearchSession | None = None
         self._started = False
+
+    def set_progress_callback(self, callback: Callable[[str], None]) -> None:
+        if self._started:
+            raise RuntimeError("cannot replace progress callback after run starts")
+        if not callable(callback):
+            raise GcsimFourPieceAdvisorError("progress callback must be callable")
+        self._progress_callback = callback
+
+    def _notify_progress(self, stage: str) -> None:
+        if self._progress_callback is not None:
+            self._progress_callback(stage)
 
     def cancel(self) -> None:
         self._cancel_event.set()
@@ -188,6 +231,7 @@ class GcsimFourPieceAdvisorSession:
         try:
             if self._cancel_event.is_set():
                 response_session.cancel()
+            self._notify_progress("response_scan")
             response = response_session.run()
         finally:
             self._clear_active(response_session)
@@ -233,6 +277,8 @@ class GcsimFourPieceAdvisorSession:
                 self.request.screening_candidate_timeout_seconds
             ),
             reference_weights=source.reference_weights,
+            allowed_set_rarities=self.request.allowed_set_rarities,
+            two_plus_two_packages=self.request.two_plus_two_packages,
             environment=source.environment,
             environment_is_frozen=True,
         )
@@ -256,6 +302,7 @@ class GcsimFourPieceAdvisorSession:
         try:
             if self._cancel_event.is_set():
                 search_session.cancel()
+            self._notify_progress("joint_search")
             search = search_session.run()
         finally:
             self._clear_active(search_session)

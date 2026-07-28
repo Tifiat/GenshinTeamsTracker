@@ -43,6 +43,7 @@ class GcsimAutomaticAdvisorTest(unittest.TestCase):
             root = Path(tmp)
             search = _search_request(root)
             factory = LayoutSchedulerFactory()
+            progress = []
             request = GcsimAutomaticAdvisorRequest(
                 layout_scan_request=_layout_request(root),
                 response_scheduler_budget=GcsimFarmingSchedulerBudget(2, 2, 10.0),
@@ -66,6 +67,9 @@ class GcsimAutomaticAdvisorTest(unittest.TestCase):
                 request,
                 enable_cache=False,
                 scheduler_factory=factory,
+                progress_callback=lambda stage: progress.append(
+                    (stage, len(factory.calls))
+                ),
             ).run()
 
             self.assertEqual(result.status, GcsimAutomaticAdvisorStatus.BEST_FOUND)
@@ -74,6 +78,12 @@ class GcsimAutomaticAdvisorTest(unittest.TestCase):
             self.assertTrue(result.advisor.response_scan.completed)
             self.assertIsNotNone(result.best_found)
             self.assertGreaterEqual(len(factory.calls), 5)
+            self.assertEqual(
+                tuple(stage for stage, _ in progress),
+                ("layout_scan", "response_scan", "joint_search"),
+            )
+            self.assertEqual(progress[0][1], 0)
+            self.assertLess(progress[-1][1], len(factory.calls))
             self.assertEqual(
                 result.layout_scan.selections[0].best_layout_id,
                 "main/em-em-em",

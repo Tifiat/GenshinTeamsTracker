@@ -162,6 +162,9 @@ class GcsimOptimizedAdvisorResult:
                 finalists=expected_finalists,
                 budget=actual_budget,
                 optimizer_options=self.request_snapshot.optimizer_options,
+                two_plus_two_packages=(
+                    self.request_snapshot.automatic_request.two_plus_two_packages
+                ),
                 environment=source.environment,
                 environment_is_frozen=True,
             )
@@ -325,6 +328,7 @@ class GcsimOptimizedAdvisorSession:
         automatic_session_factory: AutomaticSessionFactory | None = None,
         finalist_session_factory: FinalistSessionFactory | None = None,
         clock: Callable[[], float] = monotonic,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> None:
         if not isinstance(request, GcsimOptimizedAdvisorRequest):
             raise GcsimOptimizedAdvisorError(
@@ -334,8 +338,18 @@ class GcsimOptimizedAdvisorSession:
         if not callable(clock):
             raise GcsimOptimizedAdvisorError("clock must be callable")
         self._clock = clock
+        if progress_callback is not None and not callable(progress_callback):
+            raise GcsimOptimizedAdvisorError(
+                "progress_callback must be callable or None"
+            )
+        self._progress_callback = progress_callback
+        self._progress_seen: set[str] = set()
         self._automatic_factory = automatic_session_factory or (
-            lambda value: GcsimAutomaticAdvisorSession(value, clock=self._clock)
+            lambda value: GcsimAutomaticAdvisorSession(
+                value,
+                clock=self._clock,
+                progress_callback=self._notify_progress,
+            )
         )
         self._finalist_factory = finalist_session_factory or (
             lambda value: GcsimFinalistOptimizerSession(value, clock=self._clock)
@@ -359,6 +373,13 @@ class GcsimOptimizedAdvisorSession:
                 active.cancel()
             except Exception:
                 pass
+
+    def _notify_progress(self, stage: str) -> None:
+        if stage in self._progress_seen:
+            return
+        self._progress_seen.add(stage)
+        if self._progress_callback is not None:
+            self._progress_callback(stage)
 
     def run(self) -> GcsimOptimizedAdvisorResult:
         with self._lock:
@@ -399,6 +420,13 @@ class GcsimOptimizedAdvisorSession:
             )
             automatic_session = self._automatic_factory(automatic_request)
             self._require_stage(automatic_session)
+            callback_setter = getattr(
+                automatic_session,
+                "set_progress_callback",
+                None,
+            )
+            if callable(callback_setter):
+                callback_setter(self._notify_progress)
             terminal = self._terminal_without_evidence(deadline)
             if terminal is not None:
                 automatic_session.cancel()
@@ -417,6 +445,11 @@ class GcsimOptimizedAdvisorSession:
                     "automatic session returned a non-typed result"
                 )
             automatic = automatic_raw
+            # A custom stage without callback support can only expose its
+            # internal transitions once its typed aggregate is returned.
+            self._notify_progress("layout_scan")
+            self._notify_progress("response_scan")
+            self._notify_progress("joint_search")
             _validate_automatic_derivation(self.request, automatic)
             automatic_validated = True
 
@@ -483,6 +516,9 @@ class GcsimOptimizedAdvisorSession:
                 finalists=finalists,
                 budget=finalist_budget,
                 optimizer_options=self.request.optimizer_options,
+                two_plus_two_packages=(
+                    self.request.automatic_request.two_plus_two_packages
+                ),
                 environment=source.environment,
                 environment_is_frozen=True,
             )
@@ -500,6 +536,7 @@ class GcsimOptimizedAdvisorSession:
                 )
             finalist_session = self._finalist_factory(finalist_request)
             self._require_stage(finalist_session)
+            self._notify_progress("final_validation")
             terminal = self._terminal_without_evidence(deadline)
             if terminal is not None:
                 finalist_session.cancel()

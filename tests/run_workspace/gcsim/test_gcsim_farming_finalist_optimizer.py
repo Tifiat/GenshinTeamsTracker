@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
 from threading import Event, Thread
 import tempfile
 from time import monotonic, sleep
@@ -28,6 +29,7 @@ from run_workspace.gcsim.farming_profile_config import GCSIM_SUBSTAT_ROLL_VALUES
 from run_workspace.gcsim.farming_search import FourPieceSetState
 from run_workspace.gcsim.farming_team_search import FullTeamPhysicalState
 from run_workspace.gcsim.optimizer_config import GcsimFiveStarMainStatLayout
+from run_workspace.gcsim.optimizer_cache import GcsimOptimizerCacheStore
 from run_workspace.gcsim.optimizer_engine_context import GcsimOptimizerEngineContext
 from run_workspace.gcsim.optimizer_runner import (
     DEFAULT_GCSIM_OPTIMIZED_CONFIG_FILENAME,
@@ -54,6 +56,46 @@ active furina;
 
 
 class GcsimFinalistOptimizerTest(unittest.TestCase):
+    def test_persistent_cache_reuses_verified_snapshots_without_run_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            request = _request(root)
+            cache = GcsimOptimizerCacheStore(root / "cache")
+            factory = EvidenceSessionFactory(root / "runs")
+            first = run_gcsim_finalist_optimizer(
+                request,
+                session_factory=factory,
+                cache_store=cache,
+            )
+            self.assertEqual(first.status, GcsimFinalistOptimizerStatus.BEST_FOUND)
+            self.assertFalse(first.attempts[0].cache_hit)
+            shutil.rmtree(root / "runs")
+
+            factory_called = False
+
+            def fail_factory(_request):
+                nonlocal factory_called
+                factory_called = True
+                raise AssertionError("persistent cache miss")
+
+            second = run_gcsim_finalist_optimizer(
+                request,
+                session_factory=fail_factory,
+                cache_store=cache,
+            )
+
+            self.assertFalse(factory_called)
+            self.assertEqual(second.status, GcsimFinalistOptimizerStatus.BEST_FOUND)
+            self.assertTrue(second.attempts[0].cache_hit)
+            self.assertEqual(
+                second.best_found.dps_mean,
+                first.best_found.dps_mean,
+            )
+            self.assertEqual(
+                second.best_found.optimized_config_sha256,
+                first.best_found.optimized_config_sha256,
+            )
+
     def test_race_pins_validation_iterations_and_returns_ranked_full_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -802,11 +844,23 @@ def _fixture_substat_row(
     )
     is_four_star = set_match is not None and set_match.group(1) == "instructor"
     rarity_modifier = 0.84 if is_four_star else 1.0
-    liquid_counts = (2,) * 6 + ((0,) * 4 if is_four_star else (2,) * 4)
+    if is_four_star:
+        funded_axes = {"atk%", "cr", "cd", "em", "hp%", "def%"}
+        liquid_by_axis = {
+            key: (2 if key in funded_axes else 0)
+            for key in GCSIM_SUBSTAT_ROLL_VALUES
+        }
+    else:
+        liquid_by_axis = {
+            key: (0 if key == "er" else 2)
+            for key in GCSIM_SUBSTAT_ROLL_VALUES
+        }
+        liquid_by_axis["atk%"] += 1
+        liquid_by_axis["cd"] += 1
     terms = []
     for (key, base_value), liquid in zip(
         GCSIM_SUBSTAT_ROLL_VALUES.items(),
-        liquid_counts,
+        liquid_by_axis.values(),
         strict=True,
     ):
         total_count = 2 + liquid

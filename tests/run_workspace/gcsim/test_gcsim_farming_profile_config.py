@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from run_workspace.gcsim.farming_profile_config import (
+    GCSIM_AUTOMATIC_RESPONSE_STAT_AXES,
     GCSIM_SCREENING_PROFILE_CONTRACT,
     GCSIM_SCREENING_STAT_AXES,
     GCSIM_SUBSTAT_ROLL_VALUES,
@@ -38,6 +39,13 @@ class GcsimFarmingProfileConfigTest(unittest.TestCase):
         self.assertEqual(GCSIM_SUBSTAT_ROLL_VALUES["em"], 19.82)
         self.assertEqual(GCSIM_SUBSTAT_ROLL_VALUES["hp"], 253.94)
         self.assertNotIn(
+            "er",
+            tuple(axis.key for axis in GCSIM_AUTOMATIC_RESPONSE_STAT_AXES),
+        )
+        self.assertNotIn("focus/er", tuple(
+            profile.profile_id for profile in self.bank.profiles
+        ))
+        self.assertNotIn(
             "balanced",
             tuple(profile.profile_id for profile in self.bank.profiles),
         )
@@ -50,7 +58,10 @@ class GcsimFarmingProfileConfigTest(unittest.TestCase):
 
         self.assertEqual(allocation.total_liquid_substats, 20)
         self.assertEqual(sum(dict(allocation.liquid_rolls_by_axis).values()), 20)
-        self.assertEqual(set(dict(allocation.liquid_rolls_by_axis).values()), {2})
+        liquid = dict(allocation.liquid_rolls_by_axis)
+        self.assertEqual(liquid["er"], 0)
+        self.assertEqual(sum(liquid.values()), 20)
+        self.assertTrue(all(liquid[key] > 0 for key in liquid if key != "er"))
         self.assertTrue(
             allocation.investment_signature.startswith(
                 GCSIM_SCREENING_PROFILE_CONTRACT + ":"

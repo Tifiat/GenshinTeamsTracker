@@ -447,6 +447,45 @@ class GcsimFarmingSchedulerTest(unittest.TestCase):
                     enable_cache=False,
                 )
 
+    def test_independent_context_batch_shares_artifact_but_cannot_rank(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            artifact = root / "gtt-gcsim.exe"
+            artifact.write_bytes(b"engine" * 1024)
+            first = _request(artifact, root / "a", "a")
+            second = replace(
+                _request(artifact, root / "b", "b"),
+                comparison_context_sha256="e" * 64,
+            )
+
+            class PreverifiedSession(ImmediateSession):
+                def __init__(self, request, *, _verified_artifact=None):
+                    self.verified_artifact = _verified_artifact
+                    super().__init__(request, dps=100.0, sd=1.0)
+
+            with patch.object(
+                farming_evaluator_module,
+                "_snapshot_artifact_until",
+                wraps=farming_evaluator_module._snapshot_artifact_until,
+            ) as hasher, patch.object(
+                farming_evaluator_module,
+                "GcsimFarmingEvaluationSession",
+                PreverifiedSession,
+            ):
+                result = GcsimFarmingEvaluationScheduler(
+                    (first, second),
+                    GcsimFarmingSchedulerBudget(2, 2, 1.0),
+                    enable_cache=False,
+                    independent_contexts=True,
+                ).run()
+
+            self.assertTrue(result.independent_contexts)
+            self.assertEqual(result.comparison_context_sha256, "")
+            self.assertIsNone(result.best_result)
+            self.assertEqual(hasher.call_count, 1)
+            with self.assertRaisesRegex(ValueError, "cannot be DPS-ranked"):
+                _ = result.ranked_results
+
     def test_default_batch_hashes_one_shared_artifact_only_once(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -68,6 +68,9 @@ from .farming_team_search import (
 )
 from .optimizer_cache import GcsimOptimizerCacheStore
 from .optimizer_engine_context import GcsimOptimizerEngineContext
+from .optimizer_theoretical_packages import (
+    freeze_gcsim_theoretical_pair_packages,
+)
 
 
 class GcsimFourPieceSearchError(RuntimeError):
@@ -82,6 +85,13 @@ class GcsimFourPieceSearchStatus(str, Enum):
     DEADLINE_REACHED = "deadline_reached"
     NO_SCREENING_RESULT = "no_screening_result"
     NO_TEAM_RESULT = "no_team_result"
+
+
+@dataclass(frozen=True, slots=True)
+class _TheoreticalPairCapability:
+    key: str
+    optimizer_four_piece_ready: bool = True
+    max_rarity: int = 5
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,6 +120,8 @@ class GcsimFourPieceSearchRequest:
     overall_deadline_seconds: float
     screening_candidate_timeout_seconds: float
     reference_weights: tuple[StatWeight, ...] = GCSIM_BALANCED_REFERENCE_WEIGHTS
+    allowed_set_rarities: tuple[int, ...] = (4, 5)
+    two_plus_two_packages: Mapping[str, object] = field(default_factory=dict)
     environment: Mapping[str, str] = field(default_factory=dict, repr=False)
     environment_is_frozen: bool = field(default=False, repr=False, compare=False)
 
@@ -122,6 +134,23 @@ class GcsimFourPieceSearchRequest:
         )
         object.__setattr__(self, "baseline_states", tuple(self.baseline_states))
         object.__setattr__(self, "reference_weights", tuple(self.reference_weights))
+        rarities = tuple(self.allowed_set_rarities)
+        if (
+            not rarities
+            or any(value not in (4, 5) for value in rarities)
+            or len(set(rarities)) != len(rarities)
+        ):
+            raise GcsimFourPieceSearchError(
+                "allowed_set_rarities must be a unique non-empty subset of (4, 5)"
+            )
+        object.__setattr__(self, "allowed_set_rarities", rarities)
+        try:
+            packages = freeze_gcsim_theoretical_pair_packages(
+                self.two_plus_two_packages
+            )
+        except ValueError as exc:
+            raise GcsimFourPieceSearchError(str(exc)) from exc
+        object.__setattr__(self, "two_plus_two_packages", packages)
         if not isinstance(self.layout_catalog, Mapping):
             raise GcsimFourPieceSearchError("layout_catalog must be a mapping")
         try:
@@ -352,6 +381,7 @@ class GcsimFourPieceSearchSession:
                 reference_weights=self.request.reference_weights,
                 environment=self.request.environment,
                 environment_is_frozen=True,
+                two_plus_two_packages=self.request.two_plus_two_packages,
             )
             key = proof.candidate_keys
             logical_by_key.setdefault(key, []).append(candidate)
@@ -530,6 +560,7 @@ class GcsimFourPieceSearchSession:
             enable_cache=self._enable_cache,
             session_factory=self._session_factory,
             scheduler_factory=self._external_scheduler_factory,
+            two_plus_two_packages=self.request.two_plus_two_packages,
         )
         remaining = deadline - self._clock()
         if remaining <= 0:
@@ -625,9 +656,22 @@ class GcsimFourPieceSearchSession:
                 "screening fidelity workers exceed team CPU budget"
             )
         try:
+            capabilities = (
+                tuple(
+                    _TheoreticalPairCapability(key)
+                    for key in request.two_plus_two_packages
+                )
+                if request.two_plus_two_packages
+                else tuple(
+                    capability
+                    for capability in request.engine_context.catalog.sets
+                    if capability.max_rarity
+                    in request.allowed_set_rarities
+                )
+            )
             return build_four_piece_candidate_coverage(
                 tuple(SearchWearer(wearer) for wearer in request.wearer_ids),
-                request.engine_context.catalog.sets,
+                capabilities,
                 request.profile_bank,
                 main_stat_layout_ids_by_wearer={
                     wearer: tuple(request.layout_catalog[wearer])

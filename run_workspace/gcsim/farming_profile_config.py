@@ -79,12 +79,19 @@ GCSIM_SCREENING_STAT_AXES: tuple[StatAxis, ...] = tuple(
     StatAxis(key=key, probe_delta=value, unit="one_max_roll")
     for key, value in GCSIM_SUBSTAT_ROLL_VALUES.items()
 )
+# Energy recharge is a feasibility constraint owned by the caller, not an
+# automatically optimized response direction.  Keep it in the complete stat
+# vocabulary so exact artifact stats and explicit minimum-stat constraints can
+# represent ER, but never spend liquid theoretical rolls on it by default.
+GCSIM_AUTOMATIC_RESPONSE_STAT_AXES: tuple[StatAxis, ...] = tuple(
+    axis for axis in GCSIM_SCREENING_STAT_AXES if axis.key != "er"
+)
 GCSIM_BALANCED_REFERENCE_WEIGHTS: tuple[StatWeight, ...] = tuple(
     StatWeight(
         axis_key=axis.key,
-        weight=1.0 / len(GCSIM_SCREENING_STAT_AXES),
+        weight=1.0 / len(GCSIM_AUTOMATIC_RESPONSE_STAT_AXES),
     )
-    for axis in GCSIM_SCREENING_STAT_AXES
+    for axis in GCSIM_AUTOMATIC_RESPONSE_STAT_AXES
 )
 
 _CHARACTER_LINE_RE = re.compile(
@@ -224,7 +231,7 @@ def build_default_gcsim_screening_profile_bank(
     """Return the pinned generic response bank without character hardcodes."""
 
     return generate_stat_profile_bank(
-        GCSIM_SCREENING_STAT_AXES,
+        GCSIM_AUTOMATIC_RESPONSE_STAT_AXES,
         include_baseline=True,
         # The baseline already *is* the balanced reference allocation. Keeping
         # a second balanced id would render byte-identical configs and waste one
@@ -732,6 +739,11 @@ def _normalized_weights(
     total = sum(result.values())
     if total <= 0:
         raise GcsimScreeningProfileError(f"{field_name} must not be empty")
+    # Re-normalizing an already normalized nine-axis vector can otherwise
+    # perturb its last bits (sum(1/9) is not represented exactly) and create a
+    # different investment digest for the byte-identical policy.
+    if isclose(total, 1.0, rel_tol=0.0, abs_tol=1e-12):
+        total = 1.0
     return {key: value / total for key, value in result.items()}
 
 
@@ -853,6 +865,7 @@ def _screening_investment_signature(
 
 
 __all__ = [
+    "GCSIM_AUTOMATIC_RESPONSE_STAT_AXES",
     "DEFAULT_FIXED_SUBSTATS_COUNT",
     "DEFAULT_INDIVIDUAL_LIQUID_CAP",
     "DEFAULT_TOTAL_LIQUID_SUBSTATS",

@@ -59,6 +59,9 @@ from .optimizer_config import (
     GcsimFiveStarMainStatLayout,
 )
 from .optimizer_engine_context import GcsimOptimizerEngineContext
+from .optimizer_theoretical_packages import (
+    freeze_gcsim_theoretical_pair_packages,
+)
 
 
 GCSIM_GENERIC_MAIN_LAYOUT_SEED = GcsimFiveStarMainStatLayout(
@@ -85,6 +88,7 @@ class GcsimMainLayoutScanBudget:
     max_values_per_slot: int = 2
     max_layouts_per_wearer: int = 3
     candidate_timeout_seconds: float = 10.0
+    preserve_joint_em_layouts: bool = False
 
     def __post_init__(self) -> None:
         for field_name in ("max_values_per_slot", "max_layouts_per_wearer"):
@@ -103,6 +107,10 @@ class GcsimMainLayoutScanBudget:
             or self.candidate_timeout_seconds <= 0
         ):
             raise ValueError("candidate_timeout_seconds must be finite and positive")
+        if not isinstance(self.preserve_joint_em_layouts, bool):
+            raise ValueError(
+                "preserve_joint_em_layouts must be a boolean"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,6 +128,7 @@ class GcsimMainLayoutScanRequest:
     baseline_profile_id: str = PROFILE_BASELINE
     seed_layout: GcsimFiveStarMainStatLayout = GCSIM_GENERIC_MAIN_LAYOUT_SEED
     reference_weights: tuple[StatWeight, ...] = GCSIM_BALANCED_REFERENCE_WEIGHTS
+    two_plus_two_packages: Mapping[str, object] = field(default_factory=dict)
     environment: Mapping[str, str] = field(default_factory=dict, repr=False)
     environment_is_frozen: bool = field(default=False, repr=False, compare=False)
 
@@ -131,9 +140,24 @@ class GcsimMainLayoutScanRequest:
             tuple(self.baseline_set_states),
         )
         object.__setattr__(self, "reference_weights", tuple(self.reference_weights))
+        try:
+            pair_packages = freeze_gcsim_theoretical_pair_packages(
+                self.two_plus_two_packages
+            )
+        except ValueError as exc:
+            raise GcsimMainLayoutScanError(str(exc)) from exc
+        object.__setattr__(self, "two_plus_two_packages", pair_packages)
         if tuple(state.wearer_id for state in self.baseline_set_states) != self.wearer_ids:
             raise GcsimMainLayoutScanError(
                 "baseline_set_states must match wearer_ids in canonical order"
+            )
+        if pair_packages and any(
+            state.set_key not in pair_packages or state.offpiece_slot
+            for state in self.baseline_set_states
+        ):
+            raise GcsimMainLayoutScanError(
+                "pair-aware layout baselines must reference the frozen 2p+2p "
+                "domain without offpieces"
             )
         if self.baseline_profile_id not in tuple(
             profile.profile_id for profile in self.profile_bank.profiles
@@ -439,6 +463,11 @@ class GcsimMainLayoutScanResult:
                 expected_combination_layout_ids.add(
                     _layout_id(self.seed_layout_snapshot)
                 )
+                if self.scan_budget_snapshot.preserve_joint_em_layouts:
+                    expected_combination_layout_ids.update(
+                        _layout_id(layout)
+                        for layout in _joint_em_layouts()
+                    )
                 ranked = tuple(
                     sorted(
                         (
@@ -468,7 +497,14 @@ class GcsimMainLayoutScanResult:
                     )
                 expected_layout_ids = tuple(
                     evaluation.candidate.state.main_stat_layout_id
-                    for evaluation in ranked[:expected_finalist_count]
+                    for evaluation in _select_layout_finalists(
+                        ranked,
+                        max_layouts=expected_finalist_count,
+                        preserve_joint_em_layouts=(
+                            self.scan_budget_snapshot
+                            .preserve_joint_em_layouts
+                        ),
+                    )
                 )
                 actual_layout_ids = tuple(
                     layout_id for layout_id, _layout in selection.layouts
@@ -638,6 +674,9 @@ class GcsimMainLayoutScanSession:
                 )
             }
             layouts.setdefault(seed_id, self.request.seed_layout)
+            if self.request.scan_budget.preserve_joint_em_layouts:
+                for layout in _joint_em_layouts():
+                    layouts.setdefault(_layout_id(layout), layout)
             combination_catalog[wearer] = layouts
             combination_candidates.extend(
                 SetProfileCandidate(
@@ -701,9 +740,15 @@ class GcsimMainLayoutScanSession:
                     key=_evaluation_rank,
                 )
             )
-            finalists = wearer_evaluations[
-                : self.request.scan_budget.max_layouts_per_wearer
-            ]
+            finalists = _select_layout_finalists(
+                wearer_evaluations,
+                max_layouts=(
+                    self.request.scan_budget.max_layouts_per_wearer
+                ),
+                preserve_joint_em_layouts=(
+                    self.request.scan_budget.preserve_joint_em_layouts
+                ),
+            )
             selections.append(
                 GcsimWearerLayoutSelection(
                     wearer_id=wearer,
@@ -809,6 +854,7 @@ class GcsimMainLayoutScanSession:
                 reference_weights=self.request.reference_weights,
                 environment=self.request.environment,
                 environment_is_frozen=True,
+                two_plus_two_packages=self.request.two_plus_two_packages,
             )
             probe_by_candidate[candidate.key] = proof.candidate_keys
             proof_by_key.setdefault(proof.candidate_keys, proof)
@@ -1002,6 +1048,49 @@ def _evaluation_rank(evaluation: CandidateEvaluation):
         float("inf") if evaluation.standard_error is None else evaluation.standard_error,
         evaluation.candidate.state.main_stat_layout_id,
     )
+
+
+def _joint_em_layouts() -> tuple[GcsimFiveStarMainStatLayout, ...]:
+    return (
+        GcsimFiveStarMainStatLayout("em", "em", "em"),
+        GcsimFiveStarMainStatLayout("em", "em", "cr"),
+    )
+
+
+def _select_layout_finalists(
+    ranked: Sequence[CandidateEvaluation],
+    *,
+    max_layouts: int,
+    preserve_joint_em_layouts: bool,
+) -> tuple[CandidateEvaluation, ...]:
+    if not preserve_joint_em_layouts:
+        return tuple(ranked[:max_layouts])
+    mandatory_ids = tuple(
+        _layout_id(layout) for layout in _joint_em_layouts()
+    )
+    by_id = {
+        row.candidate.state.main_stat_layout_id: row
+        for row in ranked
+    }
+    retained: list[CandidateEvaluation] = []
+    # Preserve the best measured layout, then reserve the remaining capacity
+    # for joint/mixed EM states before filling by score.
+    if ranked:
+        retained.append(ranked[0])
+    for layout_id in mandatory_ids:
+        row = by_id.get(layout_id)
+        if (
+            row is not None
+            and row not in retained
+            and len(retained) < max_layouts
+        ):
+            retained.append(row)
+    for row in ranked:
+        if len(retained) >= max_layouts:
+            break
+        if row not in retained:
+            retained.append(row)
+    return tuple(retained)
 
 
 def _layout_id(layout: GcsimFiveStarMainStatLayout) -> str:

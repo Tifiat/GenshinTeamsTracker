@@ -78,7 +78,7 @@ class GcsimFarmingMaterializationTest(unittest.TestCase):
                 furina_set="goldentroupe",
                 furina_profile="focus/hp%",
                 bennett_set="instructor",
-                bennett_profile="focus/er",
+                bennett_profile="focus/atk%",
                 bennett_offpiece="sands",
             )
 
@@ -104,7 +104,7 @@ class GcsimFarmingMaterializationTest(unittest.TestCase):
             )
             self.assertEqual(
                 proof.profile_assignments,
-                (("furina", "focus/hp%"), ("bennett", "focus/er")),
+                (("furina", "focus/hp%"), ("bennett", "focus/atk%")),
             )
             self.assertIn('furina add set="goldentroupe" count=4;', proof.config_text)
             self.assertIn('bennett add set="instructor" count=4;', proof.config_text)

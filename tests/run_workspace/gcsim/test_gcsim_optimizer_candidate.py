@@ -113,7 +113,7 @@ class GcsimOptimizerCandidateTest(unittest.TestCase):
         self.assertEqual(offpiece_collision.status, OPTIMIZER_CANDIDATE_OFFPIECE_MISMATCH)
         self.assertIn("ambiguous", offpiece_collision.issues[0].message)
 
-    def test_rejects_parameterized_set_until_policy_is_frozen(self) -> None:
+    def test_parameterized_set_uses_pinned_omitted_parameter_policy(self) -> None:
         capabilities = (*_catalog().sets, _capability("husk", max_rarity=5, parameters=("stacks",)))
         catalog = GcsimArtifactSetCatalog(
             source_root="fixture",
@@ -128,7 +128,9 @@ class GcsimOptimizerCandidateTest(unittest.TestCase):
             set_catalog=catalog,
         )
 
-        self.assertEqual(result.status, OPTIMIZER_CANDIDATE_SET_PARAMETERS_REQUIRED)
+        self.assertTrue(result.ready)
+        self.assertIn('furina add set="husk" count=4;', result.config_text)
+        self.assertNotIn("+params=", result.config_text)
 
     def test_rejects_hidden_stats_statement_before_candidate_rendering(self) -> None:
         for poisoned in (

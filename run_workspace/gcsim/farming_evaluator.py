@@ -399,6 +399,7 @@ def prepare_bound_gcsim_farming_joint_evaluation(
     run_dir: str | Path | None = None,
     novelty_score: float = 0.0,
     novelty_tags: Sequence[str] = (),
+    synthetic_set_keys: Sequence[str] = (),
 ) -> GcsimFarmingEvaluationRequest:
     """Bind a fully rendered joint team state without inventing one wearer."""
 
@@ -417,6 +418,7 @@ def prepare_bound_gcsim_farming_joint_evaluation(
         run_dir=run_dir,
         novelty_score=novelty_score,
         novelty_tags=novelty_tags,
+        synthetic_set_keys=synthetic_set_keys,
     )
 
 
@@ -435,12 +437,17 @@ def _prepare_bound_gcsim_farming_evaluation(
     run_dir: str | Path | None,
     novelty_score: float,
     novelty_tags: Sequence[str],
+    synthetic_set_keys: Sequence[str] = (),
 ) -> GcsimFarmingEvaluationRequest:
     if not engine_context.trusted:
         raise GcsimFarmingEvaluationError(
             "Farming evaluator requires a resealed trusted engine context."
         )
-    _validate_bound_candidate_keys(engine_context, candidate_keys)
+    _validate_bound_candidate_keys(
+        engine_context,
+        candidate_keys,
+        synthetic_set_keys=synthetic_set_keys,
+    )
 
     try:
         resolved_workers = resolve_gcsim_optimizer_worker_count(worker_count)
@@ -1030,6 +1037,7 @@ class GcsimFarmingBatchResult:
     deadline_seconds: float
     elapsed_seconds: float
     cache_errors: tuple[str, ...] = ()
+    independent_contexts: bool = False
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "results", tuple(self.results))
@@ -1041,7 +1049,14 @@ class GcsimFarmingBatchResult:
             for result in self.results
         ):
             raise ValueError("results must contain GcsimFarmingEvaluationResult values")
-        if self.results:
+        if not isinstance(self.independent_contexts, bool):
+            raise ValueError("independent_contexts must be boolean")
+        if self.independent_contexts:
+            if self.comparison_context_sha256:
+                raise ValueError(
+                    "independent-context batch cannot claim one comparison context"
+                )
+        elif self.results:
             if not _is_sha256(self.comparison_context_sha256):
                 raise ValueError(
                     "comparison_context_sha256 must be a lowercase SHA-256 digest"
@@ -1101,7 +1116,11 @@ class GcsimFarmingBatchResult:
                 ),
             )
         )
-        expected_best = ranked[0] if ranked else None
+        expected_best = (
+            None
+            if self.independent_contexts
+            else (ranked[0] if ranked else None)
+        )
         if self.best_result != expected_best:
             raise ValueError("best_result does not match successful result ranking")
         if self.best_evaluation != (
@@ -1133,6 +1152,8 @@ class GcsimFarmingBatchResult:
 
     @property
     def ranked_results(self) -> tuple[GcsimFarmingEvaluationResult, ...]:
+        if self.independent_contexts:
+            raise ValueError("independent comparison contexts cannot be DPS-ranked")
         return tuple(
             sorted(
                 (item for item in self.results if item.success),
@@ -1145,6 +1166,8 @@ class GcsimFarmingBatchResult:
 
     @property
     def ranked_evaluations(self) -> tuple[CandidateEvaluation, ...]:
+        if self.independent_contexts:
+            raise ValueError("independent comparison contexts cannot be DPS-ranked")
         return tuple(
             result.evaluation
             for result in sorted(
@@ -1169,6 +1192,7 @@ class GcsimFarmingEvaluationScheduler:
         cache_store: GcsimOptimizerCacheStore | None = None,
         enable_cache: bool = True,
         session_factory: FarmingSessionFactory | None = None,
+        independent_contexts: bool = False,
     ) -> None:
         self.requests = tuple(requests)
         self.budget = budget
@@ -1191,7 +1215,9 @@ class GcsimFarmingEvaluationScheduler:
             )
             for request in self.requests
         }
-        if len(comparison_scopes) > 1:
+        if not isinstance(independent_contexts, bool):
+            raise ValueError("independent_contexts must be boolean")
+        if len(comparison_scopes) > 1 and not independent_contexts:
             raise ValueError(
                 "farming evaluation requests must share one comparison context, "
                 "investment, engine, config shell, worker, and environment identity"
@@ -1210,6 +1236,7 @@ class GcsimFarmingEvaluationScheduler:
             (cache_store or GcsimOptimizerCacheStore()) if enable_cache else None
         )
         self._session_factory = session_factory
+        self._independent_contexts = independent_contexts
         self._cancel_event = Event()
         self._lock = Lock()
         self._active_sessions: dict[int, FarmingEvaluationSession] = {}
@@ -1533,17 +1560,21 @@ class GcsimFarmingEvaluationScheduler:
             for index in range(len(self.requests))
         )
         successful = tuple(result for result in ordered_results if result.success)
-        best_result = next(
-            iter(
-                sorted(
-                    successful,
-                    key=lambda item: (
-                        -float(item.summary.dps_mean),
-                        item.candidate_keys,
-                    ),
-                )
-            ),
-            None,
+        best_result = (
+            None
+            if self._independent_contexts
+            else next(
+                iter(
+                    sorted(
+                        successful,
+                        key=lambda item: (
+                            -float(item.summary.dps_mean),
+                            item.candidate_keys,
+                        ),
+                    )
+                ),
+                None,
+            )
         )
         best_evaluation = None if best_result is None else best_result.evaluation
         skipped_statuses = {
@@ -1566,7 +1597,7 @@ class GcsimFarmingEvaluationScheduler:
             status=batch_status,
             comparison_context_sha256=(
                 self.requests[0].comparison_context_sha256
-                if self.requests
+                if self.requests and not self._independent_contexts
                 else ""
             ),
             results=ordered_results,
@@ -1582,6 +1613,7 @@ class GcsimFarmingEvaluationScheduler:
             deadline_seconds=self.budget.overall_deadline_seconds,
             elapsed_seconds=round(perf_counter() - started, 6),
             cache_errors=tuple(cache_errors),
+            independent_contexts=self._independent_contexts,
         )
         for snapshot_directory in artifact_snapshot_directories:
             snapshot_directory.cleanup()
@@ -2228,14 +2260,19 @@ def _validate_candidate_keys(candidate_keys: EvaluationCandidateKeys) -> None:
 def _validate_bound_candidate_keys(
     engine_context: GcsimOptimizerEngineContext,
     candidate_keys: EvaluationCandidateKeys,
+    *,
+    synthetic_set_keys: Sequence[str] = (),
 ) -> None:
     try:
         _validate_candidate_keys(candidate_keys)
     except ValueError as exc:
         raise GcsimFarmingEvaluationError(str(exc)) from exc
+    allowed_synthetic = frozenset(str(item) for item in synthetic_set_keys)
     for wearer_id, set_key, _layout_id, offpiece_slot, _profile_id in candidate_keys:
         capability = engine_context.catalog.get(set_key)
         if capability is None:
+            if set_key in allowed_synthetic and not offpiece_slot:
+                continue
             raise GcsimFarmingEvaluationError(
                 f"Candidate set is absent from the bound catalog: {set_key!r}."
             )

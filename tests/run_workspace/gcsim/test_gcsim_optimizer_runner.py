@@ -43,6 +43,7 @@ class GcsimOptimizerRunnerTest(unittest.TestCase):
                         "show_substat_scalars": 0,
                         "fixed_substats_count": 2.0,
                         "total_liquid_substats": 20,
+                        "optimize_er": 0,
                         "fine_tune": 1,
                         "indiv_liquid_cap": 10,
                     },
@@ -84,7 +85,7 @@ class GcsimOptimizerRunnerTest(unittest.TestCase):
                 (
                     "-substatOptim",
                     "-options",
-                    "total_liquid_substats=20;indiv_liquid_cap=10;fixed_substats_count=2;fine_tune=1;show_substat_scalars=0",
+                    "total_liquid_substats=20;indiv_liquid_cap=10;fixed_substats_count=2;optimize_er=0;fine_tune=1;show_substat_scalars=0",
                     "-v",
                     "-c",
                     "optimizer-input.txt",
@@ -157,11 +158,12 @@ class GcsimOptimizerRunnerTest(unittest.TestCase):
             format_gcsim_optimizer_options(
                 {
                     "fine_tune": 0,
+                    "optimize_er": 0,
                     "indiv_liquid_cap": 8,
                     "total_liquid_substats": 15,
                 }
             ),
-            "total_liquid_substats=15;indiv_liquid_cap=8;fine_tune=0",
+            "total_liquid_substats=15;indiv_liquid_cap=8;optimize_er=0;fine_tune=0",
         )
         invalid_options = (
             ({"unknown": 1}, "Unknown GCSIM optimizer option"),
@@ -169,6 +171,7 @@ class GcsimOptimizerRunnerTest(unittest.TestCase):
             ({"indiv_liquid_cap": 2.5}, "non-negative integer"),
             ({"fixed_substats_count": float("inf")}, "non-negative integer"),
             ({"fine_tune": 2}, "must be 0 or 1"),
+            ({"optimize_er": 2}, "must be 0 or 1"),
             ({"show_substat_scalars": True}, "non-negative integer"),
         )
         for index, (options, expected_error) in enumerate(invalid_options):

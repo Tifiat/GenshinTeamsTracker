@@ -38,6 +38,7 @@ from run_workspace.gcsim.farming_search import (
     StatProfileBank,
 )
 from run_workspace.gcsim.farming_team_search import (
+    TEAM_SIM_CANCELLED,
     TEAM_SIM_PASSED,
     TEAM_SIM_TIMEOUT,
     FullTeamComposerError,
@@ -506,6 +507,69 @@ class GcsimFarmingBatchAdapterTest(unittest.TestCase):
                 tuple(item.state.probe_key for item in requests),
             )
 
+    def test_terminal_batch_preserves_successful_rows(self) -> None:
+        terminal_cases = (
+            (
+                GcsimFarmingBatchStatus.CANCELLED,
+                GcsimFarmingEvaluationStatus.SKIPPED_CANCELLED,
+                TEAM_SIM_CANCELLED,
+            ),
+            (
+                GcsimFarmingBatchStatus.DEADLINE_REACHED,
+                GcsimFarmingEvaluationStatus.SKIPPED_DEADLINE,
+                TEAM_SIM_TIMEOUT,
+            ),
+        )
+        for batch_status, interrupted_status, expected_status in terminal_cases:
+            with self.subTest(batch_status=batch_status):
+                with tempfile.TemporaryDirectory() as tmp:
+                    factory = RecordingSchedulerFactory(
+                        statuses=(
+                            GcsimFarmingEvaluationStatus.PASSED,
+                            interrupted_status,
+                        ),
+                        batch_status=batch_status,
+                    )
+                    adapter = GcsimFarmingFullTeamBatchSimulator(
+                        engine_context=_context(Path(tmp)),
+                        prepared_config_text=PREPARED_CONFIG,
+                        wearer_ids=WEARERS,
+                        layout_catalog=_layouts(),
+                        profile_bank=(
+                            build_default_gcsim_screening_profile_bank()
+                        ),
+                        fidelity=FIDELITY,
+                        scheduler_budget=GcsimFarmingSchedulerBudget(
+                            2,
+                            2,
+                            20.0,
+                        ),
+                        enable_cache=False,
+                        scheduler_factory=factory,
+                    )
+                    requests = (
+                        _simulation_request(
+                            adapter.evaluation_context_sha256,
+                            _joint_state(),
+                            0,
+                        ),
+                        _simulation_request(
+                            adapter.evaluation_context_sha256,
+                            _joint_state(furina_profile="focus/em"),
+                            1,
+                        ),
+                    )
+
+                    outcomes = adapter(requests)
+
+                first = outcomes[requests[0].state.probe_key]
+                second = outcomes[requests[1].state.probe_key]
+                self.assertEqual(first.status, TEAM_SIM_PASSED)
+                self.assertEqual(first.dps_mean, 1000.0)
+                self.assertEqual(first.iterations, FIDELITY.iterations)
+                self.assertEqual(second.status, expected_status)
+                self.assertIsNone(second.dps_mean)
+
     def test_adapter_context_binds_the_effective_environment(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             common = dict(
@@ -577,9 +641,11 @@ class RecordingSchedulerFactory:
         *,
         statuses: tuple[GcsimFarmingEvaluationStatus, ...],
         reverse_results: bool = False,
+        batch_status: GcsimFarmingBatchStatus | None = None,
     ) -> None:
         self.statuses = statuses
         self.reverse_results = reverse_results
+        self.batch_status = batch_status
         self.calls = 0
         self.requests = ()
         self.budget = None
@@ -592,14 +658,23 @@ class RecordingSchedulerFactory:
             self.requests,
             self.statuses,
             reverse_results=self.reverse_results,
+            batch_status=self.batch_status,
         )
 
 
 class FakeScheduler:
-    def __init__(self, requests, statuses, *, reverse_results=False) -> None:
+    def __init__(
+        self,
+        requests,
+        statuses,
+        *,
+        reverse_results=False,
+        batch_status=None,
+    ) -> None:
         self.requests = requests
         self.statuses = statuses
         self.reverse_results = reverse_results
+        self.batch_status = batch_status
         self.cancelled = False
 
     def cancel(self) -> None:
@@ -615,11 +690,22 @@ class FakeScheduler:
         if self.reverse_results:
             results = tuple(reversed(results))
         successful = tuple(item for item in results if item.success)
+        skipped_statuses = {
+            GcsimFarmingEvaluationStatus.SKIPPED_CANCELLED,
+            GcsimFarmingEvaluationStatus.SKIPPED_DEADLINE,
+        }
+        skipped_count = sum(
+            item.status in skipped_statuses for item in results
+        )
         return GcsimFarmingBatchResult(
             status=(
-                GcsimFarmingBatchStatus.COMPLETED
-                if len(successful) == len(results)
-                else GcsimFarmingBatchStatus.COMPLETED_WITH_ERRORS
+                self.batch_status
+                if self.batch_status is not None
+                else (
+                    GcsimFarmingBatchStatus.COMPLETED
+                    if len(successful) == len(results)
+                    else GcsimFarmingBatchStatus.COMPLETED_WITH_ERRORS
+                )
             ),
             comparison_context_sha256=self.requests[0].comparison_context_sha256,
             results=results,
@@ -628,8 +714,10 @@ class FakeScheduler:
             requested_count=len(results),
             successful_count=len(successful),
             cache_hit_count=0,
-            failed_count=len(results) - len(successful),
-            skipped_count=0,
+            failed_count=(
+                len(results) - len(successful) - skipped_count
+            ),
+            skipped_count=skipped_count,
             max_parallel_candidates=2,
             total_cpu_budget=2,
             deadline_seconds=3.0,

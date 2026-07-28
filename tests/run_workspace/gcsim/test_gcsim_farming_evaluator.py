@@ -8,7 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 import subprocess
 import tempfile
-from threading import Event, Lock, Thread
+from threading import Event, Lock, Thread, get_ident
 from time import monotonic, sleep
 import unittest
 from unittest.mock import patch
@@ -21,6 +21,7 @@ from run_workspace.gcsim.artifact_set_catalog import (
     GcsimArtifactSetCatalog,
 )
 from run_workspace.gcsim.farming_evaluator import (
+    GcsimFarmingBatchResult,
     GcsimFarmingBatchStatus,
     GcsimFarmingEvaluationError,
     GcsimFarmingEvaluationRequest,
@@ -236,6 +237,39 @@ class GcsimFarmingSessionTest(unittest.TestCase):
                 (root / "run" / "config.txt").read_text(encoding="utf-8"),
                 request.config_text,
             )
+
+    def test_successful_default_owned_run_dir_is_removed_after_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            artifact = root / "gtt-gcsim.exe"
+            artifact.write_bytes(b"engine")
+            request = replace(
+                _request(artifact, root / "unused", "auto-clean"),
+                run_dir=None,
+            )
+            generated_root = root / "farming-runs"
+            factory = SuccessfulProcessFactory(
+                dps=12345.0,
+                iterations=100,
+                sd=250.0,
+            )
+
+            with patch.object(
+                farming_evaluator_module,
+                "DEFAULT_GCSIM_FARMING_RUNS_DIR",
+                generated_root,
+            ):
+                result = GcsimFarmingEvaluationSession(
+                    request,
+                    process_factory=factory,
+                ).run()
+
+            self.assertTrue(result.success)
+            self.assertEqual(result.run_dir, "")
+            self.assertEqual(result.config_path, "")
+            self.assertEqual(result.result_path, "")
+            self.assertTrue(generated_root.exists())
+            self.assertEqual(tuple(generated_root.iterdir()), ())
 
     def test_missing_sd_remains_unknown_not_zero_precision(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -666,6 +700,177 @@ class GcsimFarmingSchedulerTest(unittest.TestCase):
             self.assertLessEqual(tracker.max_cpu, 3)
             self.assertGreaterEqual(tracker.max_processes, 2)
 
+    def test_completion_callback_reports_completion_order_once_on_coordinator_thread(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            artifact = root / "gtt-gcsim.exe"
+            artifact.write_bytes(b"engine")
+            release_slow = Event()
+            callback_rows: list[
+                tuple[
+                    int,
+                    int,
+                    int,
+                    GcsimFarmingEvaluationStatus,
+                    int,
+                ]
+            ] = []
+            coordinator_thread = get_ident()
+
+            class OrderedSession(ImmediateSession):
+                def run(self) -> GcsimFarmingEvaluationResult:
+                    if self.request.candidate.profile_id == "profile/slow":
+                        if not release_slow.wait(1.0):
+                            raise AssertionError("fast completion did not release slow work")
+                    return super().run()
+
+            def on_completion(
+                completed_count: int,
+                total_count: int,
+                index: int,
+                result: GcsimFarmingEvaluationResult,
+            ) -> None:
+                callback_rows.append(
+                    (
+                        completed_count,
+                        total_count,
+                        index,
+                        result.status,
+                        get_ident(),
+                    )
+                )
+                if index == 1:
+                    release_slow.set()
+
+            result = GcsimFarmingEvaluationScheduler(
+                (
+                    _request(artifact, root / "slow", "slow"),
+                    _request(artifact, root / "fast", "fast"),
+                ),
+                GcsimFarmingSchedulerBudget(2, 2, 1.0),
+                enable_cache=False,
+                session_factory=lambda item: OrderedSession(
+                    item,
+                    dps=100.0,
+                    sd=1.0,
+                ),
+                completion_callback=on_completion,
+            ).run()
+
+            self.assertEqual(result.status, GcsimFarmingBatchStatus.COMPLETED)
+            self.assertEqual(
+                [(row[0], row[1], row[2]) for row in callback_rows],
+                [(1, 2, 1), (2, 2, 0)],
+            )
+            self.assertEqual(
+                [row[3] for row in callback_rows],
+                [
+                    GcsimFarmingEvaluationStatus.PASSED,
+                    GcsimFarmingEvaluationStatus.PASSED,
+                ],
+            )
+            self.assertEqual(
+                {row[4] for row in callback_rows},
+                {coordinator_thread},
+            )
+
+    def test_completion_callback_covers_factory_failure_and_cancelled_queue_once(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            artifact = root / "gtt-gcsim.exe"
+            artifact.write_bytes(b"engine")
+            slow_started = Event()
+            callback_rows: list[
+                tuple[int, int, int, GcsimFarmingEvaluationStatus, int]
+            ] = []
+            run_thread_ids: list[int] = []
+
+            class StartedDeadlineSession(DeadlineSession):
+                def run(self) -> GcsimFarmingEvaluationResult:
+                    slow_started.set()
+                    return super().run()
+
+            def session_factory(
+                request: GcsimFarmingEvaluationRequest,
+            ) -> DeadlineSession:
+                if request.candidate.profile_id == "profile/factory-failure":
+                    raise RuntimeError("expected factory failure")
+                return StartedDeadlineSession(request)
+
+            def on_completion(
+                completed_count: int,
+                total_count: int,
+                index: int,
+                result: GcsimFarmingEvaluationResult,
+            ) -> None:
+                callback_rows.append(
+                    (
+                        completed_count,
+                        total_count,
+                        index,
+                        result.status,
+                        get_ident(),
+                    )
+                )
+
+            scheduler = GcsimFarmingEvaluationScheduler(
+                (
+                    _request(
+                        artifact,
+                        root / "factory-failure",
+                        "factory-failure",
+                    ),
+                    _request(artifact, root / "slow", "slow"),
+                    _request(artifact, root / "pending", "pending"),
+                ),
+                GcsimFarmingSchedulerBudget(1, 1, 5.0),
+                enable_cache=False,
+                session_factory=session_factory,
+                completion_callback=on_completion,
+            )
+            holder: list[GcsimFarmingBatchResult] = []
+
+            def run_scheduler() -> None:
+                run_thread_ids.append(get_ident())
+                holder.append(scheduler.run())
+
+            thread = Thread(target=run_scheduler)
+            thread.start()
+            self.assertTrue(slow_started.wait(1.0))
+            scheduler.cancel()
+            thread.join(1.0)
+
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(holder[0].status, GcsimFarmingBatchStatus.CANCELLED)
+            self.assertEqual(
+                [row[0] for row in callback_rows],
+                [1, 2, 3],
+            )
+            self.assertEqual(
+                sorted(row[2] for row in callback_rows),
+                [0, 1, 2],
+            )
+            self.assertEqual(
+                {row[4] for row in callback_rows},
+                {run_thread_ids[0]},
+            )
+            statuses_by_index = {
+                row[2]: row[3]
+                for row in callback_rows
+            }
+            self.assertEqual(
+                statuses_by_index,
+                {
+                    0: GcsimFarmingEvaluationStatus.INTERNAL_ERROR,
+                    1: GcsimFarmingEvaluationStatus.CANCELLED,
+                    2: GcsimFarmingEvaluationStatus.SKIPPED_CANCELLED,
+                },
+            )
+
     def test_cache_round_trip_skips_second_process_and_preserves_unknown_sd(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -694,6 +899,72 @@ class GcsimFarmingSchedulerTest(unittest.TestCase):
             self.assertEqual(second.results[0].status, GcsimFarmingEvaluationStatus.CACHED)
             self.assertEqual(second.best_evaluation.expected_dps, 777.0)
             self.assertIsNone(second.best_evaluation.standard_error)
+
+    def test_completion_callback_reports_cache_hit_and_ignores_observer_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            artifact = root / "gtt-gcsim.exe"
+            artifact.write_bytes(b"engine")
+            cached_request = _request(artifact, root / "cached-one", "cached")
+            live_request = _request(artifact, root / "live", "live")
+            store = GcsimOptimizerCacheStore(root / "cache")
+            budget = GcsimFarmingSchedulerBudget(1, 1, 2.0)
+            GcsimFarmingEvaluationScheduler(
+                (cached_request,),
+                budget,
+                cache_store=store,
+                session_factory=lambda item: ImmediateSession(
+                    item,
+                    dps=777.0,
+                    sd=1.0,
+                ),
+            ).run()
+            callback_rows: list[
+                tuple[int, int, int, GcsimFarmingEvaluationStatus]
+            ] = []
+
+            def on_completion(
+                completed_count: int,
+                total_count: int,
+                index: int,
+                result: GcsimFarmingEvaluationResult,
+            ) -> None:
+                callback_rows.append(
+                    (
+                        completed_count,
+                        total_count,
+                        index,
+                        result.status,
+                    )
+                )
+                if result.cache_hit:
+                    raise RuntimeError("observer teardown must be isolated")
+
+            result = GcsimFarmingEvaluationScheduler(
+                (
+                    _copy_request(cached_request, run_dir=root / "cached-two"),
+                    live_request,
+                ),
+                budget,
+                cache_store=store,
+                session_factory=lambda item: ImmediateSession(
+                    item,
+                    dps=888.0,
+                    sd=1.0,
+                ),
+                completion_callback=on_completion,
+            ).run()
+
+            self.assertEqual(result.status, GcsimFarmingBatchStatus.COMPLETED)
+            self.assertEqual(
+                callback_rows,
+                [
+                    (1, 2, 0, GcsimFarmingEvaluationStatus.CACHED),
+                    (2, 2, 1, GcsimFarmingEvaluationStatus.PASSED),
+                ],
+            )
 
     def test_hard_deadline_cancels_active_work_and_returns_cached_best_so_far(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

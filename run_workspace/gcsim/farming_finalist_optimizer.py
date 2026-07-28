@@ -930,6 +930,34 @@ class OptimizerSessionLike(Protocol):
 
 
 OptimizerSessionFactory = Callable[[GcsimOptimizerRunRequest], OptimizerSessionLike]
+FinalistCompletionCallback = Callable[
+    [int, int, GcsimFinalistOptimizerAttempt],
+    None,
+]
+
+
+class _FinalistAttemptRecorder(list[GcsimFinalistOptimizerAttempt]):
+    """List-compatible audit recorder with an isolated progress hook."""
+
+    def __init__(
+        self,
+        *,
+        planned: int,
+        callback: FinalistCompletionCallback | None,
+    ) -> None:
+        super().__init__()
+        self._planned = planned
+        self._callback = callback
+
+    def append(self, item: GcsimFinalistOptimizerAttempt) -> None:
+        super().append(item)
+        if self._callback is None:
+            return
+        try:
+            self._callback(len(self), self._planned, item)
+        except Exception:
+            # Progress observers cannot change optimizer evidence or outcome.
+            pass
 
 
 class GcsimFinalistOptimizerSession:
@@ -941,6 +969,7 @@ class GcsimFinalistOptimizerSession:
         *,
         session_factory: OptimizerSessionFactory | None = None,
         cache_store: GcsimOptimizerCacheStore | None = None,
+        completion_callback: FinalistCompletionCallback | None = None,
         clock: Callable[[], float] = monotonic,
     ) -> None:
         if not isinstance(request, GcsimFinalistOptimizerRequest):
@@ -959,6 +988,13 @@ class GcsimFinalistOptimizerSession:
                 "cache_store must be a GcsimOptimizerCacheStore or None"
             )
         self._cache_store = cache_store
+        if completion_callback is not None and not callable(
+            completion_callback
+        ):
+            raise GcsimFinalistOptimizerError(
+                "completion_callback must be callable or None"
+            )
+        self._completion_callback = completion_callback
         self._clock = clock
         self._cancel_event = Event()
         self._lock = Lock()
@@ -985,7 +1021,12 @@ class GcsimFinalistOptimizerSession:
             self._started = True
         started = self._clock()
         deadline = started + self.request.budget.overall_deadline_seconds
-        attempts: list[GcsimFinalistOptimizerAttempt] = []
+        attempts: list[GcsimFinalistOptimizerAttempt] = (
+            _FinalistAttemptRecorder(
+                planned=len(self.request.finalists),
+                callback=self._completion_callback,
+            )
+        )
 
         for ordinal, state in enumerate(self.request.finalists):
             terminal = self._terminal_status(deadline)
@@ -2373,6 +2414,7 @@ __all__ = [
     "GcsimFinalistOptimizerSession",
     "GcsimFinalistOptimizerStatus",
     "GcsimOptimizedWearerAllocation",
+    "FinalistCompletionCallback",
     "OptimizerSessionFactory",
     "run_gcsim_finalist_optimizer",
 ]

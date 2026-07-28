@@ -11,6 +11,8 @@ input into a session-owned directory, and runs the upstream workflow:
 worker/threading model.  ``cancel`` is thread-safe and terminates the active
 ``Popen`` process; no Qt dependency or unsafe thread termination is involved.
 Every completed session keeps its inputs, outputs, and per-stage diagnostics.
+The private executable snapshot is removed after the processes stop because it
+is large, reproducible from the bound engine, and is not part of result evidence.
 """
 
 from __future__ import annotations
@@ -969,6 +971,7 @@ class GcsimOptimizerSession:
         else:
             session_status = actual_session_status
         artifact = artifact or _ArtifactResolution(status=None)
+        _remove_execution_artifact_snapshot(run_dir)
         return GcsimOptimizerRunResult(
             status=status,
             success=status is GcsimOptimizerRunStatus.PASSED,
@@ -1239,6 +1242,19 @@ def _create_isolated_run_dir(
             f"Could not create optimizer run directory: {exc}",
         )
     return path
+
+
+def _remove_execution_artifact_snapshot(run_dir: Path | None) -> None:
+    """Best-effort removal of the large session-private engine copy."""
+
+    if run_dir is None:
+        return
+    snapshot = run_dir / DEFAULT_GCSIM_OPTIMIZER_EXECUTABLE_FILENAME
+    try:
+        snapshot.unlink(missing_ok=True)
+    except OSError:
+        # A locked diagnostic copy is recoverable and is bounded by cleanup.py.
+        pass
 
 
 def _read_request_config(

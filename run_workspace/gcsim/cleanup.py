@@ -19,6 +19,8 @@ from .runtime_probe import cleanup_go_build_cache
 
 
 DEFAULT_GCSIM_RUNS_DIR = PROJECT_ROOT / "data" / "gcsim" / "runs"
+DEFAULT_GCSIM_FARMING_RUNS_DIR = PROJECT_ROOT / "data" / "gcsim" / "farming-runs"
+DEFAULT_GCSIM_OPTIMIZER_RUNS_DIR = PROJECT_ROOT / "data" / "gcsim" / "optimizer-runs"
 DEFAULT_RUN_DIR_KEEP_COUNT = 50
 DEFAULT_RUN_DIR_MAX_BYTES = 256 * 1024 * 1024
 
@@ -53,6 +55,8 @@ class GcsimLocalCleanupReport:
     engine_store: dict
     go_build_cache: dict
     run_dirs: dict
+    farming_run_dirs: dict
+    optimizer_run_dirs: dict
 
     def to_dict(self) -> dict:
         return {
@@ -60,6 +64,8 @@ class GcsimLocalCleanupReport:
             "engine_store": self.engine_store,
             "go_build_cache": self.go_build_cache,
             "run_dirs": self.run_dirs,
+            "farming_run_dirs": self.farming_run_dirs,
+            "optimizer_run_dirs": self.optimizer_run_dirs,
         }
 
 
@@ -74,6 +80,12 @@ def cleanup_gcsim_local_state(
     run_root: str | Path | None = None,
     keep_run_dirs: int = DEFAULT_RUN_DIR_KEEP_COUNT,
     max_run_dir_bytes: int = DEFAULT_RUN_DIR_MAX_BYTES,
+    farming_run_root: str | Path | None = None,
+    keep_farming_run_dirs: int = DEFAULT_RUN_DIR_KEEP_COUNT,
+    max_farming_run_dir_bytes: int = DEFAULT_RUN_DIR_MAX_BYTES,
+    optimizer_run_root: str | Path | None = None,
+    keep_optimizer_run_dirs: int = DEFAULT_RUN_DIR_KEEP_COUNT,
+    max_optimizer_run_dir_bytes: int = DEFAULT_RUN_DIR_MAX_BYTES,
 ) -> GcsimLocalCleanupReport:
     store = GcsimEngineStore(store_dir or DEFAULT_GCSIM_ENGINE_STORE_DIR)
     try:
@@ -109,11 +121,25 @@ def cleanup_gcsim_local_state(
         max_total_bytes=max_run_dir_bytes,
         dry_run=dry_run,
     ).to_dict()
+    farming_run_result = prune_gcsim_run_dirs(
+        run_root=farming_run_root or DEFAULT_GCSIM_FARMING_RUNS_DIR,
+        keep_count=keep_farming_run_dirs,
+        max_total_bytes=max_farming_run_dir_bytes,
+        dry_run=dry_run,
+    ).to_dict()
+    optimizer_run_result = prune_gcsim_run_dirs(
+        run_root=optimizer_run_root or DEFAULT_GCSIM_OPTIMIZER_RUNS_DIR,
+        keep_count=keep_optimizer_run_dirs,
+        max_total_bytes=max_optimizer_run_dir_bytes,
+        dry_run=dry_run,
+    ).to_dict()
     return GcsimLocalCleanupReport(
         dry_run=bool(dry_run),
         engine_store=engine_result,
         go_build_cache=go_result,
         run_dirs=run_result,
+        farming_run_dirs=farming_run_result,
+        optimizer_run_dirs=optimizer_run_result,
     )
 
 
@@ -246,6 +272,40 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_RUN_DIR_MAX_BYTES // (1024 * 1024),
         help="Maximum kept GCSIM run-dir bytes, in MB.",
     )
+    parser.add_argument(
+        "--farming-run-root",
+        default=None,
+        help="Optional ordinary optimizer-screen run root.",
+    )
+    parser.add_argument(
+        "--keep-farming-run-dirs",
+        type=int,
+        default=DEFAULT_RUN_DIR_KEEP_COUNT,
+        help="Recent ordinary optimizer-screen diagnostic dirs to keep.",
+    )
+    parser.add_argument(
+        "--max-farming-run-dir-mb",
+        type=int,
+        default=DEFAULT_RUN_DIR_MAX_BYTES // (1024 * 1024),
+        help="Maximum kept ordinary optimizer-screen diagnostic bytes, in MB.",
+    )
+    parser.add_argument(
+        "--optimizer-run-root",
+        default=None,
+        help="Optional two-stage optimizer run root.",
+    )
+    parser.add_argument(
+        "--keep-optimizer-run-dirs",
+        type=int,
+        default=DEFAULT_RUN_DIR_KEEP_COUNT,
+        help="Recent two-stage optimizer diagnostic dirs to keep.",
+    )
+    parser.add_argument(
+        "--max-optimizer-run-dir-mb",
+        type=int,
+        default=DEFAULT_RUN_DIR_MAX_BYTES // (1024 * 1024),
+        help="Maximum kept two-stage optimizer diagnostic bytes, in MB.",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     args = parser.parse_args(argv)
 
@@ -259,6 +319,12 @@ def main(argv: list[str] | None = None) -> int:
         run_root=args.run_root,
         keep_run_dirs=args.keep_run_dirs,
         max_run_dir_bytes=int(args.max_run_dir_mb) * 1024 * 1024,
+        farming_run_root=args.farming_run_root,
+        keep_farming_run_dirs=args.keep_farming_run_dirs,
+        max_farming_run_dir_bytes=int(args.max_farming_run_dir_mb) * 1024 * 1024,
+        optimizer_run_root=args.optimizer_run_root,
+        keep_optimizer_run_dirs=args.keep_optimizer_run_dirs,
+        max_optimizer_run_dir_bytes=int(args.max_optimizer_run_dir_mb) * 1024 * 1024,
     )
     if args.format == "json":
         print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False, sort_keys=True))
@@ -272,6 +338,8 @@ def _format_text(report: GcsimLocalCleanupReport) -> str:
     engine = data["engine_store"]
     go_cache = data["go_build_cache"]
     runs = data["run_dirs"]
+    farming_runs = data["farming_run_dirs"]
+    optimizer_runs = data["optimizer_run_dirs"]
     lines = [
         "GCSIM local cleanup",
         f"dry_run={str(report.dry_run).lower()}",
@@ -294,15 +362,39 @@ def _format_text(report: GcsimLocalCleanupReport) -> str:
             f"deleted_count={len(runs.get('deleted_paths') or [])} "
             f"kept_count={len(runs.get('kept_paths') or [])}"
         ),
+        (
+            "farming_run_dirs="
+            f"status={farming_runs.get('status', '')} "
+            f"deleted_bytes={farming_runs.get('deleted_bytes', 0)} "
+            f"deleted_count={len(farming_runs.get('deleted_paths') or [])} "
+            f"kept_count={len(farming_runs.get('kept_paths') or [])}"
+        ),
+        (
+            "optimizer_run_dirs="
+            f"status={optimizer_runs.get('status', '')} "
+            f"deleted_bytes={optimizer_runs.get('deleted_bytes', 0)} "
+            f"deleted_count={len(optimizer_runs.get('deleted_paths') or [])} "
+            f"kept_count={len(optimizer_runs.get('kept_paths') or [])}"
+        ),
     ]
     if engine.get("deleted_paths"):
         lines.append("engine_deleted=" + ", ".join(engine["deleted_paths"]))
     if runs.get("deleted_paths"):
         lines.append("run_dirs_deleted=" + ", ".join(runs["deleted_paths"]))
+    if farming_runs.get("deleted_paths"):
+        lines.append(
+            "farming_run_dirs_deleted=" + ", ".join(farming_runs["deleted_paths"])
+        )
+    if optimizer_runs.get("deleted_paths"):
+        lines.append(
+            "optimizer_run_dirs_deleted=" + ", ".join(optimizer_runs["deleted_paths"])
+        )
     for key, section in (
         ("engine_store_error", engine),
         ("go_build_cache_error", go_cache),
         ("run_dirs_error", runs),
+        ("farming_run_dirs_error", farming_runs),
+        ("optimizer_run_dirs_error", optimizer_runs),
     ):
         if section.get("error"):
             lines.append(f"{key}={section['error']}")

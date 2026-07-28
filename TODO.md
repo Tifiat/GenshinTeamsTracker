@@ -429,351 +429,156 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 Authoritative details:
 
-- `docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md` owns current mechanics,
-  source boundaries, identities, pruning, GCSIM feedback, and reliability rules.
-- `docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md` owns the ordered
-  implementation milestones.
-- Keep this root TODO concise. Do not duplicate old smoke logs or completed
-  module-by-module chronology here.
+- `docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md`
+- `docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md`
 
-### Accepted product modes
+Keep this root TODO limited to current state and unfinished work. Historical
+M0-M14 logs and superseded broad-path benchmarks were removed.
 
-- Account / selected set pools:
-  - one non-empty concrete set pool per wearer;
-  - one selected set is the simple case;
-  - M13 UI defaults the pool from the source GCSIM config's active set lines;
-  - search still reads the same complete artifact DB.
-- Account / all eligible database sets:
-  - derive feasible modeled concrete sets from the frozen DB;
-  - use rotation-conditioned main/stat/set evidence and conservative optimistic
-    bounds to avoid simulating losing real crit-mass/package combinations;
-  - never use a static character/set tier list.
-- Theoretical equal investment:
-  - inventory-independent set/main/substat comparison on one standard;
-  - best validated row is 100%, later rows are candidate DPS / best DPS;
-  - absolute sim DPS and uncertainty remain visible.
-- Account `include_2p2p` adds complete distinct-set `2p+2p` packages in either
-  account scope and never enables lone-`2p` or rainbow builds. Theoretical
-  `4p`/`2p+2p` shape is selected by its explicit operation. A later UI may show
-  one convenience checkbox without merging those backend identities.
-- `Quick/Balanced/Deep` are not current modes. Build and measure the
-  quality-first algorithm first; speed/quality buttons are a later decision.
+### Current product state
 
-### Frozen account boundaries
+- Current selected-account backend:
+  `optimizer_anytime_selected_service.py`, plan `anytime_approx_v1`.
+- Current theoretical 4p/2p+2p backend:
+  `optimizer_theoretical_anytime_service.py`, plans
+  `theoretical_4p_anytime_approx` and
+  `theoretical_2p2p_anytime_approx`.
+- Selected pools and both theoretical operations are the mandatory release
+  targets.
+- All-database account search uses the current bounded anytime kernel under
+  `all_database_sets_anytime_approx_v1` version 2. Its real-engine benchmark is
+  recorded; it remains experimental because cached wide-pool/joint-search work
+  still takes 89.453 seconds wall time.
+- Superseded broad selected/theoretical orchestrators were removed after the
+  accepted parity, runtime, and regression gates passed.
+- No user-facing Quick/Balanced/Deep modes are accepted.
+- Internal phases are `screen_8 -> refine_32 -> validate_200 ->
+  rerace_1000`.
+- Terminal results claim only “best found under the frozen work plan”.
+- Default eligibility is five-star only. Account four-star rows require an
+  explicit override; theoretical anytime search is five-star only.
+- The optimizer reads the complete frozen artifact DB for account work. It does
+  not read Artiscan/import generations/equipment/presets as candidate truth.
+- `content_fingerprint` deduplication of equal-content artifacts is an
+  accepted limitation.
+- ER is handled only through the generic per-wearer minimum-stat floor; it is
+  not a response weight or automatic damage/ER balance.
+- Search performs no writes. Saving is always an explicit user action.
+- Generated optimizer diagnostics are bounded: successful ordinary screening
+  directories are removed immediately, two-stage sessions remove their private
+  executable copies, and `python -m run_workspace.gcsim.cleanup` covers normal,
+  screening, and optimizer run roots at 50 directories / 256 MiB each.
 
-- Read every `artifacts` row and all matching `artifact_substats` from shared
-  SQLite. Use `artifacts.id` as allocation identity.
-- Never read JSON/importers or filter membership by source, batch, time,
-  equipment, preset, owner, lock, or location.
-- Freeze an immutable all-row in-memory copy/hash for one calculation. This is
-  not an import snapshot or generation.
-- Use exact stored rarity/level/main/sub values. No account upgrade projection.
-- Default eligibility is valid 5-star artifacts only.
-- A deliberately selected 4-star-only set may enable its pieces for that
-  wearer/package; an explicit per-wearer ID allowlist may enable a specific
-  4-star piece/offpiece.
-- Malformed rows remain in the frozen input/hash but are ineligible with typed
-  row-ID issues. Continue when another legal full team exists.
-- Zero substats are valid.
-- Accepted limitation: pre-optimizer `content_fingerprint` deduplication may
-  undercount an exceptionally rare exact physical twin. Do not redesign it.
-- Every successful account result has four wearers, five filled slots each, and
-  twenty distinct IDs.
-- Canonical build identity is only ordered `slot -> artifact_id`. `5p` and
-  `3+2` are legal single identities, not duplicated free-slot variants.
-- Concrete DB identity is `set_uid`; rendering uses a registry-validated GCSIM
-  key, currently expected to be the case-normalized/lowercase UID.
-- Parameterized theoretical sets use pinned/default GCSIM behavior. Arbitrary
-  caller-supplied theoretical parameters are not implemented and require a
-  separate future typed contract.
+### Current algorithm
 
-### Prepared-config boundary
+Selected account:
 
-- The optimizer is launched from an already ready GCSIM team/rotation/config.
-- Freeze all non-artifact config semantics and replace all four artifact
-  stat/set blocks for every candidate.
-- The original active set lines may prefill selected-set controls.
-- Original artifact stats are not a baseline, not database membership, and not
-  a scoring reference after the candidate shell is created.
-- Do not query current-equipment tables and do not double-count source stats.
-- Chasca/Ororon/Furina/Bennett fixtures already exist under
-  `run_workspace/gcsim/smoke_fixtures/` for parser/materializer tests.
+1. one dense DB index;
+2. one shared non-ER rotation-response scan;
+3. multi-profile Pareto/frontier and shadow artifact pools;
+4. bounded five-piece wearer candidates;
+5. bitmask four-wearer no-reuse search;
+6. at most 64 diverse proposals;
+7. ordinary GCSIM at 8, 32, 200, then close-only 1000 iterations;
+8. only 200+ evidence enters top-N/save.
 
-### Search direction
+Theoretical 4p/2p+2p:
 
-- Upstream `substatOptim` optimizes abstract substats only after set/main stats
-  are fixed. GTT must discover main-stat regions and select real artifacts.
-- The legacy one-seed `ATK/ATK/CR` scan is compatibility-only. M11 joint layout
-  exploration/EM safeguards and M12 pair-aware layout/response evidence are the
-  product paths.
-- Theoretical products pin patched `optimize_er=0;fine_tune=0`; fixed
-  KQM-standard rolls remain, but ER is never automatically allocated or
-  balanced against damage. Product requests also reject ER reference weights
-  and every ER response-profile axis, including manual/custom profiles.
-- Build several rotation-conditioned response branches from equal-investment
-  reference states, multi-scale perturbations, and later real leaders.
-- Generate per-wearer builds lazily with set/slot DP, Pareto frontiers,
-  branch-and-bound optimistic bounds, threshold/EM/unusual-main quotas, and a
-  contested-ID shadow index. Crit Value is a feature, not the only score.
-- Solve four wearers jointly with all-different IDs; no greedy wearer order.
-- Run an iterative loop:
-  `response -> lazy builds -> disjoint proposals -> low-fidelity team GCSIM ->
-  response/conflict/layout enrichment -> common high-fidelity finalists`.
-- Low fidelity is screening only. Every displayed row uses a common minimum high
-  fidelity; close leaders rerace.
-- Exact simulator-identical assignments share one simulation but retain one
-  canonical and bounded conflict-diverse physical witnesses plus a
-  many-replacements count.
-- Near-identical wearer builds may share a bounded proposal-diversity cluster
-  while their IDs remain in the lazy replacement pool; only exact compiled
-  identity may reuse simulation evidence.
-- Normal trace is aggregate counters and bounded leader/pruning examples. Full
-  state trace is oracle/debug-only.
+1. trusted inventory-independent five-star package/layout/profile domain;
+2. at most 64 proposals at 8 iterations;
+3. at most 16 proposals at 32 iterations;
+4. at most six physical finalists;
+5. one `substatOptim` pass per finalist;
+6. exact optimized-config validation at 200;
+7. at most three close leaders rerun at 1000 without a second optimizer pass;
+8. percent-to-best with rank one at 100%.
 
-### Current status and next work
+Unexpected response/wiring errors fail the run. Completed partial rows survive
+local deadlines. A local theoretical race deadline may continue to 200 with
+partial finalists when global time remains. Cancellation reaches the active
+response/race/optimizer/rerace owner.
 
-- Read-only selected-set-pool/all-database-set account backends and the
-  theoretical `4p`/`2p+2p` products exist. Optimizer Milestones 0R-13 are
-  complete; the measured Milestone 14 release gate remains in progress.
-- Verified active engine: `gcsim-v2.42.2-20260726210410`, `patch_count=5`.
-  Current full GCSIM backend suite: 618/618 tests passed in 160.976s on
-  2026-07-28.
-- COMPLETE: Milestone 0R schema-v4 contracts and separate `.v4` cache/provenance
-  namespaces for theoretical `4p`, theoretical `2p+2p`, and account artifacts:
-  - selected-pool/all-set account scope and account `include_2p2p`;
-  - no accepted `Quick/Balanced/Deep` depth;
-  - numeric account character/team-slot/GCSIM wearer identity;
-  - engine-bound concrete set refs, database identity, and 4-star overrides;
-  - typed per-wearer account minimum constraints use
-    `stat_space=static_build_contribution`: normalized main/sub stats from
-    exactly five artifacts plus only engine-proved unconditional static 2p set
-    stats active for the package;
-  - same-`ModKey` static effects follow set-row render-order overwrite;
-    conditional, parameterized, indirect, and unproved effects do not count;
-    Emblem 2p contributes +20% ER (`er=0.20`);
-  - M5 rejects impossible partial states and below-floor builds before
-    materialization/GCSIM;
-  - candidate/request/evaluation binding and exact global-unique 4x5 witness;
-  - account absolute DPS without baseline/percent and theoretical
-    percent-to-best;
-  - typed issues/replacements/coverage/cache/timing;
-  - deterministic request/progress/result parsing, canonical round trips, and
-    fail-closed older-schema/unknown-field rejection;
-  - retained existing theoretical 4p behavior through an explicitly
-    non-lossless serialized compatibility projection.
-- COMPLETE: Milestone 1 config shell and true read-only all-row SQLite loader:
-  - four canonical artifact blocks are replaced by inert wearer markers while
-    all non-artifact config bytes remain unchanged;
-  - active `count >= 2` source sets and engine `+params=[...]` are suggestions
-    only; source artifact stats do not survive;
-  - every artifact/substat row is frozen from one URI `mode=ro` transaction;
-    row validation, set mapping, default 5-star and explicit wearer/package/ID
-    4-star eligibility are typed and deterministic;
-  - focused tests and a real 520-artifact/2068-substat database smoke pass.
-- COMPLETE: Milestone 2 immutable input and strict arbitrary-five-ID/full-team
-  materializer:
-  - raw DB snapshot identity and calculation-relevant artifact identity remain
-    separate and deterministic;
-  - exact stored main/sub values, including `+0`, normalize through Decimal
-    without silent drops or empty-to-zero coercion;
-  - 5p and 3+2 physical assignments have canonical package/build identity;
-  - full-team compilation replaces four shell markers, preserves non-artifact
-    segments, separates physical/candidate/simulation identity, and keeps
-    bounded simulator-equivalent physical witnesses;
-  - a real 20-ID/10-iteration engine smoke passes.
-- COMPLETE: Milestone 3 independent reduced exhaustive `4p` oracles:
-  - account fixture exhausts `2744` joint states into `260` conflicts, `2484`
-    disjoint assignments, `324` equivalent replacement pairs, and `2160`
-    unique simulator identities;
-  - theoretical fixture exhausts the explicit package x legal
-    main-layout/equal-investment-stat Cartesian domain: 96 states with
-    zero- through four-wearer changes across
-    crit/fixed-roll-no-auto-ER/coupled-EM/HP/DEF/healing/non-stacking branches;
-  - strict oracle limits prevent accidental real-database enumeration, and the
-    winner-survival audit identifies the first future pruning removal stage;
-  - an explicit one-candidate/10-iteration real-engine oracle smoke passes.
-- COMPLETE: Milestone 4 set-aware main/response hardening:
-  - every concrete wearer/4p package receives a proven database-reachable
-    sands/goblet/circlet domain without complete build enumeration;
-  - exact equal-budget one-/four-/eight-roll exchanges cover generic and
-    mixed axes, and every retained piecewise branch has probe-level trace
-    evidence;
-  - material/nonlinear/reaction-changing/unresolved EM evidence forces
-    reachable mixed/joint EM layouts to survive; the adversarial fixture keeps
-    an `EM/EM/EM` winner after every isolated EM main loses;
-  - upstream optimized allocations are additive seeds only and cannot delete a
-    main region;
-  - a two-probe/10-iteration active-engine response smoke passes.
-- COMPLETE: Milestone 5 lazy per-wearer real `4p` candidates:
-  - strict indexing consumes only frozen M2 database rows and exact M4
-    package/layout/response branches;
-  - set-feasible best-first bounds produce exact ordered top-K without
-    materializing deferred losing states;
-  - retention covers leaders, Pareto projection, useful/crit representatives,
-    every offpiece slot and `5p`, while threshold/EM/unusual/uncertain branches
-    remain independent;
-  - dominated and simulator-identical physical rows remain available for
-    blocked-ID conflict repair through `content_fingerprint`; focused tests
-    cover top-K parity, floor/threshold survival, shape coverage, row-order
-    invariance, and shadow replacement.
-- COMPLETE: Milestone 6 global all-different proposal solver:
-  - exact best-first solving of bounded four-wearer pools with twenty unique
-    IDs and strict M2 compilation;
-  - deterministic wearer-order-independent results and typed evidence score
-    adjustments for later GCSIM feedback;
-  - lazy blocked-ID enrichment finds coordinated three-wearer repair;
-  - distinct completion, exhaustion, bound, state-limit, cancellation, and
-    deadline reasons preserve only valid best-so-far proposals;
-  - reduced oracle parity passes.
-- COMPLETE: Milestone 7 iterative whole-team GCSIM feedback loop:
-  - cancellable screening/finalist/rerace orchestration reuses the ordinary
-    GCSIM scheduler and cache with fidelity-specific identities;
-  - exact compiled configs share runs while physical replacement witnesses
-    survive, and typed enrichment protects EM/threshold/structural branches;
-  - every displayed result has common high-fidelity evidence, absolute DPS,
-    and honest uncertainty; failed/cancelled work is never cached as success;
-  - enrichment, cache equivalence, rerace, cancellation, and witness tests pass
-    with the full GCSIM suite;
-  - every feedback-enriched proposal is rechecked fail closed against its
-    package-specific static-build floor before scheduler/GCSIM submission.
-- COMPLETE: Milestone 8 selected-set-pool account service:
-  - quality-first reference anchors cover small domains exhaustively and retain
-    coordinated EM/support/unusual-main plus explicit stat-floor boundary states
-    in larger domains; ER is not an automatic anchor;
-  - every feasible selected 4p package and every four-wearer package
-    combination reaches the M4-M7 pipeline;
-  - success contains common-fidelity absolute DPS and an exact globally unique
-    twenty-ID witness, with no account percent/baseline;
-  - account request-level `stat >= X` floors use
-    `static_build_contribution`: exact-five artifact main/sub stats plus only
-    engine-proved unconditional static 2p set stats. They prune impossible
-    partial and below-floor complete builds before materialization/GCSIM; ER is
-    only a shortcut to this generic mechanism and is never automatically
-    balanced;
-  - infeasible selected packages produce typed issues/counters instead of
-    being silently skipped;
-  - production adapter, cancellation, selected-pool scope, minimum-floor, and
-    no-write boundaries pass focused/full backend coverage.
-- COMPLETE: Milestone 9 all-database-set account mode:
-  - derive only mapped complete-modeled concrete 5-star sets represented in
-    the frozen database;
-  - every reachable set receives a required rotational joint combination and
-    the attainable real-artifact bound leader is separately required;
-  - extra combinations are best-first and bounded without a character/set tier
-    list, while M7 GCSIM remains the final ranking authority;
-  - every package is typed as retained, safely infeasible, or not evaluated,
-    with bound/decision/provenance counters;
-  - randomized frontier parity, exceptional-real-piece winner, impossible
-    stat-floor, cancellation, and exact twenty-ID tests pass;
-  - deterministic proposal-SHA tie-breaking is shared by ranking and
-    validation.
-- COMPLETE: Milestone 10 account `2p+2p`: canonical selected/all-set pairs,
-  exact `2+2+1`/`3+2` candidate search, explicit two-row GCSIM response
-  configs, global no-reuse, reduced exhaustive parity, typed pair accounting,
-  and a low-conflict all-set seed.
-- COMPLETE: Milestone 11 theoretical `4p` product:
-  - five-star default domain with mandatory joint/mixed EM layouts;
-  - coordinated zero- through four-wearer adversarial/oracle coverage;
-  - common-fidelity validation and higher-fidelity close-leader reraces over
-    every successful attempt independently of display `top_n`; public output
-    still uses the requested `top_n`;
-  - persistent verified finalist snapshots independent of transient run
-    directories, plus live typed progress/current leader/cache-hit evidence;
-  - `LAYOUT_SCAN`, `RESPONSE_SCAN`, `JOINT_SEARCH`, and `RERACE` live events are
-    delivered before their corresponding blocking `stage.run()` calls;
-  - original-finalist and rerace request hashes remain distinct and elapsed
-    time includes rerace;
-  - patched `optimize_er=0;fine_tune=0`, rejection of ER reference weights and
-    ER response profiles (including manual/custom profiles), parameterized-set
-    pinned defaults, and final percent-to-best with rank one at `100%`;
-- COMPLETE: Milestone 12 engine-derived theoretical `2p+2p`:
-  - trusted engine source/catalog derives all modeled five-star 2p
-    descriptors, with no manual per-set equivalence table;
-  - only proved unconditional static-stat effects with safe modifier-key
-    relation share work; conditional, parameterized, indirect, unknown, and
-    `UNIQUE_SOURCE` effects remain unique; same-`ModKey` pairs are single-alias;
-  - all 741 active-engine concrete pairs remain displayable across 526
-    conservative proof groups; 25 descriptors have the static proof and 14 are
-    opaque `UNIQUE_SOURCE`;
-  - exact two-row pair configs reuse the M11 equal-investment
-    main/response/joint/cache/rerace path and canonical `3+2` metadata;
-  - layout/response discovery keeps the actual pair active rather than using a
-    substituted 4p carrier as evidence;
-  - the reduced pair oracle passes; the current full repository baseline is
-    618/618 tests in 160.976s on 2026-07-28.
-- COMPLETE: Milestone 13 dedicated optimizer UI and explicit save flow:
-  - Browser panel exposes selected pools, all database sets, theoretical equal
-    investment, independent `2p+2p`, CPU/Auto, generic minimum stats, ER
-    shortcuts, progress/current best, cancellation, and ephemeral results;
-  - the typed adapter freezes the selected team/rotation and keeps source set
-    parameters when selected pools are prefilled;
-  - explicit wearer save creates a normal Artifact Browser preset; explicit
-    team save validates/reuses already saved wearer presets, creates only
-    missing rows, and atomically stores one four-member GCSIM team preset;
-  - search/save never equips artifacts or creates History; narrow Browser and
-    AppShell hooks were used without a global refactor.
-- IN PROGRESS: Milestone 14 measured release gate:
-  - typed oracle parity/recall/regret and benchmark-matrix contracts exist;
-  - response screening measures every reachable layout, then deeply probes
-    measured leaders and structural/stat-region representatives; direct
-    reference construction removed the discarded full-plan hot path;
-  - selected plan v2 identities include scheduler, retention, joint, and
-    feedback budgets; independent-context batches share one verified engine
-    snapshot and cannot be cross-ranked;
-  - real CPU-15 selected-4p run on the 520-row DB completed `best_found` in
-    802.094 s mixed cold/warm; fully warm repeat completed in 327.157 s
-    (330.703 s wall), returned 6 rows and a 49,288.7566 DPS leader at 1000
-    iterations; cancellation latency was 0.057 s;
-  - still required: randomized/exhaustive quality corpus and the full
-    selected/all-set x 4p/4p+2p2p x cold/warm matrix, process-tree peak memory,
-    and UI heartbeat measurements. Do not add speed modes or claim release
-    readiness before this gate passes.
-- Do not start importer/equipment/AppShell cleanup as optimizer side work.
-  Optimizer-owned code and narrow wrappers may change; changing old project
-  contracts requires discussion.
+### Verified current evidence
 
-### Result and future save UI
+- Focused selected/theoretical candidate, race, validation, service, UI,
+  cancellation, progress, cache, and facade tests exist.
+- Real theoretical 4p smoke on 2026-07-28 reached `BEST_FOUND`:
+  125 response probes, 64@8, 16@32, six finalists, smoke-capped two@200,
+  106.36 seconds.
+- Real selected-set account smoke on the local 520-artifact DB reached
+  `BEST_FOUND`: 125 response probes, 64@8, adaptive 8@32, six@200 and two@1000;
+  six saveable exact builds appeared at 117.64 seconds and the run completed
+  in 177.27 service / 180.97 diagnostic seconds. The 20-distinct-ID winner
+  scored 13199.8883 DPS versus the source config's 13153.6 on the same
+  rotation (`+0.3519%`). Cold cache evidence was 0 hits / 205 misses.
+- Real theoretical 2p+2p smoke reached `BEST_FOUND` in 124.00 seconds:
+  39 modeled five-star 2p sets, 741 concrete pairs, 526 representative groups,
+  125/125 response probes, 64@8, 16@32, six finalists, and two@200.
+- Theoretical 2p+2p cache pair: 104.625 seconds at 0/207, then 11.594 seconds
+  at 207/207 with the identical result. Selected-account cache pair: 236.859
+  seconds at 0/214, then 20.000 seconds at 214/214 with the same 20-ID,
+  14360.0657-DPS winner.
+- Theoretical 4p default-cache bug is fixed. Before the fix, repeated runs
+  retained two expensive misses (205/207 hits), took about 26-27 seconds, and
+  could change winner. After population, repeat runs hit 207/207 entries in
+  6.234 and 6.063 seconds with the identical winner.
+- The current account kernel matches the reduced exhaustive physical top-1.
+  Theoretical exhaustive fixtures preserve coordinated low/high crit,
+  triple-EM, EM+crit, HP/heal, and DEF winners. Existing stat-floor,
+  unusual-main, content-deduplication, and conflict-shadow cases remain green.
+- Deterministic randomized exhaustive corpora contain 100 account and 100
+  theoretical cases. Both pass the provisional >=95% exact top-1, <=0.5% mean
+  regret, and <=2% maximum-regret requirements.
+- Full GCSIM backend discovery passes 621/621 tests in 233.513 seconds.
+  Optimizer-panel UI tests pass 5/5 in 0.205 seconds.
+- No-cache 8-CPU process-tree memory samples (20 ms interval): selected account
+  `BEST_FOUND` in 131.266 seconds at 335,290,368-byte aggregate working set /
+  554,262,528 private bytes; theoretical 2p+2p smoke `BEST_FOUND` in 93.125
+  seconds at 351,248,384-byte aggregate working set / 564,678,656 private
+  bytes. Both peaked at 9 live processes.
+- Real all-database v2 4p benchmark on the local 520-artifact DB at 8 CPUs:
+  31 modeled sets / 124 wearer-package decisions; cold `BEST_FOUND` in 233.531
+  service / 233.578 wall seconds at 0/208 hits; warm in 89.406 service / 89.453
+  wall seconds at 208/208 hits; identical 7795.1378-DPS 1000-iteration winner
+  with 20 distinct IDs. Keep experimental because warm pool/joint-search cost
+  remains high.
+- Do not quote superseded broad-path measurements as current performance.
 
-- Account search returns rank, absolute sim DPS, uncertainty, exact artifacts,
-  sets/stats, coverage, and provenance. No account baseline/percent comparison
-  is required now.
-- Search performs zero writes and its result is ephemeral. Change relevant
-  inputs/start another result/close without saving and it is lost; it is not
-  History.
-- Confirmed later UI stage:
-  - generic per-wearer account `stat not less than X` controls;
-  - an ER shortcut that converts familiar final-sheet ER through the same frozen
-    stat calculator and complete non-artifact baseline, including base ER and
-    frozen static character/weapon contributions, into
-    `static_build_contribution`; the UI does not subtract set bonuses because
-    the backend applies each package's engine-proved static 2p contribution;
-    ER is never automatically balanced;
-  - infinite/boosted energy remains an independent sim option and neither
-    creates nor disables a floor;
-  - theoretical floors are not the account exact-five contract and remain a
-    separate future decision;
-  - per-wearer `Save preset`;
-  - default name `best_found_<the other three team members>`, user-editable;
-  - `Save team` reuses rows already saved from this result and creates only
-    missing presets;
-  - then create one GCSIM-only multi-preset referencing those four preset IDs;
-  - a GCSIM presets tab may explicitly apply all four quickly;
-  - multi-presets are created only from optimizer results; no generic manual
-    constructor;
-  - save does not auto-equip or overwrite silently.
+### Immediate TODO
 
-### Quality/release gate
+- [x] Finish the current regression and full GCSIM backend suite.
+- [x] Run a real selected-set account cold smoke on the current DB and confirm
+      a strong 200+ result.
+- [x] Run a real theoretical 2p+2p smoke.
+- [x] Record cold/warm runtime and exact cache-hit evidence for selected and
+      theoretical anytime paths.
+- [x] Verify cancellation at response/race/validation owners.
+- [x] Record peak-memory evidence for the real anytime paths.
+- [x] Compare reduced domains with exhaustive account/theoretical oracles.
+- [x] Add adversarial winner-survival cases for coupled EM, low-crit useful
+      stats, crit-rate caps, unusual mains, stat floors, and contested IDs.
+- [x] Encode the user-accepted provisional runtime/quality policy: selected
+      150s first-saveable / 300s cold / 30s warm; theoretical 180s cold / 20s
+      warm; strict mandatory top-1; randomized >=95% exact top-1, <=0.5% mean
+      regret, and <=2% maximum regret.
+- [x] Remove obsolete broad selected/theoretical orchestrators after parity.
+- [x] Move all-database account optimization to the current bounded anytime
+      kernel without exhaustive/numeric optimality claims.
+- [x] Record a real-engine cold/warm benchmark for experimental all-database
+      v2 search.
+- [x] Stop optimizer diagnostic-file growth and extend cleanup retention to
+      `farming-runs` and `optimizer-runs`.
+- [ ] Optimize all-database dense-pool/joint-search warm cost only as optional
+      follow-up; it does not block selected/theoretical release.
+- [ ] Recalibrate provisional thresholds after the user can compare UI results
+      and waiting time with hand-built teams.
+- [ ] Do not change AppShell/import/equipment code as optimizer side work.
 
-- Exact parity is required in reduced exhaustive/debug fixtures, not claimed for
-  the full production search.
-- Record oracle-winner survival, top-N recall, regret, maximum miss, and removal
-  stage after every pruning phase.
-- Mandatory adversarial fixtures cover coupled EM, explicit ER-floor/no-auto-ER,
-  crit caps, HP/healing,
-  DEF, support-only effects, unusual mains, duplicate buffs, contested IDs, and
-  coordinated three/four-wearer changes.
-- Benchmark time/memory/cache/cancellation on the real database only after the
-  algorithm works. Define speed modes only from those measurements.
+### Confirmed later UI/product ideas
+
+- A GCSIM presets tab linking four saved character presets.
+- One atomic save/apply-all action for an optimizer team result.
+- A compact “many replacements” indication without a full search journal.
 
 ## 13. Offline Profile
 

@@ -894,19 +894,6 @@ class GcsimFarmingFullTeamBatchSimulator:
             raise FullTeamComposerError(
                 "scheduler result order does not match the materialized request order"
             )
-        if batch.status is GcsimFarmingBatchStatus.CANCELLED:
-            return _terminal_team_metrics(
-                simulation_requests,
-                status=TEAM_SIM_CANCELLED,
-                error="full-team evaluator batch was cancelled",
-            )
-        if batch.status is GcsimFarmingBatchStatus.DEADLINE_REACHED:
-            return _terminal_team_metrics(
-                simulation_requests,
-                status=TEAM_SIM_TIMEOUT,
-                error="full-team evaluator batch reached its deadline",
-            )
-
         outcomes: dict[ProbeKey, FullTeamSimulationMetrics] = {}
         for simulation, evaluator_request, result in zip(
             simulation_requests,

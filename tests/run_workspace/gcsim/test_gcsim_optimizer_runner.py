@@ -102,6 +102,7 @@ class GcsimOptimizerRunnerTest(unittest.TestCase):
             self.assertEqual(result.simulate.status, GcsimOptimizerStageStatus.PASSED)
             self.assertEqual(result.optimize.stdout, "optimizer stdout")
             self.assertEqual(result.simulate.stderr, "simulation stderr")
+            self.assertFalse((run_dir / "gcsim-verified.exe").exists())
             self.assertEqual(
                 statuses,
                 [
@@ -282,7 +283,11 @@ class GcsimOptimizerRunnerTest(unittest.TestCase):
             executed = tuple(Path(call.command[0]) for call in factory.calls)
             self.assertEqual(len(set(executed)), 1)
             self.assertNotEqual(executed[0], artifact)
-            self.assertEqual(executed[0].read_bytes(), b"verified-bytes")
+            self.assertEqual(
+                factory.executed_artifact_bytes,
+                [b"verified-bytes", b"verified-bytes"],
+            )
+            self.assertFalse(executed[0].exists())
 
     def test_overall_timeout_is_shared_across_optimizer_and_simulation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -668,10 +673,12 @@ class SourceReplacingFactory(SuccessfulOptimizerFactory):
     def __init__(self, source: Path) -> None:
         super().__init__()
         self.source = source
+        self.executed_artifact_bytes: list[bytes] = []
 
     def __call__(self, command, cwd, env):
         if not self.calls:
             self.source.write_bytes(b"tampered-after-verification")
+        self.executed_artifact_bytes.append(Path(command[0]).read_bytes())
         return super().__call__(command, cwd, env)
 
 

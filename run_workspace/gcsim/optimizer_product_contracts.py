@@ -38,6 +38,14 @@ GCSIM_OPTIMIZED_ADVISOR_WORK_PLAN_ID = "optimized_theoretical_4p"
 GCSIM_OPTIMIZED_ADVISOR_WORK_PLAN_VERSION = 1
 GCSIM_OPTIMIZED_PAIR_ADVISOR_WORK_PLAN_ID = "optimized_theoretical_2p2p"
 GCSIM_OPTIMIZED_PAIR_ADVISOR_WORK_PLAN_VERSION = 1
+GCSIM_THEORETICAL_ANYTIME_FOUR_PIECE_WORK_PLAN_ID = (
+    "theoretical_4p_anytime_approx"
+)
+GCSIM_THEORETICAL_ANYTIME_FOUR_PIECE_WORK_PLAN_VERSION = 1
+GCSIM_THEORETICAL_ANYTIME_TWO_PLUS_TWO_WORK_PLAN_ID = (
+    "theoretical_2p2p_anytime_approx"
+)
+GCSIM_THEORETICAL_ANYTIME_TWO_PLUS_TWO_WORK_PLAN_VERSION = 1
 
 GCSIM_OPTIMIZER_ARTIFACT_SLOTS = (
     "flower",
@@ -118,6 +126,7 @@ class GcsimOptimizerProgressStage(str, Enum):
     CANDIDATE_GENERATION = "candidate_generation"
     JOINT_SEARCH = "joint_search"
     SCREENING = "screening"
+    REFINEMENT = "refinement"
     FINAL_VALIDATION = "final_validation"
     RERACE = "rerace"
     COMPLETED = "completed"

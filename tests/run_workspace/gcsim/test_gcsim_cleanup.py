@@ -5,7 +5,10 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from run_workspace.gcsim.cleanup import prune_gcsim_run_dirs
+from run_workspace.gcsim.cleanup import (
+    cleanup_gcsim_local_state,
+    prune_gcsim_run_dirs,
+)
 
 
 class GcsimCleanupTest(unittest.TestCase):
@@ -54,6 +57,36 @@ class GcsimCleanupTest(unittest.TestCase):
             self.assertFalse(old.exists())
             self.assertTrue(new.exists())
             self.assertEqual(result.kept_paths, (str(new),))
+
+    def test_local_cleanup_covers_all_three_generated_run_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ordinary = root / "runs"
+            farming = root / "farming-runs"
+            optimizer = root / "optimizer-runs"
+            for run_root in (ordinary, farming, optimizer):
+                run_root.mkdir()
+                _make_run_dir(run_root / "old", size=10, timestamp=100)
+                _make_run_dir(run_root / "new", size=10, timestamp=200)
+
+            report = cleanup_gcsim_local_state(
+                dry_run=True,
+                store_dir=root / "engines",
+                clean_go_cache=False,
+                run_root=ordinary,
+                farming_run_root=farming,
+                optimizer_run_root=optimizer,
+                keep_run_dirs=1,
+                keep_farming_run_dirs=1,
+                keep_optimizer_run_dirs=1,
+            )
+
+            self.assertEqual(len(report.run_dirs["deleted_paths"]), 1)
+            self.assertEqual(len(report.farming_run_dirs["deleted_paths"]), 1)
+            self.assertEqual(len(report.optimizer_run_dirs["deleted_paths"]), 1)
+            self.assertTrue((ordinary / "old").exists())
+            self.assertTrue((farming / "old").exists())
+            self.assertTrue((optimizer / "old").exists())
 
 
 def _make_run_dir(path: Path, *, size: int, timestamp: int) -> Path:

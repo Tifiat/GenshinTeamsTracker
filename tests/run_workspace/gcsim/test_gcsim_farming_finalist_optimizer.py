@@ -56,6 +56,45 @@ active furina;
 
 
 class GcsimFinalistOptimizerTest(unittest.TestCase):
+    def test_completion_callback_reports_each_terminal_attempt_in_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            request = _request(
+                root,
+                finalists=(
+                    _state("gladiatorsfinale"),
+                    _state("goldentroupe"),
+                ),
+                budget=_budget(max_finalists=2, top_n=2),
+            )
+            calls = []
+
+            result = run_gcsim_finalist_optimizer(
+                request,
+                session_factory=EvidenceSessionFactory(root / "runs"),
+                completion_callback=lambda completed, planned, attempt: (
+                    calls.append((completed, planned, attempt.ordinal))
+                ),
+            )
+
+        self.assertEqual(result.status, GcsimFinalistOptimizerStatus.BEST_FOUND)
+        self.assertEqual(calls, [(1, 2, 0), (2, 2, 1)])
+
+    def test_completion_callback_failure_does_not_change_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            def broken_callback(_completed, _planned, _attempt):
+                raise RuntimeError("observer failed")
+
+            result = run_gcsim_finalist_optimizer(
+                _request(root),
+                session_factory=EvidenceSessionFactory(root / "runs"),
+                completion_callback=broken_callback,
+            )
+
+        self.assertEqual(result.status, GcsimFinalistOptimizerStatus.BEST_FOUND)
+
     def test_persistent_cache_reuses_verified_snapshots_without_run_directory(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

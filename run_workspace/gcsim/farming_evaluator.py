@@ -25,6 +25,7 @@ import os
 from pathlib import Path
 from queue import Empty, Queue
 import re
+import shutil
 import subprocess
 from threading import Event, Lock, Thread
 from tempfile import TemporaryDirectory
@@ -970,14 +971,18 @@ class GcsimFarmingEvaluationSession:
                 novelty_tags=self.request.novelty_tags,
             )
         )
+        generated_run_dir = not self.request.run_dir
+        removed_generated_run_dir = (
+            generated_run_dir and _remove_successful_generated_run_dir(run_dir)
+        )
         return _result_for_request(
             self.request,
             GcsimFarmingEvaluationStatus.PASSED,
             started=started,
             artifact_sha256=actual_artifact_sha,
-            run_dir=run_dir,
-            config_path=config_path,
-            result_path=result_path,
+            run_dir="" if removed_generated_run_dir else run_dir,
+            config_path="" if removed_generated_run_dir else config_path,
+            result_path="" if removed_generated_run_dir else result_path,
             command=command,
             returncode=process.returncode,
             stdout=stdout,
@@ -994,6 +999,10 @@ class FarmingEvaluationSession(Protocol):
 
 
 FarmingSessionFactory = Callable[[GcsimFarmingEvaluationRequest], FarmingEvaluationSession]
+FarmingCompletionCallback = Callable[
+    [int, int, int, GcsimFarmingEvaluationResult],
+    None,
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1182,7 +1191,14 @@ class GcsimFarmingBatchResult:
 
 
 class GcsimFarmingEvaluationScheduler:
-    """Synchronous coordinator intended to run outside the UI thread."""
+    """Synchronous coordinator intended to run outside the UI thread.
+
+    ``completion_callback``, when provided, runs on this coordinator's
+    ``run()`` thread exactly once for every terminal result.  Its arguments are
+    ``completed_count``, ``total_count``, the original request index, and the
+    typed result.  Callback failures are deliberately isolated from evaluation
+    so progress/reporting code cannot invalidate otherwise usable results.
+    """
 
     def __init__(
         self,
@@ -1193,6 +1209,7 @@ class GcsimFarmingEvaluationScheduler:
         enable_cache: bool = True,
         session_factory: FarmingSessionFactory | None = None,
         independent_contexts: bool = False,
+        completion_callback: FarmingCompletionCallback | None = None,
     ) -> None:
         self.requests = tuple(requests)
         self.budget = budget
@@ -1217,6 +1234,8 @@ class GcsimFarmingEvaluationScheduler:
         }
         if not isinstance(independent_contexts, bool):
             raise ValueError("independent_contexts must be boolean")
+        if completion_callback is not None and not callable(completion_callback):
+            raise TypeError("completion_callback must be callable or None")
         if len(comparison_scopes) > 1 and not independent_contexts:
             raise ValueError(
                 "farming evaluation requests must share one comparison context, "
@@ -1237,6 +1256,7 @@ class GcsimFarmingEvaluationScheduler:
         )
         self._session_factory = session_factory
         self._independent_contexts = independent_contexts
+        self._completion_callback = completion_callback
         self._cancel_event = Event()
         self._lock = Lock()
         self._active_sessions: dict[int, FarmingEvaluationSession] = {}
@@ -1272,6 +1292,29 @@ class GcsimFarmingEvaluationScheduler:
         ] = {}
         artifact_snapshot_directories: list[TemporaryDirectory[str]] = []
 
+        def record_result(
+            index: int,
+            result: GcsimFarmingEvaluationResult,
+        ) -> None:
+            if index in results_by_index:
+                raise RuntimeError(
+                    f"farming evaluation result {index} was finalized more than once"
+                )
+            results_by_index[index] = result
+            if self._completion_callback is None:
+                return
+            try:
+                self._completion_callback(
+                    len(results_by_index),
+                    len(self.requests),
+                    index,
+                    result,
+                )
+            except Exception:
+                # A progress observer is not part of simulation correctness.
+                # In particular, UI teardown must not discard completed work.
+                pass
+
         # The normal production path hashes each distinct executable once per
         # batch, then every session checks a cheap immutable file-stat witness.
         # Direct/custom sessions retain their own fail-closed identity policy.
@@ -1287,10 +1330,13 @@ class GcsimFarmingEvaluationScheduler:
                 artifact = Path(path_text)
                 if not artifact.is_file():
                     for index in indices:
-                        results_by_index[index] = _result_for_request(
-                            self.requests[index],
-                            GcsimFarmingEvaluationStatus.ARTIFACT_MISSING,
-                            error=f"Bound GCSIM artifact is missing: {artifact}",
+                        record_result(
+                            index,
+                            _result_for_request(
+                                self.requests[index],
+                                GcsimFarmingEvaluationStatus.ARTIFACT_MISSING,
+                                error=f"Bound GCSIM artifact is missing: {artifact}",
+                            ),
                         )
                         pending.remove(index)
                     continue
@@ -1312,10 +1358,13 @@ class GcsimFarmingEvaluationScheduler:
                 except OSError as exc:
                     snapshot_directory.cleanup()
                     for index in indices:
-                        results_by_index[index] = _result_for_request(
-                            self.requests[index],
-                            GcsimFarmingEvaluationStatus.ARTIFACT_MISSING,
-                            error=f"Could not hash bound GCSIM artifact: {exc}",
+                        record_result(
+                            index,
+                            _result_for_request(
+                                self.requests[index],
+                                GcsimFarmingEvaluationStatus.ARTIFACT_MISSING,
+                                error=f"Could not hash bound GCSIM artifact: {exc}",
+                            ),
                         )
                         pending.remove(index)
                     continue
@@ -1327,14 +1376,17 @@ class GcsimFarmingEvaluationScheduler:
                 for index in indices:
                     request = self.requests[index]
                     if digest != request.artifact_sha256:
-                        results_by_index[index] = _result_for_request(
-                            request,
-                            GcsimFarmingEvaluationStatus.ARTIFACT_IDENTITY_MISMATCH,
-                            artifact_sha256=digest,
-                            error=(
-                                "GCSIM artifact SHA-256 changed after the farming "
-                                "request was bound "
-                                f"(expected {request.artifact_sha256}, observed {digest})."
+                        record_result(
+                            index,
+                            _result_for_request(
+                                request,
+                                GcsimFarmingEvaluationStatus.ARTIFACT_IDENTITY_MISMATCH,
+                                artifact_sha256=digest,
+                                error=(
+                                    "GCSIM artifact SHA-256 changed after the farming "
+                                    "request was bound "
+                                    f"(expected {request.artifact_sha256}, observed {digest})."
+                                ),
                             ),
                         )
                         pending.remove(index)
@@ -1363,7 +1415,7 @@ class GcsimFarmingEvaluationScheduler:
                     break
                 cached = _read_cached_result(self._cache_store, self.requests[index])
                 if cached is not None:
-                    results_by_index[index] = cached
+                    record_result(index, cached)
                     pending.remove(index)
 
         def worker(
@@ -1429,10 +1481,13 @@ class GcsimFarmingEvaluationScheduler:
                     else:
                         session = self._session_factory(self.requests[index])
                 except Exception as exc:
-                    results_by_index[index] = _result_for_request(
-                        self.requests[index],
-                        GcsimFarmingEvaluationStatus.INTERNAL_ERROR,
-                        error=f"Could not create farming evaluation session: {exc}",
+                    record_result(
+                        index,
+                        _result_for_request(
+                            self.requests[index],
+                            GcsimFarmingEvaluationStatus.INTERNAL_ERROR,
+                            error=f"Could not create farming evaluation session: {exc}",
+                        ),
                     )
                     continue
                 if self._cancel_event.is_set() or monotonic() >= deadline:
@@ -1447,14 +1502,17 @@ class GcsimFarmingEvaluationScheduler:
                         if self._cancel_event.is_set()
                         else GcsimFarmingEvaluationStatus.SKIPPED_DEADLINE
                     )
-                    results_by_index[index] = _result_for_request(
-                        self.requests[index],
-                        skipped_status,
-                        error=(
-                            "Candidate was not started before cancellation."
-                            if skipped_status
-                            is GcsimFarmingEvaluationStatus.SKIPPED_CANCELLED
-                            else "Candidate was not started before the overall deadline."
+                    record_result(
+                        index,
+                        _result_for_request(
+                            self.requests[index],
+                            skipped_status,
+                            error=(
+                                "Candidate was not started before cancellation."
+                                if skipped_status
+                                is GcsimFarmingEvaluationStatus.SKIPPED_CANCELLED
+                                else "Candidate was not started before the overall deadline."
+                            ),
                         ),
                     )
                     continue
@@ -1494,13 +1552,17 @@ class GcsimFarmingEvaluationScheduler:
                     else GcsimFarmingEvaluationStatus.SKIPPED_DEADLINE
                 )
                 for index in pending:
-                    results_by_index[index] = _result_for_request(
-                        self.requests[index],
-                        skip_status,
-                        error=(
-                            "Candidate was not started before cancellation."
-                            if skip_status is GcsimFarmingEvaluationStatus.SKIPPED_CANCELLED
-                            else "Candidate was not started before the overall deadline."
+                    record_result(
+                        index,
+                        _result_for_request(
+                            self.requests[index],
+                            skip_status,
+                            error=(
+                                "Candidate was not started before cancellation."
+                                if skip_status
+                                is GcsimFarmingEvaluationStatus.SKIPPED_CANCELLED
+                                else "Candidate was not started before the overall deadline."
+                            ),
                         ),
                     )
                 pending.clear()
@@ -1523,7 +1585,7 @@ class GcsimFarmingEvaluationScheduler:
             with self._lock:
                 self._active_sessions.pop(index, None)
             thread.join(timeout=0)
-            results_by_index[index] = result
+            record_result(index, result)
             if result.success and not result.cache_hit and self._cache_store is not None:
                 cache_error, cache_deadline = _put_cache_until_deadline(
                     self._cache_store,
@@ -1551,7 +1613,7 @@ class GcsimFarmingEvaluationScheduler:
             with self._lock:
                 self._active_sessions.pop(index, None)
             thread.join(timeout=0)
-            results_by_index[index] = result
+            record_result(index, result)
 
         if monotonic() >= deadline and not self._cancel_event.is_set():
             deadline_reached = True
@@ -1627,6 +1689,7 @@ def run_gcsim_farming_evaluations(
     cache_store: GcsimOptimizerCacheStore | None = None,
     enable_cache: bool = True,
     session_factory: FarmingSessionFactory | None = None,
+    completion_callback: FarmingCompletionCallback | None = None,
 ) -> GcsimFarmingBatchResult:
     return GcsimFarmingEvaluationScheduler(
         requests,
@@ -1634,6 +1697,7 @@ def run_gcsim_farming_evaluations(
         cache_store=cache_store,
         enable_cache=enable_cache,
         session_factory=session_factory,
+        completion_callback=completion_callback,
     ).run()
 
 
@@ -1794,6 +1858,21 @@ def _create_run_dir(
             f"Could not create farming evaluation run directory {path}: {exc}",
         )
     return path
+
+
+def _remove_successful_generated_run_dir(path: Path) -> bool:
+    """Remove default-owned ordinary-screen evidence after summary extraction."""
+
+    root = DEFAULT_GCSIM_FARMING_RUNS_DIR.resolve()
+    resolved = path.resolve()
+    if resolved == root or root not in resolved.parents:
+        return False
+    try:
+        shutil.rmtree(resolved)
+    except OSError:
+        # The reusable cleanup command bounds leftovers after transient locks.
+        return False
+    return True
 
 
 def _summary_error(

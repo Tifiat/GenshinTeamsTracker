@@ -402,7 +402,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - Sim DPS cells have tooltips with status, clear time, DPS, average total damage per sim run, source/config paths, target mode, stale reasons, warnings/issues, and explicit no-DPS-correctness notes. The current `History persistence: disabled` wording is stale: simulations are not auto-saved individually, but current Abyss session results are serialized as `sim_dps` summaries by normal Run Save;
   - normal GCSIM Browser blocked-run output is compact/readiness-first with debug issue counts/codes instead of raw issue dict walls; the prepare/preflight path is exposed as `Check readiness`, with raw diagnostics kept behind Advanced/Debug UI;
   - DPS Dummy reports energy mode and dummy target HP/resist/source for diagnostics;
-  - generated GCSIM engines are retention-pruned to active + one previous successful + one latest failed; `.go/build-cache` is rebuildable and cleaned after successful probe/build unless explicitly kept; `.go/pkg/mod` remains as the small module cache; manual cleanup dry-run command is `python -m run_workspace.gcsim.cleanup`.
+  - generated GCSIM engines are retention-pruned to active + one previous successful + one latest failed; `.go/build-cache` is rebuildable and cleaned after successful probe/build unless explicitly kept; `.go/pkg/mod` remains as the small module cache; optimizer evidence cache is automatically bounded to 20,000 JSON entries / 256 MiB and cleans stale atomic temp files; manual cleanup dry-run command is `python -m run_workspace.gcsim.cleanup`.
 - Real next work:
   - finish the GCSIM Browser UI inside `ui/gcsim_browser/`: replace placeholder presentation, improve team/target/readiness/result details, correct save/history wording, and keep raw rotation code as the working expert input;
   - add readable rotation parsing/presets and decide later whether a constrained no-code action builder is maintainable;
@@ -432,152 +432,81 @@ Authoritative details:
 - `docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md`
 - `docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md`
 
-Keep this root TODO limited to current state and unfinished work. Historical
-M0-M14 logs and superseded broad-path benchmarks were removed.
+Keep this root TODO limited to current state and unfinished work.
 
-### Current product state
+### Current state
 
-- Current selected-account backend:
-  `optimizer_anytime_selected_service.py`, plan `anytime_approx_v1`.
-- Current theoretical 4p/2p+2p backend:
-  `optimizer_theoretical_anytime_service.py`, plans
-  `theoretical_4p_anytime_approx` and
-  `theoretical_2p2p_anytime_approx`.
-- Selected pools and both theoretical operations are the mandatory release
-  targets.
-- All-database account search uses the current bounded anytime kernel under
-  `all_database_sets_anytime_approx_v1` version 2. Its real-engine benchmark is
-  recorded; it remains experimental because cached wide-pool/joint-search work
-  still takes 89.453 seconds wall time.
-- Superseded broad selected/theoretical orchestrators were removed after the
-  accepted parity, runtime, and regression gates passed.
-- No user-facing Quick/Balanced/Deep modes are accepted.
-- Internal phases are `screen_8 -> refine_32 -> validate_200 ->
-  rerace_1000`.
-- Terminal results claim only “best found under the frozen work plan”.
-- Default eligibility is five-star only. Account four-star rows require an
-  explicit override; theoretical anytime search is five-star only.
-- The optimizer reads the complete frozen artifact DB for account work. It does
-  not read Artiscan/import generations/equipment/presets as candidate truth.
-- `content_fingerprint` deduplication of equal-content artifacts is an
-  accepted limitation.
-- ER is handled only through the generic per-wearer minimum-stat floor; it is
-  not a response weight or automatic damage/ER balance.
-- Search performs no writes. Saving is always an explicit user action.
-- Generated optimizer diagnostics are bounded: successful ordinary screening
-  directories are removed immediately, two-stage sessions remove their private
-  executable copies, and `python -m run_workspace.gcsim.cleanup` covers normal,
-  screening, and optimizer run roots at 50 directories / 256 MiB each.
-
-### Current algorithm
-
-Selected account:
-
-1. one dense DB index;
-2. one shared non-ER rotation-response scan;
-3. multi-profile Pareto/frontier and shadow artifact pools;
-4. bounded five-piece wearer candidates;
-5. bitmask four-wearer no-reuse search;
-6. at most 64 diverse proposals;
-7. ordinary GCSIM at 8, 32, 200, then close-only 1000 iterations;
-8. only 200+ evidence enters top-N/save.
-
-Theoretical 4p/2p+2p:
-
-1. trusted inventory-independent five-star package/layout/profile domain;
-2. at most 64 proposals at 8 iterations;
-3. at most 16 proposals at 32 iterations;
-4. at most six physical finalists;
-5. one `substatOptim` pass per finalist;
-6. exact optimized-config validation at 200;
-7. at most three close leaders rerun at 1000 without a second optimizer pass;
-8. percent-to-best with rank one at 100%.
-
-Unexpected response/wiring errors fail the run. Completed partial rows survive
-local deadlines. A local theoretical race deadline may continue to 200 with
-partial finalists when global time remains. Cancellation reaches the active
-response/race/optimizer/rerace owner.
-
-### Verified current evidence
-
-- Focused selected/theoretical candidate, race, validation, service, UI,
-  cancellation, progress, cache, and facade tests exist.
-- Real theoretical 4p smoke on 2026-07-28 reached `BEST_FOUND`:
-  125 response probes, 64@8, 16@32, six finalists, smoke-capped two@200,
-  106.36 seconds.
-- Real selected-set account smoke on the local 520-artifact DB reached
-  `BEST_FOUND`: 125 response probes, 64@8, adaptive 8@32, six@200 and two@1000;
-  six saveable exact builds appeared at 117.64 seconds and the run completed
-  in 177.27 service / 180.97 diagnostic seconds. The 20-distinct-ID winner
-  scored 13199.8883 DPS versus the source config's 13153.6 on the same
-  rotation (`+0.3519%`). Cold cache evidence was 0 hits / 205 misses.
-- Real theoretical 2p+2p smoke reached `BEST_FOUND` in 124.00 seconds:
-  39 modeled five-star 2p sets, 741 concrete pairs, 526 representative groups,
-  125/125 response probes, 64@8, 16@32, six finalists, and two@200.
-- Theoretical 2p+2p cache pair: 104.625 seconds at 0/207, then 11.594 seconds
-  at 207/207 with the identical result. Selected-account cache pair: 236.859
-  seconds at 0/214, then 20.000 seconds at 214/214 with the same 20-ID,
-  14360.0657-DPS winner.
-- Theoretical 4p default-cache bug is fixed. Before the fix, repeated runs
-  retained two expensive misses (205/207 hits), took about 26-27 seconds, and
-  could change winner. After population, repeat runs hit 207/207 entries in
-  6.234 and 6.063 seconds with the identical winner.
-- The current account kernel matches the reduced exhaustive physical top-1.
-  Theoretical exhaustive fixtures preserve coordinated low/high crit,
-  triple-EM, EM+crit, HP/heal, and DEF winners. Existing stat-floor,
-  unusual-main, content-deduplication, and conflict-shadow cases remain green.
-- Deterministic randomized exhaustive corpora contain 100 account and 100
-  theoretical cases. Both pass the provisional >=95% exact top-1, <=0.5% mean
-  regret, and <=2% maximum-regret requirements.
-- Full GCSIM backend discovery passes 621/621 tests in 233.513 seconds.
-  Optimizer-panel UI tests pass 5/5 in 0.205 seconds.
-- No-cache 8-CPU process-tree memory samples (20 ms interval): selected account
-  `BEST_FOUND` in 131.266 seconds at 335,290,368-byte aggregate working set /
-  554,262,528 private bytes; theoretical 2p+2p smoke `BEST_FOUND` in 93.125
-  seconds at 351,248,384-byte aggregate working set / 564,678,656 private
-  bytes. Both peaked at 9 live processes.
-- Real all-database v2 4p benchmark on the local 520-artifact DB at 8 CPUs:
-  31 modeled sets / 124 wearer-package decisions; cold `BEST_FOUND` in 233.531
-  service / 233.578 wall seconds at 0/208 hits; warm in 89.406 service / 89.453
-  wall seconds at 208/208 hits; identical 7795.1378-DPS 1000-iteration winner
-  with 20 distinct IDs. Keep experimental because warm pool/joint-search cost
-  remains high.
-- Do not quote superseded broad-path measurements as current performance.
+- Accepted operations are selected account packages, all feasible account
+  packages, theoretical equal-investment 4p, and theoretical equal-investment
+  2p+2p. There are no `Quick`/`Balanced`/`Deep` product modes.
+- Paired stat-response v2 is active through `gtt_stat_response_v2`: common
+  seeds, expected damage, team plus ordered-character deltas, legal mains, and
+  `dominant/secondary/negligible/uncertain` evidence.
+- Paired set-impact is active through `gtt_set_response_v1`: one package on one
+  wearer against a neutral baseline, measured on the exact selected target with
+  `balanced` and `crit_headroom` panels. Personal/team gains are retained;
+  uncertain evidence is retained conservatively.
+- All-account derives packages from the complete read-only DB input. A 4p set
+  requires four distinct usable slots, not merely four rows. Set-impact
+  surrogate ordering and retained-package coverage run before broad physical
+  artifact refinement. Neutral response is soft ranking only at n>=32; a
+  resolvable source-package signature is a recall/control anchor; up to eight
+  shortlisted package signatures receive bounded local physical regeneration.
+- Theoretical quick coverage uses balanced full-main anchors and fair
+  package-round-robin mixed-layout witnesses. Over-wide retained domains keep
+  typed retained/quick/unscreened accounting and shortlist at most 30 quick
+  anchors per wearer instead of failing the run.
+- Theoretical result rows now carry and display exact package,
+  sands/goblet/circlet mains, and fixed/liquid substat-roll allocation.
+- Progress distinguishes provisional n=8/32, verified n>=200, and final
+  leaders; stale leaders are cleared between fidelities and uncertainty is
+  labeled as SE.
+- Terminal top-N keeps only the best exact candidate per ordered four-wearer
+  package signature. Same-package physical variants are replacement evidence.
+- ER sufficiency is only an explicit generic `stat >= X` floor. Direct
+  ER-to-damage scaling remains visible; no automatic energy balancing exists.
+- The source build is same-target control evidence only. It cannot stop search,
+  prioritize its packages, or prune the requested domain.
+- Account work uses actual stored artifact values and twenty globally distinct
+  IDs. `content_fingerprint` equal-content dedupe remains accepted.
+- Search writes nothing. Preset/team-result persistence requires an explicit
+  save.
+- Ordinary wave preflight is capability-authoritative: a newer cumulative patch
+  marker is accepted when `gtt_wave_scenario_payload` is present.
 
 ### Immediate TODO
 
-- [x] Finish the current regression and full GCSIM backend suite.
-- [x] Run a real selected-set account cold smoke on the current DB and confirm
-      a strong 200+ result.
-- [x] Run a real theoretical 2p+2p smoke.
-- [x] Record cold/warm runtime and exact cache-hit evidence for selected and
-      theoretical anytime paths.
-- [x] Verify cancellation at response/race/validation owners.
-- [x] Record peak-memory evidence for the real anytime paths.
-- [x] Compare reduced domains with exhaustive account/theoretical oracles.
-- [x] Add adversarial winner-survival cases for coupled EM, low-crit useful
-      stats, crit-rate caps, unusual mains, stat floors, and contested IDs.
-- [x] Encode the user-accepted provisional runtime/quality policy: selected
-      150s first-saveable / 300s cold / 30s warm; theoretical 180s cold / 20s
-      warm; strict mandatory top-1; randomized >=95% exact top-1, <=0.5% mean
-      regret, and <=2% maximum regret.
-- [x] Remove obsolete broad selected/theoretical orchestrators after parity.
-- [x] Move all-database account optimization to the current bounded anytime
-      kernel without exhaustive/numeric optimality claims.
-- [x] Record a real-engine cold/warm benchmark for experimental all-database
-      v2 search.
-- [x] Stop optimizer diagnostic-file growth and extend cleanup retention to
-      `farming-runs` and `optimizer-runs`.
-- [ ] Optimize all-database dense-pool/joint-search warm cost only as optional
-      follow-up; it does not block selected/theoretical release.
-- [ ] Recalibrate provisional thresholds after the user can compare UI results
-      and waiting time with hand-built teams.
-- [ ] Do not change AppShell/import/equipment code as optimizer side work.
+- [x] Finish theoretical impact-driven package proposal search:
+      every 4p package and every engine-proved 2p component/effect class must
+      receive impact coverage before bounded package truncation.
+- [x] Verify theoretical 4p and 2p+2p package-survival behavior with focused and
+      real-engine regressions; an end-to-end `BEST_FOUND` alone is not a quality
+      pass.
+- [x] Verify all-account placement-sensitive personal/team set effects,
+      conservative uncertain retention, and both set-impact panels.
+- [x] Verify package-signature diversity through screening, validation, rerace,
+      and terminal top-N.
+- [x] Fix all-account selected-package recall with soft neutral response,
+      source-package control coverage, and bounded per-signature local search.
+- [x] Fix theoretical full-layout fairness with balanced package anchors,
+      mixed-main witnesses, and wide 2p+2p quick shortlists.
+- [x] Expose readable theoretical equal-investment allocations and unambiguous
+      progress fidelity/leader semantics in the optimizer panel.
+- [ ] Validate package-signature identity through explicit save/preset UI.
+- [ ] Run more selected/all-account/theoretical comparisons on exact selected
+      chambers and compare with user-built teams. Real DPS-Dummy regressions are
+      complete.
+- [ ] Recalibrate materiality, candidate budgets, and optional all-account
+      wide-pool performance from UI comparisons.
+- [ ] Collect fresh cold/warm/cache/cancellation/memory evidence on real teams;
+      focused/full automated regressions for this corrective package are done.
+- [ ] Do not add speed modes before the corrected base algorithm is measured.
+- [ ] Do not change AppShell/import/equipment behavior as optimizer side work.
 
-### Confirmed later UI/product ideas
+### Later UI/product ideas
 
 - A GCSIM presets tab linking four saved character presets.
-- One atomic save/apply-all action for an optimizer team result.
+- One explicit atomic save/apply-all action for an optimizer team result.
 - A compact “many replacements” indication without a full search journal.
 
 ## 13. Offline Profile

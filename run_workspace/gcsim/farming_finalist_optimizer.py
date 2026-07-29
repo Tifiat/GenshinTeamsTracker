@@ -208,6 +208,8 @@ class GcsimFinalistOptimizerRequest:
     two_plus_two_packages: Mapping[str, object] = field(default_factory=dict)
     environment: Mapping[str, str] = field(default_factory=dict, repr=False)
     environment_is_frozen: bool = field(default=False, repr=False, compare=False)
+    gtt_wave_scenario_path: str | Path | None = None
+    target_sha256: str = ""
     validation_config_text: str = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -341,6 +343,26 @@ class GcsimFinalistOptimizerRequest:
         normalized_environment = dict(
             sorted(environment_by_folded_key.values(), key=lambda item: item[0])
         )
+        scenario = str(self.gtt_wave_scenario_path or "").strip()
+        target_sha256 = str(self.target_sha256 or "")
+        if scenario:
+            resolved_scenario = Path(scenario).expanduser().resolve()
+            if not resolved_scenario.is_file():
+                raise GcsimFinalistOptimizerError(
+                    "GTT wave scenario path is missing"
+                )
+            actual_target_sha256 = hashlib.sha256(
+                resolved_scenario.read_bytes()
+            ).hexdigest()
+            if target_sha256 != actual_target_sha256:
+                raise GcsimFinalistOptimizerError(
+                    "GTT wave scenario differs from target_sha256"
+                )
+            scenario = str(resolved_scenario)
+        elif target_sha256 and not _is_sha256(target_sha256):
+            raise GcsimFinalistOptimizerError(
+                "target_sha256 must be a lowercase SHA-256 digest"
+            )
 
         object.__setattr__(self, "wearer_ids", wearer_ids)
         object.__setattr__(self, "prepared_config_text", prepared_config)
@@ -368,6 +390,12 @@ class GcsimFinalistOptimizerRequest:
             MappingProxyType(dict(sorted(normalized_environment.items()))),
         )
         object.__setattr__(self, "environment_is_frozen", True)
+        object.__setattr__(
+            self,
+            "gtt_wave_scenario_path",
+            scenario or None,
+        )
+        object.__setattr__(self, "target_sha256", target_sha256)
         _validate_request_substat_budget_feasibility(self)
 
     @property
@@ -1324,6 +1352,8 @@ class GcsimFinalistOptimizerSession:
             environment=self.request.environment,
             environment_is_frozen=True,
             mode=GCSIM_FINALIST_OPTIMIZER_MODE,
+            gtt_wave_scenario_path=self.request.gtt_wave_scenario_path,
+            target_sha256=self.request.target_sha256,
         )
 
     def _terminal_status(
@@ -1640,7 +1670,11 @@ def _expected_finalist_materialization(
         mode=GCSIM_FINALIST_OPTIMIZER_MODE,
         optimizer_options=request.optimizer_options,
         catalog_fingerprint=context.catalog.source_fingerprint,
-        candidate_key=_text_sha256(config_text),
+        candidate_key=_text_sha256(
+            config_text
+            + "\n# gtt-target-sha256="
+            + request.target_sha256
+        ),
     )
     return config_text, identity.cache_key
 
@@ -2365,6 +2399,7 @@ def _request_payload(request: GcsimFinalistOptimizerRequest) -> dict[str, object
         "environment": [
             [key, value] for key, value in sorted(request.environment.items())
         ],
+        "target_sha256": request.target_sha256,
         "two_plus_two_domain_sha256": (
             gcsim_theoretical_pair_domain_sha256(
                 request.two_plus_two_packages

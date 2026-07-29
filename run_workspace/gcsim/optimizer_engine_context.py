@@ -46,6 +46,7 @@ class GcsimOptimizerEngineContext:
     binding_sha256: str
     trusted: bool
     issues: tuple[str, ...] = ()
+    capabilities: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -62,6 +63,7 @@ class GcsimOptimizerEngineContext:
             "binding_sha256": self.binding_sha256,
             "trusted": self.trusted,
             "issues": list(self.issues),
+            "capabilities": list(self.capabilities),
         }
 
 
@@ -154,6 +156,7 @@ def build_gcsim_optimizer_engine_context(
         binding_sha256=binding_sha256,
         trusted=trusted,
         issues=tuple(issues),
+        capabilities=_manifest_capabilities(manifest),
     )
 
 
@@ -188,6 +191,18 @@ def _engine_version(manifest: GcsimEngineManifest) -> str:
         if text:
             return text
     return manifest.engine_id
+
+
+def _manifest_capabilities(manifest: GcsimEngineManifest) -> tuple[str, ...]:
+    values = list(manifest.capabilities)
+    raw = manifest.metadata.get("gtt_capabilities", "[]")
+    try:
+        parsed = json.loads(str(raw))
+    except json.JSONDecodeError:
+        parsed = ()
+    if isinstance(parsed, list):
+        values.extend(str(item) for item in parsed if str(item))
+    return tuple(dict.fromkeys(values))
 
 
 def _sha256_file(path: Path) -> str:

@@ -15,6 +15,12 @@ from .engine_store import (
     GcsimEngineStore,
     PROJECT_ROOT,
 )
+from .optimizer_cache import (
+    DEFAULT_GCSIM_OPTIMIZER_CACHE_DIR,
+    DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_BYTES,
+    DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_ENTRIES,
+    prune_gcsim_optimizer_cache,
+)
 from .runtime_probe import cleanup_go_build_cache
 
 
@@ -57,6 +63,7 @@ class GcsimLocalCleanupReport:
     run_dirs: dict
     farming_run_dirs: dict
     optimizer_run_dirs: dict
+    optimizer_cache: dict
 
     def to_dict(self) -> dict:
         return {
@@ -66,6 +73,7 @@ class GcsimLocalCleanupReport:
             "run_dirs": self.run_dirs,
             "farming_run_dirs": self.farming_run_dirs,
             "optimizer_run_dirs": self.optimizer_run_dirs,
+            "optimizer_cache": self.optimizer_cache,
         }
 
 
@@ -86,6 +94,9 @@ def cleanup_gcsim_local_state(
     optimizer_run_root: str | Path | None = None,
     keep_optimizer_run_dirs: int = DEFAULT_RUN_DIR_KEEP_COUNT,
     max_optimizer_run_dir_bytes: int = DEFAULT_RUN_DIR_MAX_BYTES,
+    optimizer_cache_root: str | Path | None = None,
+    keep_optimizer_cache_entries: int = DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_ENTRIES,
+    max_optimizer_cache_bytes: int = DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_BYTES,
 ) -> GcsimLocalCleanupReport:
     store = GcsimEngineStore(store_dir or DEFAULT_GCSIM_ENGINE_STORE_DIR)
     try:
@@ -133,6 +144,12 @@ def cleanup_gcsim_local_state(
         max_total_bytes=max_optimizer_run_dir_bytes,
         dry_run=dry_run,
     ).to_dict()
+    optimizer_cache_result = prune_gcsim_optimizer_cache(
+        cache_root=optimizer_cache_root or DEFAULT_GCSIM_OPTIMIZER_CACHE_DIR,
+        max_entries=keep_optimizer_cache_entries,
+        max_total_bytes=max_optimizer_cache_bytes,
+        dry_run=dry_run,
+    ).to_dict()
     return GcsimLocalCleanupReport(
         dry_run=bool(dry_run),
         engine_store=engine_result,
@@ -140,6 +157,7 @@ def cleanup_gcsim_local_state(
         run_dirs=run_result,
         farming_run_dirs=farming_run_result,
         optimizer_run_dirs=optimizer_run_result,
+        optimizer_cache=optimizer_cache_result,
     )
 
 
@@ -306,6 +324,23 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_RUN_DIR_MAX_BYTES // (1024 * 1024),
         help="Maximum kept two-stage optimizer diagnostic bytes, in MB.",
     )
+    parser.add_argument(
+        "--optimizer-cache-root",
+        default=None,
+        help="Optional persistent optimizer cache root.",
+    )
+    parser.add_argument(
+        "--keep-optimizer-cache-entries",
+        type=int,
+        default=DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_ENTRIES,
+        help="Newest persistent optimizer cache entries to keep.",
+    )
+    parser.add_argument(
+        "--max-optimizer-cache-mb",
+        type=int,
+        default=DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_BYTES // (1024 * 1024),
+        help="Maximum persistent optimizer cache bytes, in MB.",
+    )
     parser.add_argument("--format", choices=("text", "json"), default="text")
     args = parser.parse_args(argv)
 
@@ -325,6 +360,9 @@ def main(argv: list[str] | None = None) -> int:
         optimizer_run_root=args.optimizer_run_root,
         keep_optimizer_run_dirs=args.keep_optimizer_run_dirs,
         max_optimizer_run_dir_bytes=int(args.max_optimizer_run_dir_mb) * 1024 * 1024,
+        optimizer_cache_root=args.optimizer_cache_root,
+        keep_optimizer_cache_entries=args.keep_optimizer_cache_entries,
+        max_optimizer_cache_bytes=int(args.max_optimizer_cache_mb) * 1024 * 1024,
     )
     if args.format == "json":
         print(json.dumps(report.to_dict(), indent=2, ensure_ascii=False, sort_keys=True))
@@ -340,6 +378,7 @@ def _format_text(report: GcsimLocalCleanupReport) -> str:
     runs = data["run_dirs"]
     farming_runs = data["farming_run_dirs"]
     optimizer_runs = data["optimizer_run_dirs"]
+    optimizer_cache = data["optimizer_cache"]
     lines = [
         "GCSIM local cleanup",
         f"dry_run={str(report.dry_run).lower()}",
@@ -376,6 +415,13 @@ def _format_text(report: GcsimLocalCleanupReport) -> str:
             f"deleted_count={len(optimizer_runs.get('deleted_paths') or [])} "
             f"kept_count={len(optimizer_runs.get('kept_paths') or [])}"
         ),
+        (
+            "optimizer_cache="
+            f"status={optimizer_cache.get('status', '')} "
+            f"deleted_bytes={optimizer_cache.get('deleted_bytes', 0)} "
+            f"deleted_count={len(optimizer_cache.get('deleted_paths') or [])} "
+            f"kept_count={optimizer_cache.get('kept_count', 0)}"
+        ),
     ]
     if engine.get("deleted_paths"):
         lines.append("engine_deleted=" + ", ".join(engine["deleted_paths"]))
@@ -389,12 +435,17 @@ def _format_text(report: GcsimLocalCleanupReport) -> str:
         lines.append(
             "optimizer_run_dirs_deleted=" + ", ".join(optimizer_runs["deleted_paths"])
         )
+    if optimizer_cache.get("deleted_paths"):
+        lines.append(
+            "optimizer_cache_deleted=" + ", ".join(optimizer_cache["deleted_paths"])
+        )
     for key, section in (
         ("engine_store_error", engine),
         ("go_build_cache_error", go_cache),
         ("run_dirs_error", runs),
         ("farming_run_dirs_error", farming_runs),
         ("optimizer_run_dirs_error", optimizer_runs),
+        ("optimizer_cache_error", optimizer_cache),
     ):
         if section.get("error"):
             lines.append(f"{key}={section['error']}")

@@ -28,15 +28,21 @@ from run_workspace.gcsim.optimizer_product_contracts import (
     GcsimOptimizerDpsEstimate,
     GcsimOptimizerEvaluationIdentity,
     GcsimOptimizerFourStarEligibilityOverride,
+    GcsimOptimizerLeaderSnapshot,
     GcsimOptimizerMinimumStatConstraint,
     GcsimOptimizerOperation,
     GcsimOptimizerOperationRequest,
     GcsimOptimizerProgressEvent,
+    GcsimOptimizerProgressLeaderQuality,
+    GcsimOptimizerProgressLeaderScope,
     GcsimOptimizerProgressStage,
     GcsimOptimizerSetReference,
     GcsimOptimizerSourceSimulationIdentity,
     GcsimOptimizerTerminalResult,
     GcsimOptimizerTerminalStatus,
+    GcsimOptimizerTheoreticalAllocationWitness,
+    GcsimOptimizerTheoreticalStatRoll,
+    GcsimOptimizerTheoreticalWearerAllocation,
     GcsimOptimizerUncertaintyLabel,
     GcsimOptimizerWearerArtifactAssignment,
     GcsimOptimizerWearerIdentity,
@@ -77,7 +83,13 @@ class GcsimOptimizerProductContractsTest(unittest.TestCase):
             "GcsimTwoPlusTwoTargetPackage",
             "GcsimOptimizerAccountAssignmentWitness",
             "GcsimOptimizerMinimumStatConstraint",
+            "GcsimOptimizerProgressLeaderQuality",
+            "GcsimOptimizerProgressLeaderScope",
             "GcsimOptimizerTerminalResult",
+            "GcsimOptimizerTheoreticalAllocationWitness",
+            "GcsimOptimizerTheoreticalStatRoll",
+            "GcsimOptimizerTheoreticalWearerAllocation",
+            "build_gcsim_optimizer_theoretical_allocation_witness",
             "parse_gcsim_optimizer_operation_request",
             "parse_gcsim_optimizer_terminal_result",
             "adapt_gcsim_optimized_four_piece_result",
@@ -559,6 +571,36 @@ class GcsimOptimizerProductContractsTest(unittest.TestCase):
             canonical_gcsim_optimizer_json(top_n),
         )
 
+    def test_theoretical_result_round_trips_readable_equal_investment(self) -> None:
+        request = _theoretical_request(
+            GcsimOptimizerOperation.THEORETICAL_FOUR_PIECE
+        )
+        terminal = GcsimOptimizerTerminalResult(
+            request=request,
+            status=GcsimOptimizerTerminalStatus.BEST_FOUND,
+            stop_reason="completed",
+            elapsed_seconds=1.0,
+            top_n=build_gcsim_optimizer_top_n(
+                (_candidate(request, "a", 100.0, 1.0),),
+                operation=request.operation,
+            ),
+        )
+
+        parsed = parse_gcsim_optimizer_terminal_result(
+            canonical_gcsim_optimizer_json(terminal)
+        )
+        witness = parsed.best_found.theoretical_allocation
+        self.assertIsNotNone(witness)
+        self.assertEqual(
+            dict(witness.wearer_allocations[0].main_stats_by_slot),
+            {"sands": "atk%", "goblet": "atk%", "circlet": "cr"},
+        )
+        self.assertEqual(witness.wearer_allocations[0].total_liquid_rolls, 20)
+        self.assertEqual(
+            witness.wearer_allocations[0].roll_by_axis["cd"].total_rolls,
+            12,
+        )
+
     def test_request_progress_and_result_round_trip_deterministically(self) -> None:
         request = _account_request(pool_width=2)
         result = GcsimOptimizerTerminalResult(
@@ -575,13 +617,20 @@ class GcsimOptimizerProductContractsTest(unittest.TestCase):
             request_sha256=request.request_sha256,
             operation=request.operation,
             work_plan_sha256=request.work_plan.identity_sha256,
-            stage=GcsimOptimizerProgressStage.JOINT_SEARCH,
+            stage=GcsimOptimizerProgressStage.FINAL_VALIDATION,
             sequence=4,
             completed_work=8,
             planned_work=None,
             elapsed_seconds=2.5,
             remaining_seconds=None,
             cache_hits=3,
+            current_iterations=200,
+            current_best=GcsimOptimizerLeaderSnapshot(
+                candidate_identity_sha256="c" * 64,
+                estimate=GcsimOptimizerDpsEstimate(100.0, 1.0, 200),
+                scope=GcsimOptimizerProgressLeaderScope.STAGE,
+                quality=GcsimOptimizerProgressLeaderQuality.VERIFIED,
+            ),
         )
 
         parsed_request = parse_gcsim_optimizer_operation_request(
@@ -600,6 +649,61 @@ class GcsimOptimizerProductContractsTest(unittest.TestCase):
             canonical_gcsim_optimizer_json(parsed_result),
             canonical_gcsim_optimizer_json(result),
         )
+
+    def test_progress_v3_rejects_stale_and_incoherent_leader_metadata(self) -> None:
+        request = _account_request(pool_width=2)
+        progress = GcsimOptimizerProgressEvent(
+            request_sha256=request.request_sha256,
+            operation=request.operation,
+            work_plan_sha256=request.work_plan.identity_sha256,
+            stage=GcsimOptimizerProgressStage.SCREENING,
+            sequence=0,
+            completed_work=0,
+            planned_work=64,
+            elapsed_seconds=0.0,
+            remaining_seconds=None,
+            current_iterations=8,
+        )
+        stale_payload = progress.to_dict()
+        stale_payload["schema_version"] = 2
+        with self.assertRaisesRegex(
+            GcsimOptimizerContractError,
+            "expected version 3",
+        ):
+            parse_gcsim_optimizer_progress_event(stale_payload)
+
+        missing_fidelity_payload = progress.to_dict()
+        missing_fidelity_payload.pop("current_iterations")
+        with self.assertRaisesRegex(
+            GcsimOptimizerContractError,
+            "missing=.*current_iterations",
+        ):
+            parse_gcsim_optimizer_progress_event(missing_fidelity_payload)
+
+        with self.assertRaisesRegex(
+            GcsimOptimizerContractError,
+            "must match current_iterations",
+        ):
+            GcsimOptimizerProgressEvent(
+                request_sha256=request.request_sha256,
+                operation=request.operation,
+                work_plan_sha256=request.work_plan.identity_sha256,
+                stage=GcsimOptimizerProgressStage.REFINEMENT,
+                sequence=1,
+                completed_work=1,
+                planned_work=16,
+                elapsed_seconds=1.0,
+                remaining_seconds=None,
+                current_iterations=32,
+                current_best=GcsimOptimizerLeaderSnapshot(
+                    candidate_identity_sha256="d" * 64,
+                    estimate=GcsimOptimizerDpsEstimate(100.0, 1.0, 8),
+                    scope=GcsimOptimizerProgressLeaderScope.STAGE,
+                    quality=(
+                        GcsimOptimizerProgressLeaderQuality.PROVISIONAL
+                    ),
+                ),
+            )
 
     def test_pre_v4_and_speed_depth_payloads_fail_closed(self) -> None:
         payload = _account_request().to_dict()
@@ -690,6 +794,11 @@ class GcsimOptimizerProductContractsTest(unittest.TestCase):
         self.assertEqual(
             adapted.contract.best_found.evidence_sha256["result_json"],
             source_result.best_found.result_json_sha256,
+        )
+        self.assertEqual(
+            adapted.contract.best_found.theoretical_allocation
+            .source_allocation_sha256,
+            source_result.best_found.allocation_sha256,
         )
 
 
@@ -895,6 +1004,12 @@ def _candidate(
     *,
     targets: tuple[GcsimOptimizerWearerTarget, ...] | None = None,
 ) -> GcsimOptimizerCandidateResult:
+    resolved_targets = (
+        _four_piece_targets(request) if targets is None else targets
+    )
+    theoretical = (
+        request.operation is not GcsimOptimizerOperation.ACCOUNT_ARTIFACTS
+    )
     return GcsimOptimizerCandidateResult(
         request_sha256=request.request_sha256,
         candidate_identity_sha256=digest_character * 64,
@@ -904,15 +1019,91 @@ def _candidate(
             dps_se=dps_se,
             iterations=100,
         ),
-        target_packages=(
-            _four_piece_targets(request) if targets is None else targets
+        target_packages=resolved_targets,
+        evidence_sha256=(
+            {
+                "allocation": digest_character * 64,
+                "result": digest_character * 64,
+            }
+            if theoretical
+            else {"result": digest_character * 64}
         ),
-        evidence_sha256={"result": digest_character * 64},
+        theoretical_allocation=(
+            _theoretical_witness(
+                request,
+                resolved_targets,
+                digest_character,
+            )
+            if theoretical
+            else None
+        ),
         account_assignment=(
             _witness(request)
             if request.operation is GcsimOptimizerOperation.ACCOUNT_ARTIFACTS
             else None
         ),
+    )
+
+
+def _theoretical_witness(
+    request: GcsimOptimizerOperationRequest,
+    targets: tuple[GcsimOptimizerWearerTarget, ...],
+    digest_character: str,
+) -> GcsimOptimizerTheoreticalAllocationWitness:
+    rolls = tuple(
+        GcsimOptimizerTheoreticalStatRoll(
+            axis_key=axis,
+            fixed_rolls=2,
+            liquid_rolls=(10 if axis in {"atk%", "cd"} else 0),
+        )
+        for axis in (
+            "atk%",
+            "cr",
+            "cd",
+            "em",
+            "er",
+            "hp%",
+            "def%",
+            "atk",
+            "def",
+            "hp",
+        )
+    )
+    rows = []
+    for target in targets:
+        package = target.package
+        package_key = (
+            package.set_ref.gcsim_set_key
+            if isinstance(package, GcsimFourPieceTargetPackage)
+            else f"pair_{package.identity_sha256}"
+        )
+        wearer = target.wearer.gcsim_character_key
+        rows.append(
+            GcsimOptimizerTheoreticalWearerAllocation(
+                wearer=target.wearer,
+                package_key=package_key,
+                main_stat_layout_id="main/atkpct-atkpct-cr",
+                main_stats_by_slot={
+                    "sands": "atk%",
+                    "goblet": "atk%",
+                    "circlet": "cr",
+                },
+                rolls=rolls,
+                total_liquid_rolls=20,
+                gcsim_add_stats_lines=(
+                    f"{wearer} add stats hp=4780 atk=311 atk%=0.466 "
+                    "atk%=0.466 cr=0.311;",
+                    f"{wearer} add stats atk%=0.0496*12 cr=0.0331*2 "
+                    "cd=0.0662*12 em=19.82*2 er=0.0551*2 "
+                    "hp%=0.0496*2 def%=0.062*2 atk=16.54*2 "
+                    "def=19.68*2 hp=253.94*2;",
+                ),
+            )
+        )
+    return GcsimOptimizerTheoreticalAllocationWitness(
+        request_sha256=request.request_sha256,
+        source_allocation_sha256=digest_character * 64,
+        wearer_allocations=tuple(rows),
     )
 
 

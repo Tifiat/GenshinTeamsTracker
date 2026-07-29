@@ -562,9 +562,11 @@ def _preflight_wave_scenario_contract(
         )
     observed_version = _text_value(payload, "gtt_patch_version", "gttPatchVersion")
     observed_capabilities = _capabilities_from_gtt_info(payload)
-    ready = (
-        observed_version == GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION
-        and GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY in set(observed_capabilities)
+    # Patch markers describe the newest cumulative patch, so a later optimizer
+    # patch legitimately replaces ``gtt-wave-scenario-v1``.  The advertised
+    # capability is the stable feature contract and must be authoritative.
+    ready = GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY in set(
+        observed_capabilities
     )
     if ready:
         return _contract_preflight_result(
@@ -579,10 +581,6 @@ def _preflight_wave_scenario_contract(
             timing_seconds=timing,
         )
     missing: list[str] = []
-    if observed_version != GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION:
-        missing.append(
-            f"required patch version {GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION}, observed {observed_version or '<missing>'}"
-        )
     if GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY not in set(observed_capabilities):
         missing.append(f"required capability {GTT_WAVE_SCENARIO_REQUIRED_CAPABILITY}")
     return _contract_preflight_result(

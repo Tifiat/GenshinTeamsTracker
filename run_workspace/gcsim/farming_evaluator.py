@@ -167,6 +167,7 @@ class GcsimFarmingEvaluationIdentity:
     worker_count: int
     expected_iterations: int
     environment_sha256: str
+    target_sha256: str = hashlib.sha256(b"").hexdigest()
     contract: str = GCSIM_FARMING_EVALUATION_CONTRACT
     schema_version: int = GCSIM_FARMING_EVALUATION_IDENTITY_SCHEMA
 
@@ -188,6 +189,7 @@ class GcsimFarmingEvaluationIdentity:
             "engine_binding_sha256",
             "catalog_fingerprint",
             "environment_sha256",
+            "target_sha256",
         ):
             if not _is_sha256(getattr(self, field_name)):
                 raise ValueError(f"{field_name} must be a lowercase SHA-256 digest")
@@ -224,6 +226,7 @@ class GcsimFarmingEvaluationIdentity:
             "worker_count": self.worker_count,
             "expected_iterations": self.expected_iterations,
             "environment_sha256": self.environment_sha256,
+            "target_sha256": self.target_sha256,
         }
 
 
@@ -247,6 +250,8 @@ class GcsimFarmingEvaluationRequest:
     novelty_score: float = 0.0
     novelty_tags: tuple[str, ...] = ()
     joint_candidate_keys: EvaluationCandidateKeys = ()
+    gtt_wave_scenario_path: str = ""
+    target_sha256: str = ""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "config_text", str(self.config_text))
@@ -283,6 +288,22 @@ class GcsimFarmingEvaluationRequest:
         if not self.config_text.strip() or "\x00" in self.config_text:
             raise ValueError("config_text must be non-empty and contain no NUL")
         validate_gcsim_farming_static_config(self.config_text)
+        scenario = str(self.gtt_wave_scenario_path or "").strip()
+        target_sha256 = str(self.target_sha256 or "").strip()
+        if scenario:
+            resolved_scenario = Path(scenario).expanduser().resolve()
+            if not resolved_scenario.is_file():
+                raise ValueError("GTT wave scenario path is missing")
+            actual_target_sha256 = _sha256_file(resolved_scenario)
+            if target_sha256 and target_sha256 != actual_target_sha256:
+                raise ValueError("GTT wave scenario differs from target_sha256")
+            target_sha256 = actual_target_sha256
+            object.__setattr__(self, "gtt_wave_scenario_path", str(resolved_scenario))
+        elif not target_sha256:
+            target_sha256 = _sha256_text(self.config_text)
+        if not _is_sha256(target_sha256):
+            raise ValueError("target_sha256 must be a lowercase SHA-256 digest")
+        object.__setattr__(self, "target_sha256", target_sha256)
         if not isinstance(self.artifact_path, str) or not self.artifact_path.strip():
             raise ValueError("artifact_path must be a non-empty string")
         if isinstance(self.worker_count, bool) or not isinstance(self.worker_count, int):
@@ -323,6 +344,7 @@ class GcsimFarmingEvaluationRequest:
             worker_count=self.worker_count,
             expected_iterations=self.expected_iterations,
             environment_sha256=_sha256_environment(self.environment),
+            target_sha256=self.target_sha256,
         )
 
     @property
@@ -346,6 +368,7 @@ class GcsimFarmingEvaluationRequest:
                 ("environment_sha256", identity.environment_sha256),
                 ("worker_count", str(identity.worker_count)),
                 ("expected_iterations", str(identity.expected_iterations)),
+                ("target_sha256", identity.target_sha256),
             ),
             catalog_fingerprint=identity.catalog_fingerprint,
             candidate_key=identity.identity_sha256,
@@ -366,6 +389,8 @@ def prepare_bound_gcsim_farming_evaluation(
     run_dir: str | Path | None = None,
     novelty_score: float = 0.0,
     novelty_tags: Sequence[str] = (),
+    gtt_wave_scenario_path: str | Path | None = None,
+    target_sha256: str = "",
 ) -> GcsimFarmingEvaluationRequest:
     """Bind a rendered ordinary-sim config to its exact engine/candidate."""
 
@@ -383,6 +408,8 @@ def prepare_bound_gcsim_farming_evaluation(
         run_dir=run_dir,
         novelty_score=novelty_score,
         novelty_tags=novelty_tags,
+        gtt_wave_scenario_path=gtt_wave_scenario_path,
+        target_sha256=target_sha256,
     )
 
 
@@ -401,6 +428,8 @@ def prepare_bound_gcsim_farming_joint_evaluation(
     novelty_score: float = 0.0,
     novelty_tags: Sequence[str] = (),
     synthetic_set_keys: Sequence[str] = (),
+    gtt_wave_scenario_path: str | Path | None = None,
+    target_sha256: str = "",
 ) -> GcsimFarmingEvaluationRequest:
     """Bind a fully rendered joint team state without inventing one wearer."""
 
@@ -420,6 +449,8 @@ def prepare_bound_gcsim_farming_joint_evaluation(
         novelty_score=novelty_score,
         novelty_tags=novelty_tags,
         synthetic_set_keys=synthetic_set_keys,
+        gtt_wave_scenario_path=gtt_wave_scenario_path,
+        target_sha256=target_sha256,
     )
 
 
@@ -439,6 +470,8 @@ def _prepare_bound_gcsim_farming_evaluation(
     novelty_score: float,
     novelty_tags: Sequence[str],
     synthetic_set_keys: Sequence[str] = (),
+    gtt_wave_scenario_path: str | Path | None = None,
+    target_sha256: str = "",
 ) -> GcsimFarmingEvaluationRequest:
     if not engine_context.trusted:
         raise GcsimFarmingEvaluationError(
@@ -489,6 +522,10 @@ def _prepare_bound_gcsim_farming_evaluation(
         novelty_score=novelty_score,
         novelty_tags=tuple(novelty_tags),
         joint_candidate_keys=candidate_keys,
+        gtt_wave_scenario_path=(
+            "" if gtt_wave_scenario_path is None else str(gtt_wave_scenario_path)
+        ),
+        target_sha256=target_sha256,
     )
 
 
@@ -724,8 +761,13 @@ class GcsimFarmingEvaluationSession:
         run_dir = run_dir_result
         config_path = run_dir / "config.txt"
         result_path = run_dir / "result.json"
+        scenario_run_path = run_dir / "gtt_wave_scenario.json"
         try:
             config_path.write_text(self.request.config_text, encoding="utf-8")
+            if self.request.gtt_wave_scenario_path:
+                scenario_run_path.write_bytes(
+                    Path(self.request.gtt_wave_scenario_path).read_bytes()
+                )
             if direct_snapshot_bytes is not None:
                 suffix = artifact.suffix if artifact.suffix else ""
                 execution_artifact = run_dir / f"gcsim-farming-engine{suffix}"
@@ -743,13 +785,18 @@ class GcsimFarmingEvaluationSession:
                 error=f"Could not write isolated farming config: {exc}",
             )
 
-        command = (
+        command_parts = [
             str(execution_artifact),
             "-c",
             config_path.name,
             "-out",
             result_path.name,
-        )
+        ]
+        if self.request.gtt_wave_scenario_path:
+            command_parts.extend(
+                ("-gtt-wave-scenario", scenario_run_path.name)
+            )
+        command = tuple(command_parts)
         env = dict(self.request.environment)
         if self.cancel_requested:
             return _result_for_request(

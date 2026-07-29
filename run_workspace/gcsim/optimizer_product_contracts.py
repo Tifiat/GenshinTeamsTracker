@@ -29,9 +29,10 @@ GCSIM_OPTIMIZER_PRODUCT_CONTRACT_SCHEMA_VERSION = 4
 GCSIM_OPTIMIZER_SOURCE_SIMULATION_SCHEMA_VERSION = 2
 GCSIM_OPTIMIZER_WORK_PLAN_SCHEMA_VERSION = 2
 GCSIM_OPTIMIZER_TARGET_PACKAGE_SCHEMA_VERSION = 2
-GCSIM_OPTIMIZER_PROGRESS_SCHEMA_VERSION = 2
-GCSIM_OPTIMIZER_RESULT_SCHEMA_VERSION = 2
+GCSIM_OPTIMIZER_PROGRESS_SCHEMA_VERSION = 3
+GCSIM_OPTIMIZER_RESULT_SCHEMA_VERSION = 3
 GCSIM_OPTIMIZER_UNCERTAINTY_SCHEMA_VERSION = 2
+GCSIM_OPTIMIZER_THEORETICAL_ALLOCATION_SCHEMA_VERSION = 1
 GCSIM_OPTIMIZER_DEFAULT_UNCERTAINTY_SIGMA = 2.0
 
 GCSIM_OPTIMIZED_ADVISOR_WORK_PLAN_ID = "optimized_theoretical_4p"
@@ -39,13 +40,13 @@ GCSIM_OPTIMIZED_ADVISOR_WORK_PLAN_VERSION = 1
 GCSIM_OPTIMIZED_PAIR_ADVISOR_WORK_PLAN_ID = "optimized_theoretical_2p2p"
 GCSIM_OPTIMIZED_PAIR_ADVISOR_WORK_PLAN_VERSION = 1
 GCSIM_THEORETICAL_ANYTIME_FOUR_PIECE_WORK_PLAN_ID = (
-    "theoretical_4p_anytime_approx"
+    "theoretical_4p_anytime_approx_v2"
 )
-GCSIM_THEORETICAL_ANYTIME_FOUR_PIECE_WORK_PLAN_VERSION = 1
+GCSIM_THEORETICAL_ANYTIME_FOUR_PIECE_WORK_PLAN_VERSION = 3
 GCSIM_THEORETICAL_ANYTIME_TWO_PLUS_TWO_WORK_PLAN_ID = (
-    "theoretical_2p2p_anytime_approx"
+    "theoretical_2p2p_anytime_approx_v2"
 )
-GCSIM_THEORETICAL_ANYTIME_TWO_PLUS_TWO_WORK_PLAN_VERSION = 1
+GCSIM_THEORETICAL_ANYTIME_TWO_PLUS_TWO_WORK_PLAN_VERSION = 3
 
 GCSIM_OPTIMIZER_ARTIFACT_SLOTS = (
     "flower",
@@ -54,6 +55,51 @@ GCSIM_OPTIMIZER_ARTIFACT_SLOTS = (
     "goblet",
     "circlet",
 )
+
+GCSIM_OPTIMIZER_THEORETICAL_MAIN_STAT_SLOTS = (
+    "sands",
+    "goblet",
+    "circlet",
+)
+
+# Stable upstream substatOptim order.  Keeping the complete roll vector in the
+# product result makes equal-investment claims inspectable instead of exposing
+# only an opaque allocation hash.
+GCSIM_OPTIMIZER_THEORETICAL_SUBSTAT_AXES = (
+    "atk%",
+    "cr",
+    "cd",
+    "em",
+    "er",
+    "hp%",
+    "def%",
+    "atk",
+    "def",
+    "hp",
+)
+
+_THEORETICAL_LEGAL_MAIN_AXES = {
+    "sands": frozenset({"hp%", "atk%", "def%", "em", "er"}),
+    "goblet": frozenset(
+        {
+            "hp%",
+            "atk%",
+            "def%",
+            "em",
+            "pyro%",
+            "hydro%",
+            "electro%",
+            "cryo%",
+            "anemo%",
+            "geo%",
+            "dendro%",
+            "phys%",
+        }
+    ),
+    "circlet": frozenset(
+        {"hp%", "atk%", "def%", "em", "cr", "cd", "heal"}
+    ),
+}
 
 _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _DOTTED_IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_.]*$")
@@ -123,6 +169,7 @@ class GcsimOptimizerProgressStage(str, Enum):
     PREFLIGHT = "preflight"
     LAYOUT_SCAN = "layout_scan"
     RESPONSE_SCAN = "response_scan"
+    SET_IMPACT_SCAN = "set_impact_scan"
     CANDIDATE_GENERATION = "candidate_generation"
     JOINT_SEARCH = "joint_search"
     SCREENING = "screening"
@@ -130,6 +177,17 @@ class GcsimOptimizerProgressStage(str, Enum):
     FINAL_VALIDATION = "final_validation"
     RERACE = "rerace"
     COMPLETED = "completed"
+
+
+class GcsimOptimizerProgressLeaderScope(str, Enum):
+    STAGE = "stage"
+    RUN = "run"
+
+
+class GcsimOptimizerProgressLeaderQuality(str, Enum):
+    PROVISIONAL = "provisional"
+    VERIFIED = "verified"
+    FINAL = "final"
 
 
 class GcsimOptimizerUncertaintyLabel(str, Enum):
@@ -948,6 +1006,8 @@ class GcsimOptimizerEvaluationIdentity:
 class GcsimOptimizerLeaderSnapshot:
     candidate_identity_sha256: str
     estimate: GcsimOptimizerDpsEstimate
+    scope: GcsimOptimizerProgressLeaderScope
+    quality: GcsimOptimizerProgressLeaderQuality
 
     def __post_init__(self) -> None:
         _require_sha256(
@@ -956,11 +1016,51 @@ class GcsimOptimizerLeaderSnapshot:
         )
         if not isinstance(self.estimate, GcsimOptimizerDpsEstimate):
             raise GcsimOptimizerContractError("leader estimate must be typed")
+        _require_enum(
+            self.scope,
+            GcsimOptimizerProgressLeaderScope,
+            "leader scope",
+        )
+        _require_enum(
+            self.quality,
+            GcsimOptimizerProgressLeaderQuality,
+            "leader quality",
+        )
+        if (
+            self.scope is GcsimOptimizerProgressLeaderScope.RUN
+        ) != (
+            self.quality is GcsimOptimizerProgressLeaderQuality.FINAL
+        ):
+            raise GcsimOptimizerContractError(
+                "run-scoped leaders must be final and final leaders must be "
+                "run-scoped"
+            )
+        if (
+            self.quality
+            is GcsimOptimizerProgressLeaderQuality.PROVISIONAL
+            and self.estimate.iterations >= 200
+        ):
+            raise GcsimOptimizerContractError(
+                "provisional leaders must use fewer than 200 iterations"
+            )
+        if (
+            self.quality
+            in {
+                GcsimOptimizerProgressLeaderQuality.VERIFIED,
+                GcsimOptimizerProgressLeaderQuality.FINAL,
+            }
+            and self.estimate.iterations < 200
+        ):
+            raise GcsimOptimizerContractError(
+                "verified and final leaders require at least 200 iterations"
+            )
 
     def to_dict(self) -> dict[str, object]:
         return {
             "candidate_identity_sha256": self.candidate_identity_sha256,
             "estimate": self.estimate.to_dict(),
+            "scope": self.scope.value,
+            "quality": self.quality.value,
         }
 
 
@@ -976,6 +1076,7 @@ class GcsimOptimizerProgressEvent:
     elapsed_seconds: float
     remaining_seconds: float | None
     cache_hits: int = 0
+    current_iterations: int | None = None
     current_best: GcsimOptimizerLeaderSnapshot | None = None
     schema_version: int = GCSIM_OPTIMIZER_PROGRESS_SCHEMA_VERSION
 
@@ -998,6 +1099,11 @@ class GcsimOptimizerProgressEvent:
                 self.remaining_seconds,
                 "remaining_seconds",
             )
+        if self.current_iterations is not None:
+            _require_positive_int(
+                self.current_iterations,
+                "current_iterations",
+            )
         if self.current_best is not None and not isinstance(
             self.current_best,
             GcsimOptimizerLeaderSnapshot,
@@ -1005,6 +1111,24 @@ class GcsimOptimizerProgressEvent:
             raise GcsimOptimizerContractError(
                 "current_best must be a typed leader snapshot or None"
             )
+        if self.current_best is not None:
+            if self.current_iterations is None:
+                raise GcsimOptimizerContractError(
+                    "a current leader requires current_iterations"
+                )
+            if self.current_best.estimate.iterations != self.current_iterations:
+                raise GcsimOptimizerContractError(
+                    "current leader iterations must match current_iterations"
+                )
+            if (
+                self.stage is GcsimOptimizerProgressStage.COMPLETED
+            ) != (
+                self.current_best.quality
+                is GcsimOptimizerProgressLeaderQuality.FINAL
+            ):
+                raise GcsimOptimizerContractError(
+                    "only completed progress may expose the final run leader"
+                )
         _require_schema(
             self.schema_version,
             GCSIM_OPTIMIZER_PROGRESS_SCHEMA_VERSION,
@@ -1032,6 +1156,7 @@ class GcsimOptimizerProgressEvent:
                 else float(self.remaining_seconds)
             ),
             "cache_hits": self.cache_hits,
+            "current_iterations": self.current_iterations,
             "current_best": (
                 None if self.current_best is None else self.current_best.to_dict()
             ),
@@ -1188,6 +1313,193 @@ class GcsimOptimizerAccountAssignmentWitness:
 
 
 @dataclass(frozen=True, slots=True)
+class GcsimOptimizerTheoreticalStatRoll:
+    """Exact max-roll counts emitted by upstream ``substatOptim``."""
+
+    axis_key: str
+    fixed_rolls: int
+    liquid_rolls: int
+
+    def __post_init__(self) -> None:
+        if self.axis_key not in GCSIM_OPTIMIZER_THEORETICAL_SUBSTAT_AXES:
+            raise GcsimOptimizerContractError(
+                "theoretical allocation uses an unsupported substat axis"
+            )
+        _require_non_negative_int(self.fixed_rolls, "fixed_rolls")
+        _require_non_negative_int(self.liquid_rolls, "liquid_rolls")
+
+    @property
+    def total_rolls(self) -> int:
+        return self.fixed_rolls + self.liquid_rolls
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "axis_key": self.axis_key,
+            "fixed_rolls": self.fixed_rolls,
+            "liquid_rolls": self.liquid_rolls,
+            "total_rolls": self.total_rolls,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class GcsimOptimizerTheoreticalWearerAllocation:
+    """Readable main-stat and substat investment for one theoretical wearer."""
+
+    wearer: GcsimOptimizerWearerIdentity
+    package_key: str
+    main_stat_layout_id: str
+    main_stats_by_slot: Mapping[str, str]
+    rolls: tuple[GcsimOptimizerTheoreticalStatRoll, ...]
+    total_liquid_rolls: int
+    gcsim_add_stats_lines: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.wearer, GcsimOptimizerWearerIdentity):
+            raise GcsimOptimizerContractError(
+                "theoretical allocation wearer must be typed"
+            )
+        _require_identifier(self.package_key, "theoretical package key")
+        _require_trimmed_text(
+            self.main_stat_layout_id,
+            "main_stat_layout_id",
+        )
+        if not self.main_stat_layout_id.startswith("main/"):
+            raise GcsimOptimizerContractError(
+                "theoretical main-stat layout ID must use the main/ namespace"
+            )
+        if not isinstance(self.main_stats_by_slot, Mapping):
+            raise GcsimOptimizerContractError(
+                "main_stats_by_slot must be a mapping"
+            )
+        if set(self.main_stats_by_slot) != set(
+            GCSIM_OPTIMIZER_THEORETICAL_MAIN_STAT_SLOTS
+        ):
+            raise GcsimOptimizerContractError(
+                "theoretical allocation requires sands/goblet/circlet mains"
+            )
+        mains: dict[str, str] = {}
+        for slot in GCSIM_OPTIMIZER_THEORETICAL_MAIN_STAT_SLOTS:
+            axis = self.main_stats_by_slot[slot]
+            if axis not in _THEORETICAL_LEGAL_MAIN_AXES[slot]:
+                raise GcsimOptimizerContractError(
+                    f"illegal theoretical {slot} main stat"
+                )
+            mains[slot] = axis
+        object.__setattr__(
+            self,
+            "main_stats_by_slot",
+            MappingProxyType(mains),
+        )
+
+        rolls = tuple(self.rolls)
+        if (
+            any(
+                not isinstance(item, GcsimOptimizerTheoreticalStatRoll)
+                for item in rolls
+            )
+            or tuple(item.axis_key for item in rolls)
+            != GCSIM_OPTIMIZER_THEORETICAL_SUBSTAT_AXES
+        ):
+            raise GcsimOptimizerContractError(
+                "theoretical rolls must cover every pinned axis in canonical order"
+            )
+        object.__setattr__(self, "rolls", rolls)
+        _require_non_negative_int(
+            self.total_liquid_rolls,
+            "total_liquid_rolls",
+        )
+        if sum(item.liquid_rolls for item in rolls) != self.total_liquid_rolls:
+            raise GcsimOptimizerContractError(
+                "theoretical liquid-roll total differs from its roll vector"
+            )
+
+        lines = tuple(self.gcsim_add_stats_lines)
+        prefix = f"{self.wearer.gcsim_character_key} add stats "
+        if len(lines) != 2 or any(
+            not isinstance(line, str)
+            or not line.startswith(prefix)
+            or not line.endswith(";")
+            for line in lines
+        ):
+            raise GcsimOptimizerContractError(
+                "theoretical allocation requires exact main/substat GCSIM rows"
+            )
+        object.__setattr__(self, "gcsim_add_stats_lines", lines)
+
+    @property
+    def roll_by_axis(self) -> Mapping[str, GcsimOptimizerTheoreticalStatRoll]:
+        return MappingProxyType({item.axis_key: item for item in self.rolls})
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "wearer": self.wearer.to_dict(),
+            "package_key": self.package_key,
+            "main_stat_layout_id": self.main_stat_layout_id,
+            "main_stats_by_slot": dict(self.main_stats_by_slot),
+            "rolls": [item.to_dict() for item in self.rolls],
+            "total_liquid_rolls": self.total_liquid_rolls,
+            "gcsim_add_stats_lines": list(self.gcsim_add_stats_lines),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class GcsimOptimizerTheoreticalAllocationWitness:
+    """Versioned readable allocation evidence for one theoretical candidate."""
+
+    request_sha256: str
+    source_allocation_sha256: str
+    wearer_allocations: tuple[
+        GcsimOptimizerTheoreticalWearerAllocation, ...
+    ]
+    schema_version: int = (
+        GCSIM_OPTIMIZER_THEORETICAL_ALLOCATION_SCHEMA_VERSION
+    )
+
+    def __post_init__(self) -> None:
+        _require_sha256(self.request_sha256, "request_sha256")
+        _require_sha256(
+            self.source_allocation_sha256,
+            "source_allocation_sha256",
+        )
+        rows = tuple(self.wearer_allocations)
+        if (
+            not 1 <= len(rows) <= 4
+            or any(
+                not isinstance(
+                    item,
+                    GcsimOptimizerTheoreticalWearerAllocation,
+                )
+                for item in rows
+            )
+            or tuple(item.wearer.team_slot for item in rows)
+            != tuple(range(1, len(rows) + 1))
+        ):
+            raise GcsimOptimizerContractError(
+                "theoretical allocation witness requires canonical wearer rows"
+            )
+        object.__setattr__(self, "wearer_allocations", rows)
+        _require_schema(
+            self.schema_version,
+            GCSIM_OPTIMIZER_THEORETICAL_ALLOCATION_SCHEMA_VERSION,
+            "theoretical allocation",
+        )
+
+    @property
+    def identity_sha256(self) -> str:
+        return _canonical_sha256(self.to_dict())
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "request_sha256": self.request_sha256,
+            "source_allocation_sha256": self.source_allocation_sha256,
+            "wearer_allocations": [
+                item.to_dict() for item in self.wearer_allocations
+            ],
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class GcsimOptimizerUncertainty:
     label: GcsimOptimizerUncertaintyLabel
     confidence_sigma: float
@@ -1290,6 +1602,9 @@ class GcsimOptimizerCandidateResult:
     estimate: GcsimOptimizerDpsEstimate
     target_packages: tuple[GcsimOptimizerWearerTarget, ...]
     evidence_sha256: Mapping[str, str]
+    theoretical_allocation: (
+        GcsimOptimizerTheoreticalAllocationWitness | None
+    ) = None
     account_assignment: GcsimOptimizerAccountAssignmentWitness | None = None
     replacement_witnesses: tuple[
         GcsimOptimizerAccountAssignmentWitness, ...
@@ -1322,6 +1637,21 @@ class GcsimOptimizerCandidateResult:
             "evidence_sha256",
             _freeze_sha256_mapping(self.evidence_sha256),
         )
+        if self.theoretical_allocation is not None:
+            if not isinstance(
+                self.theoretical_allocation,
+                GcsimOptimizerTheoreticalAllocationWitness,
+            ):
+                raise GcsimOptimizerContractError(
+                    "theoretical_allocation must be a typed witness or None"
+                )
+            if (
+                self.theoretical_allocation.request_sha256
+                != self.request_sha256
+            ):
+                raise GcsimOptimizerContractError(
+                    "theoretical allocation belongs to another request"
+                )
         replacements = tuple(self.replacement_witnesses)
         if any(
             not isinstance(item, GcsimOptimizerAccountAssignmentWitness)
@@ -1392,6 +1722,9 @@ class GcsimOptimizerRankedResult:
     uncertainty: GcsimOptimizerUncertainty
     target_packages: tuple[GcsimOptimizerWearerTarget, ...]
     evidence_sha256: Mapping[str, str]
+    theoretical_allocation: (
+        GcsimOptimizerTheoreticalAllocationWitness | None
+    ) = None
     account_assignment: GcsimOptimizerAccountAssignmentWitness | None = None
     replacement_witnesses: tuple[
         GcsimOptimizerAccountAssignmentWitness, ...
@@ -1409,6 +1742,7 @@ class GcsimOptimizerRankedResult:
             estimate=self.estimate,
             target_packages=self.target_packages,
             evidence_sha256=self.evidence_sha256,
+            theoretical_allocation=self.theoretical_allocation,
             account_assignment=self.account_assignment,
             replacement_witnesses=self.replacement_witnesses,
             equivalent_assignment_count=self.equivalent_assignment_count,
@@ -1451,6 +1785,11 @@ class GcsimOptimizerRankedResult:
                 item.to_dict() for item in self.target_packages
             ],
             "evidence_sha256": dict(self.evidence_sha256),
+            "theoretical_allocation": (
+                None
+                if self.theoretical_allocation is None
+                else self.theoretical_allocation.to_dict()
+            ),
             "account_assignment": (
                 None
                 if self.account_assignment is None
@@ -1597,6 +1936,7 @@ def build_gcsim_optimizer_top_n(
                 ),
                 target_packages=candidate.target_packages,
                 evidence_sha256=candidate.evidence_sha256,
+                theoretical_allocation=candidate.theoretical_allocation,
                 account_assignment=candidate.account_assignment,
                 replacement_witnesses=candidate.replacement_witnesses,
                 equivalent_assignment_count=(
@@ -1851,6 +2191,9 @@ def adapt_gcsim_optimized_four_piece_result(
         GcsimOptimizedAdvisorStatus,
     )
     from .farming_finalist_optimizer import GcsimFinalistOptimizerResult
+    from .optimizer_theoretical_allocation import (
+        build_gcsim_optimizer_theoretical_allocation_witness,
+    )
 
     if not isinstance(source_result, GcsimOptimizedAdvisorResult):
         raise GcsimOptimizerContractError(
@@ -1968,6 +2311,24 @@ def adapt_gcsim_optimized_four_piece_result(
                         "optimizer_input": outcome.optimizer_input_sha256,
                         "result_json": outcome.result_json_sha256,
                     },
+                    theoretical_allocation=(
+                        build_gcsim_optimizer_theoretical_allocation_witness(
+                            request_sha256=request.request_sha256,
+                            wearers=request.source_simulation.wearers,
+                            outcome=outcome,
+                            layout_catalog=(
+                                finalist.request_snapshot.layout_catalog
+                            ),
+                            fixed_rolls_per_axis=int(
+                                float(
+                                    finalist.request_snapshot.optimizer_options.get(
+                                        "fixed_substats_count",
+                                        2,
+                                    )
+                                )
+                            ),
+                        )
+                    ),
                 )
             )
     status = {
@@ -2143,6 +2504,7 @@ def parse_gcsim_optimizer_progress_event(
             "elapsed_seconds",
             "remaining_seconds",
             "cache_hits",
+            "current_iterations",
             "current_best",
         },
         "optimizer progress event",
@@ -2153,12 +2515,27 @@ def parse_gcsim_optimizer_progress_event(
         item = _require_mapping(current_best_payload, "current_best")
         _require_exact_keys(
             item,
-            {"candidate_identity_sha256", "estimate"},
+            {
+                "candidate_identity_sha256",
+                "estimate",
+                "scope",
+                "quality",
+            },
             "current_best",
         )
         current_best = GcsimOptimizerLeaderSnapshot(
             candidate_identity_sha256=item["candidate_identity_sha256"],
             estimate=_parse_estimate(item["estimate"]),
+            scope=_parse_enum(
+                GcsimOptimizerProgressLeaderScope,
+                item["scope"],
+                "leader scope",
+            ),
+            quality=_parse_enum(
+                GcsimOptimizerProgressLeaderQuality,
+                item["quality"],
+                "leader quality",
+            ),
         )
     return GcsimOptimizerProgressEvent(
         request_sha256=payload["request_sha256"],
@@ -2179,6 +2556,7 @@ def parse_gcsim_optimizer_progress_event(
         elapsed_seconds=payload["elapsed_seconds"],
         remaining_seconds=payload["remaining_seconds"],
         cache_hits=payload["cache_hits"],
+        current_iterations=payload["current_iterations"],
         current_best=current_best,
         schema_version=payload["schema_version"],
     )
@@ -2459,12 +2837,41 @@ def _require_theoretical_candidate(entry: GcsimOptimizerRankedResult) -> None:
         raise GcsimOptimizerContractError(
             "theoretical result must not carry physical account assignments"
         )
+    witness = entry.theoretical_allocation
+    if witness is None:
+        raise GcsimOptimizerContractError(
+            "successful theoretical result requires readable allocation evidence"
+        )
+    if (
+        witness.request_sha256 != entry.request_sha256
+        or tuple(item.wearer for item in witness.wearer_allocations)
+        != tuple(item.wearer for item in entry.target_packages)
+        or tuple(item.package_key for item in witness.wearer_allocations)
+        != tuple(
+            _theoretical_result_package_key(item.package)
+            for item in entry.target_packages
+        )
+    ):
+        raise GcsimOptimizerContractError(
+            "theoretical allocation witness differs from its candidate"
+        )
+    if (
+        entry.evidence_sha256.get("allocation")
+        != witness.source_allocation_sha256
+    ):
+        raise GcsimOptimizerContractError(
+            "theoretical allocation hash differs from source evidence"
+        )
 
 
 def _validate_account_candidate(
     request: GcsimOptimizerOperationRequest,
     entry: GcsimOptimizerRankedResult,
 ) -> None:
+    if entry.theoretical_allocation is not None:
+        raise GcsimOptimizerContractError(
+            "account result must not carry theoretical allocation evidence"
+        )
     witness = entry.account_assignment
     if witness is None:
         raise GcsimOptimizerContractError(
@@ -2517,6 +2924,14 @@ def _validate_account_candidate(
         raise GcsimOptimizerContractError(
             "account 2p+2p result requires include_2p2p"
         )
+
+
+def _theoretical_result_package_key(
+    package: GcsimOptimizerTargetPackage,
+) -> str:
+    if isinstance(package, GcsimFourPieceTargetPackage):
+        return package.set_ref.gcsim_set_key
+    return f"pair_{package.identity_sha256}"
 
 
 def _parse_source_simulation(value: object) -> GcsimOptimizerSourceSimulationIdentity:
@@ -2828,6 +3243,94 @@ def _parse_assignment(
     )
 
 
+def _parse_theoretical_stat_roll(
+    value: object,
+) -> GcsimOptimizerTheoreticalStatRoll:
+    payload = _require_mapping(value, "theoretical stat roll")
+    _require_exact_keys(
+        payload,
+        {"axis_key", "fixed_rolls", "liquid_rolls", "total_rolls"},
+        "theoretical stat roll",
+    )
+    result = GcsimOptimizerTheoreticalStatRoll(
+        axis_key=payload["axis_key"],
+        fixed_rolls=payload["fixed_rolls"],
+        liquid_rolls=payload["liquid_rolls"],
+    )
+    if payload["total_rolls"] != result.total_rolls:
+        raise GcsimOptimizerContractError(
+            "theoretical stat-roll total is inconsistent"
+        )
+    return result
+
+
+def _parse_theoretical_wearer_allocation(
+    value: object,
+) -> GcsimOptimizerTheoreticalWearerAllocation:
+    payload = _require_mapping(value, "theoretical wearer allocation")
+    _require_exact_keys(
+        payload,
+        {
+            "wearer",
+            "package_key",
+            "main_stat_layout_id",
+            "main_stats_by_slot",
+            "rolls",
+            "total_liquid_rolls",
+            "gcsim_add_stats_lines",
+        },
+        "theoretical wearer allocation",
+    )
+    return GcsimOptimizerTheoreticalWearerAllocation(
+        wearer=_parse_wearer(payload["wearer"]),
+        package_key=payload["package_key"],
+        main_stat_layout_id=payload["main_stat_layout_id"],
+        main_stats_by_slot=_require_mapping(
+            payload["main_stats_by_slot"],
+            "main_stats_by_slot",
+        ),
+        rolls=tuple(
+            _parse_theoretical_stat_roll(item)
+            for item in _require_list(payload["rolls"], "rolls")
+        ),
+        total_liquid_rolls=payload["total_liquid_rolls"],
+        gcsim_add_stats_lines=tuple(
+            _require_list(
+                payload["gcsim_add_stats_lines"],
+                "gcsim_add_stats_lines",
+            )
+        ),
+    )
+
+
+def _parse_theoretical_allocation(
+    value: object,
+) -> GcsimOptimizerTheoreticalAllocationWitness:
+    payload = _require_mapping(value, "theoretical allocation")
+    _require_exact_keys(
+        payload,
+        {
+            "schema_version",
+            "request_sha256",
+            "source_allocation_sha256",
+            "wearer_allocations",
+        },
+        "theoretical allocation",
+    )
+    return GcsimOptimizerTheoreticalAllocationWitness(
+        request_sha256=payload["request_sha256"],
+        source_allocation_sha256=payload["source_allocation_sha256"],
+        wearer_allocations=tuple(
+            _parse_theoretical_wearer_allocation(item)
+            for item in _require_list(
+                payload["wearer_allocations"],
+                "wearer_allocations",
+            )
+        ),
+        schema_version=payload["schema_version"],
+    )
+
+
 def _parse_uncertainty(value: object) -> GcsimOptimizerUncertainty:
     payload = _require_mapping(value, "uncertainty")
     _require_exact_keys(
@@ -2871,6 +3374,7 @@ def _parse_ranked_result(value: object) -> GcsimOptimizerRankedResult:
             "uncertainty",
             "target_packages",
             "evidence_sha256",
+            "theoretical_allocation",
             "account_assignment",
             "replacement_witnesses",
             "equivalent_assignment_count",
@@ -2898,6 +3402,13 @@ def _parse_ranked_result(value: object) -> GcsimOptimizerRankedResult:
         evidence_sha256=_require_mapping(
             payload["evidence_sha256"],
             "evidence_sha256",
+        ),
+        theoretical_allocation=(
+            None
+            if payload["theoretical_allocation"] is None
+            else _parse_theoretical_allocation(
+                payload["theoretical_allocation"]
+            )
         ),
         account_assignment=(
             None

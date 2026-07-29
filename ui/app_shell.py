@@ -143,6 +143,7 @@ from run_workspace.gcsim.optimizer_ui_adapter import (
     GcsimOptimizerUiLaunchRequest,
     GcsimOptimizerUiMinimumInput,
     GcsimOptimizerUiMode,
+    GcsimOptimizerUiTargetMode,
 )
 from run_workspace.gcsim.optimizer_save import (
     save_gcsim_optimizer_team_preset,
@@ -1989,6 +1990,35 @@ class AppShell(QWidget):
                 cpu_budget=int(options.get("cpu_budget") or 0),
                 boosted_energy_enabled=(
                     self.controller.gcsim_run_settings().boosted_energy_enabled
+                ),
+                target_mode=(
+                    GcsimOptimizerUiTargetMode.DPS_DUMMY
+                    if self.controller.mode == MODE_DPS_DUMMY
+                    else GcsimOptimizerUiTargetMode.SELECTED_CHAMBER
+                ),
+                abyss_period_start=(
+                    ""
+                    if self.controller.mode == MODE_DPS_DUMMY
+                    else (
+                        self.controller.cached_abyss_source_data().period.start_date
+                        if self.controller.cached_abyss_source_data() is not None
+                        else ""
+                    )
+                ),
+                abyss_floor=(
+                    0
+                    if self.controller.mode == MODE_DPS_DUMMY
+                    else (
+                        self.controller.cached_abyss_source_data().floor
+                        if self.controller.cached_abyss_source_data() is not None
+                        else 0
+                    )
+                ),
+                abyss_chamber=int(options.get("selected_chamber") or 0),
+                abyss_side=normalized_team_index + 1,
+                abyss_multi_target=(
+                    self.controller.gcsim_target_mode()
+                    == FACT_DPS_HP_MODE_MULTI_TARGET
                 ),
             )
         except Exception as exc:

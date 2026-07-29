@@ -489,10 +489,12 @@ class GcsimBrowserWorkspace(QWidget):
         team_index = max(0, int(self.team_tabs.currentIndex()))
         if self._mode == MODE_DPS_DUMMY:
             team_index = 0
+        target_options = dict(options) if isinstance(options, dict) else {}
+        target_options["selected_chamber"] = self._selected_chamber_index + 1
         self.optimizer_start_requested.emit(
             team_index,
             self.rotation_editor.toPlainText(),
-            options,
+            target_options,
         )
 
     def _make_team_tab(self, team_index: int) -> QWidget:

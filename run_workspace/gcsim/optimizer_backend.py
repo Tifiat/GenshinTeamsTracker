@@ -75,6 +75,8 @@ class GcsimBoundOptimizerCandidate:
         verbose: bool = False,
         environment: Mapping[str, str] | None = None,
         environment_is_frozen: bool = False,
+        gtt_wave_scenario_path: str | Path | None = None,
+        target_sha256: str = "",
     ) -> GcsimOptimizerRunRequest:
         resolved_workers = resolve_gcsim_optimizer_worker_count(worker_count)
         resolved_environment = {
@@ -95,6 +97,8 @@ class GcsimBoundOptimizerCandidate:
             environment_is_frozen=environment_is_frozen,
             expected_artifact_sha256=self.engine_context.artifact_sha256,
             engine_binding_sha256=self.engine_context.binding_sha256,
+            gtt_wave_scenario_path=gtt_wave_scenario_path,
+            target_sha256=target_sha256,
         )
 
     def build_cache_identity(
@@ -126,7 +130,13 @@ class GcsimBoundOptimizerCandidate:
             mode=mode,
             optimizer_options=request.optimizer_options,
             catalog_fingerprint=self.engine_context.catalog.source_fingerprint,
-            candidate_key=hashlib.sha256(config.encode("utf-8")).hexdigest(),
+            candidate_key=hashlib.sha256(
+                (
+                    config
+                    + "\n# gtt-target-sha256="
+                    + request.target_sha256
+                ).encode("utf-8")
+            ).hexdigest(),
         )
 
     def build_execution(
@@ -144,6 +154,8 @@ class GcsimBoundOptimizerCandidate:
         environment: Mapping[str, str] | None = None,
         environment_is_frozen: bool = False,
         mode: str = "theoretical_4p_candidate",
+        gtt_wave_scenario_path: str | Path | None = None,
+        target_sha256: str = "",
     ) -> GcsimBoundOptimizerExecution:
         """Build one request and its cache identity from the exact same spec."""
 
@@ -157,6 +169,8 @@ class GcsimBoundOptimizerCandidate:
             verbose=verbose,
             environment=environment,
             environment_is_frozen=environment_is_frozen,
+            gtt_wave_scenario_path=gtt_wave_scenario_path,
+            target_sha256=target_sha256,
         )
         return GcsimBoundOptimizerExecution(
             request=request,

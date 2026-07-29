@@ -7,7 +7,6 @@ from pathlib import Path
 import subprocess
 import tempfile
 from threading import Event, Thread
-from time import sleep
 import unittest
 from unittest.mock import patch
 from dataclasses import replace
@@ -24,6 +23,39 @@ from run_workspace.gcsim.optimizer_runner import (
 
 
 class GcsimOptimizerRunnerTest(unittest.TestCase):
+    def test_selected_scenario_is_copied_and_used_by_both_stages(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            scenario = root / "selected-scenario.json"
+            scenario.write_bytes(b'{"waves":[]}\n')
+            target_sha256 = hashlib.sha256(scenario.read_bytes()).hexdigest()
+            factory = SuccessfulOptimizerFactory()
+
+            result = run_gcsim_optimizer(
+                GcsimOptimizerRunRequest(
+                    config_text="options iteration=10;",
+                    artifact_path=_artifact(root),
+                    run_dir=root / "run",
+                    gtt_wave_scenario_path=scenario,
+                    target_sha256=target_sha256,
+                    expected_artifact_sha256=hashlib.sha256(b"fake").hexdigest(),
+                ),
+                process_factory=factory,
+            )
+
+            self.assertTrue(result.success)
+            self.assertEqual(len(factory.calls), 2)
+            for call in factory.calls:
+                self.assertIn("-gtt-wave-scenario", call.command)
+                scenario_name = call.command[
+                    call.command.index("-gtt-wave-scenario") + 1
+                ]
+                self.assertEqual(scenario_name, "gtt-wave-scenario.json")
+                self.assertEqual(
+                    (Path(call.cwd) / scenario_name).read_bytes(),
+                    scenario.read_bytes(),
+                )
+
     def test_two_stage_run_copies_input_and_parses_final_result(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -292,18 +324,24 @@ class GcsimOptimizerRunnerTest(unittest.TestCase):
     def test_overall_timeout_is_shared_across_optimizer_and_simulation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            factory = SlowSuccessfulOptimizerFactory(delay_seconds=0.03)
-            result = run_gcsim_optimizer(
-                GcsimOptimizerRunRequest(
-                    config_text="options iteration=1;",
-                    artifact_path=_artifact(root),
-                    run_dir=root / "run",
-                    optimizer_timeout_seconds=1,
-                    simulation_timeout_seconds=1,
-                    overall_timeout_seconds=0.01,
-                ),
-                process_factory=factory,
-            )
+            factory = SuccessfulOptimizerFactory()
+            # Freeze the shared deadline transition instead of racing real
+            # filesystem/process setup against a 10 ms wall-clock budget.
+            with patch(
+                "run_workspace.gcsim.optimizer_runner.monotonic",
+                side_effect=(0.0, 0.0, 0.0, 0.0, 0.02),
+            ):
+                result = run_gcsim_optimizer(
+                    GcsimOptimizerRunRequest(
+                        config_text="options iteration=1;",
+                        artifact_path=_artifact(root),
+                        run_dir=root / "run",
+                        optimizer_timeout_seconds=1,
+                        simulation_timeout_seconds=1,
+                        overall_timeout_seconds=0.01,
+                    ),
+                    process_factory=factory,
+                )
 
             self.assertEqual(result.status, GcsimOptimizerRunStatus.SIMULATION_TIMEOUT)
             self.assertEqual(len(factory.calls), 1)
@@ -695,23 +733,6 @@ class MutatingEvidenceFactory(SuccessfulOptimizerFactory):
         process = FakeProcess(command, cwd, env, write_result_then_mutate)
         self.calls.append(process)
         return process
-
-
-class SlowSuccessfulOptimizerFactory(SuccessfulOptimizerFactory):
-    def __init__(self, *, delay_seconds: float) -> None:
-        super().__init__()
-        self.delay_seconds = delay_seconds
-
-    def __call__(self, command, cwd, env):
-        if "-substatOptim" in command:
-            def delayed_write(current_command, current_cwd):
-                sleep(self.delay_seconds)
-                _write_optimized_config(current_command, current_cwd)
-
-            process = FakeProcess(command, cwd, env, delayed_write)
-            self.calls.append(process)
-            return process
-        return super().__call__(command, cwd, env)
 
 
 class FailedOptimizerFactory:

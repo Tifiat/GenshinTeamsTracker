@@ -184,6 +184,8 @@ class GcsimOptimizerRunRequest:
     environment_is_frozen: bool = field(default=False, repr=False, compare=False)
     expected_artifact_sha256: str = ""
     engine_binding_sha256: str = ""
+    gtt_wave_scenario_path: str | Path | None = None
+    target_sha256: str = ""
 
     def __post_init__(self) -> None:
         if isinstance(self.optimizer_options, Mapping):
@@ -204,6 +206,13 @@ class GcsimOptimizerRunRequest:
                 MappingProxyType(resolved_environment),
             )
             object.__setattr__(self, "environment_is_frozen", True)
+        scenario = str(self.gtt_wave_scenario_path or "").strip()
+        if scenario:
+            resolved = Path(scenario).expanduser().resolve()
+            object.__setattr__(self, "gtt_wave_scenario_path", str(resolved))
+        else:
+            object.__setattr__(self, "gtt_wave_scenario_path", None)
+        object.__setattr__(self, "target_sha256", str(self.target_sha256 or ""))
 
 
 @dataclass(frozen=True, slots=True)
@@ -507,6 +516,7 @@ class GcsimOptimizerSession:
         input_path = run_dir / DEFAULT_GCSIM_OPTIMIZER_INPUT_FILENAME
         optimized_path = run_dir / DEFAULT_GCSIM_OPTIMIZED_CONFIG_FILENAME
         result_path = run_dir / DEFAULT_GCSIM_OPTIMIZER_RESULT_FILENAME
+        scenario_path = run_dir / "gtt-wave-scenario.json"
 
         config_result = _read_request_config(self.request)
         if isinstance(config_result, tuple):
@@ -523,6 +533,10 @@ class GcsimOptimizerSession:
         input_bytes = config_result.encode("utf-8")
         try:
             input_path.write_bytes(input_bytes)
+            if self.request.gtt_wave_scenario_path:
+                scenario_path.write_bytes(
+                    Path(self.request.gtt_wave_scenario_path).read_bytes()
+                )
         except OSError as exc:
             return self._terminal_result(
                 GcsimOptimizerRunStatus.INPUT_READ_FAILED,
@@ -580,6 +594,10 @@ class GcsimOptimizerSession:
         optimize_command_parts.extend(
             ("-c", input_path.name, "-out", optimized_path.name)
         )
+        if self.request.gtt_wave_scenario_path:
+            optimize_command_parts.extend(
+                ("-gtt-wave-scenario", scenario_path.name)
+            )
         optimize_command = tuple(optimize_command_parts)
         self._transition(GcsimOptimizerSessionStatus.OPTIMIZING)
         optimize_timeout = _effective_stage_timeout(
@@ -665,13 +683,18 @@ class GcsimOptimizerSession:
                 error="Optimized config is empty or contains NUL.",
             )
 
-        simulate_command = (
+        simulate_command_parts = [
             str(execution_artifact_path),
             "-c",
             optimized_path.name,
             "-out",
             result_path.name,
-        )
+        ]
+        if self.request.gtt_wave_scenario_path:
+            simulate_command_parts.extend(
+                ("-gtt-wave-scenario", scenario_path.name)
+            )
+        simulate_command = tuple(simulate_command_parts)
         self._transition(GcsimOptimizerSessionStatus.SIMULATING)
         simulation_timeout = _effective_stage_timeout(
             float(self.request.simulation_timeout_seconds),
@@ -1101,6 +1124,19 @@ def _validate_request(request: GcsimOptimizerRunRequest) -> str:
             "engine_binding_sha256 requires expected_artifact_sha256 so the "
             "resolved executable is actually bound."
         )
+    scenario = request.gtt_wave_scenario_path
+    target_sha256 = str(request.target_sha256 or "")
+    if scenario:
+        path = Path(scenario)
+        if not path.is_file():
+            return "gtt_wave_scenario_path must reference an existing file."
+        actual_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+        if target_sha256 != actual_sha256:
+            return "target_sha256 must match gtt_wave_scenario_path."
+    elif target_sha256:
+        normalized = target_sha256.casefold()
+        if not _is_sha256(normalized):
+            return "target_sha256 must be an empty value or a SHA-256 hex digest."
     return ""
 
 

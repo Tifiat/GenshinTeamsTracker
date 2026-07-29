@@ -64,10 +64,18 @@ class GcsimCleanupTest(unittest.TestCase):
             ordinary = root / "runs"
             farming = root / "farming-runs"
             optimizer = root / "optimizer-runs"
+            optimizer_cache = root / "optimizer-cache"
             for run_root in (ordinary, farming, optimizer):
                 run_root.mkdir()
                 _make_run_dir(run_root / "old", size=10, timestamp=100)
                 _make_run_dir(run_root / "new", size=10, timestamp=200)
+            optimizer_cache.mkdir()
+            old_cache = _make_cache_entry(
+                optimizer_cache / "old.json", size=10, timestamp=100
+            )
+            _make_cache_entry(
+                optimizer_cache / "new.json", size=10, timestamp=200
+            )
 
             report = cleanup_gcsim_local_state(
                 dry_run=True,
@@ -79,19 +87,29 @@ class GcsimCleanupTest(unittest.TestCase):
                 keep_run_dirs=1,
                 keep_farming_run_dirs=1,
                 keep_optimizer_run_dirs=1,
+                optimizer_cache_root=optimizer_cache,
+                keep_optimizer_cache_entries=1,
             )
 
             self.assertEqual(len(report.run_dirs["deleted_paths"]), 1)
             self.assertEqual(len(report.farming_run_dirs["deleted_paths"]), 1)
             self.assertEqual(len(report.optimizer_run_dirs["deleted_paths"]), 1)
+            self.assertEqual(len(report.optimizer_cache["deleted_paths"]), 1)
             self.assertTrue((ordinary / "old").exists())
             self.assertTrue((farming / "old").exists())
             self.assertTrue((optimizer / "old").exists())
+            self.assertTrue(old_cache.exists())
 
 
 def _make_run_dir(path: Path, *, size: int, timestamp: int) -> Path:
     path.mkdir()
     (path / "result.json").write_bytes(b"x" * size)
+    os.utime(path, (timestamp, timestamp))
+    return path
+
+
+def _make_cache_entry(path: Path, *, size: int, timestamp: int) -> Path:
+    path.write_bytes(b"x" * size)
     os.utime(path, (timestamp, timestamp))
     return path
 

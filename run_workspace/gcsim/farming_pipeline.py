@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 import hashlib
 import json
 import math
+from pathlib import Path
 import re
 from threading import Event, Lock
 from time import monotonic
@@ -250,6 +251,8 @@ class GcsimFarmingMaterializedProbe:
         engine_context: GcsimOptimizerEngineContext,
         timeout_seconds: float,
         environment: Mapping[str, str] | None = None,
+        gtt_wave_scenario_path: str | Path | None = None,
+        target_sha256: str = "",
     ) -> GcsimFarmingEvaluationRequest:
         """Build the low-level request only from this proven state/config pair."""
 
@@ -281,6 +284,8 @@ class GcsimFarmingMaterializedProbe:
                 for _wearer, set_key in self.set_assignments
                 if engine_context.catalog.get(set_key) is None
             ),
+            gtt_wave_scenario_path=gtt_wave_scenario_path,
+            target_sha256=target_sha256,
         )
 
 
@@ -298,6 +303,7 @@ def materialize_gcsim_one_wearer_candidate(
     environment: Mapping[str, str] | None = None,
     environment_is_frozen: bool = False,
     two_plus_two_packages: Mapping[str, object] | None = None,
+    target_sha256: str = "",
 ) -> GcsimFarmingMaterializedProbe:
     """Render one wearer probe while every other wearer stays explicitly frozen."""
 
@@ -343,6 +349,7 @@ def materialize_gcsim_one_wearer_candidate(
         environment=environment,
         environment_is_frozen=environment_is_frozen,
         two_plus_two_packages=two_plus_two_packages,
+        target_sha256=target_sha256,
     )
 
 
@@ -359,6 +366,7 @@ def materialize_gcsim_full_team_probe_state(
     environment: Mapping[str, str] | None = None,
     environment_is_frozen: bool = False,
     two_plus_two_packages: Mapping[str, object] | None = None,
+    target_sha256: str = "",
 ) -> GcsimFarmingMaterializedProbe:
     """Render an exact full-team state through set, main, and profile layers."""
 
@@ -510,6 +518,7 @@ def materialize_gcsim_full_team_probe_state(
             if pair_packages
             else ""
         ),
+        target_sha256=target_sha256,
     )
     return GcsimFarmingMaterializedProbe(
         state=state,
@@ -546,6 +555,7 @@ def build_gcsim_farming_evaluation_context_sha256(
     environment: Mapping[str, str] | None = None,
     environment_is_frozen: bool = False,
     package_domain_sha256: str = "",
+    target_sha256: str = "",
 ) -> str:
     """Build the stable domain digest consumed by ``FullTeamComposerRequest``."""
 
@@ -573,6 +583,10 @@ def build_gcsim_farming_evaluation_context_sha256(
         worker_count=fidelity.worker_count,
         environment_is_frozen=environment_is_frozen,
     )
+    if target_sha256 and not _is_sha256(target_sha256):
+        raise GcsimFarmingPipelineError(
+            "target_sha256 must be empty or a lowercase SHA-256 digest"
+        )
 
     payload = {
         "schema_version": GCSIM_FARMING_PIPELINE_CONTEXT_SCHEMA,
@@ -637,6 +651,7 @@ def build_gcsim_farming_evaluation_context_sha256(
         "fidelity": fidelity.to_dict(),
         "environment": [list(item) for item in effective_environment.items()],
         "package_domain_sha256": package_domain_sha256,
+        "target_sha256": target_sha256,
     }
     return hashlib.sha256(_canonical_json(payload).encode("utf-8")).hexdigest()
 
@@ -675,6 +690,8 @@ class GcsimFarmingFullTeamBatchSimulator:
         session_factory: FarmingSessionFactory | None = None,
         scheduler_factory: SchedulerFactory | None = None,
         two_plus_two_packages: Mapping[str, object] | None = None,
+        gtt_wave_scenario_path: str | Path | None = None,
+        target_sha256: str = "",
     ) -> None:
         _require_trusted_engine_context(engine_context)
         canonical_wearers = _validated_wearer_ids(wearer_ids)
@@ -721,6 +738,10 @@ class GcsimFarmingFullTeamBatchSimulator:
         self.two_plus_two_packages = freeze_gcsim_theoretical_pair_packages(
             two_plus_two_packages
         )
+        self.gtt_wave_scenario_path = (
+            "" if gtt_wave_scenario_path is None else str(gtt_wave_scenario_path)
+        )
+        self.target_sha256 = str(target_sha256 or "")
         self.environment = MappingProxyType(
             _normalized_effective_environment(
                 environment,
@@ -747,6 +768,7 @@ class GcsimFarmingFullTeamBatchSimulator:
                     if self.two_plus_two_packages
                     else ""
                 ),
+                target_sha256=self.target_sha256,
             )
         )
         if scheduler_factory is None:
@@ -828,6 +850,7 @@ class GcsimFarmingFullTeamBatchSimulator:
                 environment=self.environment,
                 environment_is_frozen=True,
                 two_plus_two_packages=self.two_plus_two_packages,
+                target_sha256=self.target_sha256,
             )
             )
         materialized = tuple(materialized_rows)
@@ -843,6 +866,8 @@ class GcsimFarmingFullTeamBatchSimulator:
                 engine_context=self.engine_context,
                 timeout_seconds=item.timeout_seconds,
                 environment=self.environment,
+                gtt_wave_scenario_path=self.gtt_wave_scenario_path,
+                target_sha256=self.target_sha256,
             )
             for proof, item in zip(materialized, simulation_requests, strict=True)
         )

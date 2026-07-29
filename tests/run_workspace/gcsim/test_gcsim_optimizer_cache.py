@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from run_workspace.gcsim.optimizer_cache import (
     GcsimOptimizerCacheError,
@@ -11,6 +13,7 @@ from run_workspace.gcsim.optimizer_cache import (
     GcsimOptimizerCacheStore,
     build_gcsim_optimizer_cache_identity,
     build_gcsim_optimizer_cache_identity_from_sha256,
+    prune_gcsim_optimizer_cache,
 )
 
 
@@ -128,6 +131,103 @@ class GcsimOptimizerCacheTest(unittest.TestCase):
                 store.put(identity, {"bad": object()})
 
             self.assertEqual(tuple(root.glob("*.tmp")), ())
+
+    def test_prune_bounds_entry_count_and_total_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store = GcsimOptimizerCacheStore(root, auto_prune=False)
+            paths = []
+            for index in range(3):
+                path = store.put(
+                    _identity(f"candidate-{index}"),
+                    {"status": "passed", "padding": "x" * (index + 1)},
+                )
+                os.utime(path, (100 + index, 100 + index))
+                paths.append(path)
+
+            dry_run = prune_gcsim_optimizer_cache(
+                cache_root=root,
+                max_entries=2,
+                max_total_bytes=1024 * 1024,
+                dry_run=True,
+            )
+            self.assertEqual(dry_run.kept_count, 2)
+            self.assertEqual(dry_run.deleted_paths, (str(paths[0]),))
+            self.assertTrue(paths[0].exists())
+
+            newest_size = paths[2].stat().st_size
+            result = prune_gcsim_optimizer_cache(
+                cache_root=root,
+                max_entries=3,
+                max_total_bytes=newest_size,
+            )
+            self.assertEqual(result.kept_count, 1)
+            self.assertTrue(paths[2].exists())
+            self.assertFalse(paths[0].exists())
+            self.assertFalse(paths[1].exists())
+
+    def test_put_auto_prunes_but_throttles_full_scans(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store = GcsimOptimizerCacheStore(
+                root,
+                max_entries=1,
+                max_bytes=1024 * 1024,
+                prune_interval_seconds=60,
+            )
+            target = "run_workspace.gcsim.optimizer_cache.prune_gcsim_optimizer_cache"
+            with patch(target, wraps=prune_gcsim_optimizer_cache) as prune:
+                first = store.put(_identity("first"), {"status": "passed"})
+                second = store.put(_identity("second"), {"status": "passed"})
+
+            self.assertEqual(prune.call_count, 1)
+            self.assertTrue(first.exists())
+            self.assertTrue(second.exists())
+
+    def test_put_auto_prune_enforces_configured_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store = GcsimOptimizerCacheStore(
+                root,
+                max_entries=1,
+                max_bytes=1024 * 1024,
+                prune_interval_seconds=0,
+            )
+            first = store.put(_identity("first"), {"status": "passed"})
+            os.utime(first, (100, 100))
+
+            second = store.put(_identity("second"), {"status": "passed"})
+
+            self.assertFalse(first.exists())
+            self.assertTrue(second.exists())
+
+    def test_prune_removes_only_stale_orphan_temp_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            stale = root / ".stale.json.token.tmp"
+            live = root / ".live.json.token.tmp"
+            stale.write_bytes(b"stale")
+            live.write_bytes(b"live")
+            os.utime(stale, (100, 100))
+
+            result = prune_gcsim_optimizer_cache(
+                cache_root=root,
+                stale_temp_seconds=60,
+            )
+
+            self.assertIn(str(stale), result.deleted_paths)
+            self.assertFalse(stale.exists())
+            self.assertTrue(live.exists())
+
+
+def _identity(candidate_key: str) -> GcsimOptimizerCacheIdentity:
+    return GcsimOptimizerCacheIdentity(
+        engine_sha256="a" * 64,
+        engine_version="v1",
+        source_config_sha256="b" * 64,
+        mode="farming_4p",
+        candidate_key=candidate_key,
+    )
 
 
 if __name__ == "__main__":

@@ -306,7 +306,7 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
             self.assertEqual(len(runner.info_calls), 1)
             self.assertEqual(len(runner.run_calls), 0)
 
-    def test_wave_scenario_old_patch_version_returns_controlled_failure_without_run(self) -> None:
+    def test_wave_scenario_newer_cumulative_patch_marker_is_accepted(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             _install_active_engine(
@@ -317,7 +317,7 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
             scenario_path = _write_scenario(root / "scenario.json")
             runner = FakeGttInfoThenArtifactRunner(
                 _write_result_json,
-                patch_version="gtt-wave-scheduler-prototype",
+                patch_version="gtt-stat-response-v2",
             )
 
             result = run_active_gcsim_artifact(
@@ -328,11 +328,17 @@ class GcsimArtifactRunnerTest(unittest.TestCase):
                 runner=runner,
             )
 
-            self.assertFalse(result.success)
-            self.assertEqual(result.status, "artifact_wave_scenario_contract_mismatch")
-            self.assertEqual(result.observed_gtt_patch_version, "gtt-wave-scheduler-prototype")
+            self.assertTrue(result.success)
+            self.assertEqual(
+                result.artifact_preflight_status,
+                "gtt_wave_scenario_contract_ready",
+            )
+            self.assertEqual(
+                result.observed_gtt_patch_version,
+                "gtt-stat-response-v2",
+            )
             self.assertEqual(result.required_gtt_patch_version, GTT_WAVE_SCENARIO_REQUIRED_PATCH_VERSION)
-            self.assertEqual(len(runner.run_calls), 0)
+            self.assertEqual(len(runner.run_calls), 1)
 
     def test_no_wave_scenario_does_not_require_gtt_info(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

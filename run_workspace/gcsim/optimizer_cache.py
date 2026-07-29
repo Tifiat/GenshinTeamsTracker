@@ -7,6 +7,8 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import threading
+import time
 from typing import Mapping, Sequence
 import uuid
 
@@ -15,10 +17,40 @@ from .engine_store import PROJECT_ROOT
 
 GCSIM_OPTIMIZER_CACHE_SCHEMA_VERSION = 1
 DEFAULT_GCSIM_OPTIMIZER_CACHE_DIR = PROJECT_ROOT / "data" / "cache" / "gcsim_optimizer"
+DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_ENTRIES = 20_000
+DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_BYTES = 256 * 1024 * 1024
+DEFAULT_GCSIM_OPTIMIZER_CACHE_PRUNE_INTERVAL_SECONDS = 5 * 60
+DEFAULT_GCSIM_OPTIMIZER_CACHE_STALE_TEMP_SECONDS = 60 * 60
+_GCSIM_OPTIMIZER_CACHE_RETENTION_MARKER = ".retention-check"
+_GCSIM_OPTIMIZER_CACHE_RETENTION_LOCK = threading.Lock()
 
 
 class GcsimOptimizerCacheError(RuntimeError):
     """Raised when a cache entry cannot be safely persisted."""
+
+
+@dataclass(frozen=True, slots=True)
+class GcsimOptimizerCachePruneResult:
+    status: str
+    dry_run: bool
+    root: str
+    deleted_paths: tuple[str, ...] = ()
+    deleted_bytes: int = 0
+    kept_count: int = 0
+    kept_bytes: int = 0
+    error: str = ""
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "status": self.status,
+            "dry_run": self.dry_run,
+            "root": self.root,
+            "deleted_paths": list(self.deleted_paths),
+            "deleted_bytes": self.deleted_bytes,
+            "kept_count": self.kept_count,
+            "kept_bytes": self.kept_bytes,
+            "error": self.error,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,8 +106,22 @@ class GcsimOptimizerCacheIdentity:
 
 
 class GcsimOptimizerCacheStore:
-    def __init__(self, root: str | Path = DEFAULT_GCSIM_OPTIMIZER_CACHE_DIR) -> None:
+    def __init__(
+        self,
+        root: str | Path = DEFAULT_GCSIM_OPTIMIZER_CACHE_DIR,
+        *,
+        max_entries: int = DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_ENTRIES,
+        max_bytes: int = DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_BYTES,
+        prune_interval_seconds: float = (
+            DEFAULT_GCSIM_OPTIMIZER_CACHE_PRUNE_INTERVAL_SECONDS
+        ),
+        auto_prune: bool = True,
+    ) -> None:
         self.root = Path(root)
+        self.max_entries = max(0, int(max_entries))
+        self.max_bytes = max(0, int(max_bytes))
+        self.prune_interval_seconds = max(0.0, float(prune_interval_seconds))
+        self.auto_prune = bool(auto_prune)
 
     def get(self, identity: GcsimOptimizerCacheIdentity) -> dict[str, object] | None:
         path = self._entry_path(identity.cache_key)
@@ -129,10 +175,133 @@ class GcsimOptimizerCacheStore:
             raise GcsimOptimizerCacheError(
                 f"Could not write optimizer cache entry {path}: {exc}"
             ) from exc
+        self._maybe_prune()
         return path
+
+    def prune(self, *, dry_run: bool = False) -> GcsimOptimizerCachePruneResult:
+        return prune_gcsim_optimizer_cache(
+            cache_root=self.root,
+            max_entries=self.max_entries,
+            max_total_bytes=self.max_bytes,
+            dry_run=dry_run,
+        )
 
     def _entry_path(self, cache_key: str) -> Path:
         return self.root / f"{cache_key}.json"
+
+    def _maybe_prune(self) -> None:
+        if not self.auto_prune:
+            return
+        marker = self.root / _GCSIM_OPTIMIZER_CACHE_RETENTION_MARKER
+        try:
+            with _GCSIM_OPTIMIZER_CACHE_RETENTION_LOCK:
+                now = time.time()
+                try:
+                    marker_age = now - marker.stat().st_mtime
+                except FileNotFoundError:
+                    marker_age = self.prune_interval_seconds
+                if 0 <= marker_age < self.prune_interval_seconds:
+                    return
+                # Mark the check before the O(n) scan so concurrent stores skip it.
+                marker.touch()
+                self.prune()
+        except (OSError, RuntimeError):
+            # Retention is best-effort and must never turn a valid simulation
+            # result into a cache-write failure.
+            return
+
+
+def prune_gcsim_optimizer_cache(
+    *,
+    cache_root: str | Path = DEFAULT_GCSIM_OPTIMIZER_CACHE_DIR,
+    max_entries: int = DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_ENTRIES,
+    max_total_bytes: int = DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_BYTES,
+    stale_temp_seconds: float = DEFAULT_GCSIM_OPTIMIZER_CACHE_STALE_TEMP_SECONDS,
+    dry_run: bool = False,
+) -> GcsimOptimizerCachePruneResult:
+    """Bound persistent cache files while preserving the newest reusable entries."""
+
+    root = Path(cache_root)
+    if not root.exists():
+        return GcsimOptimizerCachePruneResult(
+            status="missing",
+            dry_run=bool(dry_run),
+            root=str(root),
+        )
+    if not root.is_dir():
+        return GcsimOptimizerCachePruneResult(
+            status="invalid_path",
+            dry_run=bool(dry_run),
+            root=str(root),
+            error="GCSIM optimizer cache root exists but is not a directory.",
+        )
+
+    entries: list[tuple[Path, int, float]] = []
+    stale_temps: list[tuple[Path, int]] = []
+    now = time.time()
+    stale_after = max(0.0, float(stale_temp_seconds))
+    for path in root.iterdir():
+        if not path.is_file():
+            continue
+        try:
+            stat = path.stat()
+        except OSError:
+            continue
+        if path.suffix == ".json":
+            entries.append((path, int(stat.st_size), float(stat.st_mtime)))
+        elif path.suffix == ".tmp" and now - stat.st_mtime >= stale_after:
+            stale_temps.append((path, int(stat.st_size)))
+
+    newest = sorted(
+        entries,
+        key=lambda item: (item[2], item[0].name),
+        reverse=True,
+    )
+    entry_limit = max(0, int(max_entries))
+    byte_limit = max(0, int(max_total_bytes))
+    kept: list[tuple[Path, int]] = []
+    deleted: list[tuple[Path, int]] = []
+    kept_bytes = 0
+    for path, size, _mtime in newest:
+        within_count = len(kept) < entry_limit
+        within_bytes = kept_bytes + size <= byte_limit
+        if within_count and within_bytes:
+            kept.append((path, size))
+            kept_bytes += size
+        else:
+            deleted.append((path, size))
+    deleted.extend(stale_temps)
+
+    deleted_paths: list[str] = []
+    deleted_bytes = 0
+    for path, size in deleted:
+        deleted_paths.append(str(path))
+        deleted_bytes += size
+        if not dry_run:
+            _safe_remove_cache_file(path, root=root)
+
+    return GcsimOptimizerCachePruneResult(
+        status="dry_run" if dry_run else "pruned",
+        dry_run=bool(dry_run),
+        root=str(root),
+        deleted_paths=tuple(deleted_paths),
+        deleted_bytes=deleted_bytes,
+        kept_count=len(kept),
+        kept_bytes=kept_bytes,
+    )
+
+
+def _safe_remove_cache_file(path: Path, *, root: Path) -> None:
+    resolved_path = path.resolve()
+    resolved_root = root.resolve()
+    if resolved_path.parent != resolved_root:
+        raise RuntimeError(
+            f"Refusing to remove path outside GCSIM optimizer cache root: {path}"
+        )
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
 
 
 def build_gcsim_optimizer_cache_identity(

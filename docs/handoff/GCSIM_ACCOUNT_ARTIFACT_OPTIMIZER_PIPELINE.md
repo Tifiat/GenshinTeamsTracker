@@ -1,343 +1,151 @@
 # GCSIM Artifact Optimizer Delivery Pipeline
 
-Last updated: 2026-07-29.
+Last updated: 2026-08-02.
 
-This file is the concise delivery sequence. Detailed contracts and source
-ownership live in `GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md`. Historical milestone
-logs belong in Git history.
+This file is the short delivery and review map. The authoritative algorithm,
+contracts, invariants, source ownership, and exact work-plan behavior live in
+`GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md`. Do not duplicate them here.
 
-## 1. Goal and accepted operations
+For an optimizer-only audit, these two handoffs are the required context. Do
+not preload the unrelated sections of the project-wide `TODO.md` or `CODEX.md`;
+consult their optimizer section or broader project rules only when needed.
 
-Deliver one rotation- and target-specific backend that supports:
+## 1. Accepted product operations
 
-1. account artifacts under user-selected set pools;
+The optimizer has four separate typed operations:
+
+1. account artifacts from user-selected set pools;
 2. account artifacts across all physically feasible database sets;
-3. theoretical equal-investment 4p standards;
-4. theoretical equal-investment 2p+2p standards.
+3. theoretical equal-investment 4p packages;
+4. theoretical equal-investment 2p+2p packages.
 
-The search is bounded and reports the best result found under a frozen,
-versioned plan. It never claims an exhaustive global optimum.
+The search is bounded. A result means only:
 
-One selected set per wearer is the normal selected-account default. The same
-typed request accepts several selected packages. The source config's active set
-is only a UI default; every chosen package is mandatory search input.
+> best build found under the frozen, versioned work plan
 
-All-account uses only packages physically formable from the complete account
-database. Theoretical uses the trusted engine package domain and never reads
-account inventory.
+It is not proof of the exhaustive global optimum. `Quick`, `Balanced`, and
+`Deep` are not accepted product modes; current iteration tiers are internal
+search/validation phases.
 
-`Quick`, `Balanced`, and `Deep` are not product modes. The internal
-`screen_8`, `refine_32`, `validate_200`, and `rerace_1000` phases remain fixed
-until real measurements justify user-selectable speed/quality policies.
+## 2. Non-negotiable boundaries
 
-## 2. Frozen decisions
+- Account operations read the complete artifact database captured at run start.
+  Import source, equipment, owner, lock, location, and preset state are not
+  optimizer filters.
+- Selected-account searches every user-selected package. All-account derives
+  only packages that can be formed from the captured database. Theoretical
+  operations never read account artifacts.
+- The existing package-first all-account implementation runs selected-account
+  first and injects its exact confirmed winner. It is retained only as a frozen
+  fallback/diagnostic while the artifact-first shared kernel is built; it is not
+  release-ready and must not be extended into the target architecture.
+- Every response probe, package probe, candidate, control, and final validation
+  uses the same explicit selected chamber/scenario or explicit DPS Dummy.
+- Account candidates use stored artifact values and globally unique physical
+  artifact IDs. Theoretical candidates use one equal legal investment budget.
+- ER sufficiency is not inferred or balanced. The user may request the same
+  generic pre-simulation `stat >= X` floor used for any supported stat.
+- Search is read-only. It does not equip artifacts, edit presets, mutate the
+  source config, or write History. Saving is a separate explicit action.
+- Equal-content `content_fingerprint` deduplication is an accepted limitation.
 
-- Account candidate truth is the complete read-only artifact DB captured at run
-  start.
-- Artifact row source/provenance does not filter optimizer candidates.
-- Source-config set/stat rows are replaced for candidate simulation.
-- The exact selected chamber/scenario, or explicit DPS Dummy, is shared by stat
-  response, set impact, source control, candidate race, and final validation.
-- Hidden target fallback is forbidden.
-- Search is read-only and nothing is saved automatically.
-- Default eligibility is valid five-star artifacts.
-- Account four-star artifacts require an explicit set/ID override.
-- Theoretical search is five-star only.
-- Missing/invalid mains and unsupported mappings fail closed only for affected
-  rows/packages where safe.
-- A physical account success has five slots per wearer and twenty globally
-  distinct artifact IDs.
-- Generic `stat >= X` floors are checked before GCSIM.
-- ER sufficiency is only an explicit floor; it is never automatically balanced.
-- Direct ER-to-damage scaling modeled by GCSIM remains ordinary damage scaling.
-- Infinite/boosted energy is a separate explicit simulation choice.
-- Theoretical comparisons use equal legal investment and report
-  percent-to-best.
-- Account source build evidence is informational control evidence only. It
-  cannot stop search, prioritize its sets, or prune packages.
-- `content_fingerprint` equal-content deduplication is accepted.
-- Terminal top-N contains one best candidate per ordered team package signature.
-
-## 3. Current pipeline
+## 3. Target account pipeline
 
 ```mermaid
 flowchart LR
-    A["Freeze team, rotation, exact target, engine, plan"] --> B{"Operation"}
-    B -->|Selected account| C["Freeze complete DB and selected packages"]
-    B -->|All-account| D["Freeze complete DB; derive physically feasible packages"]
-    B -->|Theoretical| E["Trusted packages; equal investment; no inventory"]
-    C --> F["Paired stat-response v2"]
-    D --> F
-    E --> F
-    D --> G["Paired set-impact: balanced + crit-headroom"]
-    E --> G
-    F --> H["Safe stat/layout proposals"]
-    G --> I["Positive or uncertain package domain + surrogate"]
-    C --> J["Mandatory selected package domain"]
-    H --> K["Complete wearer candidates"]
-    I --> K
-    J --> K
-    K --> L["Ordered team package search and account no-reuse"]
-    L --> M["8/32 screening"]
-    M --> N{"Operation"}
-    N -->|Account| O["200/1000 exact validation"]
-    N -->|Theoretical| P["One substatOptim pass, then 200/1000 validation"]
-    O --> Q["Group by team package signature"]
-    P --> Q
-    Q --> R["Package-diverse top-N and explicit save"]
+    A["Freeze team, rotation, target, DB and plan"] --> B["Response-aware inventory frontier"]
+    B --> C["Per-slot injective team matching"]
+    C --> D["Cross-slot beam + incremental set counts"]
+    D --> E["Complete physical assignment"]
+    E --> F["Derive 4p (possibly 4+1) / 2p+2p package"]
+    F --> G["Exact GCSIM race and bounded refinement"]
+    G --> H["Validated physical result"]
 ```
 
-## 4. Implemented foundations
+Selected and all-account are constraints on this same physical kernel. Selected
+limits the allowed set/package domain; all exposes every modeled physically
+feasible domain. Neither gets a separate candidate generator. Package identity
+is derived after the physical assignment rather than used to partition the
+inventory before matching.
 
-### Contracts and frozen inputs
+Theoretical equal-investment operations remain separate because they have no
+physical inventory. The technical handoff defines safe pruning, exact matching,
+fidelity, uncertainty, progress, and error semantics.
 
-Implemented:
+## 4. Current stage
 
-- schema-v4 typed product requests, result schema v3, and progress schema v3;
-- separate selected/all-account, theoretical 4p, and theoretical 2p+2p
-  identities;
-- explicit target/scenario binding;
-- immutable complete DB input and hash;
-- exact five-artifact and full-team witnesses;
-- generic stat floors;
-- engine/catalog/work-plan/cache provenance;
-- typed cancellation, deadline, progress, and uncertainty.
+The desktop still executes the current selected/package-first implementation;
+artifact-first primitives exist only for offline validation and are not yet a
+parallel shadow execution path or wired to either account route. Package-first
+all-account remains available only as a comparison
+fallback and is not a release candidate. Do not add more package-first search
+lanes, signature repair, or post-race expansion.
 
-Primary work-plan IDs are `anytime_approx_v2`,
-`all_database_sets_anytime_approx_v3`,
-`theoretical_4p_anytime_approx_v2`, and
-`theoretical_2p2p_anytime_approx_v2`. Exact plan versions are owned by their
-module constants.
+The accepted selected baseline is selected plan 11 with a pre-deadline-fix race
+plan 5. On the frozen UI-entrypoint request it returned
+`139577.8505 ± 292.4415`, `n=1000`, in `628.297 s`. Evidence:
 
-### Paired stat-response v2
+- immutable UI audit:
+  `debug/gcsim_optimizer_ui_runs/20260802T091044477190Z-16092-0c9db722f11c.json`;
+- mirrored audit:
+  `debug/gcsim_optimizer_benchmarks/ui-production-v11-selected/canonical-ui-selected-audit.json`;
+- typed result:
+  `debug/gcsim_optimizer_benchmarks/ui-production-v11-selected/canonical-ui-selected-result.json`.
 
-Implemented against engine capability `gtt_stat_response_v2`:
+The effective simulation policy recorded by all three files is
+`ignore_burst_energy=true`; `boosted_energy_enabled=false` does not make this a
+normal-energy benchmark. The current common account race is plan 6. It handles a
+terminal deadline/cancellation batch before enforcing required-proposal success,
+so a required row skipped by that terminal condition cannot erase an already
+successful saveable validation. The plan-5 result remains an offline comparator,
+not plan-6 cache/result evidence.
 
-- common deterministic seed panel;
-- expected-damage collection;
-- team and ordered per-character DPS;
-- paired deltas and uncertainty;
-- sparse and realistic balanced anchors;
-- legal whole-main interventions;
-- `dominant`, `secondary`, `negligible`, and `uncertain` classification;
-- indirect support-effect visibility;
-- conservative retention for failed/noisy evidence.
+The first raw componentwise measurement on the current 520-piece database put
+519 pieces in the set-aware first layer and 512 in an off-piece-equivalent first
+layer. These are advisory counts, not a safe removal proof: exact GCSIM can be
+non-monotone in a raw axis (for example ER can change an `energy < max`
+condition). Inventory-frontier plan 2 therefore retains every eligible physical
+row and shadows only ineligible rows. CV/RV, raw skyline depth, or another scalar
+may provide soft ordering, but cannot be a hard artifact prune.
 
-### Paired set-impact
+Every completed account UI run must continue to write a compact immutable audit
+plus `debug/gcsim_optimizer_ui_runs/latest.json`, including frozen identities,
+loaded module fingerprints, plan identities, compiled configs, and exact
+physical IDs. That audit is the cutover proof; backend-only output is not button
+parity.
 
-Implemented against engine capability `gtt_set_response_v1`:
+## 5. Next work, in order
 
-- remove all set rows from a fixed synthetic baseline;
-- add exactly one package to one wearer;
-- measure personal, team, and all four character deltas on the exact selected
-  target with common seeds;
-- run both `balanced` and `crit_headroom` panels;
-- classify personal/team/both positive, uncertain-retained, or negligible;
-- prune only proved-negligible packages;
-- emit a confidence-adjusted package surrogate for proposal ordering.
+1. Extend the implemented no-prune physical inventory catalog with response-aware
+   ordering. Preserve response dimensions, slot/main/set identity, stat floors,
+   and no-reuse alternatives; allow hard pruning only behind a scenario-specific
+   monotonicity or admissible-bound proof.
+2. For each artifact slot, build injective four-wearer matchings so one physical
+   ID cannot be assigned twice and a locally weaker piece can survive when it
+   unlocks the better team assignment.
+3. Combine slot matchings in a cross-slot beam while carrying physical-ID masks,
+   per-wearer set counts, main/stat totals, constraints, and admissible upper
+   bounds. Do not decide packages before this stage completes an assignment.
+4. Derive each wearer's 4p package (including its possible single off-piece) or
+   2p+2p package from the completed physical assignment, materialize the exact
+   config, and run common plan-6 GCSIM plus bounded refinement.
+5. Run the kernel in shadow beside selected plan 11 on byte-identical frozen
+   inputs. Gate on witness survival, exact legality/no-reuse/materialization,
+   deadline/cancellation preservation, result quality, deterministic identities,
+   and bounded runtime across a wider team/rotation/target corpus.
+6. Make selected/all domain policies feed the same kernel and prove selected
+   witnesses remain reachable in the all domain under the same downstream
+   fidelity policy.
+7. Cut both account routes over only after the audit proves the shared kernel was
+   loaded. Then remove the package-first account paths and their compatibility
+   tests; do not delete them before the gates pass.
+8. Validate explicit preset/team-result saving separately from search quality.
 
-The patch marker is diagnostic. Capability presence is authoritative because a
-newer cumulative patch marker may still contain wave, stat-response, and
-set-response operations.
+Do not add speed modes while the base evaluation algorithm is under audit.
 
-### Physical account search
+## 6. Change boundary
 
-Implemented:
-
-- dense artifact indexes and bit masks;
-- content-fingerprint grouping with bounded physical replacements;
-- Pareto/threshold/crit/reaction/conflict retention;
-- complete five-slot candidates;
-- global no-reuse;
-- all-account 4p feasibility by four distinct usable slots, not raw row count;
-- retained-package coverage and package-surrogate ordering;
-- neutral-set response used only as soft ranking at no fewer than 32
-  iterations;
-- a mandatory source-package recall/control anchor when resolvable;
-- bounded physical regeneration inside up to eight package signatures, with up
-  to twelve joint proposals per signature;
-- package-signature diversity during race/final assembly;
-- exact 8/32/200/1000 multifidelity evaluation.
-
-Selected packages remain mandatory and are not removed by the broad all-set
-screen.
-
-### Top-N
-
-The terminal result groups validated rows by the ordered four-wearer package
-signature. A wearer signature contains package kind plus its canonical 4p set
-or sorted 2p+2p pair. Only the best exact candidate for one full team signature
-occupies a rank.
-
-Different physical artifacts under the identical package combination are
-replacement evidence. They do not fill top 1/2/3 with near-duplicates.
-
-## 5. Mode-specific requirements
-
-### Selected-account
-
-1. Read every eligible DB artifact that can form a chosen package.
-2. Evaluate each chosen package in its real set-conditioned context.
-3. Preserve useful crit, EM, scaling, elemental-main, threshold, and uncertain
-   branches.
-4. Apply stat floors before simulation.
-5. solve four-wearer no-reuse and run exact candidates.
-6. Return the best validated row for each team package signature.
-
-### All-account
-
-1. Derive only trusted packages physically formable from the complete DB.
-2. For 4p, require four distinct usable set slots plus a legal fifth slot.
-3. Probe every feasible `(wearer, package)` with both set-impact panels.
-4. Retain personal gain, team gain, and uncertainty.
-5. Guarantee at least one strongest legal physical representative per retained
-   package before artifact variants consume the budget.
-   Byte-identical exact team configs merge their package-coverage labels and run
-   once; no retained obligation is silently dropped.
-6. Treat neutral stat-response as ranking evidence only; do not hard-delete
-   HP/EM/crit/elemental main-stat branches from it.
-7. Rebuild and screen the source config's package signature as a recall/control
-   anchor when physically resolvable. It receives no score bonus and is not an
-   early-stop threshold.
-8. For `any HP%` / `any EM` supports, use one best representative per package
-   during broad package search and expand only for finalists/package changes or
-   no-reuse repair.
-9. Search feasible ordered team package combinations.
-10. Regenerate mixed legal-main physical candidates inside up to eight
-    shortlisted team package signatures and screen every generated proposal.
-
-The untouched source build may also be simulated as same-target informational
-control. Neither that score nor the source-package anchor can stop search.
-
-### Theoretical 4p and 2p+2p
-
-Required contract:
-
-- ignore account inventory and source sets;
-- give every compared package the same legal investment;
-- keep exact engine-modeled set effects active;
-- give every 4p package set-impact coverage before truncation;
-- for 2p+2p, probe single-2p components/effect classes before constructing
-  bounded pair packages;
-- preserve concrete identities and uncertain packages;
-- retain every paired-impact result, but when the domain exceeds quick-tier
-  capacity shortlist at most 30 package anchors per wearer and report the
-  retained-but-unscreened remainder explicitly;
-- require a balanced complete-main anchor for every quick package, then assign
-  additional complete layouts package-round-robin;
-- preserve generic scaling, EM/reaction, elemental-damage, and crit layout
-  archetypes inferred from response, without character hardcodes;
-- use impact/response evidence to build joint package/layout proposals;
-- run `substatOptim` only once per finalist and validate exact output.
-
-The corrective package proposal search is implemented. Focused regressions prove
-late/high-impact packages survive bounded selection, single-2p components feed
-prospective pairs, non-representative concrete pair aliases survive terminal
-packaging, and terminal Top-N is package-signature distinct. Real DPS-Dummy 4p
-and 2p+2p runs reached validated `BEST_FOUND`; further user-team calibration is
-still required.
-
-## 6. ER and stat floors
-
-Account requests accept generic per-wearer lower bounds over the complete
-five-artifact contribution. They run before GCSIM, so illegal combinations
-consume no simulation time.
-
-ER follows the same rule:
-
-- the user explicitly supplies the required floor;
-- below-floor builds are rejected;
-- above-floor builds receive no generic energy reward;
-- direct ER-to-damage conversion remains visible in exact GCSIM damage.
-
-Theoretical operations do not inherit account floors and do not auto-optimize
-energy sufficiency.
-
-## 7. Errors, progress, and validation
-
-Unexpected response, set-impact, materialization, or wiring errors produce
-`FAILED`; they are not converted into a conservative winner. Failed/noisy
-individual evidence is retained as uncertainty only when its typed contract is
-otherwise valid.
-
-Progress stages are:
-
-- preflight;
-- layout/index scan;
-- stat-response scan;
-- set-impact scan;
-- candidate generation;
-- joint package/no-reuse search;
-- screening;
-- refinement;
-- final validation;
-- rerace;
-- completion.
-
-Only 200+ exact evidence enters terminal top-N or save. Lower-fidelity leaders
-are provisional. Progress schema v3 carries the active `n`, clears a stale
-leader when fidelity changes, distinguishes provisional/verified/final scope,
-and labels uncertainty as standard error (`SE`).
-
-Ordinary wave-scenario preflight checks capability
-`gtt_wave_scenario_payload`; it does not reject a newer cumulative patch marker.
-
-## 8. Persistence
-
-Search does not mutate equipment, presets, the source config, or History.
-
-After a saveable result, the user may explicitly:
-
-1. save any unsaved wearer result as a normal artifact preset;
-2. accept or edit `best_found_<other team members>`;
-3. reuse already saved exact presets without duplicates;
-4. save the four preset references as one linked GCSIM team result.
-
-No save means the result is disposable. Atomic apply-all and a dedicated linked
-presets tab remain later UI work.
-
-Theoretical terminal rows expose their equal-investment evidence directly:
-each wearer has a typed 4p/2p+2p package, sands/goblet/circlet mains, and the
-exact fixed plus liquid substat-roll allocation used for final validation.
-
-Generated run directories are diagnostic, not product persistence. Successful
-ordinary screens clean their default-owned run directory, two-stage runs remove
-their private engine copy, and `python -m run_workspace.gcsim.cleanup` bounds
-normal, screening, and optimizer roots. The content-addressed optimizer cache is
-reusable evidence, with automatic retention at 20,000 entries / 256 MiB and
-stale atomic-temp cleanup; it is also covered by the cleanup CLI dry-run/apply
-report.
-
-## 9. Next release gate
-
-Completed on 2026-07-29:
-
-1. theoretical 4p/2p+2p impact-driven package proposal search;
-2. focused package-survival, concrete-pair packaging, and package-signature
-   Top-N regressions;
-3. real DPS-Dummy all-account, theoretical 4p, and theoretical 2p+2p smokes;
-4. all-account soft-response/source-anchor/local-refinement correction;
-5. theoretical balanced-anchor, fair mixed-layout, and wide-domain correction;
-6. progress schema v3 and readable theoretical allocation result/UI.
-
-Next, in order:
-
-1. rerun the reported Chasca/Ororon/Furina/Bennett comparisons under the new
-   plan identities, then compare all operations with more user-built teams on
-   both DPS Dummy and the exact selected chamber;
-2. calibrate materiality/pruning budgets;
-3. remeasure cold/warm runtime, cache, cancellation, memory, and wide-pool
-   behavior;
-4. validate explicit save/preset UI behavior.
-
-Selected-account, theoretical 4p, and theoretical 2p+2p are the mandatory
-usable outcomes. All-account is accepted but remains optional/experimental
-until quality and wide-pool runtime are satisfactory.
-
-Confirmed later ideas:
-
-- automatically discover published GCSIM rotations for the same four-character
-  roster;
-- link four saved character presets in one GCSIM presets view;
-- apply all four explicitly and atomically;
-- show a compact indication of near-equivalent replacements.
+Optimizer-owned code and narrow scheduler/materializer wrappers may be changed.
+Any required change to importer, shared artifact identity/deduplication,
+equipment, Artifact Browser presets, History, or global AppShell behavior must
+be discussed with the user first.

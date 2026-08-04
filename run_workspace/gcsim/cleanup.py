@@ -77,6 +77,99 @@ class GcsimLocalCleanupReport:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class GcsimOptimizerGeneratedPruneReport:
+    """Best-effort retention report for optimizer-owned generated state.
+
+    Unlike :func:`cleanup_gcsim_local_state`, this narrow application hook
+    never touches generated engines or the Go build cache.  It exists so a UI
+    optimizer operation can enforce the already documented run/cache limits
+    without broadening cleanup authority at application shutdown.
+    """
+
+    run_dirs: dict
+    farming_run_dirs: dict
+    optimizer_run_dirs: dict
+    optimizer_cache: dict
+
+    def to_dict(self) -> dict:
+        return {
+            "run_dirs": self.run_dirs,
+            "farming_run_dirs": self.farming_run_dirs,
+            "optimizer_run_dirs": self.optimizer_run_dirs,
+            "optimizer_cache": self.optimizer_cache,
+        }
+
+
+def prune_gcsim_optimizer_generated_state_best_effort(
+    *,
+    run_root: str | Path | None = None,
+    keep_run_dirs: int = DEFAULT_RUN_DIR_KEEP_COUNT,
+    max_run_dir_bytes: int = DEFAULT_RUN_DIR_MAX_BYTES,
+    farming_run_root: str | Path | None = None,
+    keep_farming_run_dirs: int = DEFAULT_RUN_DIR_KEEP_COUNT,
+    max_farming_run_dir_bytes: int = DEFAULT_RUN_DIR_MAX_BYTES,
+    optimizer_run_root: str | Path | None = None,
+    keep_optimizer_run_dirs: int = DEFAULT_RUN_DIR_KEEP_COUNT,
+    max_optimizer_run_dir_bytes: int = DEFAULT_RUN_DIR_MAX_BYTES,
+    optimizer_cache_root: str | Path | None = None,
+    keep_optimizer_cache_entries: int = DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_ENTRIES,
+    max_optimizer_cache_bytes: int = DEFAULT_GCSIM_OPTIMIZER_CACHE_MAX_BYTES,
+) -> GcsimOptimizerGeneratedPruneReport:
+    """Apply existing retention limits to optimizer-generated state only.
+
+    Every section is isolated so a transient Windows file lock or malformed
+    root cannot prevent the remaining roots from being bounded.  The function
+    intentionally has no ``dry_run`` switch: it is the narrow APPLY hook used
+    after a complete UI optimizer operation.  Manual broad cleanup, including
+    engine-store and Go-cache handling, remains in
+    :func:`cleanup_gcsim_local_state`.
+    """
+
+    run_result = _best_effort_prune_section(
+        root=run_root or DEFAULT_GCSIM_RUNS_DIR,
+        callback=lambda: prune_gcsim_run_dirs(
+            run_root=run_root,
+            keep_count=keep_run_dirs,
+            max_total_bytes=max_run_dir_bytes,
+            dry_run=False,
+        ).to_dict(),
+    )
+    farming_result = _best_effort_prune_section(
+        root=farming_run_root or DEFAULT_GCSIM_FARMING_RUNS_DIR,
+        callback=lambda: prune_gcsim_run_dirs(
+            run_root=farming_run_root or DEFAULT_GCSIM_FARMING_RUNS_DIR,
+            keep_count=keep_farming_run_dirs,
+            max_total_bytes=max_farming_run_dir_bytes,
+            dry_run=False,
+        ).to_dict(),
+    )
+    optimizer_result = _best_effort_prune_section(
+        root=optimizer_run_root or DEFAULT_GCSIM_OPTIMIZER_RUNS_DIR,
+        callback=lambda: prune_gcsim_run_dirs(
+            run_root=optimizer_run_root or DEFAULT_GCSIM_OPTIMIZER_RUNS_DIR,
+            keep_count=keep_optimizer_run_dirs,
+            max_total_bytes=max_optimizer_run_dir_bytes,
+            dry_run=False,
+        ).to_dict(),
+    )
+    cache_result = _best_effort_prune_section(
+        root=optimizer_cache_root or DEFAULT_GCSIM_OPTIMIZER_CACHE_DIR,
+        callback=lambda: prune_gcsim_optimizer_cache(
+            cache_root=optimizer_cache_root or DEFAULT_GCSIM_OPTIMIZER_CACHE_DIR,
+            max_entries=keep_optimizer_cache_entries,
+            max_total_bytes=max_optimizer_cache_bytes,
+            dry_run=False,
+        ).to_dict(),
+    )
+    return GcsimOptimizerGeneratedPruneReport(
+        run_dirs=run_result,
+        farming_run_dirs=farming_result,
+        optimizer_run_dirs=optimizer_result,
+        optimizer_cache=cache_result,
+    )
+
+
 def cleanup_gcsim_local_state(
     *,
     dry_run: bool = True,
@@ -247,6 +340,20 @@ def _safe_remove_tree(path: Path, *, root: Path) -> None:
     if resolved_path == resolved_root or resolved_root not in resolved_path.parents:
         raise RuntimeError(f"Refusing to remove path outside GCSIM run root: {path}")
     shutil.rmtree(path)
+
+
+def _best_effort_prune_section(*, root: str | Path, callback) -> dict:
+    try:
+        return callback()
+    except Exception as exc:  # noqa: BLE001 - retention must never alter the run result.
+        return {
+            "status": "failed",
+            "dry_run": False,
+            "root": str(root),
+            "deleted_paths": [],
+            "deleted_bytes": 0,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
 
 
 def main(argv: list[str] | None = None) -> int:

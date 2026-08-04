@@ -436,70 +436,129 @@ Keep this root TODO limited to current state and unfinished work.
 
 ### Current state
 
-- Accepted operations are selected account packages, all feasible account
-  packages, theoretical equal-investment 4p, and theoretical equal-investment
-  2p+2p. There are no `Quick`/`Balanced`/`Deep` product modes.
-- Paired stat-response v2 is active through `gtt_stat_response_v2`: common
-  seeds, expected damage, team plus ordered-character deltas, legal mains, and
-  `dominant/secondary/negligible/uncertain` evidence.
-- Paired set-impact is active through `gtt_set_response_v1`: one package on one
-  wearer against a neutral baseline, measured on the exact selected target with
-  `balanced` and `crit_headroom` panels. Personal/team gains are retained;
-  uncertain evidence is retained conservatively.
-- All-account derives packages from the complete read-only DB input. A 4p set
-  requires four distinct usable slots, not merely four rows. Set-impact
-  surrogate ordering and retained-package coverage run before broad physical
-  artifact refinement. Neutral response is soft ranking only at n>=32; a
-  resolvable source-package signature is a recall/control anchor; up to eight
-  shortlisted package signatures receive bounded local physical regeneration.
-- Theoretical quick coverage uses balanced full-main anchors and fair
-  package-round-robin mixed-layout witnesses. Over-wide retained domains keep
-  typed retained/quick/unscreened accounting and shortlist at most 30 quick
-  anchors per wearer instead of failing the run.
-- Theoretical result rows now carry and display exact package,
-  sands/goblet/circlet mains, and fixed/liquid substat-roll allocation.
-- Progress distinguishes provisional n=8/32, verified n>=200, and final
-  leaders; stale leaders are cleared between fidelities and uncertainty is
-  labeled as SE.
-- Terminal top-N keeps only the best exact candidate per ordered four-wearer
-  package signature. Same-package physical variants are replacement evidence.
-- ER sufficiency is only an explicit generic `stat >= X` floor. Direct
-  ER-to-damage scaling remains visible; no automatic energy balancing exists.
-- The source build is same-target control evidence only. It cannot stop search,
-  prioritize its packages, or prune the requested domain.
-- Account work uses actual stored artifact values and twenty globally distinct
-  IDs. `content_fingerprint` equal-content dedupe remains accepted.
-- Search writes nothing. Preset/team-result persistence requires an explicit
-  save.
-- Ordinary wave preflight is capability-authoritative: a newer cumulative patch
-  marker is accepted when `gtt_wave_scenario_payload` is present.
+- Four typed operations are implemented: selected-account, all-account,
+  theoretical equal-investment 4p, and theoretical equal-investment 2p+2p.
+- The current UI-selected implementation is selected plan 11. Its last run
+  before the deadline fix used race plan 5 and returned
+  `139577.8505 ± 292.4415`, `n=1000`, in `628.297 s`; its immutable audit is
+  `debug/gcsim_optimizer_ui_runs/20260802T091044477190Z-16092-0c9db722f11c.json`
+  and its mirrored audit/result are in
+  `debug/gcsim_optimizer_benchmarks/ui-production-v11-selected/`. The effective
+  benchmark policy was `ignore_burst_energy=true`, not normal energy.
+- Common account race plan 6 fixes deadline semantics: a terminally skipped
+  required row cannot erase an already successful saveable validation. The
+  plan-5 result is comparison evidence and must not be presented as a plan-6
+  rerun.
+- The package-first selected-to-all workflow in
+  `optimizer_account_superset.py` / `optimizer_all_set_service.py` remains a
+  fallback diagnostic, is not release-ready, and is frozen against further
+  architecture expansion.
+- The replacement is an artifact-first kernel shared by selected/all. Its first
+  primitives are offline-tested but no parallel shadow execution exists yet:
+  response-aware inventory frontier, per-slot injective team matching,
+  cross-slot beam with set counts, package derivation after physical assignment,
+  then exact GCSIM/refinement. The old route stays live only until shadow gates
+  pass and the UI cutover is audited.
+- A first-layer raw componentwise diagnostic on the current 520-piece DB put
+  519 set-aware pieces and 512 off-piece-equivalent pieces in layer one. This is
+  advisory, not a safe-removal proof: exact GCSIM may be non-monotone in raw
+  axes. Inventory-frontier plan 2 keeps every eligible row; CV/RV and skyline
+  depth remain soft ordering only.
+- Completed account UI runs write `latest.json` plus immutable audits under
+  `debug/gcsim_optimizer_ui_runs`; these identities, not a backend-only trace,
+  prove which kernel the button executed.
+- Selected-account and both theoretical operations are required outcomes.
+  Package-first all-account remains fallback-only; the shared-kernel all-account
+  release gate is open.
+- There are no accepted `Quick`/`Balanced`/`Deep` product modes.
+- Detailed behavior belongs only in the two authoritative handoffs above.
 
 ### Immediate TODO
 
-- [x] Finish theoretical impact-driven package proposal search:
-      every 4p package and every engine-proved 2p component/effect class must
-      receive impact coverage before bounded package truncation.
-- [x] Verify theoretical 4p and 2p+2p package-survival behavior with focused and
-      real-engine regressions; an end-to-end `BEST_FOUND` alone is not a quality
-      pass.
-- [x] Verify all-account placement-sensitive personal/team set effects,
-      conservative uncertain retention, and both set-impact panels.
-- [x] Verify package-signature diversity through screening, validation, rerace,
-      and terminal top-N.
-- [x] Fix all-account selected-package recall with soft neutral response,
-      source-package control coverage, and bounded per-signature local search.
-- [x] Fix theoretical full-layout fairness with balanced package anchors,
-      mixed-main witnesses, and wide 2p+2p quick shortlists.
-- [x] Expose readable theoretical equal-investment allocations and unambiguous
-      progress fidelity/leader semantics in the optimizer panel.
-- [ ] Validate package-signature identity through explicit save/preset UI.
-- [ ] Run more selected/all-account/theoretical comparisons on exact selected
-      chambers and compare with user-built teams. Real DPS-Dummy regressions are
-      complete.
-- [ ] Recalibrate materiality, candidate budgets, and optional all-account
-      wide-pool performance from UI comparisons.
-- [ ] Collect fresh cold/warm/cache/cancellation/memory evidence on real teams;
-      focused/full automated regressions for this corrective package are done.
+- [x] Add a deterministic no-hard-prune physical inventory catalog with exact
+      eligibility grouping, full-vector advisory skyline depth, and explicit
+      ineligible shadow rows. Pin the 520 -> 519/512 diagnostic without treating
+      it as a deletion proof.
+- [ ] Add response-aware ordering and only enable a hard bound behind a frozen-
+      context monotonicity/admissibility certificate; forbid CV/RV, raw skyline,
+      or user-chosen `k` from deleting physical witnesses.
+- [ ] Add per-slot injective four-wearer matching over physical artifact IDs,
+      preserving alternatives needed for no-reuse and later set completion.
+- [ ] Add the cross-slot beam with incremental per-wearer set counts and global
+      artifact-ID no-reuse; derive 4p (including 4+1) / 2p+2p packages only
+      after the complete physical assignment exists.
+- [ ] Feed bounded shadow finalists to exact GCSIM/refinement with common race
+      plan 6 deadline/cancellation semantics and auditable compiled configs.
+- [ ] Run the shadow kernel beside UI-selected plan 11 on identical frozen
+      requests. Gate on witness survival, exact legality/materialization,
+      selected result quality, and result/audit reproducibility.
+- [ ] Express selected/all only as domain constraints on the shared kernel and
+      prove that the all domain preserves every selected-domain witness under
+      the same downstream fidelity policy.
+- [ ] Extend the exact-input quality corpus to unrelated teams, rotations, and
+      targets; keep full first-removal traces for every counterexample.
+- [ ] If physical matching remains too broad, implement technical handoff 2.6:
+      per-frozen-context nonlinear response splines + sparse interactions +
+      typed set features + uncertainty-driven exact probes. Treat condition-free
+      set maxima only as admissible retention bounds, never final weights or
+      hard-prune evidence; use deterministic DOE/active optimization, not an LLM
+      as the numeric search controller.
+- [ ] Add an engine-versioned set-effect manifest for only AST-proved semantics
+      and keep unknown effects opaque. Add pair/full-team `gtt_set_response_v1`
+      interaction probes before set shortlisting; pin Scroll(Furina) +
+      Scroll(Ororon) same-key non-stacking and canonical DB-UID/GCSIM-alias tests.
+- [ ] Add an engine-versioned runtime effect observation contract (proposed
+      `gtt_effect_observation_v1`) instead of inferring conditional-set uptime
+      only from DPS. Aggregate aligned-seed damage exposure by recipient,
+      element, attack/source/reaction and time, damage-weighted snapshot-stat
+      histograms, effective enemy multipliers, and canonical set activation /
+      stack / refresh / replacement evidence. Use typed stack operators
+      (`add`, `max`, `replace_refresh`, `independent`, `unknown`); unknown stays
+      opaque. Pin Obsidian +0.40 CR, Marechaussee 0/.12/.24/.36 CR, multi-element
+      Scroll coverage, and an activation-with-no-affected-hit trap.
+- [ ] Add a frozen-context set applicability classifier:
+      `active_static`, `active_conditional`, `interaction_only`,
+      `inactive_proved`, or `uncertain`. Hard-remove only `inactive_proved`;
+      no proc in a small seed panel is soft demotion evidence, not deletion.
+- [ ] Add cross-wearer/timing trap-oracles for reaction-owner EM, team HP/healing
+      -> Fanfare -> recipient damage, a large buff applied to a negligible-DPS
+      recipient, element-specific buff/RES-shred exposure, snapshot timing, and
+      a deliberately sparse three-factor interaction. Measure surrogate
+      recall/regret and uncertainty; never infer independent character curves
+      or global optimality from passing simpler pair probes.
+- [ ] Enforce the handoff 2.6 anti-circularity split: cheap assignment features
+      `x(A)` must rank unsimulated candidates; runtime state `z(A)` is an
+      auxiliary exact label/prediction target, never a prerequisite GCSIM run
+      for every proposal and never copied blindly from the source build. Route
+      predicted state-changing candidates to the uncertainty lane.
+- [x] Freeze the authoritative objective: mean expected team DPS, exact written
+      rotation with no optimizer edits, `ignore_burst_energy=true` by default,
+      and only explicit user-provided generic stat floors (including ER) when
+      requested. Clear-time, automatic ER solving, survivability, healing,
+      shielding, and rotation optimization are outside this stage.
+- [ ] Implement the handoff 2.6 acceptance/audit gates: selected physical-ID or
+      paired-DPS control parity; mandatory selected winner in all under identical
+      fidelity; best-found exact row per displayed package signature; persisted
+      original model score/rank/lane and uniform prospective refinement budget;
+      reduced-oracle recall@K/regret, uncertainty calibration, deterministic
+      replay, and fixed simulation/runtime limits. Keep exceptional
+      signature-only search diagnostic and visibly separate from production
+      proposal evidence.
+- [ ] Add anchor-ablation benchmarks. With source/selected proposal anchors
+      removed, require the nonlinear stat/set model and shared physical search
+      to rediscover a near-equivalent selected basin and near-oracle artifacts
+      for every retained all-set signature. Report paired relative DPS regret,
+      feature/ID equivalence, SE, and budget. Use the first labelled corpus only
+      to calibrate noise/equivalence and choose epsilon, then freeze it before a
+      separate held-out validation corpus. Anchored safety success must not
+      count as anchorless model success.
+- [ ] Measure cold/warm/cache/cancellation/deadline/memory behavior and wide DB
+      runtime before switching either account route.
+- [ ] Switch selected and all UI paths together, audit the loaded module/path
+      identities, then remove package-first account paths only after every gate
+      passes. Do not extend the fallback while the shadow kernel is built.
+- [ ] Validate exact physical assignments through explicit save/preset UI after
+      search correctness is accepted.
 - [ ] Do not add speed modes before the corrected base algorithm is measured.
 - [ ] Do not change AppShell/import/equipment behavior as optimizer side work.
 

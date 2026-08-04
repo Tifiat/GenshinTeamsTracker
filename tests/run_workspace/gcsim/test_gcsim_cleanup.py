@@ -4,9 +4,11 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from run_workspace.gcsim.cleanup import (
     cleanup_gcsim_local_state,
+    prune_gcsim_optimizer_generated_state_best_effort,
     prune_gcsim_run_dirs,
 )
 
@@ -99,6 +101,84 @@ class GcsimCleanupTest(unittest.TestCase):
             self.assertTrue((farming / "old").exists())
             self.assertTrue((optimizer / "old").exists())
             self.assertTrue(old_cache.exists())
+
+    def test_optimizer_generated_prune_applies_only_run_and_cache_limits(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ordinary = root / "runs"
+            farming = root / "farming-runs"
+            optimizer = root / "optimizer-runs"
+            optimizer_cache = root / "optimizer-cache"
+            for run_root in (ordinary, farming, optimizer):
+                run_root.mkdir()
+                _make_run_dir(run_root / "old", size=10, timestamp=100)
+                _make_run_dir(run_root / "new", size=10, timestamp=200)
+            optimizer_cache.mkdir()
+            _make_cache_entry(
+                optimizer_cache / "old.json", size=10, timestamp=100
+            )
+            _make_cache_entry(
+                optimizer_cache / "new.json", size=10, timestamp=200
+            )
+            engine_marker = root / "engines" / "keep.txt"
+            engine_marker.parent.mkdir()
+            engine_marker.write_text("engine", encoding="utf-8")
+            go_marker = root / ".go" / "build-cache" / "keep.txt"
+            go_marker.parent.mkdir(parents=True)
+            go_marker.write_text("go", encoding="utf-8")
+
+            report = prune_gcsim_optimizer_generated_state_best_effort(
+                run_root=ordinary,
+                farming_run_root=farming,
+                optimizer_run_root=optimizer,
+                optimizer_cache_root=optimizer_cache,
+                keep_run_dirs=1,
+                keep_farming_run_dirs=1,
+                keep_optimizer_run_dirs=1,
+                keep_optimizer_cache_entries=1,
+            )
+
+            self.assertEqual(report.run_dirs["status"], "pruned")
+            self.assertEqual(report.farming_run_dirs["status"], "pruned")
+            self.assertEqual(report.optimizer_run_dirs["status"], "pruned")
+            self.assertEqual(report.optimizer_cache["status"], "pruned")
+            for run_root in (ordinary, farming, optimizer):
+                self.assertFalse((run_root / "old").exists())
+                self.assertTrue((run_root / "new").exists())
+            self.assertFalse((optimizer_cache / "old.json").exists())
+            self.assertTrue((optimizer_cache / "new.json").exists())
+            self.assertTrue(engine_marker.exists())
+            self.assertTrue(go_marker.exists())
+
+    def test_optimizer_generated_prune_continues_after_run_prune_failure(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "optimizer-cache"
+            cache.mkdir()
+            old_cache = _make_cache_entry(
+                cache / "old.json", size=10, timestamp=100
+            )
+            _make_cache_entry(
+                cache / "new.json", size=10, timestamp=200
+            )
+
+            with patch(
+                "run_workspace.gcsim.cleanup.prune_gcsim_run_dirs",
+                side_effect=RuntimeError("locked"),
+            ):
+                report = prune_gcsim_optimizer_generated_state_best_effort(
+                    optimizer_cache_root=cache,
+                    keep_optimizer_cache_entries=1,
+                )
+
+            self.assertEqual(report.run_dirs["status"], "failed")
+            self.assertEqual(report.farming_run_dirs["status"], "failed")
+            self.assertEqual(report.optimizer_run_dirs["status"], "failed")
+            self.assertEqual(report.optimizer_cache["status"], "pruned")
+            self.assertFalse(old_cache.exists())
 
 
 def _make_run_dir(path: Path, *, size: int, timestamp: int) -> Path:

@@ -555,88 +555,74 @@ Important direction:
   `Quick`/`Balanced`/`Deep` product modes. Results claim only “best found under
   the frozen work plan”.
 - Account search captures the complete relevant SQLite artifact/substat input
-  read-only at run start and uses `artifacts.id` as physical allocation
-  identity. Provenance, importer source, equipment, owner, lock, location, and
-  preset metadata are not candidate filters. Source set/stat lines may seed UI
-  defaults but are replaced for candidates.
-- Default eligibility is valid five-star artifacts. Explicit account set/ID
-  policy may admit a four-star artifact; theoretical search is five-star only.
-  Malformed rows fail closed without poisoning unrelated legal builds.
-  `content_fingerprint` equal-content deduplication is accepted.
-- Paired stat-response v2 is active through `gtt_stat_response_v2`. It uses
-  common deterministic seeds, expected damage, team plus ordered-character
-  deltas, legal whole-main probes, and
-  `dominant/secondary/negligible/uncertain` evidence on the exact selected
-  target. Large synthetic changes are dependency bounds, not artifact weights.
-- Broad package search uses paired set-impact through
-  `gtt_set_response_v1`. With all set rows removed from a fixed synthetic
-  baseline, it adds one package to one wearer and measures personal/team/all
-  character effects using both `balanced` and `crit_headroom` panels. The second
-  panel prevents crit-granting sets from being discarded because the balanced
-  anchor is already crit-capped. Positive and uncertain packages are retained;
-  only proved-negligible packages may be removed.
-- Selected-account treats every user-chosen package as mandatory. All-account
-  gives the source set no score bonus and derives only physically feasible
-  packages from the complete DB. A 4p package requires four distinct usable
-  set slots plus a legal complete build, not merely four rows. Neutral response
-  is soft ranking only at n>=32. A resolvable source package signature is an
-  obligatory recall/control anchor, and up to eight shortlisted signatures are
-  regenerated locally before the exact race.
+  read-only at run start. Import source, equipment, owner, lock, location, and
+  presets are not optimizer filters. `content_fingerprint` equal-content
+  deduplication is an accepted limitation.
 - Theoretical ignores account inventory and source sets, keeps the same legal
-  investment budget for every package, and preserves exact engine-modeled set
-  effects. Impact-driven 4p package coverage and single-2p-first prospective
-  2p+2p search are active. The actual concrete-pair mapping is retained through
-  terminal packaging; a missing synthetic pair key fails closed. Over-wide
-  retained domains are impact-shortlisted to at most 30 quick anchors per
-  wearer with explicit unscreened counters. Every quick package gets a balanced
-  full-main anchor before package-round-robin mixed-layout witnesses.
-- Physical account candidates use actual stored level/main/substats and twenty
-  globally distinct IDs. Canonical +20 mains are response/theoretical
-  calibration only. Low-personal-damage supports may use one best
-  `any HP%`/`any EM` representative per package during broad package search;
-  replacements expand only for finalists, package changes, or no-reuse repair.
+  investment budget for every package. Account operations use stored artifact
+  values and globally distinct physical IDs. Detailed pruning and fidelity
+  behavior belongs only in the optimizer technical handoff.
 - ER sufficiency is never inferred or automatically balanced. Account
-  `stat >= X` is checked before GCSIM; ER is only an explicit use of that generic
-  floor. Infinite/boosted energy is independent. Direct ER-to-damage scaling
-  modeled by a kit/set remains visible. Theoretical does not inherit account
-  floors.
-- Stat response, set impact, source control, candidates, and finals use the same
-  explicit selected chamber/scenario or explicit dummy. No hidden target
-  fallback exists. The source build is comparison/control evidence only; it
-  cannot stop search, prioritize packages, or prune the requested domain.
-- Terminal top-N groups validated rows by the ordered four-wearer package
-  signature: package kind plus canonical 4p set or sorted 2p+2p pair for each
-  wearer. Only the best exact candidate per signature occupies a rank.
-  Same-package physical variants are replacement evidence.
-- Only 200/1000-iteration exact evidence may enter terminal top-N/save; 8/32
-  leaders are provisional. Progress carries the active iteration count and
-  provisional/verified/final scope, clears stale stage leaders, and labels
-  uncertainty as SE. Theoretical result schema v3 carries exact main stats and
-  fixed/liquid substat rolls for every wearer. Unexpected
-  response/set-impact/materialization/
-  wiring errors fail closed. Cancellation reaches the active response,
-  set-impact, race, optimizer, or rerace owner.
-- Engine preflight is capability-authoritative. A newer cumulative patch marker
-  is valid when required capabilities such as `gtt_wave_scenario_payload`,
-  `gtt_stat_response_v2`, and `gtt_set_response_v1` are present.
-- Search writes nothing. Explicit save creates/reuses exact character presets
-  and stores one linked four-member GCSIM optimizer result; it never equips
-  artifacts or creates History. Atomic apply-all and a linked-presets tab remain
-  later UI work.
-- Optimizer diagnostics are disposable and bounded. Successful ordinary screens
-  clean their owned run directory, two-stage sessions remove the reproducible
-  private engine copy, and `python -m run_workspace.gcsim.cleanup` bounds
-  `runs`, `farming-runs`, and `optimizer-runs`. The optimizer cache is reusable
-  evidence with automatic retention at 20,000 JSON entries / 256 MiB; retention
-  scans are throttled to once per five minutes, stale atomic `.tmp` files older
-  than one hour are removed, and the cleanup CLI reports/applies the same
-  policy.
-- The theoretical corrective gate, focused package-survival/signature tests, and
-  real DPS-Dummy all-account/4p/2p+2p smokes are complete. Current release gate:
-  compare more user-built teams on exact selected chambers, calibrate quality
-  thresholds, remeasure cold/warm/cache/cancellation/memory behavior, and
-  validate explicit save/preset UI. All-account remains accepted but
-  optional/experimental until quality and wide-pool runtime are satisfactory.
+  `stat >= X` is a generic pre-simulation floor. Infinite/boosted energy remains
+  independent.
+- Every optimizer phase uses the same explicit selected target/scenario. Search
+  is read-only; persistence requires an explicit save.
+- The current selected-account UI path remains selected plan 11 while the next
+  kernel is developed in shadow. Its last pre-deadline-fix UI-entrypoint run
+  used race plan 5 and produced `139577.8505 ± 292.4415` DPS at `n=1000` in
+  `628.297 s`. The immutable UI audit is
+  `debug/gcsim_optimizer_ui_runs/20260802T091044477190Z-16092-0c9db722f11c.json`;
+  the mirrored audit/result are under
+  `debug/gcsim_optimizer_benchmarks/ui-production-v11-selected/` as
+  `canonical-ui-selected-audit.json` and `canonical-ui-selected-result.json`.
+  That evidence has effective `ignore_burst_energy=true`; do not describe it as
+  normal-energy evidence.
+- The common account race is now plan 6. On deadline/cancellation, terminal
+  batch status is handled before required-row enforcement: a required proposal
+  skipped by the terminal condition must not erase an already successful
+  saveable validation or turn the run into `FAILED`. Plan-5 result/cache
+  identities are historical inputs to comparison, not plan-6 evidence.
+- The existing package-first all-account route
+  (`optimizer_account_superset.py` -> `optimizer_all_set_service.py`) is a
+  fallback diagnostic only, is not release-ready, and must not receive further
+  architecture expansion. Keep it available only for comparison until the
+  replacement gates pass.
+- The next account optimizer is one artifact-first kernel, currently limited to
+  offline-tested primitives rather than parallel shadow execution:
+  response-aware inventory frontier -> per-slot injective team matching ->
+  cross-slot beam with incremental set counts -> package derivation after the
+  physical assignment -> exact GCSIM and bounded refinement. Selected/all are
+  domain constraints on this same kernel, not separate search algorithms.
+  Route UI-selected and UI-all to it only after frozen-input shadow parity,
+  legality/no-reuse/materialization, selected-subset preservation, deadline/
+  cancellation, quality-corpus, and runtime gates pass; remove the old paths
+  only after that cutover is verified through the UI audit.
+- A raw componentwise diagnostic on the current 520-piece DB put 519 pieces in
+  the set-aware first layer and 512 under off-piece equivalence. This is not a
+  safe-removal proof because exact GCSIM can be non-monotone in a raw stat axis
+  (for example ER can change an `energy < max` condition). Inventory-frontier
+  plan 2 retains every eligible row and shadows only globally ineligible rows.
+  CV, RV, raw skyline depth, or another scalar may order a soft proposal lane
+  but must not hard-prune physical artifacts without a frozen-context
+  monotonicity/admissible-bound proof.
+- If matching remains too broad, follow technical handoff section 2.6: learn a
+  nonlinear response surface per frozen simulation, with contextual marginal
+  piece values, stat/set interactions, typed set semantics, multi-set paired
+  probes, and uncertainty-driven exact GCSIM batches. Do not use permanent stat
+  weights or an LLM as the numerical controller. In particular, isolated set
+  impact is not enough for non-stacking team buffs such as duplicate Scroll.
+- Set features for that surface are runtime tensors, not scalar set weights:
+  source/wearer/recipient x stat/effect x element/attack/reaction x time. Merge
+  only through engine-proved add/max/replace-refresh/independent stack groups;
+  unknown groups stay opaque. The current `gtt_stat_response_v2` exposes DPS,
+  not direct conditional-buff uptime. Before authoritative set prefiltering,
+  add the effect-observation capability specified in handoff 2.6 and hard-drop
+  only engine/source-proved inactive sets.
+- Completed account UI runs persist compact exact audits under
+  `debug/gcsim_optimizer_ui_runs`, including launch/frozen identities, loaded
+  module fingerprints, phase/plan identities, confirmed races, compiled configs,
+  and physical artifact IDs. Use these audits to prove which kernel the button
+  executed; a backend-only trace is not desktop parity evidence.
 - Optimizer-owned code and narrow generic scheduler/materializer wrappers may be
   changed. Do not repair importer, equipment, Artifact Browser preset, History,
   deduplication, or global AppShell behavior as optimizer side work; discuss a

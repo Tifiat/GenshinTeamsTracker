@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "context_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "seed": "123",
+  "iterations": 1,
+  "workers": 1,
+  "ignore_burst_energy": true
+}

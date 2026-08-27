@@ -289,6 +289,40 @@ class CharacterDisplayStatsTest(unittest.TestCase):
         self.assertEqual(rows["Electro DMG"], "12%")
         self.assertNotEqual(rows["Electro DMG"], "18%")
 
+    def test_sqlite_character_crit_rate_bonus_label_is_applied(self) -> None:
+        result = build_character_display_stats(
+            {
+                "account_character": {
+                    "base_hp": 9797,
+                    "base_atk": 347,
+                    "base_def": 615,
+                    "ascension_bonus_stat_type": "CRIT Rate Bonus",
+                    "ascension_bonus_value": 19.2,
+                },
+            }
+        )
+
+        rows = {row.label: row.value for row in result.rows}
+
+        self.assertEqual(rows["Crit Rate"], "24.2%")
+
+    def test_sqlite_character_crit_damage_bonus_label_is_applied(self) -> None:
+        result = build_character_display_stats(
+            {
+                "account_character": {
+                    "base_hp": 1000,
+                    "base_atk": 200,
+                    "base_def": 500,
+                    "ascension_bonus_stat_type": "CRIT DMG Bonus",
+                    "ascension_bonus_value": 38.4,
+                },
+            }
+        )
+
+        rows = {row.label: row.value for row in result.rows}
+
+        self.assertEqual(rows["Crit DMG"], "88.4%")
+
     def test_unmatched_account_ascension_bonus_is_not_applied_when_storage_left_it_empty(self) -> None:
         result = build_character_display_stats(
             {

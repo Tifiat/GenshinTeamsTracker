@@ -1,0 +1,611 @@
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+index e4fe735..73cf59e 100644
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -140,6 +140,7 @@ type Runtime struct {
+ 	numericDependencyCaptures         []numericDependencyCapture
+ 	nextNumericDependencyCaptureToken int
+ 	helperNumericContexts             [][]NumericPayload
++	taskNumericContexts               [][]NumericPayload
+ 	nextTaskQueueID                   uint64
+ 	nextTaskID                        uint64
+ }
+@@ -185,5 +186,6 @@ func NewRuntime() *Runtime {
+ 		modifierEvalCaptures:      make([]modifierEvalCapture, 0, 4),
+ 		numericDependencyCaptures: make([]numericDependencyCapture, 0, 4),
+ 		helperNumericContexts:     make([][]NumericPayload, 0, 4),
++		taskNumericContexts:       make([][]NumericPayload, 0, 4),
+ 	}
+ }
+diff --git a/pkg/gtttrace/state.go b/pkg/gtttrace/state.go
+index afb5407..345b49c 100644
+--- a/pkg/gtttrace/state.go
++++ b/pkg/gtttrace/state.go
+@@ -119,10 +119,45 @@ func (r *Runtime) EnterHelperNumericArguments(payloads []NumericPayload) func()
+ // parameter when the observed value still matches. Missing/mismatched context
+ // fails open to a literal reference and never changes gameplay execution.
+ func (r *Runtime) CurrentHelperNumericRef(key string, observed float64) NumericRef {
+-	if !r.Enabled() || len(r.helperNumericContexts) == 0 || !finite(observed) {
++	if r == nil {
++		return LiteralRef(observed)
++	}
++	return currentNumericContextRef(r.Enabled(), r.helperNumericContexts, key, observed)
++}
++
++// CurrentTaskNumericRef returns the enqueue-side evidence for one numeric
++// payload while the corresponding queued callback is executing. Missing or
++// mismatched context remains a literal boundary and never changes gameplay.
++func (r *Runtime) CurrentTaskNumericRef(key string, observed float64) NumericRef {
++	if r == nil {
++		return LiteralRef(observed)
++	}
++	return currentNumericContextRef(r.Enabled(), r.taskNumericContexts, key, observed)
++}
++
++// UpdateTaskNumericArgument advances one task-local numeric dependency after
++// the callback mutates its formal parameter. The source compiler emits this
++// only for a proven numeric formal assignment; absent context fails open.
++func (r *Runtime) UpdateTaskNumericArgument(key string, observed float64, reference NumericRef) {
++	if r == nil || !r.Enabled() || len(r.taskNumericContexts) == 0 || key == "" || !finite(observed) {
++		return
++	}
++	context := r.taskNumericContexts[len(r.taskNumericContexts)-1]
++	for index := range context {
++		if context[index].Key != key {
++			continue
++		}
++		context[index].Value = observed
++		context[index].Reference = cloneNumericRef(reference)
++		return
++	}
++}
++
++func currentNumericContextRef(enabled bool, contexts [][]NumericPayload, key string, observed float64) NumericRef {
++	if !enabled || len(contexts) == 0 || !finite(observed) {
+ 		return LiteralRef(observed)
+ 	}
+-	context := r.helperNumericContexts[len(r.helperNumericContexts)-1]
++	context := contexts[len(contexts)-1]
+ 	for _, payload := range context {
+ 		if payload.Key != key || !finite(payload.Value) {
+ 			continue
+@@ -334,6 +369,31 @@ func (r *Runtime) CurrentHealthOperationID() string {
+ 	return r.healthContextStack[len(r.healthContextStack)-1]
+ }
+ 
++// CurrentHealthChangePercentRefs recognizes the generic normalized health
++// change used by event consumers: effective event amount / max HP * 100.
++// A mismatched value fails open to a literal, so unrelated callback values do
++// not acquire a false health dependency.
++func (r *Runtime) CurrentHealthChangePercentRefs(observed float64) []NumericRef {
++	if r == nil || !r.Enabled() || !finite(observed) {
++		return []NumericRef{LiteralRef(observed)}
++	}
++	operationID := r.CurrentHealthOperationID()
++	operation, ok := r.healthOperation(operationID)
++	if !ok || !finite(operation.EventEffectiveAmount) || !finite(operation.MaxHPAfter) || operation.MaxHPAfter <= 0 {
++		return []NumericRef{LiteralRef(observed)}
++	}
++	expected := operation.EventEffectiveAmount / operation.MaxHPAfter * 100
++	tolerance := 1e-9 * math.Max(1, math.Max(math.Abs(expected), math.Abs(observed)))
++	if math.Abs(expected-observed) > tolerance {
++		return []NumericRef{LiteralRef(observed)}
++	}
++	return []NumericRef{
++		HealthFieldRef(operationID, "event_effective_amount"),
++		HealthFieldRef(operationID, "max_hp_after"),
++		LiteralRef(100),
++	}
++}
++
+ func (r *Runtime) StateEvents() []StateEvent {
+ 	if r == nil || len(r.stateEvents) == 0 {
+ 		return []StateEvent{}
+@@ -445,6 +505,27 @@ func (r *Runtime) RecordNumericStateWrite(
+ 	slotID, sourceID string,
+ 	before, after float64,
+ 	evidence DependencyEvidence,
++) string {
++	return r.recordNumericStateWrite(slotID, sourceID, before, after, nil, evidence)
++}
++
++// RecordNumericStateWriteWithInputs keeps the arithmetic event that produced a
++// write connected to the ordered slot ledger. The legacy wrapper above remains
++// for callers that have no typed input evidence yet.
++func (r *Runtime) RecordNumericStateWriteWithInputs(
++	slotID, sourceID string,
++	before, after float64,
++	inputs []NumericRef,
++	evidence DependencyEvidence,
++) string {
++	return r.recordNumericStateWrite(slotID, sourceID, before, after, inputs, evidence)
++}
++
++func (r *Runtime) recordNumericStateWrite(
++	slotID, sourceID string,
++	before, after float64,
++	inputs []NumericRef,
++	evidence DependencyEvidence,
+ ) string {
+ 	if !r.validStateSlot(slotID) || !finite(before) || !finite(after) {
+ 		return ""
+@@ -452,6 +533,7 @@ func (r *Runtime) RecordNumericStateWrite(
+ 	eventID := r.appendStateEvent(StateEvent{
+ 		Frame: r.Frame(), Kind: StateEventNumericStateWrite, SlotID: optionalString(slotID),
+ 		SourceID: optionalString(sourceID), Before: optionalFloat(before), After: optionalFloat(after),
++		Inputs:                      inputs,
+ 		CandidateDependencyComplete: evidence.CandidateDependencyComplete,
+ 		UncertaintyCodes:            evidence.UncertaintyCodes,
+ 	})
+@@ -759,6 +841,7 @@ func (r *Runtime) BeginTaskExecution(
+ 		UncertaintyCodes: []string{"task_candidate_dependency_incomplete"},
+ 	})
+ 	r.stateEventStack = append(r.stateEventStack, enterID)
++	r.taskNumericContexts = append(r.taskNumericContexts, cloneNumericPayloads(numericPayload))
+ 	return callID
+ }
+ 
+@@ -775,6 +858,9 @@ func (r *Runtime) CompleteTaskExecution(
+ 	if len(r.stateEventStack) > 0 && r.stateEventStack[len(r.stateEventStack)-1] == callID {
+ 		r.stateEventStack = r.stateEventStack[:len(r.stateEventStack)-1]
+ 	}
++	if len(r.taskNumericContexts) > 0 {
++		r.taskNumericContexts = r.taskNumericContexts[:len(r.taskNumericContexts)-1]
++	}
+ 	r.appendStateEvent(StateEvent{
+ 		Frame: r.Frame(), Kind: StateEventTaskExecuteExit, SourceID: optionalString(sourceID),
+ 		SourceOccurrenceID: optionalString(sourceOccurrenceID), Provider: provider,
+@@ -826,15 +912,20 @@ func (r *Runtime) RecordStatusDelete(ownerIndex int, key, sourceID string, previ
+ }
+ 
+ func (r *Runtime) healthOperationExists(operationID string) bool {
++	_, ok := r.healthOperation(operationID)
++	return ok
++}
++
++func (r *Runtime) healthOperation(operationID string) (HealthOperation, bool) {
+ 	if r == nil || operationID == "" {
+-		return false
++		return HealthOperation{}, false
+ 	}
+ 	for index := range r.healthOperations {
+ 		if r.healthOperations[index].OperationID == operationID {
+-			return true
++			return r.healthOperations[index], true
+ 		}
+ 	}
+-	return false
++	return HealthOperation{}, false
+ }
+ 
+ func optionalString(value string) *string {
+diff --git a/pkg/gtttrace/runtime_test.go b/pkg/gtttrace/runtime_test.go
+index 9841c15..6a8eb0a 100644
+--- a/pkg/gtttrace/runtime_test.go
++++ b/pkg/gtttrace/runtime_test.go
+@@ -87,6 +87,75 @@ func TestHelperNumericArgumentsAreNestedAndFailOpen(t *testing.T) {
+ 	restoreOuter()
+ }
+ 
++func TestTaskNumericArgumentsRemainAvailableOnlyDuringExecution(t *testing.T) {
++	runtime := NewRuntime()
++	runtime.Enable()
++	frame := 12
++	runtime.BindFrame(&frame)
++	eventID := runtime.RecordNumericEval(
++		testSourceID, "source_expression", []NumericRef{LiteralRef(3.5)}, 3.5,
++		IncompleteEvidence("test_source_incomplete"),
++	)
++	payload := []NumericPayload{{
++		Key: "arg:0", Value: 3.5, Reference: EventRef(eventID),
++	}}
++	provider := NewProvider("character", "fixture", 0, 0)
++	callID := runtime.BeginTaskExecution(
++		"task:1", "task-queue:1", 0, 10, 2, 12, 12,
++		testSourceID, "", provider, payload,
++	)
++	current := runtime.CurrentTaskNumericRef("arg:0", 3.5)
++	if current.EventID == nil || *current.EventID != eventID {
++		t.Fatalf("task reference = %#v", current)
++	}
++	transitionID := runtime.RecordNumericEval(
++		testSourceID, "state_transition", []NumericRef{current}, 7,
++		IncompleteEvidence("test_task_transition_incomplete"),
++	)
++	runtime.UpdateTaskNumericArgument("arg:0", 7, EventRef(transitionID))
++	updated := runtime.CurrentTaskNumericRef("arg:0", 7)
++	if updated.EventID == nil || *updated.EventID != transitionID {
++		t.Fatalf("updated task reference = %#v", updated)
++	}
++	runtime.CompleteTaskExecution(
++		callID, "task:1", "task-queue:1", 0, 10, 2, 12, 12,
++		testSourceID, "", provider, payload,
++	)
++	after := runtime.CurrentTaskNumericRef("arg:0", 3.5)
++	if after.LiteralValue == nil || *after.LiteralValue != 3.5 {
++		t.Fatalf("completed task must not leak numeric context: %#v", after)
++	}
++}
++
++func TestCurrentHealthChangePercentRefsMatchOnlyActiveNormalizedChange(t *testing.T) {
++	runtime := NewRuntime()
++	runtime.Enable()
++	frame := 12
++	runtime.BindFrame(&frame)
++	sequence, operationID := runtime.BeginHealthOperation()
++	runtime.CompleteHealthOperation(sequence, HealthOperation{
++		Kind: HealthOperationHeal, Frame: frame, TargetIndex: 0,
++		EventEffectiveAmount: 240, MaxHPAfter: 15000,
++		UncertaintyCodes: []string{"test_health_incomplete"},
++	})
++	restore := runtime.EnterHealthOperation(operationID)
++	refs := runtime.CurrentHealthChangePercentRefs(1.6)
++	if len(refs) != 3 || refs[0].HealthOperationID == nil || *refs[0].HealthOperationID != operationID ||
++		refs[0].FieldKey == nil || *refs[0].FieldKey != "event_effective_amount" ||
++		refs[1].FieldKey == nil || *refs[1].FieldKey != "max_hp_after" {
++		t.Fatalf("health change refs = %#v", refs)
++	}
++	mismatch := runtime.CurrentHealthChangePercentRefs(9.9)
++	if len(mismatch) != 1 || mismatch[0].LiteralValue == nil || *mismatch[0].LiteralValue != 9.9 {
++		t.Fatalf("mismatched health change must fail open: %#v", mismatch)
++	}
++	restore()
++	after := runtime.CurrentHealthChangePercentRefs(1.6)
++	if len(after) != 1 || after[0].LiteralValue == nil || *after[0].LiteralValue != 1.6 {
++		t.Fatalf("health context must not leak: %#v", after)
++	}
++}
++
+ func TestStateEventOnlyInheritsMatchingSourceOccurrence(t *testing.T) {
+ 	runtime := NewRuntime()
+ 	runtime.Enable()
+diff --git a/pkg/gttsourcegen/v6_overlay.go b/pkg/gttsourcegen/v6_overlay.go
+index f0c5d24..0f6bef6 100644
+--- a/pkg/gttsourcegen/v6_overlay.go
++++ b/pkg/gttsourcegen/v6_overlay.go
+@@ -6,6 +6,7 @@ import (
+ 	"go/parser"
+ 	"go/token"
+ 	pathpkg "path"
++	"sort"
+ 	"strconv"
+ 	"strings"
+ )
+@@ -143,7 +144,7 @@ func v6InstrumentationEdits(
+ 			writeEdits, writeErr := numericStateWriteEdits(
+ 				fset, tokenFile, data, assignment, receiver, traceExpr,
+ 				entry.stateOperation.ScopeKey, strconv.Quote(entry.SourceID), entry.SourceID[:10], bindings,
+-				entry.stateOperation.NumericFields,
++				entry.stateOperation.NumericFields, nil,
+ 			)
+ 			if writeErr != nil {
+ 				return true
+@@ -168,7 +169,7 @@ func v6InstrumentationEdits(
+ 				callbackEdits, callbackImport := callbackBodyEdits(
+ 					fset, tokenFile, data, closure.Body, receiver, traceExpr,
+ 					entry.callback.ScopeKey, dynamicSource, entry.SourceID[:10], collectBindings(closure.Body),
+-					entry.callback.StateFields,
++					entry.callback.StateFields, numericFormalParameterNames(fn, entry.callback.NumericPayloads),
+ 				)
+ 				edits = append(edits, callbackEdits...)
+ 				needsImport = needsImport || callbackImport
+@@ -208,7 +209,7 @@ func v6InstrumentationEdits(
+ 					callbackEdits, callbackImport := callbackBodyEdits(
+ 						fset, tokenFile, data, callback.Body, receiver, traceExpr,
+ 						entry.callback.ScopeKey, strconv.Quote(entry.SourceID), entry.SourceID[:10], collectBindings(callback.Body),
+-						entry.callback.StateFields,
++						entry.callback.StateFields, nil,
+ 					)
+ 					edits = append(edits, callbackEdits...)
+ 					needsImport = needsImport || callbackImport
+@@ -276,6 +277,7 @@ func ordinaryHelperCallEdits(
+ 	arguments := make([]string, len(call.Args))
+ 	payloads := make([]string, 0, len(plan.NumericParameters))
+ 	numericParameters := integerAllowlist(plan.NumericParameters)
++	bindings := collectBindings(containingBindingScope(body, call))
+ 	var replacement strings.Builder
+ 	for index, argument := range call.Args {
+ 		_, numeric := numericParameters[index]
+@@ -290,9 +292,13 @@ func ordinaryHelperCallEdits(
+ 			continue
+ 		}
+ 		eventName := prefix + "_event_" + strconv.Itoa(index)
+-		fmt.Fprintf(&replacement, "%s := %s.RecordNumericEval(%s,%s,[]%s.NumericRef{%s.LiteralRef(float64(%s))},float64(%s),%s.IncompleteEvidence(%s))\n%s",
+-			eventName, traceExpr, strconv.Quote(entry.SourceID), strconv.Quote("source_expression"), traceImportAlias,
+-			traceImportAlias, valueName, valueName, traceImportAlias,
++		inputRefs := "[]" + traceImportAlias + ".NumericRef{" + traceImportAlias + ".LiteralRef(float64(" + valueName + "))}"
++		if healthChangePercentExpression(argument, bindings) {
++			inputRefs = traceExpr + ".CurrentHealthChangePercentRefs(float64(" + valueName + "))"
++		}
++		fmt.Fprintf(&replacement, "%s := %s.RecordNumericEval(%s,%s,%s,float64(%s),%s.IncompleteEvidence(%s))\n%s",
++			eventName, traceExpr, strconv.Quote(entry.SourceID), strconv.Quote("source_expression"),
++			inputRefs, valueName, traceImportAlias,
+ 			strconv.Quote("ordinary_helper_argument_dependency_incomplete"), indent,
+ 		)
+ 		payloads = append(payloads, fmt.Sprintf("{Key:%s,Value:float64(%s),Reference:%s.EventRef(%s)}",
+@@ -309,6 +315,53 @@ func ordinaryHelperCallEdits(
+ 	}}, nil
+ }
+ 
++func containingBindingScope(body *ast.BlockStmt, target ast.Node) *ast.BlockStmt {
++	best := body
++	ast.Inspect(body, func(node ast.Node) bool {
++		literal, ok := node.(*ast.FuncLit)
++		if !ok || literal.Body.Pos() > target.Pos() || literal.Body.End() < target.End() {
++			return true
++		}
++		if best == body || literal.Body.End()-literal.Body.Pos() < best.End()-best.Pos() {
++			best = literal.Body
++		}
++		return true
++	})
++	return best
++}
++
++func healthChangePercentExpression(expr ast.Expr, bindings bindingSet) bool {
++	hasEventArgument := false
++	hasMaxHPRead := false
++	resolving := make(map[string]bool)
++	var inspectExpression func(ast.Expr)
++	inspectExpression = func(current ast.Expr) {
++		if current == nil {
++			return
++		}
++		ast.Inspect(current, func(node ast.Node) bool {
++			if ident, ok := node.(*ast.Ident); ok {
++				if ident.Name == "args" {
++					hasEventArgument = true
++				}
++				if defs := bindings[ident.Name]; len(defs) == 1 && !resolving[ident.Name] {
++					resolving[ident.Name] = true
++					inspectExpression(defs[0])
++					delete(resolving, ident.Name)
++				}
++			}
++			if call, ok := node.(*ast.CallExpr); ok && len(call.Args) == 0 {
++				if selector, selectorOK := call.Fun.(*ast.SelectorExpr); selectorOK && selector.Sel.Name == "MaxHP" {
++					hasMaxHPRead = true
++				}
++			}
++			return !(hasEventArgument && hasMaxHPRead)
++		})
++	}
++	inspectExpression(expr)
++	return hasEventArgument && hasMaxHPRead
++}
++
+ func taskPayloadEdits(
+ 	fset *token.FileSet,
+ 	tokenFile *token.File,
+@@ -400,6 +453,24 @@ func directMethodParameterIndex(fn *ast.FuncDecl, expression ast.Expr) (int, boo
+ 	return 0, false
+ }
+ 
++func numericFormalParameterNames(fn *ast.FuncDecl, numericPositions []int) map[string]int {
++	result := make(map[string]int, len(numericPositions))
++	if fn == nil || fn.Type.Params == nil {
++		return result
++	}
++	allowlist := integerAllowlist(numericPositions)
++	index := 0
++	for _, field := range fn.Type.Params.List {
++		for _, name := range field.Names {
++			if _, numeric := allowlist[index]; numeric {
++				result[name.Name] = index
++			}
++			index++
++		}
++	}
++	return result
++}
++
+ func callbackBodyEdits(
+ 	fset *token.FileSet,
+ 	tokenFile *token.File,
+@@ -408,6 +479,7 @@ func callbackBodyEdits(
+ 	receiver, traceExpr, scope, sourceExpr, prefix string,
+ 	bindings bindingSet,
+ 	numericFields []string,
++	taskParameters map[string]int,
+ ) ([]textEdit, bool) {
+ 	edits := guardEvidenceEdits(fset, tokenFile, data, body, traceExpr, sourceExpr, prefix)
+ 	needsImport := len(edits) > 0
+@@ -416,7 +488,20 @@ func callbackBodyEdits(
+ 			return false
+ 		}
+ 		assignment, ok := node.(*ast.AssignStmt)
+-		if !ok || len(assignment.Lhs) != 1 || len(assignment.Rhs) != 1 || assignment.Tok != token.ASSIGN {
++		if !ok || len(assignment.Lhs) != 1 || len(assignment.Rhs) != 1 {
++			return true
++		}
++		if parameter, parameterOK := assignment.Lhs[0].(*ast.Ident); parameterOK {
++			if parameterEdits, traced := taskNumericParameterWriteEdits(
++				fset, tokenFile, data, assignment, parameter, traceExpr, sourceExpr,
++				prefix+"_"+strconv.Itoa(fset.Position(assignment.Pos()).Line), taskParameters,
++			); traced {
++				edits = append(edits, parameterEdits...)
++				needsImport = true
++				return true
++			}
++		}
++		if assignment.Tok != token.ASSIGN {
+ 			return true
+ 		}
+ 		selector, ok := assignment.Lhs[0].(*ast.SelectorExpr)
+@@ -431,7 +516,7 @@ func callbackBodyEdits(
+ 		writeEdits, err := numericStateWriteEdits(
+ 			fset, tokenFile, data, assignment, receiver, traceExpr, scope,
+ 			sourceExpr, prefix+"_"+strconv.Itoa(fset.Position(assignment.Pos()).Line), bindings,
+-			numericFields,
++			numericFields, taskParameters,
+ 		)
+ 		if err == nil {
+ 			edits = append(edits, writeEdits...)
+@@ -442,6 +527,58 @@ func callbackBodyEdits(
+ 	return edits, needsImport
+ }
+ 
++func taskNumericParameterWriteEdits(
++	fset *token.FileSet,
++	tokenFile *token.File,
++	data []byte,
++	assignment *ast.AssignStmt,
++	parameter *ast.Ident,
++	traceExpr, sourceExpr, prefix string,
++	taskParameters map[string]int,
++) ([]textEdit, bool) {
++	parameterIndex, parameterOK := taskParameters[parameter.Name]
++	if !parameterOK {
++		return nil, false
++	}
++	referenced := referencedTaskNumericParameters(assignment.Rhs[0], taskParameters)
++	dependsOnPriorValue := assignment.Tok != token.ASSIGN
++	if assignment.Tok == token.ASSIGN {
++		for _, candidate := range referenced {
++			if candidate.name == parameter.Name {
++				dependsOnPriorValue = true
++				break
++			}
++		}
++	}
++	if !dependsOnPriorValue {
++		return nil, false
++	}
++	indent := indentationBefore(data, tokenFile.Offset(assignment.Pos()))
++	beforeName := "gttV6_" + prefix + "_task_before"
++	evalName := "gttV6_" + prefix + "_task_eval"
++	refs := []string{fmt.Sprintf("%s.CurrentTaskNumericRef(%s,float64(%s))",
++		traceExpr, strconv.Quote("arg:"+strconv.Itoa(parameterIndex)), beforeName)}
++	for _, candidate := range referenced {
++		if candidate.name == parameter.Name {
++			continue
++		}
++		refs = append(refs, fmt.Sprintf("%s.CurrentTaskNumericRef(%s,float64(%s))",
++			traceExpr, strconv.Quote("arg:"+strconv.Itoa(candidate.index)), candidate.name))
++	}
++	var out strings.Builder
++	fmt.Fprintf(&out, "%s := %s\n%s", beforeName, parameter.Name, indent)
++	fmt.Fprintf(&out, "%s %s %s\n%s", parameter.Name, assignment.Tok.String(), rootText(fset, assignment.Rhs[0]), indent)
++	fmt.Fprintf(&out, "%s := %s.RecordNumericEval(%s,%s,[]%s.NumericRef{%s},float64(%s),%s.IncompleteEvidence(%s))\n%s",
++		evalName, traceExpr, sourceExpr, strconv.Quote("state_transition"), traceImportAlias,
++		strings.Join(refs, ","), parameter.Name, traceImportAlias,
++		strconv.Quote("task_numeric_transition_dependency_incomplete"), indent)
++	fmt.Fprintf(&out, "%s.UpdateTaskNumericArgument(%s,float64(%s),%s.EventRef(%s))",
++		traceExpr, strconv.Quote("arg:"+strconv.Itoa(parameterIndex)), parameter.Name, traceImportAlias, evalName)
++	return []textEdit{{
++		start: tokenFile.Offset(assignment.Pos()), end: tokenFile.Offset(assignment.End()), replacement: out.String(),
++	}}, true
++}
++
+ func numericStateWriteEdits(
+ 	fset *token.FileSet,
+ 	tokenFile *token.File,
+@@ -450,6 +587,7 @@ func numericStateWriteEdits(
+ 	receiver, traceExpr, scope, sourceExpr, prefix string,
+ 	bindings bindingSet,
+ 	allowedFields []string,
++	taskParameters map[string]int,
+ ) ([]textEdit, error) {
+ 	selector, ok := assignment.Lhs[0].(*ast.SelectorExpr)
+ 	if !ok || assignment.Tok != token.ASSIGN {
+@@ -495,18 +633,56 @@ func numericStateWriteEdits(
+ 	for _, field := range ordered {
+ 		refs = append(refs, traceImportAlias+".EventRef("+eventByField[field]+")")
+ 	}
++	for _, parameter := range referencedTaskNumericParameters(assignment.Rhs[0], taskParameters) {
++		refs = append(refs, fmt.Sprintf("%s.CurrentTaskNumericRef(%s,float64(%s))",
++			traceExpr, strconv.Quote("arg:"+strconv.Itoa(parameter.index)), parameter.name))
++	}
+ 	fmt.Fprintf(&out, "%s := %s.RecordNumericEval(%s,%s,[]%s.NumericRef{%s},float64(%s),%s.IncompleteEvidence(%s))\n%s",
+ 		evalName, traceExpr, sourceExpr, strconv.Quote("state_transition"), traceImportAlias,
+ 		strings.Join(refs, ","), afterName, traceImportAlias, strconv.Quote("state_transition_expression_dependency_incomplete"), indent)
+ 	fmt.Fprintf(&out, "_ = %s\n%s", evalName, indent)
+-	fmt.Fprintf(&out, "%s.RecordNumericStateWrite(%s,%s,float64(%s),float64(%s),%s.IncompleteEvidence(%s))\n%s",
++	fmt.Fprintf(&out, "%s.RecordNumericStateWriteWithInputs(%s,%s,float64(%s),float64(%s),[]%s.NumericRef{%s.EventRef(%s)},%s.IncompleteEvidence(%s))\n%s",
+ 		traceExpr, slotByField[selector.Sel.Name], sourceExpr, valueByField[selector.Sel.Name], afterName,
++		traceImportAlias, traceImportAlias, evalName,
+ 		traceImportAlias, strconv.Quote("state_write_candidate_dependency_incomplete"), indent)
+ 	return []textEdit{{
+ 		start: tokenFile.Offset(assignment.Pos()), end: tokenFile.Offset(assignment.End()), replacement: out.String(),
+ 	}}, nil
+ }
+ 
++type taskNumericParameter struct {
++	name  string
++	index int
++}
++
++func referencedTaskNumericParameters(expr ast.Expr, parameters map[string]int) []taskNumericParameter {
++	if expr == nil || len(parameters) == 0 {
++		return []taskNumericParameter{}
++	}
++	found := make(map[string]int)
++	ast.Inspect(expr, func(node ast.Node) bool {
++		ident, ok := node.(*ast.Ident)
++		if !ok {
++			return true
++		}
++		if index, exists := parameters[ident.Name]; exists {
++			found[ident.Name] = index
++		}
++		return true
++	})
++	result := make([]taskNumericParameter, 0, len(found))
++	for name, index := range found {
++		result = append(result, taskNumericParameter{name: name, index: index})
++	}
++	sort.Slice(result, func(i, j int) bool {
++		if result[i].index != result[j].index {
++			return result[i].index < result[j].index
++		}
++		return result[i].name < result[j].name
++	})
++	return result
++}
++
+ func modifierAmountEdits(
+ 	fset *token.FileSet,
+ 	tokenFile *token.File,
+diff --git a/pkg/gttsourcegen/v6_test.go b/pkg/gttsourcegen/v6_test.go
+index 8baf536..c18fa5f 100644
+--- a/pkg/gttsourcegen/v6_test.go
++++ b/pkg/gttsourcegen/v6_test.go
+@@ -440,14 +440,15 @@ func TestV6OrdinaryHelperResolutionAndOverlayAreStructural(t *testing.T) {
+ 		"hooks.go": `package fixture
+ func (u *unit) install() {
+ 	u.Core.Events.Subscribe(event.OnValue, func(args ...any) {
+-		delta := args[0].(float64)
++		amount := args[0].(float64)
++		delta := amount / u.MaxHP() * 100
+ 		u.forward(delta)
+ 	}, "fixture-hook")
+ }
+ `,
+ 		"flow.go": `package fixture
+ func (u *unit) apply(delta float64) func() {
+-	return func() { u.level = min(u.limit, u.level + delta) }
++	return func() { delta *= 2; u.level = min(u.limit, u.level + delta) }
+ }
+ func (u *unit) forward(delta float64) {
+ 	var wait int
+@@ -476,6 +477,10 @@ func (u *unit) forward(delta float64) {
+ 	for _, marker := range [][]byte{
+ 		[]byte("EnterHelperNumericArguments"),
+ 		[]byte("CurrentHelperNumericRef"),
++		[]byte("CurrentHealthChangePercentRefs"),
++		[]byte("CurrentTaskNumericRef"),
++		[]byte("UpdateTaskNumericArgument"),
++		[]byte("RecordNumericStateWriteWithInputs"),
+ 		[]byte("RecordGuard"),
+ 	} {
+ 		if !bytes.Contains(combined, marker) {
+@@ -719,5 +724,9 @@ func TestV6RealStateChainOverlayParsesAndBridgesHelper(t *testing.T) {
+ 	for _, marker := range [][]byte{
+ 		[]byte("EnterHelperNumericArguments"),
+ 		[]byte("CurrentHelperNumericRef"),
++		[]byte("CurrentHealthChangePercentRefs"),
++		[]byte("CurrentTaskNumericRef"),
++		[]byte("UpdateTaskNumericArgument"),
++		[]byte("RecordNumericStateWriteWithInputs"),
+ 		[]byte("RecordGuard"),
+ 		[]byte("AddSourceNumericPayloads"),

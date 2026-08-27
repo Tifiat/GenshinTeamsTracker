@@ -1,0 +1,450 @@
+{
+  "schema_version": 2,
+  "contract": "gcsim_optimizer_trace_equation_cleanup_manifest_v1",
+  "status": "support_replay_complete_continuous_target_quality_gate_current",
+  "generated_on": "2026-08-27",
+  "authoritative_handoff": "docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md",
+  "policy": {
+    "single_production_backend": true,
+    "legacy_fallback_allowed": false,
+    "user_authorized_removal_of_unneeded_files": true,
+    "old_handoffs_archived": false,
+    "machine_data_receipts_preserved": true,
+    "automatic_future_runtime_deletion": false,
+    "future_runtime_deletion_requires": [
+      "replacement_owns_every_required_product_scope",
+      "fresh_production_import_and_call_graph_scan",
+      "fresh_test_fixture_and_tool_reference_scan",
+      "clean_cache_construction_and_focused_test_pass",
+      "user_facing_cutover_condition_satisfied"
+    ]
+  },
+  "active_contracts": [
+    {
+      "path": "docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md",
+      "role": "sole_authoritative_optimizer_contract"
+    },
+    {
+      "path": "CODEX.md",
+      "role": "repository_rules_and_cutover_boundary"
+    },
+    {
+      "path": "TODO.md",
+      "role": "compact_current_work_status"
+    },
+    {
+      "path": "docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md",
+      "role": "engine_lifecycle_patch_update_and_source_manifest_contract"
+    }
+  ],
+  "completed_checkpoints": {
+    "ordinary_transformative_reaction_v3": {
+      "status": "pass_for_current_rotation_numeric_construction",
+      "typed_hits": 81,
+      "generic_frozen_spawned_reaction_hits": 0,
+      "broad_topology_and_rgc_widening": "deferred_separate_gate"
+    },
+    "source_identity_v4": {
+      "status": "pass_without_replay_prune_search_or_publish_authority",
+      "patch": {
+        "path": "run_workspace/gcsim/patch_stack/0012-gtt-source-identity-dependency-v1.patch",
+        "sha256": "10f6aed188885501e6d54a7af2f9d10c6c2e9d07f1cd4b1591c5fe5af4a3f136",
+        "size_bytes": 172145,
+        "files_changed": 30,
+        "insertions": 3789,
+        "deletions": 175
+      },
+      "production_source_passport": {
+        "upstream_ref": "v2.42.2",
+        "ordered_patch_range": "0001-0012",
+        "sequential_apply": "pass",
+        "reviewed_tree_byte_parity": "4293/4293",
+        "patch_stack_sha256": "8f08cbdef489a6557eefa71834b2545da6e89fcb1494a26a9a1792dac888f954",
+        "pristine_source_tree_sha256": "8728aca62ae04c3253b5e6e19bdb5220ff7a4c12675b24d48de3222c73fb62a6",
+        "patched_source_tree_sha256": "654fb9753ea69256b9ae79a7914c53a0b82ef958e58e31d6461ebc2a1f506718",
+        "semantic_manifest_body_sha256": "8656d446d61304385c86051c0b723034cfcbe043d8e374001e9fe6b1c2f0e261",
+        "semantic_manifest_body_size_bytes": 1775808,
+        "deterministic_binary_sha256": "4e3e0702c2b9557795103fa784479f036f0139587dd38ffc67e349310ed33f05",
+        "executable_binding_owner": "external_engine_manifest"
+      },
+      "source_index": {
+        "overlay_files": 18,
+        "entries": 3114,
+        "supported": 31,
+        "opaque_frozen": 3083,
+        "count_correction": "direct canonical v4 recount; v5 locator/status parity proves no v5 regression"
+      },
+      "real_runtime_control": {
+        "iterations": 1,
+        "hits": 386,
+        "typed_reaction_hits": 81,
+        "frames": 7008,
+        "source_occurrences": 9741,
+        "numeric_bindings": 4,
+        "trace_size_bytes": 11225480,
+        "engine_seconds_approx": 0.722,
+        "strict_decode_seconds_approx": 3.95,
+        "v3_gameplay_terminal_reaction_parity": "exact",
+        "supported_direct_hp_roots": [
+          "furina.skillOusia",
+          "furina.burst"
+        ],
+        "furina_dynamic_burst_modifier": {
+          "occurrences": 305,
+          "status": "opaque_frozen_unbound_pending_fanfare_chain"
+        }
+      },
+      "tests": {
+        "focused_go_packages": 10,
+        "python_integration_and_patch": "47/47",
+        "python_trace": "42/42"
+      },
+      "synthetic_cross_language_smoke_only": {
+        "manifest_body_size_bytes": 1774113,
+        "manifest_body_sha256": "3101329b13280508cfe76feda58f93ace860cbab8d5d51949b6ec2011496d486",
+        "patched_source_tree_sha256": "a38eba55c8dcf1a42a36bf6684aa0cadffd368d333f2aaf45dda686336faabb4",
+        "patches": [],
+        "upstream_ref": "accepted-0011",
+        "pristine_source_tree_identity": "synthetic_all_a_hash",
+        "production_passport": false
+      }
+    },
+    "health_operation_v5": {
+      "status": "pass_without_state_replay_prune_search_or_publish_authority",
+      "patch": {
+        "path": "run_workspace/gcsim/patch_stack/0013-gtt-health-operation-v1.patch",
+        "sha256": "6456dde215a76bcf4d810b7e837add0b57926023926e383b607d66e7eea288b2",
+        "size_bytes": 57658,
+        "files_changed": 17,
+        "insertions": 991,
+        "deletions": 18
+      },
+      "production_source_passport": {
+        "upstream_ref": "v2.42.2",
+        "ordered_patch_range": "0001-0013",
+        "sequential_apply": "pass_twice_via_official_updater_in_isolated_store",
+        "reviewed_tree_file_domain": "4297/4297 source files excluding build-generated pkg/gttsource/generated_manifest.go, build outputs, engine manifests, and .git; normalized line-ending code parity",
+        "patch_stack_sha256": "d303818926dffac9e86f7a9c99a6a80575c04545cb94a7fe8f5b0e6135db6c75",
+        "pristine_source_tree_sha256": "8728aca62ae04c3253b5e6e19bdb5220ff7a4c12675b24d48de3222c73fb62a6",
+        "patched_source_tree_sha256": "94d505f9287637af4f510d7daeae3b6be6bff80dac3a65675e7196625275d02a",
+        "semantic_manifest_body_sha256": "4f2540d40216295c5a7ddc81ed3f687c3cbea80604741c17426091bc87f2f58c",
+        "semantic_manifest_body_size_bytes": 1775930,
+        "deterministic_binary_sha256": "456791282a5dcfbfd23dbb7107a729ed94ae6ae074cac47e30e3130a4074712a",
+        "product_active_engine_switched": false
+      },
+      "real_runtime_control": {
+        "iterations": 1,
+        "hits": 386,
+        "typed_reaction_hits": 81,
+        "frames": 7008,
+        "source_occurrences": 9741,
+        "numeric_bindings": 4,
+        "trace_size_bytes": 11482743,
+        "engine_seconds_approx": 0.701,
+        "health_operations": 188,
+        "drain_operations": 160,
+        "heal_operations": 28,
+        "heal_bonus_contributions": 28,
+        "heal_bonus_source": "internal/characters/furina/burst.go|(*char).burstInit|modifier_amount|1",
+        "observed_heal_bonus_values": [
+          0,
+          0.36140000000000017,
+          0.4
+        ],
+        "strict_external_manifest_decode": "pass",
+        "exact_replay_eligible": false,
+        "hard_prune_allowed": false,
+        "publishable": false
+      },
+      "tests": {
+        "focused_go_package_targets": 10,
+        "python_trace": "48/48",
+        "python_source_manifest": "10/10"
+      }
+    }
+  },
+  "current_formula_contract": {
+    "intended_search_mode": "FAST",
+    "real_context_acceptance": "failed_single_seed_stochastic_topology",
+    "same_exact_artifacts_fast_vs_n1000_gcsim": "tested_failed",
+    "same_context_attempt_2026_08_26": {
+      "identity_binding": "pass",
+      "artifact_count": 20,
+      "globally_unique_artifact_ids": true,
+      "artifact_ids_by_actor": {
+        "chasca": [80, 77, 43, 88, 203],
+        "ororon": [76, 116, 241, 1477, 119],
+        "furina": [6, 7, 196, 9, 1319],
+        "bennett": [26, 177, 1433, 29, 30]
+      },
+      "artifact_database_input_sha256": "9fc3bbe1285ce88643064310dcecdcb569b583d8835ef40202a1132c6ca4ab32",
+      "equipment_rows_sha256": "df1fef75b020d151880c4cc2cdb95692dbb12bccb31311feaa13f52df1d5e852",
+      "snapshot_sha256": "c2d06048c64dbd0defbc19848d12e648eba638a71330444fae5d317d763f22a8",
+      "engine_artifact_sha256": "b1cac6e7b7cd2410ddc5a2c7694eedddb2167839d6d88b53903adb04f5a14d1e",
+      "engine_binding_sha256": "6df7180cf3dafa2060d93fa4e256c39d8cf90468ac1a9cf0a56c4c712dc3514b",
+      "fast_dps": 141306.04242269805,
+      "gcsim_n1000_mean_dps": 143738.2938669989,
+      "gcsim_n1000_se_dps": 66.00335294178885,
+      "relative_error_percent": 1.6921388023092885,
+      "allowed_relative_percent": 1.0,
+      "passed": false,
+      "same_trace_sampled_dps": 141157.91654057885,
+      "fast_vs_same_trace_relative_percent_approx": 0.105,
+      "adjacent_seed_sampled_dps": 143997.553839,
+      "seed_one_hits": 365,
+      "seed_two_hits": 389,
+      "seed_one_spawned_reaction_attacks": 68,
+      "seed_two_spawned_reaction_attacks": 90,
+      "diagnosis": "single_trace_models_one_random_hit_reaction_topology_not_expected_rotation"
+    },
+    "fanfare_candidate_dependency_replay": "generic_observed_domain_pass",
+    "supporting_mechanism_replay_contract": {
+      "status": "pass_for_observed_domain_without_product_prune_authority",
+      "generic_output_kinds": [
+        "damage",
+        "modifier",
+        "healing",
+        "drain",
+        "state",
+        "stack",
+        "threshold"
+      ],
+      "backward_terminal_kinds": [
+        "candidate_stat_leaf",
+        "fixed_action_leaf",
+        "proven_unused_branch",
+        "opaque_frozen_boundary"
+      ],
+      "forward_replay_required": true,
+      "multiple_providers_combined_in_ordered_ledger": true,
+      "force_support_cap": false,
+      "character_or_mechanic_name_switches_allowed": false,
+      "search_blocked_until_pass": false
+    },
+    "stochastic_topology_policy": {
+      "status": "deferred_until_before_full_selected_quality",
+      "development_input_label": "PROVISIONAL_SINGLE_SEED",
+      "provisional_product_or_prune_authority": false,
+      "unchanged_live_acceptance_rerun_required": true
+    },
+    "standard_role": "bounded_development_regression_control_only",
+    "detailed_scorer_role": "narrow_parity_fixture_only",
+    "fast_to_standard_product_pass": false,
+    "current_replacement_representation": "observed_incumbent_state_plus_candidate_minus_incumbent_artifact_delta",
+    "accepted_search_representation": "known_non_artifact_context_plus_absolute_artifact_variables_plus_known_derived_mechanics",
+    "incumbent_delta_future_role": "bounded_regression_oracle_only",
+    "explicit_artifact_variable_v1": {
+      "status": "pass_not_product_wired",
+      "path": "run_workspace/gcsim/trace_equation/artifact_variable_objective.py",
+      "scope": "absolute_raw_main_sub_stat_vectors_with_selected_set_package_frozen_as_discrete_lane",
+      "dedicated_tests": "8/8",
+      "engine_calls": 0
+    },
+    "continuous_target_v1": {
+      "status": "analytical_core_pass_real_context_audit_rejected",
+      "path": "run_workspace/gcsim/optimizer_trace_search/continuous_target.py",
+      "rules_path": "run_workspace/gcsim/artifact_investment_rules.py",
+      "focused_tests": "8/8",
+      "rejected_audit_reason": "saved_trace_dev_stat_block_does_not_match_current_sqlite_artifact_vector",
+      "rejected_audit_symptom": "negative_non_artifact_em_and_negative_candidate_reaction_damage",
+      "engine_calls": 0,
+      "prune_authority": false,
+      "next_quality_gate": "reaction_owner_and_provisional_reduced_domain_parity"
+    },
+    "fast_channel_count": 23,
+    "standard_group_count": 198,
+    "saved_trace_hit_count": 358,
+    "focused_trace_tests": "pass_live_n1000_opt_in",
+    "engine_calls_during_candidate_arithmetic": 0,
+    "complete_assignment_hardening": {
+      "candidate_stream_bounded_before_materialization": true,
+      "support_and_assignment_caches_attempt_bounded": true,
+      "artifact_id_lookup": "logarithmic",
+      "frozen_baseline_damage_share_exposed": true
+    },
+    "fast_response_signature": [
+      "actor",
+      "scaling_kind",
+      "amplifying",
+      "raw_attack_tag",
+      "raw_damage_type",
+      "candidate_response_coordinates"
+    ]
+  },
+  "current_next_block": {
+    "name": "provisional_continuous_target_quality_gate",
+    "must_include": [
+      "replaceable_optimizer_trace_search_package",
+      "bounded_continuous_target_without_prune_authority",
+      "reaction_owner_binding",
+      "exhaustive_reduced_domain_oracle",
+      "selected_fixed_set_legality",
+      "off_set_piece_choice",
+      "global_artifact_id_uniqueness",
+      "incumbent_retention",
+      "provisional_fast_ranking_without_standard_product_pass"
+    ],
+    "deferred_mandatory_pre_quality_gate": [
+      "generic_cross_seed_topology_detection",
+      "compact_expected_channel_aggregation",
+      "variance_and_coverage_evidence",
+      "topology_stable_single_trace_fast_path",
+      "unchanged_same_context_live_acceptance_rerun"
+    ],
+    "strategy_isolation": {
+      "planned_package_root": "run_workspace/gcsim/optimizer_trace_search",
+      "initial_strategy_id": "continuous_target_v1",
+      "product_import_allowed_before_acceptance": false,
+      "engine_calls_allowed_during_acceptance": 0,
+      "alternate_strategies_must_be_independently_removable": true
+    },
+    "must_stop_before": [
+      "all_sets_candidate_semantics",
+      "theory_candidate_domain",
+      "full_selected_quality_acceptance_before_stochastic_gate",
+      "optimizer_ui_cutover",
+      "active_engine_switch"
+    ]
+  },
+  "source_dependency_policy": {
+    "character_or_set_name_rules_allowed": false,
+    "source_analysis_frequency": "once_per_bound_engine_build_then_cached",
+    "runtime_scope": "executed_trace_roots_only",
+    "unsupported_representation": "OPAQUE_FROZEN",
+    "unknown_value_may_prove_dominance": false,
+    "manifest_mismatch_policy": "fail_closed_without_legacy_optimizer_fallback"
+  },
+  "retained_runtime_primitives": [
+    {
+      "paths": [
+        "run_workspace/gcsim/optimizer_artifact_database.py",
+        "run_workspace/gcsim/optimizer_artifact_materializer.py",
+        "run_workspace/gcsim/optimizer_product_contracts.py",
+        "run_workspace/gcsim/optimizer_run_input.py",
+        "run_workspace/gcsim/optimizer_stat_constraints.py",
+        "run_workspace/gcsim/optimizer_stat_response.py"
+      ],
+      "role": "input_materialization_legality_and_transport_primitives",
+      "rule": "Adapt only through explicit trace-era contracts; no old orchestration callback."
+    }
+  ],
+  "deleted_now": {
+    "documents": [
+      "docs/handoff/GCSIM_OPTIMIZER_NEXT_CHAT_PROMPT.md",
+      "docs/handoff/GCSIM_OPTIMIZER_FAST_STAT_MAP_REDESIGN.md",
+      "docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md",
+      "docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md",
+      "docs/handoff/archive/gcsim_optimizer_pre_mvp_2026-08-13/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE_HISTORY.md",
+      "docs/handoff/archive/gcsim_optimizer_pre_mvp_2026-08-13/GCSIM_OPTIMIZER_TECHNICAL_HISTORY.md",
+      "docs/handoff/archive/gcsim_optimizer_pre_mvp_2026-08-13/TODO_OPTIMIZER_HISTORY.md",
+      "docs/handoff/archive/gcsim_optimizer_pre_mvp_2026-08-13/README.md"
+    ],
+    "old_selected_v2_package": [
+      "gcsim_optimizer_v2/__init__.py",
+      "gcsim_optimizer_v2/adapter.py",
+      "gcsim_optimizer_v2/batched_transport.py",
+      "gcsim_optimizer_v2/contracts.py",
+      "gcsim_optimizer_v2/evidence.py",
+      "gcsim_optimizer_v2/frontier.py",
+      "gcsim_optimizer_v2/gate3.py",
+      "gcsim_optimizer_v2/identity.py",
+      "gcsim_optimizer_v2/mitm.py",
+      "gcsim_optimizer_v2/physical_evidence.py",
+      "gcsim_optimizer_v2/pipeline.py",
+      "gcsim_optimizer_v2/stable_ports.py"
+    ],
+    "old_selected_v2_tests_and_tools": [
+      "tests/run_workspace/gcsim/test_gcsim_optimizer_selected_v2_gate01.py",
+      "tests/run_workspace/gcsim/test_gcsim_optimizer_selected_v2_gate2.py",
+      "tests/run_workspace/gcsim/test_gcsim_optimizer_selected_v2_gate3_preflight.py",
+      "tests/run_workspace/gcsim/test_gcsim_optimizer_selected_v2_gate3_real_context_preflight.py",
+      "tools/experiments/gcsim_optimizer_selected_v2_gate01.py",
+      "tools/experiments/gcsim_optimizer_selected_v2_gate2.py",
+      "tools/experiments/gcsim_optimizer_selected_v2_gate3_preflight.py",
+      "tools/experiments/gcsim_optimizer_selected_v2_gate3_real_context_preflight.py"
+    ],
+    "old_working_new_and_s_orchestration": [
+      "run_workspace/gcsim/optimizer_stat_map_first_m8_checkpoints.py",
+      "run_workspace/gcsim/optimizer_stat_map_first_m8_factory.py",
+      "run_workspace/gcsim/optimizer_stat_map_first_m8_product_service.py",
+      "run_workspace/gcsim/optimizer_stat_map_first_m8_session.py",
+      "run_workspace/gcsim/optimizer_selected_feedback_search.py",
+      "run_workspace/gcsim/optimizer_selected_production_contract.py",
+      "run_workspace/gcsim/optimizer_selected_real_gate.py",
+      "run_workspace/gcsim/optimizer_selected_runtime.py",
+      "run_workspace/gcsim/optimizer_selected_s0_s3.py",
+      "run_workspace/gcsim/optimizer_selected_s0_s7.py",
+      "run_workspace/gcsim/optimizer_selected_surface_provider.py",
+      "run_workspace/gcsim/optimizer_selected_surface_rebuild.py"
+    ]
+  },
+  "rewritten_now": [
+    "docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md",
+    "docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST.json",
+    "docs/handoff/README.md",
+    "CODEX.md",
+    "TODO.md",
+    "docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md",
+    "docs/handoff/GCSIM.md"
+  ],
+  "observed_after_cleanup": {
+    "deleted_handoff_paths_present": 0,
+    "old_selected_v2_python_sources_present": 0,
+    "old_selected_v2_test_or_tool_files_present": 0,
+    "optimizer_stat_map_first_python_sources_present": 0,
+    "optimizer_selected_s_python_sources_present": 0
+  },
+  "retained_diagnostic_controls": [
+    {
+      "paths": [
+        "run_workspace/gcsim/optimizer_anytime_candidates.py",
+        "run_workspace/gcsim/optimizer_anytime_response.py",
+        "run_workspace/gcsim/optimizer_anytime_race.py",
+        "run_workspace/gcsim/optimizer_anytime_selected_service.py"
+      ],
+      "role": "current_selected_same_context_comparison_control",
+      "condition": "Retain until Selected, All and Theory cutover is accepted by the user."
+    }
+  ],
+  "machine_data_receipts": [
+    {
+      "path": "run_workspace/gcsim/manifests/gcsim_optimizer_selected_passed_chain_v1.json",
+      "role": "historical_structural_receipt_not_a_candidate_source"
+    },
+    {
+      "path": "debug/gcsim_optimizer_ui_runs/20260809T020239517138Z-29412-f949c297da30.json",
+      "role": "historical_physical_assignment_witness"
+    },
+    {
+      "path_glob": "debug/gcsim_optimizer_selected_s0_s7_real/**",
+      "role": "historical_loss_and_runtime_receipts"
+    },
+    {
+      "path_glob": "debug/gcsim_optimizer_benchmarks/**",
+      "role": "historical_baseline_and_recall_receipts_pending_compaction"
+    }
+  ],
+  "future_cleanup": [
+    {
+      "path_glob": "gcsim_optimizer_v2/__pycache__/**",
+      "role": "ignored_bytecode_left_after_source_removal",
+      "condition": "Rebuildable local cache; remove with ordinary cache cleanup."
+    },
+    {
+      "path_glob": "debug/gcsim_optimizer_benchmarks/**",
+      "role": "large_historical_traces",
+      "condition": "Compact only after exact launch/result/audit receipts and hashes are extracted."
+    },
+    {
+      "path_glob": "run_workspace/gcsim/optimizer_*.py",
+      "role": "remaining_mixed_stable_current_all_theory_and_experimental_runtime",
+      "condition": "Classify by fresh call-graph and scope migration; never bulk-delete from this glob."
+    }
+  ],
+  "forbidden_as_production_inputs": [
+    "historical_accepted_artifact_ids",
+    "archived_winners",
+    "debug_manifests",
+    "old_m_s_current_new_search_callbacks"
+  ]
+}

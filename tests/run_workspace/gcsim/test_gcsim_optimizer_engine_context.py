@@ -7,6 +7,7 @@ import tempfile
 import unittest
 
 from run_workspace.gcsim.engine_store import (
+    MANIFEST_FILE_NAME,
     GcsimEngineInstallation,
     GcsimEngineManifest,
 )
@@ -14,9 +15,42 @@ from run_workspace.gcsim.optimizer_engine_context import (
     GcsimOptimizerEngineContextError,
     build_gcsim_optimizer_engine_context,
 )
+from run_workspace.gcsim.tree_identity import directory_sha256
 
 
 class GcsimOptimizerEngineContextTest(unittest.TestCase):
+    def test_resealed_context_uses_store_tree_identity_on_windows(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_engine_fixture(root)
+            (root / "B.go").write_bytes(b"upper")
+            (root / "a.go").write_bytes(b"lower")
+            (root / MANIFEST_FILE_NAME).write_text("ignored", encoding="utf-8")
+
+            manifest = _manifest(root)
+            diagnostic = build_gcsim_optimizer_engine_context(
+                GcsimEngineInstallation("engine", root, manifest),
+                require_resealed=False,
+            )
+            sealed_manifest = replace(
+                manifest,
+                engine_tree_hash=directory_sha256(
+                    root,
+                    excluded_relative_paths=(MANIFEST_FILE_NAME,),
+                ),
+                metadata={
+                    **dict(manifest.metadata),
+                    "artifact_sha256": diagnostic.artifact_sha256,
+                },
+            )
+
+            context = build_gcsim_optimizer_engine_context(
+                GcsimEngineInstallation("engine", root, sealed_manifest)
+            )
+
+            self.assertTrue(context.trusted)
+            self.assertEqual(context.issues, ())
+
     def test_resealed_context_binds_tree_catalog_and_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

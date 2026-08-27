@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "contract": "gcsim_optimizer_contextual_frontier_m6_exact_inputs_v1",
+  "inputs": {
+    "input_freeze": {
+      "path": "debug/gcsim_optimizer_contextual_physical_frontier/20260811T095944-contextual-frontier-input-freeze-cc71013ee163.json",
+      "raw_file_sha256": "c12aeacc6b014723559af3c1857f64d4957366e5173dbbb50d4523171d0099b0",
+      "canonical_payload_sha256": "cc71013ee16393c13b4ff06a7bf533a10a610482211f60e485fa0ae2f6216276"
+    },
+    "frontier_freeze": {
+      "path": "debug/gcsim_optimizer_contextual_physical_frontier/20260811T100433-contextual-frontier-natural-freeze-a3da590eb50d.json",
+      "raw_file_sha256": "f6840eeaf31720aafe4f4b9f3c9551b4ea773d836e09c1bf07964f02b517a1a2",
+      "canonical_payload_sha256": "a3da590eb50dc52d6d5cb6cc0a8992b3f020bd21946bc4533dfe14b396ea892f"
+    },
+    "forensic": {
+      "path": "debug/gcsim_optimizer_contextual_physical_frontier/20260811T100830-m6-physical-loss-contextual-frontier-forensic-2dc3613adb87.json",
+      "raw_file_sha256": "da9ac34c21e7c7cba6592ee599435d1c77d3003503d47616518ce0e0cd0de777",
+      "canonical_payload_sha256": "2dc3613adb87ffa3b1baecea5de0daa150d66d9c56041299008aa33aa56880d8"
+    },
+    "prior_natural_freeze": {
+      "path": "debug/gcsim_optimizer_m6_composite_selected/20260811T094001-m6-composite-natural-freeze-159e9383690b.json",
+      "raw_file_sha256": "81f4c097ecf64f52c7e1b889212b30357340493117dff4f391c8b8982d13198c",
+      "canonical_payload_sha256": "159e9383690b36d1226fb1ae201237423e3d1ed7ae6626ae5979e4f682b46ce6"
+    },
+    "old_final_m6": {
+      "path": "debug/gcsim_optimizer_m6_composite_selected/20260811T094005-m6-bca7db7314db.json",
+      "raw_file_sha256": "fedcae7c79d0d1701a1932deadaafa55e53367d478ca727adbdf62a817080bb8",
+      "canonical_payload_sha256": "bca7db7314db15db6a81ddd9c934a6ea2d4dedb7bff6aa642a619eeda189d07b"
+    },
+    "signed_bundle": {
+      "path": "debug/gcsim_optimizer_physical_calibration/composite-eight-anchor-replay-v2-256522578000-3568baf99b3c.json",
+      "raw_file_sha256": "681c302e40605ac99dd0bf3ef09c162096c02f08b4db753b120db11092dd6881",
+      "canonical_payload_sha256": "bfdbef0f4a60f5bea188365c8147a819f60ca16534f4a33d60c7d7752a03c623"
+    },
+    "set_stat_reliability": {
+      "path": "debug/gcsim_optimizer_physical_calibration/composite-set-stat-reliability-2c5cc6255ea8.json",
+      "raw_file_sha256": "90f3e58318cff2aa1e079edbf50c83e1c2453427b6afd031e3f4de195690d563",
+      "canonical_payload_sha256": "6d336006ce60cd6195f8a1ecf9f894eae56e2c7844c2eb84d6ed2a2476e16b45"
+    },
+    "accepted_control_manifest": {
+      "path": "run_workspace/gcsim/manifests/gcsim_optimizer_m6_accepted_control_v2.json",
+      "raw_file_sha256": "e62fd43270fc8f8340645e58a023cc6142f772097af10eb4da24a4fc8df5e6bd",
+      "canonical_payload_sha256": null
+    }
+  },
+  "master_seed": 2026081106,
+  "maximum_n32_survivors": 32,
+  "canonical_payload_sha256": "d09ebf798774d818085662368531ea67e9c1e02c8424ebdcc9e265eef5115de8"
+}

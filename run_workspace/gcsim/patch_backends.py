@@ -8,6 +8,7 @@ inject a fake runner, so tests do not depend on a real git executable.
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 import json
 import os
@@ -283,13 +284,44 @@ def _base_metadata(
 
 
 def _patch_file_metadata(patch_stack_dir: Path, patch_files: Sequence[Path]) -> dict[str, str]:
-    relative_files = [
-        path.relative_to(patch_stack_dir).as_posix()
-        for path in patch_files
-    ]
+    rows, stack_sha256 = ordered_file_stack_identity(
+        patch_stack_dir,
+        patch_files,
+    )
+    relative_files = [row["path"] for row in rows]
+    file_hashes = {row["path"]: row["sha256"] for row in rows}
     return {
         "patch_files": json.dumps(relative_files, ensure_ascii=False),
+        "patch_file_sha256": json.dumps(
+            file_hashes,
+            ensure_ascii=True,
+            sort_keys=True,
+            separators=(",", ":"),
+        ),
+        "patch_stack_sha256": stack_sha256,
     }
+
+
+def ordered_file_stack_identity(
+    root: str | Path,
+    files: Sequence[str | Path],
+) -> tuple[tuple[dict[str, str], ...], str]:
+    """Return a byte-bound identity without changing application order."""
+
+    root = Path(root)
+    rows: list[dict[str, str]] = []
+    for raw_path in files:
+        path = Path(raw_path)
+        relative = path.relative_to(root).as_posix()
+        file_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+        rows.append({"path": relative, "sha256": file_sha256})
+    canonical = json.dumps(
+        {"schema_version": 1, "patches": rows},
+        ensure_ascii=True,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return tuple(rows), hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _command_result_metadata(

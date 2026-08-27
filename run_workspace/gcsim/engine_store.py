@@ -23,6 +23,8 @@ import re
 import shutil
 from typing import Callable, Mapping, Protocol
 
+from .tree_identity import directory_sha256
+
 
 GCSIM_ENGINE_MANIFEST_SCHEMA_VERSION = 1
 GCSIM_ENGINE_STATE_SCHEMA_VERSION = 1
@@ -508,14 +510,7 @@ def _write_json_atomic(path: Path, payload: Mapping) -> None:
 
 
 def _directory_sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    for item in sorted(p for p in path.rglob("*") if p.is_file()):
-        relative = item.relative_to(path).as_posix()
-        digest.update(relative.encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(item.read_bytes())
-        digest.update(b"\0")
-    return digest.hexdigest()
+    return directory_sha256(path)
 
 
 def _directory_size(path: Path) -> int:

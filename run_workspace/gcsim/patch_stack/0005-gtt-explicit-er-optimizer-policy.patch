@@ -1,0 +1,67 @@
+diff --git a/cmd/gcsim/main.go b/cmd/gcsim/main.go
+index 8fb4994..604b375 100644
+--- a/cmd/gcsim/main.go
++++ b/cmd/gcsim/main.go
+@@ -79,6 +79,7 @@ func mainImpl() error {
+ - total_liquid_substats (default = 20): Total liquid substats available to be assigned across all substats
+ - indiv_liquid_cap (default = 10): Total liquid substats that can be assigned to a single substat
+ - fixed_substats_count (default = 2): Amount of fixed substats that are assigned to all substats
++- optimize_er (default = 1): Set to 0 to disable automatic ER allocation and ER-vs-damage fine tuning.
+ - fine_tune (default = 1): Set to 0 to disable fine tune step of substat optimizer.
+ - show_substat_scalars (default = 1): Set to 0 to disable formatting substats by their scalars in the resulting config.`)
+ 	flag.StringVar(&opt.cpuprofile, "cpuprofile", "", `write cpu profile to a file. supply file path (otherwise empty string for disabled). 
+diff --git a/pkg/optimization/substatoptimizer.go b/pkg/optimization/substatoptimizer.go
+index 0ab384a..ed9b855 100644
+--- a/pkg/optimization/substatoptimizer.go
++++ b/pkg/optimization/substatoptimizer.go
+@@ -22,6 +22,7 @@ func RunSubstatOptim(simopt simulator.Options, verbose bool, additionalOptions s
+ 		"total_liquid_substats": 20,
+ 		"indiv_liquid_cap":      10,
+ 		"fixed_substats_count":  2,
++		"optimize_er":           1,
+ 		"verbose":               0,
+ 		"fine_tune":             1,
+ 		"show_substat_scalars":  1,
+diff --git a/pkg/optimization/substats.go b/pkg/optimization/substats.go
+index 77a878d..4d4d2ce 100644
+--- a/pkg/optimization/substats.go
++++ b/pkg/optimization/substats.go
+@@ -57,15 +57,22 @@ func (o *SubstatOptimizer) Run(file *ast.File, cfg string, simopt simulator.Optio
+ 	o.details.setStatLimits()
+ 
+ 	o.details.setInitialSubstats(o.details.fixedSubstatCount)
+-	o.logger.Info("Starting ER Optimization...")
+-
+-	for i := range o.details.charProfilesERBaseline {
+-		o.details.charProfilesCopy[i] = o.details.charProfilesERBaseline[i].Clone()
++	if o.optionsMap["optimize_er"] > 0 {
++		o.logger.Info("Starting ER Optimization...")
++		for i := range o.details.charProfilesERBaseline {
++			o.details.charProfilesCopy[i] = o.details.charProfilesERBaseline[i].Clone()
++		}
++		o.details.optimizeERSubstats()
++	} else {
++		o.logger.Info("Automatic ER optimization disabled by explicit policy.")
++		for i := range o.details.charProfilesInitial {
++			o.details.charProfilesCopy[i] = o.details.charProfilesInitial[i].Clone()
++			o.details.charSubstatFinal[i][attributes.ER] = 0
++			o.details.charMaxExtraERSubs[i] = 0
++			o.details.charWithFavonius[i] = false
++		}
+ 	}
+ 
+-	// TODO: Maybe add a configuration to only calculate ER?
+-	o.details.optimizeERSubstats()
+-
+ 	o.logger.Info("Calculating optimal DMG substat distribution...")
+ 	debugLogs := o.details.optimizeNonERSubstats()
+ 	for _, debugLog := range debugLogs {
+@@ -72,7 +79,7 @@ func (o *SubstatOptimizer) Run(file *ast.File, cfg string, simopt simulator.Optio
+ 		o.logger.Info(debugLog)
+ 	}
+ 
+-	for i := 0.0; i < o.optionsMap["fine_tune"]; i++ {
++	for i := 0.0; o.optionsMap["optimize_er"] > 0 && i < o.optionsMap["fine_tune"]; i++ {
+ 		o.logger.Info("Fine tuning optimal ER vs DMG substat distribution...")
+ 		debugLogs = o.details.optimizeERAndDMGSubstats()
+ 		for _, debugLog := range debugLogs {

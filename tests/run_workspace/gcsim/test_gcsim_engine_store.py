@@ -12,6 +12,8 @@ from run_workspace.gcsim.engine_store import (
     MANIFEST_FILE_NAME,
     OverlayPatchBackend,
 )
+from run_workspace.gcsim.engine_update import _source_tree_sha256
+from run_workspace.gcsim.tree_identity import directory_sha256
 
 
 class FailingPatchBackend:
@@ -25,6 +27,27 @@ class FailingPatchBackend:
 
 
 class GcsimEngineStoreTest(unittest.TestCase):
+    def test_source_tree_identity_uses_one_case_sensitive_posix_order(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            source.mkdir()
+            (source / "B.go").write_bytes(b"upper")
+            (source / "a.go").write_bytes(b"lower")
+
+            expected = directory_sha256(source)
+            self.assertEqual(_source_tree_sha256(source), expected)
+
+            store = GcsimEngineStore(root / "store")
+            result = store.prepare_engine_update(
+                source_dir=source,
+                patch_stack_dir=None,
+                source_label="mixed-case-source",
+                engine_id="mixed-case-engine",
+            )
+            self.assertTrue(result.success)
+            self.assertEqual(result.manifest.source_tree_hash, expected)
+
     def test_successful_prepare_activates_new_engine(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

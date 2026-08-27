@@ -1,0 +1,1336 @@
+diff --git a/cmd/gtt-source-manifest/main_test.go b/cmd/gtt-source-manifest/main_test.go
+index d22f918e3632a2aa5e774e1697996d6b94119d49..3fe721bf60508d63aea0ff352b783375ccc34fc0 100644
+--- a/cmd/gtt-source-manifest/main_test.go
++++ b/cmd/gtt-source-manifest/main_test.go
+@@ -24,7 +24,7 @@ func f(c *char) { ai := info.AttackInfo{FlatDmg:c.MaxHP()}; c.Core.QueueAttack(a
+ 		UpstreamRepo: "https://example.test/repo.git", UpstreamRef: "abc",
+ 		PristineSourceTreeSHA256: strings.Repeat("a", 64),
+ 		Patches:                  []gttsourcegen.PatchIdentity{}, PatchStackSHA256: strings.Repeat("b", 64),
+-		TraceSchemaVersion: 4, TraceCapability: "gtt_trace_equation_v4",
++		TraceSchemaVersion: 5, TraceCapability: "gtt_trace_equation_v5",
+ 		FormulaIdentities: []gttsourcegen.FormulaIdentity{{ID: gttsourcegen.IRVersion, SHA256: gttsourcegen.IRSHA256}},
+ 		GoToolchain:       gttsourcegen.GoToolchain{Version: "go1.25.0", OS: "windows", Arch: "amd64"},
+ 		BuildFlags:        []string{"-trimpath"},
+diff --git a/internal/template/character/heal.go b/internal/template/character/heal.go
+index f8b39ba0edc7532e3f955520c42914baafba472a..d60a42471e5a8e2ca8747dfea9b003eed9095143 100644
+--- a/internal/template/character/heal.go
++++ b/internal/template/character/heal.go
+@@ -1,9 +1,13 @@
+ package character
+ 
+ import (
++	"math"
++
+ 	"github.com/genshinsim/gcsim/pkg/core/event"
+ 	"github.com/genshinsim/gcsim/pkg/core/glog"
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gttsource"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ )
+ 
+ func (c *Character) CalcHealAmount(hi *info.HealInfo) (float64, float64) {
+@@ -19,21 +23,56 @@ func (c *Character) CalcHealAmount(hi *info.HealInfo) (float64, float64) {
+ }
+ 
+ func (c *Character) Heal(hi *info.HealInfo) (float64, float64) {
+-	hp, bonus := c.CalcHealAmount(hi)
++	traceEnabled := c.Core.GTTTrace.Enabled()
++	operationSequence, operationID := -1, ""
++	provider := gtttrace.Provider{}
++	var parentOccurrenceID *string
++	if traceEnabled {
++		operationSequence, operationID = c.Core.GTTTrace.BeginHealthOperation()
++		provider = c.Core.GTTTrace.Current()
++		parentOccurrenceID = gttHealthOptionalString(c.Core.GTTTrace.CurrentOccurrenceID())
++	}
++
++	maxHPBefore := 0.0
++	var hp, bonus, healBonusTotal float64
++	modifierContributions := make([]gtttrace.HealthModifierContribution, 0)
++	if traceEnabled {
++		switch hi.Type {
++		case info.HealTypeAbsolute:
++			hp = hi.Src
++		case info.HealTypePercent:
++			maxHPBefore = c.MaxHP()
++			hp = maxHPBefore * hi.Src
++		}
++		healBonusTotal, modifierContributions = c.GTTHealBonus(operationID)
++		bonus = 1 + hi.Bonus + healBonusTotal
++	} else {
++		hp, bonus = c.CalcHealAmount(hi)
++	}
+ 
+ 	// save previous hp related values for logging
+ 	prevHPRatio := c.CurrentHPRatio()
+ 	prevHP := c.CurrentHP()
+ 	prevHPDebt := c.CurrentHPDebt()
++	if traceEnabled && maxHPBefore == 0 {
++		maxHPBefore = c.MaxHP()
++	}
+ 
+ 	// calc original heal amount
+ 	healAmt := hp * bonus
+ 
+ 	// change hp and hp debt
+ 	heal := c.CharWrapper.ReceiveHeal(hi, healAmt)
++	postReceiveMaxHP := c.MaxHP()
++	postReceiveHP, postReceiveHPRatio, postReceiveHPDebt := 0.0, 0.0, 0.0
++	if traceEnabled {
++		postReceiveHP = c.CurrentHP()
++		postReceiveHPRatio = c.CurrentHPRatio()
++		postReceiveHPDebt = c.CurrentHPDebt()
++	}
+ 
+ 	// calc overheal
+-	overheal := prevHP + heal - c.MaxHP()
++	overheal := prevHP + heal - postReceiveMaxHP
+ 	if overheal < 0 {
+ 		overheal = 0
+ 	}
+@@ -52,15 +91,91 @@ func (c *Character) Heal(hi *info.HealInfo) (float64, float64) {
+ 		Write("current_hp_debt", c.CurrentHPDebt()).
+ 		Write("max_hp", c.MaxHP())
+ 
++	if traceEnabled {
++		eventEffectiveAmount := math.Max(heal-overheal, 0)
++		uncertainty := []string{"health_input_candidate_dependency_unbound"}
++		uncertainty = append(uncertainty, gttHealthProviderUncertainty(provider)...)
++		for _, contribution := range modifierContributions {
++			if !gttsource.ValidID(contribution.SourceID) {
++				uncertainty = append(uncertainty, "heal_bonus_source_identity_missing")
++			}
++			if !contribution.Provider.Complete() {
++				uncertainty = append(uncertainty, "heal_bonus_provider_unattributed")
++			}
++			if !contribution.CandidateDependencyComplete {
++				uncertainty = append(uncertainty, "heal_bonus_candidate_dependency_incomplete")
++			}
++		}
++		if !gttHealthClose(maxHPBefore, postReceiveMaxHP) {
++			uncertainty = append(uncertainty, "max_hp_changed_during_health_operation")
++		}
++		hpDeltaMagnitude := math.Abs(postReceiveHP - prevHP)
++		if gttHealthClose(maxHPBefore, postReceiveMaxHP) &&
++			!gttHealthClose(eventEffectiveAmount, hpDeltaMagnitude) {
++			uncertainty = append(uncertainty, "health_effective_delta_unexplained")
++		}
++		healType := gttHealthHealType(hi.Type)
++		callerIndex := gttHealthOptionalIndex(hi.Caller)
++		baseAmount := hp
++		sourceBonus := hi.Bonus
++		healBonus := healBonusTotal
++		overhealAmount := overheal
++		c.Core.GTTTrace.CompleteHealthOperation(operationSequence, gtttrace.HealthOperation{
++			Kind: gtttrace.HealthOperationHeal, Frame: c.Core.F,
++			ParentOccurrenceID: parentOccurrenceID, Provider: provider,
++			CallerIndex: callerIndex, TargetIndex: c.Index(), HealType: &healType,
++			InputValue: hi.Src, AdjustedInputValue: hi.Src,
++			BaseAmount: &baseAmount, SourceBonus: &sourceBonus, HealBonusTotal: &healBonus,
++			RawAmount: healAmt, EventAmount: heal, EventEffectiveAmount: eventEffectiveAmount,
++			HPDeltaMagnitude: hpDeltaMagnitude, Overheal: &overhealAmount,
++			HPDebtBefore: prevHPDebt, HPDebtAfter: postReceiveHPDebt,
++			MaxHPBefore: maxHPBefore, MaxHPAfter: postReceiveMaxHP,
++			HPBefore: prevHP, HPAfter: postReceiveHP,
++			HPRatioBefore: prevHPRatio, HPRatioAfter: postReceiveHPRatio,
++			ModifierContributions:       modifierContributions,
++			CandidateDependencyComplete: false, UncertaintyCodes: uncertainty,
++		})
++	}
++
+ 	c.Core.Events.Emit(event.OnHeal, hi, c.Index(), heal, overheal, healAmt)
+ 
+ 	return heal, healAmt
+ }
+ 
+ func (c *Character) Drain(di *info.DrainInfo) float64 {
++	traceEnabled := c.Core.GTTTrace.Enabled()
++	operationSequence, operationID := di.GTTTraceOperationSequence, di.GTTTraceOperationID
++	if traceEnabled && operationID == "" {
++		operationSequence, operationID = c.Core.GTTTrace.BeginHealthOperation()
++	}
++	_ = operationID
++	provider := gtttrace.Provider{}
++	var parentOccurrenceID *string
++	if traceEnabled {
++		provider = c.Core.GTTTrace.Current()
++		parentOccurrenceID = gttHealthOptionalString(c.Core.GTTTrace.CurrentOccurrenceID())
++	}
+ 	prevHPRatio := c.CurrentHPRatio()
+ 	prevHP := c.CurrentHP()
++	prevHPDebt, maxHPBefore := 0.0, 0.0
++	if traceEnabled {
++		prevHPDebt = c.CurrentHPDebt()
++		maxHPBefore = c.MaxHP()
++	}
++	inputAmount := di.Amount
++	if di.GTTTraceInputAmountSet {
++		inputAmount = di.GTTTraceInputAmount
++	}
++	eventAmount := di.Amount
++	external := di.External
+ 	c.ModifyHPByAmount(-di.Amount)
++	postDrainMaxHP, postDrainHP, postDrainHPRatio, postDrainHPDebt := 0.0, 0.0, 0.0, 0.0
++	if traceEnabled {
++		postDrainMaxHP = c.MaxHP()
++		postDrainHP = c.CurrentHP()
++		postDrainHPRatio = c.CurrentHPRatio()
++		postDrainHPDebt = c.CurrentHPDebt()
++	}
+ 
+ 	c.Core.Log.NewEvent(di.Abil, glog.LogHurtEvent, di.ActorIndex).
+ 		Write("previous_hp_ratio", prevHPRatio).
+@@ -69,6 +184,34 @@ func (c *Character) Drain(di *info.DrainInfo) float64 {
+ 		Write("current_hp_ratio", c.CurrentHPRatio()).
+ 		Write("current_hp", c.CurrentHP()).
+ 		Write("max_hp", c.MaxHP())
++	if traceEnabled {
++		uncertainty := []string{"health_input_candidate_dependency_unbound"}
++		uncertainty = append(uncertainty, gttHealthProviderUncertainty(provider)...)
++		if !gttHealthClose(inputAmount, eventAmount) {
++			uncertainty = append(uncertainty, "drain_pre_hook_candidate_dependency_unbound")
++		}
++		if !gttHealthClose(maxHPBefore, postDrainMaxHP) {
++			uncertainty = append(uncertainty, "max_hp_changed_during_health_operation")
++		}
++		hpDeltaMagnitude := math.Abs(postDrainHP - prevHP)
++		if gttHealthClose(maxHPBefore, postDrainMaxHP) && !gttHealthClose(eventAmount, hpDeltaMagnitude) {
++			uncertainty = append(uncertainty, "health_effective_delta_unexplained")
++		}
++		c.Core.GTTTrace.CompleteHealthOperation(operationSequence, gtttrace.HealthOperation{
++			Kind: gtttrace.HealthOperationDrain, Frame: c.Core.F,
++			ParentOccurrenceID: parentOccurrenceID, Provider: provider,
++			TargetIndex: c.Index(), External: &external,
++			InputValue: inputAmount, AdjustedInputValue: eventAmount,
++			RawAmount: eventAmount, EventAmount: eventAmount, EventEffectiveAmount: eventAmount,
++			HPDeltaMagnitude: hpDeltaMagnitude,
++			HPDebtBefore:     prevHPDebt, HPDebtAfter: postDrainHPDebt,
++			MaxHPBefore: maxHPBefore, MaxHPAfter: postDrainMaxHP,
++			HPBefore: prevHP, HPAfter: postDrainHP,
++			HPRatioBefore: prevHPRatio, HPRatioAfter: postDrainHPRatio,
++			ModifierContributions:       []gtttrace.HealthModifierContribution{},
++			CandidateDependencyComplete: false, UncertaintyCodes: uncertainty,
++		})
++	}
+ 	c.Core.Events.Emit(event.OnPlayerHPDrain, di)
+ 	return di.Amount
+ }
+@@ -90,3 +233,45 @@ func (c *Character) ReceiveHeal(hi *info.HealInfo, healAmt float64) float64 {
+ 
+ 	return heal
+ }
++
++func gttHealthHealType(value info.HealType) string {
++	switch value {
++	case info.HealTypeAbsolute:
++		return gtttrace.HealthHealTypeAbsolute
++	case info.HealTypePercent:
++		return gtttrace.HealthHealTypePercent
++	default:
++		return "invalid"
++	}
++}
++
++func gttHealthOptionalIndex(value int) *int {
++	if value < 0 {
++		return nil
++	}
++	cloned := value
++	return &cloned
++}
++
++func gttHealthOptionalString(value string) *string {
++	if value == "" {
++		return nil
++	}
++	cloned := value
++	return &cloned
++}
++
++func gttHealthProviderUncertainty(provider gtttrace.Provider) []string {
++	if provider.Complete() {
++		return nil
++	}
++	return []string{"health_provider_unattributed"}
++}
++
++func gttHealthClose(left, right float64) bool {
++	if math.IsNaN(left) || math.IsNaN(right) || math.IsInf(left, 0) || math.IsInf(right, 0) {
++		return false
++	}
++	scale := math.Max(1, math.Max(math.Abs(left), math.Abs(right)))
++	return math.Abs(left-right) <= 1e-10*scale
++}
+diff --git a/internal/template/character/heal_gtt_test.go b/internal/template/character/heal_gtt_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..57c4b09035c196cb4fc5ea8879fe9d137c940d6d
+--- /dev/null
++++ b/internal/template/character/heal_gtt_test.go
+@@ -0,0 +1,139 @@
++package character
++
++import (
++	"reflect"
++	"testing"
++
++	"github.com/genshinsim/gcsim/pkg/core"
++	"github.com/genshinsim/gcsim/pkg/core/attributes"
++	"github.com/genshinsim/gcsim/pkg/core/event"
++	"github.com/genshinsim/gcsim/pkg/core/info"
++	playercharacter "github.com/genshinsim/gcsim/pkg/core/player/character"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++	"github.com/genshinsim/gcsim/pkg/modifier"
++)
++
++type healthTestResult struct {
++	currentHP         float64
++	hpDebt            float64
++	received          float64
++	raw               float64
++	rows              []gtttrace.HealthOperation
++	legacyTransitions int
++	legacyOccurrences int
++	legacyBindings    int
++}
++
++func newHealthTestCharacter(t *testing.T, traceEnabled bool) (*core.Core, *Character) {
++	t.Helper()
++	c, err := core.New(core.Opt{Seed: 1})
++	if err != nil {
++		t.Fatal(err)
++	}
++	stats := make([]float64, attributes.EndStatType)
++	stats[attributes.BaseHP] = 1000
++	wrapper, err := playercharacter.New(info.CharacterProfile{
++		Stats: stats, Talents: info.TalentProfile{Attack: 1, Skill: 1, Burst: 1},
++	}, &c.F, false, c.Log, c.Events, c.Tasks, c.GTTTrace)
++	if err != nil {
++		t.Fatal(err)
++	}
++	character := NewWithWrapper(c, wrapper)
++	wrapper.Character = character
++	c.Player.AddChar(wrapper)
++	character.SetHPByRatio(0.8)
++	character.ModifyHPDebtByAmount(50)
++	if traceEnabled {
++		c.GTTTrace.Enable()
++	}
++	return c, character
++}
++
++func runHealthTestHeal(t *testing.T, traceEnabled bool, healType info.HealType, src float64) healthTestResult {
++	t.Helper()
++	c, character := newHealthTestCharacter(t, traceEnabled)
++	provider := gtttrace.NewProvider("character", "fixture", 0, 0)
++	restore := c.GTTTrace.Enter(provider)
++	character.AddHealBonusMod(playercharacter.HealBonusMod{
++		Base: modifier.NewBase("fixture-heal-bonus", -1),
++		Amount: func() float64 {
++			return 0.2
++		},
++	})
++	received, raw := character.Heal(&info.HealInfo{
++		Caller: 0, Target: 0, Type: healType, Message: "fixture", Src: src, Bonus: 0.1,
++	})
++	restore()
++	return healthTestResult{
++		currentHP: character.CurrentHP(), hpDebt: character.CurrentHPDebt(),
++		received: received, raw: raw, rows: c.GTTTrace.HealthOperations(),
++		legacyTransitions: len(c.GTTTrace.ModifierTransitions()),
++		legacyOccurrences: len(c.GTTTrace.SourceOccurrences()),
++		legacyBindings:    len(c.GTTTrace.SourceValueBindings()),
++	}
++}
++
++func TestTraceHealthHealPreservesGameplayForAbsoluteAndPercent(t *testing.T) {
++	for _, test := range []struct {
++		name     string
++		healType info.HealType
++		src      float64
++	}{
++		{name: "absolute", healType: info.HealTypeAbsolute, src: 200},
++		{name: "percent", healType: info.HealTypePercent, src: 0.2},
++	} {
++		t.Run(test.name, func(t *testing.T) {
++			off := runHealthTestHeal(t, false, test.healType, test.src)
++			on := runHealthTestHeal(t, true, test.healType, test.src)
++			if off.currentHP != on.currentHP || off.hpDebt != on.hpDebt ||
++				off.received != on.received || off.raw != on.raw {
++				t.Fatalf("trace changed gameplay: off=%#v on=%#v", off, on)
++			}
++			if len(off.rows) != 0 || len(on.rows) != 1 {
++				t.Fatalf("health rows off=%d on=%d", len(off.rows), len(on.rows))
++			}
++			if on.legacyTransitions != 0 || on.legacyOccurrences != 0 || on.legacyBindings != 0 {
++				t.Fatalf("health trace changed inherited evidence: %#v", on)
++			}
++			row := on.rows[0]
++			if row.Kind != gtttrace.HealthOperationHeal || row.EventAmount != 210 ||
++				row.EventEffectiveAmount != 200 || row.HPDeltaMagnitude != 200 ||
++				row.Overheal == nil || *row.Overheal != 10 || row.HealBonusTotal == nil ||
++				*row.HealBonusTotal != 0.2 || row.SourceBonus == nil || *row.SourceBonus != 0.1 ||
++				len(row.ModifierContributions) != 1 || row.ModifierContributions[0].Value != 0.2 {
++				t.Fatalf("unexpected heal row: %#v", row)
++			}
++		})
++	}
++}
++
++func runHealthTestDrain(t *testing.T, traceEnabled bool) (float64, float64, []gtttrace.HealthOperation) {
++	t.Helper()
++	c, character := newHealthTestCharacter(t, traceEnabled)
++	character.SetHPByRatio(0.1)
++	c.Events.Subscribe(event.OnPlayerPreHPDrain, func(args ...any) {
++		args[0].(*info.DrainInfo).Amount *= 0.5
++	}, "gtt-trace-health-test-pre-drain")
++	provider := gtttrace.NewProvider("character", "fixture", 0, 0)
++	restore := c.GTTTrace.Enter(provider)
++	delivered := c.Player.Drain(info.DrainInfo{ActorIndex: 0, Abil: "fixture", Amount: 400})
++	restore()
++	return delivered, character.CurrentHP(), c.GTTTrace.HealthOperations()
++}
++
++func TestTraceHealthDrainPreservesGameplayAndSeparatesEventFromHPDelta(t *testing.T) {
++	offDelivered, offHP, offRows := runHealthTestDrain(t, false)
++	onDelivered, onHP, onRows := runHealthTestDrain(t, true)
++	if offDelivered != onDelivered || offHP != onHP || !reflect.DeepEqual(offRows, []gtttrace.HealthOperation{}) {
++		t.Fatalf("trace changed drain: off=%v/%v on=%v/%v", offDelivered, offHP, onDelivered, onHP)
++	}
++	if len(onRows) != 1 {
++		t.Fatalf("health rows = %d", len(onRows))
++	}
++	row := onRows[0]
++	if row.Kind != gtttrace.HealthOperationDrain || row.InputValue != 400 ||
++		row.AdjustedInputValue != 200 || row.EventAmount != 200 ||
++		row.EventEffectiveAmount != 200 || row.HPDeltaMagnitude != 100 || row.HPAfter != 0 {
++		t.Fatalf("unexpected drain row: %#v", row)
++	}
++}
+diff --git a/pkg/core/info/heal.go b/pkg/core/info/heal.go
+index e37f4314ec596e6a25aa489b39be70bace651361..743a2c7d0f68da56fcff2ef5dbcd9ef77d0ca09d 100644
+--- a/pkg/core/info/heal.go
++++ b/pkg/core/info/heal.go
+@@ -21,4 +21,11 @@ type DrainInfo struct {
+ 	Abil       string
+ 	Amount     float64
+ 	External   bool
++
++	// GTTTraceInputAmount preserves the pre-OnPlayerPreHPDrain request for the
++	// opt-in health ledger. The fields never participate in gameplay or JSON.
++	GTTTraceInputAmount       float64 `json:"-"`
++	GTTTraceInputAmountSet    bool    `json:"-"`
++	GTTTraceOperationSequence int     `json:"-"`
++	GTTTraceOperationID       string  `json:"-"`
+ }
+diff --git a/pkg/core/player/character/mods.go b/pkg/core/player/character/mods.go
+index b139fec6b9e465b8fa6881a1e1097725cd5e252e..6e2f6916e99f0641b5f3556634efa26bf5577d79 100644
+--- a/pkg/core/player/character/mods.go
++++ b/pkg/core/player/character/mods.go
+@@ -95,6 +95,11 @@ func (c *CharWrapper) AddDamageReductionMod(mod DamageReductionMod) {
+ }
+ 
+ func (c *CharWrapper) AddHealBonusMod(mod HealBonusMod) {
++	// Capture ownership/source identity for the additive health ledger without
++	// emitting a provider transition: v5 must preserve the inherited v4
++	// provider-transition collection byte-for-byte.
++	sourceID := c.gttModifierSourceID()
++	c.gttPrepareModifier("heal_bonus", &mod, sourceID)
+ 	mod.SetExpiry(*c.f)
+ 	overwrote, oldEvt := modifier.Add[modifier.Mod](&c.mods, &mod, *c.f)
+ 	modifier.LogAdd("heal bonus", c.Index(), &mod, c.log, overwrote, oldEvt)
+@@ -443,8 +448,22 @@ func (c *CharWrapper) DamageReduction(char int) float64 {
+ }
+ 
+ func (c *CharWrapper) HealBonus() float64 {
++	amount, _ := c.healBonusWithGTT("")
++	return amount
++}
++
++// GTTHealBonus evaluates the same accepted modifiers as HealBonus and adds a
++// health-local provenance row for each one. It deliberately does not create
++// v4 SourceOccurrence rows.
++func (c *CharWrapper) GTTHealBonus(operationID string) (float64, []gtttrace.HealthModifierContribution) {
++	return c.healBonusWithGTT(operationID)
++}
++
++func (c *CharWrapper) healBonusWithGTT(operationID string) (float64, []gtttrace.HealthModifierContribution) {
+ 	n := 0
+ 	amt := 0.0
++	contributions := make([]gtttrace.HealthModifierContribution, 0)
++	capture := c.gttTrace.Enabled() && operationID != ""
+ 	for _, v := range c.mods {
+ 		m, ok := v.(*HealBonusMod)
+ 		if !ok {
+@@ -454,14 +473,23 @@ func (c *CharWrapper) HealBonus() float64 {
+ 		}
+ 		if m.Expiry() > *c.f || m.Expiry() == -1 {
+ 			restore := c.gttTrace.EnterSource(m.GTTSource(), m.GTTSourceID())
+-			amt += m.Amount()
++			value := m.Amount()
+ 			restore()
++			amt += value
++			if capture {
++				ordinal := len(contributions)
++				contributions = append(contributions, gtttrace.HealthModifierContribution{
++					ContributionID: operationID + ":modifier:" + strconv.Itoa(ordinal),
++					ModifierKey:    m.Key(), SourceID: m.GTTSourceID(), Provider: m.GTTSource(),
++					Value: value, ExpiryFrame: m.Expiry(), CandidateDependencyComplete: false,
++				})
++			}
+ 			c.mods[n] = v
+ 			n++
+ 		}
+ 	}
+ 	c.mods = c.mods[:n]
+-	return amt
++	return amt, contributions
+ }
+ 
+ // TODO: consider merging this with just attack mods? reaction bonus should
+diff --git a/pkg/core/player/heal.go b/pkg/core/player/heal.go
+index 47a3027f612b3cde7112db86ffd09792fd9589df..e152338c1d22d2bbe545d45fb46be7324ff5cc9b 100644
+--- a/pkg/core/player/heal.go
++++ b/pkg/core/player/heal.go
+@@ -16,6 +16,9 @@ func (h *Handler) Heal(hi info.HealInfo) {
+ }
+ 
+ func (h *Handler) Drain(di info.DrainInfo) float64 {
++	di.GTTTraceInputAmount = di.Amount
++	di.GTTTraceInputAmountSet = true
++	di.GTTTraceOperationSequence, di.GTTTraceOperationID = h.GTTTrace.BeginHealthOperation()
+ 	h.Events.Emit(event.OnPlayerPreHPDrain, &di)
+ 	h.chars[di.ActorIndex].Drain(&di)
+ 	return di.Amount
+diff --git a/pkg/gtt/info.go b/pkg/gtt/info.go
+index 35daa4bb2471e1db492ac222dd42c24544e60451..04d31c96e033e616993aeab0f720eef83efd4ade 100644
+--- a/pkg/gtt/info.go
++++ b/pkg/gtt/info.go
+@@ -8,7 +8,7 @@ import (
+ )
+ 
+ const (
+-	PatchVersion                  = "gtt-source-identity-v1"
++	PatchVersion                  = "gtt-health-operation-v1"
+ 	StatResponseV2Capability      = "gtt_stat_response_v2"
+ 	SetResponseV1Capability       = "gtt_set_response_v1"
+ 	EffectObservationV1Capability = "gtt_effect_observation_v1"
+@@ -16,6 +16,7 @@ const (
+ 	TraceEquationV2Capability     = "gtt_trace_equation_v2"
+ 	TraceEquationV3Capability     = "gtt_trace_equation_v3"
+ 	TraceEquationV4Capability     = "gtt_trace_equation_v4"
++	TraceEquationV5Capability     = "gtt_trace_equation_v5"
+ 	SourceManifestV1Capability    = "gtt_source_manifest_v1"
+ 	TraceProvenanceV1Capability   = "gtt_trace_provenance_v1"
+ )
+@@ -35,7 +36,7 @@ func Info(upstreamVersion string) EngineInfo {
+ 	return EngineInfo{
+ 		GTTEngine:                true,
+ 		GTTPatchVersion:          PatchVersion,
+-		Capabilities:             []string{"gtt_engine_marker", WaveSchedulerPrototypeCapability, WaveScenarioPayloadCapability, StatResponseV2Capability, SetResponseV1Capability, EffectObservationV1Capability, TraceEquationV2Capability, TraceEquationV3Capability, TraceEquationV4Capability, SourceManifestV1Capability, TraceProvenanceV1Capability},
++		Capabilities:             []string{"gtt_engine_marker", WaveSchedulerPrototypeCapability, WaveScenarioPayloadCapability, StatResponseV2Capability, SetResponseV1Capability, EffectObservationV1Capability, TraceEquationV2Capability, TraceEquationV3Capability, TraceEquationV4Capability, TraceEquationV5Capability, SourceManifestV1Capability, TraceProvenanceV1Capability},
+ 		SequentialWaves:          true,
+ 		WaveSchedulerStage:       "scenario_payload_prototype",
+ 		UpstreamVersion:          upstreamVersion,
+diff --git a/pkg/gtt/info_test.go b/pkg/gtt/info_test.go
+index 9a7d3727190a6900a3626fa0904cec500190c9e1..96f46ed472c30b538ef3162ce7bdd8b20e34b81a 100644
+--- a/pkg/gtt/info_test.go
++++ b/pkg/gtt/info_test.go
+@@ -5,6 +5,17 @@ import (
+ 	"testing"
+ )
+ 
++func TestEngineInfoAdvertisesTraceV5Once(t *testing.T) {
++	capabilities := Info("fixture").Capabilities
++	counts := make(map[string]int)
++	for _, capability := range capabilities {
++		counts[capability]++
++	}
++	if counts[TraceEquationV4Capability] != 1 || counts[TraceEquationV5Capability] != 1 {
++		t.Fatalf("trace capabilities = %#v", capabilities)
++	}
++}
++
+ func TestEngineInfoUsesCanonicalSourceManifestCompilerKey(t *testing.T) {
+ 	payload, err := json.Marshal(EngineInfo{
+ 		SourceManifestBodySHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+diff --git a/pkg/gttsourcegen/generator_test.go b/pkg/gttsourcegen/generator_test.go
+index 95084d85ef00f0a40a31887fe06eef4f0c6c57d2..79d7a385fb07c9fcee1d89e3742dc7ca37aa2d11 100644
+--- a/pkg/gttsourcegen/generator_test.go
++++ b/pkg/gttsourcegen/generator_test.go
+@@ -392,12 +392,24 @@ func testBinding() BindingInput {
+ 	return BindingInput{
+ 		SchemaVersion: 1, Kind: BindingInputKind, UpstreamRepo: "https://example.test/upstream.git", UpstreamRef: "deadbeef",
+ 		PristineSourceTreeSHA256: strings.Repeat("a", 64), Patches: []PatchIdentity{{Path: "0001.patch", SHA256: strings.Repeat("b", 64)}},
+-		PatchStackSHA256: strings.Repeat("c", 64), TraceSchemaVersion: 4, TraceCapability: "gtt_trace_equation_v4",
++		PatchStackSHA256: strings.Repeat("c", 64), TraceSchemaVersion: 5, TraceCapability: "gtt_trace_equation_v5",
+ 		FormulaIdentities: []FormulaIdentity{{ID: IRVersion, SHA256: IRSHA256}},
+ 		GoToolchain:       GoToolchain{Version: "go1.25.0", OS: "windows", Arch: "amd64"}, BuildFlags: []string{"-trimpath"},
+ 	}
+ }
+ 
++func TestBindingRequiresTraceV5Pair(t *testing.T) {
++	binding := testBinding()
++	if err := binding.Validate(); err != nil {
++		t.Fatalf("v5 binding: %v", err)
++	}
++	binding.TraceSchemaVersion = 4
++	binding.TraceCapability = "gtt_trace_equation_v4"
++	if err := binding.Validate(); err == nil {
++		t.Fatal("v4 manifest binding must not validate for the v5 engine tree")
++	}
++}
++
+ func findEntry(t *testing.T, manifest Manifest, seam, symbol string) SourceEntry {
+ 	t.Helper()
+ 	for _, entry := range manifest.Entries {
+diff --git a/pkg/gttsourcegen/model.go b/pkg/gttsourcegen/model.go
+index 06635783c320347b7f362b160e537426254bf84a..429e2dec1d366cbd6445cab5cb77f29b4a390238 100644
+--- a/pkg/gttsourcegen/model.go
++++ b/pkg/gttsourcegen/model.go
+@@ -80,8 +80,8 @@ func (binding BindingInput) Validate() error {
+ 			return err
+ 		}
+ 	}
+-	if binding.TraceSchemaVersion != 4 || binding.TraceCapability != "gtt_trace_equation_v4" {
+-		return errors.New("binding input must select trace schema 4 and gtt_trace_equation_v4")
++	if binding.TraceSchemaVersion != 5 || binding.TraceCapability != "gtt_trace_equation_v5" {
++		return errors.New("binding input must select trace schema 5 and gtt_trace_equation_v5")
+ 	}
+ 	foundIR := false
+ 	for index, identity := range binding.FormulaIdentities {
+diff --git a/pkg/gtttrace/health.go b/pkg/gtttrace/health.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..91c84b8747a3add0b52dd47d97412d7df40fd130
+--- /dev/null
++++ b/pkg/gtttrace/health.go
+@@ -0,0 +1,174 @@
++package gtttrace
++
++import (
++	"sort"
++	"strconv"
++)
++
++const (
++	HealthOperationHeal  = "heal"
++	HealthOperationDrain = "drain"
++
++	HealthHealTypeAbsolute = "absolute"
++	HealthHealTypePercent  = "percent"
++)
++
++// HealthModifierContribution is a health-local evaluation receipt. Its
++// ContributionID is intentionally separate from the v4 SourceOccurrence
++// namespace so enabling the additive v5 ledger cannot change inherited v4
++// source rows.
++type HealthModifierContribution struct {
++	ContributionID              string   `json:"contribution_id"`
++	ModifierKey                 string   `json:"modifier_key"`
++	SourceID                    string   `json:"source_id"`
++	SourceOccurrenceID          *string  `json:"source_occurrence_id"`
++	Provider                    Provider `json:"provider"`
++	Value                       float64  `json:"value"`
++	ExpiryFrame                 int      `json:"expiry_frame"`
++	CandidateDependencyComplete bool     `json:"candidate_dependency_complete"`
++}
++
++// HealthOperation is the additive gtt_trace_equation_v5 receipt for a single
++// central heal or drain. Nullable fields use pointers so their JSON shape is
++// explicit and stable rather than being omitted.
++type HealthOperation struct {
++	SequenceIndex               int                          `json:"sequence_index"`
++	OperationID                 string                       `json:"operation_id"`
++	Kind                        string                       `json:"kind"`
++	Frame                       int                          `json:"frame"`
++	ParentOccurrenceID          *string                      `json:"parent_occurrence_id"`
++	Provider                    Provider                     `json:"provider"`
++	CallerIndex                 *int                         `json:"caller_index"`
++	TargetIndex                 int                          `json:"target_index"`
++	HealType                    *string                      `json:"heal_type"`
++	External                    *bool                        `json:"external"`
++	InputValue                  float64                      `json:"input_value"`
++	AdjustedInputValue          float64                      `json:"adjusted_input_value"`
++	BaseAmount                  *float64                     `json:"base_amount"`
++	SourceBonus                 *float64                     `json:"source_bonus"`
++	HealBonusTotal              *float64                     `json:"heal_bonus_total"`
++	RawAmount                   float64                      `json:"raw_amount"`
++	EventAmount                 float64                      `json:"event_amount"`
++	EventEffectiveAmount        float64                      `json:"event_effective_amount"`
++	HPDeltaMagnitude            float64                      `json:"hp_delta_magnitude"`
++	Overheal                    *float64                     `json:"overheal"`
++	HPDebtBefore                float64                      `json:"hp_debt_before"`
++	HPDebtAfter                 float64                      `json:"hp_debt_after"`
++	MaxHPBefore                 float64                      `json:"max_hp_before"`
++	MaxHPAfter                  float64                      `json:"max_hp_after"`
++	HPBefore                    float64                      `json:"hp_before"`
++	HPAfter                     float64                      `json:"hp_after"`
++	HPRatioBefore               float64                      `json:"hp_ratio_before"`
++	HPRatioAfter                float64                      `json:"hp_ratio_after"`
++	ModifierContributions       []HealthModifierContribution `json:"modifier_contributions"`
++	CandidateDependencyComplete bool                         `json:"candidate_dependency_complete"`
++	UncertaintyCodes            []string                     `json:"uncertainty_codes"`
++}
++
++// BeginHealthOperation reserves ordering before any modifier evaluation or
++// event callback can trigger a nested health operation.
++func (r *Runtime) BeginHealthOperation() (int, string) {
++	if !r.Enabled() {
++		return -1, ""
++	}
++	sequenceIndex := len(r.healthOperations)
++	operationID := "health-operation:" + strconv.Itoa(sequenceIndex)
++	r.healthOperations = append(r.healthOperations, HealthOperation{
++		SequenceIndex:         sequenceIndex,
++		OperationID:           operationID,
++		ModifierContributions: []HealthModifierContribution{},
++		UncertaintyCodes:      []string{},
++	})
++	return sequenceIndex, operationID
++}
++
++// CompleteHealthOperation fills a previously reserved row while preserving
++// the runtime-owned identity. Invalid handles fail closed and are rejected by
++// the output validator rather than mutating another row.
++func (r *Runtime) CompleteHealthOperation(sequenceIndex int, row HealthOperation) {
++	if !r.Enabled() || sequenceIndex < 0 || sequenceIndex >= len(r.healthOperations) {
++		return
++	}
++	reserved := r.healthOperations[sequenceIndex]
++	row.SequenceIndex = reserved.SequenceIndex
++	row.OperationID = reserved.OperationID
++	row.Provider = NormalizeProvider(row.Provider)
++	row.ParentOccurrenceID = cloneString(row.ParentOccurrenceID)
++	row.CallerIndex = cloneInt(row.CallerIndex)
++	row.HealType = cloneString(row.HealType)
++	row.External = cloneBool(row.External)
++	row.BaseAmount = cloneFloat(row.BaseAmount)
++	row.SourceBonus = cloneFloat(row.SourceBonus)
++	row.HealBonusTotal = cloneFloat(row.HealBonusTotal)
++	row.Overheal = cloneFloat(row.Overheal)
++	row.ModifierContributions = cloneHealthModifierContributions(row.ModifierContributions)
++	row.UncertaintyCodes = canonicalStrings(row.UncertaintyCodes)
++	r.healthOperations[sequenceIndex] = row
++}
++
++func (r *Runtime) HealthOperations() []HealthOperation {
++	if r == nil || len(r.healthOperations) == 0 {
++		return []HealthOperation{}
++	}
++	out := make([]HealthOperation, len(r.healthOperations))
++	for index, row := range r.healthOperations {
++		row.ParentOccurrenceID = cloneString(row.ParentOccurrenceID)
++		row.CallerIndex = cloneInt(row.CallerIndex)
++		row.HealType = cloneString(row.HealType)
++		row.External = cloneBool(row.External)
++		row.BaseAmount = cloneFloat(row.BaseAmount)
++		row.SourceBonus = cloneFloat(row.SourceBonus)
++		row.HealBonusTotal = cloneFloat(row.HealBonusTotal)
++		row.Overheal = cloneFloat(row.Overheal)
++		row.ModifierContributions = cloneHealthModifierContributions(row.ModifierContributions)
++		row.UncertaintyCodes = append([]string{}, row.UncertaintyCodes...)
++		out[index] = row
++	}
++	return out
++}
++
++func cloneHealthModifierContributions(values []HealthModifierContribution) []HealthModifierContribution {
++	if values == nil {
++		return []HealthModifierContribution{}
++	}
++	out := make([]HealthModifierContribution, len(values))
++	for index, value := range values {
++		value.Provider = NormalizeProvider(value.Provider)
++		value.SourceOccurrenceID = cloneString(value.SourceOccurrenceID)
++		out[index] = value
++	}
++	return out
++}
++
++func canonicalStrings(values []string) []string {
++	if len(values) == 0 {
++		return []string{}
++	}
++	out := append([]string{}, values...)
++	sort.Strings(out)
++	write := 0
++	for _, value := range out {
++		if value == "" || (write > 0 && out[write-1] == value) {
++			continue
++		}
++		out[write] = value
++		write++
++	}
++	return out[:write]
++}
++
++func cloneBool(value *bool) *bool {
++	if value == nil {
++		return nil
++	}
++	cloned := *value
++	return &cloned
++}
++
++func cloneFloat(value *float64) *float64 {
++	if value == nil {
++		return nil
++	}
++	cloned := *value
++	return &cloned
++}
+diff --git a/pkg/gtttrace/health_test.go b/pkg/gtttrace/health_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..e2c2e54671238ef3e16c7dbb78f7d72abb42f98a
+--- /dev/null
++++ b/pkg/gtttrace/health_test.go
+@@ -0,0 +1,69 @@
++package gtttrace
++
++import (
++	"reflect"
++	"testing"
++)
++
++func TestHealthOperationsUseIndependentStableOrdering(t *testing.T) {
++	frame := 42
++	runtime := NewRuntime()
++	runtime.BindFrame(&frame)
++	runtime.Enable()
++	legacyOccurrences := runtime.SourceOccurrences()
++	legacyBindings := runtime.SourceValueBindings()
++	legacyTransitions := runtime.ModifierTransitions()
++
++	outerIndex, outerID := runtime.BeginHealthOperation()
++	innerIndex, innerID := runtime.BeginHealthOperation()
++	runtime.CompleteHealthOperation(innerIndex, HealthOperation{
++		Kind: HealthOperationDrain, Frame: frame,
++		Provider: UnknownProvider("test", "inner"), TargetIndex: 1,
++		ModifierContributions: []HealthModifierContribution{}, UncertaintyCodes: []string{"z", "a", "z"},
++	})
++	runtime.CompleteHealthOperation(outerIndex, HealthOperation{
++		Kind: HealthOperationHeal, Frame: frame,
++		Provider: UnknownProvider("test", "outer"), TargetIndex: 0,
++		ModifierContributions: []HealthModifierContribution{{
++			ContributionID: outerID + ":modifier:0", ModifierKey: "bonus",
++			Provider: UnknownProvider("test", "bonus"),
++		}},
++		UncertaintyCodes: []string{"b", "a"},
++	})
++
++	rows := runtime.HealthOperations()
++	if len(rows) != 2 || rows[0].SequenceIndex != 0 || rows[0].OperationID != outerID ||
++		rows[1].SequenceIndex != 1 || rows[1].OperationID != innerID {
++		t.Fatalf("unstable health identities: %#v", rows)
++	}
++	if got := rows[0].UncertaintyCodes; !reflect.DeepEqual(got, []string{"a", "b"}) {
++		t.Fatalf("uncertainty codes = %#v", got)
++	}
++	if got := rows[1].UncertaintyCodes; !reflect.DeepEqual(got, []string{"a", "z"}) {
++		t.Fatalf("nested uncertainty codes = %#v", got)
++	}
++	if !reflect.DeepEqual(runtime.SourceOccurrences(), legacyOccurrences) ||
++		!reflect.DeepEqual(runtime.SourceValueBindings(), legacyBindings) ||
++		!reflect.DeepEqual(runtime.ModifierTransitions(), legacyTransitions) {
++		t.Fatal("health ledger changed an inherited v4 collection")
++	}
++
++	rows[0].UncertaintyCodes[0] = "mutated"
++	rows[0].ModifierContributions[0].ModifierKey = "mutated"
++	again := runtime.HealthOperations()
++	if again[0].UncertaintyCodes[0] != "a" || again[0].ModifierContributions[0].ModifierKey != "bonus" {
++		t.Fatal("HealthOperations did not return a deep copy")
++	}
++}
++
++func TestHealthOperationsDisabledRuntimeIsEmpty(t *testing.T) {
++	runtime := NewRuntime()
++	index, operationID := runtime.BeginHealthOperation()
++	if index != -1 || operationID != "" {
++		t.Fatalf("disabled identity = %d/%q", index, operationID)
++	}
++	runtime.CompleteHealthOperation(0, HealthOperation{Kind: HealthOperationHeal})
++	if rows := runtime.HealthOperations(); rows == nil || len(rows) != 0 {
++		t.Fatalf("disabled rows = %#v", rows)
++	}
++}
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+index 1ad86fd22a3060087f172d84f64c7d11b5a62bcf..390bf44f7ea84c0ad9c405f05c57ca792eae3ea4 100644
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -126,6 +126,7 @@ type Runtime struct {
+ 	nextNodeID          uint64
+ 	sourceOccurrences   []SourceOccurrence
+ 	sourceValueBindings []SourceValueBinding
++	healthOperations    []HealthOperation
+ 	occurrenceIndex     map[string]int
+ 	bindingOrdinals     map[string]int
+ }
+@@ -159,6 +160,7 @@ func NewRuntime() *Runtime {
+ 		transitions:         make([]ModifierTransition, 0, 32),
+ 		sourceOccurrences:   make([]SourceOccurrence, 0, 256),
+ 		sourceValueBindings: make([]SourceValueBinding, 0, 256),
++		healthOperations:    make([]HealthOperation, 0, 64),
+ 		occurrenceIndex:     make(map[string]int),
+ 		bindingOrdinals:     make(map[string]int),
+ 	}
+diff --git a/pkg/optimization/gtt_trace_equation.go b/pkg/optimization/gtt_trace_equation.go
+index c2f748d42af508b68473944185ad30f528b16caa..bc386570f0ba8544a2b93d1989f95e71f90bdfa9 100644
+--- a/pkg/optimization/gtt_trace_equation.go
++++ b/pkg/optimization/gtt_trace_equation.go
+@@ -27,7 +27,7 @@ import (
+ 
+ const (
+ 	GTTTraceEquationRequestSchemaVersion = 1
+-	GTTTraceEquationOutputSchemaVersion  = 4
++	GTTTraceEquationOutputSchemaVersion  = 5
+ )
+ 
+ type GTTTraceEquationRequest struct {
+@@ -62,6 +62,7 @@ type GTTTraceEquationOutput struct {
+ 	SourceManifestBodySHA256 string                           `json:"source_manifest_body_sha256"`
+ 	SourceOccurrences        []gtttrace.SourceOccurrence      `json:"source_occurrences"`
+ 	SourceValueBindings      []gtttrace.SourceValueBinding    `json:"source_value_bindings"`
++	HealthOperations         []gtttrace.HealthOperation       `json:"health_operations"`
+ }
+ 
+ func RunGTTTraceEquation(ctx context.Context, opts simulator.Options, requestPath string) error {
+@@ -142,7 +143,11 @@ func RunGTTTraceEquation(ctx context.Context, opts simulator.Options, requestPat
+ 	default:
+ 	}
+ 	buffer := collector.Flush(core)
+-	if err := validateGTTTraceEquationBuffer(buffer, seed); err != nil {
++	characterKeys := make([]string, len(simcfg.Characters))
++	for index, character := range simcfg.Characters {
++		characterKeys[index] = character.Base.Key.String()
++	}
++	if err := validateGTTTraceEquationBuffer(buffer, seed, characterKeys); err != nil {
+ 		return err
+ 	}
+ 
+@@ -153,17 +158,13 @@ func RunGTTTraceEquation(ctx context.Context, opts simulator.Options, requestPat
+ 	if err != nil {
+ 		return err
+ 	}
+-	characterKeys := make([]string, len(simcfg.Characters))
+-	for index, character := range simcfg.Characters {
+-		characterKeys[index] = character.Base.Key.String()
+-	}
+ 	engineVersion := strings.TrimSpace(simulator.Version())
+ 	if engineVersion == "" {
+ 		engineVersion = "unversioned-local-build"
+ 	}
+ 	out := GTTTraceEquationOutput{
+ 		SchemaVersion:            GTTTraceEquationOutputSchemaVersion,
+-		Capability:               gtt.TraceEquationV4Capability,
++		Capability:               gtt.TraceEquationV5Capability,
+ 		EngineVersion:            engineVersion,
+ 		PatchVersion:             gtt.PatchVersion,
+ 		FormulaVersion:           info.GTTTraceFormulaVersion,
+@@ -184,6 +185,7 @@ func RunGTTTraceEquation(ctx context.Context, opts simulator.Options, requestPat
+ 		SourceManifestBodySHA256: gttsource.ManifestBodySHA256(),
+ 		SourceOccurrences:        buffer.SourceOccurrences,
+ 		SourceValueBindings:      buffer.SourceValueBindings,
++		HealthOperations:         buffer.HealthOperations,
+ 	}
+ 	payload, err := json.MarshalIndent(out, "", "  ")
+ 	if err != nil {
+@@ -216,7 +218,7 @@ func (r GTTTraceEquationRequest) validate() error {
+ 	return nil
+ }
+ 
+-func validateGTTTraceEquationBuffer(buffer optstats.GTTTraceEquationBuffer, seed int64) error {
++func validateGTTTraceEquationBuffer(buffer optstats.GTTTraceEquationBuffer, seed int64, characterKeys []string) error {
+ 	if buffer.Seed != seed {
+ 		return errors.New("gtt trace equation: simulation seed mismatch")
+ 	}
+@@ -340,6 +342,157 @@ func validateGTTTraceEquationBuffer(buffer optstats.GTTTraceEquationBuffer, seed
+ 	if err := validateGTTSourceRows(buffer); err != nil {
+ 		return err
+ 	}
++	if err := validateGTTHealthOperations(buffer, characterKeys); err != nil {
++		return err
++	}
++	return nil
++}
++
++func validateGTTHealthOperations(buffer optstats.GTTTraceEquationBuffer, characterKeys []string) error {
++	return validateGTTHealthOperationsWithSourceLookup(
++		buffer,
++		characterKeys,
++		func(sourceID string) bool { return gttsource.TemplateSHA256(sourceID) != "" },
++	)
++}
++
++func validateGTTHealthOperationsWithSourceLookup(
++	buffer optstats.GTTTraceEquationBuffer,
++	characterKeys []string,
++	sourceKnown func(string) bool,
++) error {
++	if buffer.HealthOperations == nil {
++		return errors.New("gtt trace equation: null health_operations")
++	}
++	characterCount := len(characterKeys)
++	if characterCount <= 0 {
++		return errors.New("gtt trace equation: invalid health character catalog")
++	}
++	if sourceKnown == nil {
++		return errors.New("gtt trace equation: missing health source catalog")
++	}
++	occurrences := make(map[string]gtttrace.SourceOccurrence, len(buffer.SourceOccurrences))
++	for _, occurrence := range buffer.SourceOccurrences {
++		occurrences[occurrence.OccurrenceID] = occurrence
++	}
++	lastFrame := -1
++	for index, row := range buffer.HealthOperations {
++		if row.SequenceIndex != index || row.OperationID != "health-operation:"+strconv.Itoa(index) ||
++			row.Frame < 0 || row.Frame < lastFrame || row.TargetIndex < 0 || row.TargetIndex >= characterCount ||
++			row.ModifierContributions == nil || row.UncertaintyCodes == nil {
++			return fmt.Errorf("gtt trace equation: invalid health operation %d", index)
++		}
++		if err := validateGTTHealthProvider(row.Provider, characterKeys); err != nil {
++			return fmt.Errorf("gtt trace equation: health operation %d provider: %w", index, err)
++		}
++		if row.ParentOccurrenceID != nil {
++			occurrence, ok := occurrences[*row.ParentOccurrenceID]
++			if !ok || occurrence.Frame > row.Frame {
++				return fmt.Errorf("gtt trace equation: health operation %d missing parent occurrence", index)
++			}
++		}
++		if row.CallerIndex != nil && (*row.CallerIndex < 0 || *row.CallerIndex >= characterCount) {
++			return fmt.Errorf("gtt trace equation: health operation %d invalid caller", index)
++		}
++		for _, value := range []float64{
++			row.InputValue, row.AdjustedInputValue, row.RawAmount, row.EventAmount,
++			row.EventEffectiveAmount, row.HPDeltaMagnitude, row.HPDebtBefore,
++			row.HPDebtAfter, row.MaxHPBefore, row.MaxHPAfter, row.HPBefore,
++			row.HPAfter, row.HPRatioBefore, row.HPRatioAfter,
++		} {
++			if !gttTraceFinite(value) {
++				return fmt.Errorf("gtt trace equation: health operation %d non-finite value", index)
++			}
++		}
++		if row.InputValue < 0 || row.AdjustedInputValue < 0 || row.RawAmount < 0 ||
++			row.EventAmount < 0 || row.EventEffectiveAmount < 0 ||
++			row.MaxHPBefore <= 0 || row.MaxHPAfter <= 0 || row.HPDebtBefore < 0 ||
++			row.HPDebtAfter < 0 || row.HPBefore < 0 || row.HPAfter < 0 || row.HPDeltaMagnitude < 0 ||
++			row.HPBefore > row.MaxHPBefore || row.HPAfter > row.MaxHPAfter ||
++			row.HPRatioBefore < 0 || row.HPRatioBefore > 1 ||
++			row.HPRatioAfter < 0 || row.HPRatioAfter > 1 ||
++			!gttTraceClose(row.HPBefore, row.HPRatioBefore*row.MaxHPBefore) ||
++			!gttTraceClose(row.HPAfter, row.HPRatioAfter*row.MaxHPAfter) ||
++			!gttTraceClose(row.HPDeltaMagnitude, math.Abs(row.HPAfter-row.HPBefore)) {
++			return fmt.Errorf("gtt trace equation: health operation %d invalid HP ledger", index)
++		}
++		previousCode := ""
++		for codeIndex, code := range row.UncertaintyCodes {
++			if strings.TrimSpace(code) == "" || (codeIndex > 0 && code <= previousCode) {
++				return fmt.Errorf("gtt trace equation: health operation %d uncertainty codes not canonical", index)
++			}
++			previousCode = code
++		}
++		if row.CandidateDependencyComplete && len(row.UncertaintyCodes) != 0 {
++			return fmt.Errorf("gtt trace equation: health operation %d complete with uncertainty", index)
++		}
++		if !row.CandidateDependencyComplete && len(row.UncertaintyCodes) == 0 {
++			return fmt.Errorf("gtt trace equation: health operation %d incomplete without uncertainty", index)
++		}
++		modifierTotal := 0.0
++		for contributionIndex, contribution := range row.ModifierContributions {
++			wantID := row.OperationID + ":modifier:" + strconv.Itoa(contributionIndex)
++			if contribution.ContributionID != wantID || strings.TrimSpace(contribution.ModifierKey) == "" ||
++				!gttTraceFinite(contribution.Value) ||
++				(contribution.ExpiryFrame != -1 && contribution.ExpiryFrame <= row.Frame) {
++				return fmt.Errorf("gtt trace equation: health operation %d invalid modifier contribution %d", index, contributionIndex)
++			}
++			if !gttTraceSHA256(contribution.SourceID) || !sourceKnown(contribution.SourceID) {
++				return fmt.Errorf("gtt trace equation: health operation %d invalid modifier source %d", index, contributionIndex)
++			}
++			if err := validateGTTHealthProvider(contribution.Provider, characterKeys); err != nil {
++				return fmt.Errorf("gtt trace equation: health operation %d modifier provider %d: %w", index, contributionIndex, err)
++			}
++			if contribution.SourceOccurrenceID != nil {
++				occurrence, ok := occurrences[*contribution.SourceOccurrenceID]
++				if !ok || occurrence.Frame > row.Frame || occurrence.SourceID != contribution.SourceID || occurrence.Provider != contribution.Provider {
++					return fmt.Errorf("gtt trace equation: health operation %d invalid modifier occurrence %d", index, contributionIndex)
++				}
++			}
++			if row.CandidateDependencyComplete && !contribution.CandidateDependencyComplete {
++				return fmt.Errorf("gtt trace equation: health operation %d incomplete modifier dependency %d", index, contributionIndex)
++			}
++			modifierTotal += contribution.Value
++		}
++		switch row.Kind {
++		case gtttrace.HealthOperationHeal:
++			if row.HealType == nil || (*row.HealType != gtttrace.HealthHealTypeAbsolute &&
++				*row.HealType != gtttrace.HealthHealTypePercent) || row.External != nil ||
++				row.BaseAmount == nil || row.SourceBonus == nil || row.HealBonusTotal == nil ||
++				row.Overheal == nil {
++				return fmt.Errorf("gtt trace equation: health operation %d invalid heal shape", index)
++			}
++			for _, value := range []*float64{row.BaseAmount, row.SourceBonus, row.HealBonusTotal, row.Overheal} {
++				if !gttTraceFinite(*value) {
++					return fmt.Errorf("gtt trace equation: health operation %d non-finite heal value", index)
++				}
++			}
++			expectedBase := row.AdjustedInputValue
++			if *row.HealType == gtttrace.HealthHealTypePercent {
++				expectedBase *= row.MaxHPBefore
++			}
++			if *row.BaseAmount < 0 || *row.Overheal < 0 ||
++				!gttTraceClose(row.InputValue, row.AdjustedInputValue) ||
++				!gttTraceClose(*row.BaseAmount, expectedBase) ||
++				!gttTraceClose(modifierTotal, *row.HealBonusTotal) ||
++				!gttTraceClose(row.RawAmount, *row.BaseAmount*(1+*row.SourceBonus+*row.HealBonusTotal)) ||
++				!gttTraceClose(row.EventEffectiveAmount, math.Max(row.EventAmount-*row.Overheal, 0)) {
++				return fmt.Errorf("gtt trace equation: health operation %d heal arithmetic mismatch", index)
++			}
++		case gtttrace.HealthOperationDrain:
++			if row.CallerIndex != nil || row.HealType != nil || row.External == nil ||
++				row.BaseAmount != nil || row.SourceBonus != nil || row.HealBonusTotal != nil ||
++				row.Overheal != nil || len(row.ModifierContributions) != 0 ||
++				!gttTraceClose(row.RawAmount, row.AdjustedInputValue) ||
++				!gttTraceClose(row.EventAmount, row.AdjustedInputValue) ||
++				!gttTraceClose(row.EventEffectiveAmount, row.EventAmount) {
++				return fmt.Errorf("gtt trace equation: health operation %d invalid drain shape", index)
++			}
++		default:
++			return fmt.Errorf("gtt trace equation: health operation %d invalid kind", index)
++		}
++		lastFrame = row.Frame
++	}
+ 	return nil
+ }
+ 
+@@ -568,6 +721,22 @@ func validateGTTTraceProvider(provider gtttrace.Provider) error {
+ 	return nil
+ }
+ 
++func validateGTTHealthProvider(provider gtttrace.Provider, characterKeys []string) error {
++	if err := validateGTTTraceProvider(provider); err != nil {
++		return err
++	}
++	if !provider.Known {
++		return nil
++	}
++	if provider.OwnerIndex < 0 || provider.OwnerIndex >= len(characterKeys) {
++		return errors.New("provider owner exceeds character catalog")
++	}
++	if strings.EqualFold(provider.Kind, "character") && characterKeys[provider.OwnerIndex] != provider.Key {
++		return errors.New("character provider owner binding mismatch")
++	}
++	return nil
++}
++
+ func gttTraceFinite(value float64) bool {
+ 	return !math.IsNaN(value) && !math.IsInf(value, 0)
+ }
+diff --git a/pkg/optimization/gtt_trace_equation_health_test.go b/pkg/optimization/gtt_trace_equation_health_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..5ea8ee23a96af3bb6b9d2b2476c1f6e4d4a9fea9
+--- /dev/null
++++ b/pkg/optimization/gtt_trace_equation_health_test.go
+@@ -0,0 +1,121 @@
++package optimization
++
++import (
++	"strings"
++	"testing"
++
++	"github.com/genshinsim/gcsim/pkg/gtt"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++	"github.com/genshinsim/gcsim/pkg/optimization/optstats"
++)
++
++func healthFloat(value float64) *float64 { return &value }
++func healthString(value string) *string  { return &value }
++func healthInt(value int) *int           { return &value }
++func healthBool(value bool) *bool        { return &value }
++
++var healthFixtureCharacterKeys = []string{"chasca", "furina"}
++
++func validateHealthFixture(buffer optstats.GTTTraceEquationBuffer) error {
++	knownSourceID := strings.Repeat("a", 64)
++	return validateGTTHealthOperationsWithSourceLookup(
++		buffer,
++		healthFixtureCharacterKeys,
++		func(sourceID string) bool { return sourceID == knownSourceID },
++	)
++}
++
++func validHealthBuffer() optstats.GTTTraceEquationBuffer {
++	provider := gtttrace.UnknownProvider("fixture", "health")
++	modifierProvider := gtttrace.UnknownProvider("fixture", "modifier")
++	sourceID := strings.Repeat("a", 64)
++	return optstats.GTTTraceEquationBuffer{HealthOperations: []gtttrace.HealthOperation{
++		{
++			SequenceIndex: 0, OperationID: "health-operation:0", Kind: gtttrace.HealthOperationHeal,
++			Frame: 10, Provider: provider, CallerIndex: healthInt(0), TargetIndex: 1,
++			HealType:   healthString(gtttrace.HealthHealTypeAbsolute),
++			InputValue: 200, AdjustedInputValue: 200,
++			BaseAmount: healthFloat(200), SourceBonus: healthFloat(0.1), HealBonusTotal: healthFloat(0.2),
++			RawAmount: 260, EventAmount: 210, EventEffectiveAmount: 200, HPDeltaMagnitude: 200,
++			Overheal: healthFloat(10), HPDebtBefore: 50, HPDebtAfter: 0,
++			MaxHPBefore: 1000, MaxHPAfter: 1000, HPBefore: 800, HPAfter: 1000,
++			HPRatioBefore: 0.8, HPRatioAfter: 1,
++			ModifierContributions: []gtttrace.HealthModifierContribution{{
++				ContributionID: "health-operation:0:modifier:0", ModifierKey: "incoming-heal",
++				SourceID: sourceID, Provider: modifierProvider, Value: 0.2, ExpiryFrame: -1,
++			}},
++			UncertaintyCodes: []string{"health_input_candidate_dependency_unbound"},
++		},
++		{
++			SequenceIndex: 1, OperationID: "health-operation:1", Kind: gtttrace.HealthOperationDrain,
++			Frame: 11, Provider: provider, TargetIndex: 1, External: healthBool(false),
++			InputValue: 400, AdjustedInputValue: 200, RawAmount: 200, EventAmount: 200,
++			EventEffectiveAmount: 200, HPDeltaMagnitude: 100,
++			HPDebtBefore: 0, HPDebtAfter: 0, MaxHPBefore: 1000, MaxHPAfter: 1000,
++			HPBefore: 100, HPAfter: 0, HPRatioBefore: 0.1, HPRatioAfter: 0,
++			ModifierContributions: []gtttrace.HealthModifierContribution{},
++			UncertaintyCodes:      []string{"health_effective_delta_unexplained"},
++		},
++	}}
++}
++
++func TestTraceEquationV5HealthValidation(t *testing.T) {
++	if GTTTraceEquationOutputSchemaVersion != 5 || gtt.TraceEquationV5Capability != "gtt_trace_equation_v5" {
++		t.Fatal("v5 schema/capability drift")
++	}
++	buffer := validHealthBuffer()
++	if err := validateHealthFixture(buffer); err != nil {
++		t.Fatalf("valid ledger: %v", err)
++	}
++
++	broken := validHealthBuffer()
++	broken.HealthOperations[0].RawAmount++
++	if err := validateHealthFixture(broken); err == nil || !strings.Contains(err.Error(), "arithmetic mismatch") {
++		t.Fatalf("raw mismatch error = %v", err)
++	}
++
++	broken = validHealthBuffer()
++	broken.HealthOperations[0].ModifierContributions[0].ContributionID = "duplicate"
++	if err := validateHealthFixture(broken); err == nil || !strings.Contains(err.Error(), "modifier contribution") {
++		t.Fatalf("contribution identity error = %v", err)
++	}
++
++	broken = validHealthBuffer()
++	broken.HealthOperations = nil
++	if err := validateHealthFixture(broken); err == nil || !strings.Contains(err.Error(), "null health_operations") {
++		t.Fatalf("null ledger error = %v", err)
++	}
++
++	invalidCases := map[string]func(*optstats.GTTTraceEquationBuffer){
++		"missing source identity": func(buffer *optstats.GTTTraceEquationBuffer) {
++			buffer.HealthOperations[0].ModifierContributions[0].SourceID = ""
++		},
++		"unknown source identity": func(buffer *optstats.GTTTraceEquationBuffer) {
++			buffer.HealthOperations[0].ModifierContributions[0].SourceID = strings.Repeat("b", 64)
++		},
++		"expired contribution": func(buffer *optstats.GTTTraceEquationBuffer) {
++			buffer.HealthOperations[0].ModifierContributions[0].ExpiryFrame = 10
++		},
++		"missing uncertainty": func(buffer *optstats.GTTTraceEquationBuffer) {
++			buffer.HealthOperations[0].UncertaintyCodes = []string{}
++		},
++		"bad character index": func(buffer *optstats.GTTTraceEquationBuffer) {
++			buffer.HealthOperations[0].TargetIndex = 2
++		},
++		"mismatched character provider": func(buffer *optstats.GTTTraceEquationBuffer) {
++			buffer.HealthOperations[0].Provider = gtttrace.NewProvider("character", "chasca", 1, 0)
++		},
++		"bad percent base": func(buffer *optstats.GTTTraceEquationBuffer) {
++			buffer.HealthOperations[0].HealType = healthString(gtttrace.HealthHealTypePercent)
++		},
++	}
++	for name, mutate := range invalidCases {
++		t.Run(name, func(t *testing.T) {
++			broken := validHealthBuffer()
++			mutate(&broken)
++			if err := validateHealthFixture(broken); err == nil {
++				t.Fatal("invalid health ledger was accepted")
++			}
++		})
++	}
++}
+diff --git a/pkg/optimization/optstats/trace_equation.go b/pkg/optimization/optstats/trace_equation.go
+index c06ebc57fb6d2a63d481925d590caac77315466f..396341867c42ab5c98170214580e3eda53fd559c 100644
+--- a/pkg/optimization/optstats/trace_equation.go
++++ b/pkg/optimization/optstats/trace_equation.go
+@@ -48,6 +48,7 @@ type GTTTraceEquationBuffer struct {
+ 	ProviderTransitions []gtttrace.ModifierTransition `json:"provider_transitions"`
+ 	SourceOccurrences   []gtttrace.SourceOccurrence   `json:"source_occurrences"`
+ 	SourceValueBindings []gtttrace.SourceValueBinding `json:"source_value_bindings"`
++	HealthOperations    []gtttrace.HealthOperation    `json:"health_operations"`
+ 	nextAttackID        uint64
+ 	nextHitID           uint64
+ 	nextEventID         uint64
+@@ -65,6 +66,7 @@ func OptimizerTraceEquation(core *core.Core) (CollectorCustomStats[GTTTraceEquat
+ 		ProviderTransitions: make([]gtttrace.ModifierTransition, 0),
+ 		SourceOccurrences:   make([]gtttrace.SourceOccurrence, 0),
+ 		SourceValueBindings: make([]gtttrace.SourceValueBinding, 0),
++		HealthOperations:    make([]gtttrace.HealthOperation, 0),
+ 	}
+ 	core.Events.Subscribe(event.OnApplyAttack, func(args ...any) {
+ 		attack := args[0].(*info.AttackEvent)
+@@ -220,6 +222,7 @@ func (b GTTTraceEquationBuffer) Flush(core *core.Core) GTTTraceEquationBuffer {
+ 	b.ProviderTransitions = core.GTTTrace.ModifierTransitions()
+ 	b.SourceOccurrences = core.GTTTrace.SourceOccurrences()
+ 	b.SourceValueBindings = core.GTTTrace.SourceValueBindings()
++	b.HealthOperations = core.GTTTrace.HealthOperations()
+ 	seen := map[string]bool{
+ 		"gadget_wave_state_lineage_not_instrumented": true,
+ 		"provider_transition_timeline_incomplete":    true,
+diff --git a/pkg/optimization/optstats/trace_equation_health_test.go b/pkg/optimization/optstats/trace_equation_health_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..519d8a86805dbbcee6c4030d875d194548ce6dd8
+--- /dev/null
++++ b/pkg/optimization/optstats/trace_equation_health_test.go
+@@ -0,0 +1,49 @@
++package optstats
++
++import (
++	"reflect"
++	"testing"
++
++	"github.com/genshinsim/gcsim/pkg/core"
++	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
++)
++
++func TestFlushAddsHealthWithoutChangingInheritedEvidenceCollections(t *testing.T) {
++	c, err := core.New(core.Opt{Seed: 7})
++	if err != nil {
++		t.Fatal(err)
++	}
++	c.GTTTrace.Enable()
++	buffer := GTTTraceEquationBuffer{
++		Hits:           []info.GTTTraceHit{{HitID: 1, Ability: "sentinel"}},
++		TopologyEvents: []GTTTraceTopologyEvent{{EventID: 1, Frame: 3, Kind: "sentinel"}},
++		Unsupported:    []string{}, ProviderTransitions: []gtttrace.ModifierTransition{},
++		SourceOccurrences: []gtttrace.SourceOccurrence{}, SourceValueBindings: []gtttrace.SourceValueBinding{},
++		HealthOperations: []gtttrace.HealthOperation{},
++	}
++	wantHits := append([]info.GTTTraceHit{}, buffer.Hits...)
++	wantTopology := append([]GTTTraceTopologyEvent{}, buffer.TopologyEvents...)
++	wantTransitions := append([]gtttrace.ModifierTransition{}, buffer.ProviderTransitions...)
++	wantOccurrences := append([]gtttrace.SourceOccurrence{}, buffer.SourceOccurrences...)
++	wantBindings := append([]gtttrace.SourceValueBinding{}, buffer.SourceValueBindings...)
++
++	sequence, _ := c.GTTTrace.BeginHealthOperation()
++	c.GTTTrace.CompleteHealthOperation(sequence, gtttrace.HealthOperation{
++		Kind: gtttrace.HealthOperationDrain, Frame: 3,
++		Provider: gtttrace.UnknownProvider("fixture", "health"), TargetIndex: 0,
++		ModifierContributions: []gtttrace.HealthModifierContribution{},
++		UncertaintyCodes:      []string{"fixture_incomplete"},
++	})
++	flushed := buffer.Flush(c)
++	if !reflect.DeepEqual(flushed.Hits, wantHits) ||
++		!reflect.DeepEqual(flushed.TopologyEvents, wantTopology) ||
++		!reflect.DeepEqual(flushed.ProviderTransitions, wantTransitions) ||
++		!reflect.DeepEqual(flushed.SourceOccurrences, wantOccurrences) ||
++		!reflect.DeepEqual(flushed.SourceValueBindings, wantBindings) {
++		t.Fatal("health flush changed an inherited v4 evidence collection")
++	}
++	if len(flushed.HealthOperations) != 1 || flushed.HealthOperations[0].OperationID != "health-operation:0" {
++		t.Fatalf("health operations = %#v", flushed.HealthOperations)
++	}
++}

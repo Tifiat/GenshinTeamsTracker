@@ -17,30 +17,14 @@ Current maps:
 - `ABYSS_MECHANICS_NOTES.md` - Abyss enemy mechanics parser tags and source notes.
 - `GCSIM.md` - GCSIM research and integration notes.
 - `GCSIM_ENGINE_INTEGRATION_PLAN.md` - authoritative current GCSIM status plus the historical implementation record for engine updates, patches, selected-team configs, sequential Abyss waves, typed results/history, and remaining UI/release work.
-- `GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md` - current theoretical optimizer
-  mechanics, accepted account/theoretical modes, config/database boundaries,
-  target iterative search algorithm, identities, correctness traps, and
-  reliability guidance.
-- `GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md` - authoritative optimizer
-  delivery order for selected-set-pool account search, all-database-set account
-  search, theoretical equal-investment comparison, and the explicit `2p+2p`
-  flag. Milestone 0R schema-v4 contracts and Milestone 1 config shell/read-only
-  all-row DB input are complete. Milestone 2 strict materialization is also
-  complete. Milestone 3 reduced exhaustive `4p` oracles are complete;
-  Milestone 4 main/response hardening and the coupled-EM safeguard are complete.
-  Milestone 5 lazy per-wearer real `4p` candidates and Milestone 6 global
-  all-different proposal solving are complete. Milestone 7 iterative whole-team
-  GCSIM feedback is complete. Milestone 8 quality-first reference anchors and
-  the selected-set-pool account service are complete. Milestone 9
-  all-database-set account mode, Milestone 10 account `2p+2p`, Milestone 11
-  theoretical `4p`, and Milestone 12 strict engine-derived theoretical
-  `2p+2p` are complete. Schema-v4 account floors use exact-five artifact stats
-  plus engine-proved unconditional static 2p stats, with fail-closed feedback
-  rechecks; theoretical ER weights/profiles and optimizer allocation are
-  disabled. Operation cache/provenance namespaces are `.v4`.
-  Milestone 13 dedicated Browser UI, cancellable worker/adapter, and explicit
-  wearer/team save transaction are complete. Milestone 14 quality/performance
-  release evidence is in progress and has not passed the full matrix.
+- `GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` - sole authoritative and compact
+  artifact-optimizer contract. FAST is the working search evaluator; STANDARD
+  is a development control only. The document owns response-signature
+  compression, explicit artifact-variable rebasing, isolated continuous/discrete
+  search strategies, frozen mechanics, reactions, three product scopes, current
+  measurements and the implementation order through Selected UI.
+- `GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST.json` - machine-readable current
+  reuse/replace/delete/receipt disposition for the optimizer migration.
 - `FAR_FUTURE_TODO.md` - non-MVP PvP, analytics, draft bot, support/donation, monetization, and optional AI companion ideas.
 - `PVP_V0_CONTRACT.md` - stable PvP v0 product/backend contract for the full offline hot-seat loop: deck JSON, pick/ban, teams, weapons, timers, and winner summary.
 - `PVP_BACKEND_STATUS.md` - implementation-oriented PvP backend status:

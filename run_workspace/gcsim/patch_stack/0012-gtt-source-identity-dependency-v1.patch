@@ -1,0 +1,4814 @@
+diff --git a/cmd/gtt-source-manifest/main.go b/cmd/gtt-source-manifest/main.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..85a3e256557dbaba5be2b28127af845fb0d99004
+--- /dev/null
++++ b/cmd/gtt-source-manifest/main.go
+@@ -0,0 +1,138 @@
++package main
++
++import (
++	"encoding/json"
++	"errors"
++	"flag"
++	"fmt"
++	"io"
++	"os"
++	"path/filepath"
++	"strings"
++
++	"github.com/genshinsim/gcsim/pkg/gttsourcegen"
++)
++
++type stringList []string
++
++func (values *stringList) String() string { return strings.Join(*values, ",") }
++func (values *stringList) Set(value string) error {
++	for _, part := range strings.Split(value, ",") {
++		if part = strings.TrimSpace(part); part != "" {
++			*values = append(*values, part)
++		}
++	}
++	return nil
++}
++
++func main() {
++	if err := run(os.Args[1:], os.Getenv, os.Stdout, os.Stderr); err != nil {
++		fmt.Fprintln(os.Stderr, "gtt-source-manifest:", err)
++		os.Exit(1)
++	}
++}
++
++func run(args []string, getenv func(string) string, stdout, stderr io.Writer) error {
++	flags := flag.NewFlagSet("gtt-source-manifest", flag.ContinueOnError)
++	flags.SetOutput(stderr)
++	var root, bindingIn, jsonOut, goOut, overlayOut, overlayDir string
++	var includes stringList
++	var includeTests bool
++	flags.StringVar(&root, "root", "", "module root (env GTT_SOURCE_ROOT)")
++	flags.StringVar(&root, "module-root", "", "alias for -root")
++	flags.StringVar(&bindingIn, "binding-in", "", "frozen binding input JSON (env GTT_SOURCE_BINDING_IN)")
++	flags.StringVar(&jsonOut, "json-out", "", "canonical body output (env GTT_SOURCE_JSON_OUT)")
++	flags.StringVar(&jsonOut, "manifest-out", "", "alias for -json-out")
++	flags.StringVar(&goOut, "go-out", "", "generated package gttsource output (env GTT_SOURCE_GO_OUT)")
++	flags.StringVar(&overlayOut, "overlay-out", "", "Go overlay JSON output (env GTT_SOURCE_OVERLAY_OUT)")
++	flags.StringVar(&overlayDir, "overlay-dir", "", "overlay replacement root (env GTT_SOURCE_OVERLAY_DIR)")
++	flags.Var(&includes, "include", "module-relative scan path; repeat or comma-separate")
++	flags.BoolVar(&includeTests, "include-tests", false, "scan *_test.go files")
++	if err := flags.Parse(args); err != nil {
++		if errors.Is(err, flag.ErrHelp) {
++			return nil
++		}
++		return err
++	}
++	if flags.NArg() != 0 {
++		return fmt.Errorf("unexpected positional arguments: %s", strings.Join(flags.Args(), " "))
++	}
++	root = firstNonEmpty(root, getenv("GTT_SOURCE_ROOT"), ".")
++	bindingIn = firstNonEmpty(bindingIn, getenv("GTT_SOURCE_BINDING_IN"))
++	jsonOut = firstNonEmpty(jsonOut, getenv("GTT_SOURCE_JSON_OUT"))
++	goOut = firstNonEmpty(goOut, getenv("GTT_SOURCE_GO_OUT"))
++	overlayOut = firstNonEmpty(overlayOut, getenv("GTT_SOURCE_OVERLAY_OUT"))
++	overlayDir = firstNonEmpty(overlayDir, getenv("GTT_SOURCE_OVERLAY_DIR"))
++	if bindingIn == "" || jsonOut == "" || goOut == "" {
++		return errors.New("-binding-in, -json-out, and -go-out are required")
++	}
++	if (overlayOut == "") != (overlayDir == "") {
++		return errors.New("-overlay-out and -overlay-dir must be supplied together")
++	}
++	bindingData, err := os.ReadFile(bindingIn)
++	if err != nil {
++		return fmt.Errorf("read -binding-in: %w", err)
++	}
++	var binding gttsourcegen.BindingInput
++	decoder := json.NewDecoder(strings.NewReader(string(bindingData)))
++	decoder.DisallowUnknownFields()
++	if err := decoder.Decode(&binding); err != nil {
++		return fmt.Errorf("decode -binding-in: %w", err)
++	}
++	manifest, err := gttsourcegen.Generate(gttsourcegen.Options{
++		ModuleRoot: root, Includes: includes, IncludeTests: includeTests, Binding: binding,
++	})
++	if err != nil {
++		return err
++	}
++	body, err := gttsourcegen.RenderManifestBody(manifest)
++	if err != nil {
++		return err
++	}
++	lookup, err := gttsourcegen.RenderLookupGo(manifest)
++	if err != nil {
++		return err
++	}
++	if err := writeOutput(jsonOut, append(body, '\n')); err != nil {
++		return fmt.Errorf("write -json-out: %w", err)
++	}
++	if err := writeOutput(goOut, lookup); err != nil {
++		return fmt.Errorf("write -go-out: %w", err)
++	}
++	if overlayOut != "" {
++		overlay, err := gttsourcegen.BuildOverlay(gttsourcegen.OverlayOptions{ModuleRoot: root, OverlayDir: overlayDir}, manifest)
++		if err != nil {
++			return err
++		}
++		for _, file := range overlay.Files {
++			if err := writeOutput(file.ReplacementPath, file.Contents); err != nil {
++				return err
++			}
++		}
++		if err := writeOutput(overlayOut, append(overlay.JSON, '\n')); err != nil {
++			return err
++		}
++	}
++	fmt.Fprintf(stdout, "manifest_sha256=%s sources=%d\n", manifest.ManifestBodySHA256, len(manifest.Entries))
++	return nil
++}
++
++func firstNonEmpty(values ...string) string {
++	for _, value := range values {
++		if strings.TrimSpace(value) != "" {
++			return value
++		}
++	}
++	return ""
++}
++
++func writeOutput(path string, data []byte) error {
++	absolute, err := filepath.Abs(path)
++	if err != nil {
++		return err
++	}
++	if err := os.MkdirAll(filepath.Dir(absolute), 0o755); err != nil {
++		return err
++	}
++	return os.WriteFile(absolute, data, 0o644)
++}
+diff --git a/cmd/gtt-source-manifest/main_test.go b/cmd/gtt-source-manifest/main_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..d22f918e3632a2aa5e774e1697996d6b94119d49
+--- /dev/null
++++ b/cmd/gtt-source-manifest/main_test.go
+@@ -0,0 +1,74 @@
++package main
++
++import (
++	"bytes"
++	"encoding/json"
++	"os"
++	"path/filepath"
++	"strings"
++	"testing"
++
++	"github.com/genshinsim/gcsim/pkg/gttsourcegen"
++)
++
++func TestFrozenFlagsWriteCanonicalOutputs(t *testing.T) {
++	root := t.TempDir()
++	mustWrite(t, filepath.Join(root, "go.mod"), []byte("module fixture.test\n\ngo 1.25\n"))
++	mustWrite(t, filepath.Join(root, "source.go"), []byte(`package fixture
++func f(c *char) { ai := info.AttackInfo{FlatDmg:c.MaxHP()}; c.Core.QueueAttack(ai) }
++`))
++	build := filepath.Join(root, "build")
++	bindingPath := filepath.Join(build, "binding.json")
++	binding := gttsourcegen.BindingInput{
++		SchemaVersion: 1, Kind: gttsourcegen.BindingInputKind,
++		UpstreamRepo: "https://example.test/repo.git", UpstreamRef: "abc",
++		PristineSourceTreeSHA256: strings.Repeat("a", 64),
++		Patches:                  []gttsourcegen.PatchIdentity{}, PatchStackSHA256: strings.Repeat("b", 64),
++		TraceSchemaVersion: 4, TraceCapability: "gtt_trace_equation_v4",
++		FormulaIdentities: []gttsourcegen.FormulaIdentity{{ID: gttsourcegen.IRVersion, SHA256: gttsourcegen.IRSHA256}},
++		GoToolchain:       gttsourcegen.GoToolchain{Version: "go1.25.0", OS: "windows", Arch: "amd64"},
++		BuildFlags:        []string{"-trimpath"},
++	}
++	data, _ := json.Marshal(binding)
++	mustWrite(t, bindingPath, data)
++	jsonOut := filepath.Join(build, "manifest.json")
++	goOut := filepath.Join(build, "generated.go")
++	var stdout, stderr bytes.Buffer
++	err := run([]string{"-root", root, "-binding-in", bindingPath, "-json-out", jsonOut, "-go-out", goOut}, func(string) string { return "" }, &stdout, &stderr)
++	if err != nil {
++		t.Fatalf("run: %v, stderr=%s", err, stderr.String())
++	}
++	manifestData, err := os.ReadFile(jsonOut)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if bytes.Contains(manifestData, []byte("manifest_body_sha256")) || !bytes.Contains(manifestData, []byte(`"kind":"gtt.source_manifest.body"`)) {
++		t.Fatalf("unexpected canonical output: %s", manifestData)
++	}
++	generated, err := os.ReadFile(goOut)
++	if err != nil || !bytes.Contains(generated, []byte("generatedSourceIDByLookupKey")) {
++		t.Fatalf("generated Go missing: %v", err)
++	}
++	if !strings.Contains(stdout.String(), "manifest_sha256=") {
++		t.Fatalf("stdout=%q", stdout.String())
++	}
++	stderr.Reset()
++	if err := run([]string{"-h"}, func(string) string { return "" }, &stdout, &stderr); err != nil {
++		t.Fatal(err)
++	}
++	for _, flagName := range []string{"-root", "-binding-in", "-json-out", "-go-out", "-overlay-out", "-overlay-dir"} {
++		if !strings.Contains(stderr.String(), flagName) {
++			t.Fatalf("help lacks frozen flag %s: %s", flagName, stderr.String())
++		}
++	}
++}
++
++func mustWrite(t *testing.T, path string, data []byte) {
++	t.Helper()
++	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.WriteFile(path, data, 0o644); err != nil {
++		t.Fatal(err)
++	}
++}
+diff --git a/pkg/core/attack.go b/pkg/core/attack.go
+index 63737e3a3c0af99bf7e741dbaa2d15d05637ac35..b81c24a4476724ad0adb8131b4175bac5ecfeb07 100644
+--- a/pkg/core/attack.go
++++ b/pkg/core/attack.go
+@@ -4,6 +4,7 @@ import (
+ 	"strconv"
+ 
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gttsource"
+ 	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ )
+ 
+@@ -80,17 +81,27 @@ func (c *Core) QueueAttackWithSnap(
+ 	if dmgDelay < 0 {
+ 		panic("dmgDelay cannot be less than 0")
+ 	}
++	provider, sourceID, occurrenceID, parentOccurrenceID := c.gttTraceQueuedAttack(&a, 1)
+ 	ae := info.AttackEvent{
+-		Info:             a,
+-		Pattern:          p,
+-		Snapshot:         s,
+-		SourceFrame:      c.F,
+-		GTTTraceProvider: c.gttTraceAttackProvider(a),
++		Info:                         a,
++		Pattern:                      p,
++		Snapshot:                     s,
++		SourceFrame:                  c.F,
++		GTTTraceProvider:             provider,
++		GTTTraceSourceID:             sourceID,
++		GTTTraceSourceTemplateSHA256: a.GTTTraceSourceTemplateSHA256,
++		GTTTraceSourceParameters: info.GTTTraceNormalizeSourceParameters(
++			a.GTTTraceSourceParameters, c.F, a.ActorIndex,
++		),
++		GTTTraceSourceOccurrenceID: occurrenceID,
++		GTTTraceParentOccurrenceID: parentOccurrenceID,
+ 	}
+ 	// add callbacks only if not nil
+ 	for _, f := range callbacks {
+ 		if f != nil {
+-			ae.Callbacks = append(ae.Callbacks, c.gttTraceWrapAttackCallback(ae.GTTTraceProvider, f))
++			ae.Callbacks = append(ae.Callbacks, c.gttTraceWrapAttackCallback(
++				ae.GTTTraceProvider, ae.GTTTraceSourceID, ae.GTTTraceSourceOccurrenceID, f,
++			))
+ 		}
+ 	}
+ 	ae.GTTTraceCallbacksBound = true
+@@ -101,6 +112,17 @@ func (c *Core) QueueAttackEvent(ae *info.AttackEvent, dmgDelay int) {
+ 	if !ae.GTTTraceProvider.Complete() {
+ 		ae.GTTTraceProvider = c.gttTraceAttackProvider(ae.Info)
+ 	}
++	if ae.GTTTraceSourceOccurrenceID == "" {
++		provider, sourceID, occurrenceID, parentOccurrenceID := c.gttTraceQueuedAttack(&ae.Info, 1)
++		ae.GTTTraceProvider = provider
++		ae.GTTTraceSourceID = sourceID
++		ae.GTTTraceSourceTemplateSHA256 = ae.Info.GTTTraceSourceTemplateSHA256
++		ae.GTTTraceSourceParameters = info.GTTTraceNormalizeSourceParameters(
++			ae.Info.GTTTraceSourceParameters, c.F, ae.Info.ActorIndex,
++		)
++		ae.GTTTraceSourceOccurrenceID = occurrenceID
++		ae.GTTTraceParentOccurrenceID = parentOccurrenceID
++	}
+ 	c.gttTraceBindAttackCallbacks(ae)
+ 	c.queueDmg(ae, dmgDelay)
+ }
+@@ -121,16 +143,26 @@ func (c *Core) QueueAttack(
+ 		panic("dmgDelay cannot be less than 0")
+ 	}
+ 	// create attackevent
++	provider, sourceID, occurrenceID, parentOccurrenceID := c.gttTraceQueuedAttack(&a, 1)
+ 	ae := info.AttackEvent{
+-		Info:             a,
+-		Pattern:          p,
+-		SourceFrame:      c.F,
+-		GTTTraceProvider: c.gttTraceAttackProvider(a),
++		Info:                         a,
++		Pattern:                      p,
++		SourceFrame:                  c.F,
++		GTTTraceProvider:             provider,
++		GTTTraceSourceID:             sourceID,
++		GTTTraceSourceTemplateSHA256: a.GTTTraceSourceTemplateSHA256,
++		GTTTraceSourceParameters: info.GTTTraceNormalizeSourceParameters(
++			a.GTTTraceSourceParameters, c.F, a.ActorIndex,
++		),
++		GTTTraceSourceOccurrenceID: occurrenceID,
++		GTTTraceParentOccurrenceID: parentOccurrenceID,
+ 	}
+ 	// add callbacks only if not nil
+ 	for _, f := range callbacks {
+ 		if f != nil {
+-			ae.Callbacks = append(ae.Callbacks, c.gttTraceWrapAttackCallback(ae.GTTTraceProvider, f))
++			ae.Callbacks = append(ae.Callbacks, c.gttTraceWrapAttackCallback(
++				ae.GTTTraceProvider, ae.GTTTraceSourceID, ae.GTTTraceSourceOccurrenceID, f,
++			))
+ 		}
+ 	}
+ 	ae.GTTTraceCallbacksBound = true
+@@ -160,13 +192,34 @@ func (c *Core) gttTraceAttackProvider(attack info.AttackInfo) gtttrace.Provider
+ 	return gtttrace.UnknownProvider("unattributed_attack", attack.Abil)
+ }
+ 
++func (c *Core) gttTraceQueuedAttack(
++	attack *info.AttackInfo,
++	callerSkip int,
++) (gtttrace.Provider, string, string, string) {
++	provider := c.gttTraceAttackProvider(*attack)
++	if !c.GTTTrace.Enabled() {
++		return provider, "", "", ""
++	}
++	sourceID := attack.GTTTraceSourceID
++	if !gttsource.ValidID(sourceID) {
++		sourceID = gttsource.CaptureCaller(gttsource.KindQueuedAttack, callerSkip+1)
++	}
++	parentOccurrenceID := c.GTTTrace.EnsureCurrentOccurrence()
++	occurrenceID := c.GTTTrace.RecordSourceOccurrence(
++		gttsource.KindQueuedAttack, sourceID, c.F, provider, parentOccurrenceID,
++	)
++	return provider, sourceID, occurrenceID, parentOccurrenceID
++}
++
+ func (c *Core) gttTraceBindAttackCallbacks(ae *info.AttackEvent) {
+ 	if ae.GTTTraceCallbacksBound {
+ 		return
+ 	}
+ 	for index, callback := range ae.Callbacks {
+ 		if callback != nil {
+-			ae.Callbacks[index] = c.gttTraceWrapAttackCallback(ae.GTTTraceProvider, callback)
++			ae.Callbacks[index] = c.gttTraceWrapAttackCallback(
++				ae.GTTTraceProvider, ae.GTTTraceSourceID, ae.GTTTraceSourceOccurrenceID, callback,
++			)
+ 		}
+ 	}
+ 	ae.GTTTraceCallbacksBound = true
+@@ -174,13 +227,15 @@ func (c *Core) gttTraceBindAttackCallbacks(ae *info.AttackEvent) {
+ 
+ func (c *Core) gttTraceWrapAttackCallback(
+ 	provider gtttrace.Provider,
++	sourceID string,
++	occurrenceID string,
+ 	callback info.AttackCBFunc,
+ ) info.AttackCBFunc {
+ 	if !c.GTTTrace.Enabled() {
+ 		return callback
+ 	}
+ 	return func(cb info.AttackCB) {
+-		restore := c.GTTTrace.Enter(provider)
++		restore := c.GTTTrace.EnterSourceOccurrence(provider, sourceID, occurrenceID, "")
+ 		defer restore()
+ 		callback(cb)
+ 	}
+@@ -205,7 +260,10 @@ func (c *Core) queueDmg(a *info.AttackEvent, delay int) {
+ }
+ 
+ func (c *Core) gttTraceApplyAttack(a *info.AttackEvent) {
+-	restore := c.GTTTrace.Enter(a.GTTTraceProvider)
++	restore := c.GTTTrace.EnterSourceOccurrence(
++		a.GTTTraceProvider, a.GTTTraceSourceID,
++		a.GTTTraceSourceOccurrenceID, a.GTTTraceParentOccurrenceID,
++	)
+ 	defer restore()
+ 	c.Combat.ApplyAttack(a)
+ }
+diff --git a/pkg/core/core.go b/pkg/core/core.go
+index e9e18744e01d38f140138c94621f303b36a9e69f..ac7859d2aa9e44d99f9549c5713b111cb103b455 100644
+--- a/pkg/core/core.go
++++ b/pkg/core/core.go
+@@ -79,6 +79,7 @@ type Opt struct {
+ func New(opt Opt) (*Core, error) {
+ 	c := &Core{}
+ 	c.GTTTrace = gtttrace.NewRuntime()
++	c.GTTTrace.BindFrame(&c.F)
+ 	c.Seed = opt.Seed
+ 	c.Rand = rand.New(rand.NewSource(opt.Seed))
+ 	c.Flags.Custom = make(map[string]float64)
+diff --git a/pkg/core/event/event.go b/pkg/core/event/event.go
+index aff9607a7d565f96a5fe44bf8b805c55baba0d18..d2a33e4cc403e5b3912b2c41f2ef9853c0a6a8a2 100644
+--- a/pkg/core/event/event.go
++++ b/pkg/core/event/event.go
+@@ -6,6 +6,7 @@ import (
+ 
+ 	"github.com/genshinsim/gcsim/pkg/core/attributes"
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gttsource"
+ 	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ )
+ 
+@@ -113,6 +114,7 @@ type ehook struct {
+ 	f        Hook
+ 	key      string
+ 	provider gtttrace.Provider
++	sourceID string
+ }
+ 
+ func New(trace ...*gtttrace.Runtime) *Handler {
+@@ -132,11 +134,16 @@ func New(trace ...*gtttrace.Runtime) *Handler {
+ 
+ func (h *Handler) Subscribe(e Event, f Hook, key string) {
+ 	a := h.events[e]
++	sourceID := ""
++	if h.trace.Enabled() {
++		sourceID = gttsource.CaptureCaller(gttsource.KindEventCallback, 1)
++	}
+ 
+ 	evt := ehook{
+ 		f:        f,
+ 		key:      key,
+ 		provider: h.trace.Current(),
++		sourceID: sourceID,
+ 	}
+ 
+ 	// check if override first
+@@ -148,12 +155,14 @@ func (h *Handler) Subscribe(e Event, f Hook, key string) {
+ 	}
+ 	if ind > -1 {
+ 		displaced := a[ind].provider
++		displacedSourceID := a[ind].sourceID
+ 		a[ind] = evt
+ 		if shouldRecordTraceHook(key) {
+ 			h.trace.RecordModifierTransition(gtttrace.ModifierTransition{
+ 				Frame: -1, Channel: "event_subscription:" + strconv.Itoa(int(e)), RecipientIndex: -1,
+ 				ModifierKey: key, Transition: "subscription_replacement",
+-				Provider: evt.provider, DisplacedProvider: &displaced,
++				SourceID: evt.sourceID, Provider: evt.provider,
++				DisplacedSourceID: &displacedSourceID, DisplacedProvider: &displaced,
+ 			})
+ 		}
+ 	} else {
+@@ -162,7 +171,7 @@ func (h *Handler) Subscribe(e Event, f Hook, key string) {
+ 			h.trace.RecordModifierTransition(gtttrace.ModifierTransition{
+ 				Frame: -1, Channel: "event_subscription:" + strconv.Itoa(int(e)), RecipientIndex: -1,
+ 				ModifierKey: key, Transition: "subscription_activation",
+-				Provider: evt.provider,
++				SourceID: evt.sourceID, Provider: evt.provider,
+ 			})
+ 		}
+ 	}
+@@ -181,6 +190,7 @@ func (h *Handler) Emit(e Event, args ...any) {
+ 	for _, v := range h.events[e] {
+ 		if v.f != nil {
+ 			v.provider = gtttrace.NormalizeProvider(v.provider)
++			parentSourceID := h.trace.CurrentSourceID()
+ 			attack := traceAttackEvent(args)
+ 			var beforeInfo info.AttackInfo
+ 			var beforeStats attributes.Stats
+@@ -189,11 +199,17 @@ func (h *Handler) Emit(e Event, args ...any) {
+ 				beforeInfo = attack.Info
+ 				beforeStats = attack.Snapshot.Stats
+ 			}
+-			restore := h.trace.Enter(v.provider)
++			restore := h.trace.EnterLazySourceOccurrence(
++				v.provider, v.sourceID, gttsource.KindEventCallback, h.trace.Frame(),
++			)
+ 			v.f(args...)
++			occurrenceID := h.trace.CurrentOccurrenceID()
++			if recordAttempt {
++				occurrenceID = h.trace.EnsureCurrentOccurrence()
++			}
+ 			restore()
+ 			if recordAttempt {
+-				appendTraceCallbackAttempt(e, v, attack, beforeInfo, beforeStats)
++				appendTraceCallbackAttempt(e, v, parentSourceID, occurrenceID, attack, beforeInfo, beforeStats)
+ 			}
+ 		}
+ 	}
+@@ -215,12 +231,15 @@ func traceAttackEvent(args []any) *info.AttackEvent {
+ func appendTraceCallbackAttempt(
+ 	e Event,
+ 	hook ehook,
++	parentSourceID string,
++	occurrenceID string,
+ 	attack *info.AttackEvent,
+ 	beforeInfo info.AttackInfo,
+ 	beforeStats attributes.Stats,
+ ) {
+ 	row := info.GTTTraceCallbackAttempt{
+-		Event: int(e), HookKey: hook.key, Provider: hook.provider,
++		Event: int(e), HookKey: hook.key, SourceID: hook.sourceID, Provider: hook.provider,
++		SourceOccurrenceID:     occurrenceID,
+ 		StateEffectsUnobserved: true,
+ 		SnapshotDelta:          make(map[string]float64),
+ 		MultDelta:              attack.Info.Mult - beforeInfo.Mult,
+@@ -230,6 +249,9 @@ func appendTraceCallbackAttempt(
+ 		IgnoreDefDelta:         attack.Info.IgnoreDefPercent - beforeInfo.IgnoreDefPercent,
+ 		AmpMultiplierDelta:     attack.Info.AmpMult - beforeInfo.AmpMult,
+ 	}
++	if gttsource.ValidID(parentSourceID) {
++		row.ParentSourceID = &parentSourceID
++	}
+ 	for stat := attributes.Stat(0); stat < attributes.EndStatType; stat++ {
+ 		delta := attack.Snapshot.Stats[stat] - beforeStats[stat]
+ 		if delta != 0 && stat.String() != "" {
+diff --git a/pkg/core/info/combat.go b/pkg/core/info/combat.go
+index 45354f562e6ff26f46b5fdf499a10a19fc47ec19..4445bf16a137ae880740a87ebd0afcc3be64df91 100644
+--- a/pkg/core/info/combat.go
++++ b/pkg/core/info/combat.go
+@@ -18,8 +18,16 @@ type AttackEvent struct {
+ 	// copied with the attack when combat fans one attack out to its targets.
+ 	GTTTraceContext *GTTTraceAttackContext `json:"-"`
+ 	// GTTTraceHit is target-local and is allocated by the target handler.
+-	GTTTraceHit      *GTTTraceHit      `json:"-"`
+-	GTTTraceProvider gtttrace.Provider `json:"-"`
++	GTTTraceHit                      *GTTTraceHit              `json:"-"`
++	GTTTraceProvider                 gtttrace.Provider         `json:"-"`
++	GTTTraceSourceID                 string                    `json:"-"`
++	GTTTraceSourceTemplateSHA256     string                    `json:"-"`
++	GTTTraceSourceParameters         []GTTTraceSourceParameter `json:"-"`
++	GTTTraceSourceOccurrenceID       string                    `json:"-"`
++	GTTTraceParentOccurrenceID       string                    `json:"-"`
++	GTTTraceCapturedSourceID         string                    `json:"-"`
++	GTTTraceCapturedTemplateSHA256   string                    `json:"-"`
++	GTTTraceCapturedSourceParameters []GTTTraceSourceParameter `json:"-"`
+ 	// GTTTraceCallbackAttempts keeps pre-fanout callback evidence (notably
+ 	// OnApplyAttack) until a target-local hit exists.
+ 	GTTTraceCallbackAttempts []GTTTraceCallbackAttempt `json:"-"`
+@@ -69,11 +77,14 @@ type AttackInfo struct {
+ 	SourceIsSim bool
+ 	DoNotLog    bool
+ 	// hitlag stuff
+-	HitlagHaltFrames     float64 // this is the number of frames to pause by
+-	HitlagFactor         float64 // this is factor to slow clock by
+-	CanBeDefenseHalted   bool    // for whacking ruin gaurds
+-	IsDeployable         bool    // if this is true, then hitlag does not affect owner
+-	HitlagOnHeadshotOnly bool    // if this is true, will only apply if HitWeakpoint is also true
++	HitlagHaltFrames             float64                   // this is the number of frames to pause by
++	HitlagFactor                 float64                   // this is factor to slow clock by
++	CanBeDefenseHalted           bool                      // for whacking ruin gaurds
++	IsDeployable                 bool                      // if this is true, then hitlag does not affect owner
++	HitlagOnHeadshotOnly         bool                      // if this is true, will only apply if HitWeakpoint is also true
++	GTTTraceSourceID             string                    `json:"-"`
++	GTTTraceSourceTemplateSHA256 string                    `json:"-"`
++	GTTTraceSourceParameters     []GTTTraceSourceParameter `json:"-"`
+ }
+ 
+ type Snapshot struct {
+diff --git a/pkg/core/info/gtt_trace.go b/pkg/core/info/gtt_trace.go
+index bcd27b5d7df729430a89750f154b6330f6b12a79..ff212a025ef71f99b7c6bf4a659edf94fdafc523 100644
+--- a/pkg/core/info/gtt_trace.go
++++ b/pkg/core/info/gtt_trace.go
+@@ -18,6 +18,92 @@ const (
+ 	GTTTraceTransformativeFormulaSHA256 = "c5e843111092ced9e2979cc228715acaafb4701b462923bb21b2c59091d43139"
+ )
+ 
++type GTTTraceSourceParameter = gtttrace.SourceValueParameter
++
++func GTTTraceReadFrame(attack *AttackEvent) int {
++	if attack == nil {
++		return -1
++	}
++	if attack.GTTTraceHit != nil {
++		return attack.GTTTraceHit.Frame
++	}
++	if attack.Snapshot.SourceFrame != 0 {
++		return attack.Snapshot.SourceFrame
++	}
++	return attack.SourceFrame
++}
++
++// GTTTraceCaptureSourceParameters is the generic target of build-time AST
++// instrumentation for a supported modifier Amount expression. It records no
++// semantic names and has no effect on gameplay arithmetic.
++func GTTTraceCaptureSourceParameters(
++	attack *AttackEvent,
++	sourceID string,
++	templateSHA256 string,
++	parameters []GTTTraceSourceParameter,
++) {
++	if attack == nil {
++		return
++	}
++	attack.GTTTraceCapturedSourceID = sourceID
++	attack.GTTTraceCapturedTemplateSHA256 = templateSHA256
++	attack.GTTTraceCapturedSourceParameters = cloneGTTTraceSourceParameters(parameters)
++}
++
++func GTTTraceTakeCapturedSourceParameters(
++	attack *AttackEvent,
++) (string, string, []GTTTraceSourceParameter) {
++	if attack == nil {
++		return "", "", nil
++	}
++	sourceID := attack.GTTTraceCapturedSourceID
++	templateSHA256 := attack.GTTTraceCapturedTemplateSHA256
++	parameters := cloneGTTTraceSourceParameters(attack.GTTTraceCapturedSourceParameters)
++	attack.GTTTraceCapturedSourceID = ""
++	attack.GTTTraceCapturedTemplateSHA256 = ""
++	attack.GTTTraceCapturedSourceParameters = nil
++	return sourceID, templateSHA256, parameters
++}
++
++func GTTTraceNormalizeSourceParameters(
++	parameters []GTTTraceSourceParameter,
++	frame int,
++	actorIndex int,
++) []GTTTraceSourceParameter {
++	out := cloneGTTTraceSourceParameters(parameters)
++	for index := range out {
++		if out[index].ReadFrame < 0 {
++			out[index].ReadFrame = frame
++		}
++		if out[index].ActorIndex == nil && out[index].Kind == "candidate_stat" {
++			actor := actorIndex
++			out[index].ActorIndex = &actor
++		}
++	}
++	return out
++}
++
++func cloneGTTTraceSourceParameters(
++	parameters []GTTTraceSourceParameter,
++) []GTTTraceSourceParameter {
++	out := append(make([]GTTTraceSourceParameter, 0, len(parameters)), parameters...)
++	for index := range out {
++		if out[index].ActorIndex != nil {
++			actor := *out[index].ActorIndex
++			out[index].ActorIndex = &actor
++		}
++		if out[index].ActorKey != nil {
++			actorKey := *out[index].ActorKey
++			out[index].ActorKey = &actorKey
++		}
++		if out[index].StatKey != nil {
++			statKey := *out[index].StatKey
++			out[index].StatKey = &statKey
++		}
++	}
++	return out
++}
++
+ // GTTTraceFormulaSHA256 identifies the interpretation registry, not the
+ // current numeric values of a hit. Numeric inputs are carried separately in
+ // GTTTraceHit so a safe perturbation does not masquerade as formula drift.
+@@ -69,16 +155,21 @@ type GTTTraceReactionContext struct {
+ }
+ 
+ type GTTTraceStatContribution struct {
+-	ModifierKey    string             `json:"modifier_key"`
+-	RecipientIndex int                `json:"recipient_index"`
+-	Accepted       bool               `json:"accepted"`
+-	Values         map[string]float64 `json:"values"`
+-	Provider       gtttrace.Provider  `json:"provider"`
++	ModifierKey        string             `json:"modifier_key"`
++	RecipientIndex     int                `json:"recipient_index"`
++	Accepted           bool               `json:"accepted"`
++	Values             map[string]float64 `json:"values"`
++	SourceID           string             `json:"-"`
++	SourceOccurrenceID string             `json:"-"`
++	Provider           gtttrace.Provider  `json:"provider"`
+ }
+ 
+ type GTTTraceCallbackAttempt struct {
+ 	Event                  int                `json:"event"`
+ 	HookKey                string             `json:"hook_key"`
++	SourceID               string             `json:"-"`
++	ParentSourceID         *string            `json:"-"`
++	SourceOccurrenceID     string             `json:"-"`
+ 	Provider               gtttrace.Provider  `json:"provider"`
+ 	Changed                bool               `json:"changed"`
+ 	TopologyChanged        bool               `json:"topology_changed"`
+@@ -93,16 +184,20 @@ type GTTTraceCallbackAttempt struct {
+ }
+ 
+ type GTTTraceTargetModContribution struct {
+-	Channel     string            `json:"channel"`
+-	ModifierKey string            `json:"modifier_key"`
+-	Value       float64           `json:"value"`
+-	Provider    gtttrace.Provider `json:"provider"`
++	Channel            string            `json:"channel"`
++	ModifierKey        string            `json:"modifier_key"`
++	Value              float64           `json:"value"`
++	SourceID           string            `json:"-"`
++	SourceOccurrenceID string            `json:"-"`
++	Provider           gtttrace.Provider `json:"provider"`
+ }
+ 
+ type GTTTraceReactionBonusContribution struct {
+-	ModifierKey string            `json:"modifier_key"`
+-	Value       float64           `json:"value"`
+-	Provider    gtttrace.Provider `json:"provider"`
++	ModifierKey        string            `json:"modifier_key"`
++	Value              float64           `json:"value"`
++	SourceID           string            `json:"-"`
++	SourceOccurrenceID string            `json:"-"`
++	Provider           gtttrace.Provider `json:"provider"`
+ }
+ 
+ // GTTTraceTransformativeFormula is a numeric construction receipt for ordinary
+@@ -146,14 +241,18 @@ type GTTTraceAuraRow struct {
+ }
+ 
+ type GTTTraceAttackModAttempt struct {
+-	ModifierKey  string             `json:"modifier_key"`
+-	SourceKey    string             `json:"source_key"`
+-	OwnerIndex   int                `json:"owner_index"`
+-	Accepted     bool               `json:"accepted"`
+-	BeforeDamage *float64           `json:"before_damage"`
+-	AfterDamage  *float64           `json:"after_damage"`
+-	Delta        map[string]float64 `json:"delta"`
+-	Provider     gtttrace.Provider  `json:"provider"`
++	ModifierKey          string                    `json:"modifier_key"`
++	SourceKey            string                    `json:"source_key"`
++	OwnerIndex           int                       `json:"owner_index"`
++	Accepted             bool                      `json:"accepted"`
++	BeforeDamage         *float64                  `json:"before_damage"`
++	AfterDamage          *float64                  `json:"after_damage"`
++	Delta                map[string]float64        `json:"delta"`
++	SourceID             string                    `json:"-"`
++	SourceOccurrenceID   string                    `json:"-"`
++	SourceTemplateSHA256 string                    `json:"-"`
++	SourceParameters     []GTTTraceSourceParameter `json:"-"`
++	Provider             gtttrace.Provider         `json:"provider"`
+ }
+ 
+ type GTTTraceCompleteness struct {
+@@ -168,21 +267,24 @@ type GTTTraceCompleteness struct {
+ // versioned numeric receipt, not a claim that arbitrary Go expressions have
+ // been converted to symbolic formulae.
+ type GTTTraceHit struct {
+-	AttackID        uint64  `json:"attack_id"`
+-	HitID           uint64  `json:"hit_id"`
+-	ParentAttackID  *uint64 `json:"parent_attack_id"`
+-	ParentHitID     *uint64 `json:"parent_hit_id"`
+-	ParentTargetKey *int    `json:"parent_target_key"`
+-	Frame           int     `json:"frame"`
+-	SourceFrame     int     `json:"source_frame"`
+-	SnapshotFrame   int     `json:"snapshot_frame"`
+-	ActorIndex      int     `json:"actor_index"`
+-	DamageSrc       int     `json:"damage_src"`
+-	Ability         string  `json:"ability"`
+-	AttackTag       int     `json:"attack_tag"`
+-	Element         string  `json:"element"`
+-	TargetKey       int     `json:"target_key"`
+-	TargetType      int     `json:"target_type"`
++	AttackID           uint64  `json:"attack_id"`
++	HitID              uint64  `json:"hit_id"`
++	ParentAttackID     *uint64 `json:"parent_attack_id"`
++	ParentHitID        *uint64 `json:"parent_hit_id"`
++	ParentTargetKey    *int    `json:"parent_target_key"`
++	SourceID           string  `json:"-"`
++	ParentSourceID     *string `json:"-"`
++	SourceOccurrenceID string  `json:"-"`
++	Frame              int     `json:"frame"`
++	SourceFrame        int     `json:"source_frame"`
++	SnapshotFrame      int     `json:"snapshot_frame"`
++	ActorIndex         int     `json:"actor_index"`
++	DamageSrc          int     `json:"damage_src"`
++	Ability            string  `json:"ability"`
++	AttackTag          int     `json:"attack_tag"`
++	Element            string  `json:"element"`
++	TargetKey          int     `json:"target_key"`
++	TargetType         int     `json:"target_type"`
+ 
+ 	FormulaKind        string                   `json:"formula_kind"`
+ 	FormulaSHA256      string                   `json:"formula_sha256"`
+diff --git a/pkg/core/player/character/hitlag.go b/pkg/core/player/character/hitlag.go
+index 3a31809c95a9599270b2c165a6a2309c193feda4..e9bd81bd64b73af6033c12db3d8b64f6e5d8ddd9 100644
+--- a/pkg/core/player/character/hitlag.go
++++ b/pkg/core/player/character/hitlag.go
+@@ -5,14 +5,25 @@ import (
+ 	"math"
+ 
+ 	"github.com/genshinsim/gcsim/pkg/core/glog"
++	"github.com/genshinsim/gcsim/pkg/gttsource"
+ )
+ 
+ func (c *CharWrapper) QueueCharTask(f func(), delay int) {
++	sourceID := ""
++	if c.gttTrace.Enabled() {
++		sourceID = gttsource.CaptureCaller(gttsource.KindTaskCallback, 1)
++	}
+ 	if delay == 0 {
++		provider := c.gttTrace.Current()
++		occurrenceID := c.gttTrace.RecordSourceOccurrence(
++			gttsource.KindTaskCallback, sourceID, *c.f, provider, "",
++		)
++		restore := c.gttTrace.EnterSourceOccurrence(provider, sourceID, occurrenceID, "")
++		defer restore()
+ 		f()
+ 		return
+ 	}
+-	c.queue.Add(f, delay)
++	c.queue.AddSource(f, delay, sourceID)
+ }
+ 
+ func (c *CharWrapper) Tick() {
+diff --git a/pkg/core/player/character/mods.go b/pkg/core/player/character/mods.go
+index 71b2d2bc6bf9c199d7754c28a7746dd637fd9365..b139fec6b9e465b8fa6881a1e1097725cd5e252e 100644
+--- a/pkg/core/player/character/mods.go
++++ b/pkg/core/player/character/mods.go
+@@ -10,6 +10,7 @@ import (
+ 	"github.com/genshinsim/gcsim/pkg/core/event"
+ 	"github.com/genshinsim/gcsim/pkg/core/glog"
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gttsource"
+ 	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ 	"github.com/genshinsim/gcsim/pkg/modifier"
+ )
+@@ -67,23 +68,30 @@ func (c *CharWrapper) AddStatus(key string, dur int, hitlag bool) {
+ }
+ 
+ func (c *CharWrapper) AddAttackMod(mod AttackMod) {
+-	provider, displaced := c.gttPrepareModifier("attack", &mod)
++	sourceID := c.gttModifierSourceID()
++	provider, displaced, displacedSourceID := c.gttPrepareModifier("attack", &mod, sourceID)
+ 	mod.SetExpiry(*c.f)
+ 	overwrote, oldEvt := modifier.Add[modifier.Mod](&c.mods, &mod, *c.f)
+ 	modifier.LogAdd("attack", c.Index(), &mod, c.log, overwrote, oldEvt)
+-	c.gttRecordModifier("attack", mod.Key(), provider, displaced, overwrote)
++	c.gttRecordModifier("attack", mod.Key(), sourceID, provider, displacedSourceID, displaced, overwrote)
+ }
+ 
+ func (c *CharWrapper) AddCooldownMod(mod CooldownMod) {
++	sourceID := c.gttModifierSourceID()
++	provider, displaced, displacedSourceID := c.gttPrepareModifier("cooldown", &mod, sourceID)
+ 	mod.SetExpiry(*c.f)
+ 	overwrote, oldEvt := modifier.Add[modifier.Mod](&c.mods, &mod, *c.f)
+ 	modifier.LogAdd("cd", c.Index(), &mod, c.log, overwrote, oldEvt)
++	c.gttRecordModifier("cooldown", mod.Key(), sourceID, provider, displacedSourceID, displaced, overwrote)
+ }
+ 
+ func (c *CharWrapper) AddDamageReductionMod(mod DamageReductionMod) {
++	sourceID := c.gttModifierSourceID()
++	provider, displaced, displacedSourceID := c.gttPrepareModifier("damage_reduction", &mod, sourceID)
+ 	mod.SetExpiry(*c.f)
+ 	overwrote, oldEvt := modifier.Add[modifier.Mod](&c.mods, &mod, *c.f)
+ 	modifier.LogAdd("dr", c.Index(), &mod, c.log, overwrote, oldEvt)
++	c.gttRecordModifier("damage_reduction", mod.Key(), sourceID, provider, displacedSourceID, displaced, overwrote)
+ }
+ 
+ func (c *CharWrapper) AddHealBonusMod(mod HealBonusMod) {
+@@ -93,51 +101,65 @@ func (c *CharWrapper) AddHealBonusMod(mod HealBonusMod) {
+ }
+ 
+ func (c *CharWrapper) AddReactBonusMod(mod ReactBonusMod) {
+-	provider, displaced := c.gttPrepareModifier("reaction_bonus", &mod)
++	sourceID := c.gttModifierSourceID()
++	provider, displaced, displacedSourceID := c.gttPrepareModifier("reaction_bonus", &mod, sourceID)
+ 	mod.SetExpiry(*c.f)
+ 	overwrote, oldEvt := modifier.Add[modifier.Mod](&c.mods, &mod, *c.f)
+ 	modifier.LogAdd("react bonus", c.Index(), &mod, c.log, overwrote, oldEvt)
+-	c.gttRecordModifier("reaction_bonus", mod.Key(), provider, displaced, overwrote)
++	c.gttRecordModifier("reaction_bonus", mod.Key(), sourceID, provider, displacedSourceID, displaced, overwrote)
+ }
+ 
+ func (c *CharWrapper) AddStatMod(mod StatMod) {
+-	provider, displaced := c.gttPrepareModifier("stat", &mod)
++	sourceID := c.gttModifierSourceID()
++	provider, displaced, displacedSourceID := c.gttPrepareModifier("stat", &mod, sourceID)
+ 	mod.SetExpiry(*c.f)
+ 	overwrote, oldEvt := modifier.Add[modifier.Mod](&c.mods, &mod, *c.f)
+ 	modifier.LogAdd("stat", c.Index(), &mod, c.log, overwrote, oldEvt)
+-	c.gttRecordModifier("stat", mod.Key(), provider, displaced, overwrote)
++	c.gttRecordModifier("stat", mod.Key(), sourceID, provider, displacedSourceID, displaced, overwrote)
+ 	transition := "activation"
+ 	if overwrote {
+ 		transition = "replacement_refresh"
+ 	}
+-	c.events.Emit(event.OnGTTEffectModifierChange, c.Index(), mod.Key(), transition, mod.Expiry(), mod.Dur, mod.Amount())
++	c.events.Emit(event.OnGTTEffectModifierChange, c.Index(), mod.Key(), transition, mod.Expiry(), mod.Dur, c.gttStatModAmount(&mod))
++}
++
++func (c *CharWrapper) gttModifierSourceID() string {
++	if !c.gttTrace.Enabled() {
++		return ""
++	}
++	return gttsource.CaptureCaller(gttsource.KindModifierAmount, 2)
+ }
+ 
+ func (c *CharWrapper) gttPrepareModifier(
+ 	channel string,
+ 	mod modifier.Mod,
+-) (gtttrace.Provider, *gtttrace.Provider) {
++	sourceID string,
++) (gtttrace.Provider, *gtttrace.Provider, *string) {
+ 	provider := c.gttTrace.Current()
+ 	if !provider.Complete() {
+ 		provider = gtttrace.UnknownProvider("unattributed_modifier", mod.Key())
+ 	}
+ 	mod.SetGTTSource(provider)
++	mod.SetGTTSourceID(sourceID)
+ 	index := modifier.Find(&c.mods, mod.Key())
+ 	if index < 0 {
+-		return provider, nil
++		return provider, nil, nil
+ 	}
+ 	old := c.mods[index]
+ 	if old.Expiry() != -1 && old.Expiry() <= *c.f {
+-		return provider, nil
++		return provider, nil, nil
+ 	}
+ 	displaced := old.GTTSource()
+-	return provider, &displaced
++	displacedSourceID := old.GTTSourceID()
++	return provider, &displaced, &displacedSourceID
+ }
+ 
+ func (c *CharWrapper) gttRecordModifier(
+ 	channel string,
+ 	key string,
++	sourceID string,
+ 	provider gtttrace.Provider,
++	displacedSourceID *string,
+ 	displaced *gtttrace.Provider,
+ 	overwrote bool,
+ ) {
+@@ -147,11 +169,17 @@ func (c *CharWrapper) gttRecordModifier(
+ 	}
+ 	c.gttTrace.RecordModifierTransition(gtttrace.ModifierTransition{
+ 		Frame: *c.f, Channel: channel, RecipientIndex: c.Index(),
+-		ModifierKey: key, Transition: transition, Provider: provider,
+-		DisplacedProvider: displaced,
++		ModifierKey: key, Transition: transition, SourceID: sourceID, Provider: provider,
++		DisplacedSourceID: displacedSourceID, DisplacedProvider: displaced,
+ 	})
+ }
+ 
++func (c *CharWrapper) gttStatModAmount(mod *StatMod) []float64 {
++	restore := c.gttTrace.EnterSource(mod.GTTSource(), mod.GTTSourceID())
++	defer restore()
++	return mod.Amount()
++}
++
+ // GTTEffectStatMod is a typed, damage-boundary view used only by the GTT
+ // effect-observation collector. It does not depend on debug logging.
+ type GTTEffectStatMod struct {
+@@ -281,7 +309,22 @@ func (c *CharWrapper) ApplyAttackMods(a *info.AttackEvent, t info.Target) []any
+ 		}
+ 
+ 		before := a.Snapshot.Stats
++		parentOccurrenceID := c.gttTrace.EnsureCurrentOccurrence()
++		occurrenceID := c.gttTrace.RecordSourceOccurrence(
++			gttsource.KindModifierAmount, m.GTTSourceID(), *c.f,
++			m.GTTSource(), parentOccurrenceID,
++		)
++		restore := c.gttTrace.EnterSourceOccurrence(
++			m.GTTSource(), m.GTTSourceID(), occurrenceID, parentOccurrenceID,
++		)
++		info.GTTTraceTakeCapturedSourceParameters(a)
+ 		amt := m.Amount(a, t)
++		restore()
++		capturedSourceID, templateSHA256, parameters := info.GTTTraceTakeCapturedSourceParameters(a)
++		if capturedSourceID != m.GTTSourceID() || templateSHA256 != gttsource.TemplateSHA256(m.GTTSourceID()) {
++			templateSHA256 = ""
++			parameters = nil
++		}
+ 		reject := amt == nil
+ 		for k, v := range amt {
+ 			a.Snapshot.Stats[k] += v
+@@ -300,12 +343,16 @@ func (c *CharWrapper) ApplyAttackMods(a *info.AttackEvent, t info.Target) []any
+ 				}
+ 			}
+ 			a.GTTTraceHit.AttackMods = append(a.GTTTraceHit.AttackMods, info.GTTTraceAttackModAttempt{
+-				ModifierKey: m.Key(),
+-				SourceKey:   source.Kind + ":" + source.Key,
+-				OwnerIndex:  source.OwnerIndex,
+-				Accepted:    !reject,
+-				Delta:       delta,
+-				Provider:    source,
++				ModifierKey:          m.Key(),
++				SourceKey:            source.Kind + ":" + source.Key,
++				OwnerIndex:           source.OwnerIndex,
++				Accepted:             !reject,
++				Delta:                delta,
++				Provider:             source,
++				SourceID:             m.GTTSourceID(),
++				SourceOccurrenceID:   occurrenceID,
++				SourceTemplateSHA256: templateSHA256,
++				SourceParameters:     parameters,
+ 			})
+ 			if !source.Complete() {
+ 				a.GTTTraceHit.Completeness.ProviderIdentityComplete = false
+@@ -356,7 +403,9 @@ func (c *CharWrapper) CDReduction(a action.Action, dur int) int {
+ 		}
+ 		// if not expired
+ 		if m.Expiry() == -1 || m.Expiry() > *c.f {
++			restore := c.gttTrace.EnterSource(m.GTTSource(), m.GTTSourceID())
+ 			amt := m.Amount(a)
++			restore()
+ 			c.log.NewEvent("applying cooldown modifier", glog.LogActionEvent, c.Index()).
+ 				Write("key", m.Key()).
+ 				Write("modifier", amt).
+@@ -382,7 +431,9 @@ func (c *CharWrapper) DamageReduction(char int) float64 {
+ 			continue
+ 		}
+ 		if m.Expiry() > *c.f || m.Expiry() == -1 {
++			restore := c.gttTrace.EnterSource(m.GTTSource(), m.GTTSourceID())
+ 			amt += m.Amount()
++			restore()
+ 			c.mods[n] = v
+ 			n++
+ 		}
+@@ -402,7 +453,9 @@ func (c *CharWrapper) HealBonus() float64 {
+ 			continue
+ 		}
+ 		if m.Expiry() > *c.f || m.Expiry() == -1 {
++			restore := c.gttTrace.EnterSource(m.GTTSource(), m.GTTSourceID())
+ 			amt += m.Amount()
++			restore()
+ 			c.mods[n] = v
+ 			n++
+ 		}
+@@ -428,14 +481,27 @@ func (c *CharWrapper) ReactBonusWithTrace(atk info.AttackInfo, trace *info.GTTTr
+ 			continue
+ 		}
+ 		if m.Expiry() > *c.f || m.Expiry() == -1 {
++			occurrenceID := ""
++			parentOccurrenceID := c.gttTrace.EnsureCurrentOccurrence()
++			if trace != nil {
++				occurrenceID = c.gttTrace.RecordSourceOccurrence(
++					gttsource.KindModifierAmount, m.GTTSourceID(), *c.f,
++					m.GTTSource(), parentOccurrenceID,
++				)
++			}
++			restore := c.gttTrace.EnterSourceOccurrence(
++				m.GTTSource(), m.GTTSourceID(), occurrenceID, parentOccurrenceID,
++			)
+ 			value := m.Amount(atk)
++			restore()
+ 			amt += value
+ 			if trace != nil {
+ 				source := m.GTTSource()
+ 				trace.ReactionBonusContributions = append(
+ 					trace.ReactionBonusContributions,
+ 					info.GTTTraceReactionBonusContribution{
+-						ModifierKey: m.Key(), Value: value, Provider: source,
++						ModifierKey: m.Key(), Value: value, Provider: source, SourceID: m.GTTSourceID(),
++						SourceOccurrenceID: occurrenceID,
+ 					},
+ 				)
+ 				if !source.Complete() {
+diff --git a/pkg/core/player/character/stats.go b/pkg/core/player/character/stats.go
+index beb8cdee16087267431b33587fdde60d9b80a503..92a520901fc8a74aa1dcc8cd14b417587160261c 100644
+--- a/pkg/core/player/character/stats.go
++++ b/pkg/core/player/character/stats.go
+@@ -7,6 +7,7 @@ import (
+ 
+ 	"github.com/genshinsim/gcsim/pkg/core/attributes"
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gttsource"
+ )
+ 
+ func (c *CharWrapper) Stats() ([attributes.EndStatType]float64, []any) {
+@@ -46,7 +47,22 @@ func (c *CharWrapper) statsWithGTTContributions(
+ 			continue
+ 		}
+ 
+-		amt := m.Amount()
++		occurrenceID := ""
++		var amt []float64
++		if capture {
++			parentOccurrenceID := c.gttTrace.EnsureCurrentOccurrence()
++			occurrenceID = c.gttTrace.RecordSourceOccurrence(
++				gttsource.KindModifierAmount, m.GTTSourceID(), *c.f,
++				m.GTTSource(), parentOccurrenceID,
++			)
++			restore := c.gttTrace.EnterSourceOccurrence(
++				m.GTTSource(), m.GTTSourceID(), occurrenceID, parentOccurrenceID,
++			)
++			amt = m.Amount()
++			restore()
++		} else {
++			amt = c.gttStatModAmount(m)
++		}
+ 		reject := amt == nil
+ 		var values map[string]float64
+ 		if capture {
+@@ -61,7 +77,8 @@ func (c *CharWrapper) statsWithGTTContributions(
+ 		if capture {
+ 			contributions = append(contributions, info.GTTTraceStatContribution{
+ 				ModifierKey: m.Key(), RecipientIndex: c.Index(), Accepted: !reject,
+-				Values: values, Provider: m.GTTSource(),
++				Values: values, Provider: m.GTTSource(), SourceID: m.GTTSourceID(),
++				SourceOccurrenceID: occurrenceID,
+ 			})
+ 		}
+ 		c.mods[n] = m
+@@ -110,7 +127,7 @@ func (c *CharWrapper) Stat(s attributes.Stat) float64 {
+ 		}
+ 		// check expiry
+ 		if m.Expiry() > *c.f || m.Expiry() == -1 {
+-			if amt := m.Amount(); amt != nil {
++			if amt := c.gttStatModAmount(m); amt != nil {
+ 				val += amt[s]
+ 			}
+ 		}
+@@ -136,7 +153,7 @@ func (c *CharWrapper) NonExtraStat(s attributes.Stat) float64 {
+ 		}
+ 		// check expiry
+ 		if m.Expiry() > *c.f || m.Expiry() == -1 {
+-			if amt := m.Amount(); amt != nil {
++			if amt := c.gttStatModAmount(m); amt != nil {
+ 				val += amt[s]
+ 			}
+ 		}
+@@ -166,7 +183,7 @@ func (c *CharWrapper) SelectStat(nonExtra bool, stat ...attributes.Stat) attribu
+ 		}
+ 		// check expiry
+ 		if m.Expiry() > *c.f || m.Expiry() == -1 {
+-			if amt := m.Amount(); amt != nil {
++			if amt := c.gttStatModAmount(m); amt != nil {
+ 				for _, k := range stat {
+ 					stats[k] += amt[k]
+ 				}
+diff --git a/pkg/core/task/task.go b/pkg/core/task/task.go
+index 0fcee57b35b89a5778ffecb45386763fb0ba8780..488edf51e7b70ac15d5245f9361c17a727af2407 100644
+--- a/pkg/core/task/task.go
++++ b/pkg/core/task/task.go
+@@ -11,16 +11,19 @@ package task
+ import (
+ 	"container/heap"
+ 
++	"github.com/genshinsim/gcsim/pkg/gttsource"
+ 	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ )
+ 
+ type minHeap []task
+ 
+ type task struct {
+-	executeBy int
+-	f         func()
+-	id        int
+-	provider  gtttrace.Provider
++	executeBy          int
++	f                  func()
++	id                 int
++	provider           gtttrace.Provider
++	sourceID           string
++	parentOccurrenceID string
+ }
+ 
+ type Handler struct {
+@@ -48,18 +51,40 @@ func New(f *int, trace ...*gtttrace.Runtime) *Handler {
+ func (s *Handler) Run() {
+ 	for s.tasks.Len() > 0 && s.tasks.Peek().executeBy <= *s.f {
+ 		entry := heap.Pop(s.tasks).(task)
+-		restore := s.trace.Enter(entry.provider)
++		frame := s.trace.Frame()
++		if frame < 0 {
++			frame = *s.f
++		}
++		occurrenceID := s.trace.RecordSourceOccurrence(
++			gttsource.KindTaskCallback, entry.sourceID, frame,
++			entry.provider, entry.parentOccurrenceID,
++		)
++		restore := s.trace.EnterSourceOccurrence(
++			entry.provider, entry.sourceID, occurrenceID, entry.parentOccurrenceID,
++		)
+ 		entry.f()
+ 		restore()
+ 	}
+ }
+ 
+ func (s *Handler) Add(f func(), delay int) {
++	sourceID := ""
++	if s.trace.Enabled() {
++		sourceID = gttsource.CaptureCaller(gttsource.KindTaskCallback, 1)
++	}
++	s.AddSource(f, delay, sourceID)
++}
++
++// AddSource queues a callback whose source identity was captured by a public
++// wrapper before delegation (for example a hitlag-aware character task).
++func (s *Handler) AddSource(f func(), delay int, sourceID string) {
+ 	heap.Push(s.tasks, task{
+-		executeBy: *s.f + delay,
+-		f:         f,
+-		id:        s.counter,
+-		provider:  s.trace.Current(),
++		executeBy:          *s.f + delay,
++		f:                  f,
++		id:                 s.counter,
++		provider:           s.trace.Current(),
++		sourceID:           sourceID,
++		parentOccurrenceID: s.trace.EnsureCurrentOccurrence(),
+ 	})
+ 	s.counter += 1
+ }
+diff --git a/pkg/enemy/gtt_trace.go b/pkg/enemy/gtt_trace.go
+index 954b2b73832b56ae8145003a18b7ca313570abed..c675c79116c22f9f867e91635b9a621043fd2ee2 100644
+--- a/pkg/enemy/gtt_trace.go
++++ b/pkg/enemy/gtt_trace.go
+@@ -31,6 +31,8 @@ func (e *Enemy) gttTraceBeginHit(atk *info.AttackEvent, grpMult float64) {
+ 		DamageMode:                 e.Core.Flags.DamageMode,
+ 		HPCapActive:                e.Core.Flags.DamageMode,
+ 		Provider:                   atk.GTTTraceProvider,
++		SourceID:                   atk.GTTTraceSourceID,
++		SourceOccurrenceID:         atk.GTTTraceSourceOccurrenceID,
+ 		SnapshotStats:              make(map[string]float64),
+ 		StatContributions:          append(make([]info.GTTTraceStatContribution, 0, len(atk.Snapshot.GTTStatContributions)), atk.Snapshot.GTTStatContributions...),
+ 		CallbackAttempts:           append(make([]info.GTTTraceCallbackAttempt, 0, len(atk.GTTTraceCallbackAttempts)), atk.GTTTraceCallbackAttempts...),
+diff --git a/pkg/enemy/mods.go b/pkg/enemy/mods.go
+index d2f675bd0606c2072b614f761d1592a85a4bf2e0..4ebfcaa47f3c98380a118336cc94d3f8f329cae8 100644
+--- a/pkg/enemy/mods.go
++++ b/pkg/enemy/mods.go
+@@ -6,6 +6,7 @@ import (
+ 
+ 	"github.com/genshinsim/gcsim/pkg/core/glog"
+ 	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/gttsource"
+ 	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ 	"github.com/genshinsim/gcsim/pkg/modifier"
+ )
+@@ -29,45 +30,59 @@ func (e *Enemy) AddStatus(key string, dur int, hitlag bool) {
+ }
+ 
+ func (e *Enemy) AddResistMod(mod info.ResistMod) {
+-	provider, displaced := e.gttPrepareTargetModifier(&mod)
++	sourceID := e.gttTargetModifierSourceID()
++	provider, displaced, displacedSourceID := e.gttPrepareTargetModifier(&mod, sourceID)
+ 	mod.SetExpiry(e.Core.F)
+ 	overwrote, oldEvt := modifier.Add[modifier.Mod](&e.mods, &mod, e.Core.F)
+ 	modifier.LogAdd("enemy", -1, &mod, e.Core.Log, overwrote, oldEvt)
+-	e.gttRecordTargetModifier("resistance", mod.Key(), provider, displaced, overwrote)
++	e.gttRecordTargetModifier("resistance", mod.Key(), sourceID, provider, displacedSourceID, displaced, overwrote)
+ }
+ 
+ func (e *Enemy) AddDefMod(mod info.DefMod) {
+-	provider, displaced := e.gttPrepareTargetModifier(&mod)
++	sourceID := e.gttTargetModifierSourceID()
++	provider, displaced, displacedSourceID := e.gttPrepareTargetModifier(&mod, sourceID)
+ 	mod.SetExpiry(e.Core.F)
+ 	overwrote, oldEvt := modifier.Add[modifier.Mod](&e.mods, &mod, e.Core.F)
+ 	modifier.LogAdd("enemy", -1, &mod, e.Core.Log, overwrote, oldEvt)
+-	e.gttRecordTargetModifier("defense", mod.Key(), provider, displaced, overwrote)
++	e.gttRecordTargetModifier("defense", mod.Key(), sourceID, provider, displacedSourceID, displaced, overwrote)
++}
++
++func (e *Enemy) gttTargetModifierSourceID() string {
++	if !e.Core.GTTTrace.Enabled() {
++		return ""
++	}
++	return gttsource.CaptureCaller(gttsource.KindModifierAmount, 2)
+ }
+ 
+ func (e *Enemy) gttPrepareTargetModifier(
+ 	mod modifier.Mod,
+-) (gtttrace.Provider, *gtttrace.Provider) {
++	sourceID string,
++) (gtttrace.Provider, *gtttrace.Provider, *string) {
+ 	provider := e.Core.GTTTrace.Current()
+ 	if !provider.Complete() {
+ 		provider = gtttrace.UnknownProvider("unattributed", mod.Key())
+ 	}
+ 	mod.SetGTTSource(provider)
++	mod.SetGTTSourceID(sourceID)
+ 	index := modifier.Find(&e.mods, mod.Key())
+ 	if index < 0 {
+-		return provider, nil
++		return provider, nil, nil
+ 	}
+ 	old := e.mods[index]
+ 	if old.Expiry() != -1 && old.Expiry() <= e.Core.F {
+-		return provider, nil
++		return provider, nil, nil
+ 	}
+ 	displaced := old.GTTSource()
+-	return provider, &displaced
++	displacedSourceID := old.GTTSourceID()
++	return provider, &displaced, &displacedSourceID
+ }
+ 
+ func (e *Enemy) gttRecordTargetModifier(
+ 	channel string,
+ 	key string,
++	sourceID string,
+ 	provider gtttrace.Provider,
++	displacedSourceID *string,
+ 	displaced *gtttrace.Provider,
+ 	overwrote bool,
+ ) {
+@@ -77,8 +92,8 @@ func (e *Enemy) gttRecordTargetModifier(
+ 	}
+ 	e.Core.GTTTrace.RecordModifierTransition(gtttrace.ModifierTransition{
+ 		Frame: e.Core.F, Channel: channel, RecipientIndex: int(e.Key()),
+-		ModifierKey: key, Transition: transition, Provider: provider,
+-		DisplacedProvider: displaced,
++		ModifierKey: key, Transition: transition, SourceID: sourceID, Provider: provider,
++		DisplacedSourceID: displacedSourceID, DisplacedProvider: displaced,
+ 	})
+ }
+ 
+@@ -137,7 +152,7 @@ func (e *Enemy) resist(ai *info.AttackInfo, evt glog.Event, trace *info.GTTTrace
+ 			if trace != nil {
+ 				source := m.GTTSource()
+ 				trace.TargetModContributions = append(trace.TargetModContributions, info.GTTTraceTargetModContribution{
+-					Channel: "resistance", ModifierKey: m.Key(), Value: m.Value, Provider: source,
++					Channel: "resistance", ModifierKey: m.Key(), Value: m.Value, SourceID: m.GTTSourceID(), Provider: source,
+ 				})
+ 				if !source.Complete() {
+ 					trace.Completeness.ProviderIdentityComplete = false
+@@ -184,7 +199,7 @@ func (e *Enemy) defAdj(evt glog.Event, trace *info.GTTTraceHit) float64 {
+ 			if trace != nil {
+ 				source := m.GTTSource()
+ 				trace.TargetModContributions = append(trace.TargetModContributions, info.GTTTraceTargetModContribution{
+-					Channel: "defense", ModifierKey: m.Key(), Value: m.Value, Provider: source,
++					Channel: "defense", ModifierKey: m.Key(), Value: m.Value, SourceID: m.GTTSourceID(), Provider: source,
+ 				})
+ 				if !source.Complete() {
+ 					trace.Completeness.ProviderIdentityComplete = false
+diff --git a/pkg/gtt/info.go b/pkg/gtt/info.go
+index b963648ad15d0b8afa39464857bccc072d5073dc..35daa4bb2471e1db492ac222dd42c24544e60451 100644
+--- a/pkg/gtt/info.go
++++ b/pkg/gtt/info.go
+@@ -3,36 +3,44 @@ package gtt
+ import (
+ 	"encoding/json"
+ 	"io"
++
++	"github.com/genshinsim/gcsim/pkg/gttsource"
+ )
+ 
+ const (
+-	PatchVersion                  = "gtt-reaction-formula-lineage-v1"
++	PatchVersion                  = "gtt-source-identity-v1"
+ 	StatResponseV2Capability      = "gtt_stat_response_v2"
+ 	SetResponseV1Capability       = "gtt_set_response_v1"
+ 	EffectObservationV1Capability = "gtt_effect_observation_v1"
+ 	TraceEquationV1Capability     = "gtt_trace_equation_v1"
+ 	TraceEquationV2Capability     = "gtt_trace_equation_v2"
+ 	TraceEquationV3Capability     = "gtt_trace_equation_v3"
++	TraceEquationV4Capability     = "gtt_trace_equation_v4"
++	SourceManifestV1Capability    = "gtt_source_manifest_v1"
+ 	TraceProvenanceV1Capability   = "gtt_trace_provenance_v1"
+ )
+ 
+ type EngineInfo struct {
+-	GTTEngine          bool     `json:"gtt_engine"`
+-	GTTPatchVersion    string   `json:"gtt_patch_version"`
+-	Capabilities       []string `json:"capabilities"`
+-	SequentialWaves    bool     `json:"sequential_waves"`
+-	WaveSchedulerStage string   `json:"wave_scheduler_stage,omitempty"`
+-	UpstreamVersion    string   `json:"upstream_version,omitempty"`
++	GTTEngine                bool     `json:"gtt_engine"`
++	GTTPatchVersion          string   `json:"gtt_patch_version"`
++	Capabilities             []string `json:"capabilities"`
++	SequentialWaves          bool     `json:"sequential_waves"`
++	WaveSchedulerStage       string   `json:"wave_scheduler_stage,omitempty"`
++	UpstreamVersion          string   `json:"upstream_version,omitempty"`
++	SourceManifestBodySHA256 string   `json:"source_manifest_body_sha256,omitempty"`
++	SourceCompilerVersion    string   `json:"source_manifest_compiler_version,omitempty"`
+ }
+ 
+ func Info(upstreamVersion string) EngineInfo {
+ 	return EngineInfo{
+-		GTTEngine:          true,
+-		GTTPatchVersion:    PatchVersion,
+-		Capabilities:       []string{"gtt_engine_marker", WaveSchedulerPrototypeCapability, WaveScenarioPayloadCapability, StatResponseV2Capability, SetResponseV1Capability, EffectObservationV1Capability, TraceEquationV2Capability, TraceEquationV3Capability, TraceProvenanceV1Capability},
+-		SequentialWaves:    true,
+-		WaveSchedulerStage: "scenario_payload_prototype",
+-		UpstreamVersion:    upstreamVersion,
++		GTTEngine:                true,
++		GTTPatchVersion:          PatchVersion,
++		Capabilities:             []string{"gtt_engine_marker", WaveSchedulerPrototypeCapability, WaveScenarioPayloadCapability, StatResponseV2Capability, SetResponseV1Capability, EffectObservationV1Capability, TraceEquationV2Capability, TraceEquationV3Capability, TraceEquationV4Capability, SourceManifestV1Capability, TraceProvenanceV1Capability},
++		SequentialWaves:          true,
++		WaveSchedulerStage:       "scenario_payload_prototype",
++		UpstreamVersion:          upstreamVersion,
++		SourceManifestBodySHA256: gttsource.ManifestBodySHA256(),
++		SourceCompilerVersion:    gttsource.CompilerVersion(),
+ 	}
+ }
+ 
+diff --git a/pkg/gtt/info_test.go b/pkg/gtt/info_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..9a7d3727190a6900a3626fa0904cec500190c9e1
+--- /dev/null
++++ b/pkg/gtt/info_test.go
+@@ -0,0 +1,26 @@
++package gtt
++
++import (
++	"encoding/json"
++	"testing"
++)
++
++func TestEngineInfoUsesCanonicalSourceManifestCompilerKey(t *testing.T) {
++	payload, err := json.Marshal(EngineInfo{
++		SourceManifestBodySHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
++		SourceCompilerVersion:    "gtt_source_compiler_v1",
++	})
++	if err != nil {
++		t.Fatalf("marshal engine info: %v", err)
++	}
++	var decoded map[string]any
++	if err := json.Unmarshal(payload, &decoded); err != nil {
++		t.Fatalf("decode engine info: %v", err)
++	}
++	if got := decoded["source_manifest_compiler_version"]; got != "gtt_source_compiler_v1" {
++		t.Fatalf("canonical compiler key = %v, want gtt_source_compiler_v1", got)
++	}
++	if _, exists := decoded["source_compiler_version"]; exists {
++		t.Fatal("legacy source_compiler_version alias must not be emitted")
++	}
++}
+diff --git a/pkg/gttsource/generated_manifest.go b/pkg/gttsource/generated_manifest.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..4c5d8f733cf0d7943eba53e2d97a471cb8fc07be
+--- /dev/null
++++ b/pkg/gttsource/generated_manifest.go
+@@ -0,0 +1,12 @@
++// Code generated by cmd/gtt-source-manifest; DO NOT EDIT.
++
++package gttsource
++
++// The checked-in placeholder keeps ordinary upstream tests buildable. Engine
++// preparation replaces it with a manifest-bound generated file before the
++// optimizer executable is built.
++const generatedSourceManifestBodySHA256 = ""
++const generatedSourceCompilerVersion = ""
++
++var generatedSourceIDByLookupKey = map[string]string{}
++var generatedTemplateSHA256BySourceID = map[string]string{}
+diff --git a/pkg/gttsource/source.go b/pkg/gttsource/source.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..4af67c9f9e83199d7e8f2b67c4757793a9861259
+--- /dev/null
++++ b/pkg/gttsource/source.go
+@@ -0,0 +1,106 @@
++// Package gttsource resolves build-time source identities at the small runtime
++// seams used by the opt-in GTT equation trace. Source identities describe code
++// roots; they are deliberately separate from gtttrace.Provider, which describes
++// the character, weapon, or set that owns an effect at runtime.
++package gttsource
++
++import (
++	"path/filepath"
++	"runtime"
++	"strconv"
++	"strings"
++)
++
++const (
++	KindModifierAmount = "modifier_amount"
++	KindEventCallback  = "event_callback"
++	KindTaskCallback   = "task_callback"
++	KindQueuedAttack   = "queued_attack"
++)
++
++// ManifestBodySHA256 identifies the canonical, executable-external source
++// manifest body used to generate this lookup table. The installed-engine
++// manifest binds this value to the final executable SHA256 after compilation.
++func ManifestBodySHA256() string {
++	return generatedSourceManifestBodySHA256
++}
++
++func CompilerVersion() string {
++	return generatedSourceCompilerVersion
++}
++
++func TemplateSHA256(sourceID string) string {
++	if !ValidID(sourceID) {
++		return ""
++	}
++	value := generatedTemplateSHA256BySourceID[sourceID]
++	if !validSHA256(value) {
++		return ""
++	}
++	return value
++}
++
++// CaptureCaller resolves the caller above the seam invoking this helper.
++// callerSkip=1 means the direct caller of the public seam (for example the
++// gameplay call site that invoked AddAttackMod or QueueAttack).
++//
++// Runtime file/line data is used only as a lookup address into a build-time
++// generated table. It never classifies behavior by a Go function, character,
++// set, modifier, hook, or ability name.
++func CaptureCaller(kind string, callerSkip int) string {
++	if callerSkip < 0 || len(generatedSourceIDByLookupKey) == 0 {
++		return ""
++	}
++	_, file, line, ok := runtime.Caller(callerSkip + 1)
++	if !ok || file == "" || line <= 0 {
++		return ""
++	}
++	return Lookup(kind, file, line)
++}
++
++// Lookup resolves a build-time call-site entry. Absolute staging paths are
++// normalized by suffix against module-relative manifest paths. Ambiguity fails
++// closed: the generator rejects same-key collisions, and this runtime lookup
++// refuses multiple suffix matches.
++func Lookup(kind, file string, line int) string {
++	if kind == "" || file == "" || line <= 0 {
++		return ""
++	}
++	normalized := filepath.ToSlash(filepath.Clean(file))
++	suffix := "|" + strconv.Itoa(line)
++	prefix := kind + "|"
++	match := ""
++	for key, sourceID := range generatedSourceIDByLookupKey {
++		if !strings.HasPrefix(key, prefix) || !strings.HasSuffix(key, suffix) {
++			continue
++		}
++		relative := strings.TrimSuffix(strings.TrimPrefix(key, prefix), suffix)
++		if normalized != relative && !strings.HasSuffix(normalized, "/"+relative) {
++			continue
++		}
++		if match != "" && match != sourceID {
++			return ""
++		}
++		match = sourceID
++	}
++	if !ValidID(match) {
++		return ""
++	}
++	return match
++}
++
++func ValidID(sourceID string) bool {
++	return validSHA256(sourceID)
++}
++
++func validSHA256(sourceID string) bool {
++	if len(sourceID) != 64 {
++		return false
++	}
++	for _, char := range sourceID {
++		if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
++			return false
++		}
++	}
++	return true
++}
+diff --git a/pkg/gttsource/source_test.go b/pkg/gttsource/source_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..11e41b13b9eb3554cd5172ad98d06aa7eba8f668
+--- /dev/null
++++ b/pkg/gttsource/source_test.go
+@@ -0,0 +1,32 @@
++package gttsource
++
++import "testing"
++
++func TestLookupUsesModuleRelativeSuffixAndFailsClosed(t *testing.T) {
++	originalIDs := generatedSourceIDByLookupKey
++	originalTemplates := generatedTemplateSHA256BySourceID
++	defer func() {
++		generatedSourceIDByLookupKey = originalIDs
++		generatedTemplateSHA256BySourceID = originalTemplates
++	}()
++
++	sourceID := "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
++	templateSHA := "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
++	generatedSourceIDByLookupKey = map[string]string{
++		KindQueuedAttack + "|internal/characters/example/skill.go|42": sourceID,
++	}
++	generatedTemplateSHA256BySourceID = map[string]string{sourceID: templateSHA}
++
++	if got := Lookup(KindQueuedAttack, `C:\staging\gcsim\internal\characters\example\skill.go`, 42); got != sourceID {
++		t.Fatalf("Lookup() = %q, want %q", got, sourceID)
++	}
++	if got := TemplateSHA256(sourceID); got != templateSHA {
++		t.Fatalf("TemplateSHA256() = %q, want %q", got, templateSHA)
++	}
++	if got := Lookup(KindTaskCallback, `C:\staging\gcsim\internal\characters\example\skill.go`, 42); got != "" {
++		t.Fatalf("wrong seam resolved %q", got)
++	}
++	if ValidID("gttsrc-v1:" + sourceID) {
++		t.Fatal("prefixed source ID must be rejected by the v4 wire contract")
++	}
++}
+diff --git a/pkg/gttsourcegen/canonical.go b/pkg/gttsourcegen/canonical.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..401d2bc1e77efa5985ee928403b6bad94cd88599
+--- /dev/null
++++ b/pkg/gttsourcegen/canonical.go
+@@ -0,0 +1,79 @@
++package gttsourcegen
++
++import (
++	"bytes"
++	"encoding/json"
++	"fmt"
++	"sort"
++	"strconv"
++)
++
++// CanonicalJSON returns compact JSON with recursively sorted object keys and
++// ASCII-only string escapes. It is the one byte representation used for all
++// build-time source hashes.
++func CanonicalJSON(value any) ([]byte, error) {
++	encoded, err := json.Marshal(value)
++	if err != nil {
++		return nil, err
++	}
++	decoder := json.NewDecoder(bytes.NewReader(encoded))
++	decoder.UseNumber()
++	var normalized any
++	if err := decoder.Decode(&normalized); err != nil {
++		return nil, err
++	}
++	var out bytes.Buffer
++	if err := appendCanonicalJSON(&out, normalized); err != nil {
++		return nil, err
++	}
++	return out.Bytes(), nil
++}
++
++func appendCanonicalJSON(out *bytes.Buffer, value any) error {
++	switch value := value.(type) {
++	case nil:
++		out.WriteString("null")
++	case bool:
++		if value {
++			out.WriteString("true")
++		} else {
++			out.WriteString("false")
++		}
++	case string:
++		out.WriteString(strconv.QuoteToASCII(value))
++	case json.Number:
++		out.WriteString(value.String())
++	case []any:
++		out.WriteByte('[')
++		for index, element := range value {
++			if index > 0 {
++				out.WriteByte(',')
++			}
++			if err := appendCanonicalJSON(out, element); err != nil {
++				return err
++			}
++		}
++		out.WriteByte(']')
++	case map[string]any:
++		keys := make([]string, 0, len(value))
++		for key := range value {
++			keys = append(keys, key)
++		}
++		sort.Strings(keys)
++		out.WriteByte('{')
++		for index, key := range keys {
++			if index > 0 {
++				out.WriteByte(',')
++			}
++			out.WriteString(strconv.QuoteToASCII(key))
++			out.WriteByte(':')
++			if err := appendCanonicalJSON(out, value[key]); err != nil {
++				return err
++			}
++		}
++		out.WriteByte('}')
++	default:
++		return fmt.Errorf("unsupported canonical JSON value %T", value)
++	}
++	return nil
++}
+diff --git a/pkg/gttsourcegen/generator_test.go b/pkg/gttsourcegen/generator_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..95084d85ef00f0a40a31887fe06eef4f0c6c57d2
+--- /dev/null
++++ b/pkg/gttsourcegen/generator_test.go
+@@ -0,0 +1,410 @@
++package gttsourcegen
++
++import (
++	"bytes"
++	"crypto/sha256"
++	"encoding/hex"
++	"encoding/json"
++	"go/parser"
++	"go/token"
++	"os"
++	"path/filepath"
++	"reflect"
++	"regexp"
++	"strings"
++	"testing"
++)
++
++const syntheticSource = `package fixture
++import "example/info"
++func (c *char) sources() {
++	ratio := burstRatio[c.TalentLvlBurst()]
++	c.AddAttackMod(info.AttackMod{Amount: func(atk *info.AttackEvent, target info.Target) []float64 {
++		if !c.Active() { return nil }
++		c.buff[0] = min(c.cur, c.maximum) * ratio
++		return c.buff
++	}})
++	ai := info.AttackInfo{FlatDmg: bubble[c.TalentLvlSkill()] * c.MaxHP()}
++	c.Core.QueueAttack(ai)
++	c.Core.Events.Subscribe(1, func(args ...any) { c.value = unknown(args) })
++	c.Core.Tasks.Add(func() { c.value++ }, 1)
++}
++func (c *char) simple() {
++	c.AddAttackMod(info.AttackMod{Amount: func(atk *info.AttackEvent, target info.Target) []float64 {
++		c.buff[0] = min(c.cur, c.maximum) * 2
++		return c.buff
++	}})
++}
++`
++
++func TestExactManifestTemplatesAndDeterminism(t *testing.T) {
++	root := writeModule(t, syntheticSource)
++	first := generateFixture(t, root)
++	second := generateFixture(t, root)
++	body, err := RenderManifestBody(first)
++	if err != nil {
++		t.Fatal(err)
++	}
++	bodyAgain, _ := RenderManifestBody(second)
++	if !bytes.Equal(body, bodyAgain) || first.ManifestBodySHA256 != second.ManifestBodySHA256 {
++		t.Fatal("manifest generation is not deterministic")
++	}
++	if bytes.Contains(body, []byte("manifest_body_sha256")) {
++		t.Fatal("body contains its own hash")
++	}
++	var top map[string]json.RawMessage
++	if err := json.Unmarshal(body, &top); err != nil {
++		t.Fatal(err)
++	}
++	wantKeys := []string{"build_flags", "compiler_version", "entries", "formula_identities", "go_toolchain", "kind", "patch_stack_sha256", "patched_source_tree_sha256", "patches", "pristine_source_tree_sha256", "schema_version", "trace_capability", "trace_schema_version", "upstream_ref", "upstream_repo"}
++	for _, key := range wantKeys {
++		if _, ok := top[key]; !ok {
++			t.Fatalf("manifest body lacks %s", key)
++		}
++	}
++	if len(top) != len(wantKeys) {
++		t.Fatalf("manifest body has unexpected top-level fields: %s", body)
++	}
++	sum := sha256.Sum256(body)
++	if first.ManifestBodySHA256 != hex.EncodeToString(sum[:]) {
++		t.Fatal("body hash is not over exact canonical output")
++	}
++	for index, entry := range first.Entries {
++		if index > 0 && first.Entries[index-1].SourceID >= entry.SourceID {
++			t.Fatal("entries are not strictly source_id sorted")
++		}
++		if !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(entry.SourceID) || !regexp.MustCompile(`^[0-9a-f]{64}$`).MatchString(entry.Template.TemplateSHA256) {
++			t.Fatalf("invalid identity hashes: %#v", entry)
++		}
++		identityBody, err := CanonicalJSON(struct {
++			SourceIDSchema  int    `json:"source_id_schema"`
++			ModulePath      string `json:"module_path"`
++			EnclosingSymbol string `json:"enclosing_symbol"`
++			Seam            string `json:"seam"`
++			Ordinal         int    `json:"ordinal"`
++		}{1, entry.Locator.ModulePath, entry.Locator.EnclosingSymbol, entry.Locator.Seam, entry.Locator.Ordinal})
++		if err != nil {
++			t.Fatal(err)
++		}
++		identitySum := sha256.Sum256(identityBody)
++		if entry.SourceID != hex.EncodeToString(identitySum[:]) {
++			t.Fatal("source ID preimage contract mismatch")
++		}
++		assertTemplateContract(t, entry.Template)
++	}
++	var rawBody struct {
++		Entries []map[string]json.RawMessage `json:"entries"`
++	}
++	if err := json.Unmarshal(body, &rawBody); err != nil || len(rawBody.Entries) == 0 {
++		t.Fatalf("decode entries: %v", err)
++	}
++	for _, key := range []string{"source_id", "locator", "source_node_sha256", "template"} {
++		if _, ok := rawBody.Entries[0][key]; !ok {
++			t.Fatalf("entry lacks exact field %s", key)
++		}
++	}
++	if len(rawBody.Entries[0]) != 4 {
++		t.Fatalf("entry has extra fields: %#v", rawBody.Entries[0])
++	}
++	guarded := findEntry(t, first, KindModifierAmount, "(*char).sources")
++	if guarded.Template.Status != TemplateOpaqueFrozen || *guarded.Template.StopReasonCode != "modifier_guarded_control_flow" {
++		t.Fatalf("guarded modifier should be opaque: %#v", guarded.Template)
++	}
++	simple := findEntry(t, first, KindModifierAmount, "(*char).simple")
++	if simple.Template.Status != TemplateSupported || simple.Template.Nodes[len(simple.Template.Nodes)-1].Operator != "MUL" {
++		t.Fatalf("simple modifier not compiled: %#v", simple.Template)
++	}
++	queued := findEntry(t, first, KindQueuedAttack, "(*char).sources")
++	if queued.Template.Status != TemplateSupported || len(queued.parameterPlans) != 2 {
++		t.Fatalf("HP attack not compiled: %#v", queued.Template)
++	}
++	if queued.parameterPlans[0].Kind != "frozen_source_value" || queued.parameterPlans[0].ReadMode != "constant" || queued.parameterPlans[0].ActorExpression != "" {
++		t.Fatalf("frozen source invariant broken: %#v", queued.parameterPlans[0])
++	}
++	if queued.parameterPlans[1].Kind != "candidate_stat" || queued.parameterPlans[1].StatKey != "max_hp" || queued.parameterPlans[1].ActorExpression != "c" {
++		t.Fatalf("candidate stat invariant broken: %#v", queued.parameterPlans[1])
++	}
++	generated, err := RenderLookupGo(first)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err := parser.ParseFile(token.NewFileSet(), "generated_manifest.go", generated, 0); err != nil {
++		t.Fatal(err)
++	}
++	for _, name := range []string{"generatedSourceManifestBodySHA256", "generatedSourceCompilerVersion", "generatedSourceIDByLookupKey", "generatedTemplateSHA256BySourceID"} {
++		if !bytes.Contains(generated, []byte(name)) {
++			t.Fatalf("generated Go lacks %s", name)
++		}
++	}
++}
++
++func TestHPOverlayCapturesExactParameterInvariants(t *testing.T) {
++	root := writeModule(t, syntheticSource)
++	manifest := generateFixture(t, root)
++	overlay, err := BuildOverlay(OverlayOptions{ModuleRoot: root, OverlayDir: filepath.Join(t.TempDir(), "rewrites")}, manifest)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(overlay.Files) != 1 {
++		t.Fatalf("overlay files=%d", len(overlay.Files))
++	}
++	rewritten := string(overlay.Files[0].Contents)
++	for _, expected := range []string{
++		`Kind: "frozen_source_value"`, `ReadMode: "constant"`,
++		`Kind: "candidate_stat"`, `StatKey: &`, `ReadMode: "live"`,
++		"_index := c.Index()", "_key := c.Base.Key.String()", "ActorKey: &", "ReadFrame: c.Core.F",
++		"GTTTraceSourceTemplateSHA256:", "GTTTraceSourceParameters:",
++		"//line source.go:11",
++	} {
++		if !strings.Contains(rewritten, expected) {
++			t.Fatalf("overlay lacks %q:\n%s", expected, rewritten)
++		}
++	}
++	if strings.Count(rewritten, "bubble[c.TalentLvlSkill()]") != 1 || strings.Count(rewritten, "c.MaxHP()") != 1 || strings.Count(rewritten, "ObservedValue:") != 2 {
++		t.Fatalf("overlay did not capture two pure operands exactly once:\n%s", rewritten)
++	}
++	if strings.Contains(rewritten, "GTTTraceCaptureSourceParameters") {
++		t.Fatal("modifier instrumentation escaped the bounded HP-only overlay")
++	}
++	if strings.Contains(rewritten, "GTTTraceSourceID:") {
++		t.Fatal("AttackInfo must leave call-site source identity to QueueAttack")
++	}
++	if _, err := parser.ParseFile(token.NewFileSet(), "source.go", overlay.Files[0].Contents, 0); err != nil {
++		t.Fatal(err)
++	}
++}
++
++func TestSharedAttackInfoKeepsCallsiteIDsAndInjectsMetadataOnce(t *testing.T) {
++	root := writeModule(t, `package fixture
++func shared(c *char) {
++	ai := info.AttackInfo{FlatDmg: c.MaxHP() * 2}
++	c.Core.QueueAttack(ai)
++	c.Core.QueueAttack(ai)
++}
++`)
++	manifest := generateFixture(t, root)
++	queued := make([]SourceEntry, 0, 2)
++	for _, entry := range manifest.Entries {
++		if entry.Locator.Seam == KindQueuedAttack {
++			queued = append(queued, entry)
++		}
++	}
++	if len(queued) != 2 || queued[0].SourceID == queued[1].SourceID {
++		t.Fatalf("shared root must retain two call-site identities: %#v", queued)
++	}
++	if !reflect.DeepEqual(queued[0].Template, queued[1].Template) || !reflect.DeepEqual(queued[0].parameterPlans, queued[1].parameterPlans) {
++		t.Fatal("shared root call sites disagree on template/parameters")
++	}
++	opts := OverlayOptions{ModuleRoot: root, OverlayDir: filepath.Join(t.TempDir(), "overlay")}
++	first, err := BuildOverlay(opts, manifest)
++	if err != nil {
++		t.Fatal(err)
++	}
++	second, err := BuildOverlay(opts, manifest)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !bytes.Equal(first.JSON, second.JSON) || len(first.Files) != 1 || len(second.Files) != 1 || !bytes.Equal(first.Files[0].Contents, second.Files[0].Contents) {
++		t.Fatal("shared-root overlay is not deterministic")
++	}
++	rewritten := string(first.Files[0].Contents)
++	if strings.Count(rewritten, "GTTTraceSourceTemplateSHA256:") != 1 || strings.Count(rewritten, "GTTTraceSourceParameters:") != 1 || strings.Contains(rewritten, "GTTTraceSourceID:") {
++		t.Fatalf("shared metadata injection mismatch:\n%s", rewritten)
++	}
++	conflicting := manifest
++	conflicting.Entries = append([]SourceEntry(nil), manifest.Entries...)
++	conflicting.Entries[1].Template.TemplateSHA256 = strings.Repeat("f", 64)
++	if _, err := BuildOverlay(opts, conflicting); err == nil || !strings.Contains(err.Error(), "conflicting template") {
++		t.Fatalf("conflicting shared root error=%v", err)
++	}
++}
++
++func TestMutatedSharedAttackInfoFailsClosedOpaque(t *testing.T) {
++	root := writeModule(t, `package fixture
++func shared(c *char) {
++	ai := info.AttackInfo{FlatDmg: c.MaxHP() * 2}
++	c.Core.QueueAttack(ai)
++	ai.FlatDmg = c.MaxHP() * 3
++	c.Core.QueueAttack(ai)
++}
++`)
++	manifest := generateFixture(t, root)
++	count := 0
++	for _, entry := range manifest.Entries {
++		if entry.Locator.Seam != KindQueuedAttack {
++			continue
++		}
++		count++
++		if entry.Template.Status != TemplateOpaqueFrozen || entry.Template.StopReasonCode == nil || *entry.Template.StopReasonCode != "shared_attack_info_flat_dmg_mutation" {
++			t.Fatalf("mutated shared root did not fail closed: %#v", entry.Template)
++		}
++	}
++	if count != 2 {
++		t.Fatalf("queued entries=%d, want 2", count)
++	}
++	overlay, err := BuildOverlay(OverlayOptions{ModuleRoot: root, OverlayDir: filepath.Join(t.TempDir(), "overlay")}, manifest)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(overlay.Files) != 0 {
++		t.Fatal("opaque mutated shared root must not be instrumented")
++	}
++}
++
++func TestAmbiguousLookupFailsAndStructuralIDSurvivesLineShift(t *testing.T) {
++	root := writeModule(t, `package fixture
++func f(c *char) { c.Core.QueueAttack(info.AttackInfo{FlatDmg:c.MaxHP()}); c.Core.QueueAttack(info.AttackInfo{FlatDmg:c.MaxHP()}) }
++`)
++	if _, err := Generate(Options{ModuleRoot: root, Binding: testBinding()}); err == nil || !strings.Contains(err.Error(), "ambiguous source lookup") {
++		t.Fatalf("collision error=%v", err)
++	}
++	root = writeModule(t, syntheticSource)
++	before := findEntry(t, generateFixture(t, root), KindQueuedAttack, "(*char).sources")
++	if err := os.WriteFile(filepath.Join(root, "source.go"), []byte("\n\n"+syntheticSource), 0o644); err != nil {
++		t.Fatal(err)
++	}
++	after := findEntry(t, generateFixture(t, root), KindQueuedAttack, "(*char).sources")
++	if before.SourceID != after.SourceID || before.Line == after.Line {
++		t.Fatalf("structural identity/lookup movement mismatch: %#v %#v", before, after)
++	}
++}
++
++func TestPatchedTreeHashExclusionsAndMutation(t *testing.T) {
++	root := writeModule(t, syntheticSource)
++	base := generateFixture(t, root).PatchedSourceTreeSHA256
++	paths := []string{filepath.Join(root, "build", "artifact"), filepath.Join(root, "pkg", "gttsource", "generated_manifest.go")}
++	for _, path := range paths {
++		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
++			t.Fatal(err)
++		}
++		if err := os.WriteFile(path, []byte("ignored"), 0o644); err != nil {
++			t.Fatal(err)
++		}
++	}
++	if got := generateFixture(t, root).PatchedSourceTreeSHA256; got != base {
++		t.Fatalf("excluded output changed tree hash: %s != %s", got, base)
++	}
++	if err := os.WriteFile(filepath.Join(root, "ordinary.go"), []byte("package fixture\n"), 0o644); err != nil {
++		t.Fatal(err)
++	}
++	if got := generateFixture(t, root).PatchedSourceTreeSHA256; got == base {
++		t.Fatal("ordinary source mutation did not change tree hash")
++	}
++}
++
++func TestCanonicalJSONNumericFixture(t *testing.T) {
++	got, err := CanonicalJSON(map[string]any{"z": 2.0, "tiny": 1e-9, "nested": map[string]any{"é": 2.0}})
++	if err != nil {
++		t.Fatal(err)
++	}
++	want := `{"nested":{"\u00e9":2},"tiny":1e-9,"z":2}`
++	if string(got) != want {
++		t.Fatalf("canonical numeric fixture=%s want=%s", got, want)
++	}
++}
++
++func TestCrossLanguageSourceIDFixture(t *testing.T) {
++	preimage, err := CanonicalJSON(struct {
++		SourceIDSchema  int    `json:"source_id_schema"`
++		ModulePath      string `json:"module_path"`
++		EnclosingSymbol string `json:"enclosing_symbol"`
++		Seam            string `json:"seam"`
++		Ordinal         int    `json:"ordinal"`
++	}{1, "internal/gtt/synthetic.go", "syntheticFormula", "event_callback", 0})
++	if err != nil {
++		t.Fatal(err)
++	}
++	sum := sha256.Sum256(preimage)
++	if got := hex.EncodeToString(sum[:]); got != "47c97c5c7a8262fa0bf44b319257dfefded05b021acccaab1e53d4e3f1b06643" {
++		t.Fatalf("cross-language source ID=%s preimage=%s", got, preimage)
++	}
++}
++
++func TestFurinaBoundaries(t *testing.T) {
++	root, _ := filepath.Abs(filepath.Join("..", ".."))
++	manifest, err := Generate(Options{ModuleRoot: root, Includes: []string{"internal/characters/furina/burst.go", "internal/characters/furina/skill.go"}, Binding: testBinding()})
++	if err != nil {
++		t.Fatal(err)
++	}
++	burst := findEntry(t, manifest, KindModifierAmount, "(*char).burstInit")
++	if burst.Template.Status != TemplateOpaqueFrozen || burst.Template.StopReasonCode == nil {
++		t.Fatalf("Furina burst must be occurrence-only opaque: %#v", burst.Template)
++	}
++	ousia := findEntry(t, manifest, KindQueuedAttack, "(*char).skillOusia")
++	if ousia.Template.Status != TemplateSupported || len(ousia.parameterPlans) != 2 || ousia.parameterPlans[1].StatKey != "max_hp" {
++		t.Fatalf("Furina Ousia must be supported HP template: %#v %#v", ousia.Template, ousia.parameterPlans)
++	}
++}
++
++func assertTemplateContract(t *testing.T, template SliceTemplate) {
++	t.Helper()
++	canonical, err := CanonicalJSON(templateHashBody(template))
++	if err != nil {
++		t.Fatal(err)
++	}
++	sum := sha256.Sum256(canonical)
++	if template.TemplateSHA256 != hex.EncodeToString(sum[:]) {
++		t.Fatal("template SHA mismatch")
++	}
++	if template.Status == TemplateOpaqueFrozen {
++		if len(template.Nodes) != 0 || template.RootNodeID != nil || len(template.ParameterKeys) != 0 || template.DependenciesComplete || template.StopReasonCode == nil {
++			t.Fatalf("invalid opaque template: %#v", template)
++		}
++		return
++	}
++	if len(template.Nodes) == 0 || template.RootNodeID == nil || *template.RootNodeID != len(template.Nodes)-1 || !template.DependenciesComplete || template.StopReasonCode != nil {
++		t.Fatalf("invalid supported template: %#v", template)
++	}
++	for index, node := range template.Nodes {
++		if node.NodeID != index {
++			t.Fatal("non-contiguous node ids")
++		}
++		for _, input := range node.InputNodeIDs {
++			if input >= index {
++				t.Fatal("template input is not earlier")
++			}
++		}
++	}
++}
++
++func writeModule(t *testing.T, source string) string {
++	t.Helper()
++	root := t.TempDir()
++	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.test/fixture\n\ngo 1.25\n"), 0o644); err != nil {
++		t.Fatal(err)
++	}
++	if err := os.WriteFile(filepath.Join(root, "source.go"), []byte(source), 0o644); err != nil {
++		t.Fatal(err)
++	}
++	return root
++}
++
++func generateFixture(t *testing.T, root string) Manifest {
++	t.Helper()
++	manifest, err := Generate(Options{ModuleRoot: root, Binding: testBinding()})
++	if err != nil {
++		t.Fatal(err)
++	}
++	return manifest
++}
++
++func testBinding() BindingInput {
++	return BindingInput{
++		SchemaVersion: 1, Kind: BindingInputKind, UpstreamRepo: "https://example.test/upstream.git", UpstreamRef: "deadbeef",
++		PristineSourceTreeSHA256: strings.Repeat("a", 64), Patches: []PatchIdentity{{Path: "0001.patch", SHA256: strings.Repeat("b", 64)}},
++		PatchStackSHA256: strings.Repeat("c", 64), TraceSchemaVersion: 4, TraceCapability: "gtt_trace_equation_v4",
++		FormulaIdentities: []FormulaIdentity{{ID: IRVersion, SHA256: IRSHA256}},
++		GoToolchain:       GoToolchain{Version: "go1.25.0", OS: "windows", Arch: "amd64"}, BuildFlags: []string{"-trimpath"},
++	}
++}
++
++func findEntry(t *testing.T, manifest Manifest, seam, symbol string) SourceEntry {
++	t.Helper()
++	for _, entry := range manifest.Entries {
++		if entry.Locator.Seam == seam && entry.Locator.EnclosingSymbol == symbol {
++			return entry
++		}
++	}
++	t.Fatalf("entry %s %s not found", seam, symbol)
++	return SourceEntry{}
++}
+diff --git a/pkg/gttsourcegen/ir.go b/pkg/gttsourcegen/ir.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..4a326a4f8f1a48160ed34afce9fd78cbc66f5989
+--- /dev/null
++++ b/pkg/gttsourcegen/ir.go
+@@ -0,0 +1,312 @@
++package gttsourcegen
++
++import (
++	"fmt"
++	"go/ast"
++	"go/token"
++	"math"
++	"strconv"
++	"strings"
++	"unicode"
++)
++
++type templateCompilation struct {
++	template   SliceTemplate
++	parameters []parameterPlan
++}
++
++type expressionCompiler struct {
++	fset       *token.FileSet
++	bindings   bindingSet
++	resolving  map[string]bool
++	nodes      []TemplateNode
++	parameters []parameterPlan
++	paramNode  map[string]int
++	stopReason string
++}
++
++func describeModifierAmount(fset *token.FileSet, root ast.Expr, bindings bindingSet) templateCompilation {
++	fn, ok := root.(*ast.FuncLit)
++	if !ok {
++		return opaqueTemplate("modifier_amount_not_function_literal")
++	}
++	assignments := callbackAssignments(fn.Body)
++	indexed := make([]*ast.AssignStmt, 0, len(assignments))
++	for _, assignment := range assignments {
++		if len(assignment.Lhs) == 1 && len(assignment.Rhs) == 1 {
++			if _, ok := assignment.Lhs[0].(*ast.IndexExpr); ok {
++				indexed = append(indexed, assignment)
++			}
++		}
++	}
++	if len(indexed) != 1 {
++		return opaqueTemplate("modifier_output_assignment_count")
++	}
++	guarded := false
++	ast.Inspect(fn.Body, func(node ast.Node) bool {
++		if _, ok := node.(*ast.FuncLit); ok {
++			return false
++		}
++		if _, ok := node.(*ast.IfStmt); ok {
++			guarded = true
++			return false
++		}
++		return !guarded
++	})
++	if guarded {
++		return opaqueTemplate("modifier_guarded_control_flow")
++	}
++	return compileNumericTemplate(fset, indexed[0].Rhs[0], bindings)
++}
++
++func describeQueuedAttack(fset *token.FileSet, root ast.Expr, bindings bindingSet) templateCompilation {
++	flatDamage := compositeField(root, "FlatDmg", bindings)
++	if flatDamage == nil {
++		return opaqueTemplate("attack_info_flat_dmg_not_explicit")
++	}
++	return compileNumericTemplate(fset, flatDamage, bindings)
++}
++
++func describeCallback(_ *token.FileSet, _ ast.Expr, _ bindingSet, kind string) templateCompilation {
++	return opaqueTemplate(kind + "_semantic_boundary")
++}
++
++func compileNumericTemplate(fset *token.FileSet, expr ast.Expr, bindings bindingSet) templateCompilation {
++	compiler := expressionCompiler{
++		fset: fset, bindings: bindings, resolving: make(map[string]bool),
++		paramNode: make(map[string]int),
++	}
++	root, ok := compiler.compile(expr)
++	if !ok {
++		return opaqueTemplate(compiler.stopReason)
++	}
++	parameterKeys := make([]string, 0, len(compiler.parameters))
++	for _, parameter := range compiler.parameters {
++		parameterKeys = append(parameterKeys, parameter.ParameterKey)
++	}
++	sortStringsUnique(parameterKeys)
++	rootNodeID := root
++	return templateCompilation{
++		template: SliceTemplate{
++			Status: TemplateSupported, Nodes: compiler.nodes, RootNodeID: &rootNodeID,
++			ParameterKeys: parameterKeys, DependenciesComplete: true,
++		},
++		parameters: compiler.parameters,
++	}
++}
++
++func opaqueTemplate(reason string) templateCompilation {
++	if reason == "" {
++		reason = "unsupported_source_root"
++	}
++	reason = lowerSnake(reason)
++	return templateCompilation{template: SliceTemplate{
++		Status: TemplateOpaqueFrozen, Nodes: []TemplateNode{}, RootNodeID: nil,
++		ParameterKeys: []string{}, DependenciesComplete: false, StopReasonCode: &reason,
++	}}
++}
++
++func (compiler *expressionCompiler) compile(expr ast.Expr) (int, bool) {
++	switch value := expr.(type) {
++	case *ast.ParenExpr:
++		return compiler.compile(value.X)
++	case *ast.BasicLit:
++		if value.Kind != token.INT && value.Kind != token.FLOAT {
++			return compiler.fail("non_numeric_constant")
++		}
++		number, err := strconv.ParseFloat(strings.ReplaceAll(value.Value, "_", ""), 64)
++		if err != nil || math.IsNaN(number) || math.IsInf(number, 0) {
++			return compiler.fail("invalid_numeric_constant")
++		}
++		return compiler.addNode("CONST", nil, &number, nil), true
++	case *ast.Ident:
++		if defs := compiler.bindings[value.Name]; len(defs) == 1 && !compiler.resolving[value.Name] {
++			compiler.resolving[value.Name] = true
++			id, ok := compiler.compile(defs[0])
++			delete(compiler.resolving, value.Name)
++			return id, ok
++		}
++		return compiler.parameter(value, "frozen_runtime_state", "", "", false), true
++	case *ast.SelectorExpr:
++		kind := "frozen_source_value"
++		actor := ""
++		complete := true
++		if startsLower(value.Sel.Name) {
++			kind = "frozen_runtime_state"
++			actor = ""
++			complete = false
++		}
++		return compiler.parameter(value, kind, actor, "", complete), true
++	case *ast.IndexExpr:
++		if !isPureOperand(value) {
++			return compiler.fail("impure_table_lookup")
++		}
++		return compiler.parameter(value, "frozen_source_value", "", "", true), true
++	case *ast.BinaryExpr:
++		operator := ""
++		switch value.Op {
++		case token.ADD:
++			operator = "ADD"
++		case token.MUL:
++			operator = "MUL"
++		default:
++			return compiler.fail("unsupported_binary_operator")
++		}
++		left, ok := compiler.compile(value.X)
++		if !ok {
++			return 0, false
++		}
++		right, ok := compiler.compile(value.Y)
++		if !ok {
++			return 0, false
++		}
++		return compiler.addNode(operator, []int{left, right}, nil, nil), true
++	case *ast.CallExpr:
++		if ident, ok := value.Fun.(*ast.Ident); ok && ident.Name == "min" && len(value.Args) == 2 {
++			left, ok := compiler.compile(value.Args[0])
++			if !ok {
++				return 0, false
++			}
++			right, ok := compiler.compile(value.Args[1])
++			if !ok {
++				return 0, false
++			}
++			return compiler.addNode("MIN", []int{left, right}, nil, nil), true
++		}
++		selector, ok := value.Fun.(*ast.SelectorExpr)
++		if !ok || len(value.Args) != 0 {
++			return compiler.fail("unsupported_call")
++		}
++		actor := rootText(compiler.fset, selector.X)
++		switch selector.Sel.Name {
++		case "MaxHP":
++			return compiler.parameter(value, "candidate_stat", actor, "max_hp", true), true
++		case "TotalATK":
++			return compiler.parameter(value, "candidate_stat", actor, "total_atk", true), true
++		case "TotalDEF":
++			return compiler.parameter(value, "candidate_stat", actor, "total_def", true), true
++		default:
++			return compiler.fail("unsupported_call")
++		}
++	default:
++		return compiler.fail(fmt.Sprintf("unsupported_ast_%T", expr))
++	}
++}
++
++func (compiler *expressionCompiler) parameter(expr ast.Expr, kind, actor, stat string, complete bool) int {
++	readMode := "live"
++	if kind == "frozen_source_value" {
++		actor = ""
++		stat = ""
++		complete = true
++		readMode = "constant"
++	}
++	source := rootText(compiler.fset, expr)
++	identity := strings.Join([]string{kind, source, actor, stat}, "|")
++	if existing, ok := compiler.paramNode[identity]; ok {
++		return existing
++	}
++	key := "p" + strconv.Itoa(len(compiler.parameters))
++	compiler.parameters = append(compiler.parameters, parameterPlan{
++		ParameterKey: key, Kind: kind, SourceExpression: source, ActorExpression: actor,
++		StatKey: stat, ReadMode: readMode, CandidateDependencyComplete: complete,
++	})
++	id := compiler.addNode("PARAM", nil, nil, &key)
++	compiler.paramNode[identity] = id
++	return id
++}
++
++func (compiler *expressionCompiler) addNode(operator string, inputs []int, constant *float64, parameter *string) int {
++	id := len(compiler.nodes)
++	if inputs == nil {
++		inputs = []int{}
++	}
++	compiler.nodes = append(compiler.nodes, TemplateNode{
++		NodeID: id, Operator: operator, InputNodeIDs: inputs,
++		ConstantValue: constant, ParameterKey: parameter,
++	})
++	return id
++}
++
++func (compiler *expressionCompiler) fail(reason string) (int, bool) {
++	if compiler.stopReason == "" {
++		compiler.stopReason = lowerSnake(reason)
++	}
++	return 0, false
++}
++
++func callbackAssignments(body *ast.BlockStmt) []*ast.AssignStmt {
++	result := make([]*ast.AssignStmt, 0, 2)
++	ast.Inspect(body, func(node ast.Node) bool {
++		if node == nil {
++			return true
++		}
++		if fn, ok := node.(*ast.FuncLit); ok && fn.Body != body {
++			return false
++		}
++		if assignment, ok := node.(*ast.AssignStmt); ok {
++			result = append(result, assignment)
++		}
++		return true
++	})
++	return result
++}
++
++func isPureOperand(expr ast.Expr) bool {
++	switch value := expr.(type) {
++	case *ast.BasicLit, *ast.Ident:
++		return true
++	case *ast.ParenExpr:
++		return isPureOperand(value.X)
++	case *ast.SelectorExpr:
++		return isPureOperand(value.X)
++	case *ast.IndexExpr:
++		return isPureOperand(value.X) && isPureOperand(value.Index)
++	case *ast.CallExpr:
++		selector, ok := value.Fun.(*ast.SelectorExpr)
++		return ok && len(value.Args) == 0 && strings.HasPrefix(selector.Sel.Name, "TalentLvl")
++	default:
++		return false
++	}
++}
++
++func inferActorExpression(fset *token.FileSet, expr ast.Expr) string {
++	actor := ""
++	ast.Inspect(expr, func(node ast.Node) bool {
++		call, ok := node.(*ast.CallExpr)
++		if !ok {
++			return actor == ""
++		}
++		selector, ok := call.Fun.(*ast.SelectorExpr)
++		if ok && strings.HasPrefix(selector.Sel.Name, "TalentLvl") {
++			actor = rootText(fset, selector.X)
++			return false
++		}
++		return actor == ""
++	})
++	return actor
++}
++
++func startsLower(value string) bool {
++	for _, char := range value {
++		return unicode.IsLower(char)
++	}
++	return false
++}
++
++func lowerSnake(value string) string {
++	value = strings.ToLower(value)
++	var out strings.Builder
++	lastUnderscore := false
++	for _, char := range value {
++		valid := unicode.IsLetter(char) || unicode.IsDigit(char)
++		if valid {
++			out.WriteRune(char)
++			lastUnderscore = false
++		} else if !lastUnderscore && out.Len() > 0 {
++			out.WriteByte('_')
++			lastUnderscore = true
++		}
++	}
++	return strings.Trim(out.String(), "_")
++}
+diff --git a/pkg/gttsourcegen/model.go b/pkg/gttsourcegen/model.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..06635783c320347b7f362b160e537426254bf84a
+--- /dev/null
++++ b/pkg/gttsourcegen/model.go
+@@ -0,0 +1,222 @@
++// Package gttsourcegen builds deterministic source identities and shallow
++// numeric slice templates for the GTT trace seams.
++package gttsourcegen
++
++import (
++	"crypto/sha256"
++	"encoding/hex"
++	"errors"
++	"fmt"
++	"sort"
++	"strings"
++)
++
++const (
++	ManifestSchemaVersion  = 1
++	BindingInputKind       = "gtt.source_manifest.binding_input"
++	ManifestBodyKind       = "gtt.source_manifest.body"
++	DefaultCompilerVersion = "gtt_source_compiler_v1"
++	IRVersion              = "gtt_source_ir_v1"
++	IRSHA256               = "243f34e59a6a6df869ccafa0bcdfdcb80a986ff5ebf9a41e52059b1ee5e95208"
++	KindModifierAmount     = "modifier_amount"
++	KindEventCallback      = "event_callback"
++	KindTaskCallback       = "task_callback"
++	KindQueuedAttack       = "queued_attack"
++	TemplateSupported      = "SUPPORTED"
++	TemplateOpaqueFrozen   = "OPAQUE_FROZEN"
++)
++
++type PatchIdentity struct {
++	Path   string `json:"path"`
++	SHA256 string `json:"sha256"`
++}
++
++type FormulaIdentity struct {
++	ID     string `json:"id"`
++	SHA256 string `json:"sha256"`
++}
++
++type GoToolchain struct {
++	Version string `json:"version"`
++	OS      string `json:"os"`
++	Arch    string `json:"arch"`
++}
++
++type BindingInput struct {
++	SchemaVersion            int               `json:"schema_version"`
++	Kind                     string            `json:"kind"`
++	UpstreamRepo             string            `json:"upstream_repo"`
++	UpstreamRef              string            `json:"upstream_ref"`
++	PristineSourceTreeSHA256 string            `json:"pristine_source_tree_sha256"`
++	Patches                  []PatchIdentity   `json:"patches"`
++	PatchStackSHA256         string            `json:"patch_stack_sha256"`
++	TraceSchemaVersion       int               `json:"trace_schema_version"`
++	TraceCapability          string            `json:"trace_capability"`
++	FormulaIdentities        []FormulaIdentity `json:"formula_identities"`
++	GoToolchain              GoToolchain       `json:"go_toolchain"`
++	BuildFlags               []string          `json:"build_flags"`
++}
++
++func (binding BindingInput) Validate() error {
++	if binding.SchemaVersion != ManifestSchemaVersion || binding.Kind != BindingInputKind {
++		return fmt.Errorf("binding input must have schema_version=1 and kind=%q", BindingInputKind)
++	}
++	if binding.UpstreamRepo == "" || binding.UpstreamRef == "" {
++		return errors.New("binding input upstream_repo and upstream_ref are required")
++	}
++	for label, value := range map[string]string{
++		"pristine_source_tree": binding.PristineSourceTreeSHA256,
++		"patch_stack":          binding.PatchStackSHA256,
++	} {
++		if err := validateSHA256(label, value); err != nil {
++			return err
++		}
++	}
++	for index, patch := range binding.Patches {
++		if patch.Path == "" {
++			return fmt.Errorf("patches[%d].path is required", index)
++		}
++		if err := validateSHA256(fmt.Sprintf("patches[%d]", index), patch.SHA256); err != nil {
++			return err
++		}
++	}
++	if binding.TraceSchemaVersion != 4 || binding.TraceCapability != "gtt_trace_equation_v4" {
++		return errors.New("binding input must select trace schema 4 and gtt_trace_equation_v4")
++	}
++	foundIR := false
++	for index, identity := range binding.FormulaIdentities {
++		if identity.ID == "" {
++			return fmt.Errorf("formula_identities[%d].id is required", index)
++		}
++		if err := validateSHA256(fmt.Sprintf("formula_identities[%d]", index), identity.SHA256); err != nil {
++			return err
++		}
++		if identity.ID == IRVersion {
++			if identity.SHA256 != IRSHA256 {
++				return fmt.Errorf("%s formula identity SHA-256 must be %s", IRVersion, IRSHA256)
++			}
++			foundIR = true
++		}
++	}
++	if !foundIR {
++		return fmt.Errorf("formula_identities must contain %q", IRVersion)
++	}
++	if binding.GoToolchain.Version == "" || binding.GoToolchain.OS == "" || binding.GoToolchain.Arch == "" {
++		return errors.New("go_toolchain version/os/arch are required")
++	}
++	if len(binding.BuildFlags) != 1 || binding.BuildFlags[0] != "-trimpath" {
++		return errors.New("build_flags must be exactly [\"-trimpath\"]")
++	}
++	return nil
++}
++
++func validateSHA256(label, value string) error {
++	if len(value) != sha256.Size*2 || value != strings.ToLower(value) {
++		return fmt.Errorf("%s SHA-256 must be 64 lowercase hexadecimal characters", label)
++	}
++	if _, err := hex.DecodeString(value); err != nil {
++		return fmt.Errorf("%s SHA-256: %w", label, err)
++	}
++	return nil
++}
++
++type SourceLocator struct {
++	ModulePath      string `json:"module_path"`
++	EnclosingSymbol string `json:"enclosing_symbol"`
++	Seam            string `json:"seam"`
++	Ordinal         int    `json:"ordinal"`
++}
++
++type TemplateNode struct {
++	NodeID        int      `json:"node_id"`
++	Operator      string   `json:"operator"`
++	InputNodeIDs  []int    `json:"input_node_ids"`
++	ConstantValue *float64 `json:"constant_value"`
++	ParameterKey  *string  `json:"parameter_key"`
++}
++
++type SliceTemplate struct {
++	Status               string         `json:"status"`
++	Nodes                []TemplateNode `json:"nodes"`
++	RootNodeID           *int           `json:"root_node_id"`
++	ParameterKeys        []string       `json:"parameter_keys"`
++	DependenciesComplete bool           `json:"dependencies_complete"`
++	StopReasonCode       *string        `json:"stop_reason_code"`
++	TemplateSHA256       string         `json:"template_sha256"`
++}
++
++type parameterPlan struct {
++	ParameterKey                string
++	Kind                        string
++	SourceExpression            string
++	ActorExpression             string
++	StatKey                     string
++	ReadMode                    string
++	CandidateDependencyComplete bool
++}
++
++type SourceEntry struct {
++	SourceID         string        `json:"source_id"`
++	Locator          SourceLocator `json:"locator"`
++	SourceNodeSHA256 string        `json:"source_node_sha256"`
++	Template         SliceTemplate `json:"template"`
++
++	LookupKey      string          `json:"-"`
++	RelativeFile   string          `json:"-"`
++	Line           int             `json:"-"`
++	Column         int             `json:"-"`
++	parameterPlans []parameterPlan `json:"-"`
++}
++
++type Manifest struct {
++	SchemaVersion            int               `json:"schema_version"`
++	Kind                     string            `json:"kind"`
++	CompilerVersion          string            `json:"compiler_version"`
++	UpstreamRepo             string            `json:"upstream_repo"`
++	UpstreamRef              string            `json:"upstream_ref"`
++	PristineSourceTreeSHA256 string            `json:"pristine_source_tree_sha256"`
++	Patches                  []PatchIdentity   `json:"patches"`
++	PatchStackSHA256         string            `json:"patch_stack_sha256"`
++	PatchedSourceTreeSHA256  string            `json:"patched_source_tree_sha256"`
++	TraceSchemaVersion       int               `json:"trace_schema_version"`
++	TraceCapability          string            `json:"trace_capability"`
++	FormulaIdentities        []FormulaIdentity `json:"formula_identities"`
++	GoToolchain              GoToolchain       `json:"go_toolchain"`
++	BuildFlags               []string          `json:"build_flags"`
++	Entries                  []SourceEntry     `json:"entries"`
++
++	ManifestBodySHA256 string `json:"-"`
++}
++
++type sliceTemplateHashBody struct {
++	SliceTemplateSchema  int            `json:"slice_template_schema"`
++	Status               string         `json:"status"`
++	Nodes                []TemplateNode `json:"nodes"`
++	RootNodeID           *int           `json:"root_node_id"`
++	ParameterKeys        []string       `json:"parameter_keys"`
++	DependenciesComplete bool           `json:"dependencies_complete"`
++	StopReasonCode       *string        `json:"stop_reason_code"`
++}
++
++func templateHashBody(template SliceTemplate) sliceTemplateHashBody {
++	return sliceTemplateHashBody{
++		SliceTemplateSchema: 1, Status: template.Status, Nodes: template.Nodes,
++		RootNodeID: template.RootNodeID, ParameterKeys: template.ParameterKeys,
++		DependenciesComplete: template.DependenciesComplete,
++		StopReasonCode:       template.StopReasonCode,
++	}
++}
++
++func sortStringsUnique(values []string) []string {
++	if len(values) == 0 {
++		return []string{}
++	}
++	sort.Strings(values)
++	out := values[:0]
++	for _, value := range values {
++		if len(out) == 0 || out[len(out)-1] != value {
++			out = append(out, value)
++		}
++	}
++	return out
++}
+diff --git a/pkg/gttsourcegen/overlay.go b/pkg/gttsourcegen/overlay.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..99dded13fd95ff5aa9c099aa1dbfe21f18806d0d
+--- /dev/null
++++ b/pkg/gttsourcegen/overlay.go
+@@ -0,0 +1,528 @@
++package gttsourcegen
++
++import (
++	"bytes"
++	"fmt"
++	"go/ast"
++	"go/format"
++	"go/parser"
++	"go/token"
++	"os"
++	"path/filepath"
++	"reflect"
++	"sort"
++	"strconv"
++	"strings"
++	"unicode"
++)
++
++type OverlayOptions struct {
++	ModuleRoot string
++	OverlayDir string
++}
++
++type OverlayFile struct {
++	RelativeFile    string
++	OriginalPath    string
++	ReplacementPath string
++	Contents        []byte
++}
++
++type OverlayResult struct {
++	Files []OverlayFile
++	JSON  []byte
++}
++
++type goOverlay struct {
++	Replace map[string]string `json:"Replace"`
++}
++
++type textEdit struct {
++	start       int
++	end         int
++	replacement string
++}
++
++type sharedAttackRoot struct {
++	entry     SourceEntry
++	readFrame string
++}
++
++// BuildOverlay constructs a Go build overlay without mutating the source tree.
++// Only structurally supported queued AttackInfo FlatDmg roots are rewritten.
++// Modifier templates remain manifest-only until their central seam can bind all
++// parameters without fabricating values.
++func BuildOverlay(opts OverlayOptions, manifest Manifest) (OverlayResult, error) {
++	root, err := filepath.Abs(strings.TrimSpace(opts.ModuleRoot))
++	if err != nil {
++		return OverlayResult{}, fmt.Errorf("overlay module root: %w", err)
++	}
++	overlayDir, err := filepath.Abs(strings.TrimSpace(opts.OverlayDir))
++	if err != nil {
++		return OverlayResult{}, fmt.Errorf("overlay directory: %w", err)
++	}
++	if strings.TrimSpace(opts.OverlayDir) == "" {
++		return OverlayResult{}, fmt.Errorf("overlay directory is required")
++	}
++
++	byFile := make(map[string][]SourceEntry)
++	for _, entry := range manifest.Entries {
++		if entry.Locator.Seam != KindQueuedAttack || entry.Template.Status != TemplateSupported || len(entry.parameterPlans) == 0 {
++			continue
++		}
++		byFile[entry.RelativeFile] = append(byFile[entry.RelativeFile], entry)
++	}
++	rels := make([]string, 0, len(byFile))
++	for rel := range byFile {
++		rels = append(rels, rel)
++	}
++	sort.Strings(rels)
++
++	result := OverlayResult{Files: make([]OverlayFile, 0, len(rels))}
++	replacements := make(map[string]string, len(rels))
++	for _, rel := range rels {
++		original := filepath.Join(root, filepath.FromSlash(rel))
++		data, err := os.ReadFile(original)
++		if err != nil {
++			return OverlayResult{}, fmt.Errorf("read overlay source %s: %w", rel, err)
++		}
++		rewritten, err := rewriteOverlayFile(rel, data, byFile[rel])
++		if err != nil {
++			return OverlayResult{}, fmt.Errorf("rewrite %s: %w", rel, err)
++		}
++		replacement := filepath.Join(overlayDir, filepath.FromSlash(rel))
++		replacements[filepath.Clean(original)] = filepath.Clean(replacement)
++		result.Files = append(result.Files, OverlayFile{
++			RelativeFile: rel, OriginalPath: filepath.Clean(original),
++			ReplacementPath: filepath.Clean(replacement), Contents: rewritten,
++		})
++	}
++	result.JSON, err = CanonicalJSON(goOverlay{Replace: replacements})
++	if err != nil {
++		return OverlayResult{}, fmt.Errorf("canonical overlay: %w", err)
++	}
++	return result, nil
++}
++
++func rewriteOverlayFile(rel string, data []byte, wanted []SourceEntry) ([]byte, error) {
++	fset := token.NewFileSet()
++	file, err := parser.ParseFile(fset, rel, data, parser.SkipObjectResolution)
++	if err != nil {
++		return nil, err
++	}
++	tokenFile := fset.File(file.Pos())
++	if tokenFile == nil {
++		return nil, fmt.Errorf("missing token file")
++	}
++	wantedByLine := make(map[int]SourceEntry, len(wanted))
++	for _, entry := range wanted {
++		if previous, exists := wantedByLine[entry.Line]; exists {
++			return nil, fmt.Errorf("ambiguous queued attack line %d (%s and %s)", entry.Line, previous.SourceID, entry.SourceID)
++		}
++		wantedByLine[entry.Line] = entry
++	}
++
++	edits := make([]textEdit, 0, len(wanted)*4)
++	directives := make(map[int]int)
++	found := make(map[int]bool, len(wanted))
++	rootSeen := make(map[token.Pos]sharedAttackRoot)
++	for _, decl := range file.Decls {
++		fn, ok := decl.(*ast.FuncDecl)
++		if !ok || fn.Body == nil {
++			continue
++		}
++		bindings := collectBindings(fn.Body)
++		ast.Inspect(fn.Body, func(node ast.Node) bool {
++			call, ok := node.(*ast.CallExpr)
++			if !ok {
++				return true
++			}
++			kind, _, _, matched := describeSeamCall(fset, call, bindings)
++			if matched {
++				statement := containingStatement(fn.Body, call)
++				if statement != nil {
++					start := lineStart(data, tokenFile.Offset(statement.Pos()))
++					line := fset.Position(call.Pos()).Line
++					if existing, exists := directives[start]; !exists || line < existing {
++						directives[start] = line
++					}
++				}
++			}
++			if kind != KindQueuedAttack {
++				return true
++			}
++			line := fset.Position(call.Pos()).Line
++			entry, ok := wantedByLine[line]
++			if !ok {
++				return true
++			}
++			attackRoot := resolveAttackInfo(call.Args[0], bindings)
++			composite, ok := attackRoot.(*ast.CompositeLit)
++			if !ok {
++				err = fmt.Errorf("supported entry %s no longer resolves to AttackInfo composite", entry.LookupKey)
++				return false
++			}
++			readFrame, frameErr := queueReadFrameExpression(fset, call)
++			if frameErr != nil {
++				err = frameErr
++				return false
++			}
++			if previous, exists := rootSeen[composite.Pos()]; exists {
++				if !reflect.DeepEqual(previous.entry.Template, entry.Template) || !reflect.DeepEqual(previous.entry.parameterPlans, entry.parameterPlans) || previous.readFrame != readFrame {
++					err = fmt.Errorf("AttackInfo root shared by %s and %s has conflicting template, parameter, or read-frame plans", previous.entry.LookupKey, entry.LookupKey)
++					return false
++				}
++				found[line] = true
++				return true
++			}
++			rootSeen[composite.Pos()] = sharedAttackRoot{entry: entry, readFrame: readFrame}
++			rootEdits, editErr := queuedAttackEdits(fset, tokenFile, data, fn, composite, entry, readFrame)
++			if editErr != nil {
++				err = editErr
++				return false
++			}
++			edits = append(edits, rootEdits...)
++			found[line] = true
++			return true
++		})
++		if err != nil {
++			return nil, err
++		}
++	}
++	for line, entry := range wantedByLine {
++		if !found[line] {
++			return nil, fmt.Errorf("supported entry not found: %s", entry.LookupKey)
++		}
++	}
++	for offset, originalLine := range directives {
++		edits = append(edits, textEdit{
++			start: offset, end: offset,
++			replacement: "//line " + rel + ":" + strconv.Itoa(originalLine) + "\n",
++		})
++	}
++	rewritten, err := applyTextEdits(data, edits)
++	if err != nil {
++		return nil, err
++	}
++	formatted, err := format.Source(rewritten)
++	if err != nil {
++		return nil, fmt.Errorf("format rewritten source: %w", err)
++	}
++	return formatted, nil
++}
++
++func queuedAttackEdits(
++	fset *token.FileSet,
++	tokenFile *token.File,
++	data []byte,
++	fn *ast.FuncDecl,
++	composite *ast.CompositeLit,
++	entry SourceEntry,
++	readFrame string,
++) ([]textEdit, error) {
++	flat := compositeKeyValue(composite, "FlatDmg")
++	if flat == nil {
++		return nil, fmt.Errorf("supported entry %s has no FlatDmg field", entry.LookupKey)
++	}
++	for _, reserved := range []string{"GTTTraceSourceID", "GTTTraceSourceTemplateSHA256", "GTTTraceSourceParameters"} {
++		if compositeKeyValue(composite, reserved) != nil {
++			return nil, fmt.Errorf("AttackInfo already contains %s", reserved)
++		}
++	}
++	statement := containingStatement(fn.Body, composite)
++	if statement == nil {
++		return nil, fmt.Errorf("AttackInfo has no containing statement")
++	}
++	infoQualifier := expressionQualifier(composite.Type)
++	if infoQualifier == "" {
++		return nil, fmt.Errorf("AttackInfo type must have a package qualifier")
++	}
++	prefix := "gttSource_" + entry.SourceID[:12] + "_"
++	plans := append([]parameterPlan(nil), entry.parameterPlans...)
++	sort.Slice(plans, func(i, j int) bool { return plans[i].ParameterKey < plans[j].ParameterKey })
++	tempByKey := make(map[string]string, len(plans))
++	var declarations strings.Builder
++	indent := indentationBefore(data, tokenFile.Offset(statement.Pos()))
++	actorTemp := make(map[string]string)
++	statTemp := make(map[string]string)
++	for _, parameter := range plans {
++		if parameter.SourceExpression == "" {
++			return nil, fmt.Errorf("parameter %s has empty source expression", parameter.ParameterKey)
++		}
++		name := prefix + sanitizeIdentifier(parameter.ParameterKey)
++		tempByKey[parameter.ParameterKey] = name
++		fmt.Fprintf(&declarations, "%s := float64(%s)\n%s", name, parameter.SourceExpression, indent)
++		if parameter.ActorExpression != "" {
++			if !safeSelectorChain(parameter.ActorExpression) {
++				return nil, fmt.Errorf("parameter %s actor expression is not a safe selector chain", parameter.ParameterKey)
++			}
++			if _, exists := actorTemp[parameter.ActorExpression]; !exists {
++				actorName := prefix + "actor_" + strconv.Itoa(len(actorTemp))
++				actorTemp[parameter.ActorExpression] = actorName
++				fmt.Fprintf(&declarations, "%s_index := %s.Index()\n%s", actorName, parameter.ActorExpression, indent)
++				fmt.Fprintf(&declarations, "%s_key := %s.Base.Key.String()\n%s", actorName, parameter.ActorExpression, indent)
++			}
++		}
++		if parameter.StatKey != "" {
++			if _, exists := statTemp[parameter.StatKey]; !exists {
++				statName := prefix + "stat_" + strconv.Itoa(len(statTemp))
++				statTemp[parameter.StatKey] = statName
++				fmt.Fprintf(&declarations, "%s := %s\n%s", statName, strconv.Quote(parameter.StatKey), indent)
++			}
++		}
++	}
++	if entry.Template.RootNodeID == nil {
++		return nil, fmt.Errorf("supported template has nil root")
++	}
++	renderedExpression, err := renderTemplateExpression(entry.Template.Nodes, *entry.Template.RootNodeID, tempByKey)
++	if err != nil {
++		return nil, err
++	}
++	parameters, err := renderParameterSlice(infoQualifier, readFrame, plans, tempByKey, actorTemp, statTemp)
++	if err != nil {
++		return nil, err
++	}
++	metadata := compositeMetadataInsertion(data, tokenFile, composite, entry, parameters)
++	return []textEdit{
++		{start: tokenFile.Offset(statement.Pos()), end: tokenFile.Offset(statement.Pos()), replacement: declarations.String()},
++		{start: tokenFile.Offset(flat.Value.Pos()), end: tokenFile.Offset(flat.Value.End()), replacement: renderedExpression},
++		{start: tokenFile.Offset(composite.Rbrace), end: tokenFile.Offset(composite.Rbrace), replacement: metadata},
++	}, nil
++}
++
++func renderParameterSlice(
++	infoQualifier string,
++	readFrame string,
++	parameters []parameterPlan,
++	tempByKey map[string]string,
++	actorTemp map[string]string,
++	statTemp map[string]string,
++) (string, error) {
++	var out strings.Builder
++	fmt.Fprintf(&out, "[]%s.GTTTraceSourceParameter{", infoQualifier)
++	if readFrame == "" || !safeSelectorChain(readFrame) {
++		return "", fmt.Errorf("supported parameter overlay cannot resolve a nonnegative read frame")
++	}
++	for _, parameter := range parameters {
++		value, ok := tempByKey[parameter.ParameterKey]
++		if !ok {
++			return "", fmt.Errorf("missing temporary for parameter %s", parameter.ParameterKey)
++		}
++		actor := "nil"
++		actorKey := "nil"
++		if parameter.ActorExpression != "" {
++			actor = "&" + actorTemp[parameter.ActorExpression] + "_index"
++			actorKey = "&" + actorTemp[parameter.ActorExpression] + "_key"
++		}
++		stat := "nil"
++		if parameter.StatKey != "" {
++			stat = "&" + statTemp[parameter.StatKey]
++		}
++		frame := readFrame
++		fmt.Fprintf(&out, "{ParameterKey:%s,Kind:%s,ObservedValue:%s,ActorIndex:%s,ActorKey:%s,StatKey:%s,ReadMode:%s,ReadFrame:%s,CandidateDependencyComplete:%t},",
++			strconv.Quote(parameter.ParameterKey), strconv.Quote(parameter.Kind), value,
++			actor, actorKey, stat, strconv.Quote(parameter.ReadMode), frame,
++			parameter.CandidateDependencyComplete,
++		)
++	}
++	out.WriteByte('}')
++	return out.String(), nil
++}
++
++func queueReadFrameExpression(fset *token.FileSet, call *ast.CallExpr) (string, error) {
++	selector, ok := call.Fun.(*ast.SelectorExpr)
++	if !ok {
++		return "", fmt.Errorf("queued attack call has no selector receiver")
++	}
++	frame := rootText(fset, selector.X) + ".F"
++	if !safeSelectorChain(frame) {
++		return "", fmt.Errorf("queued attack receiver cannot provide a stable read frame: %s", rootText(fset, selector.X))
++	}
++	return frame, nil
++}
++
++func compositeMetadataInsertion(data []byte, tokenFile *token.File, composite *ast.CompositeLit, entry SourceEntry, parameters string) string {
++	rbrace := tokenFile.Offset(composite.Rbrace)
++	prefix := ""
++	if len(composite.Elts) > 0 {
++		lastEnd := tokenFile.Offset(composite.Elts[len(composite.Elts)-1].End())
++		if !bytes.Contains(data[lastEnd:rbrace], []byte(",")) {
++			prefix = ","
++		}
++	}
++	return prefix + "GTTTraceSourceTemplateSHA256:" + strconv.Quote(entry.Template.TemplateSHA256) +
++		",GTTTraceSourceParameters:" + parameters + ","
++}
++
++func renderTemplateExpression(nodes []TemplateNode, root int, parameters map[string]string) (string, error) {
++	if root < 0 || root >= len(nodes) || nodes[root].NodeID != root {
++		return "", fmt.Errorf("invalid template root %d", root)
++	}
++	node := nodes[root]
++	if node.Operator == "PARAM" {
++		if node.ParameterKey == nil {
++			return "", fmt.Errorf("PARAM node %d has nil key", root)
++		}
++		value, ok := parameters[*node.ParameterKey]
++		if !ok {
++			return "", fmt.Errorf("template references unknown parameter %q", *node.ParameterKey)
++		}
++		return value, nil
++	}
++	if node.Operator == "CONST" {
++		if node.ConstantValue == nil {
++			return "", fmt.Errorf("CONST node %d has nil value", root)
++		}
++		return strconv.FormatFloat(*node.ConstantValue, 'g', -1, 64), nil
++	}
++	children := make([]string, len(node.InputNodeIDs))
++	for index, child := range node.InputNodeIDs {
++		value, err := renderTemplateExpression(nodes, child, parameters)
++		if err != nil {
++			return "", err
++		}
++		children[index] = value
++	}
++	binary := map[string]string{"ADD": "+", "MUL": "*"}
++	if operator, ok := binary[node.Operator]; ok && len(children) == 2 {
++		return "(" + children[0] + " " + operator + " " + children[1] + ")", nil
++	}
++	switch node.Operator {
++	case "MIN":
++		if len(children) == 2 {
++			return "min(" + strings.Join(children, ",") + ")", nil
++		}
++	}
++	return "", fmt.Errorf("unsupported rendered template operation %s", node.Operator)
++}
++
++func compositeKeyValue(composite *ast.CompositeLit, field string) *ast.KeyValueExpr {
++	for _, element := range composite.Elts {
++		keyValue, ok := element.(*ast.KeyValueExpr)
++		if !ok {
++			continue
++		}
++		key, ok := keyValue.Key.(*ast.Ident)
++		if ok && key.Name == field {
++			return keyValue
++		}
++	}
++	return nil
++}
++
++func containingStatement(body *ast.BlockStmt, target ast.Node) ast.Stmt {
++	var best ast.Stmt
++	ast.Inspect(body, func(node ast.Node) bool {
++		statement, ok := node.(ast.Stmt)
++		if !ok || statement.Pos() > target.Pos() || statement.End() < target.End() {
++			return true
++		}
++		if best == nil || statement.End()-statement.Pos() < best.End()-best.Pos() {
++			best = statement
++		}
++		return true
++	})
++	return best
++}
++
++func expressionQualifier(expr ast.Expr) string {
++	switch value := expr.(type) {
++	case *ast.SelectorExpr:
++		if ident, ok := value.X.(*ast.Ident); ok {
++			return ident.Name
++		}
++	case *ast.IndexExpr:
++		return expressionQualifier(value.X)
++	case *ast.IndexListExpr:
++		return expressionQualifier(value.X)
++	}
++	return ""
++}
++
++func receiverName(fn *ast.FuncDecl) string {
++	if fn.Recv == nil || len(fn.Recv.List) == 0 || len(fn.Recv.List[0].Names) == 0 {
++		return ""
++	}
++	return fn.Recv.List[0].Names[0].Name
++}
++
++func safeSelectorChain(value string) bool {
++	if value == "" {
++		return false
++	}
++	for index, part := range strings.Split(value, ".") {
++		if part == "" {
++			return false
++		}
++		for offset, char := range part {
++			if !(unicode.IsLetter(char) || char == '_' || (offset > 0 && unicode.IsDigit(char))) {
++				return false
++			}
++		}
++		if index == 0 && part == "_" {
++			return false
++		}
++	}
++	return true
++}
++
++func sanitizeIdentifier(value string) string {
++	var out strings.Builder
++	for index, char := range value {
++		if unicode.IsLetter(char) || char == '_' || (index > 0 && unicode.IsDigit(char)) {
++			out.WriteRune(char)
++		} else {
++			out.WriteByte('_')
++		}
++	}
++	if out.Len() == 0 {
++		return "value"
++	}
++	return out.String()
++}
++
++func indentationBefore(data []byte, offset int) string {
++	start := lineStart(data, offset)
++	indent := data[start:offset]
++	for _, char := range indent {
++		if char != ' ' && char != '\t' {
++			return ""
++		}
++	}
++	return string(indent)
++}
++
++func lineStart(data []byte, offset int) int {
++	if offset > len(data) {
++		offset = len(data)
++	}
++	for offset > 0 && data[offset-1] != '\n' {
++		offset--
++	}
++	return offset
++}
++
++func applyTextEdits(data []byte, edits []textEdit) ([]byte, error) {
++	sort.SliceStable(edits, func(i, j int) bool {
++		if edits[i].start != edits[j].start {
++			return edits[i].start > edits[j].start
++		}
++		if edits[i].end != edits[j].end {
++			return edits[i].end > edits[j].end
++		}
++		return edits[i].replacement < edits[j].replacement
++	})
++	result := append([]byte(nil), data...)
++	lastStart := len(data) + 1
++	for _, edit := range edits {
++		if edit.start < 0 || edit.end < edit.start || edit.end > len(data) {
++			return nil, fmt.Errorf("invalid text edit [%d,%d)", edit.start, edit.end)
++		}
++		if edit.end > lastStart {
++			return nil, fmt.Errorf("overlapping text edits at %d", edit.start)
++		}
++		result = append(result[:edit.start], append([]byte(edit.replacement), result[edit.end:]...)...)
++		lastStart = edit.start
++	}
++	return result, nil
++}
+diff --git a/pkg/gttsourcegen/render.go b/pkg/gttsourcegen/render.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..3d83aa6a3ca021d8e2fa696fb54cb484a08b3692
+--- /dev/null
++++ b/pkg/gttsourcegen/render.go
+@@ -0,0 +1,83 @@
++package gttsourcegen
++
++import (
++	"bytes"
++	"crypto/sha256"
++	"encoding/hex"
++	"fmt"
++	"go/format"
++	"sort"
++	"strconv"
++)
++
++// RenderManifestBody returns exactly the canonical bytes identified by
++// ManifestBodySHA256. A caller may append one newline when writing the file.
++func RenderManifestBody(manifest Manifest) ([]byte, error) {
++	body, err := CanonicalJSON(manifest)
++	if err != nil {
++		return nil, fmt.Errorf("canonical manifest body: %w", err)
++	}
++	sum := sha256.Sum256(body)
++	actual := hex.EncodeToString(sum[:])
++	if manifest.ManifestBodySHA256 != "" && manifest.ManifestBodySHA256 != actual {
++		return nil, fmt.Errorf("manifest body hash mismatch: have %s, rendered %s", manifest.ManifestBodySHA256, actual)
++	}
++	return body, nil
++}
++
++// RenderLookupGo returns a deterministic generated implementation for package
++// gttsource. Runtime code wraps these deliberately unexported values.
++func RenderLookupGo(manifest Manifest) ([]byte, error) {
++	if _, err := RenderManifestBody(manifest); err != nil {
++		return nil, err
++	}
++	entries := append([]SourceEntry(nil), manifest.Entries...)
++	sort.Slice(entries, func(i, j int) bool { return entries[i].LookupKey < entries[j].LookupKey })
++	seenLookup := make(map[string]struct{}, len(entries))
++	seenID := make(map[string]struct{}, len(entries))
++	for _, entry := range entries {
++		if _, exists := seenLookup[entry.LookupKey]; exists {
++			return nil, fmt.Errorf("duplicate generated lookup key %q", entry.LookupKey)
++		}
++		seenLookup[entry.LookupKey] = struct{}{}
++		if err := validateSHA256("source ID", entry.SourceID); err != nil {
++			return nil, err
++		}
++		if err := validateSHA256("template", entry.Template.TemplateSHA256); err != nil {
++			return nil, err
++		}
++		seenID[entry.SourceID] = struct{}{}
++	}
++
++	var out bytes.Buffer
++	out.WriteString("// Code generated by cmd/gtt-source-manifest; DO NOT EDIT.\n\npackage gttsource\n\n")
++	fmt.Fprintf(&out, "const generatedSourceManifestBodySHA256 = %s\n", strconv.Quote(manifest.ManifestBodySHA256))
++	fmt.Fprintf(&out, "const generatedSourceCompilerVersion = %s\n\n", strconv.Quote(manifest.CompilerVersion))
++	out.WriteString("var generatedSourceIDByLookupKey = map[string]string{\n")
++	for _, entry := range entries {
++		fmt.Fprintf(&out, "\t%s: %s,\n", strconv.Quote(entry.LookupKey), strconv.Quote(entry.SourceID))
++	}
++	out.WriteString("}\n\n")
++	out.WriteString("var generatedTemplateSHA256BySourceID = map[string]string{\n")
++	ids := make([]string, 0, len(seenID))
++	templateByID := make(map[string]string, len(entries))
++	for _, entry := range entries {
++		if existing, ok := templateByID[entry.SourceID]; ok && existing != entry.Template.TemplateSHA256 {
++			return nil, fmt.Errorf("source ID %s has conflicting templates", entry.SourceID)
++		}
++		templateByID[entry.SourceID] = entry.Template.TemplateSHA256
++	}
++	for id := range templateByID {
++		ids = append(ids, id)
++	}
++	sort.Strings(ids)
++	for _, id := range ids {
++		fmt.Fprintf(&out, "\t%s: %s,\n", strconv.Quote(id), strconv.Quote(templateByID[id]))
++	}
++	out.WriteString("}\n")
++	formatted, err := format.Source(out.Bytes())
++	if err != nil {
++		return nil, fmt.Errorf("format generated lookup: %w", err)
++	}
++	return formatted, nil
++}
+diff --git a/pkg/gttsourcegen/scan.go b/pkg/gttsourcegen/scan.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..3d373b47bf7eed6de7d9145e435b58baacf48f64
+--- /dev/null
++++ b/pkg/gttsourcegen/scan.go
+@@ -0,0 +1,690 @@
++package gttsourcegen
++
++import (
++	"bytes"
++	"crypto/sha256"
++	"encoding/hex"
++	"errors"
++	"fmt"
++	"go/ast"
++	"go/parser"
++	"go/printer"
++	"go/token"
++	"io/fs"
++	"os"
++	pathpkg "path"
++	"path/filepath"
++	"sort"
++	"strconv"
++	"strings"
++)
++
++type Options struct {
++	ModuleRoot   string
++	Includes     []string
++	IncludeTests bool
++	Binding      BindingInput
++}
++
++type bindingSet map[string][]ast.Expr
++
++type sourceCandidate struct {
++	kind            string
++	relativeFile    string
++	line            int
++	column          int
++	enclosingSymbol string
++	root            ast.Node
++	astSHA256       string
++	template        templateCompilation
++	rootBindingName string
++}
++
++// Generate scans the requested module-relative Go source and returns a fully
++// hashed manifest. The scan is syntax-based by design; unsupported dataflow is
++// retained as an explicit OPAQUE_FROZEN description.
++func Generate(opts Options) (Manifest, error) {
++	if err := opts.Binding.Validate(); err != nil {
++		return Manifest{}, fmt.Errorf("binding input: %w", err)
++	}
++	root, err := filepath.Abs(strings.TrimSpace(opts.ModuleRoot))
++	if err != nil {
++		return Manifest{}, fmt.Errorf("module root: %w", err)
++	}
++	info, err := os.Stat(root)
++	if err != nil {
++		return Manifest{}, fmt.Errorf("module root: %w", err)
++	}
++	if !info.IsDir() {
++		return Manifest{}, errors.New("module root must be a directory")
++	}
++	if _, err := readModulePath(filepath.Join(root, "go.mod")); err != nil {
++		return Manifest{}, err
++	}
++	files, err := collectGoFiles(root, opts.Includes, opts.IncludeTests)
++	if err != nil {
++		return Manifest{}, err
++	}
++
++	fset := token.NewFileSet()
++	candidates := make([]sourceCandidate, 0, 256)
++	for _, rel := range files {
++		absolute := filepath.Join(root, filepath.FromSlash(rel))
++		data, err := os.ReadFile(absolute)
++		if err != nil {
++			return Manifest{}, fmt.Errorf("read %s: %w", rel, err)
++		}
++		parsed, err := parser.ParseFile(fset, absolute, data, parser.SkipObjectResolution)
++		if err != nil {
++			return Manifest{}, fmt.Errorf("parse %s: %w", rel, err)
++		}
++		fileCandidates, err := scanFile(fset, rel, parsed)
++		if err != nil {
++			return Manifest{}, err
++		}
++		if len(fileCandidates) == 0 {
++			continue
++		}
++		candidates = append(candidates, fileCandidates...)
++	}
++
++	entries, err := finalizeCandidates(candidates)
++	if err != nil {
++		return Manifest{}, err
++	}
++	patchedTreeSHA, err := hashPatchedSourceTree(root)
++	if err != nil {
++		return Manifest{}, err
++	}
++	manifest := Manifest{
++		SchemaVersion: ManifestSchemaVersion, Kind: ManifestBodyKind,
++		CompilerVersion: DefaultCompilerVersion,
++		UpstreamRepo:    opts.Binding.UpstreamRepo, UpstreamRef: opts.Binding.UpstreamRef,
++		PristineSourceTreeSHA256: opts.Binding.PristineSourceTreeSHA256,
++		Patches:                  opts.Binding.Patches, PatchStackSHA256: opts.Binding.PatchStackSHA256,
++		PatchedSourceTreeSHA256: patchedTreeSHA,
++		TraceSchemaVersion:      opts.Binding.TraceSchemaVersion, TraceCapability: opts.Binding.TraceCapability,
++		FormulaIdentities: opts.Binding.FormulaIdentities, GoToolchain: opts.Binding.GoToolchain,
++		BuildFlags: opts.Binding.BuildFlags, Entries: entries,
++	}
++	bodyJSON, err := CanonicalJSON(manifest)
++	if err != nil {
++		return Manifest{}, fmt.Errorf("marshal manifest body: %w", err)
++	}
++	bodySum := sha256.Sum256(bodyJSON)
++	manifest.ManifestBodySHA256 = hex.EncodeToString(bodySum[:])
++	return manifest, nil
++}
++
++func readModulePath(goModPath string) (string, error) {
++	data, err := os.ReadFile(goModPath)
++	if err != nil {
++		return "", fmt.Errorf("read go.mod: %w", err)
++	}
++	for _, line := range strings.Split(string(data), "\n") {
++		fields := strings.Fields(line)
++		if len(fields) == 2 && fields[0] == "module" {
++			return fields[1], nil
++		}
++	}
++	return "", errors.New("go.mod does not declare a module path")
++}
++
++func hashPatchedSourceTree(root string) (string, error) {
++	type treeFile struct {
++		Path   string `json:"path"`
++		SHA256 string `json:"sha256"`
++	}
++	tree := struct {
++		SchemaVersion int        `json:"schema_version"`
++		Files         []treeFile `json:"files"`
++	}{SchemaVersion: 1, Files: []treeFile{}}
++	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
++		if walkErr != nil {
++			return walkErr
++		}
++		rel, err := filepath.Rel(root, path)
++		if err != nil {
++			return err
++		}
++		rel = filepath.ToSlash(rel)
++		if entry.IsDir() {
++			if rel != "." {
++				for _, part := range strings.Split(rel, "/") {
++					if part == ".git" || part == "build" {
++						return filepath.SkipDir
++					}
++				}
++			}
++			return nil
++		}
++		if entry.Type()&os.ModeSymlink != 0 || rel == "pkg/gttsource/generated_manifest.go" {
++			return nil
++		}
++		info, err := entry.Info()
++		if err != nil {
++			return err
++		}
++		if !info.Mode().IsRegular() {
++			return nil
++		}
++		data, err := os.ReadFile(path)
++		if err != nil {
++			return err
++		}
++		sum := sha256.Sum256(data)
++		tree.Files = append(tree.Files, treeFile{Path: rel, SHA256: hex.EncodeToString(sum[:])})
++		return nil
++	})
++	if err != nil {
++		return "", fmt.Errorf("hash patched source tree: %w", err)
++	}
++	sort.Slice(tree.Files, func(i, j int) bool { return tree.Files[i].Path < tree.Files[j].Path })
++	canonical, err := CanonicalJSON(tree)
++	if err != nil {
++		return "", fmt.Errorf("canonical patched source tree: %w", err)
++	}
++	sum := sha256.Sum256(canonical)
++	return hex.EncodeToString(sum[:]), nil
++}
++
++func collectGoFiles(root string, includes []string, includeTests bool) ([]string, error) {
++	starts := includes
++	if len(starts) == 0 {
++		starts = []string{"."}
++	}
++	seen := make(map[string]struct{})
++	files := make([]string, 0, 1024)
++	for _, start := range starts {
++		absolute, relStart, err := resolveModulePath(root, start)
++		if err != nil {
++			return nil, err
++		}
++		stat, err := os.Stat(absolute)
++		if err != nil {
++			return nil, fmt.Errorf("include %q: %w", start, err)
++		}
++		if !stat.IsDir() {
++			if isGoSource(relStart, includeTests) {
++				if _, ok := seen[relStart]; !ok {
++					seen[relStart] = struct{}{}
++					files = append(files, relStart)
++				}
++			}
++			continue
++		}
++		err = filepath.WalkDir(absolute, func(path string, entry fs.DirEntry, walkErr error) error {
++			if walkErr != nil {
++				return walkErr
++			}
++			if entry.IsDir() {
++				if path != absolute && shouldSkipDir(entry.Name()) {
++					return filepath.SkipDir
++				}
++				return nil
++			}
++			rel, err := filepath.Rel(root, path)
++			if err != nil {
++				return err
++			}
++			rel = filepath.ToSlash(rel)
++			if !isGoSource(rel, includeTests) {
++				return nil
++			}
++			if _, ok := seen[rel]; !ok {
++				seen[rel] = struct{}{}
++				files = append(files, rel)
++			}
++			return nil
++		})
++		if err != nil {
++			return nil, fmt.Errorf("walk include %q: %w", start, err)
++		}
++	}
++	sort.Strings(files)
++	return files, nil
++}
++
++func resolveModulePath(root, requested string) (string, string, error) {
++	requested = strings.TrimSpace(requested)
++	if requested == "" {
++		return "", "", errors.New("include path must not be empty")
++	}
++	absolute := requested
++	if !filepath.IsAbs(absolute) {
++		absolute = filepath.Join(root, filepath.FromSlash(requested))
++	}
++	absolute, err := filepath.Abs(absolute)
++	if err != nil {
++		return "", "", err
++	}
++	rel, err := filepath.Rel(root, absolute)
++	if err != nil {
++		return "", "", err
++	}
++	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
++		return "", "", fmt.Errorf("include path %q escapes module root", requested)
++	}
++	return absolute, filepath.ToSlash(rel), nil
++}
++
++func shouldSkipDir(name string) bool {
++	switch name {
++	case ".git", ".hg", ".svn", "build", "node_modules", "vendor":
++		return true
++	}
++	return strings.HasPrefix(name, ".")
++}
++
++func isGoSource(rel string, includeTests bool) bool {
++	if rel == "pkg/gttsource/generated_manifest.go" {
++		return false
++	}
++	if !strings.HasSuffix(rel, ".go") {
++		return false
++	}
++	return includeTests || !strings.HasSuffix(rel, "_test.go")
++}
++
++func scanFile(fset *token.FileSet, rel string, file *ast.File) ([]sourceCandidate, error) {
++	result := make([]sourceCandidate, 0, 16)
++	for _, decl := range file.Decls {
++		fn, ok := decl.(*ast.FuncDecl)
++		if !ok || fn.Body == nil {
++			continue
++		}
++		enclosing := enclosingSymbol(fset, fn)
++		bindings := collectBindings(fn.Body)
++		functionStart := len(result)
++		ast.Inspect(fn.Body, func(node ast.Node) bool {
++			call, ok := node.(*ast.CallExpr)
++			if !ok {
++				return true
++			}
++			kind, root, template, matched := describeSeamCall(fset, call, bindings)
++			if !matched {
++				return true
++			}
++			if root == nil {
++				root = call
++			}
++			position := fset.Position(call.Pos())
++			astHash, err := hashAST(fset, root)
++			if err != nil {
++				template = opaqueTemplate("ast_render_failed")
++				astHash = strings.Repeat("0", sha256.Size*2)
++			}
++			result = append(result, sourceCandidate{
++				kind:            kind,
++				relativeFile:    rel,
++				line:            position.Line,
++				column:          position.Column,
++				enclosingSymbol: enclosing,
++				root:            root,
++				astSHA256:       astHash, template: template,
++				rootBindingName: queuedRootBindingName(kind, call),
++			})
++			return true
++		})
++		markMutableSharedAttackRoots(fn.Body, result[functionStart:])
++	}
++	return result, nil
++}
++
++func queuedRootBindingName(kind string, call *ast.CallExpr) string {
++	if kind != KindQueuedAttack || len(call.Args) == 0 {
++		return ""
++	}
++	expr := call.Args[0]
++	for {
++		switch value := expr.(type) {
++		case *ast.ParenExpr:
++			expr = value.X
++		case *ast.UnaryExpr:
++			if value.Op != token.AND {
++				return ""
++			}
++			expr = value.X
++		default:
++			ident, _ := expr.(*ast.Ident)
++			if ident == nil {
++				return ""
++			}
++			return ident.Name
++		}
++	}
++}
++
++func markMutableSharedAttackRoots(body *ast.BlockStmt, candidates []sourceCandidate) {
++	groups := make(map[token.Pos][]int)
++	for index := range candidates {
++		if candidates[index].kind == KindQueuedAttack && candidates[index].root != nil {
++			groups[candidates[index].root.Pos()] = append(groups[candidates[index].root.Pos()], index)
++		}
++	}
++	for _, indices := range groups {
++		if len(indices) < 2 {
++			continue
++		}
++		name := candidates[indices[0]].rootBindingName
++		if name == "" || !hasFlatDamageMutation(body, name) {
++			continue
++		}
++		for _, index := range indices {
++			candidates[index].template = opaqueTemplate("shared_attack_info_flat_dmg_mutation")
++		}
++	}
++}
++
++func hasFlatDamageMutation(body *ast.BlockStmt, bindingName string) bool {
++	found := false
++	ast.Inspect(body, func(node ast.Node) bool {
++		assignment, ok := node.(*ast.AssignStmt)
++		if !ok {
++			return !found
++		}
++		for _, lhs := range assignment.Lhs {
++			selector, ok := lhs.(*ast.SelectorExpr)
++			if !ok || selector.Sel.Name != "FlatDmg" {
++				continue
++			}
++			ident, ok := selector.X.(*ast.Ident)
++			if ok && ident.Name == bindingName {
++				found = true
++				return false
++			}
++		}
++		return !found
++	})
++	return found
++}
++
++func describeSeamCall(
++	fset *token.FileSet,
++	call *ast.CallExpr,
++	bindings bindingSet,
++) (string, ast.Node, templateCompilation, bool) {
++	selector, ok := call.Fun.(*ast.SelectorExpr)
++	if !ok {
++		return "", nil, templateCompilation{}, false
++	}
++	name := selector.Sel.Name
++	switch {
++	case strings.HasPrefix(name, "Add") && strings.HasSuffix(name, "Mod") && len(call.Args) > 0:
++		modRoot := resolveExpr(call.Args[0], bindings, nil)
++		amount := compositeField(modRoot, "Amount", bindings)
++		if amount == nil {
++			amount = modRoot
++		}
++		return KindModifierAmount, amount, describeModifierAmount(fset, amount, bindings), true
++	case name == "Subscribe" && receiverContains(selector.X, "events") && len(call.Args) > 1:
++		callback := resolveExpr(call.Args[1], bindings, nil)
++		return KindEventCallback, callback, describeCallback(fset, callback, bindings, "event_callback"), true
++	case isTaskCall(selector) && len(call.Args) > 0:
++		callback := resolveExpr(call.Args[0], bindings, nil)
++		return KindTaskCallback, callback, describeCallback(fset, callback, bindings, "task_callback"), true
++	case strings.HasPrefix(name, "QueueAttack") && len(call.Args) > 0:
++		attackRoot := resolveAttackInfo(call.Args[0], bindings)
++		if attackRoot == nil {
++			attackRoot = resolveExpr(call.Args[0], bindings, nil)
++		}
++		return KindQueuedAttack, attackRoot, describeQueuedAttack(fset, attackRoot, bindings), true
++	default:
++		return "", nil, templateCompilation{}, false
++	}
++}
++
++func receiverContains(expr ast.Expr, wanted string) bool {
++	found := false
++	ast.Inspect(expr, func(node ast.Node) bool {
++		switch value := node.(type) {
++		case *ast.Ident:
++			if strings.EqualFold(value.Name, wanted) {
++				found = true
++				return false
++			}
++		case *ast.SelectorExpr:
++			if strings.EqualFold(value.Sel.Name, wanted) {
++				found = true
++				return false
++			}
++		}
++		return !found
++	})
++	return found
++}
++
++func isTaskCall(selector *ast.SelectorExpr) bool {
++	switch selector.Sel.Name {
++	case "QueueCharTask", "QueueEnemyTask":
++		return true
++	case "Add":
++		return receiverContains(selector.X, "tasks") || receiverContains(selector.X, "queue")
++	default:
++		return false
++	}
++}
++
++func collectBindings(body *ast.BlockStmt) bindingSet {
++	all := make(bindingSet)
++	ast.Inspect(body, func(node ast.Node) bool {
++		switch value := node.(type) {
++		case *ast.AssignStmt:
++			if len(value.Lhs) != len(value.Rhs) {
++				return true
++			}
++			for index, lhs := range value.Lhs {
++				ident, ok := lhs.(*ast.Ident)
++				if ok && ident.Name != "_" {
++					all[ident.Name] = append(all[ident.Name], value.Rhs[index])
++				}
++			}
++		case *ast.ValueSpec:
++			if len(value.Names) != len(value.Values) {
++				return true
++			}
++			for index, ident := range value.Names {
++				if ident.Name != "_" {
++					all[ident.Name] = append(all[ident.Name], value.Values[index])
++				}
++			}
++		}
++		return true
++	})
++	return all
++}
++
++func resolveExpr(expr ast.Expr, bindings bindingSet, seen map[string]bool) ast.Expr {
++	switch value := expr.(type) {
++	case *ast.ParenExpr:
++		return resolveExpr(value.X, bindings, seen)
++	case *ast.UnaryExpr:
++		if value.Op == token.AND {
++			return resolveExpr(value.X, bindings, seen)
++		}
++	case *ast.Ident:
++		defs := bindings[value.Name]
++		if len(defs) != 1 {
++			return expr
++		}
++		if seen == nil {
++			seen = make(map[string]bool)
++		}
++		if seen[value.Name] {
++			return expr
++		}
++		seen[value.Name] = true
++		resolved := resolveExpr(defs[0], bindings, seen)
++		delete(seen, value.Name)
++		return resolved
++	}
++	return expr
++}
++
++func compositeField(expr ast.Expr, field string, bindings bindingSet) ast.Expr {
++	expr = resolveExpr(expr, bindings, nil)
++	composite, ok := expr.(*ast.CompositeLit)
++	if !ok {
++		return nil
++	}
++	for _, element := range composite.Elts {
++		keyValue, ok := element.(*ast.KeyValueExpr)
++		if !ok {
++			continue
++		}
++		key, ok := keyValue.Key.(*ast.Ident)
++		if ok && key.Name == field {
++			return resolveExpr(keyValue.Value, bindings, nil)
++		}
++	}
++	return nil
++}
++
++func resolveAttackInfo(expr ast.Expr, bindings bindingSet) ast.Expr {
++	root := resolveExpr(expr, bindings, nil)
++	composite, ok := root.(*ast.CompositeLit)
++	if !ok {
++		return nil
++	}
++	if expressionFinalName(composite.Type) == "AttackInfo" {
++		return composite
++	}
++	if nested := compositeField(composite, "Info", bindings); nested != nil {
++		return nested
++	}
++	return nil
++}
++
++func expressionFinalName(expr ast.Expr) string {
++	switch value := expr.(type) {
++	case *ast.Ident:
++		return value.Name
++	case *ast.SelectorExpr:
++		return value.Sel.Name
++	case *ast.IndexExpr:
++		return expressionFinalName(value.X)
++	case *ast.IndexListExpr:
++		return expressionFinalName(value.X)
++	}
++	return ""
++}
++
++func enclosingSymbol(fset *token.FileSet, fn *ast.FuncDecl) string {
++	if fn.Recv == nil || len(fn.Recv.List) == 0 {
++		return fn.Name.Name
++	}
++	receiver := rootText(fset, fn.Recv.List[0].Type)
++	return "(" + receiver + ")." + fn.Name.Name
++}
++
++func hashAST(fset *token.FileSet, node ast.Node) (string, error) {
++	var buffer bytes.Buffer
++	if err := printer.Fprint(&buffer, fset, node); err != nil {
++		return "", err
++	}
++	sum := sha256.Sum256(buffer.Bytes())
++	return hex.EncodeToString(sum[:]), nil
++}
++
++func rootText(fset *token.FileSet, node any) string {
++	if node == nil {
++		return ""
++	}
++	var buffer bytes.Buffer
++	if err := printer.Fprint(&buffer, fset, node); err != nil {
++		return "<unprintable>"
++	}
++	return buffer.String()
++}
++
++func finalizeCandidates(candidates []sourceCandidate) ([]SourceEntry, error) {
++	sort.Slice(candidates, func(i, j int) bool {
++		left, right := candidates[i], candidates[j]
++		if left.relativeFile != right.relativeFile {
++			return left.relativeFile < right.relativeFile
++		}
++		if left.line != right.line {
++			return left.line < right.line
++		}
++		if left.column != right.column {
++			return left.column < right.column
++		}
++		if left.kind != right.kind {
++			return left.kind < right.kind
++		}
++		return left.astSHA256 < right.astSHA256
++	})
++
++	lookupSeen := make(map[string]sourceCandidate, len(candidates))
++	ordinalByScope := make(map[string]int)
++	sourceIDSeen := make(map[string]string, len(candidates))
++	entries := make([]SourceEntry, 0, len(candidates))
++	for _, candidate := range candidates {
++		if err := validatePortableModulePath(candidate.relativeFile); err != nil {
++			return nil, err
++		}
++		lookupKey := candidate.kind + "|" + candidate.relativeFile + "|" + strconv.Itoa(candidate.line)
++		if previous, ok := lookupSeen[lookupKey]; ok {
++			return nil, fmt.Errorf(
++				"ambiguous source lookup %q: columns %d and %d in %s",
++				lookupKey, previous.column, candidate.column, candidate.enclosingSymbol,
++			)
++		}
++		lookupSeen[lookupKey] = candidate
++
++		scope := candidate.kind + "|" + candidate.relativeFile + "|" + candidate.enclosingSymbol
++		ordinal := ordinalByScope[scope]
++		ordinalByScope[scope] = ordinal + 1
++		locator := SourceLocator{
++			ModulePath: candidate.relativeFile, EnclosingSymbol: candidate.enclosingSymbol,
++			Seam: candidate.kind, Ordinal: ordinal,
++		}
++		sourceIdentityBytes, err := CanonicalJSON(struct {
++			SourceIDSchema  int    `json:"source_id_schema"`
++			ModulePath      string `json:"module_path"`
++			EnclosingSymbol string `json:"enclosing_symbol"`
++			Seam            string `json:"seam"`
++			Ordinal         int    `json:"ordinal"`
++		}{1, locator.ModulePath, locator.EnclosingSymbol, locator.Seam, locator.Ordinal})
++		if err != nil {
++			return nil, fmt.Errorf("canonical source identity for %s: %w", lookupKey, err)
++		}
++		sum := sha256.Sum256(sourceIdentityBytes)
++		sourceID := hex.EncodeToString(sum[:])
++		if previous, ok := sourceIDSeen[sourceID]; ok {
++			return nil, fmt.Errorf("source ID collision %s between %s and %s", sourceID, previous, lookupKey)
++		}
++		sourceIDSeen[sourceID] = lookupKey
++
++		templateBytes, err := CanonicalJSON(templateHashBody(candidate.template.template))
++		if err != nil {
++			return nil, fmt.Errorf("canonicalize template for %s: %w", lookupKey, err)
++		}
++		templateSum := sha256.Sum256(templateBytes)
++		candidate.template.template.TemplateSHA256 = hex.EncodeToString(templateSum[:])
++		entries = append(entries, SourceEntry{
++			SourceID: sourceID, Locator: locator, SourceNodeSHA256: candidate.astSHA256,
++			Template:     candidate.template.template,
++			LookupKey:    lookupKey,
++			RelativeFile: candidate.relativeFile, Line: candidate.line, Column: candidate.column,
++			parameterPlans: candidate.template.parameters,
++		})
++	}
++	sort.Slice(entries, func(i, j int) bool { return entries[i].SourceID < entries[j].SourceID })
++	return entries, nil
++}
++
++func validatePortableModulePath(value string) error {
++	if value == "" || value == "." || strings.Contains(value, "\\") || strings.Contains(value, ":") || strings.ContainsRune(value, '\x00') {
++		return fmt.Errorf("non-portable module-relative path %q", value)
++	}
++	if strings.HasPrefix(value, "/") || pathpkg.Clean(value) != value || strings.HasPrefix(value, "../") || !strings.HasSuffix(value, ".go") {
++		return fmt.Errorf("non-portable module-relative path %q", value)
++	}
++	for _, part := range strings.Split(value, "/") {
++		if part == "" || part == "." || part == ".." {
++			return fmt.Errorf("non-portable module-relative path %q", value)
++		}
++	}
++	return nil
++}
+diff --git a/pkg/gtttrace/runtime.go b/pkg/gtttrace/runtime.go
+index 7f9c77b669ba3c0d4e54b5ef2b2df412bb07ab78..1ad86fd22a3060087f172d84f64c7d11b5a62bcf 100644
+--- a/pkg/gtttrace/runtime.go
++++ b/pkg/gtttrace/runtime.go
+@@ -6,6 +6,9 @@ package gtttrace
+ import (
+ 	"fmt"
+ 	"sort"
++	"strconv"
++
++	"github.com/genshinsim/gcsim/pkg/gttsource"
+ )
+ 
+ // Provider identifies the code-owned source that created an effect.
+@@ -63,17 +66,81 @@ type ModifierTransition struct {
+ 	RecipientIndex    int       `json:"recipient_index"`
+ 	ModifierKey       string    `json:"modifier_key"`
+ 	Transition        string    `json:"transition"`
++	SourceID          string    `json:"-"`
+ 	Provider          Provider  `json:"provider"`
++	DisplacedSourceID *string   `json:"-"`
+ 	DisplacedProvider *Provider `json:"displaced_provider"`
+ }
+ 
++type ExecutionFrame struct {
++	Provider           Provider
++	SourceID           string
++	OccurrenceID       string
++	ParentOccurrenceID string
++	PendingSeam        string
++	PendingFrame       int
++}
++
++type SourceOccurrence struct {
++	SequenceIndex      int      `json:"sequence_index"`
++	OccurrenceID       string   `json:"occurrence_id"`
++	SourceID           string   `json:"source_id"`
++	Seam               string   `json:"seam"`
++	Frame              int      `json:"frame"`
++	ParentOccurrenceID *string  `json:"parent_occurrence_id"`
++	Provider           Provider `json:"provider"`
++	TerminalEventID    *string  `json:"terminal_event_id"`
++}
++
++type SourceValueParameter struct {
++	ParameterKey                string  `json:"parameter_key"`
++	Kind                        string  `json:"kind"`
++	ObservedValue               float64 `json:"observed_value"`
++	ActorIndex                  *int    `json:"actor_index"`
++	ActorKey                    *string `json:"actor_key"`
++	StatKey                     *string `json:"stat_key"`
++	ReadMode                    string  `json:"read_mode"`
++	ReadFrame                   int     `json:"read_frame"`
++	CandidateDependencyComplete bool    `json:"candidate_dependency_complete"`
++}
++
++type SourceValueBinding struct {
++	BindingID             string                 `json:"binding_id"`
++	OccurrenceID          string                 `json:"occurrence_id"`
++	TemplateSHA256        string                 `json:"template_sha256"`
++	OutputKind            string                 `json:"output_kind"`
++	TerminalEventID       *string                `json:"terminal_event_id"`
++	ProviderSequenceIndex *int                   `json:"provider_sequence_index"`
++	OutputKey             string                 `json:"output_key"`
++	ObservedValue         float64                `json:"observed_value"`
++	Parameters            []SourceValueParameter `json:"parameters"`
++}
++
+ // Runtime belongs to exactly one core. Simulations may run concurrently, but
+ // a single core executes its event/task callbacks serially.
+ type Runtime struct {
+-	enabled     bool
+-	stack       []Provider
+-	transitions []ModifierTransition
+-	nextNodeID  uint64
++	enabled             bool
++	frame               *int
++	stack               []ExecutionFrame
++	transitions         []ModifierTransition
++	nextNodeID          uint64
++	sourceOccurrences   []SourceOccurrence
++	sourceValueBindings []SourceValueBinding
++	occurrenceIndex     map[string]int
++	bindingOrdinals     map[string]int
++}
++
++func (r *Runtime) BindFrame(frame *int) {
++	if r != nil {
++		r.frame = frame
++	}
++}
++
++func (r *Runtime) Frame() int {
++	if r == nil || r.frame == nil {
++		return -1
++	}
++	return *r.frame
+ }
+ 
+ // NextNodeID returns a simulation-local stable identity for traced persistent
+@@ -88,8 +155,12 @@ func (r *Runtime) NextNodeID() uint64 {
+ 
+ func NewRuntime() *Runtime {
+ 	return &Runtime{
+-		stack:       make([]Provider, 0, 8),
+-		transitions: make([]ModifierTransition, 0, 32),
++		stack:               make([]ExecutionFrame, 0, 8),
++		transitions:         make([]ModifierTransition, 0, 32),
++		sourceOccurrences:   make([]SourceOccurrence, 0, 256),
++		sourceValueBindings: make([]SourceValueBinding, 0, 256),
++		occurrenceIndex:     make(map[string]int),
++		bindingOrdinals:     make(map[string]int),
+ 	}
+ }
+ 
+@@ -110,17 +181,64 @@ func (r *Runtime) Current() Provider {
+ 	if len(r.stack) == 0 {
+ 		return UnknownProvider("unattributed_context", "no_active_provider")
+ 	}
+-	return r.stack[len(r.stack)-1]
++	return r.stack[len(r.stack)-1].Provider
++}
++
++func (r *Runtime) CurrentSourceID() string {
++	if !r.Enabled() || len(r.stack) == 0 {
++		return ""
++	}
++	return r.stack[len(r.stack)-1].SourceID
++}
++
++func (r *Runtime) CurrentOccurrenceID() string {
++	if !r.Enabled() || len(r.stack) == 0 {
++		return ""
++	}
++	return r.stack[len(r.stack)-1].OccurrenceID
++}
++
++// EnsureCurrentOccurrence materializes a lazily-entered callback only when a
++// traced descendant or value actually needs its lineage. This prevents idle
++// per-frame hooks from inflating the trace by thousands of rows.
++func (r *Runtime) EnsureCurrentOccurrence() string {
++	if !r.Enabled() || len(r.stack) == 0 {
++		return ""
++	}
++	return r.ensureFrameOccurrence(len(r.stack) - 1)
+ }
+ 
+ // Enter installs provider until the returned restore function is called.
+ func (r *Runtime) Enter(provider Provider) func() {
++	return r.EnterSource(provider, "")
++}
++
++// EnterSource installs a runtime owner and a separately versioned code-source
++// identity. Unknown source identity is represented by the empty string and is
++// never synthesized from provider/modifier/ability names.
++func (r *Runtime) EnterSource(provider Provider, sourceID string) func() {
++	return r.EnterSourceOccurrence(provider, sourceID, "", "")
++}
++
++func (r *Runtime) EnterLazySourceOccurrence(
++	provider Provider,
++	sourceID string,
++	seam string,
++	frame int,
++) func() {
+ 	if !r.Enabled() {
+ 		return func() {}
+ 	}
+ 	provider = NormalizeProvider(provider)
++	if !gttsource.ValidID(sourceID) || !validSourceSeam(seam) {
++		sourceID = ""
++		seam = ""
++	}
+ 	depth := len(r.stack)
+-	r.stack = append(r.stack, provider)
++	r.stack = append(r.stack, ExecutionFrame{
++		Provider: provider, SourceID: sourceID,
++		PendingSeam: seam, PendingFrame: frame,
++	})
+ 	return func() {
+ 		if len(r.stack) >= depth {
+ 			r.stack = r.stack[:depth]
+@@ -128,11 +246,249 @@ func (r *Runtime) Enter(provider Provider) func() {
+ 	}
+ }
+ 
++func (r *Runtime) EnterSourceOccurrence(
++	provider Provider,
++	sourceID string,
++	occurrenceID string,
++	parentOccurrenceID string,
++) func() {
++	if !r.Enabled() {
++		return func() {}
++	}
++	provider = NormalizeProvider(provider)
++	if !gttsource.ValidID(sourceID) {
++		sourceID = ""
++	}
++	if parentOccurrenceID == "" && len(r.stack) > 0 {
++		parentOccurrenceID = r.stack[len(r.stack)-1].OccurrenceID
++	}
++	depth := len(r.stack)
++	r.stack = append(r.stack, ExecutionFrame{
++		Provider: provider, SourceID: sourceID,
++		OccurrenceID: occurrenceID, ParentOccurrenceID: parentOccurrenceID,
++	})
++	return func() {
++		if len(r.stack) >= depth {
++			r.stack = r.stack[:depth]
++		}
++	}
++}
++
++func (r *Runtime) RecordSourceOccurrence(
++	seam string,
++	sourceID string,
++	frame int,
++	provider Provider,
++	parentOccurrenceID string,
++) string {
++	if !r.Enabled() || !gttsource.ValidID(sourceID) || !validSourceSeam(seam) {
++		return ""
++	}
++	if parentOccurrenceID == "" {
++		parentOccurrenceID = r.EnsureCurrentOccurrence()
++	}
++	if parentOccurrenceID != "" {
++		if _, ok := r.occurrenceIndex[parentOccurrenceID]; !ok {
++			parentOccurrenceID = ""
++		}
++	}
++	sequenceIndex := len(r.sourceOccurrences)
++	occurrenceID := "source-occurrence:" + strconv.Itoa(sequenceIndex)
++	row := SourceOccurrence{
++		SequenceIndex: sequenceIndex,
++		OccurrenceID:  occurrenceID,
++		SourceID:      sourceID,
++		Seam:          seam,
++		Frame:         frame,
++		Provider:      NormalizeProvider(provider),
++	}
++	if parentOccurrenceID != "" {
++		parent := parentOccurrenceID
++		row.ParentOccurrenceID = &parent
++	}
++	r.occurrenceIndex[occurrenceID] = sequenceIndex
++	r.sourceOccurrences = append(r.sourceOccurrences, row)
++	return occurrenceID
++}
++
++func (r *Runtime) ensureFrameOccurrence(index int) string {
++	if index < 0 || index >= len(r.stack) {
++		return ""
++	}
++	frame := &r.stack[index]
++	if frame.OccurrenceID != "" {
++		return frame.OccurrenceID
++	}
++	if frame.PendingSeam == "" || !gttsource.ValidID(frame.SourceID) {
++		if index > 0 {
++			return r.ensureFrameOccurrence(index - 1)
++		}
++		return ""
++	}
++	parentOccurrenceID := frame.ParentOccurrenceID
++	if parentOccurrenceID == "" && index > 0 {
++		parentOccurrenceID = r.ensureFrameOccurrence(index - 1)
++	}
++	occurrenceID := r.recordSourceOccurrence(
++		frame.PendingSeam, frame.SourceID, frame.PendingFrame,
++		frame.Provider, parentOccurrenceID,
++	)
++	frame.OccurrenceID = occurrenceID
++	frame.ParentOccurrenceID = parentOccurrenceID
++	return occurrenceID
++}
++
++func (r *Runtime) recordSourceOccurrence(
++	seam string,
++	sourceID string,
++	frame int,
++	provider Provider,
++	parentOccurrenceID string,
++) string {
++	sequenceIndex := len(r.sourceOccurrences)
++	occurrenceID := "source-occurrence:" + strconv.Itoa(sequenceIndex)
++	row := SourceOccurrence{
++		SequenceIndex: sequenceIndex,
++		OccurrenceID:  occurrenceID,
++		SourceID:      sourceID,
++		Seam:          seam,
++		Frame:         frame,
++		Provider:      NormalizeProvider(provider),
++	}
++	if parentOccurrenceID != "" {
++		parent := parentOccurrenceID
++		row.ParentOccurrenceID = &parent
++	}
++	r.occurrenceIndex[occurrenceID] = sequenceIndex
++	r.sourceOccurrences = append(r.sourceOccurrences, row)
++	return occurrenceID
++}
++
++func (r *Runtime) BindOccurrenceTerminal(occurrenceID, terminalEventID string) {
++	if !r.Enabled() || occurrenceID == "" || terminalEventID == "" {
++		return
++	}
++	index, ok := r.occurrenceIndex[occurrenceID]
++	if !ok {
++		return
++	}
++	terminal := terminalEventID
++	r.sourceOccurrences[index].TerminalEventID = &terminal
++}
++
++func (r *Runtime) RecordSourceValueBinding(
++	occurrenceID string,
++	templateSHA256 string,
++	outputKind string,
++	terminalEventID *string,
++	providerSequenceIndex *int,
++	outputKey string,
++	observedValue float64,
++	parameters []SourceValueParameter,
++) string {
++	if !r.Enabled() || !validSHA256(templateSHA256) || !validOutputKind(outputKind) || outputKey == "" {
++		return ""
++	}
++	occurrenceSequence, ok := r.occurrenceIndex[occurrenceID]
++	if !ok {
++		return ""
++	}
++	ordinal := r.bindingOrdinals[occurrenceID]
++	r.bindingOrdinals[occurrenceID] = ordinal + 1
++	bindingID := "source-binding:" + strconv.Itoa(occurrenceSequence) + ":" + strconv.Itoa(ordinal)
++	clonedParameters := append(make([]SourceValueParameter, 0, len(parameters)), parameters...)
++	r.sourceValueBindings = append(r.sourceValueBindings, SourceValueBinding{
++		BindingID: bindingID, OccurrenceID: occurrenceID, TemplateSHA256: templateSHA256,
++		OutputKind: outputKind, TerminalEventID: cloneString(terminalEventID),
++		ProviderSequenceIndex: cloneInt(providerSequenceIndex), OutputKey: outputKey,
++		ObservedValue: observedValue, Parameters: clonedParameters,
++	})
++	return bindingID
++}
++
++func (r *Runtime) SourceOccurrences() []SourceOccurrence {
++	if r == nil || len(r.sourceOccurrences) == 0 {
++		return []SourceOccurrence{}
++	}
++	out := make([]SourceOccurrence, len(r.sourceOccurrences))
++	copy(out, r.sourceOccurrences)
++	return out
++}
++
++func (r *Runtime) SourceValueBindings() []SourceValueBinding {
++	if r == nil || len(r.sourceValueBindings) == 0 {
++		return []SourceValueBinding{}
++	}
++	out := make([]SourceValueBinding, len(r.sourceValueBindings))
++	copy(out, r.sourceValueBindings)
++	for index := range out {
++		out[index].Parameters = append([]SourceValueParameter{}, out[index].Parameters...)
++	}
++	return out
++}
++
++func validSourceSeam(seam string) bool {
++	switch seam {
++	case gttsource.KindModifierAmount, gttsource.KindEventCallback,
++		gttsource.KindTaskCallback, gttsource.KindQueuedAttack:
++		return true
++	default:
++		return false
++	}
++}
++
++func validOutputKind(kind string) bool {
++	switch kind {
++	case "attack_mod_stat", "terminal_flat_dmg", "diagnostic_scalar":
++		return true
++	default:
++		return false
++	}
++}
++
++func validSHA256(value string) bool {
++	if len(value) != 64 {
++		return false
++	}
++	for _, char := range value {
++		if (char < '0' || char > '9') && (char < 'a' || char > 'f') {
++			return false
++		}
++	}
++	return true
++}
++
++func cloneString(value *string) *string {
++	if value == nil {
++		return nil
++	}
++	cloned := *value
++	return &cloned
++}
++
++func cloneInt(value *int) *int {
++	if value == nil {
++		return nil
++	}
++	cloned := *value
++	return &cloned
++}
++
+ func (r *Runtime) RecordModifierTransition(row ModifierTransition) {
+ 	if !r.Enabled() {
+ 		return
+ 	}
+ 	row.Provider = NormalizeProvider(row.Provider)
++	if !gttsource.ValidID(row.SourceID) {
++		row.SourceID = ""
++	}
++	if row.DisplacedSourceID != nil {
++		displacedSourceID := *row.DisplacedSourceID
++		if !gttsource.ValidID(displacedSourceID) {
++			displacedSourceID = ""
++		}
++		row.DisplacedSourceID = &displacedSourceID
++	}
+ 	if row.DisplacedProvider != nil {
+ 		displaced := NormalizeProvider(*row.DisplacedProvider)
+ 		row.DisplacedProvider = &displaced
+@@ -166,6 +522,8 @@ func (r *Runtime) ModifierTransitions() []ModifierTransition {
+ 		if left.Transition != right.Transition {
+ 			return left.Transition < right.Transition
+ 		}
++		// Preserve the frozen v2/v3 wire ordering. Source IDs are additive v4
++		// evidence and must not reorder an existing provider-transition array.
+ 		leftKey := providerSortKey(left.Provider) + "\x00" + optionalProviderSortKey(left.DisplacedProvider)
+ 		rightKey := providerSortKey(right.Provider) + "\x00" + optionalProviderSortKey(right.DisplacedProvider)
+ 		return leftKey < rightKey
+diff --git a/pkg/gtttrace/source_runtime_test.go b/pkg/gtttrace/source_runtime_test.go
+new file mode 100644
+index 0000000000000000000000000000000000000000..be09863fedaf2dfd7be0fc71b8c206f225f7dbf7
+--- /dev/null
++++ b/pkg/gtttrace/source_runtime_test.go
+@@ -0,0 +1,48 @@
++package gtttrace
++
++import "testing"
++
++const testSourceID = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
++const testTemplateSHA = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
++
++func TestSourceOccurrenceParentAndValueBinding(t *testing.T) {
++	frame := 12
++	runtime := NewRuntime()
++	runtime.BindFrame(&frame)
++	runtime.Enable()
++	provider := NewProvider("character", "fixture", 0, 0)
++
++	parent := runtime.RecordSourceOccurrence("task_callback", testSourceID, frame, provider, "")
++	restore := runtime.EnterSourceOccurrence(provider, testSourceID, parent, "")
++	frame = 13
++	child := runtime.RecordSourceOccurrence("queued_attack", testSourceID, frame, provider, "")
++	restore()
++
++	terminal := "hit:1"
++	runtime.BindOccurrenceTerminal(child, terminal)
++	actor := 0
++	stat := "hp"
++	binding := runtime.RecordSourceValueBinding(
++		child, testTemplateSHA, "terminal_flat_dmg", &terminal, nil,
++		"flat_dmg", 123.5,
++		[]SourceValueParameter{{
++			ParameterKey: "max_hp", Kind: "candidate_stat", ObservedValue: 1000,
++			ActorIndex: &actor, StatKey: &stat, ReadMode: "live", ReadFrame: frame,
++			CandidateDependencyComplete: true,
++		}},
++	)
++	if binding != "source-binding:1:0" {
++		t.Fatalf("binding ID = %q", binding)
++	}
++	rows := runtime.SourceOccurrences()
++	if len(rows) != 2 || rows[1].ParentOccurrenceID == nil || *rows[1].ParentOccurrenceID != parent {
++		t.Fatalf("unexpected occurrence lineage: %#v", rows)
++	}
++	if rows[1].TerminalEventID == nil || *rows[1].TerminalEventID != terminal {
++		t.Fatalf("terminal binding missing: %#v", rows[1])
++	}
++	bindings := runtime.SourceValueBindings()
++	if len(bindings) != 1 || bindings[0].OccurrenceID != child || len(bindings[0].Parameters) != 1 {
++		t.Fatalf("unexpected value bindings: %#v", bindings)
++	}
++}
+diff --git a/pkg/modifier/modifier.go b/pkg/modifier/modifier.go
+index 32fbc6a00ef8c253006809b0c47656c891e62780..b395f9f9f6dc92c22d62cacb6b123d077067d98d 100644
+--- a/pkg/modifier/modifier.go
++++ b/pkg/modifier/modifier.go
+@@ -4,6 +4,7 @@ package modifier
+ 
+ import (
+ 	"github.com/genshinsim/gcsim/pkg/core/glog"
++	"github.com/genshinsim/gcsim/pkg/gttsource"
+ 	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ )
+ 
+@@ -16,16 +17,19 @@ type Mod interface {
+ 	Extend(string, glog.Logger, int, int)
+ 	GTTSource() gtttrace.Provider
+ 	SetGTTSource(gtttrace.Provider)
++	GTTSourceID() string
++	SetGTTSourceID(string)
+ }
+ 
+ type Base struct {
+-	ModKey    string
+-	Dur       int
+-	Hitlag    bool
+-	ModExpiry int
+-	extension int
+-	event     glog.Event
+-	gttSource gtttrace.Provider
++	ModKey      string
++	Dur         int
++	Hitlag      bool
++	ModExpiry   int
++	extension   int
++	event       glog.Event
++	gttSource   gtttrace.Provider
++	gttSourceID string
+ }
+ 
+ func (t *Base) Key() string                  { return t.ModKey }
+@@ -37,6 +41,13 @@ func (t *Base) GTTSource() gtttrace.Provider { return gtttrace.NormalizeProvider
+ func (t *Base) SetGTTSource(source gtttrace.Provider) {
+ 	t.gttSource = gtttrace.NormalizeProvider(source)
+ }
++func (t *Base) GTTSourceID() string { return t.gttSourceID }
++func (t *Base) SetGTTSourceID(sourceID string) {
++	if !gttsource.ValidID(sourceID) {
++		sourceID = ""
++	}
++	t.gttSourceID = sourceID
++}
+ func (t *Base) Extend(key string, logger glog.Logger, index, amt int) {
+ 	t.extension += amt
+ 	if t.extension < 0 {
+diff --git a/pkg/optimization/gtt_trace_equation.go b/pkg/optimization/gtt_trace_equation.go
+index 2f1f8904e3ddf54bc2469f8b9e3ba1f93883ce1c..c2f748d42af508b68473944185ad30f528b16caa 100644
+--- a/pkg/optimization/gtt_trace_equation.go
++++ b/pkg/optimization/gtt_trace_equation.go
+@@ -18,6 +18,7 @@ import (
+ 	"github.com/genshinsim/gcsim/pkg/gcs/eval"
+ 	"github.com/genshinsim/gcsim/pkg/gcs/parser"
+ 	"github.com/genshinsim/gcsim/pkg/gtt"
++	"github.com/genshinsim/gcsim/pkg/gttsource"
+ 	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ 	"github.com/genshinsim/gcsim/pkg/optimization/optstats"
+ 	"github.com/genshinsim/gcsim/pkg/simulation"
+@@ -26,7 +27,7 @@ import (
+ 
+ const (
+ 	GTTTraceEquationRequestSchemaVersion = 1
+-	GTTTraceEquationOutputSchemaVersion  = 3
++	GTTTraceEquationOutputSchemaVersion  = 4
+ )
+ 
+ type GTTTraceEquationRequest struct {
+@@ -39,25 +40,28 @@ type GTTTraceEquationRequest struct {
+ }
+ 
+ type GTTTraceEquationOutput struct {
+-	SchemaVersion        int                              `json:"schema_version"`
+-	Capability           string                           `json:"capability"`
+-	EngineVersion        string                           `json:"engine_version"`
+-	PatchVersion         string                           `json:"patch_version"`
+-	FormulaVersion       string                           `json:"formula_version"`
+-	FormulaSHA256        string                           `json:"formula_sha256"`
+-	ContextSHA256        string                           `json:"context_sha256"`
+-	RequestSHA256        string                           `json:"request_sha256"`
+-	SourceConfigSHA256   string                           `json:"source_config_sha256"`
+-	CompiledActionSHA256 string                           `json:"compiled_action_sha256"`
+-	TargetSHA256         string                           `json:"target_sha256"`
+-	Seed                 string                           `json:"seed"`
+-	DurationFrames       int                              `json:"duration_frames"`
+-	CharacterKeys        []string                         `json:"character_keys"`
+-	Hits                 []info.GTTTraceHit               `json:"hits"`
+-	TopologyEvents       []optstats.GTTTraceTopologyEvent `json:"topology_events"`
+-	Unsupported          []string                         `json:"unsupported"`
+-	GuardSummary         optstats.GTTTraceGuardSummary    `json:"guard_summary"`
+-	ProviderTransitions  []gtttrace.ModifierTransition    `json:"provider_transitions"`
++	SchemaVersion            int                              `json:"schema_version"`
++	Capability               string                           `json:"capability"`
++	EngineVersion            string                           `json:"engine_version"`
++	PatchVersion             string                           `json:"patch_version"`
++	FormulaVersion           string                           `json:"formula_version"`
++	FormulaSHA256            string                           `json:"formula_sha256"`
++	ContextSHA256            string                           `json:"context_sha256"`
++	RequestSHA256            string                           `json:"request_sha256"`
++	SourceConfigSHA256       string                           `json:"source_config_sha256"`
++	CompiledActionSHA256     string                           `json:"compiled_action_sha256"`
++	TargetSHA256             string                           `json:"target_sha256"`
++	Seed                     string                           `json:"seed"`
++	DurationFrames           int                              `json:"duration_frames"`
++	CharacterKeys            []string                         `json:"character_keys"`
++	Hits                     []info.GTTTraceHit               `json:"hits"`
++	TopologyEvents           []optstats.GTTTraceTopologyEvent `json:"topology_events"`
++	Unsupported              []string                         `json:"unsupported"`
++	GuardSummary             optstats.GTTTraceGuardSummary    `json:"guard_summary"`
++	ProviderTransitions      []gtttrace.ModifierTransition    `json:"provider_transitions"`
++	SourceManifestBodySHA256 string                           `json:"source_manifest_body_sha256"`
++	SourceOccurrences        []gtttrace.SourceOccurrence      `json:"source_occurrences"`
++	SourceValueBindings      []gtttrace.SourceValueBinding    `json:"source_value_bindings"`
+ }
+ 
+ func RunGTTTraceEquation(ctx context.Context, opts simulator.Options, requestPath string) error {
+@@ -158,25 +162,28 @@ func RunGTTTraceEquation(ctx context.Context, opts simulator.Options, requestPat
+ 		engineVersion = "unversioned-local-build"
+ 	}
+ 	out := GTTTraceEquationOutput{
+-		SchemaVersion:        GTTTraceEquationOutputSchemaVersion,
+-		Capability:           gtt.TraceEquationV3Capability,
+-		EngineVersion:        engineVersion,
+-		PatchVersion:         gtt.PatchVersion,
+-		FormulaVersion:       info.GTTTraceFormulaVersion,
+-		FormulaSHA256:        info.GTTTraceFormulaSHA256(),
+-		ContextSHA256:        request.ContextSHA256,
+-		RequestSHA256:        requestSHA,
+-		SourceConfigSHA256:   traceTextSHA256(cfg),
+-		CompiledActionSHA256: traceTextSHA256(gcsl.String()),
+-		TargetSHA256:         targetSHA,
+-		Seed:                 strconv.FormatInt(buffer.Seed, 10),
+-		DurationFrames:       buffer.DurationFrames,
+-		CharacterKeys:        characterKeys,
+-		Hits:                 buffer.Hits,
+-		TopologyEvents:       buffer.TopologyEvents,
+-		Unsupported:          buffer.Unsupported,
+-		GuardSummary:         buffer.GuardSummary(),
+-		ProviderTransitions:  buffer.ProviderTransitions,
++		SchemaVersion:            GTTTraceEquationOutputSchemaVersion,
++		Capability:               gtt.TraceEquationV4Capability,
++		EngineVersion:            engineVersion,
++		PatchVersion:             gtt.PatchVersion,
++		FormulaVersion:           info.GTTTraceFormulaVersion,
++		FormulaSHA256:            info.GTTTraceFormulaSHA256(),
++		ContextSHA256:            request.ContextSHA256,
++		RequestSHA256:            requestSHA,
++		SourceConfigSHA256:       traceTextSHA256(cfg),
++		CompiledActionSHA256:     traceTextSHA256(gcsl.String()),
++		TargetSHA256:             targetSHA,
++		Seed:                     strconv.FormatInt(buffer.Seed, 10),
++		DurationFrames:           buffer.DurationFrames,
++		CharacterKeys:            characterKeys,
++		Hits:                     buffer.Hits,
++		TopologyEvents:           buffer.TopologyEvents,
++		Unsupported:              buffer.Unsupported,
++		GuardSummary:             buffer.GuardSummary(),
++		ProviderTransitions:      buffer.ProviderTransitions,
++		SourceManifestBodySHA256: gttsource.ManifestBodySHA256(),
++		SourceOccurrences:        buffer.SourceOccurrences,
++		SourceValueBindings:      buffer.SourceValueBindings,
+ 	}
+ 	payload, err := json.MarshalIndent(out, "", "  ")
+ 	if err != nil {
+@@ -330,9 +337,89 @@ func validateGTTTraceEquationBuffer(buffer optstats.GTTTraceEquationBuffer, seed
+ 			}
+ 		}
+ 	}
++	if err := validateGTTSourceRows(buffer); err != nil {
++		return err
++	}
++	return nil
++}
++
++func validateGTTSourceRows(buffer optstats.GTTTraceEquationBuffer) error {
++	manifestSHA256 := gttsource.ManifestBodySHA256()
++	if manifestSHA256 == "" {
++		if len(buffer.SourceOccurrences) != 0 || len(buffer.SourceValueBindings) != 0 {
++			return errors.New("gtt trace equation: source rows without manifest identity")
++		}
++		return nil
++	}
++	if !gttTraceSHA256(manifestSHA256) || buffer.SourceOccurrences == nil || buffer.SourceValueBindings == nil {
++		return errors.New("gtt trace equation: invalid source manifest or null source rows")
++	}
++	occurrences := make(map[string]int, len(buffer.SourceOccurrences))
++	lastFrame := -1
++	for index, row := range buffer.SourceOccurrences {
++		if row.SequenceIndex != index || row.OccurrenceID != "source-occurrence:"+strconv.Itoa(index) ||
++			!gttTraceSHA256(row.SourceID) || row.Frame < lastFrame {
++			return fmt.Errorf("gtt trace equation: invalid source occurrence %d", index)
++		}
++		switch row.Seam {
++		case gttsource.KindModifierAmount, gttsource.KindEventCallback,
++			gttsource.KindTaskCallback, gttsource.KindQueuedAttack:
++		default:
++			return fmt.Errorf("gtt trace equation: invalid source occurrence seam %d", index)
++		}
++		if err := validateGTTTraceProvider(row.Provider); err != nil {
++			return fmt.Errorf("gtt trace equation: source occurrence %d provider: %w", index, err)
++		}
++		if row.ParentOccurrenceID != nil {
++			parentIndex, ok := occurrences[*row.ParentOccurrenceID]
++			if !ok || parentIndex >= index {
++				return fmt.Errorf("gtt trace equation: invalid source occurrence parent %d", index)
++			}
++		}
++		occurrences[row.OccurrenceID] = index
++		lastFrame = row.Frame
++	}
++	for index, row := range buffer.SourceValueBindings {
++		if strings.TrimSpace(row.BindingID) == "" || !gttTraceSHA256(row.TemplateSHA256) ||
++			strings.TrimSpace(row.OutputKey) == "" || !gttTraceFinite(row.ObservedValue) || row.Parameters == nil {
++			return fmt.Errorf("gtt trace equation: invalid source value binding %d", index)
++		}
++		if _, ok := occurrences[row.OccurrenceID]; !ok {
++			return fmt.Errorf("gtt trace equation: missing source occurrence for binding %d", index)
++		}
++		switch row.OutputKind {
++		case "attack_mod_stat", "terminal_flat_dmg", "diagnostic_scalar":
++		default:
++			return fmt.Errorf("gtt trace equation: invalid source output kind %d", index)
++		}
++		for parameterIndex, parameter := range row.Parameters {
++			if strings.TrimSpace(parameter.ParameterKey) == "" || !gttTraceFinite(parameter.ObservedValue) ||
++				parameter.ReadFrame < 0 {
++				return fmt.Errorf("gtt trace equation: invalid source parameter %d/%d", index, parameterIndex)
++			}
++			switch parameter.Kind {
++			case "candidate_stat", "frozen_source_value", "frozen_runtime_state":
++			default:
++				return fmt.Errorf("gtt trace equation: invalid source parameter kind %d/%d", index, parameterIndex)
++			}
++			switch parameter.ReadMode {
++			case "snapshot", "live", "constant":
++			default:
++				return fmt.Errorf("gtt trace equation: invalid source read mode %d/%d", index, parameterIndex)
++			}
++		}
++	}
+ 	return nil
+ }
+ 
++func gttTraceSHA256(value string) bool {
++	if len(value) != sha256.Size*2 || strings.ToLower(value) != value {
++		return false
++	}
++	_, err := hex.DecodeString(value)
++	return err == nil
++}
++
+ func validateGTTTraceReactionFormula(hit info.GTTTraceHit) error {
+ 	receipt := hit.ReactionFormula
+ 	if receipt == nil {
+diff --git a/pkg/optimization/optstats/trace_equation.go b/pkg/optimization/optstats/trace_equation.go
+index a67e18e6f19b386314d7f6404de053072010f20e..c06ebc57fb6d2a63d481925d590caac77315466f 100644
+--- a/pkg/optimization/optstats/trace_equation.go
++++ b/pkg/optimization/optstats/trace_equation.go
+@@ -6,6 +6,7 @@ import (
+ 	"encoding/json"
+ 	"reflect"
+ 	"sort"
++	"strconv"
+ 
+ 	"github.com/genshinsim/gcsim/pkg/core"
+ 	"github.com/genshinsim/gcsim/pkg/core/attributes"
+@@ -45,6 +46,8 @@ type GTTTraceEquationBuffer struct {
+ 	TopologyEvents      []GTTTraceTopologyEvent       `json:"topology_events"`
+ 	Unsupported         []string                      `json:"unsupported"`
+ 	ProviderTransitions []gtttrace.ModifierTransition `json:"provider_transitions"`
++	SourceOccurrences   []gtttrace.SourceOccurrence   `json:"source_occurrences"`
++	SourceValueBindings []gtttrace.SourceValueBinding `json:"source_value_bindings"`
+ 	nextAttackID        uint64
+ 	nextHitID           uint64
+ 	nextEventID         uint64
+@@ -60,6 +63,8 @@ func OptimizerTraceEquation(core *core.Core) (CollectorCustomStats[GTTTraceEquat
+ 		TopologyEvents:      make([]GTTTraceTopologyEvent, 0),
+ 		Unsupported:         make([]string, 0),
+ 		ProviderTransitions: make([]gtttrace.ModifierTransition, 0),
++		SourceOccurrences:   make([]gtttrace.SourceOccurrence, 0),
++		SourceValueBindings: make([]gtttrace.SourceValueBinding, 0),
+ 	}
+ 	core.Events.Subscribe(event.OnApplyAttack, func(args ...any) {
+ 		attack := args[0].(*info.AttackEvent)
+@@ -86,6 +91,8 @@ func OptimizerTraceEquation(core *core.Core) (CollectorCustomStats[GTTTraceEquat
+ 		}
+ 		out.nextHitID++
+ 		trace.HitID = out.nextHitID
++		terminalEventID := "hit:" + strconv.FormatUint(trace.HitID, 10)
++		bindSourceTraceTerminal(core, attack, trace, terminalEventID)
+ 		if trace.ReportedDamage != actualDamage {
+ 			trace.AddUnsupported("reported_damage_event_mismatch")
+ 		}
+@@ -139,6 +146,8 @@ func opaqueTraceHit(core *core.Core, target info.Target, attack *info.AttackEven
+ 		DamageMode:                 core.Flags.DamageMode,
+ 		HPCapActive:                core.Flags.DamageMode,
+ 		ReportedDamage:             actualDamage,
++		SourceID:                   attack.GTTTraceSourceID,
++		SourceOccurrenceID:         attack.GTTTraceSourceOccurrenceID,
+ 		SnapshotStats:              stats,
+ 		AttackMods:                 make([]info.GTTTraceAttackModAttempt, 0),
+ 		StatContributions:          make([]info.GTTTraceStatContribution, 0),
+@@ -209,6 +218,8 @@ func (b GTTTraceEquationBuffer) Flush(core *core.Core) GTTTraceEquationBuffer {
+ 	b.DurationFrames = core.F
+ 	b.Seed = core.Seed
+ 	b.ProviderTransitions = core.GTTTrace.ModifierTransitions()
++	b.SourceOccurrences = core.GTTTrace.SourceOccurrences()
++	b.SourceValueBindings = core.GTTTrace.SourceValueBindings()
+ 	seen := map[string]bool{
+ 		"gadget_wave_state_lineage_not_instrumented": true,
+ 		"provider_transition_timeline_incomplete":    true,
+@@ -225,3 +236,52 @@ func (b GTTTraceEquationBuffer) Flush(core *core.Core) GTTTraceEquationBuffer {
+ 	sort.Strings(b.Unsupported)
+ 	return b
+ }
++
++func bindSourceTraceTerminal(
++	core *core.Core,
++	attack *info.AttackEvent,
++	hit *info.GTTTraceHit,
++	terminalEventID string,
++) {
++	core.GTTTrace.BindOccurrenceTerminal(hit.SourceOccurrenceID, terminalEventID)
++	for _, row := range hit.StatContributions {
++		core.GTTTrace.BindOccurrenceTerminal(row.SourceOccurrenceID, terminalEventID)
++	}
++	for _, row := range hit.CallbackAttempts {
++		core.GTTTrace.BindOccurrenceTerminal(row.SourceOccurrenceID, terminalEventID)
++	}
++	for _, row := range hit.TargetModContributions {
++		core.GTTTrace.BindOccurrenceTerminal(row.SourceOccurrenceID, terminalEventID)
++	}
++	for _, row := range hit.ReactionBonusContributions {
++		core.GTTTrace.BindOccurrenceTerminal(row.SourceOccurrenceID, terminalEventID)
++	}
++	terminal := terminalEventID
++	for providerIndex, row := range hit.AttackMods {
++		core.GTTTrace.BindOccurrenceTerminal(row.SourceOccurrenceID, terminalEventID)
++		if row.SourceTemplateSHA256 == "" || len(row.SourceParameters) == 0 {
++			continue
++		}
++		keys := make([]string, 0, len(row.Delta))
++		for key := range row.Delta {
++			keys = append(keys, key)
++		}
++		sort.Strings(keys)
++		providerSequenceIndex := providerIndex
++		for _, key := range keys {
++			core.GTTTrace.RecordSourceValueBinding(
++				row.SourceOccurrenceID, row.SourceTemplateSHA256,
++				"attack_mod_stat", &terminal, &providerSequenceIndex,
++				key, row.Delta[key], row.SourceParameters,
++			)
++		}
++	}
++	if attack.GTTTraceSourceTemplateSHA256 == "" || len(attack.GTTTraceSourceParameters) == 0 {
++		return
++	}
++	core.GTTTrace.RecordSourceValueBinding(
++		attack.GTTTraceSourceOccurrenceID, attack.GTTTraceSourceTemplateSHA256,
++		"terminal_flat_dmg", &terminal, nil, "flat_dmg", hit.FlatDmg,
++		attack.GTTTraceSourceParameters,
++	)
++}

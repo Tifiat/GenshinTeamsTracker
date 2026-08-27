@@ -25,6 +25,7 @@ from .engine_store import (
     GcsimEngineStore,
     GcsimEngineStoreError,
 )
+from .tree_identity import directory_sha256
 
 
 class GcsimOptimizerEngineContextError(RuntimeError):
@@ -214,16 +215,10 @@ def _sha256_file(path: Path) -> str:
 
 
 def _engine_tree_sha256(root: Path) -> str:
-    digest = hashlib.sha256()
-    for item in sorted(path for path in root.rglob("*") if path.is_file()):
-        if item.relative_to(root).as_posix() == MANIFEST_FILE_NAME:
-            continue
-        relative = item.relative_to(root).as_posix()
-        digest.update(relative.encode("utf-8"))
-        digest.update(b"\0")
-        digest.update(item.read_bytes())
-        digest.update(b"\0")
-    return digest.hexdigest()
+    return directory_sha256(
+        root,
+        excluded_relative_paths=(MANIFEST_FILE_NAME,),
+    )
 
 
 __all__ = [

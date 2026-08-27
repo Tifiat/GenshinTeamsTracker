@@ -89,6 +89,14 @@ Mirror the primary project owner under `tests/`:
   unit suite: `python -m
   run_workspace.gcsim.optimizer_reduced_oracle_smoke` and `python -m
   run_workspace.gcsim.optimizer_main_response_smoke`.
+  The exact-current-artifacts FAST/GCSIM n=1000 gate is an opt-in live
+  integration test because it runs the real engine:
+  `$env:GTT_RUN_REAL_GCSIM_ACCEPTANCE='1'; .venv\Scripts\python.exe -m unittest
+  tests.run_workspace.gcsim.trace_equation.test_same_context_acceptance`.
+  Its 2026-08-26 run is intentionally red: identity binding passed, but the
+  single-seed FAST estimate missed the n=1000 mean by 1.692%, exposing
+  seed-dependent hit/reaction topology. Do not weaken the assertion; rerun only
+  after the stochastic-topology contract changes.
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Decks UI preset
   persistence/conversion and root-resolved default path coverage
   (`test_deck_preset.py`), observed weapon-stack identity helper coverage

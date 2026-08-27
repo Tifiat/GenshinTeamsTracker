@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass, replace
+import hashlib
 import json
 from pathlib import Path
 from typing import Callable
@@ -24,13 +25,19 @@ from .engine_store import (
     OverlayPatchBackend,
     PatchBackend,
 )
-from .patch_backends import GitApplyPatchBackend
+from .patch_backends import GitApplyPatchBackend, ordered_file_stack_identity
+from .source_manifest_build import (
+    SOURCE_MANIFEST_INPUT_KIND,
+    SOURCE_MANIFEST_TRACE_CAPABILITY,
+    SOURCE_MANIFEST_TRACE_SCHEMA_VERSION,
+)
 from .source_acquisition import (
     DEFAULT_GCSIM_SOURCE_CACHE_DIR,
     GCSIM_UPSTREAM_REPO,
     OfficialGcsimSourceAcquisition,
     acquire_official_gcsim_source,
 )
+from .tree_identity import directory_sha256
 from .runtime_probe import (
     DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
     GcsimRuntimeProbeResult,
@@ -298,6 +305,11 @@ def prepare_official_gcsim_engine_update(
         artifact_relative_path=artifact_relative_path,
         require_gtt_marker=require_gtt_marker,
     )
+    source_manifest_binding_input = _source_manifest_binding_input(
+        acquisition=acquisition,
+        patch_stack=patch_stack,
+        patch_backend=backend,
+    )
     runtime_probe_state: dict[str, GcsimRuntimeProbeResult | None] = {"result": None}
     artifact_build_state: dict[str, GcsimBuildArtifactResult | None] = {"result": None}
     update_result = store.prepare_engine_update(
@@ -325,6 +337,7 @@ def prepare_official_gcsim_engine_update(
             runtime_probe_timeout_seconds=runtime_probe_timeout_seconds,
             artifact_relative_path=artifact_relative_path,
             require_gtt_marker=require_gtt_marker,
+            source_manifest_binding_input=source_manifest_binding_input,
         ),
     )
     report = _report_from_update_result(
@@ -374,6 +387,7 @@ def _make_engine_update_smoke_check(
     runtime_probe_timeout_seconds: int,
     artifact_relative_path: str | Path,
     require_gtt_marker: bool,
+    source_manifest_binding_input: dict[str, object],
 ):
     def smoke_check(engine_dir: Path) -> str:
         layout_error = gcsim_source_layout_smoke_check(engine_dir)
@@ -392,6 +406,7 @@ def _make_engine_update_smoke_check(
                 timeout_seconds=runtime_probe_timeout_seconds,
                 runner=artifact_build_runner or runtime_probe_runner,
                 require_gtt_marker=require_gtt_marker,
+                source_manifest_binding_input=source_manifest_binding_input,
             )
             artifact_build_state["result"] = result
             metadata.update(result.metadata())
@@ -437,6 +452,69 @@ def _engine_capabilities(
     if probe_runtime and not build_artifact:
         capabilities.append("go_runtime_probe")
     return tuple(capabilities)
+
+
+def _source_manifest_binding_input(
+    *,
+    acquisition: OfficialGcsimSourceAcquisition,
+    patch_stack: Path | None,
+    patch_backend: PatchBackend,
+) -> dict[str, object]:
+    patch_files: list[Path] = []
+    if patch_stack is not None and patch_stack.is_dir():
+        if isinstance(patch_backend, GitApplyPatchBackend):
+            patch_files = sorted(
+                (path for path in patch_stack.rglob("*.patch") if path.is_file()),
+                key=lambda path: path.relative_to(patch_stack).as_posix(),
+            )
+        else:
+            patch_files = sorted(
+                (path for path in patch_stack.rglob("*") if path.is_file()),
+                key=lambda path: path.relative_to(patch_stack).as_posix(),
+            )
+    if patch_stack is None:
+        patch_rows, patch_stack_sha256 = ordered_file_stack_identity(Path("."), ())
+    else:
+        patch_rows, patch_stack_sha256 = ordered_file_stack_identity(
+            patch_stack,
+            patch_files,
+        )
+    formula_ids = (
+        "gtt_trace_formula_v1",
+        "gtt_transformative_reaction_v1",
+        "gtt_source_ir_v2",
+    )
+    return {
+        "schema_version": 1,
+        "kind": SOURCE_MANIFEST_INPUT_KIND,
+        "upstream_repo": acquisition.source_ref.upstream_repo,
+        "upstream_ref": acquisition.source_ref.tag,
+        "pristine_source_tree_sha256": _source_tree_sha256(acquisition.source_dir),
+        "patches": list(patch_rows),
+        "patch_stack_sha256": patch_stack_sha256,
+        "trace_schema_version": SOURCE_MANIFEST_TRACE_SCHEMA_VERSION,
+        "trace_capability": SOURCE_MANIFEST_TRACE_CAPABILITY,
+        "formula_identities": [
+            {
+                "id": formula_id,
+                "sha256": (
+                    "c5e843111092ced9e2979cc228715acaafb4701b462923bb21b2c59091d43139"
+                    if formula_id == "gtt_transformative_reaction_v1"
+                    else (
+                        "8b8dfcb9cb97e2b06145638e47ba915a"
+                        "6016a11f956708d7de7ee826ae730792"
+                        if formula_id == "gtt_source_ir_v2"
+                        else hashlib.sha256(formula_id.encode("utf-8")).hexdigest()
+                    )
+                ),
+            }
+            for formula_id in formula_ids
+        ],
+    }
+
+
+def _source_tree_sha256(path: str | Path) -> str:
+    return directory_sha256(path)
 
 
 def _engine_manifest_metadata(

@@ -19,7 +19,6 @@ from PySide6.QtWidgets import (
 
 from localization import tr
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
-from ui.gcsim_browser.optimizer_panel import GcsimOptimizerPanel
 
 
 DEFAULT_ROTATION_CODE = """options swap_delay=12 iteration=1000;
@@ -58,11 +57,6 @@ class GcsimBrowserWorkspace(QWidget):
     run_selected_requested = Signal(int, int, str)
     run_all_requested = Signal(int, str)
     rotation_text_changed = Signal()
-    optimizer_start_requested = Signal(int, str, object)
-    optimizer_cancel_requested = Signal()
-    optimizer_save_wearer_requested = Signal(object, int, str)
-    optimizer_save_team_requested = Signal(object, str)
-    optimizer_team_changed = Signal(int)
 
     """First visual shell for the future GCSIM Browser.
 
@@ -158,7 +152,6 @@ class GcsimBrowserWorkspace(QWidget):
         self.team_tabs.addTab(self.team_tab_widgets[1], "")
         self.team_tabs.currentChanged.connect(self._refresh_targets_preview)
         self.team_tabs.currentChanged.connect(lambda _index: self._refresh_context())
-        self.team_tabs.currentChanged.connect(self.optimizer_team_changed.emit)
         layout.addWidget(self.team_tabs)
 
         self.targets_section, targets_layout = _make_section()
@@ -285,21 +278,6 @@ class GcsimBrowserWorkspace(QWidget):
 
         layout.addStretch(1)
 
-        self.optimizer_panel = GcsimOptimizerPanel()
-        self.workspace_tabs.addTab(self.optimizer_panel, "")
-        self.optimizer_panel.start_requested.connect(self._request_optimizer_start)
-        self.optimizer_panel.cancel_requested.connect(
-            self.optimizer_cancel_requested.emit
-        )
-        self.optimizer_panel.save_wearer_requested.connect(
-            self.optimizer_save_wearer_requested.emit
-        )
-        self.optimizer_panel.save_team_requested.connect(
-            self.optimizer_save_team_requested.emit
-        )
-        self.rotation_editor.textChanged.connect(
-            self.optimizer_panel.invalidate_results
-        )
         self.retranslate_ui()
 
     def set_mode(self, mode: str) -> None:
@@ -336,49 +314,8 @@ class GcsimBrowserWorkspace(QWidget):
         self._targets_preview_by_team = preview_by_team
         self._refresh_targets_preview()
         self._refresh_context()
-        self.optimizer_panel.energy_label.setText(
-            tr(
-                "gcsim.optimizer.energy_state",
-                state=energy_mode_label or tr("gcsim.optimizer.follows_setting"),
-            )
-        )
-
-    def set_optimizer_context(
-        self,
-        *,
-        character_names_by_slot: dict[int, str],
-        source_set_keys_by_slot: dict[int, tuple[str, ...]],
-        boosted_energy_label: str,
-        context_identity: str,
-    ) -> None:
-        self.optimizer_panel.set_context(
-            character_names_by_slot=character_names_by_slot,
-            source_set_keys_by_slot=source_set_keys_by_slot,
-            boosted_energy_label=boosted_energy_label,
-            context_identity=context_identity,
-        )
-
-    def set_optimizer_busy(self, busy: bool) -> None:
-        self.optimizer_panel.set_busy(busy)
-
-    def set_optimizer_progress(self, event: object) -> None:
-        self.optimizer_panel.update_progress(event)
-
-    def set_optimizer_result(self, result: object) -> None:
-        self.optimizer_panel.set_result(result)
-
-    def set_optimizer_error(self, message: str) -> None:
-        self.optimizer_panel.progress_label.setText(
-            tr("gcsim.optimizer.failed", error=message)
-        )
-
-    def invalidate_optimizer_results(self) -> None:
-        self.optimizer_panel.invalidate_results()
-
     def retranslate_ui(self) -> None:
         self.workspace_tabs.setTabText(0, _fallback("gcsim.browser.simulation", "Simulation"))
-        self.workspace_tabs.setTabText(1, _fallback("gcsim.browser.optimizer", "Artifact optimizer"))
-        self.optimizer_panel.retranslate_ui()
         self.title_label.setText(_fallback("gcsim.browser.title", "GCSIM Browser"))
         self.status_label.setText(
             _fallback(
@@ -484,18 +421,6 @@ class GcsimBrowserWorkspace(QWidget):
             self.results_placeholder.setText("")
         self._update_mode_visibility()
         self._refresh_context()
-
-    def _request_optimizer_start(self, options: object) -> None:
-        team_index = max(0, int(self.team_tabs.currentIndex()))
-        if self._mode == MODE_DPS_DUMMY:
-            team_index = 0
-        target_options = dict(options) if isinstance(options, dict) else {}
-        target_options["selected_chamber"] = self._selected_chamber_index + 1
-        self.optimizer_start_requested.emit(
-            team_index,
-            self.rotation_editor.toPlainText(),
-            target_options,
-        )
 
     def _make_team_tab(self, team_index: int) -> QWidget:
         tab = QWidget()

@@ -598,6 +598,11 @@ def delete_build_presets(
         return 0
 
     placeholders = ",".join("?" for _ in build_ids)
+    _delete_optimizer_team_presets_referencing_builds(
+        conn,
+        build_ids,
+        placeholders=placeholders,
+    )
     return int(
         conn.execute(
             f"""
@@ -607,6 +612,49 @@ def delete_build_presets(
             build_ids,
         ).rowcount
         or 0
+    )
+
+
+def _delete_optimizer_team_presets_referencing_builds(
+    conn: sqlite3.Connection,
+    build_ids: list[int],
+    *,
+    placeholders: str,
+) -> None:
+    """Remove optional optimizer team groupings made invalid by this deletion.
+
+    An optimizer team grouping owns references to four ordinary Artifact Browser
+    presets, not the presets themselves.  Once one referenced preset is deleted,
+    the grouping is no longer a valid four-member team.  Deleting the parent
+    grouping cascades only its membership rows and leaves every other wearer
+    preset intact.
+    """
+
+    optional_tables = {
+        "gcsim_optimizer_team_presets",
+        "gcsim_optimizer_team_preset_members",
+    }
+    rows = conn.execute(
+        """
+        SELECT name
+        FROM sqlite_schema
+        WHERE type = 'table' AND name IN (?, ?)
+        """,
+        tuple(sorted(optional_tables)),
+    ).fetchall()
+    if {str(row["name"]) for row in rows} != optional_tables:
+        return
+
+    conn.execute(
+        f"""
+        DELETE FROM gcsim_optimizer_team_presets
+        WHERE id IN (
+            SELECT DISTINCT team_preset_id
+            FROM gcsim_optimizer_team_preset_members
+            WHERE build_id IN ({placeholders})
+        )
+        """,
+        build_ids,
     )
 
 
@@ -1112,7 +1160,7 @@ def update_build_preset(
 
 
 def delete_build_preset(conn: sqlite3.Connection, build_id: int) -> None:
-    conn.execute("DELETE FROM artifact_builds WHERE id = ?", (int(build_id),))
+    delete_build_presets(conn, [int(build_id)])
 
 
 def replace_artifact_build_slots(

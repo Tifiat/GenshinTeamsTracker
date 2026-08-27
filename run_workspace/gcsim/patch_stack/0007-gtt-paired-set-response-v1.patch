@@ -1,0 +1,138 @@
+diff --git a/pkg/gtt/info.go b/pkg/gtt/info.go
+index 9097e5b..46ff5a2 100644
+--- a/pkg/gtt/info.go
++++ b/pkg/gtt/info.go
+@@ -6,8 +6,9 @@ import (
+ )
+ 
+ const (
+-	PatchVersion             = "gtt-stat-response-v2"
++	PatchVersion             = "gtt-set-response-v1"
+ 	StatResponseV2Capability = "gtt_stat_response_v2"
++	SetResponseV1Capability  = "gtt_set_response_v1"
+ )
+ 
+ type EngineInfo struct {
+@@ -23,7 +24,7 @@ func Info(upstreamVersion string) EngineInfo {
+ 	return EngineInfo{
+ 		GTTEngine:          true,
+ 		GTTPatchVersion:    PatchVersion,
+-		Capabilities:       []string{"gtt_engine_marker", WaveSchedulerPrototypeCapability, WaveScenarioPayloadCapability, StatResponseV2Capability},
++		Capabilities:       []string{"gtt_engine_marker", WaveSchedulerPrototypeCapability, WaveScenarioPayloadCapability, StatResponseV2Capability, SetResponseV1Capability},
+ 		SequentialWaves:    true,
+ 		WaveSchedulerStage: "scenario_payload_prototype",
+ 		UpstreamVersion:    upstreamVersion,
+diff --git a/pkg/optimization/gtt_response.go b/pkg/optimization/gtt_response.go
+index 5c51136..514731d 100644
+--- a/pkg/optimization/gtt_response.go
++++ b/pkg/optimization/gtt_response.go
+@@ -20,6 +20,7 @@ import (
+ 	"github.com/genshinsim/gcsim/pkg/gcs/parser"
+ 	"github.com/genshinsim/gcsim/pkg/gtt"
+ 	"github.com/genshinsim/gcsim/pkg/optimization/optstats"
++	"github.com/genshinsim/gcsim/pkg/shortcut"
+ 	"github.com/genshinsim/gcsim/pkg/simulator"
+ )
+ 
+@@ -56,10 +57,12 @@ type GTTStatResponseIntervention struct {
+ }
+ 
+ type GTTStatResponseChange struct {
+-	CharacterIndex int     `json:"character_index"`
+-	Stat           string  `json:"stat"`
+-	Mode           string  `json:"mode"`
+-	Value          float64 `json:"value"`
++	CharacterIndex int     `json:"character_index"`
++	Stat           string  `json:"stat"`
++	Mode           string  `json:"mode"`
++	Value          float64 `json:"value"`
++	SetKey         string  `json:"set_key,omitempty"`
++	SetCount       int     `json:"set_count,omitempty"`
+ }
+ 
+ type GTTStatResponseOutput struct {
+@@ -316,6 +319,30 @@ func validateGTTStatResponseChanges(label string, changes []GTTStatResponseChange, characterCount int, allowEmpty bool) error {
+ 		if change.CharacterIndex < 0 || change.CharacterIndex >= characterCount {
+ 			return fmt.Errorf("gtt stat response: %s change %d character_index out of range", label, changeIndex)
+ 		}
++		if change.SetKey != "" {
++			if change.Stat != "" || change.Mode != "" || change.Value != 0 {
++				return fmt.Errorf("gtt stat response: %s change %d cannot mix stat and set fields", label, changeIndex)
++			}
++			if change.SetKey != strings.ToLower(strings.TrimSpace(change.SetKey)) {
++				return fmt.Errorf("gtt stat response: %s change %d set_key must be trimmed lowercase", label, changeIndex)
++			}
++			setKey, ok := shortcut.SetNameToKey[change.SetKey]
++			if !ok {
++				return fmt.Errorf("gtt stat response: %s change %d has unsupported set %q", label, changeIndex, change.SetKey)
++			}
++			if change.SetCount != 2 && change.SetCount != 4 {
++				return fmt.Errorf("gtt stat response: %s change %d set_count must be 2 or 4", label, changeIndex)
++			}
++			key := fmt.Sprintf("%d/set/%d", change.CharacterIndex, setKey)
++			if seenChanges[key] {
++				return fmt.Errorf("gtt stat response: %s changes character/set %s more than once", label, key)
++			}
++			seenChanges[key] = true
++			continue
++		}
++		if change.SetCount != 0 {
++			return fmt.Errorf("gtt stat response: %s change %d set_count requires set_key", label, changeIndex)
++		}
+ 		stat := attributes.StrToStatType(change.Stat)
+ 		if stat <= attributes.NoStat || stat >= attributes.DelimBaseStat {
+ 			return fmt.Errorf("gtt stat response: %s change %d has unsupported stat %q", label, changeIndex, change.Stat)
+@@ -386,6 +413,14 @@ func applyGTTStatResponseChanges(simcfg *info.ActionList, changes []GTTStatResponseChange) error {
+ 	for _, change := range changes {
+-		stat := attributes.StrToStatType(change.Stat)
+ 		profile := &simcfg.Characters[change.CharacterIndex]
++		if change.SetKey != "" {
++			setKey, ok := shortcut.SetNameToKey[change.SetKey]
++			if !ok {
++				return fmt.Errorf("unsupported set %q", change.SetKey)
++			}
++			profile.Sets[setKey] = change.SetCount
++			continue
++		}
++		stat := attributes.StrToStatType(change.Stat)
+ 		current := profile.Stats[stat]
+ 		switch change.Mode {
+ 		case gttResponseChangeAdd:
+diff --git a/pkg/optimization/gtt_response_test.go b/pkg/optimization/gtt_response_test.go
+index 125f2a3..e84aa49 100644
+--- a/pkg/optimization/gtt_response_test.go
++++ b/pkg/optimization/gtt_response_test.go
+@@ -38,6 +38,33 @@ func TestGTTStatResponseRequestValidation(t *testing.T) {
+ 	}
+ }
+ 
++func TestGTTSetResponseChangeValidation(t *testing.T) {
++	request := GTTStatResponseRequest{
++		SchemaVersion:     GTTStatResponseSchemaVersion,
++		ContextSHA256:     strings.Repeat("b", 64),
++		Objective:         gttResponseObjectiveDPS,
++		Iterations:        8,
++		Workers:           1,
++		MasterSeed:        "123",
++		IgnoreBurstEnergy: true,
++		Interventions: []GTTStatResponseIntervention{
++			{
++				ID: "bennett/noblesse",
++				Changes: []GTTStatResponseChange{
++					{CharacterIndex: 3, SetKey: "noblesse", SetCount: 4},
++				},
++			},
++		},
++	}
++	if err := request.validate(4); err != nil {
++		t.Fatalf("valid set response rejected: %v", err)
++	}
++	request.Interventions[0].Changes[0].SetCount = 3
++	if err := request.validate(4); err == nil {
++		t.Fatal("invalid set count should be rejected")
++	}
++}
++
+ func TestGTTStatResponsePairedDeltaUsesSeedAlignedDifferences(t *testing.T) {
+ 	baseline := []GTTStatResponseSample{
+ 		responseTestSample("1", 10, 100, []float64{60, 40}),

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -45,6 +46,30 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
             self.assertEqual(
                 json.loads(result.patch_result.metadata["patch_files"]),
                 ["001-first.patch", "002-second.patch"],
+            )
+            expected_file_hash = hashlib.sha256(b"dummy patch").hexdigest()
+            self.assertEqual(
+                json.loads(result.patch_result.metadata["patch_file_sha256"]),
+                {
+                    "001-first.patch": expected_file_hash,
+                    "002-second.patch": expected_file_hash,
+                },
+            )
+            expected_stack_payload = json.dumps(
+                {
+                    "schema_version": 1,
+                    "patches": [
+                        {"path": name, "sha256": expected_file_hash}
+                        for name in ("001-first.patch", "002-second.patch")
+                    ],
+                },
+                ensure_ascii=True,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            self.assertEqual(
+                result.patch_result.metadata["patch_stack_sha256"],
+                hashlib.sha256(expected_stack_payload.encode("utf-8")).hexdigest(),
             )
             active = store.get_active_engine()
             self.assertIsNotNone(active)

@@ -1,0 +1,117 @@
+diff --git a/pkg/gtttrace/state.go b/pkg/gtttrace/state.go
+index 345b49c..ca2bd1a 100644
+--- a/pkg/gtttrace/state.go
++++ b/pkg/gtttrace/state.go
+@@ -394,6 +394,39 @@ func (r *Runtime) CurrentHealthChangePercentRefs(observed float64) []NumericRef
+ 	}
+ }
+ 
++// RecordCurrentHealthChangePercentEval turns a structurally proven normalized
++// health change into an executable numeric DAG. A runtime mismatch remains an
++// opaque source expression, preserving the previous fail-open behavior without
++// assigning an unrelated health operation a false dependency.
++func (r *Runtime) RecordCurrentHealthChangePercentEval(
++	sourceID string,
++	observed float64,
++	evidence DependencyEvidence,
++) string {
++	refs := r.CurrentHealthChangePercentRefs(observed)
++	if len(refs) != 3 || refs[0].Kind != "health_field" || refs[1].Kind != "health_field" ||
++		refs[2].Kind != "literal" || refs[0].HealthOperationID == nil ||
++		refs[1].HealthOperationID == nil || *refs[0].HealthOperationID != *refs[1].HealthOperationID {
++		return r.RecordNumericEval(sourceID, "source_expression", refs, observed, evidence)
++	}
++	operation, ok := r.healthOperation(*refs[0].HealthOperationID)
++	if !ok || operation.MaxHPAfter <= 0 {
++		return r.RecordNumericEval(sourceID, "source_expression", refs, observed, evidence)
++	}
++	ratio := operation.EventEffectiveAmount / operation.MaxHPAfter
++	divideID := r.RecordNumericEval(sourceID, "divide", refs[:2], ratio, evidence)
++	if divideID == "" {
++		return ""
++	}
++	return r.RecordNumericEval(
++		sourceID,
++		"multiply",
++		[]NumericRef{EventRef(divideID), refs[2]},
++		observed,
++		evidence,
++	)
++}
++
+ func (r *Runtime) StateEvents() []StateEvent {
+ 	if r == nil || len(r.stateEvents) == 0 {
+ 		return []StateEvent{}
+diff --git a/pkg/gtttrace/runtime_test.go b/pkg/gtttrace/runtime_test.go
+index 6a8eb0a..dbb8e78 100644
+--- a/pkg/gtttrace/runtime_test.go
++++ b/pkg/gtttrace/runtime_test.go
+@@ -145,6 +145,15 @@ func TestCurrentHealthChangePercentRefsMatchOnlyActiveNormalizedChange(t *testin
+ 		refs[1].FieldKey == nil || *refs[1].FieldKey != "max_hp_after" {
+ 		t.Fatalf("health change refs = %#v", refs)
+ 	}
++	eventID := runtime.RecordCurrentHealthChangePercentEval(
++		testSourceID, 1.6, IncompleteEvidence("test_health_percent_incomplete"),
++	)
++	events := runtime.StateEvents()
++	if len(events) < 2 || eventID != events[len(events)-1].EventID ||
++		events[len(events)-2].Operation == nil || *events[len(events)-2].Operation != "divide" ||
++		events[len(events)-1].Operation == nil || *events[len(events)-1].Operation != "multiply" {
++		t.Fatalf("health change executable events = %#v", events)
++	}
+ 	mismatch := runtime.CurrentHealthChangePercentRefs(9.9)
+ 	if len(mismatch) != 1 || mismatch[0].LiteralValue == nil || *mismatch[0].LiteralValue != 9.9 {
+ 		t.Fatalf("mismatched health change must fail open: %#v", mismatch)
+diff --git a/pkg/gttsourcegen/v6_overlay.go b/pkg/gttsourcegen/v6_overlay.go
+index 163e294..ececf30 100644
+--- a/pkg/gttsourcegen/v6_overlay.go
++++ b/pkg/gttsourcegen/v6_overlay.go
+@@ -292,15 +292,19 @@ func ordinaryHelperCallEdits(
+ 			continue
+ 		}
+ 		eventName := prefix + "_event_" + strconv.Itoa(index)
+-		inputRefs := "[]" + traceImportAlias + ".NumericRef{" + traceImportAlias + ".LiteralRef(float64(" + valueName + "))}"
+ 		if healthChangePercentExpression(argument, bindings) {
+-			inputRefs = traceExpr + ".CurrentHealthChangePercentRefs(float64(" + valueName + "))"
++			fmt.Fprintf(&replacement, "%s := %s.RecordCurrentHealthChangePercentEval(%s,float64(%s),%s.IncompleteEvidence(%s))\n%s",
++				eventName, traceExpr, strconv.Quote(entry.SourceID), valueName, traceImportAlias,
++				strconv.Quote("ordinary_helper_argument_dependency_incomplete"), indent,
++			)
++		} else {
++			inputRefs := "[]" + traceImportAlias + ".NumericRef{" + traceImportAlias + ".LiteralRef(float64(" + valueName + "))}"
++			fmt.Fprintf(&replacement, "%s := %s.RecordNumericEval(%s,%s,%s,float64(%s),%s.IncompleteEvidence(%s))\n%s",
++				eventName, traceExpr, strconv.Quote(entry.SourceID), strconv.Quote("source_expression"),
++				inputRefs, valueName, traceImportAlias,
++				strconv.Quote("ordinary_helper_argument_dependency_incomplete"), indent,
++			)
+ 		}
+-		fmt.Fprintf(&replacement, "%s := %s.RecordNumericEval(%s,%s,%s,float64(%s),%s.IncompleteEvidence(%s))\n%s",
+-			eventName, traceExpr, strconv.Quote(entry.SourceID), strconv.Quote("source_expression"),
+-			inputRefs, valueName, traceImportAlias,
+-			strconv.Quote("ordinary_helper_argument_dependency_incomplete"), indent,
+-		)
+ 		payloads = append(payloads, fmt.Sprintf("{Key:%s,Value:float64(%s),Reference:%s.EventRef(%s)}",
+ 			strconv.Quote("arg:"+strconv.Itoa(index)), valueName, traceImportAlias, eventName))
+ 	}
+diff --git a/pkg/gttsourcegen/v6_test.go b/pkg/gttsourcegen/v6_test.go
+index 2457932..7963e6f 100644
+--- a/pkg/gttsourcegen/v6_test.go
++++ b/pkg/gttsourcegen/v6_test.go
+@@ -477,7 +477,7 @@ func (u *unit) forward(delta float64) {
+ 	for _, marker := range [][]byte{
+ 		[]byte("EnterHelperNumericArguments"),
+ 		[]byte("CurrentHelperNumericRef"),
+-		[]byte("CurrentHealthChangePercentRefs"),
++		[]byte("RecordCurrentHealthChangePercentEval"),
+ 		[]byte("CurrentTaskNumericRef"),
+ 		[]byte("UpdateTaskNumericArgument"),
+ 		[]byte("RecordNumericStateWriteWithInputs"),
+@@ -736,7 +736,7 @@ func TestV6RealStateChainOverlayParsesAndBridgesHelper(t *testing.T) {
+ 	for _, marker := range [][]byte{
+ 		[]byte("EnterHelperNumericArguments"),
+ 		[]byte("CurrentHelperNumericRef"),
+-		[]byte("CurrentHealthChangePercentRefs"),
++		[]byte("RecordCurrentHealthChangePercentEval"),
+ 		[]byte("CurrentTaskNumericRef"),
+ 		[]byte("UpdateTaskNumericArgument"),
+ 		[]byte("RecordNumericStateWriteWithInputs"),

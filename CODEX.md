@@ -7,6 +7,27 @@ This file is written for future coding agents. Keep it compact, English, and mos
 - The user usually writes in Russian, but project handoff files should stay in English.
 - Be frugal with context and tool output.
 - Prefer narrow `rg` queries and small file slices.
+- The user explicitly forbids subagents/parallel agents for this repository
+  because they multiply model usage. Work sequentially in the current
+  user-visible task. If a separate persistent context would materially help,
+  stop and ask the user to create or assign a visible worker task; never spawn
+  a subagent or delegate automatically. This rule remains active until the user
+  explicitly rescinds it.
+- Treat model/context usage as a scarce project resource. Work sequentially,
+  reuse accepted traces/fixtures, prefer one narrow diagnostic over broad
+  exploration, and do not brute-force architecture, patches, parameters or
+  candidate simulations. For one blocker, allow at most three substantive
+  repair attempts by default. A substantive attempt is a changed hypothesis or
+  implementation followed by its focused validation; invocation/reporting
+  mistakes do not consume the repair budget. After three failed substantive
+  attempts, stop, preserve evidence, explain the first unresolved loss and ask
+  the user to decide. A fourth attempt requires explicit user approval or new
+  evidence that changes the failure category; never silently expand the budget.
+- Keep engine calls separately budgeted. Do not replace an incomplete offline
+  model with per-candidate GCSIM brute force. If uncertainty exceeds the frozen
+  exact-finalist budget, stop widening exact verification and return a visibly
+  degraded best-effort result; do not stop the offline equation scorer and do
+  not launch an unbounded verification loop.
 - When the user is asking to discuss, clarify, reason about, decide on rules, or validate an approach, treat the turn as discussion-only. Do not edit files or apply changes until the user explicitly asks to implement, apply, save, or write them. This rule applies by intent in any language, not by exact words.
 - Do not treat an acknowledgement of understanding as permission to implement. Phrases in any language that mean "I understand", "got it", "yes, that is the idea", or similar are not approval to edit files.
 - Before implementing a task specification, do a brief preflight against the relevant current code and handoff contract. Look for incorrect assumptions, contradictions, missing ownership boundaries, and wording that can reasonably lead to materially different architecture, behavior, or visible UI. Ask focused questions and wait for answers before editing when those issues affect the solution. Do not turn this into a questionnaire for incidental details that can be resolved safely from existing project patterns.
@@ -198,6 +219,103 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   This text-first renderer is transitional and must not define the final
   History browser or export presentation.
 - `docs/handoff/`: detailed project maps and research handoffs. Root `TODO.md` and `CODEX.md` remain the entrypoints.
+- Active GCSIM optimizer work has one authoritative handoff:
+  `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md`. Former M/S/Gate,
+  Selected V2, stat-map-first and black-box response plans are forensic only;
+  never use them as continuation work or a fallback backend.
+- The intended search evaluator is FAST. It compresses the observed rotation
+  into response-equivalent channels separated by actor, scaling/reaction shape,
+  raw engine attack tag, raw damage type and candidate-response coordinates.
+  It is generic: do not add character, set, element or known-type switches.
+  STANDARD is retained only as a bounded development/regression control and is
+  not a production stage. FAST has **not** passed real-context acceptance.
+- Current dev evidence: 358 hits become 198 STANDARD groups and 23 FAST
+  channels. FAST evaluates the 1,223-row diagnostic corpus in about 0.18 s and
+  closely matches STANDARD; the 1,787-profile stress likewise compares only the
+  two local approximations. Both audits applied current-DB deltas to a synthetic
+  dev trace, so their leader/recall claims are invalid as real artifact or GCSIM
+  evidence. The exact-current-artifacts gate now exists and identity binding
+  passed, but numerical parity failed: FAST `141306.04` versus GCSIM n=1000
+  `143738.29 +/- 66.00`, an error of `1.692%` outside the frozen 1%/3*SE
+  allowance. FAST matched its own sampled trace within about `0.105%`; a second
+  seed changed 365 hits to 389 and spawned-reaction attacks from 68 to 90.
+  Therefore current FAST models one stochastic schedule, not the expected
+  rotation. Focused suites prove contracts/arithmetic fixtures only; the live
+  n=1000 acceptance remains an explicit opt-in test rather than a normal unit
+  test.
+- Explicit artifact-variable v1 is complete in
+  `trace_equation/artifact_variable_objective.py`. It rebases incumbent FAST
+  state into fixed channel context plus absolute raw artifact stats and matches
+  delta FAST across eight dedicated contract/parity tests. It is not product
+  wired; Selected set packages remain frozen discrete lanes.
+- Continuous-target v1 uses the confirmed five-star artifact investment rules,
+  not fractional mixtures of account builds: exact 70/80/90/100% roll tiers,
+  at most 45 max-roll-equivalent substat units per wearer, discrete main-stat
+  lanes, and safe main-stat-aware per-coordinate ceilings. Main stats do not
+  consume the substat budget. The continuous result is guidance only and has no
+  deletion authority before reduced-domain exhaustive recall passes.
+- The isolated continuous-target v1 core now exists under
+  `run_workspace/gcsim/optimizer_trace_search/`. Its exact rules, main-stat
+  lanes, marginal allocation, bounded exchange and analytical reduced-domain
+  checks use zero engine calls. The attempted real-context audit is rejected:
+  its saved trace uses a synthetic dev stat block, while its artifact vector was
+  read from current SQLite equipment. This mismatch produced impossible
+  negative reaction damage and invalidated its target/DPS numbers.
+- This is not yet a complete optimizer. The trace-to-artifact identity contract
+  is implemented. The generic support-chain stack now extends through patch
+  `0021-gtt-hit-modifier-eval-binding-v1.patch`: supported health/state and
+  modifier arithmetic is replayable, and every captured stat/attack modifier
+  contribution carries the exact modifier-evaluation event ID consumed by its
+  hit. The active 21-patch stack applies to a fresh official v2.42.2 tree,
+  compiles and passes the runtime probe. Use an absolute updater store path; a
+  relative path can still create a nested build-output location.
+- The current real schema-v6 trace contains 365 hits and 40,790 state events.
+  All 3,328 captured hit/modifier bindings resolve exactly (2,462 stat and 866
+  attack bindings). The zero-engine support control replays a Bennett artifact
+  HP% delta through health/state/modifier events into 14 exact Furina hits. In
+  formula arithmetic, `-0.20 Bennett hp%` has zero direct-only effect but a
+  `-1754.97` rotation-damage support effect. This proves a generic executable
+  cross-actor path, not expected-DPS accuracy or product readiness.
+- Product-speed support evaluation now has three deliberately separate layers.
+  `support_objective.py` retains the full-ledger STANDARD correctness control;
+  the stat-to-consumed-hit slice reduces the real candidate path from 20,821 to
+  1,535 replayed events; `support_fast_objective.py` keeps direct response in
+  FAST, applies exact-hit support corrections, and caches them by the four real
+  artifact coordinates that can reach DPS through support state. On the real
+  fixture a cache miss is about 0.049 s and a hit about 0.001 s. The exact-
+  context 1,223-candidate fixed-4p single-swap corpus used 251 cache entries and
+  completed in about 16.7 s with zero engine calls. This proves runtime and
+  full-control correction parity, not leader quality or UI readiness. Sixteen
+  observed-domain boundary/combined profiles also match within `1.1e-8`.
+  Candidate-relevant opaque and two-actor combined-provider regressions pass.
+  `optimizer_trace_search/selected_composition.py` now validates and scores
+  supplied complete 20-artifact assignments without generating or pruning them.
+  A reduced real audit retained 60/256 legal combinations, changed up to four
+  artifacts together, used 60 support keys and scored in about 4.16 s with zero
+  engine calls. The boundary now consumes at most `candidate_limit + 1` input
+  rows, keeps support/assignment caches attempt-bounded, uses logarithmic
+  physical-ID lookup, and exposes frozen baseline damage/share in every FAST
+  score. Never put the full ledger in the mass candidate loop.
+- Strict trace decoding now accepts incomplete events with a proven subset of
+  bound parameters while complete events still require exact bindings. Ordered
+  state validation uses an incremental prior-event index rather than O(n²)
+  reconstruction; the saved real trace decoded in about 18.17 s and dependency
+  indexing took about 3.49 s. Complete-identity caching remains required before
+  product acceptance.
+- Candidate support replay and the isolated complete-assignment scoring boundary
+  now pass. The next blocker is proving continuous-target/reaction-owner guidance
+  against exhaustive truth on a deliberately reduced complete physical domain;
+  no proposal/pruning strategy is accepted yet. Stochastic skill/reaction
+  averaging remains deferred but mandatory before real-quality audits, finalist
+  policy, product/UI acceptance and controlled GCSIM replacement checks.
+- Permanent optimizer execution rule: work sequentially without subagents or
+  parallel agents, do not brute-force known formulas, and stop for user review
+  after three failed substantive attempts against the same blocker.
+- Scheduled continuation is not considered created until the automation tool
+  returns a persisted automation ID with active status. A rendered/suggested
+  card is only a proposal requiring user confirmation; never report it as an
+  active task. If anchored scheduling cannot be activated directly, say so
+  explicitly and continue only after the user returns or confirms the card.
 - `docs/handoff/TESTS.md`: test-suite layout and rules for choosing narrow
   per-area `unittest` runs.
 - `docs/handoff/FAR_FUTURE_TODO.md`: non-MVP PvP, analytics, draft bot,
@@ -545,88 +663,68 @@ Important direction:
   state is in `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`; read them before
   implementing engine download, runner, config generation, or result parsing.
 - Artifact optimization belongs inside the GCSIM application boundary. Read
-  `docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md` and
-  `docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md` before any
-  optimizer task; they are authoritative and supersede historical optimizer
-  wording elsewhere.
-- Accepted optimizer operations are selected account set pools, all feasible
-  database sets, theoretical equal-investment 4p, and theoretical
-  equal-investment 2p+2p. There are no accepted
-  `Quick`/`Balanced`/`Deep` product modes. Results claim only “best found under
-  the frozen work plan”.
-- Account search captures the complete relevant SQLite artifact/substat input
-  read-only at run start. Import source, equipment, owner, lock, location, and
-  presets are not optimizer filters. `content_fingerprint` equal-content
-  deduplication is an accepted limitation.
-- Theoretical ignores account inventory and source sets, keeps the same legal
-  investment budget for every package. Account operations use stored artifact
-  values and globally distinct physical IDs. Detailed pruning and fidelity
-  behavior belongs only in the optimizer technical handoff.
-- ER sufficiency is never inferred or automatically balanced. Account
-  `stat >= X` is a generic pre-simulation floor. Infinite/boosted energy remains
-  independent.
-- Every optimizer phase uses the same explicit selected target/scenario. Search
-  is read-only; persistence requires an explicit save.
-- The current selected-account UI path remains selected plan 11 while the next
-  kernel is developed in shadow. Its last pre-deadline-fix UI-entrypoint run
-  used race plan 5 and produced `139577.8505 ± 292.4415` DPS at `n=1000` in
-  `628.297 s`. The immutable UI audit is
-  `debug/gcsim_optimizer_ui_runs/20260802T091044477190Z-16092-0c9db722f11c.json`;
-  the mirrored audit/result are under
-  `debug/gcsim_optimizer_benchmarks/ui-production-v11-selected/` as
-  `canonical-ui-selected-audit.json` and `canonical-ui-selected-result.json`.
-  That evidence has effective `ignore_burst_energy=true`; do not describe it as
-  normal-energy evidence.
-- The common account race is now plan 6. On deadline/cancellation, terminal
-  batch status is handled before required-row enforcement: a required proposal
-  skipped by the terminal condition must not erase an already successful
-  saveable validation or turn the run into `FAILED`. Plan-5 result/cache
-  identities are historical inputs to comparison, not plan-6 evidence.
-- The existing package-first all-account route
-  (`optimizer_account_superset.py` -> `optimizer_all_set_service.py`) is a
-  fallback diagnostic only, is not release-ready, and must not receive further
-  architecture expansion. Keep it available only for comparison until the
-  replacement gates pass.
-- The next account optimizer is one artifact-first kernel, currently limited to
-  offline-tested primitives rather than parallel shadow execution:
-  response-aware inventory frontier -> per-slot injective team matching ->
-  cross-slot beam with incremental set counts -> package derivation after the
-  physical assignment -> exact GCSIM and bounded refinement. Selected/all are
-  domain constraints on this same kernel, not separate search algorithms.
-  Route UI-selected and UI-all to it only after frozen-input shadow parity,
-  legality/no-reuse/materialization, selected-subset preservation, deadline/
-  cancellation, quality-corpus, and runtime gates pass; remove the old paths
-  only after that cutover is verified through the UI audit.
-- A raw componentwise diagnostic on the current 520-piece DB put 519 pieces in
-  the set-aware first layer and 512 under off-piece equivalence. This is not a
-  safe-removal proof because exact GCSIM can be non-monotone in a raw stat axis
-  (for example ER can change an `energy < max` condition). Inventory-frontier
-  plan 2 retains every eligible row and shadows only globally ineligible rows.
-  CV, RV, raw skyline depth, or another scalar may order a soft proposal lane
-  but must not hard-prune physical artifacts without a frozen-context
-  monotonicity/admissible-bound proof.
-- If matching remains too broad, follow technical handoff section 2.6: learn a
-  nonlinear response surface per frozen simulation, with contextual marginal
-  piece values, stat/set interactions, typed set semantics, multi-set paired
-  probes, and uncertainty-driven exact GCSIM batches. Do not use permanent stat
-  weights or an LLM as the numerical controller. In particular, isolated set
-  impact is not enough for non-stacking team buffs such as duplicate Scroll.
-- Set features for that surface are runtime tensors, not scalar set weights:
-  source/wearer/recipient x stat/effect x element/attack/reaction x time. Merge
-  only through engine-proved add/max/replace-refresh/independent stack groups;
-  unknown groups stay opaque. The current `gtt_stat_response_v2` exposes DPS,
-  not direct conditional-buff uptime. Before authoritative set prefiltering,
-  add the effect-observation capability specified in handoff 2.6 and hard-drop
-  only engine/source-proved inactive sets.
-- Completed account UI runs persist compact exact audits under
-  `debug/gcsim_optimizer_ui_runs`, including launch/frozen identities, loaded
-  module fingerprints, phase/plan identities, confirmed races, compiled configs,
-  and physical artifact IDs. Use these audits to prove which kernel the button
-  executed; a backend-only trace is not desktop parity evidence.
-- Optimizer-owned code and narrow generic scheduler/materializer wrappers may be
-  changed. Do not repair importer, equipment, Artifact Browser preset, History,
-  deduplication, or global AppShell behavior as optimizer side work; discuss a
-  required change to those existing contracts first.
+  `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` before any optimizer
+  task; it is the sole authoritative optimizer contract.
+- Accepted scopes are Selected Sets, All Sets and Theory. They share the same
+  accepted trace evidence and FAST evaluator but own different candidate domains.
+- FAST is the working product search formula. It separates channels by raw
+  engine attack tag, raw damage type and response coordinates, then ranks
+  directly into real-GCSIM finalists. STANDARD is a bounded development control
+  only; do not insert it into production FAST.
+- Current FAST replacement scoring stores the incumbent's effective artifact
+  state in the observed channel and applies the complete candidate-minus-
+  incumbent artifact delta. That representation remains a regression oracle,
+  but new search work must first expose absolute artifact stats/set state as
+  controlled variables over known non-artifact context. Fixed weapon/ascension/
+  rotation inputs are not candidate rows; known mechanics whose output depends
+  on artifact variables remain functions rather than frozen constants.
+- Search uses one explicit frozen team/weapon/talent/rotation/target/engine
+  context. Account modes read the relevant SQLite artifact domain read-only,
+  enforce globally distinct physical IDs and never use owner/lock/location/
+  preset state as a hidden filter. Theory uses equal abstract investment and
+  returns no physical artifact IDs.
+- Candidate arithmetic uses expected crit with CR capped at 100%. Known reaction
+  and nested-source equations come from engine evidence, not repeated DPS
+  probing. Unknown behavior freezes at the last typed boundary while known
+  equations keep running; it never becomes zero, independence, dominance or a
+  legacy fallback.
+- The exact-current-equipment trace now has generic forward support replay and
+  3,328/3,328 exact modifier-to-hit bindings. Cached support-aware FAST matched
+  its full STANDARD support correction on four real single coordinates and 16
+  observed-domain boundary/combined profiles; maximum boundary error was
+  `1.1e-8` rotation damage with zero engine calls. On the exact-context 1,223
+  fixed-4p single-swap corpus it used 251 support-cache misses and 972 hits in
+  about 16.7 s. This proves formula-correction parity/runtime only, not leader
+  quality or full Selected composition.
+- The first live baseline still failed expected-DPS acceptance because a single
+  trace seed changed hit elements and reaction/spawn topology relative to
+  another seed. Do not widen tolerance or select a lucky seed. Immediate
+  sequence: (1) compare continuous-target/reaction-owner guidance with
+  exhaustive complete assignments on a deliberately reduced physical domain;
+  (2) only after that result, define and test the replaceable contextual-frontier
+  proposal strategy; (3) before real-quality/full-Selected acceptance,
+  implement compact stochastic-topology expectation and rerun the unchanged
+  baseline plus a few controlled replacements. Until then the scorer is
+  `PROVISIONAL_SINGLE_SEED` and has no product prune, finalist or UI authority.
+- Search strategies live outside the formula compiler and product composition
+  root until accepted. A continuous optimum guides ordering and supplies a
+  relaxed target; it never authorizes deletion by distance alone. Alternate
+  strategy implementations may coexist behind explicit identities and must be
+  removable independently. Compare them sequentially; this does not relax the
+  repository ban on subagents or parallel expensive runs.
+- Cold Selected above 180 s and All Sets above 600 s are product failures. Cold
+  trace decode is currently the fixed-cost bottleneck and needs complete-
+  identity caching. Warm cache does not satisfy cold acceptance.
+- The remaining Current backend is an explicit comparison control only. Never
+  use it as a proposal source or hidden fallback, and do not delete it before
+  Selected, All Sets and Theory pass and the user tries them.
+- Before optimizer cutover, audit every engine patch then present, consolidate
+  required changes into one versioned patch, and prove update plus rollback.
+  Do not hard-code the current patch range.
+- Optimizer work may change optimizer-owned code and narrow generic engine/
+  materializer/scheduler boundaries. Do not repair importer, equipment,
+  Artifact Browser presets, History or global AppShell behavior as side work
+  without discussing the required contract change first.
 
 - Before coding new History, DPS Dummy GCSIM result persistence, or the production
   AppShell switch, read `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. The

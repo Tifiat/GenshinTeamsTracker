@@ -1,0 +1,331 @@
+diff --git a/pkg/gttsourcegen/v6_overlay.go b/pkg/gttsourcegen/v6_overlay.go
+index 0f6bef6..033a1b3 100644
+--- a/pkg/gttsourcegen/v6_overlay.go
++++ b/pkg/gttsourcegen/v6_overlay.go
+@@ -494,7 +494,7 @@ func callbackBodyEdits(
+ 		if parameter, parameterOK := assignment.Lhs[0].(*ast.Ident); parameterOK {
+ 			if parameterEdits, traced := taskNumericParameterWriteEdits(
+ 				fset, tokenFile, data, assignment, parameter, traceExpr, sourceExpr,
+-				prefix+"_"+strconv.Itoa(fset.Position(assignment.Pos()).Line), taskParameters,
++				prefix+"_"+strconv.Itoa(fset.Position(assignment.Pos()).Line), bindings, taskParameters,
+ 			); traced {
+ 				edits = append(edits, parameterEdits...)
+ 				needsImport = true
+@@ -534,6 +534,7 @@ func taskNumericParameterWriteEdits(
+ 	assignment *ast.AssignStmt,
+ 	parameter *ast.Ident,
+ 	traceExpr, sourceExpr, prefix string,
++	bindings bindingSet,
+ 	taskParameters map[string]int,
+ ) ([]textEdit, bool) {
+ 	parameterIndex, parameterOK := taskParameters[parameter.Name]
+@@ -555,30 +556,164 @@ func taskNumericParameterWriteEdits(
+ 	}
+ 	indent := indentationBefore(data, tokenFile.Offset(assignment.Pos()))
+ 	beforeName := "gttV6_" + prefix + "_task_before"
+-	evalName := "gttV6_" + prefix + "_task_eval"
+-	refs := []string{fmt.Sprintf("%s.CurrentTaskNumericRef(%s,float64(%s))",
+-		traceExpr, strconv.Quote("arg:"+strconv.Itoa(parameterIndex)), beforeName)}
+-	for _, candidate := range referenced {
+-		if candidate.name == parameter.Name {
+-			continue
+-		}
+-		refs = append(refs, fmt.Sprintf("%s.CurrentTaskNumericRef(%s,float64(%s))",
+-			traceExpr, strconv.Quote("arg:"+strconv.Itoa(candidate.index)), candidate.name))
+-	}
+ 	var out strings.Builder
+ 	fmt.Fprintf(&out, "%s := %s\n%s", beforeName, parameter.Name, indent)
+ 	fmt.Fprintf(&out, "%s %s %s\n%s", parameter.Name, assignment.Tok.String(), rootText(fset, assignment.Rhs[0]), indent)
+-	fmt.Fprintf(&out, "%s := %s.RecordNumericEval(%s,%s,[]%s.NumericRef{%s},float64(%s),%s.IncompleteEvidence(%s))\n%s",
+-		evalName, traceExpr, sourceExpr, strconv.Quote("state_transition"), traceImportAlias,
+-		strings.Join(refs, ","), parameter.Name, traceImportAlias,
+-		strconv.Quote("task_numeric_transition_dependency_incomplete"), indent)
+-	fmt.Fprintf(&out, "%s.UpdateTaskNumericArgument(%s,float64(%s),%s.EventRef(%s))",
+-		traceExpr, strconv.Quote("arg:"+strconv.Itoa(parameterIndex)), parameter.Name, traceImportAlias, evalName)
++	leaves := make(map[string]numericTraceLeaf, len(taskParameters))
++	for name, index := range taskParameters {
++		value := name
++		if name == parameter.Name {
++			value = beforeName
++		}
++		leaves[name] = numericTraceLeaf{
++			valueExpr: value,
++			referenceExpr: fmt.Sprintf("%s.CurrentTaskNumericRef(%s,float64(%s))",
++				traceExpr, strconv.Quote("arg:"+strconv.Itoa(index)), value),
++		}
++	}
++	compiled := compileNumericTemplate(fset, assignment.Rhs[0], bindings)
++	traceCode, root, err := numericTraceTemplateEvents(
++		compiled, leaves, traceExpr, sourceExpr, prefix+"_task_rhs", indent,
++	)
++	if err != nil {
++		return nil, false
++	}
++	out.WriteString(traceCode)
++	if assignment.Tok != token.ASSIGN {
++		operator, ok := numericAssignmentOperator(assignment.Tok)
++		if !ok {
++			return nil, false
++		}
++		evalName := "gttV6_" + prefix + "_task_eval"
++		beforeRef := leaves[parameter.Name].referenceExpr
++		fmt.Fprintf(&out, "%s := %s.RecordNumericEval(%s,%s,[]%s.NumericRef{%s,%s},float64(%s),%s.IncompleteEvidence(%s))\n%s",
++			evalName, traceExpr, sourceExpr, strconv.Quote(operator), traceImportAlias,
++			beforeRef, root.referenceExpr, parameter.Name, traceImportAlias,
++			strconv.Quote("task_numeric_transition_dependency_incomplete"), indent)
++		root = numericTraceLeaf{valueExpr: parameter.Name, referenceExpr: traceImportAlias + ".EventRef(" + evalName + ")"}
++	}
++	fmt.Fprintf(&out, "%s.UpdateTaskNumericArgument(%s,float64(%s),%s)",
++		traceExpr, strconv.Quote("arg:"+strconv.Itoa(parameterIndex)), parameter.Name, root.referenceExpr)
+ 	return []textEdit{{
+ 		start: tokenFile.Offset(assignment.Pos()), end: tokenFile.Offset(assignment.End()), replacement: out.String(),
+ 	}}, true
+ }
+ 
++type numericTraceLeaf struct {
++	valueExpr     string
++	referenceExpr string
++}
++
++func numericAssignmentOperator(operator token.Token) (string, bool) {
++	value, ok := map[token.Token]string{
++		token.ADD_ASSIGN: "add",
++		token.SUB_ASSIGN: "subtract",
++		token.MUL_ASSIGN: "multiply",
++		token.QUO_ASSIGN: "divide",
++	}[operator]
++	return value, ok
++}
++
++func numericTraceTemplateEvents(
++	compiled templateCompilation,
++	leaves map[string]numericTraceLeaf,
++	traceExpr, sourceExpr, prefix, indent string,
++) (string, numericTraceLeaf, error) {
++	if compiled.template.Status != TemplateSupported || compiled.template.RootNodeID == nil {
++		return "", numericTraceLeaf{}, fmt.Errorf("numeric trace expression is opaque")
++	}
++	parameterByKey := make(map[string]parameterPlan, len(compiled.parameters))
++	for _, parameter := range compiled.parameters {
++		parameterByKey[parameter.ParameterKey] = parameter
++	}
++	nodes := make([]numericTraceLeaf, len(compiled.template.Nodes))
++	var out strings.Builder
++	for _, node := range compiled.template.Nodes {
++		switch node.Operator {
++		case "PARAM":
++			if node.ParameterKey == nil {
++				return "", numericTraceLeaf{}, fmt.Errorf("numeric trace PARAM has nil key")
++			}
++			parameter, exists := parameterByKey[*node.ParameterKey]
++			if !exists {
++				return "", numericTraceLeaf{}, fmt.Errorf("numeric trace PARAM plan is missing")
++			}
++			leaf, exists := leaves[parameter.SourceExpression]
++			if !exists || leaf.valueExpr == "" || leaf.referenceExpr == "" {
++				return "", numericTraceLeaf{}, fmt.Errorf("numeric trace leaf %s is unbound", parameter.SourceExpression)
++			}
++			nodes[node.NodeID] = leaf
++		case "CONST":
++			if node.ConstantValue == nil {
++				return "", numericTraceLeaf{}, fmt.Errorf("numeric trace CONST has nil value")
++			}
++			value := strconv.FormatFloat(*node.ConstantValue, 'g', -1, 64)
++			nodes[node.NodeID] = numericTraceLeaf{
++				valueExpr:     value,
++				referenceExpr: traceImportAlias + ".LiteralRef(" + value + ")",
++			}
++		default:
++			children := make([]numericTraceLeaf, len(node.InputNodeIDs))
++			for index, childID := range node.InputNodeIDs {
++				if childID < 0 || childID >= node.NodeID || nodes[childID].valueExpr == "" {
++					return "", numericTraceLeaf{}, fmt.Errorf("numeric trace child is invalid")
++				}
++				children[index] = nodes[childID]
++			}
++			operation, expression, err := numericTraceOperation(node.Operator, children)
++			if err != nil {
++				return "", numericTraceLeaf{}, err
++			}
++			valueName := "gttV6_" + prefix + "_node_" + strconv.Itoa(node.NodeID)
++			eventName := valueName + "_event"
++			refs := make([]string, len(children))
++			for index, child := range children {
++				refs[index] = child.referenceExpr
++			}
++			fmt.Fprintf(&out, "%s := %s\n%s", valueName, expression, indent)
++			fmt.Fprintf(&out, "%s := %s.RecordNumericEval(%s,%s,[]%s.NumericRef{%s},float64(%s),%s.IncompleteEvidence(%s))\n%s",
++				eventName, traceExpr, sourceExpr, strconv.Quote(operation), traceImportAlias,
++				strings.Join(refs, ","), valueName, traceImportAlias,
++				strconv.Quote("numeric_expression_candidate_dependency_incomplete"), indent)
++			nodes[node.NodeID] = numericTraceLeaf{
++				valueExpr:     valueName,
++				referenceExpr: traceImportAlias + ".EventRef(" + eventName + ")",
++			}
++		}
++	}
++	root := *compiled.template.RootNodeID
++	if root < 0 || root >= len(nodes) || nodes[root].valueExpr == "" {
++		return "", numericTraceLeaf{}, fmt.Errorf("numeric trace root is invalid")
++	}
++	return out.String(), nodes[root], nil
++}
++
++func numericTraceOperation(
++	operator string,
++	children []numericTraceLeaf,
++) (string, string, error) {
++	if len(children) != 2 {
++		return "", "", fmt.Errorf("numeric trace operator %s has unsupported arity", operator)
++	}
++	left, right := children[0].valueExpr, children[1].valueExpr
++	switch operator {
++	case "ADD":
++		return "add", "(" + left + " + " + right + ")", nil
++	case "SUB":
++		return "subtract", "(" + left + " - " + right + ")", nil
++	case "MUL":
++		return "multiply", "(" + left + " * " + right + ")", nil
++	case "DIV":
++		return "divide", "(" + left + " / " + right + ")", nil
++	case "MIN":
++		return "min", "min(" + left + "," + right + ")", nil
++	case "MAX":
++		return "max", "max(" + left + "," + right + ")", nil
++	default:
++		return "", "", fmt.Errorf("numeric trace operator %s is unsupported", operator)
++	}
++}
++
+ func numericStateWriteEdits(
+ 	fset *token.FileSet,
+ 	tokenFile *token.File,
+@@ -594,7 +729,11 @@ func numericStateWriteEdits(
+ 		return nil, fmt.Errorf("numeric state write outside direct assignment shape")
+ 	}
+ 	indent := indentationBefore(data, tokenFile.Offset(assignment.Pos()))
+-	fields := receiverFields(assignment.Rhs[0], receiver)
++	referencedFields := receiverFields(assignment.Rhs[0], receiver)
++	fields := make(map[string]struct{}, len(referencedFields)+1)
++	for field := range referencedFields {
++		fields[field] = struct{}{}
++	}
+ 	fields[selector.Sel.Name] = struct{}{}
+ 	ordered := sortedFieldSet(fields)
+ 	if err := validateNumericFieldAllowlist(ordered, allowedFields); err != nil {
+@@ -607,15 +746,18 @@ func numericStateWriteEdits(
+ 	for index, field := range ordered {
+ 		valueName := "gttV6_" + prefix + "_read_" + strconv.Itoa(index)
+ 		slotName := "gttV6_" + prefix + "_slot_" + strconv.Itoa(index)
+-		eventName := "gttV6_" + prefix + "_read_event_" + strconv.Itoa(index)
+-		valueByField[field], eventByField[field], slotByField[field] = valueName, eventName, slotName
++		valueByField[field], slotByField[field] = valueName, slotName
+ 		fmt.Fprintf(&out, "%s := %s.%s\n%s", valueName, receiver, field, indent)
+ 		fmt.Fprintf(&out, "%s := %s.RegisterNumericStateSlot(%s,%s.Current(),%s,float64(%s),%s.IncompleteEvidence(%s))\n%s",
+ 			slotName, traceExpr, strconv.Quote(scope), traceExpr, strconv.Quote(field), valueName,
+ 			traceImportAlias, strconv.Quote("state_slot_candidate_dependency_incomplete"), indent)
+-		fmt.Fprintf(&out, "%s := %s.RecordNumericStateRead(%s,%s,float64(%s),%s.IncompleteEvidence(%s))\n%s",
+-			eventName, traceExpr, slotName, sourceExpr, valueName, traceImportAlias,
+-			strconv.Quote("state_read_candidate_dependency_incomplete"), indent)
++		if _, referenced := referencedFields[field]; referenced {
++			eventName := "gttV6_" + prefix + "_read_event_" + strconv.Itoa(index)
++			eventByField[field] = eventName
++			fmt.Fprintf(&out, "%s := %s.RecordNumericStateRead(%s,%s,float64(%s),%s.IncompleteEvidence(%s))\n%s",
++				eventName, traceExpr, slotName, sourceExpr, valueName, traceImportAlias,
++				strconv.Quote("state_read_candidate_dependency_incomplete"), indent)
++		}
+ 	}
+ 	rhs := rootText(fset, assignment.Rhs[0])
+ 	rhs, err := replaceReceiverFieldSelectors(rhs, receiver, valueByField)
+@@ -623,27 +765,40 @@ func numericStateWriteEdits(
+ 		return nil, err
+ 	}
+ 	afterName := "gttV6_" + prefix + "_after"
+-	evalName := "gttV6_" + prefix + "_eval"
+ 	// Assign first, then read the field back. This preserves the declared field
+ 	// type for untyped constants (for example 300 into a float64 field) while
+ 	// still evaluating the gameplay expression exactly once.
+ 	fmt.Fprintf(&out, "%s.%s = %s\n%s", receiver, selector.Sel.Name, rhs, indent)
+ 	fmt.Fprintf(&out, "%s := %s.%s\n%s", afterName, receiver, selector.Sel.Name, indent)
+-	refs := make([]string, 0, len(ordered))
++	leaves := make(map[string]numericTraceLeaf, len(ordered)+len(taskParameters))
+ 	for _, field := range ordered {
+-		refs = append(refs, traceImportAlias+".EventRef("+eventByField[field]+")")
++		eventName, referenced := eventByField[field]
++		if !referenced {
++			continue
++		}
++		leaves[receiver+"."+field] = numericTraceLeaf{
++			valueExpr:     valueByField[field],
++			referenceExpr: traceImportAlias + ".EventRef(" + eventName + ")",
++		}
+ 	}
+-	for _, parameter := range referencedTaskNumericParameters(assignment.Rhs[0], taskParameters) {
+-		refs = append(refs, fmt.Sprintf("%s.CurrentTaskNumericRef(%s,float64(%s))",
+-			traceExpr, strconv.Quote("arg:"+strconv.Itoa(parameter.index)), parameter.name))
++	for name, index := range taskParameters {
++		leaves[name] = numericTraceLeaf{
++			valueExpr: name,
++			referenceExpr: fmt.Sprintf("%s.CurrentTaskNumericRef(%s,float64(%s))",
++				traceExpr, strconv.Quote("arg:"+strconv.Itoa(index)), name),
++		}
+ 	}
+-	fmt.Fprintf(&out, "%s := %s.RecordNumericEval(%s,%s,[]%s.NumericRef{%s},float64(%s),%s.IncompleteEvidence(%s))\n%s",
+-		evalName, traceExpr, sourceExpr, strconv.Quote("state_transition"), traceImportAlias,
+-		strings.Join(refs, ","), afterName, traceImportAlias, strconv.Quote("state_transition_expression_dependency_incomplete"), indent)
+-	fmt.Fprintf(&out, "_ = %s\n%s", evalName, indent)
+-	fmt.Fprintf(&out, "%s.RecordNumericStateWriteWithInputs(%s,%s,float64(%s),float64(%s),[]%s.NumericRef{%s.EventRef(%s)},%s.IncompleteEvidence(%s))\n%s",
++	compiled := compileNumericTemplate(fset, assignment.Rhs[0], bindings)
++	traceCode, root, err := numericTraceTemplateEvents(
++		compiled, leaves, traceExpr, sourceExpr, prefix+"_state", indent,
++	)
++	if err != nil {
++		return nil, err
++	}
++	out.WriteString(traceCode)
++	fmt.Fprintf(&out, "%s.RecordNumericStateWriteWithInputs(%s,%s,float64(%s),float64(%s),[]%s.NumericRef{%s},%s.IncompleteEvidence(%s))\n%s",
+ 		traceExpr, slotByField[selector.Sel.Name], sourceExpr, valueByField[selector.Sel.Name], afterName,
+-		traceImportAlias, traceImportAlias, evalName,
++		traceImportAlias, root.referenceExpr,
+ 		traceImportAlias, strconv.Quote("state_write_candidate_dependency_incomplete"), indent)
+ 	return []textEdit{{
+ 		start: tokenFile.Offset(assignment.Pos()), end: tokenFile.Offset(assignment.End()), replacement: out.String(),
+diff --git a/pkg/gttsourcegen/v6_test.go b/pkg/gttsourcegen/v6_test.go
+index c18fa5f..2457932 100644
+--- a/pkg/gttsourcegen/v6_test.go
++++ b/pkg/gttsourcegen/v6_test.go
+@@ -487,6 +487,18 @@ func (u *unit) forward(delta float64) {
+ 			t.Fatalf("ordinary helper overlay lacks %s:\n%s", marker, combined)
+ 		}
+ 	}
++	for _, operation := range [][]byte{
++		[]byte(`"multiply"`),
++		[]byte(`"add"`),
++		[]byte(`"min"`),
++	} {
++		if !bytes.Contains(combined, operation) {
++			t.Fatalf("numeric transition operation missing: %s", operation)
++		}
++	}
++	if bytes.Contains(combined, []byte(`"state_transition"`)) {
++		t.Fatal("supported numeric transition remained an opaque marker")
++	}
+ }
+ 
+ func TestV6CallbackAndHelperPayloadsTraceOnlyProvenNumericParameters(t *testing.T) {
+@@ -735,6 +747,15 @@ func TestV6RealStateChainOverlayParsesAndBridgesHelper(t *testing.T) {
+ 			t.Fatalf("real helper overlay lacks %s", marker)
+ 		}
+ 	}
++	for _, operation := range [][]byte{
++		[]byte(`"multiply"`),
++		[]byte(`"add"`),
++		[]byte(`"min"`),
++	} {
++		if !bytes.Contains(combined, operation) {
++			t.Fatalf("real state transition operation missing: %s", operation)
++		}
++	}
+ }
+ 
+ func writeMultiFileModule(t *testing.T, files map[string]string) string {

@@ -20,6 +20,14 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from .artifact_investment_rules import (
+    ARTIFACT_MAIN_STAT_SLOTS,
+    FIVE_STAR_MAIN_STAT_VALUES,
+    FOUR_STAR_MAIN_STAT_VALUES,
+    LEGAL_FIVE_STAR_CIRCLET_MAIN_STATS,
+    LEGAL_FIVE_STAR_GOBLET_MAIN_STATS,
+    LEGAL_FIVE_STAR_SANDS_MAIN_STATS,
+)
 from .config_structure import (
     build_gcsim_structural_view,
     find_gcsim_statement_terminator,
@@ -39,89 +47,6 @@ OPTIMIZER_CONFIG_STATS_ROW_MISSING = "stats_row_missing"
 OPTIMIZER_CONFIG_ORPHAN_STATS_ROW = "orphan_stats_row"
 OPTIMIZER_CONFIG_OFFPIECE_MISMATCH = "offpiece_layout_mismatch"
 OPTIMIZER_CONFIG_INVALID_OFFPIECE = "invalid_offpiece_slot"
-
-
-# Values intentionally mirror pkg/optimization/substats.go in pinned
-# GCSIM v2.42.2.  Strings keep emitted config stable and avoid float-format
-# drift at the engine contract boundary.
-FIVE_STAR_MAIN_STAT_VALUES: Mapping[str, str] = {
-    "hp": "4780",
-    "atk": "311",
-    "hp%": "0.466",
-    "atk%": "0.466",
-    "def%": "0.583",
-    "em": "186.5",
-    "er": "0.518",
-    "cr": "0.311",
-    "cd": "0.622",
-    "pyro%": "0.466",
-    "hydro%": "0.466",
-    "electro%": "0.466",
-    "cryo%": "0.466",
-    "anemo%": "0.466",
-    "geo%": "0.466",
-    "dendro%": "0.466",
-    "phys%": "0.583",
-    "heal": "0.359",
-}
-
-# Exact max-level four-star values accepted by the pinned optimizer's 0.5%
-# main-stat tolerance. A four-star-only 4p package has four such slots and one
-# five-star off-piece. Upstream identifies the row when flower HP is either
-# 3571 (4-star flower) or 4780 (5-star flower used as the off-piece).
-FOUR_STAR_MAIN_STAT_VALUES: Mapping[str, str] = {
-    "hp": "3571",
-    "atk": "232",
-    "hp%": "0.348",
-    "atk%": "0.348",
-    "def%": "0.435",
-    "em": "139",
-    "er": "0.387",
-    "cr": "0.232",
-    "cd": "0.464",
-    "pyro%": "0.348",
-    "hydro%": "0.348",
-    "electro%": "0.348",
-    "cryo%": "0.348",
-    "anemo%": "0.348",
-    "geo%": "0.348",
-    "dendro%": "0.348",
-    "phys%": "0.435",
-    "heal": "0.268",
-}
-
-ARTIFACT_MAIN_STAT_SLOTS = ("flower", "plume", "sands", "goblet", "circlet")
-
-LEGAL_FIVE_STAR_SANDS_MAIN_STATS = (
-    "hp%",
-    "atk%",
-    "def%",
-    "em",
-    "er",
-)
-LEGAL_FIVE_STAR_GOBLET_MAIN_STATS = (
-    "hp%",
-    "atk%",
-    "def%",
-    "em",
-    "pyro%",
-    "hydro%",
-    "electro%",
-    "cryo%",
-    "anemo%",
-    "geo%",
-    "dendro%",
-    "phys%",
-)
-LEGAL_FIVE_STAR_CIRCLET_MAIN_STATS = (
-    "hp%",
-    "atk%",
-    "def%",
-    "em",
-    "cr",
-    "cd",
-    "heal",
-)
 
 
 _CHARACTER_LINE_RE = re.compile(

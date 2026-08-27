@@ -427,146 +427,233 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 12. GCSIM Artifact Optimizer
 
-Authoritative details:
+Authoritative contract:
 
-- `docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md`
-- `docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md`
+- `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` is the sole active
+  optimizer architecture and task sequence.
+- M1-M8, S0-S7, Gate 0-4, Selected V2, stat-map-first and black-box response
+  plans are superseded forensic history. Do not resume them or use them as a
+  fallback.
 
-Keep this root TODO limited to current state and unfinished work.
+Permanent execution guard:
 
-### Current state
+- Work sequentially without subagents or parallel agents.
+- Reuse accepted traces and local formula arithmetic; do not brute-force known
+  formulas through repeated GCSIM runs.
+- Stop for user review after three failed substantive attempts on one blocker.
+- Generic evaluator code may not switch on character, set, element, reaction or
+  known damage-type names. Concrete names are allowed only in fixtures.
 
-- Four typed operations are implemented: selected-account, all-account,
-  theoretical equal-investment 4p, and theoretical equal-investment 2p+2p.
-- The current UI-selected implementation is selected plan 11. Its last run
-  before the deadline fix used race plan 5 and returned
-  `139577.8505 ± 292.4415`, `n=1000`, in `628.297 s`; its immutable audit is
-  `debug/gcsim_optimizer_ui_runs/20260802T091044477190Z-16092-0c9db722f11c.json`
-  and its mirrored audit/result are in
-  `debug/gcsim_optimizer_benchmarks/ui-production-v11-selected/`. The effective
-  benchmark policy was `ignore_burst_energy=true`, not normal energy.
-- Common account race plan 6 fixes deadline semantics: a terminally skipped
-  required row cannot erase an already successful saveable validation. The
-  plan-5 result is comparison evidence and must not be presented as a plan-6
-  rerun.
-- The package-first selected-to-all workflow in
-  `optimizer_account_superset.py` / `optimizer_all_set_service.py` remains a
-  fallback diagnostic, is not release-ready, and is frozen against further
-  architecture expansion.
-- The replacement is an artifact-first kernel shared by selected/all. Its first
-  primitives are offline-tested but no parallel shadow execution exists yet:
-  response-aware inventory frontier, per-slot injective team matching,
-  cross-slot beam with set counts, package derivation after physical assignment,
-  then exact GCSIM/refinement. The old route stays live only until shadow gates
-  pass and the UI cutover is audited.
-- A first-layer raw componentwise diagnostic on the current 520-piece DB put
-  519 set-aware pieces and 512 off-piece-equivalent pieces in layer one. This is
-  advisory, not a safe-removal proof: exact GCSIM may be non-monotone in raw
-  axes. Inventory-frontier plan 2 keeps every eligible row; CV/RV and skyline
-  depth remain soft ordering only.
-- Completed account UI runs write `latest.json` plus immutable audits under
-  `debug/gcsim_optimizer_ui_runs`; these identities, not a backend-only trace,
-  prove which kernel the button executed.
-- Selected-account and both theoretical operations are required outcomes.
-  Package-first all-account remains fallback-only; the shared-kernel all-account
-  release gate is open.
-- There are no accepted `Quick`/`Balanced`/`Deep` product modes.
-- Detailed behavior belongs only in the two authoritative handoffs above.
+Accepted current state:
 
-### Immediate TODO
+- [x] One frozen trace supplies observed hits, reactions, effective snapshots,
+  modifier/source evidence and one sampled schedule. Candidate arithmetic itself
+  uses zero GCSIM calls. A single trace is not accepted as the expected schedule
+  until generic cross-seed topology evidence proves stability.
+- [x] STANDARD compiles the current 358 hits into 198 safe compact groups. It is
+  retained only as a bounded development/regression control.
+- [x] FAST compiles the dev trace into 23
+  response-equivalent channels separated by actor, scaling/reaction shape, raw
+  engine attack tag, raw damage type and response coordinates. Different
+  modifier/damage types cannot be averaged together. It is not yet an accepted
+  product evaluator.
+- [x] FAST and STANDARD are independent implementations; STANDARD remains a dev
+  regression control and is not a planned product pass.
+- [x] The 1,223/1,787-row audits prove only FAST-versus-STANDARD compression
+  similarity and local runtime. They are rejected as real artifact-quality
+  evidence because current-DB deltas were applied to a synthetic dev trace.
+  Their leader, Top-K and sign claims must not be cited as GCSIM recall.
+- [x] The focused trace-equation and isolated search suites pass. The real
+  n=1000 same-context acceptance is intentionally opt-in and is not counted as
+  an ordinary unit test.
+- [x] Unknown dependencies freeze at the last observed typed boundary. Known
+  formulas continue; unknown values never become zero, independence or
+  dominance evidence.
+- [x] FAST replacement arithmetic is algebraically incumbent-anchored: observed
+  effective channel state already includes incumbent artifacts, and candidate
+  scoring applies the complete `candidate artifact vector - incumbent artifact
+  vector` delta. Algebra alone does not prove that the supplied vector produced
+  the trace; the missing identity check invalidated the attempted DB audits.
+- [x] **Exact-current-equipment identity binding and live gate harness.**
+  `trace_equation/same_context_acceptance.py` and its opt-in integration test bind
+  one physical config to the exact 20 unique SQLite artifact IDs, aggregate
+  stats, sets, current weapons, rotation, target, energy policy, engine and
+  snapshot identities, then run trace/FAST and ordinary n=1000 GCSIM from that
+  config. Identity binding passed. Numerical acceptance did not.
 
-- [x] Add a deterministic no-hard-prune physical inventory catalog with exact
-      eligibility grouping, full-vector advisory skyline depth, and explicit
-      ineligible shadow rows. Pin the 520 -> 519/512 diagnostic without treating
-      it as a deletion proof.
-- [ ] Add response-aware ordering and only enable a hard bound behind a frozen-
-      context monotonicity/admissibility certificate; forbid CV/RV, raw skyline,
-      or user-chosen `k` from deleting physical witnesses.
-- [ ] Add per-slot injective four-wearer matching over physical artifact IDs,
-      preserving alternatives needed for no-reuse and later set completion.
-- [ ] Add the cross-slot beam with incremental per-wearer set counts and global
-      artifact-ID no-reuse; derive 4p (including 4+1) / 2p+2p packages only
-      after the complete physical assignment exists.
-- [ ] Feed bounded shadow finalists to exact GCSIM/refinement with common race
-      plan 6 deadline/cancellation semantics and auditable compiled configs.
-- [ ] Run the shadow kernel beside UI-selected plan 11 on identical frozen
-      requests. Gate on witness survival, exact legality/materialization,
-      selected result quality, and result/audit reproducibility.
-- [ ] Express selected/all only as domain constraints on the shared kernel and
-      prove that the all domain preserves every selected-domain witness under
-      the same downstream fidelity policy.
-- [ ] Extend the exact-input quality corpus to unrelated teams, rotations, and
-      targets; keep full first-removal traces for every counterexample.
-- [ ] If physical matching remains too broad, implement technical handoff 2.6:
-      per-frozen-context nonlinear response splines + sparse interactions +
-      typed set features + uncertainty-driven exact probes. Treat condition-free
-      set maxima only as admissible retention bounds, never final weights or
-      hard-prune evidence; use deterministic DOE/active optimization, not an LLM
-      as the numeric search controller.
-- [ ] Add an engine-versioned set-effect manifest for only AST-proved semantics
-      and keep unknown effects opaque. Add pair/full-team `gtt_set_response_v1`
-      interaction probes before set shortlisting; pin Scroll(Furina) +
-      Scroll(Ororon) same-key non-stacking and canonical DB-UID/GCSIM-alias tests.
-- [ ] Add an engine-versioned runtime effect observation contract (proposed
-      `gtt_effect_observation_v1`) instead of inferring conditional-set uptime
-      only from DPS. Aggregate aligned-seed damage exposure by recipient,
-      element, attack/source/reaction and time, damage-weighted snapshot-stat
-      histograms, effective enemy multipliers, and canonical set activation /
-      stack / refresh / replacement evidence. Use typed stack operators
-      (`add`, `max`, `replace_refresh`, `independent`, `unknown`); unknown stays
-      opaque. Pin Obsidian +0.40 CR, Marechaussee 0/.12/.24/.36 CR, multi-element
-      Scroll coverage, and an activation-with-no-affected-hit trap.
-- [ ] Add a frozen-context set applicability classifier:
-      `active_static`, `active_conditional`, `interaction_only`,
-      `inactive_proved`, or `uncertain`. Hard-remove only `inactive_proved`;
-      no proc in a small seed panel is soft demotion evidence, not deletion.
-- [ ] Add cross-wearer/timing trap-oracles for reaction-owner EM, team HP/healing
-      -> Fanfare -> recipient damage, a large buff applied to a negligible-DPS
-      recipient, element-specific buff/RES-shred exposure, snapshot timing, and
-      a deliberately sparse three-factor interaction. Measure surrogate
-      recall/regret and uncertainty; never infer independent character curves
-      or global optimality from passing simpler pair probes.
-- [ ] Enforce the handoff 2.6 anti-circularity split: cheap assignment features
-      `x(A)` must rank unsimulated candidates; runtime state `z(A)` is an
-      auxiliary exact label/prediction target, never a prerequisite GCSIM run
-      for every proposal and never copied blindly from the source build. Route
-      predicted state-changing candidates to the uncertainty lane.
-- [x] Freeze the authoritative objective: mean expected team DPS, exact written
-      rotation with no optimizer edits, `ignore_burst_energy=true` by default,
-      and only explicit user-provided generic stat floors (including ER) when
-      requested. Clear-time, automatic ER solving, survivability, healing,
-      shielding, and rotation optimization are outside this stage.
-- [ ] Implement the handoff 2.6 acceptance/audit gates: selected physical-ID or
-      paired-DPS control parity; mandatory selected winner in all under identical
-      fidelity; best-found exact row per displayed package signature; persisted
-      original model score/rank/lane and uniform prospective refinement budget;
-      reduced-oracle recall@K/regret, uncertainty calibration, deterministic
-      replay, and fixed simulation/runtime limits. Keep exceptional
-      signature-only search diagnostic and visibly separate from production
-      proposal evidence.
-- [ ] Add anchor-ablation benchmarks. With source/selected proposal anchors
-      removed, require the nonlinear stat/set model and shared physical search
-      to rediscover a near-equivalent selected basin and near-oracle artifacts
-      for every retained all-set signature. Report paired relative DPS regret,
-      feature/ID equivalence, SE, and budget. Use the first labelled corpus only
-      to calibrate noise/equivalence and choose epsilon, then freeze it before a
-      separate held-out validation corpus. Anchored safety success must not
-      count as anchorless model success.
-- [ ] Measure cold/warm/cache/cancellation/deadline/memory behavior and wide DB
-      runtime before switching either account route.
-- [ ] Switch selected and all UI paths together, audit the loaded module/path
-      identities, then remove package-first account paths only after every gate
-      passes. Do not extend the fallback while the shadow kernel is built.
-- [ ] Validate exact physical assignments through explicit save/preset UI after
-      search correctness is accepted.
-- [ ] Do not add speed modes before the corrected base algorithm is measured.
-- [ ] Do not change AppShell/import/equipment behavior as optimizer side work.
+Active implementation sequence:
 
-### Later UI/product ideas
+- [x] **Explicit artifact-variable FAST objective.** Rebase every supported
+  channel into known non-artifact context plus absolute artifact-controlled
+  variables and known derived mechanics of those variables. Raw main/sub stats
+  and set/package state are artifact-owned; weapon, ascension and observed
+  temporary buffs must not be added twice. Prove zero-delta, incumbent,
+  explicit-vs-delta, path-independence, input-ownership and nested/frozen parity
+  before search. Keep incumbent-delta FAST only as a regression oracle.
+  Implemented in `trace_equation/artifact_variable_objective.py`; eight
+  dedicated synthetic tests cover incumbent/empty/changed vectors, direct
+  scaling kinds, crit/bonus inputs, one bounded direct nested-HP source, path
+  independence and contract rejection. They do not cover Bennett healing into
+  Fanfare into team damage bonus. Selected set packages remain frozen lanes.
+- [x] **Isolated continuous-target v1 core.** Create the replaceable
+  `run_workspace/gcsim/optimizer_trace_search/` boundary with no UI, runner or
+  product imports. The confirmed domain is the five-star game contract: four
+  exact roll tiers, at most 45 max-roll-equivalent units per wearer (180 for a
+  four-person team with independent wearer budgets), safe per-coordinate piece caps,
+  and discrete main-stat lanes. Fractional mixtures of account builds are
+  superseded. Derive a marginal-allocation curve plus bounded exchange
+  refinement. The target may order search but cannot delete a physical build.
+  Eight focused analytical tests pass, including equality with exhaustive truth
+  on a small integer-roll domain. The attempted saved-trace/current-SQLite audit
+  is rejected: the trace was generated from a synthetic dev stat block, not the
+  current 20 artifacts. Rebase against the unrelated SQLite vector created
+  negative effective EM and impossible negative reaction damage. Its target,
+  allocation and 0.73 s solve timing are diagnostic implementation evidence
+  only, not real-account quality evidence.
+- [x] **Generic supporting-mechanism replay for FAST.** Treat damage,
+  buffs, healing, drains, stacks, thresholds and future mechanics as one typed
+  dependency graph. Walk backward from every DPS-affecting output until a
+  candidate-stat leaf, fixed-action leaf, proven-unused branch or diagnosed
+  opaque boundary; then replay candidate-dependent health/state/cap/guard/queued
+  events forward before FAST compression. Consume every observed provider and
+  allow their joint contribution and opportunity cost to emerge from team DPS.
+  Do not force a buff to cap and do not switch on character/mechanic names. The
+  current artifact-stat -> healing/HP changes -> accumulated state -> team
+  modifier -> exact hit path is executable in both the isolated correctness
+  control and the cached FAST path. Observed-domain combinations, multiple
+  providers and relevant opaque fallback pass; cap/overheal outside the
+  observed domain remains fail-closed and grants no product prune authority.
+  - [x] Structural/type-safe evidence transport. Unique shortest runtime routes
+    are accepted while equal-shortest ambiguity freezes; only proven scalar
+    receiver fields and callback/helper arguments become numeric evidence.
+    Nonnumeric and unresolved values remain typed opaque boundaries.
+  - [x] Real support-chain trace proof. Patch
+    `0017-gtt-support-chain-v1.patch` carries typed health fields through helper
+    payload, queued task mutation, state transition/write, modifier occurrence
+    and terminal hits. The strict schema-v6 trace contains 365 hits, 196 health
+    operations and 39,767 state events; one health operation reaches 166 hits,
+    and 170 modifier/terminal-hit pairs are bound. No entity-name switches are
+    used by production logic.
+  - [x] Reproducible patch and decoder gate. A fresh official v2.42.2 tree
+    applied the proven support-chain stack.
+    Focused Go packages pass. Python state/dependency tests pass (14 + 6).
+    Incomplete events may omit unbound parameters without weakening complete-
+    event validation, and timeline validation is incremental rather than O(n²).
+  - [x] Replayable scalar state arithmetic. Patch
+    `0018-gtt-replayable-state-arithmetic-v1.patch` replaces supported opaque
+    state-transition markers with explicit add/subtract/multiply/divide/min/max
+    events and emits prior-state reads only when the RHS consumes them. A fresh
+    official tree applied the stack and the generated engine compiled. The old
+    relative-store `artifact_missing` result was only a harness-path defect.
+  - [x] Candidate forward replay and exact hit binding correctness control.
+    Patches `0019`-`0021` make normalized health and supported modifier
+    arithmetic replayable and serialize the exact modifier-evaluation ID into
+    every hit contribution. A fresh 21-patch v2.42.2 engine compiled and passed
+    its runtime probe. The real trace has 3,328/3,328 exact bindings. With zero
+    engine calls, `-0.20 Bennett hp%` changes 14 Furina hits and adds a
+    `-1754.97` rotation-damage effect beyond the direct-only formula. Synthetic
+    incumbent/direct/support tests pass. No entity-name switch exists in
+    production code.
+  - [x] Product-speed support slice and cached FAST correction. The full-ledger
+    STANDARD control remains intact. A generic forward/backward graph slice keeps
+    only events that both depend on changed artifact stats and reach a consumed
+    hit modifier, reducing the real path from 20,821 to 1,535 events. The isolated
+    `support_fast_objective.py` caches modifier projections by four real support-
+    relevant artifact coordinates, revalues the correction against each
+    candidate's direct stats, and never calls the engine. One real miss is about
+    0.049 s and one hit about 0.001 s. Four single-coordinate real checks match
+    the full-control support correction within `2.1e-9`. The exact-context 1,223
+    fixed-4p single-swap corpus used 251 misses/972 hits and completed in about
+    16.7 s. This is runtime/parity evidence only, not full Selected quality.
+  - [x] **Observed physical support-domain boundary.** Sixteen profiles derived
+    from the real 1,223-candidate corpus cover each support-coordinate minimum
+    and maximum, all-min/all-max, and every pairwise maximum. Cached FAST support
+    correction matched full STANDARD control with zero mismatches and at most
+    `1.1e-8` rotation-damage error; engine calls remained zero. This accepts the
+    observed physical range for isolated composition work, not product quality.
+  - [x] **Isolated complete-assignment integration.** The cached support-aware
+    FAST scorer is exposed only through the replaceable composition
+    boundary; preserve incumbent/global artifact uniqueness and measure complete
+    legal multi-piece assignments, unique support keys, cache behavior and
+    runtime on a deliberately reduced domain. The new boundary validates all 20
+    physical IDs, slots, fixed-4p legality and incumbent identity but generates
+    or prunes nothing. A real 8-variable binary audit retained 60/256 legal
+    assignments, changed up to four artifacts together, used 60 distinct support
+    keys and scored them in about 4.16 s with zero engine calls. Deliberate
+    two-actor combined-provider and candidate-relevant opaque-boundary tests
+    pass. Candidate input consumption and both hot caches are bounded per
+    attempt, physical artifact lookup is logarithmic, and FAST scores expose
+    frozen baseline damage/share. Do not extrapolate cap/overheal outside the
+    observed domain.
+- [ ] **Current first loss: provisional continuous-target quality gate.**
+  verify reaction ownership and target retrieval against exhaustive complete
+  physical builds on a deliberately reduced domain. The current single-seed
+  FAST input must be labeled `PROVISIONAL_SINGLE_SEED`; equality/recall against
+  that same scorer proves search implementation only and grants no real-quality
+  or product deletion authority.
+- [ ] **Contextual frontier and bounded-composition prototype.** Generate complete
+  legal Selected assignments under main-stat/slot rules, selected packages, one
+  off-set piece and twenty globally unique physical IDs. Use cap-aware formula
+  ceilings, preserve conflict backups and the incumbent, and compare claimed
+  pruning with exhaustive truth under the same provisional scorer. Keep trace
+  evidence behind an interface so expected channels can replace the one-seed
+  input without rewriting composition.
+- [ ] **Deferred Gate A: stochastic-skill expectation and same-context truth.**
+  The first exact baseline returned FAST `141306.0424` versus GCSIM n=1000
+  `143738.2939`, SE `66.0034`; the `1.6921%` error exceeds frozen tolerance. An
+  adjacent seed changed 365 hits to 389 and spawned-reaction attacks 68 to 90.
+  Before a full Selected quality audit, aggregate this topology generically,
+  preferably in a compact bounded engine-side seed panel, preserve a proven-
+  stable one-trace fast path, and rerun the unchanged baseline plus a small
+  controlled replacement set. Do not tune the seed or widen tolerance.
+- [ ] **Full Selected offline audit.** Measure visited states, target retrieval,
+  candidate reduction, remaining bound gap and runtime on the frozen real
+  account domain. The strategy gets product authority only after this gate; a
+  rejected strategy can be removed without changing FAST or another strategy.
+- [ ] **FAST finalist policy.** Select top-K and uncertainty/incumbent retention
+  from legal multi-piece recall/runtime measurements. Do not derive K from the
+  synthetic broad-stat audit alone.
+- [ ] **Final GCSIM verification.** Simulate FAST finalists at common fidelity,
+  choose the best measured DPS, record formula residuals, and support bounded
+  cache/cancel/resume identities.
+- [ ] **Selected UI button.** Show progress, selected artifacts, formula
+  estimate, measured finalist DPS, warnings and deterministic debug path.
+  Prove a clean new-user cold run.
+- [ ] **All Sets.** Add generic set semantics and allocation: wearer
+  eligibility, activation, attack/damage response types, team recipients,
+  coverage, overlap/duplicate behavior and opportunity cost. Reuse FAST plus
+  final GCSIM.
+- [ ] **Theory.** Add an equal-investment candidate domain without physical
+  artifact IDs, then reuse FAST plus final GCSIM.
 
-- A GCSIM presets tab linking four saved character presets.
-- One explicit atomic save/apply-all action for an optimizer team result.
-- A compact “many replacements” indication without a full search journal.
+Required mechanics and degraded behavior:
+
+- [ ] Keep fixed-schedule reaction formulas and owner EM. Before broad product
+  compatibility, add Bloom/converter, reaction-dominant amplification and
+  multi-contributor Lunar controls. Use damage share, not hit count, for
+  materiality.
+- [ ] Add sanitized deterministic unknown-mechanic archives at
+  `data/gcsim_optimizer/diagnostics/<report_sha256>.zip`. A material unknown
+  produces a degraded best-effort result, not a crash or false optimum.
+- [ ] Keep energy/ER optimization deferred. Technical energy wrappers are not
+  damage actors. A future energy mode needs its own wrapper-to-character and
+  rotation-feasibility contract.
+
+Performance and engine delivery:
+
+- [ ] Cache the validated decoded trace / compiled FAST objective by complete
+  engine, source, config, rotation, target and schema identity. Recent cold
+  trace decode has varied about 38-104 s and is now the fixed-cost bottleneck.
+- [ ] Measure cold Selected after complete composition and finalists. More than
+  180 s is a product failure. Measure All Sets independently; more than 600 s
+  is a product failure. Warm cache results do not satisfy cold gates.
+- [ ] Before product cutover, audit every GCSIM patch present at that time,
+  remove obsolete deltas, consolidate all required modifications into one
+  versioned patch, and prove automatic update plus atomic rollback. Do not
+  hard-code the current `0001`-`0015` range.
+- [ ] Keep the remaining Current backend only as a separately invoked
+  comparison control until Selected, All Sets and Theory work and are tried by
+  the user. Delete it only after fresh reachability/reference scans and cutover.
 
 ## 13. Offline Profile
 

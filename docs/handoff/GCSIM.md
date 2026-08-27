@@ -6,10 +6,8 @@ Scope: research handoff only. No app code, TODO, CODEX, account data, cache data
 
 Implementation direction note: authoritative current backend/UI/release status for the GTT-modified GCSIM engine lives in `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`. Keep this file as the historical upstream/source research reference; do not use its original MVP ordering as the current task queue.
 
-Optimizer direction note: use
-`docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md` for current optimizer
-mechanics and `docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md` for
-the accepted product modes and implementation order. This historical research
+Optimizer direction note: the sole current optimizer contract is
+`docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md`. This historical research
 file is not the optimizer task queue.
 
 Label meanings used below:
@@ -334,83 +332,43 @@ Needs follow-up:
 
 ## 8. Optimizer / Build Search
 
-Confirmed upstream facts:
+Stable upstream boundary:
 
-- GCSIM exposes substat optimization through the CLI.
-- The user/config must already provide team, weapons, rotation, artifact sets,
-  and main stats.
-- Vanilla upstream can optimize abstract ER/other substat allocation and writes
-  `add stats` lines. The verified GTT engine patch exposes `optimize_er`; product
-  theoretical requests set `optimize_er=0;fine_tune=0` so ER is never
-  automatically balanced.
-- It does not read a real account inventory, choose sands/goblet/circlet mains,
-  return artifact IDs, or enforce cross-character artifact uniqueness.
-- GCSIM applies modeled set effects from `add set` lines.
-- The preferred boundary is `-substatOptim -out optimized.txt` followed by an
-  ordinary simulation. `substatOptimFull` overwrites its config and is suitable
-  only for disposable compatibility tests.
-- Optimizer comparisons use a dedicated static high-HP target. The patched
-  sequential Abyss wave mode is a separate product path.
+- Upstream `-substatOptim` optimizes abstract substat allocation after team,
+  weapons, rotation, artifact sets and main stats are already fixed.
+- It does not search a real account inventory, choose main stats or set
+  packages, return artifact IDs, or enforce cross-character uniqueness.
+- GTT therefore owns physical candidates, set/main-stat choice, account-wide
+  contention, formula ranking and finalist selection.
 
-Current GTT direction, summarized only:
+Current GTT direction:
 
-- Account selected-set-pool mode searches one or more concrete sets per wearer.
-- Account all-set mode considers every feasible modeled concrete set represented
-  in the database and prunes real builds through rotation-conditioned evidence
-  and conservative bounds.
-- Theoretical mode compares set combinations at equal abstract investment.
-- Account `include_2p2p` explicitly adds complete distinct-set pairs in either
-  account scope. Theoretical pair shape is a separate operation.
-- Default search is valid 5-star artifacts; 4-star pieces require explicit
-  selected-set/ID authorization.
-- Account search reads the complete shared SQLite artifact/substat tables,
-  replaces all four artifact blocks in the already ready GCSIM config, solves
-  twenty real IDs jointly without reuse, and validates full-team DPS.
-- Original source artifact stats are not an account baseline.
-- The optimizer product contract is schema v4; theoretical `4p`, theoretical
-  `2p+2p`, and account artifacts use separate `.v4` cache/provenance namespaces.
-- Schema-v4 account per-wearer generic `stat >= X` constraints use
-  `static_build_contribution`: exact five-artifact main/sub stats plus only the
-  active package's engine-proved unconditional static 2p set stats. Emblem 2p
-  therefore contributes +20% ER (`er=0.20`); same-`ModKey` effects follow
-  render-order overwrite and conditional/parameterized effects do not count. Feedback-
-  enriched proposals are rechecked fail closed before scheduler/GCSIM.
-- ER is only a UI shortcut to that floor: UI conversion subtracts the complete
-  non-artifact baseline, while the backend applies the package-specific proved
-  static set contribution itself. Infinite/boosted energy is independent.
-  Theoretical floors are not the same contract and remain a separate future
-  decision.
-- User-facing speed modes are deferred until the quality-first algorithm and
-  oracle evidence are measured.
-- M13 provides the dedicated Browser optimizer panel, cancellable worker,
-  selected/all/theoretical adapter, ephemeral results, and explicit wearer/team
-  preset save actions. Search/save never equips artifacts or creates History.
-- M14 is in progress. Typed oracle quality and benchmark-matrix contracts exist;
-  a real CPU-15 selected-4p warm run on the 520-row DB completed `best_found`
-  in 327.157 seconds, but the complete all-set/2p+2p/cold-warm release matrix is
-  not yet available and the current performance is not a release pass.
+- Selected Sets, All Sets and Theory share one trace-specialized formula model
+  over a frozen team/rotation/target/engine context.
+- FAST is the intended search evaluator. It groups only response-equivalent
+  observed hits, separated generically by engine attack tag, raw damage type
+  and formula response coordinates. It is not product accepted: the exact-
+  current-equipment gate proved that one trace seed can change elements,
+  reactions and hit count, so current FAST models one sampled topology rather
+  than expected DPS.
+- Before composition, add generic candidate-dependent supporting-mechanism
+  replay. Composition may then be developed with the one-seed scorer marked
+  provisional. Before real-quality/full-Selected acceptance, add the generic
+  stochastic-topology expectation contract and rerun the unchanged n=1000 test.
+  Do not select a favorable seed or widen tolerance.
+- STANDARD is retained only for bounded development/regression comparison. It
+  is not a product stage or mandatory confirmation.
+- FAST candidates go directly to a bounded ordinary-GCSIM finalist batch. The
+  best measured finalist is the product result; search and save/equip remain
+  separate.
+- Unknown mechanics remain typed and baseline-frozen while known equations keep
+  running. A material unknown degrades confidence and widens retained coverage;
+  it never becomes a guessed zero or a legacy fallback.
 
-The current GTT theoretical `4p` product is executable and remains explicitly
-`best found` rather than a mathematical optimum claim. It preserves coupled EM
-layouts, exercises coordinated zero- through four-wearer oracle states,
-validates finalists at common fidelity, reraces close leaders at higher
-fidelity from every successful attempt independently of display `top_n`, emits
-live `LAYOUT_SCAN`, `RESPONSE_SCAN`, `JOINT_SEARCH`, and `RERACE` transitions
-before their corresponding blocking `stage.run()` calls, records distinct
-original/rerace request provenance, and persists verified finalist evidence.
-The theoretical boundary rejects ER reference weights and ER response profiles,
-including manual ones. M12 layout/response discovery keeps the
-actual `2p+2p` package active. Its strict engine domain is 39 descriptors, 741
-concrete pairs, and 526 proof groups: 25 static-proof descriptors and 14 opaque
-`UNIQUE_SOURCE`; same-`ModKey` and opaque pairs are single-alias.
-The verified local engine is `gcsim-v2.42.2-20260726210410` with
-`patch_count=5`. Release-quality ranking still depends on the later measured
-reliability gate.
-
-Do not use this historical research section for implementation details. Read:
-
-- `GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md`;
-- `GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md`.
+Former schema checkpoints, M/S/Gate plans, stat/set response maps and
+experimental search services are forensic history only. Read
+`GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` for current measurements and
+implementation order.
 
 ## 9. Output / Result Parsing
 

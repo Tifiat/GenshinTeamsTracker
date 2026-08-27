@@ -1,0 +1,790 @@
+diff --git a/pkg/gttsourcegen/forwarded_attack.go b/pkg/gttsourcegen/forwarded_attack.go
+new file mode 100644
+index 0000000..17c940d
+--- /dev/null
++++ b/pkg/gttsourcegen/forwarded_attack.go
+@@ -0,0 +1,283 @@
++package gttsourcegen
++
++import (
++	"crypto/sha256"
++	"go/ast"
++	"go/token"
++	pathpkg "path"
++	"strconv"
++	"strings"
++)
++
++const (
++	maxForwardedAttackCallDepth    = 5
++	maxForwardedAttackAlternatives = 16
++)
++
++type forwardedAttackFunction struct {
++	rel          string
++	packageDir   string
++	receiverType string
++	receiverName string
++	decl         *ast.FuncDecl
++	parameters   []string
++}
++
++type forwardedAttackSummary struct {
++	parameterIndex      int
++	callDepth           int
++	readFrameExpression string
++}
++
++// augmentForwardedAttackCandidates follows only unambiguous same-receiver
++// method parameters that reach QueueAttack. It is intentionally bounded and
++// does not attempt whole-program type inference or dynamic dispatch.
++func augmentForwardedAttackCandidates(
++	fset *token.FileSet,
++	files []parsedSourceFile,
++	candidates []sourceCandidate,
++) ([]sourceCandidate, error) {
++	methods := make(map[string][]forwardedAttackFunction)
++	functions := make([]forwardedAttackFunction, 0, 256)
++	for _, source := range files {
++		for _, declaration := range source.file.Decls {
++			fn, ok := declaration.(*ast.FuncDecl)
++			if !ok || fn.Body == nil {
++				continue
++			}
++			receiverType, receiverName := receiverIdentity(fset, fn)
++			if receiverType == "" || receiverName == "" {
++				continue
++			}
++			function := forwardedAttackFunction{
++				rel: source.rel, packageDir: pathpkg.Dir(source.rel),
++				receiverType: receiverType, receiverName: receiverName,
++				decl: fn, parameters: namedParameters(fn),
++			}
++			functions = append(functions, function)
++			key := methodLookupKey(function.packageDir, receiverType, fn.Name.Name)
++			methods[key] = append(methods[key], function)
++		}
++	}
++
++	summaries := make(map[*ast.FuncDecl]map[int]forwardedAttackSummary)
++	for index := range functions {
++		function := &functions[index]
++		bindings := collectBindings(function.decl.Body)
++		ast.Inspect(function.decl.Body, func(node ast.Node) bool {
++			call, ok := node.(*ast.CallExpr)
++			if !ok || !isDirectQueueAttackCall(call) || len(call.Args) == 0 {
++				return true
++			}
++			resolved := resolveExpr(call.Args[0], bindings, nil)
++			parameterIndex := parameterNameIndex(resolved, function.parameters)
++			if parameterIndex < 0 {
++				return true
++			}
++			frame, err := queueReadFrameExpression(fset, call)
++			if err != nil {
++				return true
++			}
++			addForwardedSummary(summaries, function.decl, forwardedAttackSummary{
++				parameterIndex: parameterIndex, callDepth: 1,
++				readFrameExpression: frame,
++			})
++			return true
++		})
++	}
++
++	// Propagate sink summaries through at most five same-receiver calls. A
++	// visited method/parameter pair is represented by the summary map, so a
++	// recursive cycle cannot expand the search.
++	for depth := 2; depth <= maxForwardedAttackCallDepth+1; depth++ {
++		changed := false
++		for index := range functions {
++			function := &functions[index]
++			bindings := collectBindings(function.decl.Body)
++			ast.Inspect(function.decl.Body, func(node ast.Node) bool {
++				call, ok := node.(*ast.CallExpr)
++				if !ok {
++					return true
++				}
++				callee, ok := resolveSameReceiverAttackMethod(call, *function, methods)
++				if !ok {
++					return true
++				}
++				for _, summary := range summaries[callee.decl] {
++					if summary.callDepth != depth-1 || summary.parameterIndex >= len(call.Args) {
++						continue
++					}
++					resolved := resolveExpr(call.Args[summary.parameterIndex], bindings, nil)
++					parameterIndex := parameterNameIndex(resolved, function.parameters)
++					if parameterIndex < 0 {
++						continue
++					}
++					frame := rebindReceiverRoot(
++						summary.readFrameExpression, callee.receiverName, function.receiverName,
++					)
++					if frame == "" {
++						continue
++					}
++					if addForwardedSummary(summaries, function.decl, forwardedAttackSummary{
++						parameterIndex: parameterIndex, callDepth: depth,
++						readFrameExpression: frame,
++					}) {
++						changed = true
++					}
++				}
++				return true
++			})
++		}
++		if !changed {
++			break
++		}
++	}
++
++	type origin struct {
++		candidate sourceCandidate
++		groupKey  string
++	}
++	origins := make([]origin, 0, 32)
++	counts := make(map[string]int)
++	seen := make(map[string]bool)
++	for index := range functions {
++		function := &functions[index]
++		bindings := collectBindings(function.decl.Body)
++		ast.Inspect(function.decl.Body, func(node ast.Node) bool {
++			call, ok := node.(*ast.CallExpr)
++			if !ok {
++				return true
++			}
++			callee, ok := resolveSameReceiverAttackMethod(call, *function, methods)
++			if !ok {
++				return true
++			}
++			for _, summary := range summaries[callee.decl] {
++				if summary.parameterIndex >= len(call.Args) {
++					continue
++				}
++				root := resolveAttackInfo(call.Args[summary.parameterIndex], bindings)
++				originKey := function.rel + "|" + strconv.Itoa(int(call.Pos())) + "|" + strconv.Itoa(summary.parameterIndex)
++				if root == nil || seen[originKey] {
++					continue
++				}
++				seen[originKey] = true
++				compiled := describeForwardedQueuedAttack(fset, root, bindings)
++				if summary.callDepth > maxForwardedAttackCallDepth {
++					compiled = opaqueTemplate("forwarded_attack_depth_budget_exceeded")
++				}
++				astHash, err := hashAST(fset, root)
++				if err != nil {
++					astHash = strings.Repeat("0", sha256.Size*2)
++					compiled = opaqueTemplate("ast_render_failed")
++				}
++				position := fset.Position(call.Pos())
++				groupKey := methodLookupKey(callee.packageDir, callee.receiverType, callee.decl.Name.Name) + "|" + strconv.Itoa(summary.parameterIndex)
++				counts[groupKey]++
++				origins = append(origins, origin{groupKey: groupKey, candidate: sourceCandidate{
++					kind: KindQueuedAttack, relativeFile: function.rel,
++					line: position.Line, column: position.Column,
++					enclosingSymbol: enclosingSymbol(fset, function.decl),
++					root:            root, astSHA256: astHash, template: compiled,
++					forwardedAttack: &forwardedAttackPlan{
++						ArgumentIndex: summary.parameterIndex,
++						ReadFrameExpression: rebindReceiverRoot(
++							summary.readFrameExpression, callee.receiverName, function.receiverName,
++						),
++						CallDepth: summary.callDepth,
++					},
++				}})
++			}
++			return true
++		})
++	}
++	for _, found := range origins {
++		candidate := found.candidate
++		if counts[found.groupKey] > maxForwardedAttackAlternatives {
++			candidate.template = opaqueTemplate("forwarded_attack_alternative_budget_exceeded")
++		}
++		candidates = append(candidates, candidate)
++	}
++	return candidates, nil
++}
++
++func namedParameters(fn *ast.FuncDecl) []string {
++	if fn == nil || fn.Type.Params == nil {
++		return []string{}
++	}
++	result := make([]string, 0, len(fn.Type.Params.List))
++	for _, field := range fn.Type.Params.List {
++		for _, name := range field.Names {
++			result = append(result, name.Name)
++		}
++	}
++	return result
++}
++
++func parameterNameIndex(expr ast.Expr, parameters []string) int {
++	ident, ok := expr.(*ast.Ident)
++	if !ok {
++		return -1
++	}
++	for index, name := range parameters {
++		if ident.Name == name {
++			return index
++		}
++	}
++	return -1
++}
++
++func isDirectQueueAttackCall(call *ast.CallExpr) bool {
++	selector, ok := call.Fun.(*ast.SelectorExpr)
++	return ok && strings.HasPrefix(selector.Sel.Name, "QueueAttack")
++}
++
++func resolveSameReceiverAttackMethod(
++	call *ast.CallExpr,
++	owner forwardedAttackFunction,
++	methods map[string][]forwardedAttackFunction,
++) (forwardedAttackFunction, bool) {
++	selector, ok := call.Fun.(*ast.SelectorExpr)
++	if !ok {
++		return forwardedAttackFunction{}, false
++	}
++	receiver, ok := selector.X.(*ast.Ident)
++	if !ok || receiver.Name != owner.receiverName {
++		return forwardedAttackFunction{}, false
++	}
++	matches := methods[methodLookupKey(owner.packageDir, owner.receiverType, selector.Sel.Name)]
++	if len(matches) != 1 || matches[0].decl == owner.decl {
++		return forwardedAttackFunction{}, false
++	}
++	return matches[0], true
++}
++
++func addForwardedSummary(
++	summaries map[*ast.FuncDecl]map[int]forwardedAttackSummary,
++	decl *ast.FuncDecl,
++	summary forwardedAttackSummary,
++) bool {
++	if summaries[decl] == nil {
++		summaries[decl] = make(map[int]forwardedAttackSummary)
++	}
++	previous, exists := summaries[decl][summary.parameterIndex]
++	if exists && previous.callDepth <= summary.callDepth {
++		return false
++	}
++	summaries[decl][summary.parameterIndex] = summary
++	return true
++}
++
++func rebindReceiverRoot(expression, from, to string) string {
++	if expression == "" || from == "" || to == "" {
++		return ""
++	}
++	if expression == from {
++		return to
++	}
++	prefix := from + "."
++	if !strings.HasPrefix(expression, prefix) {
++		return ""
++	}
++	return to + expression[len(from):]
++}
+diff --git a/pkg/gttsourcegen/forwarded_attack_test.go b/pkg/gttsourcegen/forwarded_attack_test.go
+new file mode 100644
+index 0000000..0a82976
+--- /dev/null
++++ b/pkg/gttsourcegen/forwarded_attack_test.go
+@@ -0,0 +1,122 @@
++package gttsourcegen
++
++import (
++	"go/parser"
++	"go/token"
++	"path/filepath"
++	"strings"
++	"testing"
++)
++
++func TestForwardedAttackCarriesGenericFormulaAndExplicitIdentity(t *testing.T) {
++	root := writeModule(t, `package fixture
++func (c *char) queueAttack(ai info.AttackInfo) {
++	c.Core.QueueAttack(ai)
++}
++func (c *char) attack() {
++	count := c.consumeAllies()
++	damageMultiplier := 1 + 0.1*float64(count)
++	ai := info.AttackInfo{FlatDmg: ratio[0] * c.MaxHP() * damageMultiplier}
++	c.queueAttack(ai)
++}
++`)
++	manifest := generateFixture(t, root)
++	entry := findEntry(t, manifest, KindQueuedAttack, "(*char).attack")
++	if entry.Template.Status != TemplateSupported || entry.forwardedAttack == nil {
++		t.Fatalf("forwarded attack not supported: %#v", entry)
++	}
++	if entry.forwardedAttack.CallDepth != 1 || entry.forwardedAttack.ArgumentIndex != 0 || entry.forwardedAttack.ReadFrameExpression != "c.Core.F" {
++		t.Fatalf("forwarded plan mismatch: %#v", entry.forwardedAttack)
++	}
++	if len(entry.parameterPlans) != 3 {
++		t.Fatalf("parameter plans=%#v", entry.parameterPlans)
++	}
++	foundCandidateHP := false
++	foundFrozenRuntime := false
++	for _, parameter := range entry.parameterPlans {
++		if parameter.Kind == "candidate_stat" && parameter.StatKey == "max_hp" && parameter.ActorExpression == "c" {
++			foundCandidateHP = true
++		}
++		if parameter.Kind == "frozen_runtime_state" && parameter.SourceExpression == "damageMultiplier" && !parameter.CandidateDependencyComplete {
++			foundFrozenRuntime = true
++		}
++	}
++	if !foundCandidateHP || !foundFrozenRuntime {
++		t.Fatalf("forwarded parameter semantics missing: %#v", entry.parameterPlans)
++	}
++
++	overlay, err := BuildOverlay(OverlayOptions{
++		ModuleRoot: root, OverlayDir: filepath.Join(t.TempDir(), "overlay"),
++	}, manifest)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if len(overlay.Files) != 1 {
++		t.Fatalf("overlay files=%d", len(overlay.Files))
++	}
++	rewritten := string(overlay.Files[0].Contents)
++	for _, wanted := range []string{
++		"GTTTraceSourceID:", "GTTTraceSourceTemplateSHA256:",
++		"float64(damageMultiplier)", `Kind: "candidate_stat"`,
++		`Kind: "frozen_runtime_state"`, `ReadFrame: c.Core.F`,
++	} {
++		if !strings.Contains(rewritten, wanted) {
++			t.Fatalf("forwarded overlay lacks %q:\n%s", wanted, rewritten)
++		}
++	}
++	if _, err := parser.ParseFile(token.NewFileSet(), "source.go", overlay.Files[0].Contents, 0); err != nil {
++		t.Fatal(err)
++	}
++}
++
++func TestForwardedAttackDepthBudgetFailsClosed(t *testing.T) {
++	root := writeModule(t, `package fixture
++func (c *char) sink(ai info.AttackInfo) { c.Core.QueueAttack(ai) }
++func (c *char) hop4(ai info.AttackInfo) { c.sink(ai) }
++func (c *char) hop3(ai info.AttackInfo) { c.hop4(ai) }
++func (c *char) hop2(ai info.AttackInfo) { c.hop3(ai) }
++func (c *char) hop1(ai info.AttackInfo) { c.hop2(ai) }
++func (c *char) hop0(ai info.AttackInfo) { c.hop1(ai) }
++func (c *char) allowed() {
++	ai := info.AttackInfo{FlatDmg: c.MaxHP()}
++	c.hop1(ai)
++}
++func (c *char) overflow() {
++	ai := info.AttackInfo{FlatDmg: c.MaxHP()}
++	c.hop0(ai)
++}
++func (c *char) cycleA(ai info.AttackInfo) { c.cycleB(ai) }
++func (c *char) cycleB(ai info.AttackInfo) { c.cycleA(ai) }
++func (c *char) cycleOrigin() {
++	ai := info.AttackInfo{FlatDmg: c.MaxHP()}
++	c.cycleA(ai)
++}
++`)
++	manifest := generateFixture(t, root)
++	allowed := findEntry(t, manifest, KindQueuedAttack, "(*char).allowed")
++	if allowed.Template.Status != TemplateSupported || allowed.forwardedAttack == nil || allowed.forwardedAttack.CallDepth != 5 {
++		t.Fatalf("depth-five attack not accepted: %#v", allowed)
++	}
++	overflow := findEntry(t, manifest, KindQueuedAttack, "(*char).overflow")
++	if overflow.Template.Status != TemplateOpaqueFrozen || overflow.Template.StopReasonCode == nil || *overflow.Template.StopReasonCode != "forwarded_attack_depth_budget_exceeded" {
++		t.Fatalf("depth overflow did not fail closed: %#v", overflow.Template)
++	}
++	for _, entry := range manifest.Entries {
++		if entry.Locator.EnclosingSymbol == "(*char).cycleOrigin" && entry.Locator.Seam == KindQueuedAttack {
++			t.Fatalf("cycle unexpectedly produced a forwarded attack: %#v", entry)
++		}
++	}
++}
++
++func TestNumericExpressionDepthBudgetFailsClosed(t *testing.T) {
++	root := writeModule(t, `package fixture
++func (c *char) attack() {
++	ai := info.AttackInfo{FlatDmg: c.MaxHP()*2*2*2*2*2*2*2*2*2*2*2*2*2}
++	c.Core.QueueAttack(ai)
++}
++`)
++	entry := findEntry(t, generateFixture(t, root), KindQueuedAttack, "(*char).attack")
++	if entry.Template.Status != TemplateOpaqueFrozen || entry.Template.StopReasonCode == nil || *entry.Template.StopReasonCode != "numeric_expression_depth_budget_exceeded" {
++		t.Fatalf("numeric depth overflow did not fail closed: %#v", entry.Template)
++	}
++}
+diff --git a/pkg/gttsourcegen/ir.go b/pkg/gttsourcegen/ir.go
+index 1c6a812..4bffff7 100644
+--- a/pkg/gttsourcegen/ir.go
++++ b/pkg/gttsourcegen/ir.go
+@@ -10,6 +10,11 @@ import (
+ 	"unicode"
+ )
+ 
++const (
++	maxNumericExpressionDepth = 12
++	maxNumericExpressionNodes = 64
++)
++
+ type templateCompilation struct {
+ 	template       SliceTemplate
+ 	parameters     []parameterPlan
+@@ -20,13 +25,16 @@ type templateCompilation struct {
+ }
+ 
+ type expressionCompiler struct {
+-	fset       *token.FileSet
+-	bindings   bindingSet
+-	resolving  map[string]bool
+-	nodes      []TemplateNode
+-	parameters []parameterPlan
+-	paramNode  map[string]int
+-	stopReason string
++	fset                      *token.FileSet
++	bindings                  bindingSet
++	resolving                 map[string]bool
++	nodes                     []TemplateNode
++	parameters                []parameterPlan
++	paramNode                 map[string]int
++	stopReason                string
++	depth                     int
++	allowFrozenConversions    bool
++	frozenConversionFallbacks int
+ }
+ 
+ func describeModifierAmount(fset *token.FileSet, root ast.Expr, bindings bindingSet) templateCompilation {
+@@ -211,6 +219,24 @@ func compileNumericTemplate(fset *token.FileSet, expr ast.Expr, bindings binding
+ 	return compiler.finish(root)
+ }
+ 
++func compileForwardedNumericTemplate(fset *token.FileSet, expr ast.Expr, bindings bindingSet) templateCompilation {
++	compiler := newExpressionCompiler(fset, bindings)
++	compiler.allowFrozenConversions = true
++	root, ok := compiler.compile(expr)
++	if !ok {
++		return opaqueTemplate(compiler.stopReason)
++	}
++	return compiler.finish(root)
++}
++
++func describeForwardedQueuedAttack(fset *token.FileSet, root ast.Expr, bindings bindingSet) templateCompilation {
++	flatDamage := compositeField(root, "FlatDmg", bindings)
++	if flatDamage == nil {
++		return opaqueTemplate("attack_info_flat_dmg_not_explicit")
++	}
++	return compileForwardedNumericTemplate(fset, flatDamage, bindings)
++}
++
+ func newExpressionCompiler(fset *token.FileSet, bindings bindingSet) *expressionCompiler {
+ 	return &expressionCompiler{
+ 		fset: fset, bindings: bindings, resolving: make(map[string]bool),
+@@ -219,6 +245,9 @@ func newExpressionCompiler(fset *token.FileSet, bindings bindingSet) *expression
+ }
+ 
+ func (compiler *expressionCompiler) finish(root int) templateCompilation {
++	if len(compiler.nodes) > maxNumericExpressionNodes {
++		return opaqueTemplate("numeric_expression_node_budget_exceeded")
++	}
+ 	parameterKeys := make([]string, 0, len(compiler.parameters))
+ 	for _, parameter := range compiler.parameters {
+ 		parameterKeys = append(parameterKeys, parameter.ParameterKey)
+@@ -246,6 +275,11 @@ func opaqueTemplate(reason string) templateCompilation {
+ }
+ 
+ func (compiler *expressionCompiler) compile(expr ast.Expr) (int, bool) {
++	if compiler.depth >= maxNumericExpressionDepth {
++		return compiler.fail("numeric_expression_depth_budget_exceeded")
++	}
++	compiler.depth++
++	defer func() { compiler.depth-- }()
+ 	switch value := expr.(type) {
+ 	case *ast.ParenExpr:
+ 		return compiler.compile(value.X)
+@@ -263,9 +297,22 @@ func (compiler *expressionCompiler) compile(expr ast.Expr) (int, bool) {
+ 			return compiler.fail("non_numeric_identifier")
+ 		}
+ 		if defs := compiler.bindings[value.Name]; len(defs) == 1 && !compiler.resolving[value.Name] {
++			nodeCount := len(compiler.nodes)
++			parameterCount := len(compiler.parameters)
++			previousStopReason := compiler.stopReason
++			previousFallbacks := compiler.frozenConversionFallbacks
++			previousParamNodes := cloneParamNodes(compiler.paramNode)
+ 			compiler.resolving[value.Name] = true
+ 			id, ok := compiler.compile(defs[0])
+ 			delete(compiler.resolving, value.Name)
++			if ok && compiler.allowFrozenConversions && compiler.frozenConversionFallbacks > previousFallbacks && !hasCandidateParameters(compiler.parameters[parameterCount:]) {
++				compiler.nodes = compiler.nodes[:nodeCount]
++				compiler.parameters = compiler.parameters[:parameterCount]
++				compiler.paramNode = previousParamNodes
++				compiler.stopReason = previousStopReason
++				compiler.frozenConversionFallbacks = previousFallbacks
++				return compiler.parameter(value, "frozen_runtime_state", "", "", false), true
++			}
+ 			return id, ok
+ 		}
+ 		return compiler.parameter(value, "frozen_runtime_state", "", "", false), true
+@@ -308,6 +355,12 @@ func (compiler *expressionCompiler) compile(expr ast.Expr) (int, bool) {
+ 		}
+ 		return compiler.addNode(operator, []int{left, right}, nil, nil), true
+ 	case *ast.CallExpr:
++		if ident, ok := value.Fun.(*ast.Ident); ok && numericBuiltinType(ident) && len(value.Args) == 1 {
++			if !compiler.allowFrozenConversions {
++				return compiler.fail("unsupported_call")
++			}
++			return compiler.compileNumericConversion(value)
++		}
+ 		if ident, ok := value.Fun.(*ast.Ident); ok && (ident.Name == "min" || ident.Name == "max") && len(value.Args) == 2 {
+ 			left, ok := compiler.compile(value.Args[0])
+ 			if !ok {
+@@ -348,6 +401,46 @@ func (compiler *expressionCompiler) compile(expr ast.Expr) (int, bool) {
+ 	}
+ }
+ 
++// compileNumericConversion first preserves a stat-aware arithmetic child. If
++// the child crosses an unsupported runtime seam, the conversion's observed
++// numeric value remains usable as one frozen runtime parameter instead of
++// making the entire parent damage expression opaque.
++func (compiler *expressionCompiler) compileNumericConversion(call *ast.CallExpr) (int, bool) {
++	nodeCount := len(compiler.nodes)
++	parameterCount := len(compiler.parameters)
++	previousStopReason := compiler.stopReason
++	previousParamNodes := cloneParamNodes(compiler.paramNode)
++	if child, ok := compiler.compile(call.Args[0]); ok {
++		return child, true
++	}
++	if !compiler.allowFrozenConversions {
++		return 0, false
++	}
++	compiler.nodes = compiler.nodes[:nodeCount]
++	compiler.parameters = compiler.parameters[:parameterCount]
++	compiler.paramNode = previousParamNodes
++	compiler.stopReason = previousStopReason
++	compiler.frozenConversionFallbacks++
++	return compiler.parameter(call, "frozen_runtime_state", "", "", false), true
++}
++
++func cloneParamNodes(values map[string]int) map[string]int {
++	cloned := make(map[string]int, len(values))
++	for key, value := range values {
++		cloned[key] = value
++	}
++	return cloned
++}
++
++func hasCandidateParameters(parameters []parameterPlan) bool {
++	for _, parameter := range parameters {
++		if parameter.Kind == "candidate_stat" {
++			return true
++		}
++	}
++	return false
++}
++
+ func (compiler *expressionCompiler) compilePredicate(expr ast.Expr) (int, bool) {
+ 	switch value := expr.(type) {
+ 	case *ast.ParenExpr:
+diff --git a/pkg/gttsourcegen/model.go b/pkg/gttsourcegen/model.go
+index e01e492..44ba0a0 100644
+--- a/pkg/gttsourcegen/model.go
++++ b/pkg/gttsourcegen/model.go
+@@ -212,23 +212,34 @@ type stateOperationPlan struct {
+ 	Numeric            bool
+ }
+ 
++// forwardedAttackPlan is build-local provenance for an AttackInfo value that
++// crosses a bounded same-receiver helper chain before QueueAttack. The source
++// ID must be attached at the construction site because runtime caller capture
++// would otherwise identify only the shared helper sink.
++type forwardedAttackPlan struct {
++	ArgumentIndex       int
++	ReadFrameExpression string
++	CallDepth           int
++}
++
+ type SourceEntry struct {
+ 	SourceID         string        `json:"source_id"`
+ 	Locator          SourceLocator `json:"locator"`
+ 	SourceNodeSHA256 string        `json:"source_node_sha256"`
+ 	Template         SliceTemplate `json:"template"`
+ 
+-	LookupKey          string              `json:"-"`
+-	RelativeFile       string              `json:"-"`
+-	Line               int                 `json:"-"`
+-	Column             int                 `json:"-"`
+-	parameterPlans     []parameterPlan     `json:"-"`
+-	modifierOutput     *modifierOutputPlan `json:"-"`
+-	healthInput        *healthInputPlan    `json:"-"`
+-	callback           *callbackPlan       `json:"-"`
+-	stateOperation     *stateOperationPlan `json:"-"`
+-	traceRuntimePath   string              `json:"-"`
+-	traceRuntimeReason string              `json:"-"`
++	LookupKey          string               `json:"-"`
++	RelativeFile       string               `json:"-"`
++	Line               int                  `json:"-"`
++	Column             int                  `json:"-"`
++	parameterPlans     []parameterPlan      `json:"-"`
++	modifierOutput     *modifierOutputPlan  `json:"-"`
++	healthInput        *healthInputPlan     `json:"-"`
++	callback           *callbackPlan        `json:"-"`
++	stateOperation     *stateOperationPlan  `json:"-"`
++	forwardedAttack    *forwardedAttackPlan `json:"-"`
++	traceRuntimePath   string               `json:"-"`
++	traceRuntimeReason string               `json:"-"`
+ }
+ 
+ type Manifest struct {
+diff --git a/pkg/gttsourcegen/overlay.go b/pkg/gttsourcegen/overlay.go
+index 81c4248..66b539b 100644
+--- a/pkg/gttsourcegen/overlay.go
++++ b/pkg/gttsourcegen/overlay.go
+@@ -44,8 +44,9 @@ type textEdit struct {
+ }
+ 
+ type sharedAttackRoot struct {
+-	entry     SourceEntry
+-	readFrame string
++	entry            SourceEntry
++	readFrame        string
++	explicitSourceID bool
+ }
+ 
+ // BuildOverlay constructs a Go build overlay without mutating the source tree.
+@@ -172,6 +173,43 @@ func rewriteOverlayFile(rel string, data []byte, wanted []SourceEntry) ([]byte,
+ 			if !ok {
+ 				return true
+ 			}
++			line := fset.Position(call.Pos()).Line
++			forwardedKey := KindQueuedAttack + "|" + strconv.Itoa(line)
++			if entry, exists := wantedByLine[forwardedKey]; exists && entry.forwardedAttack != nil {
++				plan := entry.forwardedAttack
++				if plan.ArgumentIndex < 0 || plan.ArgumentIndex >= len(call.Args) {
++					err = fmt.Errorf("forwarded entry %s argument index is no longer valid", entry.LookupKey)
++					return false
++				}
++				attackRoot := resolveAttackInfo(call.Args[plan.ArgumentIndex], bindings)
++				composite, compositeOK := attackRoot.(*ast.CompositeLit)
++				if !compositeOK {
++					err = fmt.Errorf("forwarded entry %s no longer resolves to AttackInfo composite", entry.LookupKey)
++					return false
++				}
++				readFrame := plan.ReadFrameExpression
++				if readFrame == "" || !safeSelectorChain(readFrame) {
++					err = fmt.Errorf("forwarded entry %s has invalid read frame", entry.LookupKey)
++					return false
++				}
++				if previous, already := rootSeen[composite.Pos()]; already {
++					if !reflect.DeepEqual(previous.entry.Template, entry.Template) || !reflect.DeepEqual(previous.entry.parameterPlans, entry.parameterPlans) || previous.readFrame != readFrame || !previous.explicitSourceID {
++						err = fmt.Errorf("AttackInfo root shared by %s and %s has conflicting forwarded plans", previous.entry.LookupKey, entry.LookupKey)
++						return false
++					}
++					found[forwardedKey] = true
++					return true
++				}
++				rootSeen[composite.Pos()] = sharedAttackRoot{entry: entry, readFrame: readFrame, explicitSourceID: true}
++				rootEdits, editErr := queuedAttackEdits(fset, tokenFile, data, fn, composite, entry, readFrame, true)
++				if editErr != nil {
++					err = editErr
++					return false
++				}
++				edits = append(edits, rootEdits...)
++				found[forwardedKey] = true
++				return true
++			}
+ 			kind, _, _, matched := describeSeamCall(fset, call, bindings)
+ 			if matched {
+ 				statement := containingStatement(fn.Body, call)
+@@ -186,7 +224,6 @@ func rewriteOverlayFile(rel string, data []byte, wanted []SourceEntry) ([]byte,
+ 			if kind != KindQueuedAttack && kind != KindHealthInput {
+ 				return true
+ 			}
+-			line := fset.Position(call.Pos()).Line
+ 			entry, ok := wantedByLine[kind+"|"+strconv.Itoa(line)]
+ 			if !ok {
+ 				return true
+@@ -219,7 +256,7 @@ func rewriteOverlayFile(rel string, data []byte, wanted []SourceEntry) ([]byte,
+ 				return false
+ 			}
+ 			if previous, exists := rootSeen[composite.Pos()]; exists {
+-				if !reflect.DeepEqual(previous.entry.Template, entry.Template) || !reflect.DeepEqual(previous.entry.parameterPlans, entry.parameterPlans) || previous.readFrame != readFrame {
++				if !reflect.DeepEqual(previous.entry.Template, entry.Template) || !reflect.DeepEqual(previous.entry.parameterPlans, entry.parameterPlans) || previous.readFrame != readFrame || previous.explicitSourceID {
+ 					err = fmt.Errorf("AttackInfo root shared by %s and %s has conflicting template, parameter, or read-frame plans", previous.entry.LookupKey, entry.LookupKey)
+ 					return false
+ 				}
+@@ -227,7 +264,7 @@ func rewriteOverlayFile(rel string, data []byte, wanted []SourceEntry) ([]byte,
+ 				return true
+ 			}
+ 			rootSeen[composite.Pos()] = sharedAttackRoot{entry: entry, readFrame: readFrame}
+-			rootEdits, editErr := queuedAttackEdits(fset, tokenFile, data, fn, composite, entry, readFrame)
++			rootEdits, editErr := queuedAttackEdits(fset, tokenFile, data, fn, composite, entry, readFrame, false)
+ 			if editErr != nil {
+ 				err = editErr
+ 				return false
+@@ -403,6 +440,7 @@ func queuedAttackEdits(
+ 	composite *ast.CompositeLit,
+ 	entry SourceEntry,
+ 	readFrame string,
++	explicitSourceID bool,
+ ) ([]textEdit, error) {
+ 	flat := compositeKeyValue(composite, "FlatDmg")
+ 	if flat == nil {
+@@ -466,7 +504,7 @@ func queuedAttackEdits(
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-	metadata := compositeMetadataInsertion(data, tokenFile, composite, entry, parameters)
++	metadata := compositeMetadataInsertion(data, tokenFile, composite, entry, parameters, explicitSourceID)
+ 	return []textEdit{
+ 		{start: tokenFile.Offset(statement.Pos()), end: tokenFile.Offset(statement.Pos()), replacement: declarations.String()},
+ 		{start: tokenFile.Offset(flat.Value.Pos()), end: tokenFile.Offset(flat.Value.End()), replacement: renderedExpression},
+@@ -525,7 +563,7 @@ func queueReadFrameExpression(fset *token.FileSet, call *ast.CallExpr) (string,
+ 	return frame, nil
+ }
+ 
+-func compositeMetadataInsertion(data []byte, tokenFile *token.File, composite *ast.CompositeLit, entry SourceEntry, parameters string) string {
++func compositeMetadataInsertion(data []byte, tokenFile *token.File, composite *ast.CompositeLit, entry SourceEntry, parameters string, explicitSourceID bool) string {
+ 	rbrace := tokenFile.Offset(composite.Rbrace)
+ 	prefix := ""
+ 	if len(composite.Elts) > 0 {
+@@ -534,6 +572,9 @@ func compositeMetadataInsertion(data []byte, tokenFile *token.File, composite *a
+ 			prefix = ","
+ 		}
+ 	}
++	if explicitSourceID {
++		prefix += "GTTTraceSourceID:" + strconv.Quote(entry.SourceID) + ","
++	}
+ 	return prefix + "GTTTraceSourceTemplateSHA256:" + strconv.Quote(entry.Template.TemplateSHA256) +
+ 		",GTTTraceSourceParameters:" + parameters + ","
+ }
+diff --git a/pkg/gttsourcegen/scan.go b/pkg/gttsourcegen/scan.go
+index 6bd83fb..7bb5590 100644
+--- a/pkg/gttsourcegen/scan.go
++++ b/pkg/gttsourcegen/scan.go
+@@ -45,6 +45,7 @@ type sourceCandidate struct {
+ 	rootBindingName    string
+ 	traceRuntimePath   string
+ 	traceRuntimeReason string
++	forwardedAttack    *forwardedAttackPlan
+ }
+ 
+ // Generate scans the requested module-relative Go source and returns a fully
+@@ -97,6 +98,10 @@ func Generate(opts Options) (Manifest, error) {
+ 		}
+ 		candidates = append(candidates, fileCandidates...)
+ 	}
++	candidates, err = augmentForwardedAttackCandidates(fset, parsedFiles, candidates)
++	if err != nil {
++		return Manifest{}, err
++	}
+ 	candidates, err = augmentV6Candidates(fset, parsedFiles, candidates, modulePath)
+ 	if err != nil {
+ 		return Manifest{}, err
+@@ -715,6 +720,7 @@ func finalizeCandidates(candidates []sourceCandidate) ([]SourceEntry, error) {
+ 			healthInput:        candidate.template.healthInput,
+ 			callback:           candidate.template.callback,
+ 			stateOperation:     candidate.template.stateOperation,
++			forwardedAttack:    candidate.forwardedAttack,
+ 			traceRuntimePath:   candidate.traceRuntimePath,
+ 			traceRuntimeReason: candidate.traceRuntimeReason,
+ 		})

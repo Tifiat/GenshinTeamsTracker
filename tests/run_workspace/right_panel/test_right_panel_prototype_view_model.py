@@ -942,6 +942,59 @@ class RightPanelPrototypeViewModelTest(unittest.TestCase):
         self.assertNotIn({"label": "Weapon ATK", "value": "429", "icon_label": "WATK"}, detail_rows)
         self.assertNotIn({"label": "Art CR", "value": "31.1%", "icon_label": "ACR"}, detail_rows)
 
+    def test_selected_details_include_sqlite_crit_ascension_bonus_label(self) -> None:
+        state = create_empty_team_builder_state(team_count=1)
+        state = state.set_character(
+            0,
+            0,
+            {
+                "id": "10000104",
+                "name": "Chasca",
+                "level": 90,
+                "element": "Anemo",
+                "constellation": 1,
+            },
+        )
+        state = state.attach_character_details_data(
+            0,
+            0,
+            {
+                "account_character": {
+                    "id": "10000104",
+                    "name": "Chasca",
+                    "level": 90,
+                    "element": "Anemo",
+                    "constellation": 1,
+                    "base_hp": 9797,
+                    "base_atk": 347,
+                    "base_def": 615,
+                    "ascension_bonus_stat_type": "CRIT Rate Bonus",
+                    "ascension_bonus_value": 19.2,
+                },
+                "stat_snapshot": {
+                    "character_base": {
+                        "base_hp": {"selected": "9797"},
+                        "base_atk": {"selected": "347"},
+                        "base_def": {"selected": "615"},
+                        "ascension_bonus_stat_type": "CRIT Rate Bonus",
+                        "ascension_bonus": {"selected": "19.2%"},
+                    },
+                },
+            },
+        )
+
+        model = build_right_panel_prototype_view_model(
+            state,
+            selected_team_index=0,
+            selected_slot_index=0,
+        )
+
+        rows = [row.to_dict() for row in model.selected_details.stat_rows]
+        self.assertIn(
+            {"label": "Crit Rate", "value": "24.2%", "icon_label": "CR"},
+            rows,
+        )
+
     def test_selected_details_expose_bonus_source_items_and_toggle_state(self) -> None:
         set_language("ru")
         state = create_empty_team_builder_state(team_count=1)

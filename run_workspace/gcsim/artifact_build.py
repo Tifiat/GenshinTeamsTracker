@@ -13,6 +13,7 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+from typing import Mapping
 
 from .runtime_probe import (
     DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
@@ -23,6 +24,11 @@ from .runtime_probe import (
     _go_sandbox_env,
     _parse_go_version,
     _trim_probe_text,
+)
+from .source_manifest_build import (
+    SOURCE_MANIFEST_ENGINE_CAPABILITY,
+    SourceManifestPreparation,
+    prepare_source_manifest,
 )
 
 
@@ -62,6 +68,20 @@ class GcsimBuildArtifactResult:
     gtt_info_command: tuple[str, ...] = ()
     gtt_info_stdout: str = ""
     gtt_info_stderr: str = ""
+    source_manifest_required: bool = False
+    source_manifest_ready: bool = False
+    source_manifest_status: str = "not_required"
+    source_manifest_input_relative_path: str = ""
+    source_manifest_body_relative_path: str = ""
+    source_manifest_generated_go_relative_path: str = ""
+    source_manifest_overlay_relative_path: str = ""
+    source_manifest_overlay_dir_relative_path: str = ""
+    source_manifest_body_sha256: str = ""
+    source_manifest_compiler_version: str = ""
+    source_manifest_patched_tree_sha256: str = ""
+    source_manifest_command: tuple[str, ...] = ()
+    source_manifest_stdout: str = ""
+    source_manifest_stderr: str = ""
     error: str = ""
 
     def metadata(self) -> dict[str, str]:
@@ -98,6 +118,20 @@ class GcsimBuildArtifactResult:
             "gtt_info_command": " ".join(self.gtt_info_command),
             "gtt_info_stdout": self.gtt_info_stdout,
             "gtt_info_stderr": self.gtt_info_stderr,
+            "source_manifest_required": "true" if self.source_manifest_required else "false",
+            "source_manifest_ready": "true" if self.source_manifest_ready else "false",
+            "source_manifest_status": self.source_manifest_status,
+            "source_manifest_input_relative_path": self.source_manifest_input_relative_path,
+            "source_manifest_body_relative_path": self.source_manifest_body_relative_path,
+            "source_manifest_generated_go_relative_path": self.source_manifest_generated_go_relative_path,
+            "source_manifest_overlay_relative_path": self.source_manifest_overlay_relative_path,
+            "source_manifest_overlay_dir_relative_path": self.source_manifest_overlay_dir_relative_path,
+            "source_manifest_body_sha256": self.source_manifest_body_sha256,
+            "source_manifest_compiler_version": self.source_manifest_compiler_version,
+            "source_manifest_patched_tree_sha256": self.source_manifest_patched_tree_sha256,
+            "source_manifest_command": " ".join(self.source_manifest_command),
+            "source_manifest_stdout": self.source_manifest_stdout,
+            "source_manifest_stderr": self.source_manifest_stderr,
             "artifact_error": self.error,
             "shipped_fallback_status": "resolver_available_not_bundled",
         }
@@ -135,6 +169,7 @@ def build_gcsim_artifact(
     expected_go_arch: str = EXPECTED_GO_ARCH,
     require_gtt_marker: bool = False,
     expected_gtt_capability: str = GTT_INFO_CAPABILITY,
+    source_manifest_binding_input: Mapping[str, object] | None = None,
 ) -> GcsimBuildArtifactResult:
     engine_dir = Path(engine_dir)
     artifact_relative_path = Path(artifact_relative_path)
@@ -183,14 +218,41 @@ def build_gcsim_artifact(
             ),
         )
 
-    artifact_path.parent.mkdir(parents=True, exist_ok=True)
-    build_command = (
-        go_executable,
-        "build",
-        "-o",
-        str(artifact_path),
-        "./cmd/gcsim",
+    source_manifest = prepare_source_manifest(
+        engine_dir,
+        binding_input=source_manifest_binding_input,
+        go_version=go_version,
+        go_os=go_os,
+        go_arch=go_arch,
+        go_executable=go_executable,
+        env=env,
+        timeout_seconds=int(timeout_seconds),
+        runner=command_runner,
     )
+    source_manifest_kwargs = _source_manifest_result_kwargs(source_manifest)
+    if source_manifest.required and not source_manifest.ready:
+        return _result(
+            status=source_manifest.status,
+            runtime_ready=False,
+            artifact_ready=False,
+            go_available=True,
+            go_version=go_version,
+            go_os=go_os,
+            go_arch=go_arch,
+            go_env_root=go_root,
+            artifact_path=artifact_path,
+            artifact_relative_path=artifact_relative_path.as_posix(),
+            error=source_manifest.error,
+            **source_manifest_kwargs,
+        )
+
+    artifact_path.parent.mkdir(parents=True, exist_ok=True)
+    build_command_parts = [go_executable, "build", "-trimpath"]
+    if source_manifest.required:
+        overlay_path = (engine_dir / source_manifest.overlay_relative_path).resolve()
+        build_command_parts.extend(("-overlay", str(overlay_path)))
+    build_command_parts.extend(("-o", str(artifact_path), "./cmd/gcsim"))
+    build_command = tuple(build_command_parts)
     try:
         build_result = command_runner(
             build_command,
@@ -214,6 +276,7 @@ def build_gcsim_artifact(
             build_stdout=exc.stdout if isinstance(exc.stdout, str) else "",
             build_stderr=exc.stderr if isinstance(exc.stderr, str) else "",
             error="GCSIM artifact build timed out.",
+            **source_manifest_kwargs,
         )
     except OSError as exc:
         return _result(
@@ -229,6 +292,7 @@ def build_gcsim_artifact(
             artifact_relative_path=artifact_relative_path.as_posix(),
             build_command=build_command,
             error=str(exc),
+            **source_manifest_kwargs,
         )
     if build_result.returncode != 0:
         return _result(
@@ -246,6 +310,7 @@ def build_gcsim_artifact(
             build_stdout=build_result.stdout,
             build_stderr=build_result.stderr,
             error=f"GCSIM artifact build exited with {build_result.returncode}.",
+            **source_manifest_kwargs,
         )
     if not artifact_path.exists():
         return _result(
@@ -263,6 +328,7 @@ def build_gcsim_artifact(
             build_stdout=build_result.stdout,
             build_stderr=build_result.stderr,
             error="GCSIM artifact build did not create the expected executable.",
+            **source_manifest_kwargs,
         )
 
     artifact_version_command = (str(artifact_path), "-version")
@@ -293,6 +359,7 @@ def build_gcsim_artifact(
             artifact_version_stdout=exc.stdout if isinstance(exc.stdout, str) else "",
             artifact_version_stderr=exc.stderr if isinstance(exc.stderr, str) else "",
             error="Built GCSIM artifact version check timed out.",
+            **source_manifest_kwargs,
         )
     except OSError as exc:
         return _result(
@@ -312,6 +379,7 @@ def build_gcsim_artifact(
             build_stderr=build_result.stderr,
             artifact_version_command=artifact_version_command,
             error=str(exc),
+            **source_manifest_kwargs,
         )
     if artifact_version_result.returncode != 0:
         return _result(
@@ -334,6 +402,7 @@ def build_gcsim_artifact(
             artifact_version_stdout=artifact_version_result.stdout,
             artifact_version_stderr=artifact_version_result.stderr,
             error=f"Built GCSIM artifact version check exited with {artifact_version_result.returncode}.",
+            **source_manifest_kwargs,
         )
 
     artifact_sha256 = _file_sha256(artifact_path)
@@ -355,7 +424,15 @@ def build_gcsim_artifact(
         "artifact_version_stdout": artifact_version_result.stdout,
         "artifact_version_stderr": artifact_version_result.stderr,
         "gtt_marker_required": require_gtt_marker,
+        **source_manifest_kwargs,
     }
+    if source_manifest.required and not require_gtt_marker:
+        return _result(
+            status="source_manifest_runtime_binding_unverified",
+            runtime_ready=False,
+            error="Source-manifest builds require the GTT info runtime check.",
+            **common_success,
+        )
     if not require_gtt_marker:
         return _result(
             status="artifact_runtime_passed",
@@ -403,6 +480,12 @@ def build_gcsim_artifact(
     parsed = _parse_gtt_info(
         gtt_info_result.stdout,
         expected_capability=expected_gtt_capability,
+        expected_source_manifest_body_sha256=(
+            source_manifest.body_sha256 if source_manifest.required else ""
+        ),
+        expected_source_manifest_compiler_version=(
+            source_manifest.compiler_version if source_manifest.required else ""
+        ),
     )
     if isinstance(parsed, str):
         return _result(
@@ -561,6 +644,20 @@ def _result(
     gtt_info_command=(),
     gtt_info_stdout: str = "",
     gtt_info_stderr: str = "",
+    source_manifest_required: bool = False,
+    source_manifest_ready: bool = False,
+    source_manifest_status: str = "not_required",
+    source_manifest_input_relative_path: str = "",
+    source_manifest_body_relative_path: str = "",
+    source_manifest_generated_go_relative_path: str = "",
+    source_manifest_overlay_relative_path: str = "",
+    source_manifest_overlay_dir_relative_path: str = "",
+    source_manifest_body_sha256: str = "",
+    source_manifest_compiler_version: str = "",
+    source_manifest_patched_tree_sha256: str = "",
+    source_manifest_command=(),
+    source_manifest_stdout: str = "",
+    source_manifest_stderr: str = "",
     error: str = "",
 ) -> GcsimBuildArtifactResult:
     return GcsimBuildArtifactResult(
@@ -592,8 +689,57 @@ def _result(
         gtt_info_command=tuple(str(part) for part in gtt_info_command),
         gtt_info_stdout=_trim_probe_text(gtt_info_stdout),
         gtt_info_stderr=_trim_probe_text(gtt_info_stderr),
+        source_manifest_required=bool(source_manifest_required),
+        source_manifest_ready=bool(source_manifest_ready),
+        source_manifest_status=_trim_probe_text(source_manifest_status),
+        source_manifest_input_relative_path=_trim_probe_text(
+            source_manifest_input_relative_path
+        ),
+        source_manifest_body_relative_path=_trim_probe_text(
+            source_manifest_body_relative_path
+        ),
+        source_manifest_generated_go_relative_path=_trim_probe_text(
+            source_manifest_generated_go_relative_path
+        ),
+        source_manifest_overlay_relative_path=_trim_probe_text(
+            source_manifest_overlay_relative_path
+        ),
+        source_manifest_overlay_dir_relative_path=_trim_probe_text(
+            source_manifest_overlay_dir_relative_path
+        ),
+        source_manifest_body_sha256=_trim_probe_text(source_manifest_body_sha256),
+        source_manifest_compiler_version=_trim_probe_text(
+            source_manifest_compiler_version
+        ),
+        source_manifest_patched_tree_sha256=_trim_probe_text(
+            source_manifest_patched_tree_sha256
+        ),
+        source_manifest_command=tuple(str(part) for part in source_manifest_command),
+        source_manifest_stdout=_trim_probe_text(source_manifest_stdout),
+        source_manifest_stderr=_trim_probe_text(source_manifest_stderr),
         error=_trim_probe_text(error),
     )
+
+
+def _source_manifest_result_kwargs(
+    result: SourceManifestPreparation,
+) -> dict[str, object]:
+    return {
+        "source_manifest_required": result.required,
+        "source_manifest_ready": result.ready,
+        "source_manifest_status": result.status,
+        "source_manifest_input_relative_path": result.input_relative_path,
+        "source_manifest_body_relative_path": result.body_relative_path,
+        "source_manifest_generated_go_relative_path": result.generated_go_relative_path,
+        "source_manifest_overlay_relative_path": result.overlay_relative_path,
+        "source_manifest_overlay_dir_relative_path": result.overlay_dir_relative_path,
+        "source_manifest_body_sha256": result.body_sha256,
+        "source_manifest_compiler_version": result.compiler_version,
+        "source_manifest_patched_tree_sha256": result.patched_source_tree_sha256,
+        "source_manifest_command": result.command,
+        "source_manifest_stdout": result.stdout,
+        "source_manifest_stderr": result.stderr,
+    }
 
 
 def _file_sha256(path: Path) -> str:
@@ -606,6 +752,8 @@ def _parse_gtt_info(
     text: str,
     *,
     expected_capability: str,
+    expected_source_manifest_body_sha256: str = "",
+    expected_source_manifest_compiler_version: str = "",
 ) -> dict[str, object] | str:
     try:
         data = json.loads(str(text or "").strip())
@@ -619,6 +767,19 @@ def _parse_gtt_info(
     capability_values = [str(item) for item in capabilities]
     if data.get("gtt_engine") is not True or expected_capability not in capability_values:
         return "gtt_info_missing"
+    if expected_source_manifest_body_sha256:
+        if SOURCE_MANIFEST_ENGINE_CAPABILITY not in capability_values:
+            return "source_manifest_info_missing"
+        if (
+            data.get("source_manifest_body_sha256")
+            != expected_source_manifest_body_sha256
+        ):
+            return "source_manifest_info_mismatch"
+        if (
+            data.get("source_manifest_compiler_version")
+            != expected_source_manifest_compiler_version
+        ):
+            return "source_manifest_info_mismatch"
     patch_version = str(data.get("gtt_patch_version") or "").strip()
     if not patch_version:
         return "gtt_info_missing"
@@ -639,6 +800,10 @@ def _gtt_info_error(status: str, expected_capability: str) -> str:
         )
     if status == "gtt_info_invalid":
         return "Built GCSIM artifact returned invalid GTT marker JSON."
+    if status == "source_manifest_info_missing":
+        return "Built GCSIM artifact did not report the required source-manifest capability."
+    if status == "source_manifest_info_mismatch":
+        return "Built GCSIM artifact source-manifest identity does not match its generated body."
     return status
 
 

@@ -2,18 +2,16 @@
 
 Planning date: 2026-06-04
 
-Status reviewed: 2026-07-28
+Status reviewed: 2026-08-24
 
 Scope: implementation-direction handoff for GTT-modified GCSIM engine integration. This is not a final Codex implementation task and not a rigid architecture freeze. It records the current product/engineering vector, open questions, and contracts that future Codex tasks must respect unless a later handoff explicitly supersedes them.
 
 Related references:
 
 - `docs/handoff/GCSIM.md` - original GCSIM research notes and upstream source pointers.
-- `docs/handoff/GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md` - optimizer-specific
-  current architecture, invariants, performance controls, and extension seams.
-- `docs/handoff/GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md` - ordered,
-  independently specifiable milestones to the theoretical set actions and
-  real-account artifact optimizer.
+- `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` - sole current
+  optimizer architecture, engine provenance/guard contract, three product
+  scopes, exact fallback and cutover requirements.
 - `docs/handoff/STAT_NORMALIZATION.md` - project stat normalization and GCSIM stat-key mapping notes.
 - `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` - Run Workspace boundary, factual DPS vs sim DPS split, and snapshot/session state rules.
 - `docs/handoff/ABYSS_ENEMY_DATA.md` - Abyss source-data pipeline and enemy rows.
@@ -83,10 +81,8 @@ hooks and prefer `ui/gcsim_browser/`, `ui/right_panel/live_run/gcsim/`, and
 
 ## Artifact Optimizer Engine/Browser Boundary
 
-Detailed mechanics and delivery order live in:
-
-- `GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md`;
-- `GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md`.
+Detailed mechanics and delivery order live only in
+`GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md`.
 
 Do not grow a second optimizer roadmap here.
 
@@ -94,17 +90,17 @@ Do not grow a second optimizer roadmap here.
 
 Accepted user modes are:
 
-1. account search under an editable concrete set pool for each wearer;
-2. account search across every feasible modeled concrete set represented in the
-   shared artifact database, with rotation-conditioned pruning;
-3. inventory-independent theoretical equal-investment set comparison.
+1. Selected Sets: account search under editable concrete set packages;
+2. All Sets: account search across every feasible modeled concrete set in the
+   frozen shared artifact database;
+3. Theory: inventory-independent equal-investment set comparison, fixed `4p`
+   before `2p+2p`.
 
-One selected set is the simple selected-pool case. The ready source config's
-active sets are M13 UI defaults. For either account scope, `include_2p2p`
-adds complete distinct-set pairs. Theoretical `4p`/`2p+2p` shape is selected by
-its explicit operation rather than that account flag. User-facing
-`Quick/Balanced/Deep` speed modes are deferred until the quality-first algorithm
-works and has measurements.
+The ready source config may prefill Selected Sets UI controls but never supplies
+an optimizer baseline or accepted candidate. For either account scope,
+`include_2p2p` adds complete distinct-set pairs. Theoretical `4p`/`2p+2p` shape
+is an explicit operation. FAST is the sole working search evaluator; STANDARD
+remains a development control and is not a user-facing speed mode.
 
 Underlying theoretical `4p`, theoretical `2p+2p`, and account operations may
 retain separate typed/cache identities.
@@ -122,7 +118,28 @@ The optimizer reuses:
 For every candidate, all four source artifact stat/set blocks are replaced.
 Every character, weapon, talent, option, rotation, target, and engine semantic
 stays frozen. Source set lines may prefill selected-set controls, but source
-artifact stats are not a baseline or account-search input.
+artifact rows never become privileged proposals or hidden account-domain
+filters.
+
+Trace evidence is necessarily observed with one concrete incumbent artifact
+vector. Current FAST replacement scoring is anchored to that observed state and
+applies `candidate - incumbent` artifact deltas. The absolute-artifact-variable
+rebase exists, but a real same-context audit proved that one trace seed is not
+necessarily an expected schedule: hit elements, reaction spawns and total hit
+count changed across two seeds. Before continuous allocation/search, accepted
+evidence must either prove topology stability or aggregate a bounded stochastic
+distribution. The incumbent-delta form remains a regression oracle only; it is
+not the new search input contract. Artifact set state is also artifact-owned
+even when Selected freezes one package lane.
+
+This raw-stat rebase is implemented in
+`trace_equation/artifact_variable_objective.py` and passes its focused parity
+gate. It is not product-wired and does not yet vary Selected set-package state.
+The current isolated stage is generic supporting-mechanism dependency discovery
+and ordered state replay. Composition may then be developed against a clearly
+marked provisional single-seed scorer. Compact stochastic-topology aggregation
+and the unchanged same-context acceptance rerun are deferred until before the
+full Selected quality audit; they still block finalist/product/UI acceptance.
 
 The optimizer does not query current-equipment, owner, preset, History, lock, or
 location state. Preset services are relevant only to a later explicit save UI.
@@ -141,15 +158,18 @@ cross-character ownership.
 
 GTT must own:
 
-- joint main-stat/EM-safe discovery;
-- rotation-conditioned response branches;
-- lazy real five-piece generation;
+- provenance trace capture and a versioned executable numeric IR;
+- guard-aware rotation-conditioned replay and targeted exact fallback;
+- main-stat, absolute-stat/cap, set and reaction-safe candidate discovery;
+- lazy real five-piece generation and physical opportunity cost;
 - global all-different assignment;
-- iterative whole-team GCSIM feedback;
+- recipient/channel-aware team-set allocation;
 - common-fidelity finalist validation.
 
-Use the two-stage `-substatOptim -out optimized.txt` plus ordinary simulation.
-`substatOptimFull` is a disposable compatibility smoke only.
+Ordinary GCSIM simulation verifies retained physical finalists. Upstream
+`-substatOptim -out optimized.txt` may be reused only by an explicit Theory
+operation after its equal-investment contract exists. `substatOptimFull` is a
+disposable compatibility smoke only.
 
 Optimizer comparisons use the same explicit target context chosen for the run:
 the selected-chamber GTT wave scenario or the explicit DPS-Dummy target. There is
@@ -157,54 +177,45 @@ no hidden static-target fallback, because that would rank builds against a
 different fight. A new Go patch is justified only by a concrete measured
 capability/performance blocker.
 
-### Current implementation status
+### Optimizer engine status
 
-Native selected-account, all-account, theoretical `4p`, and engine-derived
-theoretical `2p+2p` product services exist under `run_workspace/gcsim/`. The
-legacy `ATK/ATK/CR` coordinate advisor remains compatibility-only. Current
-theoretical search uses impact-shortlisted balanced full-main anchors and fair
-package-round-robin mixed-layout witnesses; validated result schema v3 exposes
-the exact mains and fixed/liquid roll allocation. Current all-account search
-uses soft neutral response, a source-package recall/control anchor, and bounded
-per-signature physical regeneration. Release-quality calibration remains M14.
+The former M/S/New/Selected V2 search services and their optimizer UI wiring are
+not active architecture. Lower-level engine lifecycle, artifact database,
+materialization, legality, transport, cancellation and cache primitives may be
+reused only through the current trace-equation contract.
 
-Milestones 0R through 13 are complete: schema-v4 product requests, immutable
-read-only DB input, strict physical materialization, reduced oracles, paired
-stat/set response, lazy candidate/no-reuse search, multifidelity races,
-selected/all-account and theoretical 4p/2p+2p services, and the dedicated
-Browser optimizer panel with explicit save wiring. Progress schema v3 reports
-the active fidelity and provisional/verified/final leader scope. Milestone 14
-is the active real-team quality/performance/release gate; its current evidence
-matrix lives only in the optimizer pipeline handoff.
+The current bound development engine exposes the trace/provenance/source/state
+capabilities accumulated through the patch stack that currently ends at `0015`.
+It supplies the observed hits, snapshots, reaction formulas, attack tags, raw
+damage types and bounded source programs consumed by the Python formula
+compiler. Candidate arithmetic then runs locally with zero engine calls.
 
-Minimum-stat constraints are account-only schema-v4
-`static_build_contribution` legality floors: exact five-artifact main/sub stats
-plus only engine-proved unconditional static 2p set stats active for the target
-package. Emblem 2p contributes +20% ER (`er=0.20`); same-`ModKey` effects follow
-set-row render-order overwrite, while conditional/parameterized effects do not count.
-Feedback enrichment is rechecked fail closed before scheduler/GCSIM. ER is never
-automatically balanced; a future account UI ER shortcut subtracts the complete
-frozen non-artifact baseline, while the backend applies the package-specific
-proved static set contribution itself. Infinite/boosted energy is a separate
-simulation option. Theoretical operations instead pin the patched engine to
-`optimize_er=0;fine_tune=0` and reject ER reference weights or ER response
-profiles, including manual ones; fixed KQM-standard rolls remain, and
-theoretical floors require a separate future contract.
+The accepted optimizer evaluator roles are:
 
-The runtime source of truth is `data/gcsim/engines/active_engine.json`; handoffs
-must not pin a volatile generated engine directory as the required engine.
-The activation verified on 2026-07-29 used upstream `v2.42.2`, `patch_count=7`,
-including explicit ER policy, paired stat-response v2, and paired set-response
-v1.
-Its M12 source domain is 39 modeled five-star 2p descriptors and 741 concrete
-pairs across 526 conservative proof groups: 25 descriptors have the narrow
-static proof and 14 are opaque `UNIQUE_SOURCE`. Opaque and same-`ModKey` pairs
-are single-alias; modifier-key collision relation is part of the pair proof.
-Terminal provenance keeps original-finalist and rerace request hashes distinct,
-elapsed time includes rerace, and public `top_n` remains a display limit rather
-than the rerace evidence domain. Live progress covers every optimizer stage.
-Schema v3 carries the active iteration count, clears the previous stage leader,
-and distinguishes provisional, verified, and final evidence.
+- FAST - production search evaluator; response-signature channels rank directly
+  into a bounded GCSIM finalist batch;
+- STANDARD - bounded development/regression control only;
+- detailed per-candidate traversal - narrow parity fixture only.
+
+Do not add a hidden STANDARD pass or fall back to an older optimizer when trace
+binding fails. A binding/schema/source mismatch disables the affected optimizer
+context fail-closed and reports readiness.
+
+The active application optimizer engine/UI has not been cut over. Current
+measurements use the bound saved development trace and prove offline arithmetic,
+not a working product button or cold product runtime. The sole current
+implementation sequence is in
+`GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md`.
+
+The runtime source of truth remains `data/gcsim/engines/active_engine.json`;
+handoffs must not pin a generated engine directory. Machine patch/tree/binary
+identities and historical schema receipts belong in the cleanup manifest, not
+in this human task queue.
+
+Before product cutover, audit every patch that exists at that time, discard
+obsolete deltas, consolidate all required modifications into one versioned
+patch, and prove automatic update plus atomic rollback. The current `0001`-
+`0015` range is descriptive only and must not be hard-coded into that task.
 
 ### Stable correctness rules
 
@@ -220,12 +231,13 @@ and distinguishes provisional, verified, and final evidence.
 - Original source artifact stats never combine with candidate stats.
 - Low fidelity is screening only; displayed rows share a common minimum final
   fidelity and close leaders rerace.
-- Every feedback-enriched account proposal is rechecked fail closed against its
-  package-specific static-build floor before scheduler/GCSIM submission.
+- Every account proposal is rechecked fail closed against its package-specific
+  hard floors before scorer or GCSIM submission.
 - Simulation-cache identity is compiled config/execution; assignment provenance
   separately binds the request, DB input, and twenty IDs.
-- Normal search keeps aggregate counters and bounded leader/pruning evidence;
-  full traces are oracle/debug-only.
+- Normal search keeps bounded audit/provenance evidence. Trace persistence is
+  retention-bounded but the trace itself is a production scoring input, not an
+  accepted candidate or an optional debug oracle.
 - Search never equips or saves.
 
 ### Future UI/save boundary
@@ -234,14 +246,10 @@ The optimizer is a dedicated GCSIM Browser view. Backend milestones do not touch
 UI/AppShell. A later UI milestone may use narrow existing hooks, but it does not
 authorize a global AppShell refactor.
 
-Search results are ephemeral and not History. Confirmed explicit save flow:
+Search results are ephemeral and not History. Planned explicit save flow:
 
 - generic per-wearer account `stat >= X` controls;
-- an ER shortcut that subtracts the complete frozen non-artifact baseline to
-  produce `static_build_contribution`; the backend applies the active package's
-  proved static 2p contribution itself;
-- infinite/boosted energy remains visibly independent and never creates or
-  disables a floor;
+- energy/ER optimization remains deferred and must not be inferred by FAST;
 
 - save an individual wearer to an Artifact Browser preset;
 - default name `best_found_<other three team members>`, user-editable;
@@ -254,7 +262,8 @@ There is no generic manual multi-preset constructor and saving never auto-equips
 CPU limits, cancellation, progress, cache retention, reduced exhaustive oracles,
 adversarial account-floor (including ER), theoretical no-auto-ER,
 EM/HP/DEF/crit/support fixtures, and measured recall/regret remain release
-requirements. Define speed modes only after those measurements.
+requirements. FAST remains the sole product search evaluator; STANDARD is not a
+user-facing speed mode.
 
 ## 1. Product Direction
 
@@ -272,11 +281,12 @@ Factual DPS remains app-owned HP/time math. GCSIM results are `sim DPS` and must
 
 ## 2. Engine Update / Patch Model
 
-The intended update model is official GCSIM source plus GTT patches embedded in the application:
+The intended update model is official GCSIM source plus the versioned GTT engine
+delta embedded in the application:
 
 ```text
 official genshinsim/gcsim source release or commit
-+ local GTT patch stack shipped with the app
++ versioned consolidated GTT patch shipped with the app
 = local GTT-GCSIM engine folder
 ```
 
@@ -284,11 +294,13 @@ The app-level `Update GCSIM` action should be transactional:
 
 1. Download/select official GCSIM source for a chosen release/commit/PR source.
 2. Create a new local engine folder.
-3. Apply the GTT patch stack shipped with the app.
-4. Build/prepare the engine runtime.
-5. Run compatibility smoke checks.
-6. Activate the new engine only if patch/build/smoke all pass.
-7. If anything fails, keep the previous active engine and report incompatibility.
+3. Apply the versioned consolidated GTT patch shipped with the app.
+4. Generate and validate any source/dependency manifest required by the patch,
+   bound to the exact upstream source and complete patch identity.
+5. Build/prepare the engine runtime.
+6. Run capability, manifest and compatibility smoke checks.
+7. Activate the new engine only if patch/build/manifest/smoke all pass.
+8. If anything fails, keep the previous active engine and report incompatibility.
 
 Guarantee target:
 
@@ -315,9 +327,15 @@ The app may later help install dependencies automatically, but it must not silen
 
 The final UX should communicate that GCSIM source updates are an advanced/local rebuild path. Normal calculations should continue through the shipped engine even when local update dependencies are missing.
 
-## 3. Patch Stack Direction
+## 3. Engine Patch Direction
 
-GTT features should be implemented as a minimal patch stack over GCSIM, not as broad rewrites scattered across the engine.
+GTT features should remain a minimal, isolated delta over GCSIM, not broad
+rewrites scattered across the engine. The current ordered development patches
+are valid reconstruction/forensic inputs, but before product cutover the task
+must audit every patch that exists at that time, remove superseded changes and
+produce one versioned consolidated patch as the only active update input. Do
+not consolidate only a historical numbered subset. The chain is currently
+`0001`–`0013`, but later patches must be included if they exist.
 
 Preferred shape:
 
@@ -325,6 +343,40 @@ Preferred shape:
 - Touch upstream GCSIM core/parser/setup/combat code only at narrow integration points.
 - Keep patches small enough that upstream updates adding characters, weapons, artifacts, or ordinary mechanics usually merge cleanly.
 - Treat conflict with target/combat/event/setup internals as an expected compatibility failure requiring a newer app/patch-stack version.
+
+### Formula source/dependency manifest
+
+Optimizer source analysis is part of engine preparation, not a repeated button
+or candidate-ranking operation. The prepared engine now carries a deterministic
+manifest that maps stable, module-relative source IDs to modifier functions,
+event callbacks, scheduled tasks and attack/heal/drain construction roots needed
+by trace analysis. The semantic body binds upstream source, complete applied
+patch, patched tree, trace schema, source-compiler and toolchain inputs; the
+outer engine manifest separately binds that body to the executable.
+
+Runtime instrumentation stays at narrow central seams and emits those IDs with
+provider/value/frame lineage. A cached Go AST/type/SSA analyzer follows only the
+roots actually executed by the frozen trace. Supported arithmetic and state/event
+edges become the optimizer's small numeric IR; unsupported code terminates at an
+explicit `OPAQUE_FROZEN` boundary. A manifest mismatch or unknown required
+semantic keeps the previous engine/result path available for ordinary GCSIM but
+marks optimizer dependency replay unavailable. It must not activate a partially
+compatible optimizer engine or invoke an old search backend.
+
+The earlier `1774113`-byte body with SHA-256
+`3101329b13280508cfe76feda58f93ace860cbab8d5d51949b6ec2011496d486`
+and tree SHA-256
+`a38eba55c8dcf1a42a36bf6684aa0cadffd368d333f2aaf45dda686336faabb4`
+used `patches=[]`, `upstream_ref=accepted-0011` and a synthetic pristine hash.
+It is cross-language smoke evidence only, never the production update-chain
+passport above.
+
+Future automatic-update hardening, not a blocker for the current ordered-state
+dependency slice, must add: body-to-overlay semantic coverage or a mandatory
+tiny latest-schema trace smoke; construction of `SourceManifestBinding` only from a verified
+`GcsimOptimizerEngineContext` with artifact/tree/binding comparison before
+product use; and a post-build staged-source re-hash to close concurrent staging
+mutation. These are product-cutover/update-activation gates.
 
 Planned/possible patches include:
 
@@ -546,34 +598,28 @@ Current implementation sequence:
 
 Independent backend-only optimizer track while PvP/AppShell work continues:
 
-1. Current native theoretical products and the compatibility-only legacy
-   advisor are summarized in `GCSIM_OPTIMIZER_TECHNICAL_HANDOFF.md`; do not
-   maintain another completed module log here.
-2. COMPLETE: pipeline Milestone 0R schema-v4 contracts cover selected set pools,
-   all-database sets, account `include_2p2p`, explicit 4-star authorization,
-   account `static_build_contribution` floors over exact-five artifact main/sub
-   plus proved unconditional static 2p stats, full identities, required 4x5
-   witnesses, typed
-   results, and deterministic parsing.
-3. COMPLETE: Milestone 1 config shell and read-only all-row DB loader.
-4. COMPLETE: Milestone 2 immutable input and strict materializer.
-5. COMPLETE: Milestone 3 reduced exhaustive oracles.
-6. COMPLETE: Milestone 4 main/response hardening and the coupled-EM safeguard.
-7. COMPLETE: Milestone 5 lazy real `4p` wearer candidates.
-8. COMPLETE: Milestone 6 global all-different proposal solver.
-9. COMPLETE: Milestone 7 iterative GCSIM feedback.
-10. COMPLETE: Milestone 8 selected-set-pool account service.
-11. COMPLETE: Milestone 9 all-database-set account mode.
-12. COMPLETE: Milestone 10 account `2p+2p`.
-13. COMPLETE: Milestone 11 theoretical `4p`.
-14. COMPLETE: Milestone 12 engine-derived theoretical `2p+2p`.
-15. COMPLETE: Milestone 13 dedicated Browser optimizer UI, cancellable worker,
-    typed adapter, and explicit wearer/team save transaction.
-16. IN PROGRESS: Milestone 14 quality/performance release gate; follow the
-    remaining evidence matrix in
-    `GCSIM_ACCOUNT_ARTIFACT_OPTIMIZER_PIPELINE.md`.
-17. M13 added only narrow Browser/AppShell wiring. A global AppShell refactor
-    remains out of scope.
+- Reuse the existing frozen-input, DB, materializer, legality, process transport
+  and cancellation/progress/audit primitives.
+- The ordinary transformative reaction v3 slice, stable source-identity v4
+  slice, and generic central health-operation v5 H1 slice are complete. Broad attempt/aura/
+  amplification/Catalyze/Lunar topology and full `RGC-1` remain a separate
+  deferred widening gate.
+- Current bounded block: generalize the accepted ordered Heal/Drain ledger into
+  a typed backward dependency walk and candidate-dependent forward replay for
+  supporting mechanics. Follow providers, HP changes, queued state, caps and
+  guards into emitted per-hit modifiers without Furina/Fanfare/Bennett switches.
+  Unsupported state/event behavior remains `OPAQUE_FROZEN`, not a guessed fixed
+  or unused value. After this gate, a composition prototype may use the current
+  scorer only as `PROVISIONAL_SINGLE_SEED`. The generic stochastic-topology gate
+  and frozen n=1000 rerun remain mandatory before full quality, finalists, UI or
+  active-engine switching.
+- Implement one trace-era composition root; do not restore the removed
+  optimizer UI/backend, keep duplicate production backends, or resume former
+  milestone numbering.
+- Keep UI/AppShell changes narrow. A global AppShell refactor remains out of
+  scope for optimizer work.
+- Follow `GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` for all optimizer sequencing,
+  reaction gates, performance evidence and cutover decisions.
 
 ## 13. Historical Backend Implementation Record
 

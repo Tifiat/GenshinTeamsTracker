@@ -727,7 +727,7 @@ class GcsimBrowserWorkspace(QWidget):
         if self._optimizer_elapsed_clock.isValid() and not self._optimizer_elapsed_terminal_stage:
             elapsed_ms = max(elapsed_ms, int(self._optimizer_elapsed_clock.elapsed()))
         elapsed = _format_optimizer_elapsed(elapsed_ms)
-        estimate = _fallback("gcsim.optimizer.estimate", "3–8 min")
+        estimate = _fallback("gcsim.optimizer.estimate", "2–6 min")
         if not self._optimizer_elapsed_clock.isValid():
             template = _fallback(
                 "gcsim.optimizer.estimate_ready",

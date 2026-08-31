@@ -234,9 +234,14 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   artifact cards, and explicit per-character preset Save through the existing
   Artifact Browser service. An additive result-v1 candidate list pages every
   measured finalist without debug-file reads or extra simulation. Repeated
-  unchanged user runs took 3:33 and 3:40, so no performance gain is claimed.
-  The clean repository checkpoint is complete. GOB-8P is the next bounded
-  performance audit; GOB-9 final cleanup follows the frozen finalist protocol.
+  unchanged user runs took 3:33 and 3:40. GOB-8P's isolated exact-seven n=500
+  replay preserved the saved n=1000 winner and top-five set while cutting the
+  final stage from 92.54 to 46.36 seconds. Production keeps the recall-critical
+  n=128 screen, starts finalists at n=500, and extends only a two-to-four-row
+  group still within three combined standard errors at n=1000. The single full
+  Go acceptance resolved at n=500, kept the same known winner and finished in
+  159.06 s. GOB-9 final cleanup follows the frozen protocol; no repeat or
+  parameter sweep is authorized.
 - GOB-1 owns `native/gcsim_optimizer`, strict request/progress/compact-IR/result
   v1 schemas, canonical decimal-string transport, deterministic Python/Go
   identities and shared fixtures under `tests/fixtures/gcsim_optimizer_go_v1/`.

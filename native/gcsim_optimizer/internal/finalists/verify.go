@@ -35,13 +35,14 @@ type MeasuredCandidate struct {
 }
 
 type VerificationResult struct {
-	Candidates     []MeasuredCandidate `json:"candidates"`
-	Winner         MeasuredCandidate   `json:"winner"`
-	Iterations     int                 `json:"iterations"`
-	Workers        int                 `json:"workers,omitempty"`
-	Parallelism    int                 `json:"parallelism,omitempty"`
-	Waves          []VerificationWave  `json:"waves,omitempty"`
-	TotalElapsedMS float64             `json:"total_elapsed_ms"`
+	Candidates     []MeasuredCandidate   `json:"candidates"`
+	Winner         MeasuredCandidate     `json:"winner"`
+	Iterations     int                   `json:"iterations"`
+	Workers        int                   `json:"workers,omitempty"`
+	Parallelism    int                   `json:"parallelism,omitempty"`
+	Waves          []VerificationWave    `json:"waves,omitempty"`
+	Adaptive       *AdaptiveVerification `json:"adaptive,omitempty"`
+	TotalElapsedMS float64               `json:"total_elapsed_ms"`
 }
 
 type VerificationWave struct {

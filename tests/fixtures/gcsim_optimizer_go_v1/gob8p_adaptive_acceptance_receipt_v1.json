@@ -1,0 +1,51 @@
+{
+  "adaptive_final": {
+    "base_iterations": 500,
+    "candidates": 7,
+    "extension_executions": 0,
+    "final_seconds": 43.1840018,
+    "status": "resolved_at_base",
+    "unresolved_at_base": 1
+  },
+  "checks": {
+    "adaptive_extension_not_needed": true,
+    "common_n128_retained": true,
+    "final_candidate_count_bounded": true,
+    "product_runtime_below_190_seconds": true,
+    "same_known_winner_retained": true,
+    "winner_has_exact_twenty_unique_ids": true,
+    "winner_improves_same_context_current": true
+  },
+  "current": {
+    "assignment_sha256": "be8a998588d170b81ffb2f0b3e9a901eabc257891f59cc9756347befa934ba0b",
+    "measured_dps": 143791.72553421595,
+    "standard_error": 93.8641833873707
+  },
+  "engine_artifact_sha256": "4f7c80286e6023b35b7b2a5ffab3f2fea0fb0156be73341f1b9c7d2646295bf2",
+  "first_loss": null,
+  "improvement": {
+    "dps": 5115.937014442432,
+    "percent": 3.557879979140434
+  },
+  "interpretation": "The full Go Selected path retained the recall-critical common n128 screen, resolved the seven-row final panel at n500 without extension, returned the same known winner, and completed the Go boundary in 159.06 seconds. This accepts the adaptive finalist protocol for product use; close rows remain exposed in the candidate pager instead of receiving a fabricated precise order.",
+  "product_run": {
+    "compile_seconds": 0.480481,
+    "formula_finalists": 24,
+    "screen_candidates": 25,
+    "screen_iterations": 128,
+    "screen_seconds": 48.6267112,
+    "search_seconds": 66.7665621,
+    "total_seconds": 159.0577561
+  },
+  "request_sha256": "9f1e4e06ceb280d2d2533479278a8fc64c0b0d4d5899db773a6e3e6c221bb143",
+  "schema_kind": "gtt_optimizer_gob8p_adaptive_acceptance_receipt_v1",
+  "schema_version": 1,
+  "status": "PASS",
+  "ui_calls": 0,
+  "winner": {
+    "assignment_sha256": "b5365055d1034d6e5c29a3d5953048f289a352b5ac76bb61cfef7d583b5a89d4",
+    "iterations": 500,
+    "measured_dps": 148907.66254865838,
+    "standard_error": 92.02829599020214
+  }
+}

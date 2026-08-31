@@ -1,10 +1,9 @@
 # GCSIM Optimizer Go Backend — authoritative redesign
 
-Status: GOB-3 through GOB-8 functional PASS. The real Selected button completed
-end to end on 2026-08-31. Repeated user runs of 3:33 and 3:40 confirm that no
-performance optimization has happened yet and the product target remains
-missed. The clean repository checkpoint is complete; bounded GOB-8P work is
-next, then final GOB-9 cleanup.
+Status: GOB-3 through GOB-8P PASS. Common n=128 remains recall authority; final
+verification starts at n=500 and extends only two to four statistically
+unresolved leaders at n=1000. The full Go product acceptance resolved at n=500
+with the same winner in 159.06 seconds. Final GOB-9 cleanup is next.
 
 This document owns the clean rewrite of the active Selected optimizer backend
 in Go. It is not a line-by-line port of the Python implementation. Python FGBS
@@ -540,14 +539,19 @@ additive result-v1 `candidates` field. Each row contains exact twenty IDs and
 its measured result, so UI paging never reads the debug receipt or starts more
 simulation. Payloads created before this additive field render as one page.
 
-The next stage is GOB-8P, a bounded performance audit before final GOB-9
-completion. Repeated unchanged user runs finished in 3:33 and 3:40; that spread
-is treated as ordinary host-load noise, not an optimization result. The latest
-real winner was formula rank 20 among the 25 n=128 inputs, so replacing n=128
-with formula top-7 is contradicted by saved evidence. The first experiment is
-limited to replaying the exact saved seven finalists at n=500 and comparing them
-with existing n=1000 evidence; no broad iteration sweep or full optimizer rerun
-is part of that experiment.
+GOB-8P's bounded replay is complete. Repeated unchanged user runs finished in
+3:33 and 3:40; that spread remains ordinary host-load noise. The latest real
+winner was formula rank 20 among the 25 n=128 inputs, so replacing n=128 with
+formula top-7 is contradicted by saved evidence. Replaying only the exact saved
+seven at n=500 preserved the n=1000 winner and top-five set while cutting this
+stage from 92.54 to 46.36 seconds. Production therefore retains n=128 and uses
+an adaptive final protocol: n=500 for all, n=1000 only for a two-to-four-row
+group still within three combined standard errors of the leader, otherwise an
+explicit overlap result. The subsequent full Go acceptance retained all 24
+formula finalists and the common 25-row n=128 screen, resolved the seven-row
+final at n=500 without extension, and completed in 159.06 seconds with the same
+known winner. No second replay or parameter sweep is authorized. The next stage
+is GOB-9 cleanup; a manual UI smoke click is not a new engine acceptance gate.
 
 ### GOB-9 — mandatory final workspace cleanup
 

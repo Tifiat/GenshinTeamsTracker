@@ -1,0 +1,37 @@
+{
+  "checks": {
+    "exact_same_seven_assignments": true,
+    "formula_search_repeated": false,
+    "n128_screen_repeated": false,
+    "same_measured_winner_as_saved_n1000": true,
+    "saved_n1000_top_five_preserved": true,
+    "n500_leader_resolved_above_three_sigma": true
+  },
+  "engine_artifact_sha256": "4f7c80286e6023b35b7b2a5ffab3f2fea0fb0156be73341f1b9c7d2646295bf2",
+  "first_loss": null,
+  "interpretation": "An isolated replay of only the seven already selected finalists preserved the saved n1000 winner and all five useful top rows. The exact order inside the close runner-up group moved, so n500 is accepted as a bounded winner gate, not as proof of a precise total ordering. Production starts at n500 and extends only a small statistically unresolved leader group.",
+  "n1000_reference": {
+    "iterations": 1000,
+    "total_seconds": 92.5415306,
+    "winner_assignment_sha256": "b5365055d1034d6e5c29a3d5953048f289a352b5ac76bb61cfef7d583b5a89d4",
+    "winner_dps": 148831.5517292458,
+    "winner_standard_error": 67.37641175923432
+  },
+  "n500_replay": {
+    "iterations": 500,
+    "leader_gap_combined_standard_error": 130.23647774367745,
+    "leader_gap_dps": 836.8551145558886,
+    "leader_gap_sigma": 6.425658379697044,
+    "top_five_overlap": 5,
+    "total_seconds": 46.3645612,
+    "winner_assignment_sha256": "b5365055d1034d6e5c29a3d5953048f289a352b5ac76bb61cfef7d583b5a89d4",
+    "winner_dps": 148845.86554358766,
+    "winner_standard_error": 89.91545352212131
+  },
+  "projected_unchanged_product_seconds": 161.5210762,
+  "saved_final_verification_seconds": 46.1769694,
+  "schema_kind": "gtt_optimizer_gob8p_exact_seven_n500_receipt_v1",
+  "schema_version": 1,
+  "status": "PASS",
+  "ui_calls": 0
+}

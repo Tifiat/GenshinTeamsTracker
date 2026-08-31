@@ -515,12 +515,18 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   focused optimizer/trace checks, all Go tests and `go vet` pass. New source and
   small parity fixtures are versioned, while the optimizer executable and
   generated runs remain ignored. This is not the final GOB-9 patch/update audit.
-- [ ] **GOB-8P — bounded performance rationalization (next).** Account for the
-  repeated 3:33 and 3:40 runs by stage. Keep n=128 until an alternative preserves recall:
-  the latest winner entered it at formula rank 20, not top-7. Run at most one
-  isolated exact-seven n=500 replay against saved n=1000 evidence, then decide
-  whether an adaptive final gate can extend only unresolved leaders. No broad
-  n-sweep and no full rerun before that decision.
+- [x] **GOB-8P — bounded performance rationalization.** Keep n=128: the latest
+  winner entered it at formula rank 20, not top-7.
+  - [x] One isolated exact-seven n=500 replay preserved the saved n=1000 winner
+    and top-five set, with a 6.43-sigma leader gap, while reducing final
+    verification from 92.54 to 46.36 seconds.
+  - [x] Implement the bounded adaptive final gate: all finalists receive n=500;
+    only a two-to-four-row unresolved leader group receives n=1000; a wider
+    overlap returns honestly without an unbounded extension.
+  - [x] One full Go product acceptance resolved the seven-row final at n=500
+    without extension, returned the same known winner and completed in 159.06 s.
+    The unchanged already-accepted UI binding may receive a user smoke click,
+    but no second development run or iteration sweep is authorized.
 - [ ] **GOB-9 — mandatory final optimizer-area cleanup (after GOB-8P).** Remove every remaining obsolete approach, temporary adapter, redundant engine instrumentation, stale test/tool/handoff and generated residue that has no accepted product/update/debug owner.
   - [x] First reachability slice: removed 27 unreachable legacy optimizer
     modules, 24 orphaned tests, one orphaned tool, two bytecode-only Selected V2
@@ -528,6 +534,10 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
     plus 19 focused tests pass without another GCSIM run.
   - [ ] Isolate the live Go request preparation from broad historical Python
     contract modules, then remove the newly unreachable remainder.
+  - [ ] Resolve the stale legacy `optimizer_main_response` facade test during
+    that reachability slice. The active Selected path does not import it, while
+    its old test still expects exports already removed from the public facade;
+    do not restore those exports merely to satisfy obsolete architecture.
   - [ ] Consolidate all still-required engine patches into one adapter patch and
     prove staged update plus rollback before deleting the numbered stack.
 

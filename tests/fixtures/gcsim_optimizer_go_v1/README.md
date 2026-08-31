@@ -36,3 +36,15 @@ Go FGBS retains it, finds a no-worse same-panel leader and stays below the
 gameplay receipt. It freezes the common n=128 screen, bounded common n=1000
 finalists, exact twenty-ID winner, Current comparison, residual and cold
 170.67-second product runtime without retaining private full engine outputs.
+
+`gob8p_exact_seven_n500_receipt_v1.json` records the one permitted isolated
+performance replay. It reused exactly the seven saved finalists, skipped
+formula search and n=128, preserved the saved n=1000 winner and top-five set,
+and cut final verification from 92.54 to 46.36 seconds. It supports a bounded
+adaptive final gate; it does not claim that n=500 precisely orders close
+runner-up rows.
+
+`gob8p_adaptive_acceptance_receipt_v1.json` records the subsequent single full
+Go acceptance. Common n=128 retained the known winner, the seven-row adaptive
+panel resolved at n=500 without extension, and the complete Go boundary
+finished in 159.06 seconds with the same exact winner identity.

@@ -623,7 +623,7 @@
   "artifact.build.target_universal_short": "Todos",
   "artifact.build.no_target_hint": "Selecione um alvo para criar uma predefini\u00e7\u00e3o.\nSelecionar v\u00e1rios alvos mostra apenas predefini\u00e7\u00f5es compartilhadas por todos os alvos selecionados.\nPara criar uma predefini\u00e7\u00e3o universal, selecione Universal.",
   "gcsim.browser.simulation": "Simula\u00e7\u00e3o",
-  "gcsim.optimizer.estimate": "3\u20138 min",
+  "gcsim.optimizer.estimate": "2\u20136 min",
   "gcsim.optimizer.estimate_ready": "Tempo estimado: {estimate} (depende da CPU)",
   "gcsim.optimizer.elapsed_running": "Executando h\u00e1 {elapsed} \u00b7 tempo estimado: {estimate}",
   "gcsim.optimizer.elapsed_completed": "Conclu\u00eddo em {elapsed} \u00b7 intervalo t\u00edpico: {estimate}",

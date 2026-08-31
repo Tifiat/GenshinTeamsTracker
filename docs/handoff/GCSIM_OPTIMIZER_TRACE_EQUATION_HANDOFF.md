@@ -1,10 +1,10 @@
 # GCSIM Artifact Optimizer — current authoritative handoff
 
-Status: GOB-3 through GOB-8 functional PASS. The real AppShell Selected Sets
-button completed end to end and returned exact artifacts plus measured n=1000
-DPS. Repeated 3:33 and 3:40 user runs confirm that the 190-second performance
-target remains missed. The repository checkpoint is clean; bounded GOB-8P
-performance work is next, then GOB-9 cleanup. Updated 2026-08-31.
+Status: GOB-3 through GOB-8P PASS. The bounded adaptive final gate preserves
+n=128 recall, starts all retained finalists at n=500 and reruns only a small
+statistically unresolved leader group at n=1000. The single full Go product
+acceptance completed in 159.06 seconds and resolved at n=500 with the same known
+winner. GOB-9 cleanup is next. Updated 2026-08-31.
 
 This is the sole current optimizer handoff. Read it together with:
 
@@ -380,7 +380,7 @@ checks, all Go tests/`go vet`, and the full 182-test AppShell module pass withou
 another GCSIM run. This is a repository checkpoint, not the final GOB-9 engine
 patch/update cleanup.
 
-### GOB-8P — bounded performance rationalization (next)
+### GOB-8P — bounded performance rationalization
 
 Do not begin with another search rewrite or parameter sweep. First account for
 the repeated 3:33 and 3:40 product runs by formula search, n=128 screening,
@@ -389,14 +389,35 @@ deleted: it receives 25 rows (Current plus 24 formula finalists), and in the
 latest real run the final winner was formula rank 20 before n=128 promoted it.
 Calling those seven rows "already selected" before n=128 is therefore wrong.
 
-The first permitted real experiment is one isolated replay of the exact seven
-saved finalist configs at n=500, compared with their already saved n=1000 order
-and uncertainty. It does not repeat compact capture or formula search. If n=500
-preserves the useful top set, design an adaptive final gate: start bounded,
-extend only unresolved leaders, and show overlapping candidates rather than
-pretending their precise order is known. Only then change production and run
-one full button acceptance. Finish GOB-9 after this protocol is frozen so the
-same area is not cleaned and recreated twice.
+The one permitted real experiment replayed the exact seven saved finalists at
+n=500 without compact capture, formula search or n=128. It preserved the same
+winner as saved n=1000 and all five useful top rows. The winner gap was 836.86
+DPS against 130.24 combined standard error (6.43 sigma). Close runner-up order
+did move, so n=500 is a winner-selection gate and not proof of exact total
+ordering. Final verification fell from 92.54 to 46.36 seconds; substituting
+that measured stage into the latest run projects the Go boundary from 207.70
+to 161.52 seconds, before UI/process overhead.
+
+Production now keeps the recall-critical common n=128 screen, then runs all at
+most seven finalists at n=500. If the leader is more than three combined
+standard errors above every contender, it finishes. If two to four candidates
+remain unresolved, only that group is rerun at n=1000 and replaces its n=500
+evidence. If more than four remain unresolved, the bounded path does not launch
+an expensive broad extension; it returns the n=500 panel with explicit overlap
+warnings and lets the UI expose the alternatives. The isolated receipt is
+`tests/fixtures/gcsim_optimizer_go_v1/gob8p_exact_seven_n500_receipt_v1.json`.
+The subsequent single full Go product acceptance kept 24 formula finalists,
+screened Current plus those 24 at common n=128, then resolved all seven final
+candidates at n=500 without extension. It returned the same known winner at
+148907.66 DPS (SE 92.03), improved the same-context Current by 3.56%, and took
+159.06 seconds inside the Go boundary: search 66.77 s, screen 48.63 s, final
+43.18 s. Its compact receipt is
+`tests/fixtures/gcsim_optimizer_go_v1/gob8p_adaptive_acceptance_receipt_v1.json`.
+The UI binding was not changed and already has its own accepted end-to-end path;
+a user smoke click is useful but is not another development simulation gate.
+The one-off replay command was removed after the compact receipt was frozen, so
+it does not remain as a second product path. Do not repeat either GOB-8P run or
+start a parameter sweep.
 
 ### GOB-9 — mandatory final area cleanup
 

@@ -183,11 +183,11 @@ func verifyFGBS(ctx context.Context, requestPath, compactPath, runRoot, mode str
 	}
 	verificationRoot := runRoot
 	if mode == "all" {
-		verificationRoot = filepath.Join(runRoot, "final-n1000")
+		verificationRoot = filepath.Join(runRoot, "final-adaptive")
 	}
 	var verification finalists.VerificationResult
 	if mode == "all" {
-		verification, err = finalists.VerifyDynamicWaves(overall, request, artifactIndex, candidates, verificationRoot, 1000, 4, runtime.NumCPU())
+		verification, err = finalists.VerifyAdaptive(overall, request, artifactIndex, candidates, verificationRoot, 500, 1000, 4, runtime.NumCPU(), 3, 4)
 	} else {
 		verification, err = finalists.Verify(overall, request, artifactIndex, candidates, verificationRoot, 1000, workersPerProcess, parallelism)
 	}
@@ -280,6 +280,9 @@ func buildProductResult(request contracts.OptimizerRequest, compact contracts.Co
 	warnings := []string{"formula_rank_not_measurement_authority"}
 	if len(searchResult.OpaqueReasons) > 0 {
 		warnings = append(warnings, "opaque_formula_boundaries_present")
+	}
+	if verification.Adaptive != nil && verification.Adaptive.Status == finalists.AdaptiveUnresolvedPanelWide {
+		warnings = append(warnings, "adaptive_finalist_panel_too_wide")
 	}
 	measuredOrder := append([]finalists.MeasuredCandidate(nil), verification.Candidates...)
 	sort.Slice(measuredOrder, func(i, j int) bool {

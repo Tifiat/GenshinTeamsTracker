@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "contract": "gcsim_optimizer_trace_equation_cleanup_manifest_v1",
-  "status": "gtt_gcsim_optimizer_go_v1_gob_3_through_8c_pass_gob_8p_next",
+  "status": "gtt_gcsim_optimizer_go_v1_gob_3_through_8p_pass_gob_9_cleanup_next",
   "generated_on": "2026-08-31",
   "authoritative_handoff": "docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md",
   "policy": {
@@ -42,6 +42,42 @@
     }
   ],
   "completed_checkpoints": {
+    "gob_8p_exact_seven_n500_replay": {
+      "status": "pass_production_adaptive_gate_implemented_and_full_go_acceptance_pass",
+      "receipt": "tests/fixtures/gcsim_optimizer_go_v1/gob8p_exact_seven_n500_receipt_v1.json",
+      "formula_search_repeated": false,
+      "n128_screen_repeated": false,
+      "same_seven_assignments": true,
+      "same_winner_as_saved_n1000": true,
+      "saved_n1000_top_five_overlap": 5,
+      "leader_gap_sigma": 6.425658379697044,
+      "n1000_final_seconds": 92.5415306,
+      "n500_final_seconds": 46.3645612,
+      "saved_final_seconds": 46.1769694,
+      "adaptive_rule": "all_n500_then_n1000_only_for_two_to_four_rows_within_three_combined_standard_errors",
+      "wide_unresolved_rule": "return_bounded_n500_panel_with_explicit_overlap_warning",
+      "temporary_replay_command_retained": false,
+      "real_engine_calls": 7
+    },
+    "gob_8p_full_adaptive_go_acceptance": {
+      "status": "pass",
+      "receipt": "tests/fixtures/gcsim_optimizer_go_v1/gob8p_adaptive_acceptance_receipt_v1.json",
+      "formula_finalists": 24,
+      "screen_candidates": 25,
+      "screen_iterations": 128,
+      "final_candidates": 7,
+      "adaptive_status": "resolved_at_base",
+      "final_iterations": 500,
+      "extension_executions": 0,
+      "same_known_winner": true,
+      "winner_dps": 148907.66254865838,
+      "winner_standard_error": 92.02829599020214,
+      "same_context_current_improvement_percent": 3.557879979140434,
+      "search_seconds": 66.7665621,
+      "screen_seconds": 48.6267112,
+      "final_seconds": 43.1840018,
+      "total_seconds": 159.0577561
+    },
     "gob_8c_pre_performance_repository_checkpoint": {
       "status": "pass_without_new_gcsim_run",
       "startup_visible_top_level_regression": "AppShell_only",
@@ -358,7 +394,7 @@
     "name": "gtt_gcsim_optimizer_go_v1_GOB_8P_bounded_performance_rationalization",
     "design_path": "docs/handoff/GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md",
     "strategy_id": "gtt_gcsim_optimizer_go_v1",
-    "status": "GOB_3_through_GOB_8C_pass_GOB_8P_exact_seven_n500_replay_next_GOB_9_after_protocol_freeze",
+    "status": "GOB_3_through_GOB_8P_pass_GOB_9_cleanup_next",
     "completed_first_code_pass": [
       "FGBS-0_clean_package_immutable_zero_engine_contracts_and_import_isolation_pass",
       "FGBS-1_generic_direct_reaction_support_response_ledger_pass",
@@ -672,7 +708,7 @@
       ]
     },
     "next_stage": "GOB-9_mandatory_final_optimizer_area_cleanup",
-    "current_first_loss": null,
+    "current_first_loss": "GOB_9_stale_legacy_optimizer_main_response_public_facade_test_requires_reachability_disposition",
     "later_stages": [
       "GOB-1_isolated_Go_module_and_cross_language_contracts",
       "GOB-2_compact_engine_adapter_feasibility",
@@ -682,6 +718,7 @@
       "GOB-6_mandatory_Python_optimizer_cleanup",
       "GOB-7_same_context_finalists_and_common_n1000",
       "GOB-8_Selected_UI_and_clean_new_user_acceptance",
+      "GOB-8P_bounded_adaptive_finalist_verification",
       "GOB-9_mandatory_final_optimizer_area_cleanup"
     ],
     "raw_domain_receipt": {

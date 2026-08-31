@@ -69,7 +69,7 @@ class GcsimOptimizerUiTests(unittest.TestCase):
         workspace = GcsimBrowserWorkspace()
         workspace.set_optimizer_busy(True)
         self.assertTrue(workspace._optimizer_elapsed_tick.isActive())
-        self.assertIn("3", workspace.optimizer_elapsed_label.text())
+        self.assertIn("2", workspace.optimizer_elapsed_label.text())
 
         workspace.update_optimizer_progress(
             {"stage": "completed", "completed_work": 1, "total_work": 1}

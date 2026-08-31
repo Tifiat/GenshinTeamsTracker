@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "schema_kind": "gtt_optimizer_gob3a_stochastic_contract_v1",
+  "mode": "equal_weight_fixed_panel_v1",
+  "seed_source": "sorted_unique_request_field_never_hardcoded",
+  "real_parity_panel": {
+    "seeds": [742031889, 742031890],
+    "weights": ["0.5", "0.5"]
+  },
+  "duration_ms": 66950,
+  "artifact_coordinate_mode": "signed_delta_from_incumbent_v1",
+  "zero_delta_must_reproduce_channel_baseline": true,
+  "topology_hashes_must_match": false,
+  "compatibility_fields": [
+    "request_sha256",
+    "engine_binding_sha256",
+    "context_sha256",
+    "incumbent_artifact_vector_sha256",
+    "character_domain",
+    "duration_ms"
+  ],
+  "aggregation": {
+    "damage": "equal_arithmetic_mean",
+    "dps": "equal_arithmetic_mean_of_member_dps",
+    "actor_damage": "equal_arithmetic_mean_missing_actor_is_zero",
+    "sample_standard_deviation": "bessel_n_minus_1",
+    "standard_error": "sample_sd_div_sqrt_n",
+    "summation": "canonical_seed_order_compensated",
+    "absolute_parity_tolerance": "0.000001"
+  },
+  "uncertainty": {
+    "reason_codes": "sorted_union_with_member_seed_coverage",
+    "absence_cancels_reason": false,
+    "opaque_exposure_values_are_additive_damage": false,
+    "hard_prune_authority": false
+  },
+  "python_parity": {
+    "member_dps": ["141306.04242269805", "144641.0275931734"],
+    "equal_weight_dps": "142973.53500793572",
+    "sample_sd_dps": "2358.190629199696",
+    "standard_error_dps": "1667.4925852376762",
+    "external_n1000_dps_not_an_input": "143738.2939"
+  },
+  "authority": {
+    "development_parity_panel_only": true,
+    "product_panel_size_accepted": false,
+    "convergence_rule_accepted": false,
+    "artifact_search_authority": false,
+    "engine_calls": 0
+  }
+}

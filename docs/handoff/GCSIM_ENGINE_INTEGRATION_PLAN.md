@@ -2,7 +2,7 @@
 
 Planning date: 2026-06-04
 
-Status reviewed: 2026-08-24
+Status reviewed: 2026-08-30
 
 Scope: implementation-direction handoff for GTT-modified GCSIM engine integration. This is not a final Codex implementation task and not a rigid architecture freeze. It records the current product/engineering vector, open questions, and contracts that future Codex tasks must respect unless a later handoff explicitly supersedes them.
 
@@ -121,25 +121,13 @@ stays frozen. Source set lines may prefill selected-set controls, but source
 artifact rows never become privileged proposals or hidden account-domain
 filters.
 
-Trace evidence is necessarily observed with one concrete incumbent artifact
-vector. Current FAST replacement scoring is anchored to that observed state and
-applies `candidate - incumbent` artifact deltas. The absolute-artifact-variable
-rebase exists, but a real same-context audit proved that one trace seed is not
-necessarily an expected schedule: hit elements, reaction spawns and total hit
-count changed across two seeds. Before continuous allocation/search, accepted
-evidence must either prove topology stability or aggregate a bounded stochastic
-distribution. The incumbent-delta form remains a regression oracle only; it is
-not the new search input contract. Artifact set state is also artifact-owned
-even when Selected freezes one package lane.
-
-This raw-stat rebase is implemented in
-`trace_equation/artifact_variable_objective.py` and passes its focused parity
-gate. It is not product-wired and does not yet vary Selected set-package state.
-The current isolated stage is generic supporting-mechanism dependency discovery
-and ordered state replay. Composition may then be developed against a clearly
-marked provisional single-seed scorer. Compact stochastic-topology aggregation
-and the unchanged same-context acceptance rerun are deferred until before the
-full Selected quality audit; they still block finalist/product/UI acceptance.
+The frozen Python evidence was observed from concrete incumbent artifact
+states. A second seed changed hit/reaction topology, proving that one full trace
+is not expected-DPS truth. The accepted repair is not another Python trace-tree
+stage: GOB-2 defines a compact engine-neutral adapter output and GOB-3 aggregates
+the bounded stochastic panel natively in Go. The incumbent-delta Python form is
+a parity oracle only; artifact stats and set state are explicit Go candidate
+variables over the frozen non-artifact context.
 
 The optimizer does not query current-equipment, owner, preset, History, lock, or
 location state. Preset services are relevant only to a later explicit save UI.
@@ -184,11 +172,12 @@ not active architecture. Lower-level engine lifecycle, artifact database,
 materialization, legality, transport, cancellation and cache primitives may be
 reused only through the current trace-equation contract.
 
-The current bound development engine exposes the trace/provenance/source/state
-capabilities accumulated through the patch stack that currently ends at `0015`.
-It supplies the observed hits, snapshots, reaction formulas, attack tags, raw
-damage types and bounded source programs consumed by the Python formula
-compiler. Candidate arithmetic then runs locally with zero engine calls.
+The current bound development engine exposes trace/provenance/source/state and
+support capabilities accumulated through every patch currently present. It
+supplies the observed hits, snapshots, reaction formulas, attack tags, raw
+damage types and bounded source programs consumed by the temporary Python
+reference. Do not use a historical numeric patch endpoint as the active
+contract; discovery and identity always cover the complete present stack.
 
 The accepted optimizer evaluator roles are:
 
@@ -214,8 +203,9 @@ in this human task queue.
 
 Before product cutover, audit every patch that exists at that time, discard
 obsolete deltas, consolidate all required modifications into one versioned
-patch, and prove automatic update plus atomic rollback. The current `0001`-
-`0015` range is descriptive only and must not be hard-coded into that task.
+patch, and prove automatic update plus atomic rollback. Patch discovery must
+cover the complete stack present at execution time; no numbered subset may be
+hard-coded into that task.
 
 ### Stable correctness rules
 
@@ -334,8 +324,17 @@ rewrites scattered across the engine. The current ordered development patches
 are valid reconstruction/forensic inputs, but before product cutover the task
 must audit every patch that exists at that time, remove superseded changes and
 produce one versioned consolidated patch as the only active update input. Do
-not consolidate only a historical numbered subset. The chain is currently
-`0001`–`0013`, but later patches must be included if they exist.
+not consolidate only a historical numbered subset: audit and classify every
+patch file present when the consolidation stage begins.
+
+The optimizer itself is not part of this patch. The accepted boundary is a
+standalone `native/gcsim_optimizer` Go binary which depends only on versioned
+GTT request/result/compact-IR contracts. The consolidated engine patch contains
+the smallest adapter that converts unavoidable GCSIM runtime internals into that
+IR and exposes ordinary finalist simulation. It must not contain artifact
+enumeration, FGBS, stochastic panel policy or UI behavior. Upstream symbol use is
+confined to the adapter so patch/build/smoke fails before activation if those
+seams change.
 
 Preferred shape:
 
@@ -598,28 +597,33 @@ Current implementation sequence:
 
 Independent backend-only optimizer track while PvP/AppShell work continues:
 
-- Reuse the existing frozen-input, DB, materializer, legality, process transport
-  and cancellation/progress/audit primitives.
-- The ordinary transformative reaction v3 slice, stable source-identity v4
-  slice, and generic central health-operation v5 H1 slice are complete. Broad attempt/aura/
-  amplification/Catalyze/Lunar topology and full `RGC-1` remain a separate
-  deferred widening gate.
-- Current bounded block: generalize the accepted ordered Heal/Drain ledger into
-  a typed backward dependency walk and candidate-dependent forward replay for
-  supporting mechanics. Follow providers, HP changes, queued state, caps and
-  guards into emitted per-hit modifiers without Furina/Fanfare/Bennett switches.
-  Unsupported state/event behavior remains `OPAQUE_FROZEN`, not a guessed fixed
-  or unused value. After this gate, a composition prototype may use the current
-  scorer only as `PROVISIONAL_SINGLE_SEED`. The generic stochastic-topology gate
-  and frozen n=1000 rerun remain mandatory before full quality, finalists, UI or
-  active-engine switching.
-- Implement one trace-era composition root; do not restore the removed
-  optimizer UI/backend, keep duplicate production backends, or resume former
-  milestone numbering.
+- Production identity is `gtt_gcsim_optimizer_go_v1`, implemented as a
+  standalone `native/gcsim_optimizer` module plus the smallest versioned engine
+  adapter needed for compact formula/support evidence and ordinary simulation.
+- GOB-1 through GOB-7 pass. GOB-8 transactionally activated
+  `gcsim-v2.42.2-gob8-20260830b` with compact-IR capability while retaining the
+  previous engine for rollback. Existing real
+  captures produced exact stochastic parity, a compiled 483-artifact evaluator
+  and a clean Go FGBS real-account result in 64.39 s, with zero engine/n=1000/UI
+  calls during GOB-3E through GOB-5.
+- GOB-6 migration cleanup passes: replaced Python Selected/FGBS/stochastic and
+  superseded strategies were removed after a fresh reachability scan. No Python
+  fallback remains.
+- GOB-7 staged the 24 formula candidates plus Current through common n=128,
+  retained at most seven mandatory/measured finalists, and completed common
+  n=1000 in 170.67 seconds. GOB-8 UI/adapter is functionally accepted: after
+  fixing per-seed duration aggregation, the actual restarted AppShell Selected
+  button returned 148910.10 DPS and twenty unique IDs. Full UI progress took
+  about 191.15 seconds, so the 190-second performance target remains narrowly
+  missed and the temporary working kill is 360 seconds.
+- GOB-9 is mandatory final cleanup of obsolete optimizer UI, adapters, patch
+  fragments, tests, tools, handoffs and generated residue with no accepted
+  product/update/debug owner.
 - Keep UI/AppShell changes narrow. A global AppShell refactor remains out of
   scope for optimizer work.
-- Follow `GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` for all optimizer sequencing,
-  reaction gates, performance evidence and cutover decisions.
+- Follow `GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` for sequencing and
+  `GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST.json` for every deletion
+  candidate.
 
 ## 13. Historical Backend Implementation Record
 
@@ -642,6 +646,7 @@ Current implementation state:
   `python -m run_workspace.gcsim.engine_update --release latest --patch-backend git --build-artifact`.
   It runs `go version`, requires `windows/amd64`, runs `go build -o build/gtt-gcsim.exe ./cmd/gcsim` inside the staged engine source, then verifies the built executable with `build/gtt-gcsim.exe -version`. The new engine activates only when build and artifact runtime check pass.
 - First real GTT patch content exists at `run_workspace/gcsim/patch_stack/0001-gtt-engine-marker.patch`. It adds a minimal `pkg/gtt` package and a `-gtt-info` CLI flag to `cmd/gcsim/main.go`.
+- Compact optimizer adapter patch exists at `run_workspace/gcsim/patch_stack/0022-gtt-compact-equation-v1.patch`. It adds opt-in `compact_ir_v1` output to the existing trace-equation entrypoint, embeds source numeric templates in the generated manifest, and compiles direct/reaction/support evidence plus typed opaque boundaries into engine-neutral seed-member IR. Omitted output mode preserves the previous raw path. Artifact enumeration, search, stochastic policy and UI are intentionally absent from the engine patch.
 - Sequential-wave prototype patch exists at `run_workspace/gcsim/patch_stack/0002-gtt-sequential-wave-prototype.patch`. It is opt-in through a vanilla-ignored config comment directive:
   `# gtt_wave_prototype duplicate_first_target=1`.
   The prototype reads that directive before simulation run, duplicates/reuses the first configured finite-HP target as the next wave, hooks damage-mode `stopCheck()` so a pending GTT wave can spawn before vanilla all-dead termination, and keeps the new target visible to the dynamic status/damage result paths needed by this smoke. This proves a next target can be spawned inside one simulation iteration after the current finite-HP target/group dies, preserving the run rather than ending immediately. It does not model real Abyss waves, groups, spawn positions, enemy identities, target key mapping, or final 3+3+3 policy.

@@ -19,6 +19,7 @@ from .contracts import (
     TraceContractError,
     canonical_sha256,
 )
+from .health_evidence import HealthOperationKind
 from .ranking import RANKING_STAT_KEYS
 from .source_dependencies import SourceParameterKind, SourceSliceStatus
 from .state_evidence import (
@@ -351,6 +352,14 @@ class CandidateDependencyIndex:
         seeds: set[str] = set()
         affected_hits: set[str] = set()
         matched_structural_seed = False
+        if coordinate.stat_key == "heal":
+            for operation in self.trace.health_operations:
+                if (
+                    operation.kind is HealthOperationKind.HEAL
+                    and operation.caller_index == actor_index
+                ):
+                    seeds.add(_health_node(operation.operation_id))
+                    matched_structural_seed = True
         for event in self.trace.state_events:
             if _event_reads_coordinate(event, coordinate, actor_index):
                 seeds.add(_event_node(event.event_id))

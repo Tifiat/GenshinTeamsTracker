@@ -291,7 +291,7 @@ def build_current_same_context_acceptance_input(
         artifact_database=artifact_database,
         character_keys=character_keys,
     )
-    wearers = _bind_report_config_and_snapshot(
+    wearers = bind_report_config_and_snapshot(
         report.team.payload,
         config_text=config_text,
         artifact_database=artifact_database,
@@ -552,7 +552,7 @@ def run_same_context_acceptance(
     return result
 
 
-def _bind_report_config_and_snapshot(
+def bind_report_config_and_snapshot(
     payload: dict[str, Any],
     *,
     config_text: str,
@@ -632,6 +632,12 @@ def _bind_report_config_and_snapshot(
             )
         )
     return tuple(bound)
+
+
+# Transitional private alias for older focused tests/tools. Production callers
+# use the public name so Selected input construction does not depend on a
+# development-only helper.
+_bind_report_config_and_snapshot = bind_report_config_and_snapshot
 
 
 def _config_character_keys(config_text: str) -> tuple[str, ...]:
@@ -739,6 +745,7 @@ __all__ = [
     "SameContextAcceptanceInput",
     "SameContextAcceptanceResult",
     "SameContextWearerInput",
+    "bind_report_config_and_snapshot",
     "build_current_same_context_acceptance_input",
     "run_same_context_acceptance",
 ]

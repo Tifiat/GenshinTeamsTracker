@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "schema_kind": "gtt_gcsim_optimizer_request_v1",
+  "strategy_id": "gtt_gcsim_optimizer_go_v1",
+  "engine": {
+    "binary_path": "C:/synthetic/gtt-gcsim.exe",
+    "artifact_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+    "binding_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "source_manifest_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "patch_manifest_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+    "capabilities": [
+      "gtt_compact_ir_v1",
+      "gtt_finalist_simulation_v1"
+    ]
+  },
+  "context": {
+    "prepared_config": {
+      "text": "synthetic config v1\n",
+      "sha256": "d98bd81ad35899db20d88ca8a04f8e80f0b7c28b6295ae0c7a2ce1b873e8b1c4"
+    },
+    "rotation": {
+      "text": "actor_a skill; actor_b burst;\n",
+      "sha256": "13e5eb43a0477cbb4fb8c2461f57f698d46ed7670ae5860c54e71bdd94034893"
+    },
+    "target": {
+      "text": "synthetic_dps_dummy_v1\n",
+      "sha256": "dd2d602537dc44c3a746d1274fb2670a64721e3668beb83bd55de7542b6bd372"
+    },
+    "context_sha256": "5ae36bc9170b43d9a8337bcf67845bcef352f24c184feb66dbb07301cadc132c",
+    "trace_context_sha256": "5ae36bc9170b43d9a8337bcf67845bcef352f24c184feb66dbb07301cadc132c"
+  },
+  "wearers": [
+    {
+      "wearer_key": "actor_a",
+      "weapon_key": "weapon_a",
+      "selected_set_uid": "set_a",
+      "current_artifacts": [
+        {"wearer_key": "actor_a", "slot": "flower", "artifact_id": 1},
+        {"wearer_key": "actor_a", "slot": "plume", "artifact_id": 2},
+        {"wearer_key": "actor_a", "slot": "sands", "artifact_id": 3},
+        {"wearer_key": "actor_a", "slot": "goblet", "artifact_id": 4},
+        {"wearer_key": "actor_a", "slot": "circlet", "artifact_id": 5}
+      ]
+    },
+    {
+      "wearer_key": "actor_b",
+      "weapon_key": "weapon_b",
+      "selected_set_uid": "set_b",
+      "current_artifacts": [
+        {"wearer_key": "actor_b", "slot": "flower", "artifact_id": 6},
+        {"wearer_key": "actor_b", "slot": "plume", "artifact_id": 7},
+        {"wearer_key": "actor_b", "slot": "sands", "artifact_id": 8},
+        {"wearer_key": "actor_b", "slot": "goblet", "artifact_id": 9},
+        {"wearer_key": "actor_b", "slot": "circlet", "artifact_id": 10}
+      ]
+    },
+    {
+      "wearer_key": "actor_c",
+      "weapon_key": "weapon_c",
+      "selected_set_uid": "set_c",
+      "current_artifacts": [
+        {"wearer_key": "actor_c", "slot": "flower", "artifact_id": 11},
+        {"wearer_key": "actor_c", "slot": "plume", "artifact_id": 12},
+        {"wearer_key": "actor_c", "slot": "sands", "artifact_id": 13},
+        {"wearer_key": "actor_c", "slot": "goblet", "artifact_id": 14},
+        {"wearer_key": "actor_c", "slot": "circlet", "artifact_id": 15}
+      ]
+    },
+    {
+      "wearer_key": "actor_d",
+      "weapon_key": "weapon_d",
+      "selected_set_uid": "set_d",
+      "current_artifacts": [
+        {"wearer_key": "actor_d", "slot": "flower", "artifact_id": 16},
+        {"wearer_key": "actor_d", "slot": "plume", "artifact_id": 17},
+        {"wearer_key": "actor_d", "slot": "sands", "artifact_id": 18},
+        {"wearer_key": "actor_d", "slot": "goblet", "artifact_id": 19},
+        {"wearer_key": "actor_d", "slot": "circlet", "artifact_id": 20}
+      ]
+    }
+  ],
+  "artifacts": [
+    {"artifact_id": 1, "slot": "flower", "set_uid": "set_a", "rarity": 5, "level": 20, "main_stat": {"key": "hp", "value": "4780"}, "substats": [{"key": "atk_percent", "value": "0.058"}, {"key": "crit_damage", "value": "0.124"}, {"key": "crit_rate", "value": "0.062"}, {"key": "hp_percent", "value": "0.047"}]},
+    {"artifact_id": 2, "slot": "plume", "set_uid": "set_a", "rarity": 5, "level": 20, "main_stat": {"key": "atk", "value": "311"}, "substats": [{"key": "atk_percent", "value": "0.047"}, {"key": "crit_damage", "value": "0.132"}, {"key": "crit_rate", "value": "0.058"}, {"key": "em", "value": "19"}]},
+    {"artifact_id": 3, "slot": "sands", "set_uid": "set_a", "rarity": 5, "level": 20, "main_stat": {"key": "atk_percent", "value": "0.466"}, "substats": [{"key": "crit_damage", "value": "0.14"}, {"key": "crit_rate", "value": "0.054"}, {"key": "em", "value": "21"}, {"key": "hp_percent", "value": "0.053"}]},
+    {"artifact_id": 4, "slot": "goblet", "set_uid": "set_a", "rarity": 5, "level": 20, "main_stat": {"key": "damage_bonus", "value": "0.466"}, "substats": [{"key": "atk_percent", "value": "0.053"}, {"key": "crit_damage", "value": "0.117"}, {"key": "crit_rate", "value": "0.066"}, {"key": "em", "value": "23"}]},
+    {"artifact_id": 5, "slot": "circlet", "set_uid": "set_a", "rarity": 5, "level": 20, "main_stat": {"key": "crit_damage", "value": "0.622"}, "substats": [{"key": "atk_percent", "value": "0.058"}, {"key": "crit_rate", "value": "0.097"}, {"key": "em", "value": "16"}, {"key": "hp_percent", "value": "0.041"}]},
+    {"artifact_id": 6, "slot": "flower", "set_uid": "set_b", "rarity": 5, "level": 20, "main_stat": {"key": "hp", "value": "4780"}, "substats": [{"key": "crit_damage", "value": "0.132"}, {"key": "crit_rate", "value": "0.058"}, {"key": "em", "value": "21"}, {"key": "hp_percent", "value": "0.047"}]},
+    {"artifact_id": 7, "slot": "plume", "set_uid": "set_b", "rarity": 5, "level": 20, "main_stat": {"key": "atk", "value": "311"}, "substats": [{"key": "crit_damage", "value": "0.124"}, {"key": "crit_rate", "value": "0.062"}, {"key": "em", "value": "19"}, {"key": "hp_percent", "value": "0.053"}]},
+    {"artifact_id": 8, "slot": "sands", "set_uid": "set_b", "rarity": 5, "level": 20, "main_stat": {"key": "em", "value": "187"}, "substats": [{"key": "atk_percent", "value": "0.047"}, {"key": "crit_damage", "value": "0.14"}, {"key": "crit_rate", "value": "0.054"}, {"key": "hp_percent", "value": "0.058"}]},
+    {"artifact_id": 9, "slot": "goblet", "set_uid": "set_b", "rarity": 5, "level": 20, "main_stat": {"key": "damage_bonus", "value": "0.466"}, "substats": [{"key": "atk_percent", "value": "0.053"}, {"key": "crit_damage", "value": "0.117"}, {"key": "crit_rate", "value": "0.066"}, {"key": "em", "value": "23"}]},
+    {"artifact_id": 10, "slot": "circlet", "set_uid": "set_b", "rarity": 5, "level": 20, "main_stat": {"key": "crit_rate", "value": "0.311"}, "substats": [{"key": "atk_percent", "value": "0.058"}, {"key": "crit_damage", "value": "0.194"}, {"key": "em", "value": "16"}, {"key": "hp_percent", "value": "0.041"}]},
+    {"artifact_id": 11, "slot": "flower", "set_uid": "set_c", "rarity": 5, "level": 20, "main_stat": {"key": "hp", "value": "4780"}, "substats": [{"key": "crit_damage", "value": "0.124"}, {"key": "crit_rate", "value": "0.062"}, {"key": "em", "value": "19"}, {"key": "hp_percent", "value": "0.058"}]},
+    {"artifact_id": 12, "slot": "plume", "set_uid": "set_c", "rarity": 5, "level": 20, "main_stat": {"key": "atk", "value": "311"}, "substats": [{"key": "crit_damage", "value": "0.132"}, {"key": "crit_rate", "value": "0.058"}, {"key": "em", "value": "21"}, {"key": "hp_percent", "value": "0.047"}]},
+    {"artifact_id": 13, "slot": "sands", "set_uid": "set_c", "rarity": 5, "level": 20, "main_stat": {"key": "hp_percent", "value": "0.466"}, "substats": [{"key": "crit_damage", "value": "0.14"}, {"key": "crit_rate", "value": "0.054"}, {"key": "em", "value": "23"}, {"key": "energy_recharge", "value": "0.058"}]},
+    {"artifact_id": 14, "slot": "goblet", "set_uid": "set_c", "rarity": 5, "level": 20, "main_stat": {"key": "hp_percent", "value": "0.466"}, "substats": [{"key": "crit_damage", "value": "0.117"}, {"key": "crit_rate", "value": "0.066"}, {"key": "em", "value": "19"}, {"key": "energy_recharge", "value": "0.065"}]},
+    {"artifact_id": 15, "slot": "circlet", "set_uid": "set_c", "rarity": 5, "level": 20, "main_stat": {"key": "crit_damage", "value": "0.622"}, "substats": [{"key": "crit_rate", "value": "0.097"}, {"key": "em", "value": "16"}, {"key": "energy_recharge", "value": "0.052"}, {"key": "hp_percent", "value": "0.041"}]},
+    {"artifact_id": 16, "slot": "flower", "set_uid": "set_d", "rarity": 5, "level": 20, "main_stat": {"key": "hp", "value": "4780"}, "substats": [{"key": "crit_damage", "value": "0.124"}, {"key": "crit_rate", "value": "0.062"}, {"key": "energy_recharge", "value": "0.058"}, {"key": "hp_percent", "value": "0.047"}]},
+    {"artifact_id": 17, "slot": "plume", "set_uid": "set_d", "rarity": 5, "level": 20, "main_stat": {"key": "atk", "value": "311"}, "substats": [{"key": "crit_damage", "value": "0.132"}, {"key": "crit_rate", "value": "0.058"}, {"key": "energy_recharge", "value": "0.065"}, {"key": "hp_percent", "value": "0.053"}]},
+    {"artifact_id": 18, "slot": "sands", "set_uid": "set_d", "rarity": 5, "level": 20, "main_stat": {"key": "hp_percent", "value": "0.466"}, "substats": [{"key": "crit_damage", "value": "0.14"}, {"key": "crit_rate", "value": "0.054"}, {"key": "energy_recharge", "value": "0.058"}, {"key": "healing_bonus", "value": "0.047"}]},
+    {"artifact_id": 19, "slot": "goblet", "set_uid": "set_d", "rarity": 5, "level": 20, "main_stat": {"key": "hp_percent", "value": "0.466"}, "substats": [{"key": "crit_damage", "value": "0.117"}, {"key": "crit_rate", "value": "0.066"}, {"key": "energy_recharge", "value": "0.052"}, {"key": "healing_bonus", "value": "0.053"}]},
+    {"artifact_id": 20, "slot": "circlet", "set_uid": "set_d", "rarity": 5, "level": 20, "main_stat": {"key": "healing_bonus", "value": "0.359"}, "substats": [{"key": "crit_damage", "value": "0.194"}, {"key": "crit_rate", "value": "0.039"}, {"key": "energy_recharge", "value": "0.058"}, {"key": "hp_percent", "value": "0.041"}]}
+  ],
+  "legality": {
+    "fixed_four_piece": true,
+    "max_off_set_pieces_per_wearer": 1,
+    "globally_unique_artifact_ids": true,
+    "default_minimum_rarity": 5,
+    "authorized_lower_rarity_artifact_ids": []
+  },
+  "stochastic": {
+    "mode": "equal_weight_fixed_panel_v1",
+    "seeds": [101, 202]
+  },
+  "budgets": {
+    "product_timeout_ms": 190000,
+    "development_timeout_ms": 360000
+  },
+  "finalists": {
+    "policy_id": "synthetic_fixture_v1",
+    "max_candidates": 2,
+    "iterations": 1000
+  },
+  "cancellation": {
+    "mode": "process_interrupt_v1"
+  }
+}

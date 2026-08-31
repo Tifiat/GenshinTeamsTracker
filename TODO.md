@@ -427,233 +427,152 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 
 ## 12. GCSIM Artifact Optimizer
 
-Authoritative contract:
+### Source of truth
 
-- `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` is the sole active
-  optimizer architecture and task sequence.
-- M1-M8, S0-S7, Gate 0-4, Selected V2, stat-map-first and black-box response
-  plans are superseded forensic history. Do not resume them or use them as a
-  fallback.
+- Current handoff: `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md`.
+- Active implementation design: `docs/handoff/GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md`.
+- Engine patch/update boundary: `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`.
+- Detailed evidence and deletion ownership: `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST.json`.
+- The old Python Selected search implementations and handoffs were removed at GOB-6; only a frozen migration-leader JSON remains as parity evidence.
 
-Permanent execution guard:
+### Current status
 
-- Work sequentially without subagents or parallel agents.
-- Reuse accepted traces and local formula arithmetic; do not brute-force known
-  formulas through repeated GCSIM runs.
-- Stop for user review after three failed substantive attempts on one blocker.
-- Generic evaluator code may not switch on character, set, element, reaction or
-  known damage-type names. Concrete names are allowed only in fixtures.
+- Production identity: `gtt_gcsim_optimizer_go_v1`.
+- GOB-3 through GOB-7 pass. The two-member real panel matches Python within
+  `1e-6`; 483 artifacts and 37 formula coordinates are indexed in Go; clean
+  Go FGBS retained the Python leader, found a same-panel leader about 117.68
+  formula DPS higher, and completed cold in 64.39 s under the 190 s boundary.
+  GOB-6 cleanup also passes. GOB-7 proved formula rank alone cannot truncate the
+  24 candidates: the formula-rank-24 migration leader won measured n=1000.
+  Common n=128 screening plus at most seven mandatory finalists completed cold
+  in 170.67 s; the measured winner was 148744.23 DPS versus 143721.66 Current.
+  GOB-8 is functionally accepted: after correcting per-seed duration handling,
+  the actual restarted AppShell Selected button completed with 148910.10 DPS,
+  SE 68.49 and twenty unique IDs. Repeated full UI runs completed in 3:33 and
+  3:40, so the 190 s performance target remains missed. The working kill is
+  temporarily 360 s while bounded GOB-8P performance work proceeds.
+- The clean product path is a standalone Go optimizer plus a minimal, versioned GCSIM adapter patch.
+- Python proved that the formula-guided complete-build method can find a stable useful leader inside the bounded Selected domain. It did not prove a global optimum.
+- The two-seed stochastic protocol produced a close aggregate estimate, but Python trace preparation failed the product runtime requirement. It is frozen as parity evidence, not continued as production code.
+- No end-to-end stochastic artifact result, All Sets result or Theory result is accepted yet.
+- Old M/S/Gate, Selected V2, CF-BB, Adaptive Oracle Exchange and Contextual Scan routes are forensic/deletion material, not fallbacks.
 
-Accepted current state:
+### Active implementation sequence
 
-- [x] One frozen trace supplies observed hits, reactions, effective snapshots,
-  modifier/source evidence and one sampled schedule. Candidate arithmetic itself
-  uses zero GCSIM calls. A single trace is not accepted as the expected schedule
-  until generic cross-seed topology evidence proves stability.
-- [x] STANDARD compiles the current 358 hits into 198 safe compact groups. It is
-  retained only as a bounded development/regression control.
-- [x] FAST compiles the dev trace into 23
-  response-equivalent channels separated by actor, scaling/reaction shape, raw
-  engine attack tag, raw damage type and response coordinates. Different
-  modifier/damage types cannot be averaged together. It is not yet an accepted
-  product evaluator.
-- [x] FAST and STANDARD are independent implementations; STANDARD remains a dev
-  regression control and is not a planned product pass.
-- [x] The 1,223/1,787-row audits prove only FAST-versus-STANDARD compression
-  similarity and local runtime. They are rejected as real artifact-quality
-  evidence because current-DB deltas were applied to a synthetic dev trace.
-  Their leader, Top-K and sign claims must not be cited as GCSIM recall.
-- [x] The focused trace-equation and isolated search suites pass. The real
-  n=1000 same-context acceptance is intentionally opt-in and is not counted as
-  an ordinary unit test.
-- [x] Unknown dependencies freeze at the last observed typed boundary. Known
-  formulas continue; unknown values never become zero, independence or
-  dominance evidence.
-- [x] FAST replacement arithmetic is algebraically incumbent-anchored: observed
-  effective channel state already includes incumbent artifacts, and candidate
-  scoring applies the complete `candidate artifact vector - incumbent artifact
-  vector` delta. Algebra alone does not prove that the supplied vector produced
-  the trace; the missing identity check invalidated the attempted DB audits.
-- [x] **Exact-current-equipment identity binding and live gate harness.**
-  `trace_equation/same_context_acceptance.py` and its opt-in integration test bind
-  one physical config to the exact 20 unique SQLite artifact IDs, aggregate
-  stats, sets, current weapons, rotation, target, energy policy, engine and
-  snapshot identities, then run trace/FAST and ordinary n=1000 GCSIM from that
-  config. Identity binding passed. Numerical acceptance did not.
+- [x] **GOB-0 — design freeze.** Architecture, process boundary, compact formula IR, ownership and acceptance stages are fixed.
+- [x] **GOB-1 — Go module and contracts.** Isolated standard-library module,
+  strict request/progress/IR/result v1 contracts, deterministic identities,
+  cancellation and shared four-wearer/twenty-artifact/two-seed fixtures pass
+  10 Go + 4 Python checks. Engine/search/UI calls: 0.
+- [x] **GOB-2 — compact engine adapter.** Opt-in patch 0022 emits a validated
+  seed-member IR. Frozen-seed formula/candidate parity is within `1e-6`, output
+  is 15.19x smaller than raw trace, adapter work is about 117.5 ms, and the
+  complete one-seed command is 1.781 s. This is not multi-seed/search/UI proof.
+- [x] **GOB-3 — stochastic expectation in Go.** Compact multi-trace aggregation without Python trace-tree overhead.
+  - [x] **GOB-3A — contract freeze.** Generic request-owned fixed panel plus the
+    exact two-seed parity pair, incumbent-delta semantics, baseline invariant,
+    equal-weight mean, sample SD/SE, uncertainty coverage and non-authority
+    rules are fixed. Engine calls: 0.
+  - [x] **GOB-3B — synthetic Go aggregator.** Equal-weight mean, actor means,
+    SD/SE, zero-delta and reason/member coverage pass fail-closed Go tests.
+  - [x] **GOB-3C — exact staging engine build.** Full 0001-0022 identity built
+    in isolation; active engine unchanged.
+  - [x] **GOB-3D — two real compact members.** Both frozen seeds captured
+    sequentially and validated; receipt is permanent, payloads remain temp.
+  - [x] **GOB-3E — Python/Go parity.** Real members, mean, actor totals, SD/SE
+    and all 25 uncertainty classes match within `1e-6`; no new engine run.
+  - [x] **GOB-3F — runtime/memory gate.** Cold validation cost was measured;
+    candidate work was moved to a compile-once indexed hot path.
+- [x] **GOB-4 — artifact domain and formula evaluator.** Real 483-artifact
+  Selected domain, fixed-4p/offpiece/global-ID legality and compiled candidate
+  arithmetic pass incumbent, broad-profile and 20 real swap parity controls.
+- [x] **GOB-5 — clean Go FGBS.** Response ledger, complete wearer frontiers,
+  dynamic anchors, recheck and dependency/conflict pair refinement pass reduced
+  exact controls and real-account acceptance in 64.39 s. Receipt:
+  `tests/fixtures/gcsim_optimizer_go_v1/gob5_real_account_acceptance_receipt_v1.json`.
+- [x] **GOB-6 — mandatory migration cleanup.** Fresh reachability scan found no
+  production/UI callers. Replaced Python FGBS/stochastic/Selected composition,
+  CF-BB, Adaptive Oracle, Contextual Scan, neutral oracle and their orphaned
+  tests/tools/handoffs were removed. Continuous-target Theory mathematics,
+  Current comparison, Go parity fixtures and engine update primitives remain.
+- [x] **GOB-7 — finalists and common n=1000.** Go screens the frozen 24-row
+  formula pool plus Current at common n=128, retains the measured top five plus
+  mandatory formula leader and Current (at most seven unique builds), and runs
+  common n=1000. The accepted clean attempt used 25 n=128 and 6 n=1000 engine
+  processes, finished in 170.67 s, returned 20 unique IDs and improved Current
+  by 5022.57 DPS (3.49%). Receipt:
+  `tests/fixtures/gcsim_optimizer_go_v1/gob7_common_n1000_acceptance_receipt_v1.json`.
+- [x] **GOB-8 — Selected UI functional acceptance.** The real button completed
+  end to end after the stochastic panel was corrected to use each seed's own
+  duration. It returned exact IDs and final n=1000 DPS. Performance acceptance
+  below 190 s is still open; observed full UI time was about 191.15 s. The UI
+  now shows live elapsed/3–8 minute estimated time and four compact 5-piece
+  result rows. Explicit per-character Save reuses Artifact Browser preset
+  storage; results are never auto-equipped. The fixed-arrow header pages every
+  already measured finalist as Top-1, Top-2, etc.
+- [x] **GOB-8C — clean repository checkpoint before performance work.** The
+  startup transient-window fix is integrated; the full 182-test AppShell module,
+  focused optimizer/trace checks, all Go tests and `go vet` pass. New source and
+  small parity fixtures are versioned, while the optimizer executable and
+  generated runs remain ignored. This is not the final GOB-9 patch/update audit.
+- [ ] **GOB-8P — bounded performance rationalization (next).** Account for the
+  repeated 3:33 and 3:40 runs by stage. Keep n=128 until an alternative preserves recall:
+  the latest winner entered it at formula rank 20, not top-7. Run at most one
+  isolated exact-seven n=500 replay against saved n=1000 evidence, then decide
+  whether an adaptive final gate can extend only unresolved leaders. No broad
+  n-sweep and no full rerun before that decision.
+- [ ] **GOB-9 — mandatory final optimizer-area cleanup (after GOB-8P).** Remove every remaining obsolete approach, temporary adapter, redundant engine instrumentation, stale test/tool/handoff and generated residue that has no accepted product/update/debug owner.
+  - [x] First reachability slice: removed 27 unreachable legacy optimizer
+    modules, 24 orphaned tests, one orphaned tool, two bytecode-only Selected V2
+    directories and three old generated runs. Active AppShell/Selected imports
+    plus 19 focused tests pass without another GCSIM run.
+  - [ ] Isolate the live Go request preparation from broad historical Python
+    contract modules, then remove the newly unreachable remainder.
+  - [ ] Consolidate all still-required engine patches into one adapter patch and
+    prove staged update plus rollback before deleting the numbered stack.
 
-Active implementation sequence:
+### Cleanup registry
 
-- [x] **Explicit artifact-variable FAST objective.** Rebase every supported
-  channel into known non-artifact context plus absolute artifact-controlled
-  variables and known derived mechanics of those variables. Raw main/sub stats
-  and set/package state are artifact-owned; weapon, ascension and observed
-  temporary buffs must not be added twice. Prove zero-delta, incumbent,
-  explicit-vs-delta, path-independence, input-ownership and nested/frozen parity
-  before search. Keep incumbent-delta FAST only as a regression oracle.
-  Implemented in `trace_equation/artifact_variable_objective.py`; eight
-  dedicated synthetic tests cover incumbent/empty/changed vectors, direct
-  scaling kinds, crit/bonus inputs, one bounded direct nested-HP source, path
-  independence and contract rejection. They do not cover Bennett healing into
-  Fanfare into team damage bonus. Selected set packages remain frozen lanes.
-- [x] **Isolated continuous-target v1 core.** Create the replaceable
-  `run_workspace/gcsim/optimizer_trace_search/` boundary with no UI, runner or
-  product imports. The confirmed domain is the five-star game contract: four
-  exact roll tiers, at most 45 max-roll-equivalent units per wearer (180 for a
-  four-person team with independent wearer budgets), safe per-coordinate piece caps,
-  and discrete main-stat lanes. Fractional mixtures of account builds are
-  superseded. Derive a marginal-allocation curve plus bounded exchange
-  refinement. The target may order search but cannot delete a physical build.
-  Eight focused analytical tests pass, including equality with exhaustive truth
-  on a small integer-roll domain. The attempted saved-trace/current-SQLite audit
-  is rejected: the trace was generated from a synthetic dev stat block, not the
-  current 20 artifacts. Rebase against the unrelated SQLite vector created
-  negative effective EM and impossible negative reaction damage. Its target,
-  allocation and 0.73 s solve timing are diagnostic implementation evidence
-  only, not real-account quality evidence.
-- [x] **Generic supporting-mechanism replay for FAST.** Treat damage,
-  buffs, healing, drains, stacks, thresholds and future mechanics as one typed
-  dependency graph. Walk backward from every DPS-affecting output until a
-  candidate-stat leaf, fixed-action leaf, proven-unused branch or diagnosed
-  opaque boundary; then replay candidate-dependent health/state/cap/guard/queued
-  events forward before FAST compression. Consume every observed provider and
-  allow their joint contribution and opportunity cost to emerge from team DPS.
-  Do not force a buff to cap and do not switch on character/mechanic names. The
-  current artifact-stat -> healing/HP changes -> accumulated state -> team
-  modifier -> exact hit path is executable in both the isolated correctness
-  control and the cached FAST path. Observed-domain combinations, multiple
-  providers and relevant opaque fallback pass; cap/overheal outside the
-  observed domain remains fail-closed and grants no product prune authority.
-  - [x] Structural/type-safe evidence transport. Unique shortest runtime routes
-    are accepted while equal-shortest ambiguity freezes; only proven scalar
-    receiver fields and callback/helper arguments become numeric evidence.
-    Nonnumeric and unresolved values remain typed opaque boundaries.
-  - [x] Real support-chain trace proof. Patch
-    `0017-gtt-support-chain-v1.patch` carries typed health fields through helper
-    payload, queued task mutation, state transition/write, modifier occurrence
-    and terminal hits. The strict schema-v6 trace contains 365 hits, 196 health
-    operations and 39,767 state events; one health operation reaches 166 hits,
-    and 170 modifier/terminal-hit pairs are bound. No entity-name switches are
-    used by production logic.
-  - [x] Reproducible patch and decoder gate. A fresh official v2.42.2 tree
-    applied the proven support-chain stack.
-    Focused Go packages pass. Python state/dependency tests pass (14 + 6).
-    Incomplete events may omit unbound parameters without weakening complete-
-    event validation, and timeline validation is incremental rather than O(n²).
-  - [x] Replayable scalar state arithmetic. Patch
-    `0018-gtt-replayable-state-arithmetic-v1.patch` replaces supported opaque
-    state-transition markers with explicit add/subtract/multiply/divide/min/max
-    events and emits prior-state reads only when the RHS consumes them. A fresh
-    official tree applied the stack and the generated engine compiled. The old
-    relative-store `artifact_missing` result was only a harness-path defect.
-  - [x] Candidate forward replay and exact hit binding correctness control.
-    Patches `0019`-`0021` make normalized health and supported modifier
-    arithmetic replayable and serialize the exact modifier-evaluation ID into
-    every hit contribution. A fresh 21-patch v2.42.2 engine compiled and passed
-    its runtime probe. The real trace has 3,328/3,328 exact bindings. With zero
-    engine calls, `-0.20 Bennett hp%` changes 14 Furina hits and adds a
-    `-1754.97` rotation-damage effect beyond the direct-only formula. Synthetic
-    incumbent/direct/support tests pass. No entity-name switch exists in
-    production code.
-  - [x] Product-speed support slice and cached FAST correction. The full-ledger
-    STANDARD control remains intact. A generic forward/backward graph slice keeps
-    only events that both depend on changed artifact stats and reach a consumed
-    hit modifier, reducing the real path from 20,821 to 1,535 events. The isolated
-    `support_fast_objective.py` caches modifier projections by four real support-
-    relevant artifact coordinates, revalues the correction against each
-    candidate's direct stats, and never calls the engine. One real miss is about
-    0.049 s and one hit about 0.001 s. Four single-coordinate real checks match
-    the full-control support correction within `2.1e-9`. The exact-context 1,223
-    fixed-4p single-swap corpus used 251 misses/972 hits and completed in about
-    16.7 s. This is runtime/parity evidence only, not full Selected quality.
-  - [x] **Observed physical support-domain boundary.** Sixteen profiles derived
-    from the real 1,223-candidate corpus cover each support-coordinate minimum
-    and maximum, all-min/all-max, and every pairwise maximum. Cached FAST support
-    correction matched full STANDARD control with zero mismatches and at most
-    `1.1e-8` rotation-damage error; engine calls remained zero. This accepts the
-    observed physical range for isolated composition work, not product quality.
-  - [x] **Isolated complete-assignment integration.** The cached support-aware
-    FAST scorer is exposed only through the replaceable composition
-    boundary; preserve incumbent/global artifact uniqueness and measure complete
-    legal multi-piece assignments, unique support keys, cache behavior and
-    runtime on a deliberately reduced domain. The new boundary validates all 20
-    physical IDs, slots, fixed-4p legality and incumbent identity but generates
-    or prunes nothing. A real 8-variable binary audit retained 60/256 legal
-    assignments, changed up to four artifacts together, used 60 distinct support
-    keys and scored them in about 4.16 s with zero engine calls. Deliberate
-    two-actor combined-provider and candidate-relevant opaque-boundary tests
-    pass. Candidate input consumption and both hot caches are bounded per
-    attempt, physical artifact lookup is logarithmic, and FAST scores expose
-    frozen baseline damage/share. Do not extrapolate cap/overheal outside the
-    observed domain.
-- [ ] **Current first loss: provisional continuous-target quality gate.**
-  verify reaction ownership and target retrieval against exhaustive complete
-  physical builds on a deliberately reduced domain. The current single-seed
-  FAST input must be labeled `PROVISIONAL_SINGLE_SEED`; equality/recall against
-  that same scorer proves search implementation only and grants no real-quality
-  or product deletion authority.
-- [ ] **Contextual frontier and bounded-composition prototype.** Generate complete
-  legal Selected assignments under main-stat/slot rules, selected packages, one
-  off-set piece and twenty globally unique physical IDs. Use cap-aware formula
-  ceilings, preserve conflict backups and the incumbent, and compare claimed
-  pruning with exhaustive truth under the same provisional scorer. Keep trace
-  evidence behind an interface so expected channels can replace the one-seed
-  input without rewriting composition.
-- [ ] **Deferred Gate A: stochastic-skill expectation and same-context truth.**
-  The first exact baseline returned FAST `141306.0424` versus GCSIM n=1000
-  `143738.2939`, SE `66.0034`; the `1.6921%` error exceeds frozen tolerance. An
-  adjacent seed changed 365 hits to 389 and spawned-reaction attacks 68 to 90.
-  Before a full Selected quality audit, aggregate this topology generically,
-  preferably in a compact bounded engine-side seed panel, preserve a proven-
-  stable one-trace fast path, and rerun the unchanged baseline plus a small
-  controlled replacement set. Do not tune the seed or widen tolerance.
-- [ ] **Full Selected offline audit.** Measure visited states, target retrieval,
-  candidate reduction, remaining bound gap and runtime on the frozen real
-  account domain. The strategy gets product authority only after this gate; a
-  rejected strategy can be removed without changing FAST or another strategy.
-- [ ] **FAST finalist policy.** Select top-K and uncertainty/incumbent retention
-  from legal multi-piece recall/runtime measurements. Do not derive K from the
-  synthetic broad-stat audit alone.
-- [ ] **Final GCSIM verification.** Simulate FAST finalists at common fidelity,
-  choose the best measured DPS, record formula residuals, and support bounded
-  cache/cancel/resume identities.
-- [ ] **Selected UI button.** Show progress, selected artifacts, formula
-  estimate, measured finalist DPS, warnings and deterministic debug path.
-  Prove a clean new-user cold run.
-- [ ] **All Sets.** Add generic set semantics and allocation: wearer
-  eligibility, activation, attack/damage response types, team recipients,
-  coverage, overlap/duplicate behavior and opportunity cost. Reuse FAST plus
-  final GCSIM.
-- [ ] **Theory.** Add an equal-investment candidate domain without physical
-  artifact IDs, then reuse FAST plus final GCSIM.
+Deleted at GOB-6 after the fresh import/call-site scan:
 
-Required mechanics and degraded behavior:
+- Python FGBS, stochastic expectation and Selected composition code;
+- CF-BB, Adaptive Oracle Exchange, Contextual Scan and the neutral oracle;
+- their strategy tests, audits and three superseded handoffs.
 
-- [ ] Keep fixed-schedule reaction formulas and owner EM. Before broad product
-  compatibility, add Bloom/converter, reaction-dominant amplification and
-  multi-contributor Lunar controls. Use damage share, not hit count, for
-  materiality.
-- [ ] Add sanitized deterministic unknown-mechanic archives at
-  `data/gcsim_optimizer/diagnostics/<report_sha256>.zip`. A material unknown
-  produces a degraded best-effort result, not a crash or false optimum.
-- [ ] Keep energy/ER optimization deferred. Technical energy wrappers are not
-  damage actors. A future energy mode needs its own wrapper-to-character and
-  rotation-feasibility contract.
+Review and delete at GOB-9 after UI/product acceptance:
 
-Performance and engine delivery:
+- all remaining M/S/Gate and Selected V2 implementation fragments;
+- old optimizer factories, progress events and UI wiring that no button calls;
+- redundant engine patches/instrumentation replaced by the consolidated adapter patch;
+- experimental scripts/reports/fixtures with no parity, updater, rollback or debug purpose;
+- stale optimizer handoffs, duplicate contracts, caches and generated development residue.
 
-- [ ] Cache the validated decoded trace / compiled FAST objective by complete
-  engine, source, config, rotation, target and schema identity. Recent cold
-  trace decode has varied about 38-104 s and is now the fixed-cost bottleneck.
-- [ ] Measure cold Selected after complete composition and finalists. More than
-  180 s is a product failure. Measure All Sets independently; more than 600 s
-  is a product failure. Warm cache results do not satisfy cold gates.
-- [ ] Before product cutover, audit every GCSIM patch present at that time,
-  remove obsolete deltas, consolidate all required modifications into one
-  versioned patch, and prove automatic update plus atomic rollback. Do not
-  hard-code the current `0001`-`0015` range.
-- [ ] Keep the remaining Current backend only as a separately invoked
-  comparison control until Selected, All Sets and Theory work and are tried by
-  the user. Delete it only after fresh reachability/reference scans and cutover.
+Retain deliberately:
+
+- the frozen Python migration-leader fixture as a permanent small Go parity receipt;
+- the Current comparison path until Selected, All Sets and Theory are each accepted or explicitly abandoned;
+- the continuous-optimum mathematics as `FUTURE_GO_PORT_FOR_THEORY_ALL_SETS`, not as Selected runtime code;
+- patch discovery, update, build, smoke-test and rollback primitives.
+
+Whenever work exposes another unused component, add its exact path and deletion gate to the cleanup manifest immediately. Do not preserve an implementation merely because it once produced evidence.
+
+### Deferred until Selected is accepted
+
+- All Sets support-set and wearer assignment.
+- Theory/farming guidance using the future Go port of the continuous optimum.
+- Broader reaction and Lunar-reaction adaptation controls.
+- Energy-recharge optimization.
+- User-facing unknown/frozen-mechanic diagnostics beyond the minimum Selected receipt.
+
+### Performance and release gates
+
+- Cold Selected performance target: 190 seconds.
+- Temporary working/development kill boundary: 360 seconds.
+- Future All Sets ceiling: 600 seconds.
+- No common n=1000 run before the reduced/parity gates pass.
+- The application ships one consolidated discovered patch stack with automatic staging, build/smoke validation, atomic activation and rollback.
+- Work remains sequential, without subagents or parallel agents; stop after three substantive failed approaches to one blocker.
+
 
 ## 13. Offline Profile
 

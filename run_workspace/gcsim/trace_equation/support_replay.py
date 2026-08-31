@@ -381,10 +381,26 @@ def _evaluate_support_plan(
         elif event.kind is StateEventKind.HEALTH_CONTEXT_ENTER:
             assert event.health_operation_id is not None
             operation = operations[event.health_operation_id]
+            source_heal_bonus_delta = 0.0
+            if (
+                operation.kind is HealthOperationKind.HEAL
+                and operation.caller_index is not None
+            ):
+                character_keys = trace.terminal_trace.request.character_keys
+                if operation.caller_index >= len(character_keys):
+                    uncertainties.add(
+                        f"frozen_health_caller:{operation.operation_id}"
+                    )
+                else:
+                    source_heal_bonus_delta = deltas.get(
+                        (character_keys[operation.caller_index], "heal"),
+                        0.0,
+                    )
             candidate, operation_uncertainties = _replay_health_operation(
                 operation,
                 bindings.get(operation.operation_id, {}),
                 hp_delta_by_target,
+                source_heal_bonus_delta=source_heal_bonus_delta,
             )
             health_fields[operation.operation_id] = candidate
             uncertainties.update(operation_uncertainties)
@@ -766,6 +782,20 @@ def _compile_replay_steps(
             dependencies.update(
                 hp_dependencies_by_target.get(operation.target_index, frozenset())
             )
+            if (
+                operation.kind is HealthOperationKind.HEAL
+                and operation.caller_index is not None
+                and operation.caller_index
+                < len(trace.terminal_trace.request.character_keys)
+            ):
+                dependencies.add(
+                    (
+                        trace.terminal_trace.request.character_keys[
+                            operation.caller_index
+                        ],
+                        "heal",
+                    )
+                )
             frozen = frozenset(dependencies)
             health_dependencies[operation.operation_id] = frozen
             hp_dependencies_by_target[operation.target_index] = frozen
@@ -975,6 +1005,8 @@ def _replay_health_operation(
     operation: HealthOperation,
     bindings: Mapping[str, float],
     hp_delta_by_target: dict[int, float],
+    *,
+    source_heal_bonus_delta: float = 0.0,
 ) -> tuple[dict[str, float], tuple[str, ...]]:
     observed = _observed_health_fields(operation)
     prior_delta = hp_delta_by_target.get(operation.target_index, 0.0)
@@ -982,7 +1014,11 @@ def _replay_health_operation(
         key in observed and not _close(value, observed[key])
         for key, value in bindings.items()
     )
-    if not changed_binding and _close(prior_delta, 0.0):
+    if (
+        not changed_binding
+        and _close(prior_delta, 0.0)
+        and _close(source_heal_bonus_delta, 0.0)
+    ):
         hp_delta_by_target[operation.target_index] = 0.0
         return observed, ()
     if operation.hp_debt_before != 0 or operation.hp_debt_after != 0:
@@ -1005,7 +1041,8 @@ def _replay_health_operation(
             return observed, (f"frozen_health_type:{operation.operation_id}",)
         if operation.source_bonus is None or operation.heal_bonus_total is None:
             return observed, (f"frozen_health_bonus:{operation.operation_id}",)
-        raw = base * (1.0 + operation.source_bonus + operation.heal_bonus_total)
+        source_bonus = operation.source_bonus + source_heal_bonus_delta
+        raw = base * (1.0 + source_bonus + operation.heal_bonus_total)
         event_amount = raw
         effective = min(event_amount, max(0.0, max_after - hp_before))
         hp_after = min(max_after, hp_before + effective)
@@ -1023,6 +1060,12 @@ def _replay_health_operation(
         input_value=input_value,
         adjusted_input_value=adjusted,
         base_amount=base,
+        source_bonus=(
+            operation.source_bonus + source_heal_bonus_delta
+            if operation.kind is HealthOperationKind.HEAL
+            and operation.source_bonus is not None
+            else operation.source_bonus
+        ),
         raw_amount=raw,
         event_amount=event_amount,
         event_effective_amount=effective,

@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "schema_kind": "gtt_optimizer_gob5_python_reference_v1",
+  "reference_search": "formula_guided_build_search_selected_v1_two_cycles_pair_refinement",
+  "formula_damage": "9797214.13089696",
+  "physical_assignment_sha256": "7e46576cf0e3bc74e7bb200f89fedd5c22b658b4c889c926ffecf96999f92d2a",
+  "assignments": {
+    "bennett": [36, 81, 1426, 1451, 1437],
+    "chasca": [80, 77, 87, 88, 203],
+    "furina": [1301, 7, 1466, 1309, 1319],
+    "ororon": [76, 91, 241, 1477, 119]
+  },
+  "runtime_seconds": "200.48775639999076",
+  "engine_executions": 0,
+  "note": "Frozen only as the migration parity candidate. It is rescored under the Go two-member compact objective before comparison."
+}

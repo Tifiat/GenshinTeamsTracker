@@ -11,7 +11,7 @@ from unittest.mock import patch
 from ui.utils.app_scaling import configure_startup_ui_scale
 
 configure_startup_ui_scale()
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QSize, Qt
+from PySide6.QtCore import QEvent, QObject, QPoint, QPointF, QRect, QSize, Qt
 from PySide6.QtGui import QColor, QKeyEvent, QPixmap, QWheelEvent
 from PySide6.QtWidgets import QApplication, QLabel, QStyleOptionButton, QWidget
 
@@ -155,6 +155,33 @@ from ui.right_panel.live_run.panel import (
 )
 
 
+class _VisibleTopLevelShowRecorder(QObject):
+    def __init__(self) -> None:
+        super().__init__()
+        self.events: list[tuple[QWidget, dict[str, object]]] = []
+
+    def eventFilter(self, obj, event) -> bool:
+        if (
+            event.type() == QEvent.Type.Show
+            and isinstance(obj, QWidget)
+            and obj.parentWidget() is None
+            and obj.isVisible()
+        ):
+            self.events.append(
+                (
+                    obj,
+                    {
+                        "class": type(obj).__name__,
+                        "object_name": obj.objectName(),
+                        "title": obj.windowTitle(),
+                        "visible": obj.isVisible(),
+                        "parent": None,
+                    },
+                )
+            )
+        return False
+
+
 class AppShellTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -196,6 +223,44 @@ class AppShellTest(unittest.TestCase):
             shell.active_left_workspace_id,
             LEFT_WORKSPACE_CHARACTERS_WEAPONS,
         )
+
+    def test_app_shell_startup_shows_only_the_shell_as_a_visible_top_level(self) -> None:
+        recorder = _VisibleTopLevelShowRecorder()
+        self._app.installEventFilter(recorder)
+        shell: AppShell | None = None
+        visible_top_levels_by_tick: list[list[dict[str, object]]] = []
+        try:
+            shell = AppShell()
+            shell.show()
+            for _tick in range(3):
+                self._app.processEvents()
+                visible_top_levels_by_tick.append(
+                    [
+                        {
+                            "class": type(widget).__name__,
+                            "object_name": widget.objectName(),
+                            "title": widget.windowTitle(),
+                            "visible": widget.isVisible(),
+                            "parent": None,
+                        }
+                        for widget in self._app.topLevelWidgets()
+                        if widget.isVisible() and widget is not shell
+                    ]
+                )
+
+            unexpected_show_events = [
+                details
+                for widget, details in recorder.events
+                if widget is not shell
+            ]
+            self.assertEqual(unexpected_show_events, [])
+            self.assertEqual(visible_top_levels_by_tick, [[], [], []])
+        finally:
+            if shell is not None:
+                shell.close()
+                self._app.processEvents()
+            self._app.removeEventFilter(recorder)
+
 
     def test_app_shell_reuses_character_weapon_asset_cache_for_pvp_workspace(self) -> None:
         characters = [_character_asset("10000050", "Thoma")]

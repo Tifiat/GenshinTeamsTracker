@@ -85,6 +85,10 @@ class SupportAwareFastScore:
     uncertainty_codes: tuple[str, ...]
     frozen_baseline_damage: float = 0.0
     frozen_baseline_share: float = 0.0
+    stochastic_sample_count: int = 1
+    stochastic_sample_sd: float = 0.0
+    stochastic_standard_error: float = 0.0
+    stochastic_mode: str = "single_trace"
     engine_call_count: int = 0
     authoritative: bool = False
     hard_prune_allowed: bool = False

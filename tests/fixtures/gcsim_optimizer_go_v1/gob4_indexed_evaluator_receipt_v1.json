@@ -1,0 +1,152 @@
+{
+  "absolute_tolerance": "1e-06",
+  "artifact_count": 483,
+  "broad_profile": {
+    "go_dps": "144878.58706960766",
+    "python_dps": "144878.58706960775"
+  },
+  "checks": {
+    "all_real_single_swaps": true,
+    "broad_profile": true,
+    "hot_evaluator_has_search_margin": true,
+    "incumbent": true,
+    "twenty_slot_controls_present": true
+  },
+  "compile_elapsed_ms": "452.6067",
+  "coordinate_count": 37,
+  "engine_executions": 0,
+  "incumbent": {
+    "go_dps": "142973.53500793583",
+    "python_dps": "142973.53500793572"
+  },
+  "interpretation": "The real request is indexed once, physical assignments enforce slot/four-piece/global-ID legality, and the compiled Go formula matches an independent Python reduction for incumbent, broad deltas, and 20 real legal single replacements. Candidate arithmetic starts no engine.",
+  "mean_hot_evaluation_ms": "0.814506",
+  "next_stage": "GOB-5_clean_Go_FGBS_to_current_accepted_Python_capability",
+  "schema_kind": "gtt_optimizer_gob4_indexed_evaluator_receipt_v1",
+  "schema_version": 1,
+  "search_executions": 0,
+  "single_swap_count": 20,
+  "single_swaps": [
+    {
+      "absolute_error": "1.1641532182693481e-10",
+      "assignment_sha256": "16a0bf92d7e905d57b6d261a24f96d06b770780180fbb09e1afb2195dbb61699",
+      "go_dps": "143255.26823461044",
+      "python_dps": "143255.26823461032"
+    },
+    {
+      "absolute_error": "8.731149137020111e-11",
+      "assignment_sha256": "f1e6c32813efc825cebb9712388627b59af859bafff3336a6d41bb88e802134d",
+      "go_dps": "143038.06158338077",
+      "python_dps": "143038.06158338068"
+    },
+    {
+      "absolute_error": "1.1641532182693481e-10",
+      "assignment_sha256": "d459c511085fe823533a811f28bfc05fa8b60740db08e1f0f451fe0100de69f2",
+      "go_dps": "143038.08278385852",
+      "python_dps": "143038.0827838584"
+    },
+    {
+      "absolute_error": "1.1641532182693481e-10",
+      "assignment_sha256": "cc03913e55c55852126d1aaf752843222fda7caa386cb8ba9f38970bce5fd5e0",
+      "go_dps": "142916.56307401782",
+      "python_dps": "142916.5630740177"
+    },
+    {
+      "absolute_error": "8.731149137020111e-11",
+      "assignment_sha256": "f4f44ec594e2666e3adcd54f67bf012efc34c47b71972c831af34049d756623a",
+      "go_dps": "143283.99763920755",
+      "python_dps": "143283.99763920746"
+    },
+    {
+      "absolute_error": "5.820766091346741e-11",
+      "assignment_sha256": "f392cb08c3e811d35ad893809fa60a50d20feb9d4a6895744369a53c8366f0f1",
+      "go_dps": "141376.9613962078",
+      "python_dps": "141376.96139620774"
+    },
+    {
+      "absolute_error": "5.820766091346741e-11",
+      "assignment_sha256": "e17cd1c529a08e03858bd76587db360f92bd58d11ded4d7570bcdb5cfe90231d",
+      "go_dps": "136384.52580386732",
+      "python_dps": "136384.52580386726"
+    },
+    {
+      "absolute_error": "0.0",
+      "assignment_sha256": "d566afaf47dbe2e656c3809cec4cbb4e8cd5cbf81051309a65fb7c2a6f60331e",
+      "go_dps": "133571.37895693362",
+      "python_dps": "133571.37895693362"
+    },
+    {
+      "absolute_error": "5.820766091346741e-11",
+      "assignment_sha256": "e323c58d460ff43da0fd071f4387282272031b0b36a7ddac50df234b97f5a751",
+      "go_dps": "132510.2064630887",
+      "python_dps": "132510.20646308875"
+    },
+    {
+      "absolute_error": "1.1641532182693481e-10",
+      "assignment_sha256": "faa7eb1fda6fbcd3476819cdfd10d4dd733e7f676d59f135728dce9665210b06",
+      "go_dps": "140031.16218464833",
+      "python_dps": "140031.16218464845"
+    },
+    {
+      "absolute_error": "5.820766091346741e-11",
+      "assignment_sha256": "fa62d37640ae7014121d09619ec94cac9f03dad4b8009e4c51224d188ba5ccf4",
+      "go_dps": "142605.4626061588",
+      "python_dps": "142605.46260615875"
+    },
+    {
+      "absolute_error": "8.731149137020111e-11",
+      "assignment_sha256": "34b79fcb34449b88cdd763cdaa8c6489487dfc10c45a6a9a6e6f2a8fa44fe0cb",
+      "go_dps": "142726.978735254",
+      "python_dps": "142726.9787352539"
+    },
+    {
+      "absolute_error": "1.1641532182693481e-10",
+      "assignment_sha256": "8d46c230da908d0a1c1e78bba5b8f481e1bbae7bba9645ca6e5e3ea339ab1fb1",
+      "go_dps": "142408.73763072287",
+      "python_dps": "142408.73763072275"
+    },
+    {
+      "absolute_error": "8.731149137020111e-11",
+      "assignment_sha256": "7b881f3ee7ed8d461665733fbb9aaf96f7617bac7b6f0b4c52dd37399f0d17ff",
+      "go_dps": "141629.77614963308",
+      "python_dps": "141629.776149633"
+    },
+    {
+      "absolute_error": "8.731149137020111e-11",
+      "assignment_sha256": "f8f756b92f93b9c4747420f67a83b1e2501948319b2e87de6d532ec9bf4c72c8",
+      "go_dps": "142812.62264246415",
+      "python_dps": "142812.62264246406"
+    },
+    {
+      "absolute_error": "5.820766091346741e-11",
+      "assignment_sha256": "d89b5376f3609698f3456a0486fd52b357efd9f8376630acd6982c8add050f41",
+      "go_dps": "142709.11804724362",
+      "python_dps": "142709.11804724357"
+    },
+    {
+      "absolute_error": "2.9103830456733704e-11",
+      "assignment_sha256": "a08e2677c773ab69fab7d1f7d8a70eda35e9903220209cbed1e50a10a29a40bb",
+      "go_dps": "143147.98542523058",
+      "python_dps": "143147.98542523055"
+    },
+    {
+      "absolute_error": "1.1641532182693481e-10",
+      "assignment_sha256": "0ff27889dde94ec606cd56e88ac1e20d4a4a87b0e9ee2aceac1bd8555baa8320",
+      "go_dps": "142022.34538391605",
+      "python_dps": "142022.34538391593"
+    },
+    {
+      "absolute_error": "2.9103830456733704e-11",
+      "assignment_sha256": "10692cd2c158861121922c8395b1ed1088ab1959eae0b7ad0b4bfe35482e646a",
+      "go_dps": "141259.17008515217",
+      "python_dps": "141259.17008515215"
+    },
+    {
+      "absolute_error": "1.1641532182693481e-10",
+      "assignment_sha256": "51b08ef2fd2f1e7bfc6676bd7a7785c3245b4a80457ef156e6320280ea0c9fab",
+      "go_dps": "142471.2625077358",
+      "python_dps": "142471.2625077357"
+    }
+  ],
+  "status": "PASS"
+}

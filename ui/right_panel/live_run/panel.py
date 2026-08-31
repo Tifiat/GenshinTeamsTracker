@@ -299,12 +299,15 @@ class RunRightPanelWidget(QWidget):
         self._teams_layout.setSpacing(6)
         self._layout.addWidget(self._teams_container)
 
-        self._chamber_table = ChamberTableBlockWidget(read_only=self._read_only)
+        self._chamber_table = ChamberTableBlockWidget(
+            self._content,
+            read_only=self._read_only,
+        )
         self._chamber_table.abyss_timer_changed.connect(
             self.abyss_timer_changed.emit
         )
-        self._chamber_table.setVisible(self._show_chamber_table)
         self._layout.addWidget(self._chamber_table)
+        self._chamber_table.setVisible(self._show_chamber_table)
 
         self._details_frame = SelectedCharacterDetailsWidget(
             read_only=self._read_only
@@ -314,14 +317,14 @@ class RunRightPanelWidget(QWidget):
         )
         self._layout.addWidget(self._details_frame)
 
-        self._run_actions = RightPanelRunActionsWidget()
+        self._run_actions = RightPanelRunActionsWidget(self._content)
         self._run_actions.reset_requested.connect(self.reset_requested.emit)
         self._run_actions.save_requested.connect(self.save_requested.emit)
         self.reset_button = self._run_actions.reset_button
         self.save_button = self._run_actions.save_button
         self.save_status_label = self._run_actions.save_status_label
-        self._run_actions.setVisible(self._show_run_actions)
         self._layout.addWidget(self._run_actions)
+        self._run_actions.setVisible(self._show_run_actions)
 
         self._layout.addStretch(1)
 
@@ -651,11 +654,11 @@ class ChamberTableBlockWidget(QFrame):
         self._status_label.setObjectName("SubtleText")
         bottom.addWidget(self._status_label)
 
-        self._gcsim_button = QPushButton(gcsim_status.button_label)
+        self._gcsim_button = QPushButton(gcsim_status.button_label, self)
         self._gcsim_button.setObjectName("GhostButton")
         self._gcsim_button.setEnabled(False)
-        self._gcsim_button.setVisible(not self._read_only)
         bottom.addWidget(self._gcsim_button)
+        self._gcsim_button.setVisible(not self._read_only)
 
     @staticmethod
     def _add_headers(grid: QGridLayout, headers: tuple[str, ...]) -> int:

@@ -16,7 +16,10 @@ from run_workspace.gcsim.trace_equation import (
     evaluate_support_aware_sliced_control_objective,
 )
 
-from test_state_evidence_v6 import _event_ref, _v6_fixture
+try:
+    from .test_state_evidence_v6 import _event_ref, _v6_fixture
+except ImportError:  # unittest discovery adds this directory directly.
+    from test_state_evidence_v6 import _event_ref, _v6_fixture
 
 
 class SupportAwareControlObjectiveTests(unittest.TestCase):
@@ -79,12 +82,47 @@ class SupportAwareControlObjectiveTests(unittest.TestCase):
 
 def _trace_with_hit_binding(
     *,
+    seed: int | None = None,
     modifier_input_event_id: str = "state-event:6",
     opaque_modifier_input: bool = False,
     multiple_providers: bool = False,
+    healing_source: bool = False,
 ):
     request, raw, binding, _ = _v6_fixture()
     raw = deepcopy(raw)
+    if seed is not None:
+        request = replace(request, seed=seed)
+        raw["seed"] = str(seed)
+        raw["request_sha256"] = request.request_sha256
+    if healing_source:
+        heal = raw["health_operations"][1]
+        heal.update(
+            kind="heal",
+            caller_index=0,
+            heal_type="absolute",
+            external=None,
+            input_value=600.0,
+            adjusted_input_value=600.0,
+            base_amount=600.0,
+            source_bonus=0.0,
+            heal_bonus_total=0.0,
+            raw_amount=600.0,
+            event_amount=600.0,
+            event_effective_amount=600.0,
+            hp_delta_magnitude=600.0,
+            overheal=0.0,
+            hp_debt_before=0.0,
+            hp_debt_after=0.0,
+            max_hp_before=12000.0,
+            max_hp_after=12000.0,
+            hp_before=5400.0,
+            hp_after=6000.0,
+            hp_ratio_before=0.45,
+            hp_ratio_after=0.5,
+            modifier_contributions=[],
+            candidate_dependency_complete=True,
+            uncertainty_codes=[],
+        )
     if multiple_providers:
         request = replace(request, character_keys=("furina", "bennett"))
         raw["character_keys"] = ["furina", "bennett"]
@@ -222,6 +260,7 @@ def _trace_with_hit_binding(
             if row["event_id"] == modifier_input_event_id
         )
         modifier_value = float(input_event["value"])
+        input_complete = bool(input_event["candidate_dependency_complete"])
         raw["state_events"].append(
             {
                 **raw["state_events"][4],
@@ -234,10 +273,12 @@ def _trace_with_hit_binding(
                     _event_ref(int(modifier_input_event_id.split(":")[1]))
                 ],
                 "output": {"dmg%": modifier_value},
-                "candidate_dependency_complete": not opaque_modifier_input,
+                "candidate_dependency_complete": (
+                    input_complete and not opaque_modifier_input
+                ),
                 "uncertainty_codes": (
                     ["modifier_input_dependency_incomplete"]
-                    if opaque_modifier_input
+                    if opaque_modifier_input or not input_complete
                     else []
                 ),
             }

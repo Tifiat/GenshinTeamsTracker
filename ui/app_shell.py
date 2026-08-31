@@ -51,6 +51,7 @@ from hoyolab_export.team_card_data import (
     build_current_equipment_artifact_snapshot,
 )
 from localization import get_language, tr
+from ui.artifact_browser.queries import list_all_artifacts, save_build_preset
 from ui.character_browser.icon_grid_adapter import build_asset_grid_items
 from ui.character_browser.filter_bar import CharacterFilterBar
 from run_workspace.right_panel_prototype_view_model import (
@@ -109,6 +110,7 @@ from ui.gcsim_browser.window import (
     GcsimBrowserTeamSlotPreview,
     GcsimBrowserWorkspace,
 )
+from ui.gcsim_browser.optimizer_result import build_optimizer_result_pages
 from ui.history_browser.window import HistoryBrowserWorkspace
 from ui.right_panel.history.viewer import HistoryRightPanelHost
 from ui.gcsim_browser.run_worker import (
@@ -118,12 +120,17 @@ from ui.gcsim_browser.run_worker import (
     GcsimBrowserDpsDummyRunWorker,
     GcsimBrowserRunRequest,
     GcsimBrowserRunWorker,
+    GcsimBrowserSelectedOptimizerWorker,
     format_gcsim_browser_batch_report,
     format_gcsim_browser_dps_dummy_report,
     format_gcsim_browser_run_report,
+    format_gcsim_optimizer_go_selected_result,
     right_panel_gcsim_result_from_browser_selected_payload,
     right_panel_gcsim_results_from_browser_batch_payload,
     split_gcsim_browser_warnings,
+)
+from run_workspace.gcsim.optimizer_go_selected import (
+    GcsimOptimizerGoSelectedRequest,
 )
 from ui.right_panel.constants import (
     RIGHT_DOCK_PAGE_ACCOUNT,
@@ -1575,6 +1582,15 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.rotation_text_changed.connect(
             self._on_gcsim_rotation_text_changed
         )
+        self.left_host.gcsim_browser_workspace.optimizer_selected_requested.connect(
+            self._on_gcsim_optimizer_selected_requested
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_cancel_requested.connect(
+            self._on_gcsim_optimizer_cancel_requested
+        )
+        self.left_host.gcsim_browser_workspace.optimizer_build_save_requested.connect(
+            self._on_gcsim_optimizer_build_save_requested
+        )
         self.left_host.history_workspace.snapshot_selected.connect(
             self._on_history_snapshot_selected
         )
@@ -1583,9 +1599,11 @@ class AppShell(QWidget):
             GcsimBrowserRunWorker
             | GcsimBrowserBatchRunWorker
             | GcsimBrowserDpsDummyRunWorker
+            | GcsimBrowserSelectedOptimizerWorker
             | None
         ) = None
         self._gcsim_browser_run_rotation_text = ""
+        self._gcsim_optimizer_selected_team: dict[str, Any] | None = None
         self._right_panel_refresh_pending = False
         self._right_panel_refresh_timer = QTimer(self)
         self._right_panel_refresh_timer.setSingleShot(True)
@@ -2115,11 +2133,167 @@ class AppShell(QWidget):
         if stored:
             self._refresh_right_panel()
 
+    def _on_gcsim_optimizer_selected_requested(
+        self,
+        team_index: int,
+        rotation_shell_text: str,
+    ) -> None:
+        if self._gcsim_browser_run_thread is not None:
+            self.left_host.gcsim_browser_workspace.set_optimizer_result_text(
+                "Selected Sets failed\nReason: another GCSIM operation is already running."
+            )
+            self.left_host.gcsim_browser_workspace.update_optimizer_progress(
+                {"stage": "failed", "completed_work": 1, "total_work": 1}
+            )
+            return
+        normalized_team_index = max(0, min(1, int(team_index)))
+        selected_team = self.controller.gcsim_browser_selected_team(
+            normalized_team_index
+        )
+        if not _selected_team_has_characters(selected_team):
+            self.left_host.gcsim_browser_workspace.set_optimizer_result_text(
+                "Selected Sets failed\nReason: active team has no characters."
+            )
+            self.left_host.gcsim_browser_workspace.update_optimizer_progress(
+                {"stage": "failed", "completed_work": 1, "total_work": 1}
+            )
+            return
+        request = GcsimOptimizerGoSelectedRequest(
+            db_path=str(self.controller.equipment_db_path),
+            selected_team=selected_team,
+            team_index=normalized_team_index,
+            rotation_shell_text=rotation_shell_text,
+        )
+        worker = GcsimBrowserSelectedOptimizerWorker(request)
+        thread = QThread(self)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.progress.connect(
+            self.left_host.gcsim_browser_workspace.update_optimizer_progress
+        )
+        worker.finished.connect(self._on_gcsim_optimizer_selected_finished)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._clear_gcsim_run_worker_refs)
+        self._gcsim_browser_run_worker = worker
+        self._gcsim_browser_run_thread = thread
+        self._gcsim_browser_run_rotation_text = rotation_shell_text
+        self._gcsim_optimizer_selected_team = dict(selected_team)
+        self.left_host.gcsim_browser_workspace.set_optimizer_busy(True)
+        thread.start()
+
+    def _on_gcsim_optimizer_cancel_requested(self) -> None:
+        worker = self._gcsim_browser_run_worker
+        if isinstance(worker, GcsimBrowserSelectedOptimizerWorker):
+            self.left_host.gcsim_browser_workspace.optimizer_progress_label.setText(
+                "Cancelling Selected Sets..."
+            )
+            worker.cancel()
+
+    def _on_gcsim_optimizer_selected_finished(self, payload: dict) -> None:
+        payload_dict = dict(payload)
+        workspace = self.left_host.gcsim_browser_workspace
+        workspace.set_optimizer_result_text(
+            format_gcsim_optimizer_go_selected_result(payload_dict)
+        )
+        pages = ()
+        if str(payload_dict.get("status") or "") == "success":
+            try:
+                pages = build_optimizer_result_pages(
+                    payload_dict,
+                    self._gcsim_optimizer_selected_team,
+                    list_all_artifacts(db_path=self.controller.equipment_db_path),
+                )
+            except Exception as exc:
+                template = tr("gcsim.optimizer.cards_unavailable")
+                if template == "gcsim.optimizer.cards_unavailable":
+                    template = "Build cards unavailable: {error}"
+                workspace.set_optimizer_result_text(
+                    format_gcsim_optimizer_go_selected_result(payload_dict)
+                    + "\n"
+                    + template.format(error=exc)
+                )
+        workspace.set_optimizer_result_pages(pages)
+        status = str(payload_dict.get("status") or "failed")
+        progress_stage = (
+            "completed" if status == "success" else "cancelled" if status == "cancelled" else "failed"
+        )
+        workspace.update_optimizer_progress(
+            {
+                "stage": progress_stage,
+                "completed_work": 1,
+                "total_work": 1,
+            }
+        )
+
+    def _on_gcsim_optimizer_build_save_requested(self, request: dict) -> None:
+        request_dict = dict(request)
+        wearer_key = str(request_dict.get("wearer_key") or "").casefold()
+        try:
+            name = str(request_dict.get("name") or "").strip()
+            slots = {
+                int(position): int(artifact_id)
+                for position, artifact_id in dict(request_dict.get("slots") or {}).items()
+            }
+            targets = [dict(item) for item in request_dict.get("targets") or []]
+            if not name:
+                message = tr("gcsim.optimizer.invalid_name")
+                raise ValueError(
+                    "Build name is empty"
+                    if message == "gcsim.optimizer.invalid_name"
+                    else message
+                )
+            if set(slots) != {1, 2, 3, 4, 5}:
+                message = tr("gcsim.optimizer.invalid_slots")
+                raise ValueError(
+                    "Build does not contain five artifact slots"
+                    if message == "gcsim.optimizer.invalid_slots"
+                    else message
+                )
+            if not targets:
+                message = tr("gcsim.optimizer.character_missing")
+                raise ValueError(
+                    "Character target is unavailable"
+                    if message == "gcsim.optimizer.character_missing"
+                    else message
+                )
+            save_build_preset(
+                build_id=None,
+                name=name,
+                slots=slots,
+                targets=targets,
+                db_path=self.controller.equipment_db_path,
+            )
+            browser = self.left_host.artifact_browser_workspace
+            if browser is not None:
+                browser.load_build_presets()
+                browser.refresh_build_target_list()
+                browser.update_build_panel()
+            template = tr("gcsim.optimizer.saved")
+            if template == "gcsim.optimizer.saved":
+                template = "Saved in Artifact Browser: {name}"
+            self.left_host.gcsim_browser_workspace.set_optimizer_build_save_result(
+                wearer_key,
+                success=True,
+                message=template.format(name=name),
+            )
+        except Exception as exc:
+            template = tr("gcsim.optimizer.save_failed")
+            if template == "gcsim.optimizer.save_failed":
+                template = "Could not save: {error}"
+            self.left_host.gcsim_browser_workspace.set_optimizer_build_save_result(
+                wearer_key,
+                success=False,
+                message=template.format(error=exc),
+            )
+
     def _clear_gcsim_run_worker_refs(self) -> None:
         self._gcsim_browser_run_thread = None
         self._gcsim_browser_run_worker = None
         self._gcsim_browser_run_rotation_text = ""
         self.left_host.gcsim_browser_workspace.set_actions_busy(False)
+        self.left_host.gcsim_browser_workspace.set_optimizer_busy(False)
 
     def _on_artifact_browser_equipment_changed(self, result: object) -> None:
         affected_ids = {

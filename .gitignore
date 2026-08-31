@@ -36,4 +36,5 @@ assets/hd/weapons/
 /черновик*.md
 /data/history/
 /.codex_tmp/
+/native/gcsim_optimizer/gtt-optimizer.exe
 /gtt-wave-scenario.json

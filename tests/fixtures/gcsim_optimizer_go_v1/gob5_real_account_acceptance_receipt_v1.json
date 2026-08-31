@@ -1,0 +1,261 @@
+{
+  "artifact_count": 483,
+  "checks": {
+    "all_search_counts_reported": true,
+    "bounded_finalist_set_present": true,
+    "cold_search_below_product_boundary": true,
+    "dependency_or_conflict_pairs_are_bounded": true,
+    "go_leader_no_worse_than_python_on_same_objective": true,
+    "initial_assignment_is_current": true,
+    "initial_is_retained_as_explicit_result_boundary": true,
+    "meaningful_runtime_margin": true,
+    "python_leader_retained_in_finalists": true,
+    "support_response_edges_preserved": true,
+    "two_cycles_and_recheck_completed": true,
+    "uncertainty_prevents_unsafe_saturation_freeze": true
+  },
+  "coordinate_count": 37,
+  "engine_executions": 0,
+  "go_leader": {
+    "advantage_over_python_reference_dps": "117.67547675239621",
+    "assignment": {
+      "bennett": [
+        36,
+        81,
+        1426,
+        1451,
+        1437
+      ],
+      "chasca": [
+        80,
+        77,
+        87,
+        88,
+        203
+      ],
+      "furina": [
+        1301,
+        7,
+        1466,
+        9,
+        1319
+      ],
+      "ororon": [
+        76,
+        91,
+        241,
+        1477,
+        119
+      ]
+    },
+    "dps": "148135.03384471865"
+  },
+  "initial_dps": "142973.53500793583",
+  "interpretation": "GOB-5 searches the real Selected artifact domain entirely in Go, retains the migration leader, finds a higher same-panel formula score, and finishes with substantial room below 190 seconds. This is formula-search acceptance, not an n=1000 gameplay-quality claim.",
+  "n1000_executions": 0,
+  "next_stage": "GOB-6_mandatory_cleanup_after_user_authorization",
+  "python_reference": {
+    "assignments": {
+      "bennett": [
+        36,
+        81,
+        1426,
+        1451,
+        1437
+      ],
+      "chasca": [
+        80,
+        77,
+        87,
+        88,
+        203
+      ],
+      "furina": [
+        1301,
+        7,
+        1466,
+        1309,
+        1319
+      ],
+      "ororon": [
+        76,
+        91,
+        241,
+        1477,
+        119
+      ]
+    },
+    "historical_runtime_seconds": "200.48775639999076",
+    "historical_single_trace_damage": "9797214.13089696",
+    "retained_finalist_rank": 24,
+    "same_go_panel_dps": "148017.35836796626"
+  },
+  "request_sha256": "177be2ddc9b3b8aa4d650b2d2246e4f5e3adf0ba8a72d96e0c7ed09df287de54",
+  "runtime": {
+    "compile_seconds": "0.4494542",
+    "product_boundary_seconds": "190.0",
+    "search_seconds": "64.5846008",
+    "total_seconds": "65.034055"
+  },
+  "schema_kind": "gtt_optimizer_gob5_real_account_acceptance_receipt_v1",
+  "schema_version": 1,
+  "search": {
+    "accepted_steps": 4,
+    "completed_cycles": 2,
+    "cross_actor_response_edges": [
+      [
+        "bennett",
+        "chasca"
+      ],
+      [
+        "bennett",
+        "furina"
+      ],
+      [
+        "bennett",
+        "ororon"
+      ],
+      [
+        "furina",
+        "bennett"
+      ],
+      [
+        "furina",
+        "chasca"
+      ],
+      [
+        "furina",
+        "ororon"
+      ]
+    ],
+    "finalist_count": 24,
+    "opaque_reason_count": 25,
+    "pair_actor_keys": [
+      [
+        "bennett",
+        "chasca"
+      ],
+      [
+        "bennett",
+        "furina"
+      ],
+      [
+        "bennett",
+        "ororon"
+      ],
+      [
+        "chasca",
+        "furina"
+      ],
+      [
+        "furina",
+        "ororon"
+      ]
+    ],
+    "pair_duplicates": 47,
+    "pair_evaluated": 273,
+    "pair_generated": 320,
+    "pair_invalid": 0,
+    "saturation_frozen_wearers": [],
+    "steps": [
+      {
+        "accepted": true,
+        "budget_unexpanded": 0,
+        "complete_evaluations": 192,
+        "cycle": 1,
+        "expanded": 19004,
+        "frontier_discarded": 18176,
+        "frontier_width": 32,
+        "guide_evaluations": 19700,
+        "raw_physical_builds": 7013280,
+        "wearer_key": "bennett"
+      },
+      {
+        "accepted": true,
+        "budget_unexpanded": 0,
+        "complete_evaluations": 192,
+        "cycle": 1,
+        "expanded": 16937,
+        "frontier_discarded": 16211,
+        "frontier_width": 32,
+        "guide_evaluations": 17529,
+        "raw_physical_builds": 554950,
+        "wearer_key": "chasca"
+      },
+      {
+        "accepted": true,
+        "budget_unexpanded": 0,
+        "complete_evaluations": 192,
+        "cycle": 1,
+        "expanded": 16200,
+        "frontier_discarded": 15504,
+        "frontier_width": 32,
+        "guide_evaluations": 16764,
+        "raw_physical_builds": 219232,
+        "wearer_key": "furina"
+      },
+      {
+        "accepted": true,
+        "budget_unexpanded": 0,
+        "complete_evaluations": 192,
+        "cycle": 1,
+        "expanded": 16456,
+        "frontier_discarded": 15730,
+        "frontier_width": 32,
+        "guide_evaluations": 17032,
+        "raw_physical_builds": 360050,
+        "wearer_key": "ororon"
+      },
+      {
+        "accepted": false,
+        "budget_unexpanded": 0,
+        "complete_evaluations": 48,
+        "cycle": 2,
+        "expanded": 5148,
+        "frontier_discarded": 4908,
+        "frontier_width": 8,
+        "guide_evaluations": 5844,
+        "raw_physical_builds": 7013280,
+        "wearer_key": "bennett"
+      },
+      {
+        "accepted": false,
+        "budget_unexpanded": 0,
+        "complete_evaluations": 48,
+        "cycle": 2,
+        "expanded": 4446,
+        "frontier_discarded": 4229,
+        "frontier_width": 8,
+        "guide_evaluations": 5038,
+        "raw_physical_builds": 554950,
+        "wearer_key": "chasca"
+      },
+      {
+        "accepted": false,
+        "budget_unexpanded": 0,
+        "complete_evaluations": 48,
+        "cycle": 2,
+        "expanded": 4248,
+        "frontier_discarded": 4032,
+        "frontier_width": 8,
+        "guide_evaluations": 4812,
+        "raw_physical_builds": 219232,
+        "wearer_key": "furina"
+      },
+      {
+        "accepted": false,
+        "budget_unexpanded": 0,
+        "complete_evaluations": 48,
+        "cycle": 2,
+        "expanded": 4318,
+        "frontier_discarded": 4101,
+        "frontier_width": 8,
+        "guide_evaluations": 4894,
+        "raw_physical_builds": 360050,
+        "wearer_key": "ororon"
+      }
+    ],
+    "stop_reason": "provisional_stable"
+  },
+  "status": "PASS"
+}

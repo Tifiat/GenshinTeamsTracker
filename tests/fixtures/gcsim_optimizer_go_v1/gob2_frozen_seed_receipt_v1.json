@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "schema_kind": "gtt_optimizer_gob2_frozen_seed_receipt_v1",
+  "seed": 742031889,
+  "engine_executions": {
+    "total": 2,
+    "accepted_execution": 2,
+    "scope": "same_frozen_seed_adapter_feasibility_only"
+  },
+  "engine_patch": {
+    "path": "run_workspace/gcsim/patch_stack/0022-gtt-compact-equation-v1.patch",
+    "sha256": "1ae98078551b9534ca61349b46a91f285f753807d86108077ce41c2f65466adf"
+  },
+  "source_manifest": {
+    "sha256": "3b1832495a308e9697a8a71f02bb6e83ae3b429b358a197015b70c69b4645fbc",
+    "source_count": 3465
+  },
+  "raw_trace": {
+    "sha256": "d6f28b027cca7350a89dbb3afbf3f5f10d2d4e3ad0751a6a1b865e1e328d94f2",
+    "bytes": 69085424,
+    "duration_frames": 4017,
+    "hit_count": 365,
+    "state_event_count": 40790,
+    "health_operation_count": 196
+  },
+  "compact_member": {
+    "sha256": "9f77939d914a2ba8cf42f71db08a0b946d11cf9af1cf22ba69023b3eb04411f9",
+    "bytes": 4548636,
+    "source_hit_count": 365,
+    "ancestor_state_event_count": 9063,
+    "node_count": 42242,
+    "channel_count": 365,
+    "opaque_reason_count": 25,
+    "opaque_accounting": "overlapping_full_baseline_exposure_not_additive_damage_chunks"
+  },
+  "performance": {
+    "adapter_elapsed_ns": 117467600,
+    "full_command_elapsed_ms": 1781,
+    "process_peak_working_set_bytes": 144666624,
+    "heap_in_use_start_bytes": 102768640,
+    "heap_in_use_peak_checkpoint_bytes": 102768640,
+    "heap_in_use_end_bytes": 78192640,
+    "total_alloc_delta_bytes": 80626800
+  },
+  "parity": {
+    "coordinate": "bennett.hp_percent",
+    "coordinate_delta": -0.2,
+    "python_baseline_damage": 9460439.540199637,
+    "go_baseline_damage": 9460439.540199643,
+    "python_candidate_damage": 9458684.571997376,
+    "go_candidate_damage": 9458684.571997381,
+    "python_delta_damage": -1754.9682022612542,
+    "go_delta_damage": -1754.968202261254
+  },
+  "limits": {
+    "multi_seed_aggregation_proven": false,
+    "artifact_search_proven": false,
+    "product_runtime_proven": false,
+    "ui_binding_proven": false
+  }
+}

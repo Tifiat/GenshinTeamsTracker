@@ -768,6 +768,10 @@ Performance fix status:
   transient windows and multi-second first init. Stable Qt widget ownership is
   required: keep widgets parented in a single layout and update
   visibility/state/content in place.
+- Startup construction follows the same ownership rule: give child widgets
+  their stable parent (or add them to the owning layout) before any
+  `setVisible(True)` call. Showing a parentless `QWidget` makes it a temporary
+  top-level window even when it is reparented immediately afterward.
 - PvP post-draft source panels follow the same rule. Once Assignment/Weapons
   has created the scoped `CharacterWeaponWorkspace` source zones, clicks must
   update titles, markers, filters, and grids in place. Do not detach source

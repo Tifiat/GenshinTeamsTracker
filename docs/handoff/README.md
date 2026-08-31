@@ -17,14 +17,22 @@ Current maps:
 - `ABYSS_MECHANICS_NOTES.md` - Abyss enemy mechanics parser tags and source notes.
 - `GCSIM.md` - GCSIM research and integration notes.
 - `GCSIM_ENGINE_INTEGRATION_PLAN.md` - authoritative current GCSIM status plus the historical implementation record for engine updates, patches, selected-team configs, sequential Abyss waves, typed results/history, and remaining UI/release work.
-- `GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` - sole authoritative and compact
-  artifact-optimizer contract. FAST is the working search evaluator; STANDARD
-  is a development control only. The document owns response-signature
-  compression, explicit artifact-variable rebasing, isolated continuous/discrete
-  search strategies, frozen mechanics, reactions, three product scopes, current
-  measurements and the implementation order through Selected UI.
+- `GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` - sole authoritative, compact
+  optimizer contract: product scopes, accepted Go architecture, proven and
+  unproven boundaries, GOB-0 through GOB-9, and mandatory cleanup gates.
+- `GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md` - sole active production-backend
+  redesign. A standalone Go optimizer owns compact formulas, artifacts, FGBS,
+  stochastic expectation and finalists; a minimal GCSIM adapter patch only
+  exposes runtime evidence and ordinary simulation. It owns GOB-0 through GOB-9,
+  mandatory Python cleanup and the current implementation order. GOB-3 through
+  GOB-8 are functionally accepted: the real AppShell Selected button returns an
+  exact measured winner and twenty IDs. Repeated full UI runs took 3:33 and
+  3:40, missing the separate 190-second performance target. The clean repository
+  checkpoint passes; bounded GOB-8P performance work is next, followed by final
+  GOB-9 cleanup.
 - `GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST.json` - machine-readable current
-  reuse/replace/delete/receipt disposition for the optimizer migration.
+  reuse/replace/delete/receipt disposition for the optimizer migration,
+  including mandatory GOB-6 migration cleanup and GOB-9 final area cleanup.
 - `FAR_FUTURE_TODO.md` - non-MVP PvP, analytics, draft bot, support/donation, monetization, and optional AI companion ideas.
 - `PVP_V0_CONTRACT.md` - stable PvP v0 product/backend contract for the full offline hot-seat loop: deck JSON, pick/ban, teams, weapons, timers, and winner summary.
 - `PVP_BACKEND_STATUS.md` - implementation-oriented PvP backend status:

@@ -20,6 +20,11 @@ from run_workspace.gcsim.selected_team_config import (
     run_selected_team_dps_dummy_artifact,
 )
 from run_workspace.gcsim.settings import GcsimRunSettings
+from run_workspace.gcsim.optimizer_go_selected import (
+    GcsimOptimizerGoSelectedRequest,
+    GcsimOptimizerGoSelectedSession,
+    format_gcsim_optimizer_go_selected_result,
+)
 from run_workspace.right_panel_prototype_view_model import (
     FACT_DPS_HP_MODE_MULTI_TARGET,
     FACT_DPS_HP_MODE_SOLO,
@@ -130,6 +135,27 @@ class GcsimBrowserDpsDummyRunWorker(QObject):
     @Slot()
     def run(self) -> None:
         self.finished.emit(run_gcsim_browser_dps_dummy(self._request))
+
+
+class GcsimBrowserSelectedOptimizerWorker(QObject):
+    progress = Signal(dict)
+    finished = Signal(dict)
+
+    def __init__(self, request: GcsimOptimizerGoSelectedRequest) -> None:
+        super().__init__()
+        self._session = GcsimOptimizerGoSelectedSession(
+            request,
+            progress_callback=self.progress.emit,
+        )
+
+    @Slot()
+    def run(self) -> None:
+        self.finished.emit(self._session.run())
+
+    def cancel(self) -> None:
+        # Called directly by the UI thread. The session only sets a thread-safe
+        # flag and interrupts its owned process group.
+        self._session.cancel()
 
 
 def run_gcsim_browser_selected_chamber(

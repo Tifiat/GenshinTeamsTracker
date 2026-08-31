@@ -343,32 +343,33 @@ Stable upstream boundary:
 
 Current GTT direction:
 
-- Selected Sets, All Sets and Theory share one trace-specialized formula model
-  over a frozen team/rotation/target/engine context.
-- FAST is the intended search evaluator. It groups only response-equivalent
-  observed hits, separated generically by engine attack tag, raw damage type
-  and formula response coordinates. It is not product accepted: the exact-
-  current-equipment gate proved that one trace seed can change elements,
-  reactions and hit count, so current FAST models one sampled topology rather
-  than expected DPS.
-- Before composition, add generic candidate-dependent supporting-mechanism
-  replay. Composition may then be developed with the one-seed scorer marked
-  provisional. Before real-quality/full-Selected acceptance, add the generic
-  stochastic-topology expectation contract and rerun the unchanged n=1000 test.
-  Do not select a favorable seed or widen tolerance.
-- STANDARD is retained only for bounded development/regression comparison. It
-  is not a product stage or mandatory confirmation.
-- FAST candidates go directly to a bounded ordinary-GCSIM finalist batch. The
-  best measured finalist is the product result; search and save/equip remain
-  separate.
-- Unknown mechanics remain typed and baseline-frozen while known equations keep
-  running. A material unknown degrades confidence and widens retained coverage;
-  it never becomes a guessed zero or a legacy fallback.
+- Selected Sets, All Sets and Theory share one rotation-conditioned formula
+  model, but current implementation work is Selected only.
+- The accepted product backend is `gtt_gcsim_optimizer_go_v1`: a standalone Go
+  optimizer plus a minimal versioned GCSIM adapter. GOB-3 through GOB-7 pass:
+  real stochastic parity, indexed formula evaluation, clean Go FGBS, migration
+  cleanup and staged common-context n=128/n=1000 verification are complete.
+  The clean accepted staged run took 170.67 seconds and measured 148744.23 DPS
+  versus 143721.66 Current. GOB-8 is now functionally accepted. After fixing
+  compact-panel aggregation to use each seed member's own duration, the actual
+  restarted AppShell Selected button completed with 148910.10 DPS, SE 68.49
+  and twenty unique artifact IDs. Repeated full UI runs took 3:33 and 3:40, so
+  the 190-second performance target remains missed; the temporary working kill
+  is 360 seconds while bounded GOB-8P performance work is next.
+- Python FAST/FGBS remains only as method/parity evidence. Its bounded
+  single-seed path passed the 190 s limit, while the naive two-full-trace
+  stochastic representation failed the product runtime goal. No further Python
+  product extension or hidden fallback is allowed.
+- The Go adapter must emit compact engine-neutral formula/support evidence; Go
+  owns stochastic aggregation, real-artifact search and finalists. Ordinary
+  GCSIM n=1000 measures the final reported DPS.
+- STANDARD is a bounded regression control only. Unknown mechanics remain typed
+  and frozen at the last known boundary while known equations continue.
+- Former schema checkpoints, M/S/Gate plans, stat/set response maps and
+  experimental search services were removed at GOB-6. GOB-9 removes every
+  remaining obsolete optimizer component after product cutover.
 
-Former schema checkpoints, M/S/Gate plans, stat/set response maps and
-experimental search services are forensic history only. Read
-`GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` for current measurements and
-implementation order.
+Read `GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` for the sole current sequence.
 
 ## 9. Output / Result Parsing
 

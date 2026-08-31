@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "schema_kind": "gtt_optimizer_gob3f_runtime_receipt_v1",
+  "status": "PASS_WITH_GOB4_HOT_PATH_REQUIRED",
+  "engine_executions": 0,
+  "search_executions": 0,
+  "repeats": 5,
+  "input": {
+    "artifact_count": 483,
+    "compact_members": 2,
+    "compact_payload_bytes": 9278245
+  },
+  "measurements": {
+    "cold_decode_and_validation_ms": "2098.3049",
+    "five_full_graph_evaluations_ms": "4285.2185",
+    "mean_full_graph_evaluation_ms": "857.0437",
+    "peak_rss_bytes": 254029824,
+    "candidate_mean_dps": "142973.53500793583"
+  },
+  "acceptance": {
+    "cold_process_under_10000_ms": true,
+    "peak_rss_under_536870912_bytes": true,
+    "repeat_is_deterministic": true,
+    "full_graph_evaluation_is_search_hot_path": false
+  },
+  "interpretation": "The one-time real panel load is acceptable, but traversing all 86169 nodes for every candidate is not. GOB-4 must compile an indexed reusable evaluator before any search is accepted.",
+  "next_stage": "GOB-4_index_artifacts_legality_and_compile_reusable_formula_evaluation"
+}

@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "schema_kind": "gtt_gcsim_optimizer_compact_ir_v1",
+  "request_sha256": "6c935a6df0b1f7f471d4e1915177b1c9b7e02149d9f9d544ad9b16051ca35140",
+  "engine_binding_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "context_sha256": "5ae36bc9170b43d9a8337bcf67845bcef352f24c184feb66dbb07301cadc132c",
+  "members": [
+    {
+      "seed": 101,
+      "duration_ms": 20000,
+      "topology_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "nodes": [
+        {"node_id": 1, "operation": "constant", "inputs": [], "value": "100"},
+        {"node_id": 2, "operation": "artifact_stat", "inputs": [], "coordinate": "actor_a.hp_percent"},
+        {"node_id": 3, "operation": "constant", "inputs": [], "value": "100"},
+        {"node_id": 4, "operation": "multiply", "inputs": [{"node_id": 2, "relation": "artifact_delta"}, {"node_id": 3, "relation": "delta_scale"}]},
+        {"node_id": 5, "operation": "add", "inputs": [{"node_id": 1, "relation": "incumbent_known_damage"}, {"node_id": 4, "relation": "candidate_delta_damage"}]},
+        {"node_id": 6, "operation": "opaque_frozen", "inputs": [], "value": "5"},
+        {"node_id": 7, "operation": "add", "inputs": [{"node_id": 5, "relation": "known_damage"}, {"node_id": 6, "relation": "opaque_damage"}]}
+      ],
+      "channels": [
+        {
+          "channel_id": "actor_a_skill_direct",
+          "kind": "direct",
+          "actor_key": "actor_a",
+          "attack_tag": "skill",
+          "damage_type": "synthetic_type_a",
+          "root_node_id": 7,
+          "hit_count": 3,
+          "baseline_damage": "105",
+          "response_coordinates": ["actor_a.hp_percent", "actor_a.opaque"]
+        }
+      ],
+      "opaque_boundaries": [
+        {
+          "boundary_id": "unknown_side_effect",
+          "node_id": 6,
+          "reason_code": "unsupported_source_program",
+          "baseline_damage": "5",
+          "baseline_damage_share": "0.047619"
+        }
+      ]
+    },
+    {
+      "seed": 202,
+      "duration_ms": 20000,
+      "topology_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+      "nodes": [
+        {"node_id": 1, "operation": "constant", "inputs": [], "value": "110"},
+        {"node_id": 2, "operation": "artifact_stat", "inputs": [], "coordinate": "actor_a.hp_percent"},
+        {"node_id": 3, "operation": "constant", "inputs": [], "value": "100"},
+        {"node_id": 4, "operation": "multiply", "inputs": [{"node_id": 2, "relation": "artifact_delta"}, {"node_id": 3, "relation": "delta_scale"}]},
+        {"node_id": 5, "operation": "add", "inputs": [{"node_id": 1, "relation": "incumbent_known_damage"}, {"node_id": 4, "relation": "candidate_delta_damage"}]},
+        {"node_id": 6, "operation": "opaque_frozen", "inputs": [], "value": "4"},
+        {"node_id": 7, "operation": "add", "inputs": [{"node_id": 5, "relation": "known_damage"}, {"node_id": 6, "relation": "opaque_damage"}]}
+      ],
+      "channels": [
+        {
+          "channel_id": "actor_a_skill_direct",
+          "kind": "direct",
+          "actor_key": "actor_a",
+          "attack_tag": "skill",
+          "damage_type": "synthetic_type_a",
+          "root_node_id": 7,
+          "hit_count": 4,
+          "baseline_damage": "114",
+          "response_coordinates": ["actor_a.hp_percent", "actor_a.opaque"]
+        }
+      ],
+      "opaque_boundaries": [
+        {
+          "boundary_id": "unknown_side_effect",
+          "node_id": 6,
+          "reason_code": "unsupported_source_program",
+          "baseline_damage": "4",
+          "baseline_damage_share": "0.035088"
+        }
+      ]
+    }
+  ]
+}

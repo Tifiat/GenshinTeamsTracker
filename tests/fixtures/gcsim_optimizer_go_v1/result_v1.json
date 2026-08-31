@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "schema_kind": "gtt_gcsim_optimizer_result_v1",
+  "request_sha256": "6c935a6df0b1f7f471d4e1915177b1c9b7e02149d9f9d544ad9b16051ca35140",
+  "compact_ir_sha256": "e9bd959948c0ab106bc6f4936d106b75e5f0e704ddd8e0b1088a20c550b1a431",
+  "status": "success",
+  "winner": [
+    {"wearer_key": "actor_a", "slot": "flower", "artifact_id": 1},
+    {"wearer_key": "actor_a", "slot": "plume", "artifact_id": 2},
+    {"wearer_key": "actor_a", "slot": "sands", "artifact_id": 3},
+    {"wearer_key": "actor_a", "slot": "goblet", "artifact_id": 4},
+    {"wearer_key": "actor_a", "slot": "circlet", "artifact_id": 5},
+    {"wearer_key": "actor_b", "slot": "flower", "artifact_id": 6},
+    {"wearer_key": "actor_b", "slot": "plume", "artifact_id": 7},
+    {"wearer_key": "actor_b", "slot": "sands", "artifact_id": 8},
+    {"wearer_key": "actor_b", "slot": "goblet", "artifact_id": 9},
+    {"wearer_key": "actor_b", "slot": "circlet", "artifact_id": 10},
+    {"wearer_key": "actor_c", "slot": "flower", "artifact_id": 11},
+    {"wearer_key": "actor_c", "slot": "plume", "artifact_id": 12},
+    {"wearer_key": "actor_c", "slot": "sands", "artifact_id": 13},
+    {"wearer_key": "actor_c", "slot": "goblet", "artifact_id": 14},
+    {"wearer_key": "actor_c", "slot": "circlet", "artifact_id": 15},
+    {"wearer_key": "actor_d", "slot": "flower", "artifact_id": 16},
+    {"wearer_key": "actor_d", "slot": "plume", "artifact_id": 17},
+    {"wearer_key": "actor_d", "slot": "sands", "artifact_id": 18},
+    {"wearer_key": "actor_d", "slot": "goblet", "artifact_id": 19},
+    {"wearer_key": "actor_d", "slot": "circlet", "artifact_id": 20}
+  ],
+  "formula_dps": "142973.54",
+  "measured": {
+    "iterations": 1000,
+    "dps": "143738.29",
+    "standard_error": "66",
+    "engine_result_sha256": "8888888888888888888888888888888888888888888888888888888888888888"
+  },
+  "formula_residual": "-764.75",
+  "warnings": [
+    "material_opaque_boundary",
+    "stochastic_panel_not_converged"
+  ],
+  "debug_receipt_path": "debug/synthetic/receipt.json"
+}

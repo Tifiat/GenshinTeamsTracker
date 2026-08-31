@@ -1,0 +1,323 @@
+{
+  "absolute_tolerance": "0.000001",
+  "aggregate": {
+    "by_actor": [
+      {
+        "actor_key": "bennett",
+        "damage": 101736.1538551329,
+        "dps": 1519.5840755060926
+      },
+      {
+        "actor_key": "chasca",
+        "damage": 7949352.053465683,
+        "dps": 118735.65427133208
+      },
+      {
+        "actor_key": "furina",
+        "damage": 845618.6393919166,
+        "dps": 12630.599542821756
+      },
+      {
+        "actor_key": "ororon",
+        "damage": 675371.3220685553,
+        "dps": 10087.697118275657
+      }
+    ],
+    "mean_dps": "142973.53500793583",
+    "opaque_reason_classes": 25,
+    "sample_sd_dps": "2358.1906291996756",
+    "standard_error_dps": "1667.4925852376618"
+  },
+  "compact_ir_sha256": "92b937cf0f5390d9f9b61ffe057db0b171212089bafd4a99cb7f381487ab81f8",
+  "engine_executions": 0,
+  "go_process_elapsed_ms": "2997.4510000029113",
+  "large_payloads_retained_only_in_ignored_temp": true,
+  "members": [
+    {
+      "by_actor": [
+        {
+          "actor_key": "bennett",
+          "damage": 99115.28770758306,
+          "dps": 1480.437456423944
+        },
+        {
+          "actor_key": "chasca",
+          "damage": 7877635.10087728,
+          "dps": 117664.45258965317
+        },
+        {
+          "actor_key": "furina",
+          "damage": 837755.9934802674,
+          "dps": 12513.158976553657
+        },
+        {
+          "actor_key": "ororon",
+          "damage": 645933.158134495,
+          "dps": 9647.99340006714
+        }
+      ],
+      "damage": 9460439.540199643,
+      "dps": 141306.04242269817,
+      "seed": 742031889
+    },
+    {
+      "by_actor": [
+        {
+          "actor_key": "bennett",
+          "damage": 104357.02000268272,
+          "dps": 1558.7306945882408
+        },
+        {
+          "actor_key": "chasca",
+          "damage": 8021069.006054085,
+          "dps": 119806.85595301096
+        },
+        {
+          "actor_key": "furina",
+          "damage": 853481.2853035658,
+          "dps": 12748.040109089854
+        },
+        {
+          "actor_key": "ororon",
+          "damage": 704809.4860026157,
+          "dps": 10527.400836484177
+        }
+      ],
+      "damage": 9683716.797362966,
+      "dps": 144641.0275931735,
+      "seed": 742031890
+    }
+  ],
+  "n1000_executions": 0,
+  "next_stage": "GOB-3F_measure_repeat_runtime_and_memory_without_engine_execution",
+  "parity_checks": {
+    "actor_damage_and_dps": true,
+    "mean_dps": true,
+    "member_dps": true,
+    "opaque_reason_seed_coverage": true,
+    "sample_sd_dps": true,
+    "standard_error_dps": true,
+    "zero_delta": true
+  },
+  "python_reference": {
+    "by_actor": [
+      {
+        "actor_key": "bennett",
+        "damage": "101736.1538551329",
+        "dps": "1519.5840755060926"
+      },
+      {
+        "actor_key": "chasca",
+        "damage": "7949352.053465693",
+        "dps": "118735.65427133223"
+      },
+      {
+        "actor_key": "furina",
+        "damage": "845618.6393919163",
+        "dps": "12630.599542821752"
+      },
+      {
+        "actor_key": "ororon",
+        "damage": "675371.322068555",
+        "dps": "10087.697118275653"
+      }
+    ],
+    "mean_dps": "142973.53500793572",
+    "member_dps": [
+      "141306.04242269808",
+      "144641.02759317338"
+    ],
+    "opaque_reasons": [
+      {
+        "reason_code": "attack_mod_closure_expression_collapsed",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "callback_provider_unattributed",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "flat_dmg_expression_collapsed",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "gadget_wave_state_lineage_not_instrumented",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "health_context_candidate_dependency_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "health_field_candidate_dependency_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "max_hp_candidate_dependency_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "modifier_candidate_dependency_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "modifier_source_parameter_binding_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "modifier_state_read_candidate_dependency_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "multiplier_source_expression_not_instrumented",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "numeric_expression_candidate_dependency_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "numeric_marker_replay_not_recomputed",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "numeric_source_parameter_dependency_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "ordinary_helper_argument_dependency_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "post_damage_callback_state_effects_unmodeled",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "provider_transition_timeline_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "reaction_parent_lineage_not_instrumented",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "reaction_topology_aggregate_only",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "stat_mod_dependency_expression_collapsed",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "state_read_candidate_dependency_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "state_write_candidate_dependency_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "task_numeric_transition_dependency_incomplete",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "task_payload_source_expression_unbound",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      },
+      {
+        "reason_code": "untyped_callback_state_effects_unmodeled",
+        "seeds": [
+          742031889,
+          742031890
+        ]
+      }
+    ],
+    "sample_sd_dps": "2358.190629199655",
+    "standard_error_dps": "1667.4925852376473"
+  },
+  "request": {
+    "artifact_count": 483,
+    "engine_binding_sha256": "a27e5ccc663b86ca6d73c153d14194d2c1a8564b6f3f5c86d09d539888dba3fc",
+    "incumbent_artifact_count": 20,
+    "request_sha256": "177be2ddc9b3b8aa4d650b2d2246e4f5e3adf0ba8a72d96e0c7ed09df287de54",
+    "source_context_sha256": "bc022c0cc5cf012514d8396b18b16923317c2d01e17998300f3fb7ba67e9a7bb",
+    "trace_context_sha256": "4ba3f77be370627ef5423ccebc6684c025d794920d5313b2cda23daeeae8778d",
+    "wearer_count": 4
+  },
+  "schema_kind": "gtt_optimizer_gob3e_real_panel_parity_receipt_v1",
+  "schema_version": 1,
+  "search_executions": 0,
+  "status": "PASS"
+}

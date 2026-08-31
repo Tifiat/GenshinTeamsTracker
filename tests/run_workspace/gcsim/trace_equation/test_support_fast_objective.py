@@ -11,6 +11,7 @@ from run_workspace.gcsim.trace_equation import (
     evaluate_artifact_variable_objective,
     evaluate_support_aware_control_objective,
     evaluate_support_aware_fast_objective,
+    replay_support_state,
 )
 
 from test_support_objective import _trace_with_hit_binding
@@ -154,6 +155,39 @@ class SupportAwareFastObjectiveTests(unittest.TestCase):
         self.assertAlmostEqual(score.candidate_damage, control.candidate_damage)
         self.assertIn(("bennett", "hp%"), objective.support_coordinates)
         self.assertIn(("furina", "hp%"), objective.support_coordinates)
+        self.assertEqual(score.engine_call_count, 0)
+
+    def test_source_healing_bonus_reaches_team_damage_without_engine(self) -> None:
+        trace = _trace_with_hit_binding(
+            modifier_input_event_id="state-event:14",
+            healing_source=True,
+        )
+        incumbent = ArtifactStatVector(())
+        candidate = ArtifactStatVector.build(
+            (ArtifactStatValue("furina", "heal", 0.25),)
+        )
+        objective = compile_support_aware_fast_objective(trace, incumbent)
+        cache = build_support_projection_cache(objective)
+
+        score = evaluate_support_aware_fast_objective(
+            objective,
+            candidate,
+            cache=cache,
+        )
+        control = evaluate_support_aware_control_objective(
+            objective.control,
+            candidate,
+        )
+        replay = replay_support_state(trace, {("furina", "heal"): 0.25})
+        healing = replay.health_operation("health-operation:1")
+
+        self.assertIn(("furina", "heal"), objective.support_coordinates)
+        self.assertAlmostEqual(healing["source_bonus"], 0.25)
+        self.assertAlmostEqual(healing["base_amount"], 600.0)
+        self.assertAlmostEqual(healing["raw_amount"], 750.0)
+        self.assertAlmostEqual(replay.event_value("state-event:14"), 6.25)
+        self.assertGreater(score.support_correction_damage, 0.0)
+        self.assertAlmostEqual(score.candidate_damage, control.candidate_damage)
         self.assertEqual(score.engine_call_count, 0)
 
     def test_support_projection_cache_is_attempt_bounded(self) -> None:

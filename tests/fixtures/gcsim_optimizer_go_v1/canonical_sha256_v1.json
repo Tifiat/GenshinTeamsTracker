@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "schema_kind": "gtt_gcsim_optimizer_fixture_hashes_v1",
+  "files": {
+    "compact_ir_v1.json": "e9bd959948c0ab106bc6f4936d106b75e5f0e704ddd8e0b1088a20c550b1a431",
+    "progress_v1.json": "89bd78d7f2e1b75b595e0f585ca4676dc587610cf283402fc8fc99f61e2ea024",
+    "request_v1.json": "6c935a6df0b1f7f471d4e1915177b1c9b7e02149d9f9d544ad9b16051ca35140",
+    "result_v1.json": "80e41a6be2020ccc7774189f295aa3ff14af0bdfac4f8a4a3a42e9a04f48c0f9"
+  }
+}

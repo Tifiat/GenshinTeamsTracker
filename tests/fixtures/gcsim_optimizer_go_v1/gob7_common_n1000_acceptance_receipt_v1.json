@@ -1,0 +1,104 @@
+{
+  "checks": {
+    "all_mode": true,
+    "bound_engine_identity_unchanged": true,
+    "cold_product_runtime_below_190_seconds": true,
+    "current_is_mandatory_finalist": true,
+    "final_count_is_bounded": true,
+    "final_cpu_partition_is_3x5": true,
+    "final_is_common_n1000": true,
+    "formula_leader_is_mandatory_finalist": true,
+    "formula_pool_is_frozen_24": true,
+    "known_rank24_reference_is_measured_winner": true,
+    "known_rank24_reference_survives_final": true,
+    "known_rank24_reference_survives_screen": true,
+    "screen_cpu_partition_is_4x4": true,
+    "screen_is_common_n128": true,
+    "screen_is_current_plus_24": true,
+    "top_two_overlap_is_reportable_not_hidden": true,
+    "winner_has_exact_twenty_unique_ids": true,
+    "winner_has_finite_positive_se": true,
+    "winner_improves_same_context_current": true
+  },
+  "current": {
+    "assignment_sha256": "be8a998588d170b81ffb2f0b3e9a901eabc257891f59cc9756347befa934ba0b",
+    "measured_dps": 143721.66203632418,
+    "standard_error": 67.9697848171297
+  },
+  "engine_artifact_sha256": "4fcfcc4cea8642c10b2610224427ef141356d81ad6a0c958754c5bcf88d0f537",
+  "engine_executions_in_accepted_product_run": 31,
+  "first_loss": null,
+  "improvement": {
+    "dps": 5022.568325467553,
+    "percent": 3.4946494872833784
+  },
+  "interpretation": "The 24-row formula pool cannot be truncated by formula rank: the retained rank-24 migration leader won common n=1000. A common n=128 screen retained it, then at most seven mandatory/measured finalists received common n=1000. The accepted clean attempt finished below 190 seconds and returns exact IDs.",
+  "n1000_executions_in_accepted_product_run": 6,
+  "next_stage": "GOB-8_Selected_UI_and_clean_new_user_acceptance",
+  "product_run": {
+    "final_candidates": 6,
+    "final_iterations": 1000,
+    "final_processes": 6,
+    "final_seconds": 62.415365,
+    "formula_pool": 24,
+    "product_boundary_seconds": 190.0,
+    "screen_candidates": 25,
+    "screen_iterations": 128,
+    "screen_processes": 25,
+    "screen_seconds": 43.5113002,
+    "search_seconds": 64.271082,
+    "total_seconds": 170.6652477
+  },
+  "request_sha256": "177be2ddc9b3b8aa4d650b2d2246e4f5e3adf0ba8a72d96e0c7ed09df287de54",
+  "runner_up": {
+    "assignment_sha256": "10577e52b6121165ba930a0ddc26b533a3b361c129cda8654bd9672e4ddf3d63",
+    "measured_dps": 148670.99406600374,
+    "standard_error": 70.89956517030053,
+    "winner_gap_combined_se": 98.4612444535405,
+    "winner_gap_dps": 73.23629578799591
+  },
+  "schema_kind": "gtt_optimizer_gob7_common_n1000_acceptance_receipt_v1",
+  "schema_version": 1,
+  "status": "PASS",
+  "ui_calls": 0,
+  "winner": {
+    "assignment": {
+      "bennett": [
+        36,
+        81,
+        1426,
+        1451,
+        1437
+      ],
+      "chasca": [
+        80,
+        77,
+        87,
+        88,
+        203
+      ],
+      "furina": [
+        1301,
+        7,
+        1466,
+        1309,
+        1319
+      ],
+      "ororon": [
+        76,
+        91,
+        241,
+        1477,
+        119
+      ]
+    },
+    "assignment_sha256": "b5365055d1034d6e5c29a3d5953048f289a352b5ac76bb61cfef7d583b5a89d4",
+    "config_sha256": "04eaad80d8f856b0282113c3696a9cd7b0cf80b86c567a1de0f8f25c33aa61dd",
+    "engine_result_sha256": "f7bed3ca776a2e7b96f3a173e6e491a23682cc86d5034a7e12674502558246ec",
+    "formula_dps": 148017.3583679663,
+    "formula_rank": 24,
+    "formula_residual_dps": 726.8719938254217,
+    "measured_dps": 148744.23036179174,
+    "standard_error": 68.32179972748206
+  }
+}

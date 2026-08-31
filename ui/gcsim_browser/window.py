@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QElapsedTimer, QTimer, Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
+    QProgressBar,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -19,6 +20,12 @@ from PySide6.QtWidgets import (
 
 from localization import tr
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
+from ui.gcsim_browser.optimizer_result import (
+    OptimizerResultBuildRow,
+    OptimizerResultPage,
+    OptimizerResultBuildsWidget,
+)
+from ui.utils.ui_palette import UI_TEXT_MUTED
 
 
 DEFAULT_ROTATION_CODE = """options swap_delay=12 iteration=1000;
@@ -57,6 +64,9 @@ class GcsimBrowserWorkspace(QWidget):
     run_selected_requested = Signal(int, int, str)
     run_all_requested = Signal(int, str)
     rotation_text_changed = Signal()
+    optimizer_selected_requested = Signal(int, str)
+    optimizer_cancel_requested = Signal()
+    optimizer_build_save_requested = Signal(dict)
 
     """First visual shell for the future GCSIM Browser.
 
@@ -83,6 +93,12 @@ class GcsimBrowserWorkspace(QWidget):
         ]
         self._team_cards: list[list[_TeamCard]] = []
         self._team_notes: list[QLabel] = []
+        self._optimizer_elapsed_clock = QElapsedTimer()
+        self._optimizer_elapsed_last_ms = 0
+        self._optimizer_elapsed_terminal_stage = ""
+        self._optimizer_elapsed_tick = QTimer(self)
+        self._optimizer_elapsed_tick.setInterval(1000)
+        self._optimizer_elapsed_tick.timeout.connect(self._refresh_optimizer_elapsed)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -278,6 +294,76 @@ class GcsimBrowserWorkspace(QWidget):
 
         layout.addStretch(1)
 
+        optimizer_scroll = QScrollArea()
+        optimizer_scroll.setWidgetResizable(True)
+        optimizer_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.workspace_tabs.addTab(optimizer_scroll, "")
+        optimizer_content = QWidget()
+        optimizer_scroll.setWidget(optimizer_content)
+        optimizer_layout = QVBoxLayout(optimizer_content)
+        optimizer_layout.setContentsMargins(8, 8, 8, 8)
+        optimizer_layout.setSpacing(8)
+
+        optimizer_intro, optimizer_intro_layout = _make_section()
+        self.optimizer_title = QLabel()
+        self.optimizer_title.setObjectName("GcsimBrowserSectionTitle")
+        optimizer_intro_layout.addWidget(self.optimizer_title)
+        self.optimizer_description = QLabel()
+        self.optimizer_description.setWordWrap(True)
+        optimizer_intro_layout.addWidget(self.optimizer_description)
+        optimizer_layout.addWidget(optimizer_intro)
+
+        optimizer_actions, optimizer_actions_layout = _make_section()
+        mode_row = QHBoxLayout()
+        mode_row.setContentsMargins(0, 0, 0, 0)
+        mode_row.setSpacing(6)
+        self.optimizer_selected_button = QPushButton()
+        self.optimizer_selected_button.clicked.connect(
+            self._request_optimizer_selected
+        )
+        self.optimizer_all_sets_button = QPushButton()
+        self.optimizer_all_sets_button.setEnabled(False)
+        self.optimizer_theory_button = QPushButton()
+        self.optimizer_theory_button.setEnabled(False)
+        mode_row.addWidget(self.optimizer_selected_button)
+        mode_row.addWidget(self.optimizer_all_sets_button)
+        mode_row.addWidget(self.optimizer_theory_button)
+        optimizer_actions_layout.addLayout(mode_row)
+        self.optimizer_future_note = QLabel()
+        self.optimizer_future_note.setWordWrap(True)
+        optimizer_actions_layout.addWidget(self.optimizer_future_note)
+        optimizer_layout.addWidget(optimizer_actions)
+
+        optimizer_status, optimizer_status_layout = _make_section()
+        self.optimizer_progress_label = QLabel()
+        self.optimizer_progress_label.setWordWrap(True)
+        optimizer_status_layout.addWidget(self.optimizer_progress_label)
+        self.optimizer_elapsed_label = QLabel()
+        self.optimizer_elapsed_label.setWordWrap(True)
+        self.optimizer_elapsed_label.setStyleSheet(f"color: {UI_TEXT_MUTED};")
+        optimizer_status_layout.addWidget(self.optimizer_elapsed_label)
+        self.optimizer_progress_bar = QProgressBar()
+        self.optimizer_progress_bar.setRange(0, 1)
+        self.optimizer_progress_bar.setValue(0)
+        optimizer_status_layout.addWidget(self.optimizer_progress_bar)
+        self.optimizer_cancel_button = QPushButton()
+        self.optimizer_cancel_button.setEnabled(False)
+        self.optimizer_cancel_button.clicked.connect(
+            self.optimizer_cancel_requested.emit
+        )
+        optimizer_status_layout.addWidget(self.optimizer_cancel_button)
+        self.optimizer_result = QPlainTextEdit()
+        self.optimizer_result.setReadOnly(True)
+        self.optimizer_result.setMinimumHeight(150)
+        optimizer_status_layout.addWidget(self.optimizer_result)
+        self.optimizer_result_builds = OptimizerResultBuildsWidget()
+        self.optimizer_result_builds.save_requested.connect(
+            self.optimizer_build_save_requested.emit
+        )
+        optimizer_status_layout.addWidget(self.optimizer_result_builds)
+        optimizer_layout.addWidget(optimizer_status)
+        optimizer_layout.addStretch(1)
+
         self.retranslate_ui()
 
     def set_mode(self, mode: str) -> None:
@@ -316,6 +402,7 @@ class GcsimBrowserWorkspace(QWidget):
         self._refresh_context()
     def retranslate_ui(self) -> None:
         self.workspace_tabs.setTabText(0, _fallback("gcsim.browser.simulation", "Simulation"))
+        self.workspace_tabs.setTabText(1, "Artifact optimizer")
         self.title_label.setText(_fallback("gcsim.browser.title", "GCSIM Browser"))
         self.status_label.setText(
             _fallback(
@@ -421,6 +508,23 @@ class GcsimBrowserWorkspace(QWidget):
             self.results_placeholder.setText("")
         self._update_mode_visibility()
         self._refresh_context()
+        self.optimizer_title.setText("Artifact optimizer")
+        self.optimizer_description.setText(
+            "Uses the active team, current rotation and each character's currently "
+            "equipped 4-piece set. It searches account artifacts but never equips them."
+        )
+        self.optimizer_selected_button.setText("Selected Sets")
+        self.optimizer_all_sets_button.setText("All Sets")
+        self.optimizer_theory_button.setText("Theory")
+        self.optimizer_future_note.setText(
+            "All Sets and Theory are visible product modes but remain unavailable "
+            "until their separate backend gates are complete."
+        )
+        if not self.optimizer_progress_label.text():
+            self.optimizer_progress_label.setText("Selected Sets is ready to start.")
+        self.optimizer_result_builds.retranslate_ui()
+        self._refresh_optimizer_elapsed()
+        self.optimizer_cancel_button.setText("Cancel")
 
     def _make_team_tab(self, team_index: int) -> QWidget:
         tab = QWidget()
@@ -522,10 +626,137 @@ class GcsimBrowserWorkspace(QWidget):
         )
         self.run_all_requested.emit(team_index, self.rotation_editor.toPlainText())
 
+    def _request_optimizer_selected(self) -> None:
+        team_index = max(0, int(self.team_tabs.currentIndex()))
+        if self._mode == MODE_DPS_DUMMY:
+            team_index = 0
+        self.optimizer_result.setPlainText("")
+        self.optimizer_result_builds.clear()
+        self._start_optimizer_elapsed()
+        self.optimizer_progress_label.setText("Preparing Selected Sets input...")
+        self.optimizer_progress_bar.setRange(0, 0)
+        self.optimizer_selected_requested.emit(
+            team_index,
+            self.rotation_editor.toPlainText(),
+        )
+
+    def set_optimizer_busy(self, busy: bool) -> None:
+        self.prepare_button.setEnabled(not busy)
+        self.run_selected_button.setEnabled(not busy)
+        self.run_all_button.setEnabled(not busy and self._mode == MODE_ABYSS)
+        self.optimizer_selected_button.setEnabled(not busy)
+        self.optimizer_cancel_button.setEnabled(busy)
+        if busy and not self._optimizer_elapsed_clock.isValid():
+            self._start_optimizer_elapsed()
+        elif not busy and self._optimizer_elapsed_tick.isActive():
+            self._stop_optimizer_elapsed("stopped")
+        if not busy and self.optimizer_progress_bar.maximum() == 0:
+            self.optimizer_progress_bar.setRange(0, 1)
+
+    def update_optimizer_progress(self, event: dict) -> None:
+        completed = max(0, int(event.get("completed_work", 0)))
+        total = max(0, int(event.get("total_work", 0)))
+        stage = str(event.get("stage") or "working")
+        labels = {
+            "validating_request": "Checking the request",
+            "loading_evidence": "Reading the rotation formulas",
+            "compiling_formula": "Preparing the damage model",
+            "searching": "Searching account artifacts",
+            "validating_finalists": "Choosing finalists",
+            "simulating_finalists": "Checking finalists in GCSIM",
+            "completed": "Selected Sets complete",
+            "cancelled": "Selected Sets cancelled",
+            "failed": "Selected Sets failed",
+        }
+        self.optimizer_progress_label.setText(labels.get(stage, stage))
+        if stage in {"completed", "cancelled", "failed"}:
+            self._stop_optimizer_elapsed(stage)
+        if total > 0:
+            self.optimizer_progress_bar.setRange(0, total)
+            self.optimizer_progress_bar.setValue(min(completed, total))
+        else:
+            self.optimizer_progress_bar.setRange(0, 0)
+
+    def set_optimizer_result_text(self, text: str) -> None:
+        self.optimizer_result.setPlainText(text.strip())
+
+    def set_optimizer_result_builds(
+        self,
+        rows: tuple[OptimizerResultBuildRow, ...],
+    ) -> None:
+        self.optimizer_result_builds.set_rows(rows)
+
+    def set_optimizer_result_pages(
+        self,
+        pages: tuple[OptimizerResultPage, ...],
+    ) -> None:
+        self.optimizer_result_builds.set_pages(pages)
+
+    def set_optimizer_build_save_result(
+        self,
+        wearer_key: str,
+        *,
+        success: bool,
+        message: str,
+    ) -> None:
+        self.optimizer_result_builds.set_save_result(
+            wearer_key,
+            success=success,
+            message=message,
+        )
+
+    def _start_optimizer_elapsed(self) -> None:
+        self._optimizer_elapsed_terminal_stage = ""
+        self._optimizer_elapsed_last_ms = 0
+        self._optimizer_elapsed_clock.start()
+        self._optimizer_elapsed_tick.start()
+        self._refresh_optimizer_elapsed()
+
+    def _stop_optimizer_elapsed(self, stage: str) -> None:
+        if self._optimizer_elapsed_clock.isValid():
+            self._optimizer_elapsed_last_ms = max(
+                self._optimizer_elapsed_last_ms,
+                int(self._optimizer_elapsed_clock.elapsed()),
+            )
+        self._optimizer_elapsed_terminal_stage = str(stage)
+        self._optimizer_elapsed_tick.stop()
+        self._refresh_optimizer_elapsed()
+
+    def _refresh_optimizer_elapsed(self) -> None:
+        elapsed_ms = self._optimizer_elapsed_last_ms
+        if self._optimizer_elapsed_clock.isValid() and not self._optimizer_elapsed_terminal_stage:
+            elapsed_ms = max(elapsed_ms, int(self._optimizer_elapsed_clock.elapsed()))
+        elapsed = _format_optimizer_elapsed(elapsed_ms)
+        estimate = _fallback("gcsim.optimizer.estimate", "3–8 min")
+        if not self._optimizer_elapsed_clock.isValid():
+            template = _fallback(
+                "gcsim.optimizer.estimate_ready",
+                "Estimated time: {estimate} (depends on CPU)",
+            )
+        elif self._optimizer_elapsed_terminal_stage == "completed":
+            template = _fallback(
+                "gcsim.optimizer.elapsed_completed",
+                "Completed in {elapsed} · typical range: {estimate}",
+            )
+        elif self._optimizer_elapsed_terminal_stage:
+            template = _fallback(
+                "gcsim.optimizer.elapsed_stopped",
+                "Stopped after {elapsed} · typical range: {estimate}",
+            )
+        else:
+            template = _fallback(
+                "gcsim.optimizer.elapsed_running",
+                "Running for {elapsed} · estimated time: {estimate}",
+            )
+        self.optimizer_elapsed_label.setText(
+            template.format(elapsed=elapsed, estimate=estimate)
+        )
+
     def set_actions_busy(self, busy: bool, *, message: str = "") -> None:
         self.prepare_button.setEnabled(not busy)
         self.run_selected_button.setEnabled(not busy)
         self.run_all_button.setEnabled(not busy and self._mode == MODE_ABYSS)
+        self.optimizer_selected_button.setEnabled(not busy)
         if message:
             self._set_result_text(message)
 
@@ -720,6 +951,15 @@ def _dedupe_text(lines: list[str]) -> list[str]:
         seen.add(line)
         result.append(line)
     return result
+
+
+def _format_optimizer_elapsed(elapsed_ms: int) -> str:
+    total_seconds = max(0, int(elapsed_ms) // 1000)
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{seconds:02d}"
+    return f"{minutes}:{seconds:02d}"
 
 
 def _fallback(key: str, fallback: str) -> str:

@@ -224,29 +224,30 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   implementation design is
   `docs/handoff/GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md`.
 - Production identity is `gtt_gcsim_optimizer_go_v1`: a standalone Go
-  optimizer plus a minimal versioned GCSIM adapter. GOB-3 through GOB-8 pass.
-  GOB-7 keeps the 24-row formula pool, screens it plus Current at common n=128,
-  and sends at most seven retained/mandatory candidates to common n=1000. The
-  clean accepted run took 170.67 s, measured 148744.23 DPS for the exact winner
-  IDs versus 143721.66 Current. The real AppShell button later completed with
-  148910.10 DPS, SE 68.49 and twenty exact IDs in about 191.15 seconds. Its
-  result area shows a live elapsed/3–8 minute estimate, compact four-by-five
+  optimizer plus a minimal versioned GCSIM adapter. GOB-3 through GOB-10 pass.
+  Selected keeps the 24-row formula pool, screens it plus Current at common
+  n=128, and sends at most seven retained/mandatory candidates to adaptive
+  n=500/n=1000 verification. The accepted winner remains the same twenty IDs.
+  GOB-10's full saved-account product replay took 57.0 s after preparation;
+  the expected complete UI path is about 62–64 s. Its result area shows a live
+  elapsed/1–3 minute estimate, compact four-by-five
   artifact cards, and explicit per-character preset Save through the existing
   Artifact Browser service. An additive result-v1 candidate list pages every
-  measured finalist without debug-file reads or extra simulation. Repeated
-  unchanged user runs took 3:33 and 3:40. GOB-8P's isolated exact-seven n=500
+  measured finalist without debug-file reads or extra simulation. Earlier
+  pre-optimization user runs took 3:33 and 3:40. GOB-8P's isolated exact-seven n=500
   replay preserved the saved n=1000 winner and top-five set while cutting the
   final stage from 92.54 to 46.36 seconds. Production keeps the recall-critical
   n=128 screen, starts finalists at n=500, and extends only a two-to-four-row
   group still within three combined standard errors at n=1000. The single full
   Go acceptance resolved at n=500, kept the same known winner and finished in
-  159.06 s. GOB-9 final cleanup follows the frozen protocol; no repeat or
-  parameter sweep is authorized.
+  159.06 s. GOB-9 final cleanup is complete; no repeat or parameter sweep is
+  authorized.
 - GOB-1 owns `native/gcsim_optimizer`, strict request/progress/compact-IR/result
   v1 schemas, canonical decimal-string transport, deterministic Python/Go
   identities and shared fixtures under `tests/fixtures/gcsim_optimizer_go_v1/`.
-  The module uses only the Go standard library. Patch 0022 owns the opt-in
-  engine compact-member seam; the standalone module owns validation, formula
+  The module uses only the Go standard library. The single consolidated patch
+  `0001-gtt-engine-adapter-v1.patch` owns the opt-in engine compact-member seam;
+  the standalone module owns validation, formula
   evaluation, fixed-panel stochastic aggregation, bounded Selected FGBS and
   common-context staged finalist verification. AppShell Selected binding is
   active; All Sets and Theory remain unavailable.
@@ -256,13 +257,11 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
 - Continuous-target mathematics is retained only as
   `FUTURE_GO_PORT_FOR_THEORY_ALL_SETS`; it is not Selected runtime and has no
   artifact-deletion authority.
-- Old M/S/Gate, Selected V2 and stat-map-first plans remain forensic deletion
-  candidates for GOB-9, never continuation work. CF-BB, Adaptive Oracle
-  Exchange and Contextual Scan were removed at GOB-6.
-- GOB-9 must
-  remove all remaining obsolete optimizer UI, adapters, patches, tools, tests,
-  duplicate handoffs and generated residue after product cutover. Every newly
-  discovered unused component goes into the cleanup manifest immediately.
+- Old M/S/Gate, Selected V2, stat-map-first, CF-BB, Adaptive Oracle Exchange
+  and Contextual Scan plans are deleted/historical evidence, never continuation
+  work. GOB-9 removed their remaining unreachable adapters, tests, tools and
+  patch fragments. Newly discovered unused components still go into the cleanup
+  manifest immediately.
 - Permanent optimizer execution rule: work sequentially without subagents or
   parallel agents, do not brute-force known formulas, and stop for user review
   after three failed substantive approaches to the same blocker.
@@ -628,8 +627,8 @@ Important direction:
   compact engine-neutral formula/support evidence and runs ordinary finalist
   simulations. The optimizer must not import `gcsim/internal`.
 - Python/UI sends one canonical account/team/rotation/artifact request and
-  receives progress, exact twenty artifact IDs and the engine-measured n=1000
-  result. There is no per-candidate Python/Go traffic.
+  receives progress, exact twenty artifact IDs and the engine-measured adaptive
+  n=500/n=1000 result. There is no per-candidate Python/Go traffic.
 - Selected enforces fixed 4p packages, at most one off-set piece per character,
   legal main stats and twenty globally unique physical IDs. Complete builds are
   evaluated contextually; no permanent independent item score may silently
@@ -651,20 +650,27 @@ Important direction:
   bounded dependency/conflict refinement. Python implementation structure is
   not being ported line by line.
 - Formula estimates select a small finalist set. Product DPS is the common-
-  context n=1000 GCSIM result. The cold Selected performance target is 190
-  seconds; the temporary working/development kill boundary is 360 seconds and
-  future All Sets is 600 seconds.
+  context GCSIM result: common n=128 screening, n=500 for every retained
+  finalist, and n=1000 only for a bounded unresolved group. GOB-10 measured
+  the complete saved-account product boundary at 57.0 seconds plus about five
+  seconds of unchanged UI preparation, with exactly the accepted winner. The
+  cold Selected target remains 190 seconds, the fail-safe kill remains 360
+  seconds, and future All Sets is 600 seconds.
 - The remaining Current backend is comparison-only. Do not use it as proposal
   source or hidden fallback, and do not delete it before Selected, All Sets and
   Theory are accepted or explicitly abandoned by the user.
-- GOB-1 through GOB-8 own contracts, adapter, stochastic expectation, artifact
+- GOB-1 through GOB-10 own contracts, adapter, stochastic expectation, artifact
   evaluation, Go search, migration cleanup, finalists and UI. GOB-8 is
   functionally accepted: the actual AppShell button completed with exact IDs
   and measured n=1000 DPS after per-seed duration handling was corrected. The
-  approximately 191-second full UI run still narrowly misses the 190-second
-  performance target; the temporary working kill is 360 seconds. GOB-9 is a
-  mandatory final reachability/cleanup pass over every obsolete optimizer
-  implementation, add-on, patch fragment, test, tool and document.
+  previous 3:33-3:40 runs were the performance baseline. GOB-9 passed cleanup.
+  GOB-10 then made formula evaluation dependency-aware, removed repeated engine
+  hashing, added trace-disabled engine fast paths and captured the two compact
+  seeds concurrently. The full saved-account replay took 57.0 seconds after
+  preparation and returned the same twenty artifact IDs. The consolidated
+  patch is validated on GCSIM v2.42.2; `latest` v2.45.0 currently fails its
+  patch check and must be adapted and release-validated as a separate update
+  task before that upstream version can activate.
 - Before cutover, audit every engine patch present at that time, consolidate
   required changes into one versioned patch, and prove automatic update plus
   rollback. Never hard-code a historical patch-number range.

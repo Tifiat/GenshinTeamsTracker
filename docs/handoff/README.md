@@ -25,11 +25,11 @@ Current maps:
   stochastic expectation and finalists; a minimal GCSIM adapter patch only
   exposes runtime evidence and ordinary simulation. It owns GOB-0 through GOB-9,
   mandatory Python cleanup and the current implementation order. GOB-3 through
-  GOB-8 are functionally accepted: the real AppShell Selected button returns an
+  GOB-9 are accepted: the real AppShell Selected button returns an
   exact measured winner and twenty IDs. Repeated full UI runs took 3:33 and
-  3:40, missing the separate 190-second performance target. The clean repository
-  checkpoint passes; bounded GOB-8P performance work is next, followed by final
-  GOB-9 cleanup.
+  3:40. Bounded GOB-8P preserved the winner and reduced the accepted Go boundary
+  to 159.06 seconds. GOB-9 then completed final reachability, patch/update and
+  rollback cleanup.
 - `GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST.json` - machine-readable current
   reuse/replace/delete/receipt disposition for the optimizer migration,
   including mandatory GOB-6 migration cleanup and GOB-9 final area cleanup.

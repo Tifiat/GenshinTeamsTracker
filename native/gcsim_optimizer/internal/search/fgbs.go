@@ -220,7 +220,7 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 					if err != nil {
 						return step, err
 					}
-					dps, err := engine.panel.EvaluateDPS(deltas)
+					dps, err := engine.panel.EvaluateDPSForActor(deltas, wearerIndex)
 					if err != nil {
 						return step, err
 					}
@@ -278,7 +278,7 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 			if !complete {
 				continue
 			}
-			dps, err := engine.score(row.proxy)
+			dps, err := engine.scoreActor(row.proxy, wearerIndex)
 			if err != nil {
 				return step, err
 			}
@@ -376,7 +376,7 @@ func (engine *Engine) laneFallback(anchor domain.Assignment, wearerIndex int, cu
 			trial := anchor
 			trial[wearerIndex] = ids
 			trial[wearerIndex][slot] = id
-			dps, err := engine.score(trial)
+			dps, err := engine.scoreActor(trial, wearerIndex)
 			if err != nil {
 				return ids, evaluations, err
 			}
@@ -513,6 +513,14 @@ func (engine *Engine) score(assignment domain.Assignment) (float64, error) {
 		return 0, err
 	}
 	return engine.panel.EvaluateDPS(deltas)
+}
+
+func (engine *Engine) scoreActor(assignment domain.Assignment, wearerIndex int) (float64, error) {
+	deltas, err := engine.domain.DenseDeltas(assignment)
+	if err != nil {
+		return 0, err
+	}
+	return engine.panel.EvaluateDPSForActor(deltas, wearerIndex)
 }
 
 func diverse(rows []partial, width int) []partial {

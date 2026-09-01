@@ -12,13 +12,19 @@ from run_workspace.gcsim.optimizer_trace_search import (
     rank_candidates_by_support_continuous_target,
     solve_support_aware_continuous_target,
 )
-from run_workspace.gcsim.trace_equation import (
+from run_workspace.gcsim.trace_equation.artifact_variable_objective import (
     ArtifactStatValue,
     ArtifactStatVector,
     ArtifactVariableObjective,
+)
+from run_workspace.gcsim.trace_equation.coarse_rotation_objective import (
     CoarseActorFormula,
     CoarseNormalChannel,
+)
+from run_workspace.gcsim.trace_equation.contracts import (
     ScalingKind,
+)
+from run_workspace.gcsim.trace_equation.support_fast_objective import (
     SupportAwareFastObjective,
     SupportAwareFastScore,
 )

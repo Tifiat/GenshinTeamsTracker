@@ -4,7 +4,6 @@ from dataclasses import dataclass, replace
 import hashlib
 import unittest
 
-import run_workspace.gcsim as gcsim_api
 from run_workspace.gcsim.artifact_set_catalog import (
     GcsimArtifactSetCapability,
     GcsimArtifactSetCatalog,
@@ -49,22 +48,6 @@ from run_workspace.gcsim.optimizer_run_input import (
 
 
 class GcsimOptimizerRunInputTests(unittest.TestCase):
-    def test_public_facade_exports_milestone_two_contracts(self) -> None:
-        expected = {
-            "GcsimOptimizerRunInput",
-            "GcsimOptimizerMaterializedBuild",
-            "GcsimOptimizerCompiledTeamCandidate",
-            "GcsimOptimizerSimulationWitnessBucket",
-            "build_gcsim_optimizer_run_input",
-            "materialize_gcsim_optimizer_wearer_build",
-            "compile_gcsim_optimizer_team_candidate",
-            "add_gcsim_optimizer_simulation_witness",
-        }
-
-        self.assertTrue(expected.issubset(set(gcsim_api.__all__)))
-        self.assertTrue(all(hasattr(gcsim_api, item) for item in expected))
-        self.assertEqual(len(gcsim_api.__all__), len(set(gcsim_api.__all__)))
-
     def test_relevant_hash_excludes_provenance_but_keeps_calculation_values(self) -> None:
         environment = _environment()
         changed_provenance = tuple(

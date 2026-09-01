@@ -6,7 +6,6 @@ import unittest
 
 from run_workspace.gcsim.trace_equation import (
     CallbackPhase,
-    CandidateStatDelta,
     DamageFormulaInputs,
     FormulaProvenance,
     FormulaValue,
@@ -39,8 +38,6 @@ from run_workspace.gcsim.trace_equation import (
     decode_trace_document,
     decode_engine_trace_v1,
     encode_trace_document,
-    replay_candidate_stat_deltas,
-    replay_terminal_hit_slice,
 )
 
 
@@ -139,61 +136,6 @@ class TraceEquationContractTests(unittest.TestCase):
             decoded.hits[0].formula_replay_status,
             ReplayStatus.UNSUPPORTED,
         )
-        diagnostic = replay_terminal_hit_slice(decoded, ())
-        self.assertFalse(diagnostic.formula_supported)
-        self.assertIsNone(diagnostic.team_uncapped_damage)
-
-    def test_diagnostic_atk_percent_replays_terminal_formula(self) -> None:
-        result = replay_terminal_hit_slice(
-            _document(),
-            (CandidateStatDelta("hero", "atk%", 0.05),),
-        )
-
-        self.assertFalse(result.authoritative)
-        self.assertTrue(result.formula_supported)
-        self.assertAlmostEqual(result.team_uncapped_damage or 0.0, 891.0)
-        self.assertAlmostEqual(result.team_reported_damage or 0.0, 891.0)
-
-    def test_crit_roll_side_change_requires_exact_engine_run(self) -> None:
-        result = replay_candidate_stat_deltas(
-            _document(),
-            (CandidateStatDelta("hero", "cr", 0.4),),
-        )
-
-        self.assertEqual(result.assessment.status, ReplayStatus.NEEDS_EXACT)
-        self.assertIsNone(result.team_uncapped_damage)
-        self.assertIn("crit_roll_side_changed", result.assessment.reason_codes[0])
-
-    def test_incomplete_topology_blocks_authoritative_but_not_diagnostic_math(self) -> None:
-        base = _document()
-        incomplete_topology = _topology(complete=False)
-        incomplete_hit = replace(
-            base.hits[0],
-            completeness=TraceHitCompleteness(
-                formula_complete=True,
-                flat_dmg_provenance_complete=True,
-                attack_mod_provenance_complete=True,
-                reaction_topology_complete=False,
-                provider_identity_complete=False,
-            ),
-            formula_replay_status=ReplayStatus.NEEDS_EXACT,
-            formula_replay_reason_codes=("provider_identity_incomplete",),
-        )
-        document = TraceDocument.build(
-            request=base.request,
-            hits=(incomplete_hit,),
-            topology=incomplete_topology,
-        )
-
-        authoritative = replay_candidate_stat_deltas(document, ())
-        diagnostic = replay_terminal_hit_slice(document, ())
-
-        self.assertEqual(authoritative.assessment.status, ReplayStatus.NEEDS_EXACT)
-        self.assertIsNone(authoritative.team_uncapped_damage)
-        self.assertFalse(diagnostic.authoritative)
-        self.assertTrue(diagnostic.formula_supported)
-        self.assertAlmostEqual(diagnostic.team_uncapped_damage or 0.0, 864.0)
-
     def test_duration_mode_separates_hp_subtraction_from_reported_damage(self) -> None:
         document = _document(
             damage_mode=TraceDamageMode.DURATION,
@@ -205,44 +147,6 @@ class TraceEquationContractTests(unittest.TestCase):
         self.assertEqual(hit.reported_damage, 864.0)
         self.assertEqual(hit.target_hp_after, 0.0)
         self.assertFalse(hit.target_killed)
-
-    def test_generic_guard_crossing_blocks_authoritative_replay(self) -> None:
-        base = _document()
-        guard = GuardObservation(
-            guard_id="guard:atk-window",
-            guard_kind=GuardKind.THRESHOLD,
-            frame=118,
-            subject_key="hero",
-            phase=CallbackPhase.SNAPSHOT,
-            baseline_value=0.5,
-            predicate=GuardPredicate(
-                operator=GuardOperator.CLOSED_INTERVAL,
-                expected_value=None,
-                lower_bound=0.0,
-                upper_bound=0.52,
-                lower_inclusive=True,
-                upper_inclusive=True,
-            ),
-            dependency_keys=("stat:hero:atk%",),
-            evidence_event_ids=("attack:1",),
-        )
-        guarded = TraceDocument.build(
-            request=base.request,
-            hits=base.hits,
-            topology=_topology(guards=(guard,)),
-        )
-
-        result = replay_candidate_stat_deltas(
-            guarded,
-            (CandidateStatDelta("hero", "atk%", 0.05),),
-        )
-
-        self.assertEqual(result.assessment.status, ReplayStatus.NEEDS_EXACT)
-        self.assertEqual(result.assessment.triggered_guard_ids, ("guard:atk-window",))
-        self.assertEqual(
-            result.assessment.reason_codes,
-            ("guard_crossed:guard:atk-window",),
-        )
 
     def test_complete_topology_cannot_use_empty_self_asserted_digests(self) -> None:
         with self.assertRaisesRegex(TraceContractError, "coverage sentinel"):
@@ -299,12 +203,6 @@ class TraceEquationContractTests(unittest.TestCase):
             decoded.hits[0].formula_replay_status,
             ReplayStatus.NEEDS_EXACT,
         )
-        authoritative = replay_candidate_stat_deltas(decoded, ())
-        diagnostic = replay_terminal_hit_slice(decoded, ())
-        self.assertEqual(authoritative.assessment.status, ReplayStatus.NEEDS_EXACT)
-        self.assertFalse(diagnostic.authoritative)
-        self.assertAlmostEqual(diagnostic.team_uncapped_damage or 0.0, 864.0)
-
         changed = json.loads(canonical_json(raw))
         changed["unknown"] = True
         with self.assertRaisesRegex(TraceContractError, "unknown"):

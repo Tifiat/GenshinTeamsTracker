@@ -211,6 +211,29 @@ func (panel *Panel) EvaluateDPS(deltas []float64) (float64, error) {
 	return mean(values), nil
 }
 
+// EvaluateDPSForActor reuses the current complete-team anchor and recalculates
+// every downstream formula node affected by one wearer's artifact coordinates.
+func (panel *Panel) EvaluateDPSForActor(deltas []float64, actor int) (float64, error) {
+	if panel == nil {
+		return 0, fmt.Errorf("compiled panel is nil")
+	}
+	if len(deltas) != len(panel.coordinates) {
+		return 0, fmt.Errorf("dense delta length mismatch")
+	}
+	if actor < 0 || actor >= len(panel.actorKeys) {
+		return 0, fmt.Errorf("actor index is outside compiled panel")
+	}
+	values := make([]float64, len(panel.members))
+	for index, member := range panel.members {
+		damage, err := member.EvaluateDamageDenseForActor(deltas, actor)
+		if err != nil {
+			return 0, fmt.Errorf("seed %d: %w", member.Seed(), err)
+		}
+		values[index] = damage / (float64(member.DurationMS()) / 1000)
+	}
+	return mean(values), nil
+}
+
 func (panel *Panel) Coordinates() []string { return append([]string(nil), panel.coordinates...) }
 func (panel *Panel) ActorKeys() []string   { return append([]string(nil), panel.actorKeys...) }
 func (panel *Panel) Baseline() Score       { return panel.baseline }

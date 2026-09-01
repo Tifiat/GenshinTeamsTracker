@@ -15,7 +15,7 @@ from run_workspace.gcsim.trace_equation import (
     replay_support_state,
 )
 
-from test_state_evidence_v6 import _event_ref, _v6_fixture
+from .test_state_evidence_v6 import _event_ref, _v6_fixture
 
 
 class SupportReplayTests(unittest.TestCase):

@@ -18,14 +18,18 @@ from run_workspace.gcsim.optimizer_trace_search import (
     solve_continuous_main_stat_lanes,
     solve_continuous_target,
 )
-from run_workspace.gcsim.trace_equation import (
+from run_workspace.gcsim.trace_equation.artifact_variable_objective import (
     ArtifactStatValue,
     ArtifactStatVector,
     ArtifactVariableObjective,
+    evaluate_artifact_variable_objective,
+)
+from run_workspace.gcsim.trace_equation.coarse_rotation_objective import (
     CoarseActorFormula,
     CoarseNormalChannel,
+)
+from run_workspace.gcsim.trace_equation.contracts import (
     ScalingKind,
-    evaluate_artifact_variable_objective,
 )
 
 

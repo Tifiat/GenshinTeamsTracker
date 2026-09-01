@@ -37,9 +37,12 @@ type CompiledMember struct {
 	seed        uint64
 	durationMS  int64
 	nodes       []compiledNode
+	activeNodes []uint32
+	actorNodes  [][]uint32
 	channels    []compiledChannel
 	actorKeys   []string
 	coordinates []string
+	baseline    []float64
 	scratch     []float64
 }
 
@@ -66,6 +69,7 @@ func CompileSeedMember(member contracts.IRSeedMember, actorKeys, coordinates []s
 		channels:    make([]compiledChannel, 0, len(member.Channels)),
 		actorKeys:   append([]string(nil), actorKeys...),
 		coordinates: append([]string(nil), coordinates...),
+		actorNodes:  make([][]uint32, len(actorKeys)),
 	}
 	for _, node := range member.Nodes {
 		row := compiledNode{coordinate: -1}
@@ -103,6 +107,9 @@ func CompileSeedMember(member contracts.IRSeedMember, actorKeys, coordinates []s
 		}
 		compiled.nodes[node.NodeID] = row
 	}
+	if err := compiled.buildEvaluationPlan(); err != nil {
+		return nil, err
+	}
 	for _, channel := range member.Channels {
 		index, ok := actorIndex[channel.ActorKey]
 		if !ok {
@@ -120,7 +127,8 @@ func (compiled *CompiledMember) EvaluateDense(deltas []float64) (DenseMemberScor
 	if len(deltas) != len(compiled.coordinates) {
 		return DenseMemberScore{}, fmt.Errorf("dense delta length mismatch")
 	}
-	return compiled.evaluate(deltas, make([]float64, len(compiled.nodes)), true)
+	values := append([]float64(nil), compiled.baseline...)
+	return compiled.evaluate(deltas, values, true)
 }
 
 // EvaluateDamageDense reuses member-owned scratch. The compiled panel search
@@ -131,17 +139,56 @@ func (compiled *CompiledMember) EvaluateDamageDense(deltas []float64) (float64, 
 		return 0, fmt.Errorf("compiled member is nil")
 	}
 	if len(compiled.scratch) != len(compiled.nodes) {
-		compiled.scratch = make([]float64, len(compiled.nodes))
+		compiled.scratch = append([]float64(nil), compiled.baseline...)
 	}
 	score, err := compiled.evaluate(deltas, compiled.scratch, false)
 	return score.Damage, err
+}
+
+// EvaluateDamageDenseForActor recalculates only the formula nodes that depend
+// on one wearer's artifact coordinates. Dependencies may cross character and
+// channel ownership boundaries; for example, healer stats can flow through a
+// team buff into every damage channel. The caller must establish the current
+// complete-team anchor with EvaluateDamageDense before using this hot path.
+func (compiled *CompiledMember) EvaluateDamageDenseForActor(deltas []float64, actor int) (float64, error) {
+	if compiled == nil {
+		return 0, fmt.Errorf("compiled member is nil")
+	}
+	if len(deltas) != len(compiled.coordinates) {
+		return 0, fmt.Errorf("dense delta length mismatch")
+	}
+	if actor < 0 || actor >= len(compiled.actorNodes) {
+		return 0, fmt.Errorf("actor index is outside compiled domain")
+	}
+	if len(compiled.scratch) != len(compiled.nodes) {
+		return 0, fmt.Errorf("actor evaluation needs an established anchor")
+	}
+	if err := compiled.evaluateNodeSet(deltas, compiled.scratch, compiled.actorNodes[actor]); err != nil {
+		return 0, err
+	}
+	return compiled.damage(compiled.scratch), nil
 }
 
 func (compiled *CompiledMember) evaluate(deltas, values []float64, withActors bool) (DenseMemberScore, error) {
 	if len(deltas) != len(compiled.coordinates) {
 		return DenseMemberScore{}, fmt.Errorf("dense delta length mismatch")
 	}
-	for nodeID := 1; nodeID < len(compiled.nodes); nodeID++ {
+	if err := compiled.evaluateNodeSet(deltas, values, compiled.activeNodes); err != nil {
+		return DenseMemberScore{}, err
+	}
+	score := DenseMemberScore{Damage: compiled.damage(values)}
+	if withActors {
+		score.ByActor = make([]float64, len(compiled.actorKeys))
+		for _, channel := range compiled.channels {
+			score.ByActor[channel.actor] += values[channel.root]
+		}
+	}
+	return score, nil
+}
+
+func (compiled *CompiledMember) evaluateNodeSet(deltas, values []float64, nodes []uint32) error {
+	for _, rawNodeID := range nodes {
+		nodeID := int(rawNodeID)
 		node := compiled.nodes[nodeID]
 		var value float64
 		switch node.op {
@@ -170,25 +217,101 @@ func (compiled *CompiledMember) evaluate(deltas, values []float64, withActors bo
 		case opPower:
 			value = math.Pow(values[node.inputs[0]], values[node.inputs[1]])
 		default:
-			return DenseMemberScore{}, fmt.Errorf("compiled node %d has invalid operation", nodeID)
+			return fmt.Errorf("compiled node %d has invalid operation", nodeID)
 		}
 		if math.IsNaN(value) || math.IsInf(value, 0) {
-			return DenseMemberScore{}, fmt.Errorf("compiled node %d produced a non-finite value", nodeID)
+			return fmt.Errorf("compiled node %d produced a non-finite value", nodeID)
 		}
 		values[nodeID] = value
 	}
-	score := DenseMemberScore{}
-	if withActors {
-		score.ByActor = make([]float64, len(compiled.actorKeys))
-	}
+	return nil
+}
+
+func (compiled *CompiledMember) damage(values []float64) float64 {
+	var damage float64
 	for _, channel := range compiled.channels {
-		value := values[channel.root]
-		score.Damage += value
-		if withActors {
-			score.ByActor[channel.actor] += value
+		damage += values[channel.root]
+	}
+	return damage
+}
+
+func (compiled *CompiledMember) buildEvaluationPlan() error {
+	actorMask := make([]uint64, len(compiled.nodes))
+	coordinateActors := make([]uint64, len(compiled.coordinates))
+	for coordinateIndex, coordinate := range compiled.coordinates {
+		for actorIndex, actorKey := range compiled.actorKeys {
+			if len(coordinate) > len(actorKey) && coordinate[:len(actorKey)] == actorKey && coordinate[len(actorKey)] == '.' {
+				coordinateActors[coordinateIndex] = uint64(1) << actorIndex
+				break
+			}
 		}
 	}
-	return score, nil
+	compiled.baseline = make([]float64, len(compiled.nodes))
+	for nodeID := 1; nodeID < len(compiled.nodes); nodeID++ {
+		node := compiled.nodes[nodeID]
+		var mask uint64
+		if node.op == opArtifactStat {
+			mask = coordinateActors[node.coordinate]
+			if mask == 0 {
+				return fmt.Errorf("artifact node %d has no wearer binding", nodeID)
+			}
+		}
+		for _, input := range node.inputs {
+			mask |= actorMask[input]
+		}
+		actorMask[nodeID] = mask
+		if mask != 0 {
+			compiled.activeNodes = append(compiled.activeNodes, uint32(nodeID))
+			for actorIndex := range compiled.actorNodes {
+				if mask&(uint64(1)<<actorIndex) != 0 {
+					compiled.actorNodes[actorIndex] = append(compiled.actorNodes[actorIndex], uint32(nodeID))
+				}
+			}
+			continue
+		}
+		value, err := evaluateConstantNode(node, compiled.baseline)
+		if err != nil {
+			return fmt.Errorf("constant node %d: %w", nodeID, err)
+		}
+		compiled.baseline[nodeID] = value
+	}
+	return nil
+}
+
+func evaluateConstantNode(node compiledNode, values []float64) (float64, error) {
+	var value float64
+	switch node.op {
+	case opConstant:
+		value = node.value
+	case opArtifactStat:
+		return 0, fmt.Errorf("artifact stat in constant subgraph")
+	case opAdd:
+		for _, input := range node.inputs {
+			value += values[input]
+		}
+	case opMultiply:
+		value = 1
+		for _, input := range node.inputs {
+			value *= values[input]
+		}
+	case opMin, opMax:
+		value = values[node.inputs[0]]
+		for _, input := range node.inputs[1:] {
+			if node.op == opMin {
+				value = math.Min(value, values[input])
+			} else {
+				value = math.Max(value, values[input])
+			}
+		}
+	case opPower:
+		value = math.Pow(values[node.inputs[0]], values[node.inputs[1]])
+	default:
+		return 0, fmt.Errorf("invalid operation")
+	}
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return 0, fmt.Errorf("produced a non-finite value")
+	}
+	return value, nil
 }
 
 func (compiled *CompiledMember) Seed() uint64      { return compiled.seed }

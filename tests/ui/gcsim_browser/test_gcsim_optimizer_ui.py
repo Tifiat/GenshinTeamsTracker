@@ -69,7 +69,7 @@ class GcsimOptimizerUiTests(unittest.TestCase):
         workspace = GcsimBrowserWorkspace()
         workspace.set_optimizer_busy(True)
         self.assertTrue(workspace._optimizer_elapsed_tick.isActive())
-        self.assertIn("2", workspace.optimizer_elapsed_label.text())
+        self.assertIn("1", workspace.optimizer_elapsed_label.text())
 
         workspace.update_optimizer_progress(
             {"stage": "completed", "completed_work": 1, "total_work": 1}
@@ -120,6 +120,7 @@ class GcsimOptimizerUiTests(unittest.TestCase):
         self.assertTrue(rows[0].can_save)
 
         widget = OptimizerResultBuildsWidget()
+        self.addCleanup(widget.close)
         widget.set_rows(rows)
         requests: list[dict] = []
         widget.save_requested.connect(requests.append)
@@ -217,6 +218,7 @@ class GcsimOptimizerUiTests(unittest.TestCase):
         }
         pages = build_optimizer_result_pages(payload, selected_team, artifacts)
         widget = OptimizerResultBuildsWidget()
+        self.addCleanup(widget.close)
         widget.set_pages(pages)
 
         self.assertEqual(len(pages), 2)

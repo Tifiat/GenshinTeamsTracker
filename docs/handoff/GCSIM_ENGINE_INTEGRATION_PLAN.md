@@ -616,9 +616,8 @@ Independent backend-only optimizer track while PvP/AppShell work continues:
   button returned 148910.10 DPS and twenty unique IDs. Full UI progress took
   about 191.15 seconds, so the 190-second performance target remains narrowly
   missed and the temporary working kill is 360 seconds.
-- GOB-9 is mandatory final cleanup of obsolete optimizer UI, adapters, patch
-  fragments, tests, tools, handoffs and generated residue with no accepted
-  product/update/debug owner.
+- GOB-9 final cleanup passed: one Selected Go backend and one consolidated
+  engine patch remain, with transactional update and rollback proof.
 - Keep UI/AppShell changes narrow. A global AppShell refactor remains out of
   scope for optimizer work.
 - Follow `GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` for sequencing and
@@ -645,12 +644,36 @@ Current implementation state:
 - Optional build artifact flag exists:
   `python -m run_workspace.gcsim.engine_update --release latest --patch-backend git --build-artifact`.
   It runs `go version`, requires `windows/amd64`, runs `go build -o build/gtt-gcsim.exe ./cmd/gcsim` inside the staged engine source, then verifies the built executable with `build/gtt-gcsim.exe -version`. The new engine activates only when build and artifact runtime check pass.
-- First real GTT patch content exists at `run_workspace/gcsim/patch_stack/0001-gtt-engine-marker.patch`. It adds a minimal `pkg/gtt` package and a `-gtt-info` CLI flag to `cmd/gcsim/main.go`.
-- Compact optimizer adapter patch exists at `run_workspace/gcsim/patch_stack/0022-gtt-compact-equation-v1.patch`. It adds opt-in `compact_ir_v1` output to the existing trace-equation entrypoint, embeds source numeric templates in the generated manifest, and compiles direct/reaction/support evidence plus typed opaque boundaries into engine-neutral seed-member IR. Omitted output mode preserves the previous raw path. Artifact enumeration, search, stochastic policy and UI are intentionally absent from the engine patch.
-- Sequential-wave prototype patch exists at `run_workspace/gcsim/patch_stack/0002-gtt-sequential-wave-prototype.patch`. It is opt-in through a vanilla-ignored config comment directive:
+- The active patch stack contains exactly one file:
+  `run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v1.patch`, SHA-256
+  `dc4d99a243d957afb4c7dee64e7fef6ba22b7a030cbcf36f9f0242960fe09aef`.
+  It consolidates every accepted GTT engine extension, including `-gtt-info`,
+  compact IR, trace provenance and wave support. Artifact enumeration, search,
+  stochastic policy and UI remain outside the engine patch.
+- The consolidated patch reproduced the accepted 4,314-file source tree after
+  clean check/apply. Transactional update built and activated
+  `gcsim-v2.42.2-gob9-consolidated-20260831`; rollback to
+  `gcsim-v2.42.2-gob8-20260830b` and restoration both passed. Its executable
+  SHA-256 is `bce061db71f2ebc7171ba19d192a6c0522358edb68e821b25a7649406f86fe03`.
+- GOB-10 transactionally built and activated
+  `gcsim-v2.42.2-gob10-perf-20260901`. Its executable SHA-256 is
+  `00834023d64f3853723ee2ca28af6b9bd5fbaacb1cbda4cf7e11dd44a45ff99a`
+  and source-manifest body SHA-256 is
+  `7d8683ae0f928dcebf3427905e3dfa98e238a14bfa89e89a50e716811cc44a5cd`.
+  An explicit `latest` update resolved to upstream v2.45.0 and failed closed at
+  `git apply --check` because upstream seams changed. The active v2.42.2 engine
+  was preserved. Before offering v2.45.0, adapt the one patch against pristine
+  v2.45.0, compile, run compact semantic parity and ordinary-simulation smoke,
+  then activate transactionally. Never force-apply the v2.42.2 patch.
+- The following sequential-wave description records behavior now contained in
+  the consolidated patch. It remains opt-in through a vanilla-ignored config comment directive:
   `# gtt_wave_prototype duplicate_first_target=1`.
   The prototype reads that directive before simulation run, duplicates/reuses the first configured finite-HP target as the next wave, hooks damage-mode `stopCheck()` so a pending GTT wave can spawn before vanilla all-dead termination, and keeps the new target visible to the dynamic status/damage result paths needed by this smoke. This proves a next target can be spawned inside one simulation iteration after the current finite-HP target/group dies, preserving the run rather than ending immediately. It does not model real Abyss waves, groups, spawn positions, enemy identities, target key mapping, or final 3+3+3 policy.
-- Structured wave scenario payload patch exists at `run_workspace/gcsim/patch_stack/0003-gtt-wave-scenario-payload.patch`. It adds a `-gtt-wave-scenario scenario.json` CLI flag and `simulator.Options.GTTWaveScenarioPath`. Empty path is a no-op so vanilla runs remain unchanged. Explicit payload errors are fatal and must not silently fall back to vanilla.
+- The historical structured-wave patch introduced the now-consolidated
+  `-gtt-wave-scenario scenario.json` flag and
+  `simulator.Options.GTTWaveScenarioPath`. Empty path is a no-op so vanilla
+  runs remain unchanged. Explicit payload errors are fatal and must not
+  silently fall back to vanilla.
 - Payload schema v1 is intentionally minimal and app-owned: `schema_version=1`, `spawn_policy="group_clear"`, and `waves[].targets[]` with required `level`, `type`, and explicit `hp`. The patch builds each enemy through GCSIM's target type/profile path (`enemy.ConfigureTarget`), so `type` owns monster stats/resists and the payload HP is applied as an explicit override after the profile is configured. Optional `pos`/`radius` remain explicit overrides only; normal Abyss bridge output does not write them. The first payload wave replaces parsed config targets; remaining waves are stored on `ActionList` and deep-copied per simulation iteration. Current implemented `group_clear` behavior is sequential groups: when all enemies in the current group are dead, the scheduler spawns the next payload group inside the same iteration. If a wave contains multiple targets, killing one target does not spawn the next wave; the whole current group must be cleared first, and then the next wave spawns as a whole group. This still does not implement key mapping, real Abyss 3+3+3 policy, rolling replacement, stack replacement, or UI integration.
 - Future DPS mode contract: single-target DPS should use the selected single target and then the next single target. This should later be tied to the existing fact-DPS single-target/multi-target setting so fact DPS and GCSIM DPS describe the same target model. Multi-target DPS should eventually expose settings-backed modes: `sequential waves` (current implemented group-clear behavior) and `stack/rolling replacement` (future, not implemented), where enemies from the next wave may be added to replace dead enemies from the current group. Do not implement stack mode until the in-game behavior/policy is confirmed.
 - Current `-gtt-info` for a built patched artifact should report

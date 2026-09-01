@@ -6,7 +6,6 @@ from threading import Event
 import tempfile
 import unittest
 
-import run_workspace.gcsim as gcsim_api
 from run_workspace.gcsim.farming_auto_advisor import (
     GcsimAutomaticAdvisorRequest,
     GcsimAutomaticAdvisorResult,
@@ -43,21 +42,6 @@ from tests.run_workspace.gcsim.test_gcsim_farming_layout_scan import (
 
 
 class GcsimOptimizedAdvisorTest(unittest.TestCase):
-    def test_public_package_facade_exports_optimized_advisor_stack(self) -> None:
-        expected = {
-            "GcsimFinalistOptimizerBudget",
-            "GcsimFinalistOptimizerRequest",
-            "GcsimFinalistOptimizerSession",
-            "GcsimOptimizedAdvisorRequest",
-            "GcsimOptimizedAdvisorSession",
-            "freeze_gcsim_optimizer_environment",
-            "run_gcsim_optimized_four_piece_advisor",
-        }
-
-        self.assertTrue(expected.issubset(set(gcsim_api.__all__)))
-        self.assertEqual(len(gcsim_api.__all__), len(set(gcsim_api.__all__)))
-        self.assertTrue(all(hasattr(gcsim_api, name) for name in expected))
-
     def test_automatic_screen_flows_into_real_optimizer_finalist_race(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

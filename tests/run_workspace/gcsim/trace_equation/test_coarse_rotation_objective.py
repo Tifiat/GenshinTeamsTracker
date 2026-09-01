@@ -11,12 +11,12 @@ from run_workspace.gcsim.trace_equation import (
     evaluate_rotation_formula_filter,
 )
 
-from test_ranking import (
+from .test_ranking import (
     _document,
     _duplicate_hit_document,
     _with_amplifying_reaction,
 )
-from test_state_evidence_v6 import _decode, _v6_fixture
+from .test_state_evidence_v6 import _decode, _v6_fixture
 
 
 class CoarseRotationObjectiveTests(unittest.TestCase):

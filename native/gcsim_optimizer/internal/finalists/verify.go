@@ -73,6 +73,10 @@ func Verify(ctx context.Context, request contracts.OptimizerRequest, index *doma
 	if err := os.Mkdir(runRoot, 0o700); err != nil {
 		return output, fmt.Errorf("create finalist root: %w", err)
 	}
+	boundEngine, err := engineclient.BindEngine(request)
+	if err != nil {
+		return output, err
+	}
 	started := time.Now()
 	prepared := make([]preparedCandidate, 0, len(candidates))
 	seen := make(map[domain.Assignment]struct{}, len(candidates))
@@ -108,7 +112,7 @@ func Verify(ctx context.Context, request contracts.OptimizerRequest, index *doma
 		go func() {
 			defer workersGroup.Done()
 			for item := range jobs {
-				measured, err := engineclient.RunOrdinary(runContext, request, item.rendered.Text, item.runDir, iterations, workers)
+				measured, err := boundEngine.RunOrdinary(runContext, item.rendered.Text, item.runDir, iterations, workers)
 				if err != nil {
 					select {
 					case errChannel <- fmt.Errorf("verify finalist %d: %w", item.rank+1, err):
@@ -149,6 +153,9 @@ func Verify(ctx context.Context, request contracts.OptimizerRequest, index *doma
 	}
 	close(jobs)
 	workersGroup.Wait()
+	if err := boundEngine.VerifyUnchanged(); err != nil {
+		return output, fmt.Errorf("bound engine changed during finalist stage: %w", err)
+	}
 	select {
 	case err := <-errChannel:
 		return output, err

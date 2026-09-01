@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 import unittest
@@ -48,12 +47,13 @@ class GoCompactAdapterReceiptTests(unittest.TestCase):
         self.assertEqual(self.receipt["engine_executions"]["total"], 2)
         self.assertTrue(all(value is False for value in self.receipt["limits"].values()))
 
-    def test_receipt_is_bound_to_the_committed_adapter_patch(self) -> None:
-        patch = ROOT / self.receipt["engine_patch"]["path"]
-        self.assertEqual(
-            hashlib.sha256(patch.read_bytes()).hexdigest(),
-            self.receipt["engine_patch"]["sha256"],
-        )
+    def test_consolidated_adapter_preserves_the_compact_seam(self) -> None:
+        patch_dir = ROOT / "run_workspace" / "gcsim" / "patch_stack"
+        patches = tuple(patch_dir.glob("*.patch"))
+        self.assertEqual(len(patches), 1)
+        text = patches[0].read_text(encoding="utf-8")
+        self.assertIn("gtt_compact_equation_v1", text)
+        self.assertIn("diff --git a/pkg/gttcompact/", text)
 
 
 if __name__ == "__main__":

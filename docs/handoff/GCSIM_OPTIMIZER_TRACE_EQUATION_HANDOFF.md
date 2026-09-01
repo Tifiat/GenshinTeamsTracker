@@ -1,10 +1,11 @@
 # GCSIM Artifact Optimizer — current authoritative handoff
 
-Status: GOB-3 through GOB-8P PASS. The bounded adaptive final gate preserves
+Status: GOB-3 through GOB-10 PASS. The bounded adaptive final gate preserves
 n=128 recall, starts all retained finalists at n=500 and reruns only a small
 statistically unresolved leader group at n=1000. The single full Go product
-acceptance completed in 159.06 seconds and resolved at n=500 with the same known
-winner. GOB-9 cleanup is next. Updated 2026-08-31.
+performance replay completed in 57.0 seconds after preparation and resolved at
+n=500 with the same known winner. Final reachability, patch consolidation,
+update, rollback and compute optimization are complete. Updated 2026-09-01.
 
 This is the sole current optimizer handoff. Read it together with:
 
@@ -26,15 +27,15 @@ Current implementation work is only Selected Sets. A successful Selected run ret
 
 - five artifact IDs for each of four characters;
 - twenty globally unique physical IDs;
-- measured final n=1000 GCSIM DPS and standard error;
+- measured adaptive n=500/n=1000 GCSIM DPS and standard error;
 - formula estimate, residual and uncertainty warnings;
 - deterministic debug receipt;
 - no automatic equip; every character row can be saved explicitly as a normal
   Artifact Browser preset through the existing preset storage service.
 
-Cold Selected above 190 seconds remains a performance failure. The temporary
-working UI kill boundary is 360 seconds so a result is still returned while the
-remaining performance gap is handled separately. All Sets has a separate future
+Cold Selected above 190 seconds remains a performance failure criterion. GOB-10
+now passes it with a predicted 62-64 second full UI path. The temporary 360
+second UI boundary remains only a fail-safe. All Sets has a separate future
 600-second boundary.
 
 ## 2. Accepted production architecture
@@ -45,7 +46,7 @@ It has two parts:
 
 ### Standalone Go optimizer
 
-Planned path: native/gcsim_optimizer.
+Path: native/gcsim_optimizer.
 
 It owns:
 
@@ -53,7 +54,7 @@ It owns:
 - artifact stat arrays and physical legality;
 - formula compilation and stochastic expectation;
 - Formula-Guided Build Search;
-- finalist policy and ordinary n=1000 verification;
+- finalist policy and adaptive ordinary n=500/n=1000 verification;
 - cache, cancellation, timings and debug receipt.
 
 It must not import gcsim/internal packages.
@@ -105,19 +106,16 @@ The naive Python multi-trace representation is a product runtime failure. Merely
 
 ## 4. What is not proved
 
-Do not claim any of the following yet:
+Do not claim any of the following:
 
 - global mathematical optimum;
-- successful end-to-end stochastic artifact search;
-- accepted seed-panel size or convergence rule;
-- accepted finalist K;
-- n=1000 quality of the Python-found leader;
 - support saturation for every actor;
 - complete handling of every future reaction/mechanic;
-- compliance with the 190-second Selected performance target on the current
-  real UI path.
+- automatic compatibility of the v2.42.2 adapter patch with GCSIM v2.45.0;
+- a fresh GOB-10 measurement initiated by an actual UI click rather than the
+  same product boundary replayed from the saved real request.
 
-The current two-seed mean is promising evidence, not product acceptance.
+Selected is accepted as a bounded practical search, not a proof of optimum.
 
 ## 5. Formula and unknown-mechanic rules
 
@@ -197,7 +195,8 @@ Accepted implementation:
 
 Implement the smallest compact adapter feasibility slice for one seed. Compare compact Go formulas with accepted Python reference fixtures. Measure output size, runtime and memory. Stop if material evidence cannot be represented.
 
-Accepted result: patch `0022-gtt-compact-equation-v1.patch` provides an opt-in
+Accepted historical result: patch `0022-gtt-compact-equation-v1.patch` first
+provided an opt-in
 engine-neutral seed-member output without moving search into GCSIM. On frozen
 seed `742031889`, its baseline and Bennett HP% candidate formula values match
 the accepted Python reference within `1e-6`, including the cross-character
@@ -230,7 +229,7 @@ GOB-3B through GOB-3D are complete:
 
 - the standalone Go module now owns deterministic equal-weight aggregation,
   actor means, SD/SE, baseline validation and opaque reason/member coverage;
-- an isolated, non-active v2.42.2 engine was built from the exact 0001-0022
+- an isolated, non-active v2.42.2 engine was built from the historical exact 0001-0022
   patch identity and reports the compact capability;
 - the two real compact members were captured sequentially in 1.576 s and
   1.569 s, have distinct topologies, and both pass strict Go plus zero-delta
@@ -316,11 +315,11 @@ Functional PASS; 190-second performance target still FAIL.
 - Typed progress, cancellation, fail-closed engine errors, warnings and debug
   receipt display are connected. Progress consumes mappings, not any legacy
   `M8ProductProgress` object.
-- A fresh transactional engine build with all 22 current development patches
-  and compact-IR capability was activated as
-  `gcsim-v2.42.2-gob8-20260830b`; the previous engine remains available for
-  rollback. This numbered stack is development-only and is still consolidated
-  into one adapter patch at GOB-9.
+- A fresh transactional engine build with all 22 then-current development
+  patches and compact-IR capability was activated as
+  `gcsim-v2.42.2-gob8-20260830b`. GOB-9 subsequently replaced that numbered
+  reconstruction stack with one equivalent adapter patch and a new active
+  engine while retaining this build as rollback evidence.
 - 33 focused Python/UI checks, all Go package tests and `go vet` pass.
 - Two no-development-cache product attempts used 483 real artifacts and the
   current four fixed set packages; neither is accepted. The first ran under
@@ -419,43 +418,75 @@ The one-off replay command was removed after the compact receipt was frozen, so
 it does not remain as a second product path. Do not repeat either GOB-8P run or
 start a parameter sweep.
 
-### GOB-9 — mandatory final area cleanup
+### GOB-9 — PASS, final area cleanup
 
-After GOB-8P freezes the finalist protocol, clean the entire optimizer work
-area. The first reachability slice is already complete.
+The accepted product boundary is now unambiguous:
 
-First reachability slice (2026-08-31):
+- AppShell calls `optimizer_go_selected.py`; narrow request/materialization
+  preparation lives in `optimizer_go_selected_inputs.py`; one standalone Go
+  optimizer owns formula evaluation, search and staged verification;
+- a clean import of Selected loads no `trace_equation` or deleted legacy
+  response/search module;
+- the second reachability slice removed 13 obsolete Python optimizer/trace
+  modules, 12 orphaned tests, 12 obsolete audit tools and eight stale manifests;
+- Current/farming remain deliberately retained. Continuous target and the
+  smallest supporting trace math remain isolated reference material for a
+  future All Sets/Theory Go port and are not Selected runtime;
+- all 22 numbered engine patch fragments were replaced by the single
+  `0001-gtt-engine-adapter-v1.patch` (SHA-256
+  `01ff5993aaf6c3726db30de0b6876c55401b5a3e66e1df979bee24e7c8245638`).
+  Fresh `git apply --check`, application and normalized 4,314-file tree
+  comparison prove equivalence to the accepted source tree;
+- transactional update built and activated
+  `gcsim-v2.42.2-gob9-consolidated-20260831`. The source-manifest body SHA-256
+  is `f898a307beb59f9fe556fa7acdfa976d2e1c293979a3013dde4e0412353c7e7f`;
+  the executable SHA-256 is
+  `bce061db71f2ebc7171ba19d192a6c0522358edb68e821b25a7649406f86fe03`;
+- switching back to `gcsim-v2.42.2-gob8-20260830b` and restoring the new engine
+  both passed. Ordinary n=1 simulation and one real compact seed handshake
+  passed; no full optimizer, n=500 or n=1000 acceptance run was repeated;
+- valid cached upstream archives are now reused, and truncated downloads fail
+  cleanly instead of leaving a misleading update state;
+- 42 focused update/patch/input tests, 638 GCSIM tests, 189 combined optimizer/
+  AppShell UI tests, all Go tests and `go vet` pass.
 
-- the active button path is confirmed as AppShell -> one small Python process
-  adapter -> one standalone Go optimizer process; no old strategy identifier is
-  reachable from that button;
-- 27 unreachable legacy optimizer modules, 24 orphaned strategy tests and one
-  orphaned experiment tool were removed;
-- two bytecode-only Selected V2 directories were removed;
-- the bounded cleanup helper removed three obsolete generated run directories
-  (44,133,688 bytes) while retaining the exact duration failure, timeout
-  diagnostic and successful real UI run;
-- AppShell/Selected imports and 19 focused contract/UI tests pass; no new
-  GCSIM run was used;
-- remaining cleanup is the narrower and more delicate part: detach live request
-  preparation from broad historical contract modules, classify remaining trace
-  helpers, consolidate the engine patch stack, then prove update/rollback and a
-  clean-user smoke.
+### GOB-10 — PASS, compute optimization without search weakening
 
-The final scan must cover:
+The complete candidate set, common n=128 screen and adaptive finalist policy
+are unchanged. Formula evaluation now precomputes constant nodes and evaluates
+the full dependency closure for only the wearer whose artifact vector changed;
+cross-character support dependencies remain included. A production-sized
+regression returned a result exactly equal to the accepted saved search.
 
-- any newly discovered obsolete Python formula/search code;
-- CF-BB, Adaptive Oracle Exchange, Contextual Scan, Selected V2 and M/S/Gate-era orchestration;
-- neutral assignment oracle if it has no accepted caller;
-- old optimizer buttons, factories, progress event classes and backend wiring;
-- experimental tools, reports and fixtures without parity/update value;
-- obsolete engine hooks and patch deltas replaced by the consolidated adapter;
-- stale handoffs, TODO entries and duplicate contracts;
-- bounded generated debug/cache/temp artifacts.
+Ordinary finalist stages verify the engine executable once before and once
+after the stage. The consolidated engine patch skips trace-only bookkeeping
+when trace is disabled, while trace capture preserves the same compiled search
+result. The two fixed compact seeds are captured concurrently and restored to
+canonical order; cancellation owns both processes.
 
-Continuous target is removed only after an accepted Theory/All Sets Go port. Current comparison is removed after Selected, All Sets and Theory are accepted and tried by the user.
+One authorized full saved-account replay returned the same accepted twenty IDs.
+Measured timings: compact capture 1.83 s; compile 0.47 s; formula search 13.27 s;
+25-row n=128 screen 18.15 s; seven-row adaptive n=500 final 19.65 s; complete
+post-preparation boundary 57.0 s. The winner measured 148874.50 DPS with SE
+92.61; ordinary stochastic variation explains the DPS difference from earlier
+runs. No n=1000 extension was needed. Adding the separately measured unchanged
+UI preparation predicts about 62-64 seconds end to end.
 
-Completion requires one reachable Selected backend, one consolidated active engine patch, no references to deleted implementations, clean-cache build/tests, update/rollback proof and fresh new-user smoke. GOB-9 is mandatory, not optional maintenance.
+The active build is `gcsim-v2.42.2-gob10-perf-20260901`, artifact SHA-256
+`00834023d64f3853723ee2ca28af6b9bd5fbaacb1cbda4cf7e11dd44a45ff99a`.
+The optimized consolidated patch SHA-256 is
+`dc4d99a243d957afb4c7dee64e7fef6ba22b7a030cbcf36f9f0242960fe09aef`.
+Transactional update against upstream v2.45.0 currently fails closed during
+patch check and leaves the working engine untouched. Adapting and semantically
+validating the single patch against v2.45.0 is the next engine-maintenance task;
+it must not be mixed with another search redesign.
+
+Generated GOB-9 staging/handshake copies and the ordinary smoke output are
+rebuildable ignored local residue and have no product owner; the current host
+blocked their final recursive deletion after their exact paths were verified.
+Continuous target is removed only after
+an accepted Theory/All Sets Go port. Current comparison is removed only after
+Selected, All Sets and Theory are accepted or explicitly abandoned.
 
 ## 8. Engine update safety
 
@@ -489,11 +520,11 @@ Deleted at GOB-6 after proof: Python FGBS/stochastic/Selected composition,
 CF-BB, Adaptive Oracle Exchange, Contextual Scan, neutral assignment oracle and
 their orphaned strategy tests/tools/handoffs.
 
-Delete at GOB-9 after product cutover:
+Deleted at GOB-9 after product cutover:
 
-- every remaining old approach or temporary adapter with no accepted caller;
-- all redundant patch instrumentation and development-only orchestration;
-- stale documentation and generated development residue.
+- every remaining old Selected response/oracle/search approach with no accepted caller;
+- redundant numbered patch fragments and their orphaned development orchestration;
+- stale manifests, tests, audit tools and generated development residue.
 
 Whenever implementation work reveals another unused component, add it immediately to the cleanup manifest with a deletion gate. Do not preserve code merely because it once produced evidence.
 

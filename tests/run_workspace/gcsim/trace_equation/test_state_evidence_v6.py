@@ -20,8 +20,8 @@ from run_workspace.gcsim.trace_equation import (
     score_observed_artifact_replacement,
 )
 
-from test_health_evidence_v5 import _v5_fixture
-from test_source_dependencies_v4 import _provider
+from .test_health_evidence_v5 import _v5_fixture
+from .test_source_dependencies_v4 import _provider
 
 
 class StateEvidenceV6Tests(unittest.TestCase):

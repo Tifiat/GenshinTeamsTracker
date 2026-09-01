@@ -44,8 +44,8 @@ from run_workspace.gcsim.trace_equation import (
     source_patch_stack_sha256,
 )
 
-from test_contracts import _document
-from test_provider_evidence_v2 import _raw_engine_trace_v2
+from .test_contracts import _document
+from .test_provider_evidence_v2 import _raw_engine_trace_v2
 
 
 class SourceDependenciesV4Tests(unittest.TestCase):

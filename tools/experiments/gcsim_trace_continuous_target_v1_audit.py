@@ -27,19 +27,25 @@ from run_workspace.gcsim.optimizer_trace_search import (
     MainStatSelection,
     solve_continuous_target,
 )
-from run_workspace.gcsim.optimizer_trace_selected_candidates import (
+from run_workspace.gcsim.optimizer_go_selected_inputs import (
     load_selected_equipped_team_snapshot,
 )
-from run_workspace.gcsim.trace_equation import (
+from run_workspace.gcsim.trace_equation.artifact_variable_objective import (
     ArtifactStatValue,
     ArtifactStatVector,
-    SourceManifestBinding,
+    compile_artifact_variable_objective,
+)
+from run_workspace.gcsim.trace_equation.coarse_rotation_objective import (
+    compile_rotation_formula_filters,
+)
+from run_workspace.gcsim.trace_equation.contracts import (
     TraceExtractionRequest,
     TraceObjective,
     canonical_json,
-    compile_artifact_variable_objective,
-    compile_rotation_formula_filters,
-    decode_engine_trace_v6,
+)
+from run_workspace.gcsim.trace_equation.engine_adapter import decode_engine_trace_v6
+from run_workspace.gcsim.trace_equation.source_dependencies import (
+    SourceManifestBinding,
     decode_source_manifest_body,
 )
 

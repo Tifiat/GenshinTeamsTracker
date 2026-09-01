@@ -14,7 +14,7 @@ from run_workspace.gcsim.trace_equation import (
     replay_support_state,
 )
 
-from test_support_objective import _trace_with_hit_binding
+from .test_support_objective import _trace_with_hit_binding
 
 
 class SupportAwareFastObjectiveTests(unittest.TestCase):

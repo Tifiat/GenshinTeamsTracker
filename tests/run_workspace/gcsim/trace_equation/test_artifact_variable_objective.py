@@ -15,9 +15,9 @@ from run_workspace.gcsim.trace_equation import (
     evaluate_rotation_formula_filter,
 )
 
-from test_contracts import _document
-from test_ranking import _with_amplifying_reaction, _with_scaling
-from test_state_evidence_v6 import _decode, _v6_fixture
+from .test_contracts import _document
+from .test_ranking import _with_amplifying_reaction, _with_scaling
+from .test_state_evidence_v6 import _decode, _v6_fixture
 
 
 class ArtifactVariableObjectiveTests(unittest.TestCase):

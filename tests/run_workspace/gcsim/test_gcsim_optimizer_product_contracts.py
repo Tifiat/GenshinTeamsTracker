@@ -6,8 +6,6 @@ from pathlib import Path
 import tempfile
 import unittest
 
-import run_workspace.gcsim as gcsim_api
-from run_workspace.gcsim import render_gcsim_four_star_set_optimizer_config
 from run_workspace.gcsim.farming_auto_advisor import (
     GcsimAutomaticAdvisorSession,
 )
@@ -71,52 +69,6 @@ from tests.run_workspace.gcsim.test_gcsim_farming_optimized_advisor import (
 
 
 class GcsimOptimizerProductContractsTest(unittest.TestCase):
-    def test_public_facade_exports_milestone_zero_revision(self) -> None:
-        expected = {
-            "GcsimOptimizerAccountScope",
-            "GcsimOptimizerOperation",
-            "GcsimOptimizerOperationRequest",
-            "GcsimOptimizerSetReference",
-            "GcsimOptimizerWearerIdentity",
-            "GcsimOptimizerWorkPlan",
-            "GcsimFourPieceTargetPackage",
-            "GcsimTwoPlusTwoTargetPackage",
-            "GcsimOptimizerAccountAssignmentWitness",
-            "GcsimOptimizerMinimumStatConstraint",
-            "GcsimOptimizerProgressLeaderQuality",
-            "GcsimOptimizerProgressLeaderScope",
-            "GcsimOptimizerTerminalResult",
-            "GcsimOptimizerTheoreticalAllocationWitness",
-            "GcsimOptimizerTheoreticalStatRoll",
-            "GcsimOptimizerTheoreticalWearerAllocation",
-            "build_gcsim_optimizer_theoretical_allocation_witness",
-            "parse_gcsim_optimizer_operation_request",
-            "parse_gcsim_optimizer_terminal_result",
-            "adapt_gcsim_optimized_four_piece_result",
-            "render_gcsim_four_star_set_optimizer_config",
-        }
-
-        self.assertTrue(expected.issubset(set(gcsim_api.__all__)))
-        self.assertNotIn("GcsimOptimizerSearchDepth", gcsim_api.__all__)
-        self.assertNotIn("GcsimOptimizerSearchBudget", gcsim_api.__all__)
-        self.assertFalse(hasattr(gcsim_api, "GcsimOptimizerSearchDepth"))
-        self.assertEqual(len(gcsim_api.__all__), len(set(gcsim_api.__all__)))
-        self.assertTrue(all(hasattr(gcsim_api, name) for name in expected))
-        self.assertEqual(
-            [name for name in gcsim_api.__all__ if not hasattr(gcsim_api, name)],
-            [],
-        )
-        self.assertIs(
-            render_gcsim_four_star_set_optimizer_config,
-            gcsim_api.render_gcsim_four_star_set_optimizer_config,
-        )
-
-        wildcard_namespace: dict[str, object] = {}
-        exec("from run_workspace.gcsim import *", wildcard_namespace)
-        self.assertTrue(
-            set(gcsim_api.__all__).issubset(wildcard_namespace),
-        )
-
     def test_operations_have_distinct_v4_namespaces(self) -> None:
         contracts = tuple(
             get_gcsim_optimizer_operation_contract(operation)

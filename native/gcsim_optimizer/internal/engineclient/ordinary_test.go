@@ -1,9 +1,15 @@
 package engineclient
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"math"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"genshinteamstracker/native/gcsim_optimizer/internal/contracts"
 )
 
 func TestParseOrdinaryResult(t *testing.T) {
@@ -34,5 +40,27 @@ func TestParseOrdinaryResultFailsClosed(t *testing.T) {
 				t.Fatalf("got %v; expected %q", err, test.want)
 			}
 		})
+	}
+}
+
+func TestBoundEngineDetectsStageMutation(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "engine.exe")
+	original := []byte("bound-engine-v1")
+	if err := os.WriteFile(path, original, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(original)
+	request := contracts.OptimizerRequest{Engine: contracts.EngineBinding{
+		BinaryPath: path, ArtifactSHA256: hex.EncodeToString(digest[:]),
+	}}
+	bound, err := BindEngine(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("bound-engine-v2"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := bound.VerifyUnchanged(); err == nil {
+		t.Fatal("mutated engine passed the stage boundary")
 	}
 }

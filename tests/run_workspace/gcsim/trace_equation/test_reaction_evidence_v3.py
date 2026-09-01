@@ -18,8 +18,8 @@ from run_workspace.gcsim.trace_equation import (
     estimate_candidate_expected_damage,
 )
 
-from test_contracts import _document
-from test_provider_evidence_v2 import _raw_engine_trace_v2
+from .test_contracts import _document
+from .test_provider_evidence_v2 import _raw_engine_trace_v2
 
 
 _REACTION_FORMULA_ID = "gtt_transformative_reaction_v1"

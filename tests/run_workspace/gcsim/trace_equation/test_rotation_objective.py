@@ -9,14 +9,14 @@ from run_workspace.gcsim.trace_equation import (
     score_observed_artifact_replacement,
 )
 
-from test_ranking import (
+from .test_ranking import (
     _document,
     _duplicate_hit_document,
     _with_amplifying_reaction,
     _with_scaling,
     _with_unresolved_flat_damage,
 )
-from test_state_evidence_v6 import _decode, _v6_fixture
+from .test_state_evidence_v6 import _decode, _v6_fixture
 from run_workspace.gcsim.trace_equation import ScalingKind
 
 

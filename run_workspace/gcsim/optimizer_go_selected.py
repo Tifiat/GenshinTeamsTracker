@@ -8,6 +8,7 @@ product result. Candidate generation/evaluation never crosses this boundary.
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 import hashlib
 import json
@@ -41,11 +42,13 @@ from .optimizer_go_contracts import (
     canonical_sha256,
     text_sha256,
 )
-from .optimizer_stat_response import enforce_gcsim_optimizer_mvp_energy_policy
-from .optimizer_trace_selected_candidates import load_selected_equipped_team_snapshot
+from .optimizer_go_selected_inputs import (
+    bind_selected_report_config_and_snapshot,
+    enforce_gcsim_optimizer_mvp_energy_policy,
+    load_selected_equipped_team_snapshot,
+)
 from .selected_team_config import build_selected_team_full_config_report
 from .settings import GcsimRunSettings
-from .trace_equation.same_context_acceptance import bind_report_config_and_snapshot
 
 
 DEFAULT_SELECTED_SEEDS = (742_031_889, 742_031_890)
@@ -124,14 +127,15 @@ class GcsimOptimizerGoSelectedSession:
         self._progress_callback = progress_callback
         self._cancelled = threading.Event()
         self._process_lock = threading.Lock()
-        self._process: subprocess.Popen[str] | None = None
+        self._processes: set[subprocess.Popen[str]] = set()
 
     def cancel(self) -> None:
         self._cancelled.set()
         with self._process_lock:
-            process = self._process
-        if process is not None and process.poll() is None:
-            _stop_process(process)
+            processes = tuple(self._processes)
+        for process in processes:
+            if process.poll() is None:
+                _stop_process(process)
 
     def run(self) -> dict[str, Any]:
         run_dir = _new_run_dir(self.request.run_root)
@@ -191,15 +195,14 @@ class GcsimOptimizerGoSelectedSession:
         run_dir: Path,
         started: float,
     ) -> dict[str, Any]:
-        members: list[dict[str, Any]] = []
         request_payload = prepared["request"]
         config_path = run_dir / "prepared-config.txt"
         config_path.write_bytes(
             request_payload["context"]["prepared_config"]["text"].encode("utf-8")
         )
         seeds = tuple(self.request.seeds)
-        for index, seed in enumerate(seeds, start=1):
-            self._require_not_cancelled()
+
+        def capture(seed: int) -> dict[str, Any]:
             trace_request_path = run_dir / f"compact-request-{seed}.json"
             member_path = run_dir / f"compact-member-{seed}.json"
             trace_request = {
@@ -212,14 +215,6 @@ class GcsimOptimizerGoSelectedSession:
                 "output_mode": "compact_ir_v1",
             }
             _write_json(trace_request_path, trace_request)
-            self._emit_progress(
-                prepared["request_sha256"],
-                sequence=2 * (index - 1),
-                stage="loading_evidence",
-                completed=index - 1,
-                total=len(seeds),
-                started=started,
-            )
             command = (
                 request_payload["engine"]["binary_path"],
                 "-c",
@@ -248,15 +243,32 @@ class GcsimOptimizerGoSelectedSession:
                     "compact_seed_mismatch",
                     f"Compact evidence seed mismatch for {seed}.",
                 )
-            members.append(member)
-            self._emit_progress(
-                prepared["request_sha256"],
-                sequence=2 * (index - 1) + 1,
-                stage="loading_evidence",
-                completed=index,
-                total=len(seeds),
-                started=started,
-            )
+            return member
+
+        self._emit_progress(
+            prepared["request_sha256"],
+            sequence=0,
+            stage="loading_evidence",
+            completed=0,
+            total=len(seeds),
+            started=started,
+        )
+        members_by_seed: dict[int, dict[str, Any]] = {}
+        with ThreadPoolExecutor(max_workers=min(2, len(seeds))) as pool:
+            futures = {pool.submit(capture, seed): seed for seed in seeds}
+            for completed, future in enumerate(as_completed(futures), start=1):
+                seed = futures[future]
+                members_by_seed[seed] = future.result()
+                self._require_not_cancelled()
+                self._emit_progress(
+                    prepared["request_sha256"],
+                    sequence=completed,
+                    stage="loading_evidence",
+                    completed=completed,
+                    total=len(seeds),
+                    started=started,
+                )
+        members = [members_by_seed[seed] for seed in seeds]
         compact = {
             "schema_version": GCSIM_OPTIMIZER_GO_SCHEMA_VERSION,
             "schema_kind": GCSIM_OPTIMIZER_GO_COMPACT_IR_KIND,
@@ -306,7 +318,7 @@ class GcsimOptimizerGoSelectedSession:
                 errors="replace",
                 creationflags=_process_group_flags(),
             )
-            self._set_process(process)
+            self._register_process(process)
             assert process.stderr is not None
 
             def read_progress() -> None:
@@ -329,7 +341,7 @@ class GcsimOptimizerGoSelectedSession:
                 )
             finally:
                 reader.join(timeout=2)
-                self._set_process(None)
+                self._unregister_process(process)
         if self._cancelled.is_set():
             raise GcsimOptimizerGoSelectedError("cancelled", "Selected optimization cancelled.")
         if process.returncode != 0:
@@ -386,11 +398,11 @@ class GcsimOptimizerGoSelectedSession:
                 errors="replace",
                 creationflags=_process_group_flags(),
             )
-            self._set_process(process)
+            self._register_process(process)
             try:
                 _wait_process(process, cancel_event=self._cancelled, timeout_ms=timeout_ms)
             finally:
-                self._set_process(None)
+                self._unregister_process(process)
         if self._cancelled.is_set():
             raise GcsimOptimizerGoSelectedError("cancelled", "Selected optimization cancelled.")
         if process.returncode != 0:
@@ -400,9 +412,13 @@ class GcsimOptimizerGoSelectedSession:
                 f"GCSIM compact evidence failed with code {process.returncode}: {details.strip()}",
             )
 
-    def _set_process(self, process: subprocess.Popen[str] | None) -> None:
+    def _register_process(self, process: subprocess.Popen[str]) -> None:
         with self._process_lock:
-            self._process = process
+            self._processes.add(process)
+
+    def _unregister_process(self, process: subprocess.Popen[str]) -> None:
+        with self._process_lock:
+            self._processes.discard(process)
 
     def _require_not_cancelled(self) -> None:
         if self._cancelled.is_set():
@@ -500,7 +516,7 @@ def _prepare_inputs(
         artifact_database=database,
         character_keys=character_keys,
     )
-    wearers = bind_report_config_and_snapshot(
+    wearers = bind_selected_report_config_and_snapshot(
         report.team.payload,
         config_text=config_text,
         artifact_database=database,

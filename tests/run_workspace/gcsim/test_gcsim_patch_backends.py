@@ -82,7 +82,7 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
                 "001-first.patch\n002-second.patch",
             )
 
-    def test_default_gtt_patch_stack_orders_marker_before_wave_payload(self) -> None:
+    def test_default_gtt_patch_stack_is_one_consolidated_adapter(self) -> None:
         patch_stack = PROJECT_ROOT / "run_workspace" / "gcsim" / "patch_stack"
 
         patch_files = sorted(
@@ -91,27 +91,13 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
             if path.is_file()
         )
 
-        self.assertIn("0001-gtt-engine-marker.patch", patch_files)
-        self.assertIn("0002-gtt-sequential-wave-prototype.patch", patch_files)
-        self.assertIn("0003-gtt-wave-scenario-payload.patch", patch_files)
-        self.assertIn("0004-gtt-dynamic-wave-stats.patch", patch_files)
-        self.assertIn("0005-gtt-explicit-er-optimizer-policy.patch", patch_files)
-        self.assertLess(
-            patch_files.index("0001-gtt-engine-marker.patch"),
-            patch_files.index("0002-gtt-sequential-wave-prototype.patch"),
+        self.assertEqual(patch_files, ["0001-gtt-engine-adapter-v1.patch"])
+        patch_text = (patch_stack / patch_files[0]).read_text(
+            encoding="utf-8", errors="strict"
         )
-        self.assertLess(
-            patch_files.index("0002-gtt-sequential-wave-prototype.patch"),
-            patch_files.index("0003-gtt-wave-scenario-payload.patch"),
-        )
-        self.assertLess(
-            patch_files.index("0003-gtt-wave-scenario-payload.patch"),
-            patch_files.index("0004-gtt-dynamic-wave-stats.patch"),
-        )
-        self.assertLess(
-            patch_files.index("0004-gtt-dynamic-wave-stats.patch"),
-            patch_files.index("0005-gtt-explicit-er-optimizer-policy.patch"),
-        )
+        self.assertIn("gtt_compact_equation_v1", patch_text)
+        self.assertIn("gtt_trace_equation_v6", patch_text)
+        self.assertIn("diff --git a/pkg/gttcompact/", patch_text)
 
     def test_missing_git_is_controlled_failure_and_preserves_old_active(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

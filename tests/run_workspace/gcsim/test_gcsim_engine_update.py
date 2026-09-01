@@ -19,11 +19,36 @@ from run_workspace.gcsim.source_acquisition import (
     GcsimSourceAcquisitionError,
     OfficialGcsimSourceAcquisition,
     OfficialGcsimSourceRef,
+    acquire_official_gcsim_source,
     acquire_official_gcsim_source_from_archive,
 )
 
 
 class GcsimEngineUpdateTest(unittest.TestCase):
+    def test_valid_cached_release_archive_is_reused_without_redownload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "sources" / "archives").mkdir(parents=True)
+            archive = _write_fake_gcsim_archive(
+                root / "sources" / "archives" / "v-test.zip"
+            )
+
+            acquisition = acquire_official_gcsim_source(
+                release="v-test",
+                cache_dir=root / "sources",
+                request_json=lambda _url: {
+                    "tag_name": "v-test",
+                    "zipball_url": "https://example.invalid/v-test.zip",
+                    "html_url": "https://example.invalid/v-test",
+                },
+                download_url=lambda *_args: self.fail(
+                    "valid cached archive must not be downloaded again"
+                ),
+            )
+
+            self.assertEqual(acquisition.archive_path, archive)
+            self.assertTrue((acquisition.source_dir / "go.mod").is_file())
+
     def test_fake_official_source_acquisition_activates_engine(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

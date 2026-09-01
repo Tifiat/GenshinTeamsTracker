@@ -20,7 +20,7 @@ from run_workspace.gcsim.trace_equation import (
     decode_health_operations,
 )
 
-from test_source_dependencies_v4 import _fixture, _provider
+from .test_source_dependencies_v4 import _fixture, _provider
 
 
 class HealthEvidenceV5Tests(unittest.TestCase):

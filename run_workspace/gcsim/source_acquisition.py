@@ -9,6 +9,7 @@ expanded source tree into `GcsimEngineStore`.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from http.client import IncompleteRead
 import json
 from pathlib import Path
 import re
@@ -67,8 +68,12 @@ def acquire_official_gcsim_source(
     archive_dir = root / "archives"
     archive_dir.mkdir(parents=True, exist_ok=True)
     archive_path = archive_dir / f"{_safe_name(source_ref.tag)}.zip"
-    downloader = download_url or _download_url
-    downloader(source_ref.archive_url, archive_path)
+    stale_temp = archive_path.with_name(archive_path.name + ".tmp")
+    if stale_temp.is_file():
+        stale_temp.unlink()
+    if not archive_path.is_file() or not zipfile.is_zipfile(archive_path):
+        downloader = download_url or _download_url
+        downloader(source_ref.archive_url, archive_path)
     return acquire_official_gcsim_source_from_archive(
         source_ref=source_ref,
         archive_path=archive_path,
@@ -173,12 +178,14 @@ def _download_url(url: str, destination: Path) -> None:
         },
     )
     temp = destination.with_name(destination.name + ".tmp")
+    if temp.is_file():
+        temp.unlink()
     try:
         with urlopen(request, timeout=DEFAULT_REQUEST_TIMEOUT_SECONDS) as response:
             with temp.open("wb") as output:
                 shutil.copyfileobj(response, output)
         temp.replace(destination)
-    except (HTTPError, URLError, OSError) as exc:
+    except (HTTPError, URLError, OSError, IncompleteRead) as exc:
         if temp.exists():
             temp.unlink()
         raise GcsimSourceAcquisitionError(

@@ -23,7 +23,7 @@ from run_workspace.gcsim.trace_equation import (
     score_observed_artifact_replacement,
 )
 
-from test_contracts import _document, _raw_engine_trace
+from .test_contracts import _document, _raw_engine_trace
 
 
 class ExpectedRankingTests(unittest.TestCase):

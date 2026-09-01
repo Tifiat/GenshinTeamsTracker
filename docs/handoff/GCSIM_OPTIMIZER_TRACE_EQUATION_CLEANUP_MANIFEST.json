@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "contract": "gcsim_optimizer_trace_equation_cleanup_manifest_v1",
-  "status": "gtt_gcsim_optimizer_go_v1_gob_3_through_8p_pass_gob_9_cleanup_next",
+  "status": "gtt_gcsim_optimizer_go_v1_gob_3_through_9_pass",
   "generated_on": "2026-08-31",
   "authoritative_handoff": "docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md",
   "policy": {
@@ -217,7 +217,7 @@
       }
     }
   },
-  "current_formula_contract": {
+  "historical_python_formula_contract": {
     "intended_search_mode": "FAST",
     "real_context_acceptance": "failed_single_seed_stochastic_topology",
     "same_exact_artifacts_fast_vs_n1000_gcsim": "tested_failed",
@@ -391,10 +391,10 @@
     ]
   },
   "current_next_block": {
-    "name": "gtt_gcsim_optimizer_go_v1_GOB_8P_bounded_performance_rationalization",
+    "name": "gtt_gcsim_optimizer_go_v1_GOB_10_performance_complete",
     "design_path": "docs/handoff/GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md",
     "strategy_id": "gtt_gcsim_optimizer_go_v1",
-    "status": "GOB_3_through_GOB_8P_pass_GOB_9_cleanup_next",
+    "status": "GOB_3_through_GOB_10_pass",
     "completed_first_code_pass": [
       "FGBS-0_clean_package_immutable_zero_engine_contracts_and_import_isolation_pass",
       "FGBS-1_generic_direct_reaction_support_response_ledger_pass",
@@ -668,8 +668,8 @@
         "performance_target_seconds": 190,
         "next_action": "GOB_9_reachability_cleanup_without_another_expensive_run"
       },
-      "gob_9_cleanup_in_progress_receipt": {
-        "status": "first_reachability_slice_pass",
+      "gob_9_cleanup_receipt": {
+        "status": "pass",
         "active_button_path": "ui.app_shell_to_ui.gcsim_browser.run_worker_to_optimizer_go_selected_to_one_Go_process",
         "legacy_strategy_identifiers_on_active_UI_path": 0,
         "removed_unreachable_legacy_python_modules_this_slice": 27,
@@ -684,14 +684,63 @@
           "data/gcsim/optimizer-go-runs/selected-20260831-045553-7307ce20"
         ],
         "active_AppShell_and_Selected_import": "pass",
-        "focused_unittest_count": 19,
-        "focused_unittest_status": "pass",
+        "second_slice_removed_python_optimizer_and_trace_modules": 13,
+        "second_slice_removed_orphaned_test_files": 12,
+        "second_slice_removed_experiment_tools": 12,
+        "second_slice_removed_stale_manifests": 8,
+        "selected_clean_import_trace_modules_loaded": 0,
+        "selected_input_boundary": "run_workspace/gcsim/optimizer_go_selected_inputs.py",
+        "consolidated_patch": "run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v1.patch",
+        "consolidated_patch_sha256": "01ff5993aaf6c3726db30de0b6876c55401b5a3e66e1df979bee24e7c8245638",
+        "consolidated_patch_count": 1,
+        "normalized_tree_files": 4314,
+        "normalized_tree_missing": 0,
+        "normalized_tree_extra": 0,
+        "normalized_tree_different": 0,
+        "active_engine_id": "gcsim-v2.42.2-gob9-consolidated-20260831",
+        "rollback_engine_id": "gcsim-v2.42.2-gob8-20260830b",
+        "rollback_and_restore_status": "pass",
+        "source_manifest_body_sha256": "f898a307beb59f9fe556fa7acdfa976d2e1c293979a3013dde4e0412353c7e7f",
+        "artifact_sha256": "bce061db71f2ebc7171ba19d192a6c0522358edb68e821b25a7649406f86fe03",
+        "ordinary_n1_smoke": "pass",
+        "real_compact_one_seed_handshake": "pass_42242_nodes_365_channels_25_opaque_boundaries",
+        "focused_patch_update_input_tests": 42,
+        "full_gcsim_tests": 638,
+        "combined_optimizer_appshell_ui_tests": 189,
+        "go_tests_and_vet": "pass",
         "expensive_GCSIM_reruns": 0,
+        "remaining_work": []
+      },
+      "gob_10_performance_receipt": {
+        "status": "pass_same_search_and_winner",
+        "formula_dependency_closure": "exact_saved_search_result_equal",
+        "trace_disabled_engine_fast_paths": [
+          "event_recording",
+          "modifier_provenance",
+          "traced_max_hp_arithmetic"
+        ],
+        "engine_hash_policy": "once_before_and_once_after_each_verification_stage",
+        "compact_capture": "two_seeds_parallel_canonical_order",
+        "compact_seconds": 1.828,
+        "compile_seconds": 0.468,
+        "formula_search_seconds": 13.267,
+        "screen_n128_candidates": 25,
+        "screen_n128_seconds": 18.147,
+        "adaptive_n500_candidates": 7,
+        "adaptive_n500_seconds": 19.653,
+        "n1000_extension": false,
+        "post_preparation_total_seconds": 57.0,
+        "expected_full_UI_seconds": "62_to_64",
+        "same_accepted_twenty_artifact_ids": true,
+        "measured_DPS": 148874.49956657927,
+        "standard_error": 92.60617480498586,
+        "active_engine_id": "gcsim-v2.42.2-gob10-perf-20260901",
+        "artifact_sha256": "00834023d64f3853723ee2ca28af6b9bd5fbaacb1cbda4cf7e11dd44a45ff99a",
+        "source_manifest_body_sha256": "7d8683ae0f928dcebf3427905e3dfa98e238a14bfa89e89a50e716811cc44a5cd",
+        "consolidated_patch_sha256": "dc4d99a243d957afb4c7dee64e7fef6ba22b7a030cbcf36f9f0242960fe09aef",
+        "latest_upstream_v2_45_0": "patch_check_failed_closed_active_v2_42_2_preserved",
         "remaining_work": [
-          "isolate_narrow_live_Python_request_preparation_from_broad_legacy_contract_modules",
-          "classify_and_remove_remaining_unreachable_trace_equation_helpers",
-          "consolidate_all_required_engine_patches_then_prove_update_and_rollback",
-          "final_clean_cache_import_test_and_new_user_smoke"
+          "adapt_and_release_validate_consolidated_patch_for_upstream_v2_45_0"
         ]
       },
       "retain_after_GOB_6": [
@@ -707,8 +756,8 @@
         "stale_optimizer_handoffs_duplicate_contracts_caches_and_generated_development_residue"
       ]
     },
-    "next_stage": "GOB-9_mandatory_final_optimizer_area_cleanup",
-    "current_first_loss": "GOB_9_stale_legacy_optimizer_main_response_public_facade_test_requires_reachability_disposition",
+    "next_stage": "adapt_consolidated_engine_patch_to_v2_45_0_or_contract_All_Sets_Theory",
+    "current_first_loss": null,
     "later_stages": [
       "GOB-1_isolated_Go_module_and_cross_language_contracts",
       "GOB-2_compact_engine_adapter_feasibility",
@@ -719,7 +768,8 @@
       "GOB-7_same_context_finalists_and_common_n1000",
       "GOB-8_Selected_UI_and_clean_new_user_acceptance",
       "GOB-8P_bounded_adaptive_finalist_verification",
-      "GOB-9_mandatory_final_optimizer_area_cleanup"
+      "GOB-9_mandatory_final_optimizer_area_cleanup",
+      "GOB-10_measured_compute_optimization"
     ],
     "raw_domain_receipt": {
       "chasca": 682040,
@@ -740,10 +790,7 @@
       "ordinary_GCSIM_calls_during_FGBS-7_protocol": 0,
       "subagents_allowed": false
     },
-    "must_stop_before": [
-      "optimizer_ui_cutover",
-      "active_engine_switch"
-    ]
+    "must_stop_before": []
   },
   "source_dependency_policy": {
     "character_or_set_name_rules_allowed": false,
@@ -758,10 +805,12 @@
       "paths": [
         "run_workspace/gcsim/optimizer_artifact_database.py",
         "run_workspace/gcsim/optimizer_artifact_materializer.py",
+        "run_workspace/gcsim/optimizer_go_contracts.py",
+        "run_workspace/gcsim/optimizer_go_selected.py",
+        "run_workspace/gcsim/optimizer_go_selected_inputs.py",
         "run_workspace/gcsim/optimizer_product_contracts.py",
         "run_workspace/gcsim/optimizer_run_input.py",
-        "run_workspace/gcsim/optimizer_stat_constraints.py",
-        "run_workspace/gcsim/optimizer_stat_response.py"
+        "run_workspace/gcsim/optimizer_stat_constraints.py"
       ],
       "role": "input_materialization_legality_and_transport_primitives",
       "rule": "Adapt only through explicit trace-era contracts; no old orchestration callback."
@@ -828,6 +877,11 @@
       "docs/handoff/GCSIM_OPTIMIZER_FGBS_SELECTED_DESIGN.md",
       "docs/handoff/GCSIM_OPTIMIZER_CFBB_SELECTED_DESIGN.md",
       "docs/handoff/GCSIM_OPTIMIZER_ORACLE_EXCHANGE_SELECTED_DESIGN.md"
+    ],
+    "gob9_final_cleanup": [
+      "remaining_unreachable_Python_response_oracle_and_search_modules",
+      "orphaned_tests_experiment_tools_and_legacy_manifests",
+      "numbered_engine_patch_fragments_0001_through_0022"
     ]
   },
   "rewritten_now": [
@@ -845,12 +899,16 @@
     "old_selected_v2_test_or_tool_files_present": 0,
     "optimizer_stat_map_first_python_sources_present": 0,
     "optimizer_selected_s_python_sources_present": 0,
-    "gob6_deleted_strategy_source_references_outside_receipts": 0
+    "gob6_deleted_strategy_source_references_outside_receipts": 0,
+    "deleted_GOB9_source_references_in_live_code_tests_tools": 0,
+    "active_patch_count": 1,
+    "selected_clean_import_trace_modules_loaded": 0,
+    "ignored_local_GOB9_residue_paths_present": 5,
+    "ignored_local_GOB9_residue_bytes": 352636573
   },
   "retained_diagnostic_controls": [
     {
       "paths": [
-        "run_workspace/gcsim/optimizer_anytime_candidates.py",
         "run_workspace/gcsim/optimizer_anytime_response.py",
         "run_workspace/gcsim/optimizer_anytime_race.py",
         "run_workspace/gcsim/optimizer_anytime_selected_service.py"
@@ -860,10 +918,6 @@
     }
   ],
   "machine_data_receipts": [
-    {
-      "path": "run_workspace/gcsim/manifests/gcsim_optimizer_selected_passed_chain_v1.json",
-      "role": "historical_structural_receipt_not_a_candidate_source"
-    },
     {
       "path": "debug/gcsim_optimizer_ui_runs/20260809T020239517138Z-29412-f949c297da30.json",
       "role": "historical_physical_assignment_witness"
@@ -884,34 +938,14 @@
       "condition": "Retain through Selected; remove only after a future Theory/All Sets Go port preserves its accepted mathematics and parity evidence."
     },
     {
-      "path_glob": "gcsim_optimizer_v2/__pycache__/**",
-      "role": "ignored_bytecode_left_after_source_removal",
-      "condition": "Rebuildable local cache; remove with ordinary cache cleanup."
-    },
-    {
       "path_glob": "debug/gcsim_optimizer_benchmarks/**",
       "role": "large_historical_traces",
       "condition": "Compact only after exact launch/result/audit receipts and hashes are extracted."
     },
     {
-      "path_glob": "run_workspace/gcsim/optimizer_*.py",
-      "role": "remaining_mixed_stable_current_all_theory_and_experimental_runtime",
-      "condition": "Classify by fresh call-graph and scope migration; never bulk-delete from this glob."
-    },
-    {
-      "path_glob": "ui/gcsim_browser/**",
-      "role": "mixed_optimizer_UI_area_pending_GOB_8_cutover_and_GOB_9_reachability_cleanup",
-      "condition": "At GOB-9 remove only old optimizer factories, progress events and button wiring with no accepted product caller; preserve unrelated Browser behavior."
-    },
-    {
-      "path_glob": "run_workspace/gcsim/patch_stack/*.patch",
-      "role": "development_patch_stack_pending_consolidation_and_GOB_9_cleanup",
-      "condition": "Audit every patch present at cutover, preserve required behavior in one versioned consolidated patch, then remove superseded fragments only after update/build/smoke/rollback proof."
-    },
-    {
-      "path_glob": "docs/handoff/GCSIM_OPTIMIZER_*.md",
-      "role": "optimizer_document_area_pending_final_contract_reachability_cleanup",
-      "condition": "At GOB-9 retain only the authoritative product/update/debug documents and remove stale or duplicate strategy handoffs."
+      "path_glob": "run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v1.patch",
+      "role": "sole_active_versioned_engine_adapter_patch",
+      "condition": "Retain; replace only through a future transactional update with fresh apply/build/smoke/rollback proof."
     }
   ],
   "forbidden_as_production_inputs": [

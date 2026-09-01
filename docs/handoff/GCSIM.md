@@ -354,8 +354,9 @@ Current GTT direction:
   compact-panel aggregation to use each seed member's own duration, the actual
   restarted AppShell Selected button completed with 148910.10 DPS, SE 68.49
   and twenty unique artifact IDs. Repeated full UI runs took 3:33 and 3:40, so
-  the 190-second performance target remains missed; the temporary working kill
-  is 360 seconds while bounded GOB-8P performance work is next.
+  the 190-second performance target remained narrowly missed. GOB-8P then
+  preserved recall and reduced the accepted full Go boundary to 159.06 seconds;
+  the temporary working kill remains 360 seconds.
 - Python FAST/FGBS remains only as method/parity evidence. Its bounded
   single-seed path passed the 190 s limit, while the naive two-full-trace
   stochastic representation failed the product runtime goal. No further Python
@@ -366,8 +367,9 @@ Current GTT direction:
 - STANDARD is a bounded regression control only. Unknown mechanics remain typed
   and frozen at the last known boundary while known equations continue.
 - Former schema checkpoints, M/S/Gate plans, stat/set response maps and
-  experimental search services were removed at GOB-6. GOB-9 removes every
-  remaining obsolete optimizer component after product cutover.
+  experimental search services were removed at GOB-6/GOB-9. Selected now has
+  one reachable Go backend and one consolidated engine adapter patch with
+  update/rollback proof.
 
 Read `GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` for the sole current sequence.
 

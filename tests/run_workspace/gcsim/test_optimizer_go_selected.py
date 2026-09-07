@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import tempfile
 import threading
@@ -76,6 +77,7 @@ class GcsimOptimizerGoSelectedTests(unittest.TestCase):
             selected_team={},
             team_index=0,
             rotation_shell_text="",
+            infinite_energy_enabled=False,
             seeds=(101, 202),
         )
         session = GcsimOptimizerGoSelectedSession(request)
@@ -112,8 +114,12 @@ class GcsimOptimizerGoSelectedTests(unittest.TestCase):
                     run_dir=run_dir,
                     started=time.monotonic(),
                 )
+            captured_ignore_burst_energy = json.loads(
+                (run_dir / "compact-request-101.json").read_text(encoding="utf-8")
+            )["ignore_burst_energy"]
 
         self.assertEqual([int(row["seed"]) for row in compact["members"]], [101, 202])
+        self.assertFalse(captured_ignore_burst_energy)
 
 
 if __name__ == "__main__":

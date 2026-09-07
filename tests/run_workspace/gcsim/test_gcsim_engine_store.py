@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -27,6 +28,36 @@ class FailingPatchBackend:
 
 
 class GcsimEngineStoreTest(unittest.TestCase):
+    def test_rollback_is_pinned_not_selected_by_mtime(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = _make_source_tree(root / "source", version="test")
+            store = GcsimEngineStore(root / "store")
+            for name in ("known-good", "unused-newer"):
+                result = store.prepare_engine_update(source_dir=source, source_label=name, engine_id=name, activate=name == "known-good")
+                self.assertTrue(result.success)
+            store.prepare_engine_update(source_dir=source, source_label="new", engine_id="new")
+            _touch_dir(store.engines_dir / "known-good", 1000)
+            _touch_dir(store.engines_dir / "unused-newer", 3000)
+            self.assertEqual(store.rollback_engine_id(), "known-good")
+            store.activate_engine("new")  # Idempotent activation must retain pin.
+            kept = store.prune_generated_state(keep_successful=1, dry_run=True)
+            self.assertEqual(kept.kept_successful_engine_ids, ("new", "known-good"))
+            self.assertIn(str(store.engines_dir / "unused-newer"), kept.deleted_paths)
+            store.activate_engine("known-good")
+            self.assertEqual(store.rollback_engine_id(), "new")
+
+    def test_legacy_unpinned_state_does_not_prune_possible_rollback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = _make_source_tree(root / "source", version="test")
+            store = GcsimEngineStore(root / "store")
+            for name in ("old", "new"):
+                store.prepare_engine_update(source_dir=source, source_label=name, engine_id=name)
+            store.active_state_path.write_text(json.dumps({"schema_version": 1, "active_engine_id": "new"}))
+            result = store.prune_generated_state(keep_successful=1, dry_run=True)
+            self.assertNotIn(str(store.engines_dir / "old"), result.deleted_paths)
+
     def test_source_tree_identity_uses_one_case_sensitive_posix_order(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

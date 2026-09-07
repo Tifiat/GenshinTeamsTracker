@@ -22,6 +22,24 @@ from run_workspace.gcsim.source_manifest_build import (
 
 
 class GcsimSourceManifestBuildTest(unittest.TestCase):
+    def test_relative_engine_root_builds_into_the_same_directory(self) -> None:
+        with tempfile.TemporaryDirectory(dir=Path.cwd()) as tmp:
+            root = Path(tmp).resolve()
+            _write_generator_marker(root)
+            _write_gtt_marker(root)
+            runner = _BuildRunner()
+            result = build_gcsim_artifact(
+                root.relative_to(Path.cwd()),
+                go_work_dir=root / ".go",
+                runner=runner,
+                require_gtt_marker=True,
+                source_manifest_binding_input=_binding_input(),
+            )
+            self.assertTrue(result.runtime_ready, result.error)
+            command = next(call for call in runner.calls if call[:2] == ("go", "build"))
+            self.assertEqual(Path(command[command.index("-o") + 1]), root / "build/gtt-gcsim.exe")
+            self.assertTrue((root / "build/gtt-gcsim.exe").is_file())
+
     def test_manifest_numeric_canonicalization_matches_go_json(self) -> None:
         self.assertEqual(
             canonical_json(
@@ -335,6 +353,8 @@ class _BuildRunner:
             return _GeneratorRunner()(command, Path(cwd), env, timeout)
         if command[:2] == ("go", "build"):
             output = Path(command[command.index("-o") + 1])
+            if not output.is_absolute():
+                output = Path(cwd) / output
             output.parent.mkdir(parents=True, exist_ok=True)
             output.write_bytes(b"bound executable")
             return subprocess.CompletedProcess(command, 0, "built\n", "")

@@ -3,8 +3,8 @@
 Contract date: 2026-06-11
 
 Status: approved direction for the first PvP implementation stage, based on
-`PVP_MODE_PLAN.md`, user decisions on 2026-06-11, and the reference site audit
-in `PVP_REFERENCE_SITE_AUDIT.md`.
+user decisions on 2026-06-11 and the reference site audit in
+`PVP_REFERENCE_SITE_AUDIT.md`.
 
 This contract is for a full offline/hot-seat PvP loop. It is still a prototype
 foundation, not the final polished MVP UI.

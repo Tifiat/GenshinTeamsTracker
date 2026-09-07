@@ -91,13 +91,18 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
             if path.is_file()
         )
 
-        self.assertEqual(patch_files, ["0001-gtt-engine-adapter-v1.patch"])
+        self.assertEqual(patch_files, ["0001-gtt-engine-adapter-v245.patch"])
         patch_text = (patch_stack / patch_files[0]).read_text(
             encoding="utf-8", errors="strict"
         )
         self.assertIn("gtt_compact_equation_v1", patch_text)
         self.assertIn("gtt_trace_equation_v6", patch_text)
         self.assertIn("diff --git a/pkg/gttcompact/", patch_text)
+        self.assertIn('GTTTraceFormulaVersion = "gtt_trace_formula_v3"', patch_text)
+        classifier = patch_text.split("+func gttTraceReactionOperatorID", 1)[1].split("\ndiff --git", 1)[0]
+        self.assertNotIn("attacks.", classifier)
+        self.assertNotIn(".Abil", classifier)
+        self.assertIn("GTTReactionFormula", classifier)
 
     def test_missing_git_is_controlled_failure_and_preserves_old_active(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "contract": "gcsim_optimizer_trace_equation_cleanup_manifest_v1",
-  "status": "gtt_gcsim_optimizer_go_v1_gob_3_through_9_pass",
-  "generated_on": "2026-08-31",
+  "status": "gtt_gcsim_optimizer_go_v1_gob_10_and_11a_pass_gob_11_pending",
+  "generated_on": "2026-09-07",
   "authoritative_handoff": "docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md",
   "policy": {
     "single_production_backend": true,
@@ -42,6 +42,15 @@
     }
   ],
   "completed_checkpoints": {
+    "gob_11a": {
+      "status": "pass_bounded_current_team_and_structural_regressions",
+      "receipt": "tests/fixtures/gcsim_optimizer_go_v1/gob11a_reaction_classification_receipt_v1.json",
+      "active_engine_id": "gcsim-v2.45.0-gob11a-20260907",
+      "rollback_engine_id": "gcsim-v2.45.0-clean-adapter-20260901",
+      "rollback_and_restore_verified": true,
+      "full_optimizer_runs": 0,
+      "next": "GOB-11 cross-team coverage; direct reaction dependencies remain frozen"
+    },
     "gob_8p_exact_seven_n500_replay": {
       "status": "pass_production_adaptive_gate_implemented_and_full_go_acceptance_pass",
       "receipt": "tests/fixtures/gcsim_optimizer_go_v1/gob8p_exact_seven_n500_receipt_v1.json",
@@ -943,9 +952,43 @@
       "condition": "Compact only after exact launch/result/audit receipts and hashes are extracted."
     },
     {
-      "path_glob": "run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v1.patch",
+      "path_glob": "run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v245.patch",
       "role": "sole_active_versioned_engine_adapter_patch",
       "condition": "Retain; replace only through a future transactional update with fresh apply/build/smoke/rollback proof."
+    },
+    {
+      "paths": [
+        ".codex_tmp/gob11a-source-20260902",
+        ".codex_tmp/gob11a-engine-store",
+        ".codex_tmp/gob11a-acceptance-20260907",
+        ".codex_tmp/gob11a_acceptance.py",
+        ".codex_tmp/gob11a_smoke.py",
+        ".codex_tmp/gob11a_verify_installation.py"
+      ],
+      "role": "ignored_GOB11A_local_validation_residue_not_runtime",
+      "condition": "Now eligible for cleanup: GOB-11A and compatibility-repair receipts are retained; audit assertions were corrected/promoted into the active patch. Retain production active and pinned rollback engines, which are not these paths."
+    },
+    {
+      "paths": [
+        ".codex_tmp/update_risk_audit_20260907.py",
+        ".codex_tmp/update_risk_ordinary_test.go",
+        ".codex_tmp/update-risk-overlay.json"
+      ],
+      "role": "compatibility_audit_reproducers_not_runtime",
+      "condition": "Now eligible for cleanup: corrected assertions were promoted to permanent tests. API-drift limits remain documented; stale probes asserting defective behavior must not be used for current acceptance."
+    },
+    {
+      "paths": [
+        ".codex_tmp/compat-engine-store-20260907",
+        ".codex_tmp/compat-gate-diagnostic-20260907",
+        ".codex_tmp/compat-repair-acceptance-20260907",
+        ".codex_tmp/compat_gate_diagnostic.py",
+        ".codex_tmp/compat_repair_update.py",
+        ".codex_tmp/compat_repair_acceptance.py",
+        ".codex_tmp/compat_verify_installation.py"
+      ],
+      "role": "ignored_compatibility_repair_validation_residue_not_runtime",
+      "condition": "Eligible for cleanup after the permanent engine_compatibility_repair_receipt_v1.json is retained. Production active and rollback engine stores are not these paths. No deletion was performed during this repair."
     }
   ],
   "forbidden_as_production_inputs": [

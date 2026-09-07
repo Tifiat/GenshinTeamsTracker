@@ -32,6 +32,10 @@ func TestParseOrdinaryResultFailsClosed(t *testing.T) {
 		{"iterations", `{"statistics":{"iterations":999,"dps":{"mean":1,"sd":1}}}`, "expected 1000"},
 		{"negative", `{"statistics":{"iterations":1000,"dps":{"mean":-1,"sd":1}}}`, "statistics are invalid"},
 		{"missing", `{}`, "iterations 0"},
+		{"missing_dps", `{"statistics":{"iterations":1000}}`, "non-null DPS"},
+		{"missing_sd", `{"statistics":{"iterations":1000,"dps":{"mean":100}}}`, "non-null DPS"},
+		{"missing_mean", `{"statistics":{"iterations":1000,"dps":{"sd":1}}}`, "non-null DPS"},
+		{"null", `{"statistics":{"iterations":1000,"dps":{"mean":null,"sd":null}}}`, "non-null DPS"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -40,6 +44,13 @@ func TestParseOrdinaryResultFailsClosed(t *testing.T) {
 				t.Fatalf("got %v; expected %q", err, test.want)
 			}
 		})
+	}
+}
+
+func TestParseOrdinaryExplicitZeroAndAdditionalFields(t *testing.T) {
+	result, err := ParseOrdinaryResult([]byte(`{"future":true,"statistics":{"iterations":1000,"dps":{"mean":0,"sd":0,"future":2}}}`), 1000)
+	if err != nil || result.DPS != 0 || result.StandardError != 0 {
+		t.Fatal(result, err)
 	}
 }
 

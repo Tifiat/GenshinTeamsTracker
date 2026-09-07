@@ -170,25 +170,30 @@ class SelectedBoundWearerInput:
         return tuple(value for _slot, value in self.artifact_ids_by_slot)
 
 
-def enforce_gcsim_optimizer_mvp_energy_policy(config: str) -> str:
-    """Enable optimizer-only unlimited burst availability idempotently."""
+def enforce_gcsim_optimizer_mvp_energy_policy(
+    config: str,
+    *,
+    ignore_burst_energy: bool = True,
+) -> str:
+    """Apply the shared app energy mode to a Selected config idempotently."""
 
     if not isinstance(config, str) or not config.strip():
         raise GcsimOptimizerGoSelectedInputError(
             "optimizer config must be non-empty"
         )
+    value = "true" if bool(ignore_burst_energy) else "false"
     options = _OPTIONS_RE.search(config)
     if options is None:
-        return "options ignore_burst_energy=true;\n" + config
+        return f"options ignore_burst_energy={value};\n" + config
     line = options.group(0)
     if re.search(r"(?i)\bignore_burst_energy\s*=", line):
         replacement = re.sub(
             r"(?i)\bignore_burst_energy\s*=\s*(?:true|false)",
-            "ignore_burst_energy=true",
+            f"ignore_burst_energy={value}",
             line,
         )
     else:
-        replacement = line[:-1].rstrip() + " ignore_burst_energy=true;"
+        replacement = line[:-1].rstrip() + f" ignore_burst_energy={value};"
     return config[: options.start()] + replacement + config[options.end() :]
 
 

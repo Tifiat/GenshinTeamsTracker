@@ -1571,6 +1571,8 @@ def _parse_hit(
         reasons.add("unknown_formula_kind")
     elif known_formula is DamageFormulaKind.DIRECT_LUNAR:
         reasons.add("direct_lunar_requires_exact_v1")
+    elif known_formula is DamageFormulaKind.DIRECT_REACTION:
+        reasons.add("direct_reaction_requires_exact_v1")
     if known_operator is None or known_operator is ReactionOperator.OPAQUE_CUSTOM:
         status = ReplayStatus.UNSUPPORTED
         reasons.add("opaque_reaction_operator")

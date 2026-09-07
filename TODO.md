@@ -282,7 +282,7 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
   - show "no data" / localized equivalent where enemy data/HP is needed;
   - factual DPS from enemy HP is unavailable when HP data is missing.
 - Keep in mind HP/time DPS is not exact damage dealt because waves, immunity, phases, shields, invulnerability, movement, and similar mechanics can distort it.
-- Abyss enemy data audit exists at `docs/handoff/ABYSS_ENEMY_DATA.md`; the original prompt is `docs/handoff/ABYSS_ENEMY_DATA_AUDIT_TASK.md`.
+- Abyss enemy data source research lives in `docs/handoff/ABYSS_ENEMY_DATA.md`.
 - Audit result: no single reliable source currently provides current Abyss lineup + monster ids + waves/positions + ready HP totals + resists. MVP should use a resilient source join: current period/lineup/wave notes from Fandom, source-like monster ids/stats/icons/resists from AnimeGameData/GCSIM/Yatta/Ambr where available, and Fandom enemy/level-scaling pages as fallback/cross-check for floor HP multipliers, enemy HP tables, Abyss-specific resist states, and mechanics notes.
 - Factual Abyss DPS should use confidence states, not a single yes/no gate. Prefer source-like/period-specific HP multipliers; if those are missing but enemy ids/counts/levels/base HP are matched, a Fandom general floor-multiplier estimate can be shown with an explicit `estimated_from_floor_multiplier` warning. If core inputs are missing/ambiguous, show enemy list/warnings and keep HP/time DPS unavailable. The accepted Fact DPS tooltip already exposes source/match confidence details; do not add separate near-cell source UI unless a later product decision asks for it.
 - `docs/handoff/ABYSS_HP_FIXTURE.md`, `hoyolab_export/abyss_sources.py`, and
@@ -369,7 +369,6 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
 - Display stat rows are virtual TeamBuilder results in this order: HP, ATK, DEF, EM, Crit Rate, Crit DMG, ER, then damage/healing bonuses. HoYoLAB stat-sheet `final` rows are reference/debug only for TeamBuilder slots and must not be shown as selected-build final stats. Raw partial labels such as `Base HP`, `Weapon ATK`, `Asc ...`, `Art CR`, `WATK`, `AER`, etc. must not be shown as final selected-detail stat rows. Direct static artifact set/weapon passive display effects may be applied only from normalized SQLite rows; formula effects, conditional bonuses, resonances, talents, and constellations remain excluded.
 - Raw partial contribution labels such as `Base HP`, `Weapon ATK`, `Asc ...`, `Art CR`, `WATK`, `AER`, etc. are internal/debug provenance and should not be shown as final selected-detail stat rows.
 - Stat normalization / GCSIM stat-key mapping handoff exists at `docs/handoff/STAT_NORMALIZATION.md`; backend code exists in `hoyolab_export/stat_normalization.py`. It maps project artifact `property_type` values to normalized keys/GCSIM `add stats` keys, converts percent-point values like `46.6` to ratio values like `0.466`, keeps flat stats unchanged, treats Crit Value / Proc Count as virtual metrics, and intentionally does not compute final totals or apply passives/set bonuses/resonances.
-- Next Run Workspace/UI step after visual inspection of Prototype v6: inspect real multi-character layout, no-preset states, and build-slot readability; then refine exact proportions if needed before planning/building the first Run Workspace / TeamBuilder shell around the shared TeamBuilder/TeamCard concepts.
 - Weapon passive/refinement text is reference data only for now; do not parse free text into stat formulas or auto-apply passive stat bonuses unless a future effect is explicitly modeled/whitelisted.
 - Standard 5-star filter exists with `assets/filters/standard.png` and tri-state behavior: show all / only Standard 5-star / exclude Standard 5-star. Membership is stored as static trait `standard_5_star` in `character_identity`; HoYoWiki entry `2952` is the source context, while the current API payload is not a clean structured character list, so the 5-star standard character membership is seeded by explicit HoYoWiki character entry ids. Traveler is intentionally included in this trait and must stay included when the dedicated Traveler model is implemented.
 - Future storage audit/refactor: account character/weapon runtime tables are started; next audits should decide which remaining generated JSON/cache files should stay as small rebuildable source caches or seeds and which should be normalized into SQLite/catalog DB tables. Prefer DB storage only for runtime-critical data that is frequently joined, mapped, filtered, queried, reported, or used by stat calculator/UI. Remaining likely candidates include HoYoWiki character stats, weapon stats, character traits, character region catalog, mapping reports / alias override tables, and other large generated account/catalog JSON files after usage audit. A two-layer model is acceptable: raw/source JSON cache for fetched HoYoWiki/HoYoLAB data plus normalized DB tables for lookup, mappings, aliases, reports, UI, and stat calculation.
@@ -565,9 +564,79 @@ This file is for future agents. Keep it current, English, and mostly ASCII. Comp
     13.27 s, 25-row n=128 screen 18.15 s, seven-row adaptive n=500 final
     19.65 s, total 57.0 s after preparation. Same accepted twenty IDs; measured
     winner 148874.50 DPS, SE 92.61. No n=1000 extension was needed.
-  - [ ] Adapt and release-validate the single consolidated patch against GCSIM
-    v2.45.0. The transactional updater rejected it at `git apply --check` and
-    preserved the working v2.42.2 engine, as designed.
+  - [x] Audited, reduced, adapted and release-validated the single consolidated
+    patch against GCSIM v2.45.0. Removed obsolete response/effect modes, the old
+    ER behavior change, the config-comment wave prototype and the generated
+    source-manifest snapshot. The current structured wave scenario and FAST
+    trace/source contracts remain. Isolated build, exact current-team compact
+    topology parity, ordinary simulation and two-wave smoke passed; production
+    activation produced the same executable and retained v2.42.2 for rollback.
+- [x] **GOB-11A — generic observed-reaction trace classification.** PASS
+  2026-09-07. Removed the duplicated ordinary/Lunar tag whitelist; generic
+  receipts and actual calculation paths now classify hits. `direct_reaction`
+  replaces the emitted legacy spelling, which remains readable. Unsupported
+  direct reactions now freeze instead of using the incorrect standard formula.
+  Both current-team seed graphs, ordinary trace-off damage, waves, installed
+  engine binding and rollback pass. Also fixed relative build output paths and
+  v2.45 artifact metadata/config reading at the application boundary. Full
+  optimizer search was not repeated. Receipt and remaining limits are in the
+  engine integration handoff; direct-reaction dependencies remain for GOB-11.
+- [x] **Pre-GOB-11 compatibility repair.** Installed 2026-09-07: UC-1 false
+  transformative crit/DMG% dependencies, UC-2 terminal parity, UC-3 required
+  result fields, and wave dummy initialization repaired. 84 focused Python
+  tests, targeted Go tests and both existing current-team seeds pass. External
+  EM/reaction-bonus dependence remains explicitly frozen, not fully implemented.
+- [ ] **GOB-11 — bounded cross-team/rotation generalization in infinite-energy
+  mode.** Compatibility prerequisites are complete in their bounded scope;
+  now resume the fixture scope:
+  direct alternative scaling, Vaporize/Melt, transformative reaction ownership,
+  snapshot/off-field damage and v2.45 Lunar multi-contributor mechanics.
+  Compare controlled stat-direction agreement and bounded finalist recall;
+  measure known/opaque damage only with valid attribution, not conservative
+  reason shares. Fix measured generic blockers; no broad account sweep.
+  Details: `docs/handoff/GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md`.
+- [x] **Engine updater activation/rollback safety.** UC-4 full required
+  capability/catalog/actual compact-consumer/semantic gates passed before real
+  activation; UC-5 pins previous active independently of mtime. Preparation
+  does not activate/prune. Actual rollback/restoration passed. API-discovery and
+  opaque-attribution limits UC-6/7 remain in the audit and pre-MVP patch re-audit.
+- [ ] **GOB-12 — energy-aware Selected.** Preserve current infinite-energy mode
+  and add a separately accepted energy-constrained mode.
+  - [x] Reuse the settings-owned `gcsim_boosted_energy_enabled` value for two
+    synchronized views: Settings and the inline optimizer switch. Selected now
+    writes/passes the matching `ignore_burst_energy` value. The finite-energy
+    position is visibly marked unsupported for ER-aware search and may fail;
+    it is a diagnostic boundary, not an accepted optimizer mode.
+  - [ ] Introduce/wrap an explicit `EnergyMode` only if it clarifies later
+    ledger ownership; do not fork the stored setting or change the accepted
+    two-state behavior.
+  - [ ] Extend compact evidence with a generic energy ledger: burst deadlines,
+    normalized particles/orbs, flat energy, active/off-field distribution,
+    enemy HP drops and typed stat/probability dependencies.
+  - [ ] Compile per-character cumulative burst-deadline constraints in Go and
+    enforce them contextually during build search. Do not average away event
+    timing and do not run GCSIM per artifact candidate.
+  - [ ] Predict candidate-dependent HP-threshold drops from the existing damage
+    timeline where proven; freeze/retain uncertainty otherwise.
+  - [ ] Verify only bounded finalists with real burst costs, no artificial
+    energy, and an intended-versus-executed action schedule check.
+  - [ ] Report selected/required ER, margin, important sources, uncertainty and
+    high-cost trade-offs; suggestions may mention rotation/burst frequency or
+    an energy weapon but must not declare a burst useless without contribution
+    evidence.
+- [ ] **Pre-MVP engine patch re-audit.** Even if the repository still contains
+  one patch, re-scan every patch and changed upstream seam present at that time,
+  remove newly obsolete code, regenerate one minimal versioned patch, and repeat
+  clean apply/build/capability/cross-team semantic smoke/rollback proof. The
+  completed v2.45 cleanup is evidence, not permission to skip this final gate.
+  - [ ] Review every explicit Lunar/Stellar trace branch against pristine
+    upstream at that time, including the GOB-11A result. Keep only generic
+    provenance/type mapping; remove any GTT gameplay-mechanic reproduction or
+    character/region-name dependency. Do not defer GOB-11A to this final audit.
+  - [ ] Decide physical packaging after the audit. Permit independently staged
+    optional patch groups only when capabilities disable an incompatible
+    feature cleanly; keep every required feature bundle atomic and retain the
+    previous verified engine if any required group fails.
 
 ### Cleanup registry
 
@@ -596,12 +665,12 @@ Retain deliberately:
 
 Whenever work exposes another unused component, add its exact path and deletion gate to the cleanup manifest immediately. Do not preserve an implementation merely because it once produced evidence.
 
-### Deferred until Selected is accepted
+### Next scopes after base Selected acceptance
 
 - All Sets support-set and wearer assignment.
 - Theory/farming guidance using the future Go port of the continuous optimum.
-- Broader reaction and Lunar-reaction adaptation controls.
-- Energy-recharge optimization.
+- Broader reaction and Lunar-reaction adaptation controls are owned by GOB-11.
+- Energy-recharge optimization is owned by GOB-12.
 - User-facing unknown/frozen-mechanic diagnostics beyond the minimum Selected receipt.
 
 ### Performance and release gates
@@ -642,7 +711,7 @@ Whenever work exposes another unused component, add its exact path and deletion 
   only then produce the isolated second-account archive with 3-4 decks. The
   package/provider contract and current gaps live in
   `docs/handoff/PVP_PROFILE_PACKAGE.md`.
-- PvP reference-site findings live in `docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`; planning history remains in `docs/handoff/PVP_MODE_PLAN.md`.
+- PvP reference-site findings live in `docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`.
 - PvP/tournament source audit remains in `docs/handoff/PVP_RULESETS_AUDIT.md`; current public/source mapping status is in `docs/handoff/PVP_RULESET_SOURCE_MATRIX.md`. Gentor-like rulesets can currently feed cost/config research, but executable draft schedule derivation remains blocked until a source-specific adapter or explicit flow exists. Abyss Draft has no confirmed public parseable ruleset payload in this repo.
 
 ## Other Future / Maintenance Items

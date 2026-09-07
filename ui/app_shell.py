@@ -1585,6 +1585,9 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.optimizer_selected_requested.connect(
             self._on_gcsim_optimizer_selected_requested
         )
+        self.left_host.gcsim_browser_workspace.optimizer_infinite_energy_changed.connect(
+            self._on_gcsim_optimizer_infinite_energy_changed
+        )
         self.left_host.gcsim_browser_workspace.optimizer_cancel_requested.connect(
             self._on_gcsim_optimizer_cancel_requested
         )
@@ -1902,7 +1905,11 @@ class AppShell(QWidget):
             energy_mode_label=_gcsim_browser_energy_mode_label(
                 self.controller.gcsim_run_settings().boosted_energy_enabled
             ),
+            infinite_energy_enabled=(
+                self.controller.gcsim_run_settings().boosted_energy_enabled
+            ),
         )
+
     def _on_gcsim_prepare_requested(
         self,
         team_index: int,
@@ -2163,6 +2170,9 @@ class AppShell(QWidget):
             selected_team=selected_team,
             team_index=normalized_team_index,
             rotation_shell_text=rotation_shell_text,
+            infinite_energy_enabled=bool(
+                self.controller.gcsim_boosted_energy_enabled
+            ),
         )
         worker = GcsimBrowserSelectedOptimizerWorker(request)
         thread = QThread(self)
@@ -2365,6 +2375,11 @@ class AppShell(QWidget):
         self.controller.clear_gcsim_results()
         self._sync_gcsim_browser_context()
         self.schedule_right_panel_refresh(delay_ms=RIGHT_PANEL_FAST_REFRESH_MS)
+
+    def _on_gcsim_optimizer_infinite_energy_changed(self, enabled: bool) -> None:
+        # The Account/GCSIM switch owns persistence. Changing the optimizer-side
+        # view drives that same switch, whose existing signal updates AppShell.
+        self.right_dock.account_page.set_gcsim_boosted_energy_enabled(enabled)
 
     def _on_gcsim_rotation_text_changed(self) -> None:
         if self.controller.gcsim_chamber_results:
@@ -2956,6 +2971,7 @@ class LeftWorkspaceHost(QWidget):
         target_mode_label: str = "",
         targets_preview_by_team: tuple[tuple[str, ...], ...] = ((), ()),
         energy_mode_label: str = "",
+        infinite_energy_enabled: bool = False,
     ) -> None:
         self.gcsim_browser_workspace.set_mode(mode)
         for team_index, slots in enumerate(team_previews):
@@ -2967,6 +2983,9 @@ class LeftWorkspaceHost(QWidget):
             target_mode_label=target_mode_label,
             preview_by_team=targets_preview_by_team,
             energy_mode_label=energy_mode_label,
+        )
+        self.gcsim_browser_workspace.set_optimizer_infinite_energy_enabled(
+            infinite_energy_enabled
         )
 
 

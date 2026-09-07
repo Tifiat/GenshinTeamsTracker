@@ -33,8 +33,8 @@ type ordinaryPayload struct {
 	Statistics struct {
 		Iterations int `json:"iterations"`
 		DPS        struct {
-			Mean float64 `json:"mean"`
-			SD   float64 `json:"sd"`
+			Mean *float64 `json:"mean"`
+			SD   *float64 `json:"sd"`
 		} `json:"dps"`
 	} `json:"statistics"`
 }
@@ -133,7 +133,10 @@ func ParseOrdinaryResult(payload []byte, expectedIterations int) (OrdinaryResult
 	if decoded.Statistics.Iterations != expectedIterations {
 		return output, fmt.Errorf("ordinary result iterations %d; expected %d", decoded.Statistics.Iterations, expectedIterations)
 	}
-	mean, sd := decoded.Statistics.DPS.Mean, decoded.Statistics.DPS.SD
+	if decoded.Statistics.DPS.Mean == nil || decoded.Statistics.DPS.SD == nil {
+		return output, fmt.Errorf("ordinary result requires non-null DPS mean and sd")
+	}
+	mean, sd := *decoded.Statistics.DPS.Mean, *decoded.Statistics.DPS.SD
 	if math.IsNaN(mean) || math.IsInf(mean, 0) || mean < 0 || math.IsNaN(sd) || math.IsInf(sd, 0) || sd < 0 {
 		return output, fmt.Errorf("ordinary result DPS statistics are invalid")
 	}

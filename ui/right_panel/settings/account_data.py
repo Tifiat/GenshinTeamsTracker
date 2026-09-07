@@ -726,6 +726,13 @@ class AccountDataPage(QWidget):
         )
         self.gcsim_boosted_energy_changed.emit(bool(enabled))
 
+    def set_gcsim_boosted_energy_enabled(self, enabled: bool) -> None:
+        """Update the settings-side view of the shared energy switch."""
+
+        normalized = bool(enabled)
+        if self.gcsim_boosted_energy_switch.isChecked() != normalized:
+            self.gcsim_boosted_energy_switch.setChecked(normalized)
+
     def choose_pvp_player_color(self, seat: str) -> None:
         current = QColor(
             pvp_player_color(seat, settings_file=self._settings_file)

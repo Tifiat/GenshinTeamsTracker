@@ -2,7 +2,7 @@
 
 Planning date: 2026-06-04
 
-Status reviewed: 2026-08-30
+Status reviewed: 2026-09-07
 
 Scope: implementation-direction handoff for GTT-modified GCSIM engine integration. This is not a final Codex implementation task and not a rigid architecture freeze. It records the current product/engineering vector, open questions, and contracts that future Codex tasks must respect unless a later handoff explicitly supersedes them.
 
@@ -17,6 +17,11 @@ Related references:
 - `docs/handoff/ABYSS_ENEMY_DATA.md` - Abyss source-data pipeline and enemy rows.
 
 ## Current Authoritative Status
+
+Current engine: `gcsim-v2.45.0-compat-20260907`; pinned rollback:
+`gcsim-v2.45.0-gob11a-20260907`. The compatibility repair and its bounded
+acceptance are recorded in GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md.
+Full cross-team reaction coverage and pre-MVP patch cleanup remain open.
 
 The functional backend for the current selected-team Abyss Browser path is
 implemented. Do not start another broad "finish the GCSIM backend" task without
@@ -239,7 +244,9 @@ authorize a global AppShell refactor.
 Search results are ephemeral and not History. Planned explicit save flow:
 
 - generic per-wearer account `stat >= X` controls;
-- energy/ER optimization remains deferred and must not be inferred by FAST;
+- energy/ER optimization follows the shared energy-mode and ledger contract in
+  the authoritative optimizer handoff; current FAST must not infer it from
+  damage-only evidence;
 
 - save an individual wearer to an Artifact Browser preset;
 - default name `best_found_<other three team members>`, user-editable;
@@ -248,6 +255,23 @@ Search results are ephemeral and not History. Planned explicit save flow:
 - later explicit apply can equip all four atomically.
 
 There is no generic manual multi-preset constructor and saving never auto-equips.
+
+### Shared energy-mode UI boundary
+
+Account/Settings -> GCSIM and the inline optimizer control beside the optimizer
+action are two synchronized views of the existing settings-owned
+`gcsim_boosted_energy_enabled` value. Changing either updates the other,
+invalidates stale simulation results and affects subsequent runs only. Infinite
+mode keeps Browser boosted-energy injection and makes Selected write/pass
+`ignore_burst_energy=true`; the other mode keeps normal Browser energy and makes
+Selected write/pass `ignore_burst_energy=false` instead of overriding it.
+
+The energy-requirements position is intentionally visible as a diagnostic
+boundary at the user's request, but its inline warning is authoritative: the
+current search does not yet optimize ER and the rotation may fail. Do not call
+that position energy-aware optimization until the ledger, search constraint and
+finalist schedule verification below pass. A later explicit `EnergyMode` type
+may wrap the stored boolean, but must not create a second optimizer-only value.
 
 CPU limits, cancellation, progress, cache retention, reduced exhaustive oracles,
 adversarial account-floor (including ER), theoretical no-auto-ER,
@@ -292,6 +316,20 @@ The app-level `Update GCSIM` action should be transactional:
 7. Activate the new engine only if patch/build/manifest/smoke all pass.
 8. If anything fails, keep the previous active engine and report incompatibility.
 
+Implemented official-update gate: source-only/development probes and
+`--prepare-only` never activate or prune installed engines. Activation of a
+built engine requires the complete source/trace/compact/wave capability bundle,
+matching artifact catalog, independent ordinary/compact DPS agreement, actual
+standalone-consumer validation and a two-wave smoke. Engine/consumer bytes are
+checked for stability during validation. The required bundle is currently
+atomic; optional patch groups remain future work. Explicit low-level manual
+activation is separate from this official-update workflow.
+
+`active_engine.json` records `rollback_engine_id` as well as `active_engine_id`.
+Retention always protects that pin, not merely the newest directory. Legacy
+state without a pin conservatively preserves existing successful engines until
+an activation supplies one. Re-selecting the same engine must not lose the pin.
+
 Guarantee target:
 
 - If upstream GCSIM areas touched by GTT patches remain compatible, patches should apply and the new local GTT engine should become usable automatically.
@@ -317,7 +355,51 @@ The app may later help install dependencies automatically, but it must not silen
 
 The final UX should communicate that GCSIM source updates are an advanced/local rebuild path. Normal calculations should continue through the shipped engine even when local update dependencies are missing.
 
+### Future Settings -> GCSIM update failure and compatibility UX
+
+The user-facing `Update GCSIM` action belongs in `Settings -> GCSIM`. It must
+call the existing transactional update backend; UI code must not replace the
+active engine pointer or build an engine independently.
+
+An unsuccessful update must be a clear, recoverable product result rather than
+a generic error. The UI must state all of the following:
+
+- the requested upstream release and the stage that failed (`download`, patch
+  compatibility, build, capability smoke, or semantic/runtime smoke);
+- that the application is still using the last verified working engine, with
+  both its GTT build identity and its upstream GCSIM version;
+- where expandable technical details/debug evidence were saved;
+- whether a compatible release search was attempted and which release, if any,
+  was selected instead.
+
+The compatible-release search must be bounded and fail closed. It must never
+force-apply a patch, silently downgrade, scan an unlimited release history, or
+activate a merely compiling binary. Start with the requested release, then use
+versioned compatibility metadata for this GTT patch/schema to try the newest
+known-compatible release (normally including the currently active upstream
+release) and only a small explicitly bounded candidate list. A candidate may
+activate only after patch check, build, `-gtt-info` capability validation,
+compact semantic parity, and ordinary-simulation smoke all pass in staging.
+The UI must explain any fallback before activation and show the final active
+version. If no candidate passes, keep the previous verified engine active and
+say that the application patch must be adapted for the new upstream version.
+
+Compatibility metadata must distinguish upstream GCSIM release/commit, GTT
+patch identity/schema, and produced engine build identity. This cannot prevent
+upstream from changing an integration seam, but it must prevent such a change
+from breaking the installed application or leaving the user unsure which
+engine is actually running.
+
 ## 3. Engine Patch Direction
+
+Post-GOB-11A update-risk audit (2026-09-07):
+[GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md](GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md)
+records the findings and completed bounded repair. False transformative
+artifact dependencies, missing terminal/result guards, incomplete automatic
+activation gates and unpinned rollback retention are repaired. The real gate
+also caught and led to fixing an uninitialized resistance map for wave dummies.
+External reaction-support dependencies, API drift and precise opaque attribution
+remain bounded limitations, not claims of general reaction-team validation.
 
 GTT features should remain a minimal, isolated delta over GCSIM, not broad
 rewrites scattered across the engine. The current ordered development patches
@@ -342,6 +424,145 @@ Preferred shape:
 - Touch upstream GCSIM core/parser/setup/combat code only at narrow integration points.
 - Keep patches small enough that upstream updates adding characters, weapons, artifacts, or ordinary mechanics usually merge cleanly.
 - Treat conflict with target/combat/event/setup internals as an expected compatibility failure requiring a newer app/patch-stack version.
+
+Patch packaging may become physically modular at the pre-MVP re-audit, but
+feature activation must remain capability-atomic. Optional groups such as the
+wave scheduler may fail compatibility and be disabled without discarding a
+separately valid optimizer adapter. Required pieces of one feature must never be
+partially activated: Selected may activate only when its whole adapter/manifest/
+trace capability bundle passes. The updater keeps the previous verified engine
+whenever a required bundle fails and reports which patch group was incompatible.
+
+### Upstream ownership of Lunar and Stellar mechanics
+
+Official GCSIM v2.45 already implements Lunar Charged, Lunar Bloom, Lunar
+Crystallize and Stellar Conduct damage. GTT did not add those game formulas. The
+current adapter observes the upstream direct-reaction calculation and uses its
+executed path plus producer receipts/structural flags to classify damage, without
+a duplicated list of Lunar or ordinary reaction tags. Stellar Conduct exposed a generic source-generator
+case; the GTT response was to stage declarations safely and freeze unsupported
+live conditional boundaries, not to implement Stellar damage.
+
+The duplicated reaction classifier was removed in GOB-11A before cross-team
+validation. The pre-MVP patch re-audit remains mandatory. No character,
+region or future-reaction gameplay formula may be hardcoded into GTT merely to
+make a trace test pass.
+
+### GOB-11A: observed-path reaction classification
+
+Status: PASS 2026-09-07. Receipt:
+`tests/fixtures/gcsim_optimizer_go_v1/gob11a_reaction_classification_receipt_v1.json`.
+All three bounded gates below are complete. This is the historical GOB-11A
+checkpoint; the later compatibility repair below supersedes its active identity.
+
+Implemented result in `0001-gtt-engine-adapter-v245.patch`:
+
+- `gttTraceReactionOperatorID` no longer contains reaction tags, names or numeric
+  tag ranges. Amplified/catalyzed flags retain their operator meaning; separate
+  reaction damage uses the generic producer's formula identity/operator receipt.
+- Actual terminal calculation branches set `standard`/`direct_reaction`.
+  The existing upstream decision to apply ordinary damage bonuses is recorded
+  at that branch; a non-stat hit lacking a producer receipt becomes explicitly
+  unknown. GCSIM's own gameplay dispatch remains untouched.
+- The post-calculation guard now sees the executed branch. Unknown paths remain
+  trace hits and diagnostics; unused code creates no additional hit roots.
+- The flattened formula registry is `gtt_trace_formula_v2`; manifest generation
+  binds it. Compact IR remains v1. Go and retained Python reference consumers
+  accept `direct_reaction`; old `direct_lunar` evidence keeps its spelling/hash
+  and remains non-exact. Engine/source/patch identities prevent cache mixing.
+- A synthetic regression exposed an existing terminal compiler error: a
+  direct-reaction receipt with observed damage 1850 became standard damage 250
+  and gained unproven ATK/DMG% coordinates. Unsupported direct reactions now
+  retain observed damage with `direct_reaction_dependency_formula_not_compiled`
+  rather than claiming that ordinary talent arithmetic is valid for them.
+  This freezes the whole unsupported hit, not a newly implemented Lunar formula;
+  multi-owner/EM/conditional dependence is still a required GOB-11 control.
+- 58 focused Python update/manifest/contracts checks and 15 catalog/Selected
+  checks pass. Engine tests pass in enemy, compact, combat, optimization, event,
+  GTT packages and the reaction lineage fixture. Unknown tag/name, trace-off,
+  ordinary flags, legacy spelling and an unaffected neighboring hit are covered.
+- Two fixed seeds (742031889/742031890) retain 383/372 channels, exact channel
+  records, opaque boundaries and topology. Expression hashes match after sorting
+  commutative operands; raw node arrays can differ because pre-existing map
+  iteration changes constant order. No stat-dependency/formula change was found.
+  The standalone Go consumer validates both new members.
+- Ordinary trace-off damage parity and a real two-wave smoke pass. Seven short
+  simulation invocations total (four compact old/new, two ordinary old/new,
+  one wave); no formula search, finalist screening or full optimizer rerun.
+- Clean pinned v2.45 patch apply/build, capability checks, production binary
+  parity, trusted application engine/catalog binding and rollback/restore pass.
+  At that checkpoint, active: `gcsim-v2.45.0-gob11a-20260907`; rollback:
+  `gcsim-v2.45.0-clean-adapter-20260901`. Executable SHA-256:
+  `ecbeb14af152c25e67bafb567912aebc1a8ceb3d8fb6e0a6a6cfc1529d4087c1`;
+  manifest body: `1c3e36cd059388a6c5a727d95dd50f19d5a8c3242b6357360c2955eb41f9743e`.
+- Two incidental integration fixes were needed: resolve the engine directory
+  before forming build/probe paths; read v2.45 `Issues/artifact.dm.json` and
+  canonical pipeline artifact `name` instead of requiring legacy `key`.
+  Old catalog layouts remain supported; missing issue metadata is still an error.
+
+Required boundary:
+
+- Start per-rotation runtime exploration from actual damage hits and follow
+  their source/callback/task/modifier/reaction edges, including supporting
+  healing and buff actions that explain those hits. Use source identity bound
+  to the engine manifest and concrete event occurrences, not displayed words.
+- Generic hooks in damage, reaction, event, snapshot, modifier and health paths
+  stay: source text alone cannot reveal the actual inputs, selected branch or
+  temporary buff state. An unexecuted hook emits no runtime evidence. A full
+  build-time source manifest remains valid; this is not a demand to rediscover
+  or regenerate the engine source per rotation.
+- Prefer classification by the executed calculation path and recorded
+  arithmetic/operator provenance. Stable upstream structural flags/traits are
+  acceptable where their meaning is verified; do not replace a named whitelist
+  with an unverified numeric tag range. Do not infer formula completeness merely
+  from a known reaction name or from the fact that GCSIM produced damage.
+- Use generalized direct-reaction naming (`direct_reaction`) and remove
+  reaction-name dispatch where generic evidence supplies the same semantics.
+  If evidence is missing, freeze the local dependency with diagnostics; do not
+  erase a supported formula or silently turn every reaction opaque to claim
+  that hardcoding has been removed.
+- GCSIM keeps ownership of gameplay formulas, coefficients and execution.
+  Recognizing a generic arithmetic operation is not a promise that arbitrary
+  future Go code can be fully decomposed. No character/region lookup tables,
+  gameplay additions, runtime keyword search, search rewrite or ER work here.
+
+Completed gate sequence (retain as regression scope):
+
+1. Map trace producers, compact conversion, validators and retained consumers.
+   Prove which existing fields/edges can distinguish supported operators; list
+   any missing evidence before editing. Check schema/hash/cache identity and
+   choose explicit compatibility handling for old `direct_lunar` evidence.
+2. Implement the narrow generic classification in the adapter and necessary
+   consumers. Add focused checks for ordinary and direct-reaction paths, a
+   renamed/unknown tag using a known generic path, and an unsupported path that
+   freezes without failing the other formulas. No full account run.
+3. Rebuild the consolidated patch against pristine pinned upstream; validate
+   capabilities and compact output. Reuse the fixed current-team seeds for
+   parity (same damage/dependencies, aside from intentional metadata changes),
+   verify unused reactions do not become runtime hit roots, and run bounded
+   ordinary/trace-off and transactional-update checks. Preserve rollback;
+   activate only after all required checks pass. Full Lunar/multi-contributor
+   stat-direction and ownership tests remain GOB-11, not a claimed result here.
+
+Stop and discuss if supporting a generic path requires new dependency
+semantics, damage ownership rules or broad source-compiler work. Follow the
+three-substantive-failed-attempt rule. Do not hide the blocker behind category
+renaming, broader exact simulations or silent loss of formula coverage. The
+pre-MVP all-patches audit still remains mandatory after this correction.
+
+### Post-GOB-11A compatibility repair — PASS in bounded scope
+
+Receipt: `tests/fixtures/gcsim_optimizer_go_v1/engine_compatibility_repair_receipt_v1.json`.
+Installed binary SHA-256:
+`47e47cdcd6873e486548bcf5e0b166f82b107b9c71092ee137e2781a6e7fbaae`.
+Source manifest body:
+`96cd34877825b93e296179c8007d5b6babcc2cfb8a4a7d91171276b72c2497c0`.
+Formula registry `gtt_trace_formula_v3`, compact schema v1. Both current-team
+seeds retain baseline damage and 383/372 channels, with corrected dependencies
+on their 84/73 reaction channels and no new terminal mismatch. This is an
+intentional candidate-coordinate correction, not identical expression graphs.
+No full optimizer or new-team search was run. Read the compatibility audit for
+implemented guards and remaining external-support/API/opaque limits.
 
 ### Formula source/dependency manifest
 
@@ -643,32 +864,64 @@ Current implementation state:
   Overlay remains the conservative default. If the default `run_workspace/gcsim/patch_stack/` directory is absent or a selected patch stack has no `.patch` files, the git backend reports a no-patch success and does not invoke git.
 - Optional build artifact flag exists:
   `python -m run_workspace.gcsim.engine_update --release latest --patch-backend git --build-artifact`.
-  It runs `go version`, requires `windows/amd64`, runs `go build -o build/gtt-gcsim.exe ./cmd/gcsim` inside the staged engine source, then verifies the built executable with `build/gtt-gcsim.exe -version`. The new engine activates only when build and artifact runtime check pass.
+  It requires `windows/amd64`, builds the staged source with its generated
+  manifest, and checks the executable version/marker. Activation additionally
+  requires the full application compatibility gate described above; a build or
+  development runtime probe alone is insufficient.
 - The active patch stack contains exactly one file:
-  `run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v1.patch`, SHA-256
-  `dc4d99a243d957afb4c7dee64e7fef6ba22b7a030cbcf36f9f0242960fe09aef`.
-  It consolidates every accepted GTT engine extension, including `-gtt-info`,
-  compact IR, trace provenance and wave support. Artifact enumeration, search,
+  `run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v245.patch`, SHA-256
+  `22f097feee2514c03a441536175d7352c516bc3deadca9cc9de09f1533e2a04b`.
+  It contains only the current engine-owned boundary: `-gtt-info`, trace and
+  compact equation/source provenance used by FAST, and structured
+  `-gtt-wave-scenario` group-clear scheduling. Artifact enumeration, search,
   stochastic policy and UI remain outside the engine patch.
 - The consolidated patch reproduced the accepted 4,314-file source tree after
   clean check/apply. Transactional update built and activated
   `gcsim-v2.42.2-gob9-consolidated-20260831`; rollback to
   `gcsim-v2.42.2-gob8-20260830b` and restoration both passed. Its executable
   SHA-256 is `bce061db71f2ebc7171ba19d192a6c0522358edb68e821b25a7649406f86fe03`.
-- GOB-10 transactionally built and activated
-  `gcsim-v2.42.2-gob10-perf-20260901`. Its executable SHA-256 is
-  `00834023d64f3853723ee2ca28af6b9bd5fbaacb1cbda4cf7e11dd44a45ff99a`
-  and source-manifest body SHA-256 is
-  `7d8683ae0f928dcebf3427905e3dfa98e238a14bfa89e89a50e716811cc44a5cd`.
-  An explicit `latest` update resolved to upstream v2.45.0 and failed closed at
-  `git apply --check` because upstream seams changed. The active v2.42.2 engine
-  was preserved. Before offering v2.45.0, adapt the one patch against pristine
-  v2.45.0, compile, run compact semantic parity and ordinary-simulation smoke,
-  then activate transactionally. Never force-apply the v2.42.2 patch.
-- The following sequential-wave description records behavior now contained in
-  the consolidated patch. It remains opt-in through a vanilla-ignored config comment directive:
-  `# gtt_wave_prototype duplicate_first_target=1`.
-  The prototype reads that directive before simulation run, duplicates/reuses the first configured finite-HP target as the next wave, hooks damage-mode `stopCheck()` so a pending GTT wave can spawn before vanilla all-dead termination, and keeps the new target visible to the dynamic status/damage result paths needed by this smoke. This proves a next target can be spawned inside one simulation iteration after the current finite-HP target/group dies, preserving the run rather than ending immediately. It does not model real Abyss waves, groups, spawn positions, enemy identities, target key mapping, or final 3+3+3 policy.
+- GOB-10's v2.42.2 engine remains installed as the rollback target:
+  `gcsim-v2.42.2-gob10-perf-20260901`, executable SHA-256
+  `00834023d64f3853723ee2ca28af6b9bd5fbaacb1cbda4cf7e11dd44a45ff99a`.
+- The 2026-09-01 patch audit removed four obsolete areas before adapting to
+  v2.45.0: the old stat-response/effect-observation modes, the unrelated
+  upstream `substatOptim` ER behavior change, the config-comment
+  `gtt_wave_prototype`, and the generated source-manifest snapshot that pinned
+  thousands of source rows to one release. The manifest is now regenerated
+  from the exact target source during the transactional build. Patch size fell
+  from about 3.10 MB to about 0.67 MB. Legacy response/effect/prototype
+  capabilities are absent from the built artifact.
+- A clean application of the reduced v2.42.2 patch to pristine v2.45.0 exposed
+  six changed upstream seams. Three were harmless context/import drift; three
+  required explicit preservation of new upstream behavior: character model
+  removal, cooldown/reaction-bonus logging changes, and generalized direct
+  Lunar Reaction damage. Three-way application was used only to diagnose the
+  differences, never as activation proof. The final v2.45 patch itself passes a
+  clean `git apply --check` and apply.
+- v2.45.0 also exposed a generic source-generator defect: when a modifier began
+  with replayable frozen inputs and later reached a live conditional input, the
+  correct opaque fallback left unused generated declarations. The generator now
+  stages declarations and emits them only after the whole expression is proven
+  replayable; a synthetic regression pins this fail-closed behavior. This is
+  generic boundary handling, not Stellar Conduct hardcoding.
+- Transactional production activation passed for
+  `gcsim-v2.45.0-clean-adapter-20260901`. Executable SHA-256 is
+  `4ce399e8fd0fae48ac8812fbe8e3fcd746b5e74c84554228fa660ef944cfb857`;
+  source-manifest body SHA-256 is
+  `40b6b0d5d789d9b8f7481c03360fbaca75fa90d40f8babe6c2208d4910685029`.
+  The production executable is byte-identical to the isolated validated build.
+  Current-team one-seed compact output retained the exact v2.42.2 topology
+  (duration 66950 ms, 42512 nodes, 377 channels, 25 opaque boundaries, topology
+  SHA-256 `0d670be4f6edaf75a9137da778d8bf8236ae3b19d4e406224839a0416e8ff15b`),
+  and ordinary simulation plus a real two-wave structured scenario passed.
+- That parity fixture does not exercise Lunar Crystallize or Stellar Conduct.
+  The v2.45 build proves that new/unknown conditional source mechanics stop at
+  a declared opaque boundary instead of breaking generation, but a team that
+  materially uses either new mechanic still needs its own semantic fixture
+  before formula completeness may be claimed for that team.
+- The removed config-comment wave prototype is historical evidence only and is
+  not accepted runtime. Sequential waves are available solely through the
+  explicit structured `-gtt-wave-scenario` payload below.
 - The historical structured-wave patch introduced the now-consolidated
   `-gtt-wave-scenario scenario.json` flag and
   `simulator.Options.GTTWaveScenarioPath`. Empty path is a no-op so vanilla

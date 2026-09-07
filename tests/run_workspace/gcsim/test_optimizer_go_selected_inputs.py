@@ -21,6 +21,21 @@ class GoSelectedInputBoundaryTests(unittest.TestCase):
         self.assertIn("ignore_burst_energy=true", once)
         self.assertEqual(enforce_gcsim_optimizer_mvp_energy_policy(once), once)
 
+    def test_energy_policy_can_enable_real_burst_requirements(self) -> None:
+        source = "options iteration=1 ignore_burst_energy=true;\ntarget lvl=100;\n"
+        once = enforce_gcsim_optimizer_mvp_energy_policy(
+            source,
+            ignore_burst_energy=False,
+        )
+        self.assertIn("ignore_burst_energy=false", once)
+        self.assertEqual(
+            enforce_gcsim_optimizer_mvp_energy_policy(
+                once,
+                ignore_burst_energy=False,
+            ),
+            once,
+        )
+
     def test_clean_selected_import_does_not_load_historical_trace_search(self) -> None:
         code = (
             "import json,sys; "

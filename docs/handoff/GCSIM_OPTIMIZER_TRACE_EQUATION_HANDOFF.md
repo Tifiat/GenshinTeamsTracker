@@ -5,7 +5,10 @@ n=128 recall, starts all retained finalists at n=500 and reruns only a small
 statistically unresolved leader group at n=1000. The single full Go product
 performance replay completed in 57.0 seconds after preparation and resolved at
 n=500 with the same known winner. Final reachability, patch consolidation,
-update, rollback and compute optimization are complete. Updated 2026-09-01.
+v2.45.0 adaptation, update, rollback and compute optimization are complete.
+GOB-11A generic reaction classification and current-team parity also pass.
+Cross-team generalization and energy-aware Selected are the next stages.
+Updated 2026-09-07.
 
 This is the sole current optimizer handoff. Read it together with:
 
@@ -111,7 +114,9 @@ Do not claim any of the following:
 - global mathematical optimum;
 - support saturation for every actor;
 - complete handling of every future reaction/mechanic;
-- automatic compatibility of the v2.42.2 adapter patch with GCSIM v2.45.0;
+- automatic compatibility of the adapter patch with every future GCSIM release;
+- semantic completeness for Lunar Crystallize, Stellar Conduct or another
+  materially new mechanic not exercised by the current team;
 - a fresh GOB-10 measurement initiated by an actual UI click rather than the
   same product boundary replayed from the saved real request.
 
@@ -132,7 +137,8 @@ Required rules:
 - frozen share remains visible and cannot prove dominance or saturation;
 - a material unknown widens retained finalists and produces diagnostics;
 - no character, set, element or reaction name switch in generic evaluator/search code;
-- energy/ER optimization remains deferred.
+- current Selected remains infinite-energy only; energy/ER optimization is the
+  next separately gated extension after the cross-team validation pass below.
 
 Reaction-dominant and future Lunar/multi-contributor teams remain required later controls. Damage share, not hit count, determines whether an unknown path is material.
 
@@ -472,14 +478,16 @@ post-preparation boundary 57.0 s. The winner measured 148874.50 DPS with SE
 runs. No n=1000 extension was needed. Adding the separately measured unchanged
 UI preparation predicts about 62-64 seconds end to end.
 
-The active build is `gcsim-v2.42.2-gob10-perf-20260901`, artifact SHA-256
-`00834023d64f3853723ee2ca28af6b9bd5fbaacb1cbda4cf7e11dd44a45ff99a`.
-The optimized consolidated patch SHA-256 is
-`dc4d99a243d957afb4c7dee64e7fef6ba22b7a030cbcf36f9f0242960fe09aef`.
-Transactional update against upstream v2.45.0 currently fails closed during
-patch check and leaves the working engine untouched. Adapting and semantically
-validating the single patch against v2.45.0 is the next engine-maintenance task;
-it must not be mixed with another search redesign.
+The GOB-10/v2.45 checkpoint build was `gcsim-v2.45.0-clean-adapter-20260901`, artifact SHA-256
+`4ce399e8fd0fae48ac8812fbe8e3fcd746b5e74c84554228fa660ef944cfb857`.
+The cleaned consolidated patch SHA-256 is
+`d7e0c0ab6b1133b179949396bcb104e68cf51ff07081b49b816f210e9a3b315c`.
+The previous `gcsim-v2.42.2-gob10-perf-20260901` remains installed for rollback.
+Exact current-team compact topology parity, ordinary simulation and structured
+two-wave smoke passed. Source-generation opaque handling passed, but terminal
+direct-reaction FAST compilation was not exercised: GOB-11A later found and
+fixed its accidental standard-formula fallback. Do not interpret the old
+checkpoint as proof of correct Lunar candidate-dependent formulas.
 
 Generated GOB-9 staging/handshake copies and the ordinary smoke output are
 rebuildable ignored local residue and have no product owner; the current host
@@ -528,7 +536,116 @@ Deleted at GOB-9 after product cutover:
 
 Whenever implementation work reveals another unused component, add it immediately to the cleanup manifest with a deletion gate. Do not preserve code merely because it once produced evidence.
 
-## 10. Permanent execution rules
+## 10. Next sequence: cross-team validation, then energy-aware Selected
+
+GOB-11A passed; details and receipt are in GCSIM_ENGINE_INTEGRATION_PLAN.md.
+Active engine after compatibility repair: `gcsim-v2.45.0-compat-20260907`;
+pinned rollback: `gcsim-v2.45.0-gob11a-20260907`. Runtime classification uses producer
+receipts and observed calculation paths without a duplicated reaction-tag list.
+GOB-11A preserved both current-team graphs; the subsequent repair retains their
+383/372 hits and baseline damage but intentionally removes incorrect artifact
+crit/DMG% dependencies on 84/73 reaction hits. No full optimizer replay was
+needed. Unknown/direct-reaction terminal paths
+retain observed damage and an explicit warning rather than an incorrect normal
+talent formula. This is not full Lunar/multi-contributor dependency coverage.
+Seed exploration from observed hits and follow source/event edges; do not use
+display-name matching or claim future mechanics automatically decompose.
+
+The compatibility repair has passed its bounded gates: independent terminal
+checks, required DPS fields, actual application-bundle smokes before activation,
+explicit rollback retention and wave-dummy construction. Details and receipts
+are in GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md. External reaction EM/bonus
+support still has explicit local freezes; API discovery is version-sensitive.
+Current opaque reason shares remain conservative, not measured unknown damage.
+
+Then test other teams and rotations in explicitly labelled infinite-energy
+mode. Do not start with a large account sweep. Use one real, fixed-rotation
+fixture per materially different mechanism:
+
+1. ordinary direct damage with a scaling basis different from the current team
+   (ATK, HP or DEF as applicable);
+2. amplifying reaction damage where ATK/EM/crit balance matters (Vaporize or
+   Melt);
+3. transformative/owned reaction damage such as Bloom/Hyperbloom;
+4. summon, off-field or snapshot-heavy damage;
+5. Lunar/multi-contributor damage, specifically covering the v2.45 mechanics
+   not exercised by Chasca/Furina/Bennett/Ororon.
+
+For each fixture record: whether compact capture succeeds, fully frozen versus
+partly variable channels (do not sum overlapping conservative reason shares),
+measured damage attribution only where supported, whether controlled artifact-stat changes move
+the formula in the same direction as ordinary GCSIM, and whether the bounded
+finalist screen retains the measured leader. Exact DPS equality is not required.
+A material opaque share or a ranking-direction disagreement is a stop for that
+mechanic, not a reason to rewrite the whole search or silently use legacy code.
+
+### Energy modes and shared UI state
+
+Product energy mode has one settings-owned value with two synchronized views:
+
+- Account/Settings -> GCSIM;
+- an inline control next to the artifact-optimizer action.
+
+Both controls now read and write the same `gcsim_boosted_energy_enabled` setting
+and update each other immediately. Selected no longer unconditionally overrides
+the config: infinite mode writes/passes `ignore_burst_energy=true`, while the
+other position writes/passes `false`. The latter is exposed only as a diagnostic
+boundary with an explicit warning that ER-aware artifact search is not built;
+it may fail the fixed rotation and must not be described as a working
+energy-aware optimizer. A future `EnergyMode` wrapper must preserve this single
+source of truth rather than copying the boolean.
+
+- Infinite energy preserves current Selected behavior: the intended fixed
+  rotation is observed with burst costs ignored.
+- Energy-aware mode must return only builds for which that same intended
+  rotation can pay every burst cost. Invalid user rotation code remains the
+  user's responsibility, but an impossible account inventory must return an
+  honest infeasible result rather than silently dropping actions.
+
+### Energy evidence and optimized calculation
+
+Do not estimate energy from skill names and do not run a full simulation for
+every artifact build. The first compact capture already executes the intended
+rotation with costs ignored. Extend that capture with an energy ledger containing:
+
+- every burst cost and its exact time;
+- every particle/orb event, element, source and arrival time;
+- active/off-field recipient state and the engine-applied party multiplier;
+- raw particle energy normalized to ER=100%;
+- flat energy changes, which are not multiplied by ER;
+- target HP-threshold drops and any source whose count/timing depends on damage,
+  crit, probability or another artifact-controlled stat.
+
+For each character, required ER is the maximum cumulative shortage at every
+burst deadline, not an average energy-per-second number. Energy that arrives
+after a burst cannot pay for it. Deterministic character particles and flat
+energy form the cheap base constraint. Candidate damage formulas can predict
+when enemy HP thresholds are crossed; stat/probability-dependent energy sources
+must remain typed dependencies or uncertainty, never character-name switches.
+
+The standalone Go search then treats ER feasibility as another formula-owned
+constraint. It keeps candidates close to an ER boundary, rejects proven
+shortages, and continues optimizing damage after the requirement is met. This
+must happen in the same contextual build search; ER is not an independent item
+score. Only the bounded finalists run ordinary GCSIM with real burst costs and
+without infinite-energy injection. Final acceptance checks that the intended
+burst/action schedule actually executed.
+
+GCSIM v2.45 already exposes generic `OnEnergyChange`/`OnEnergyBurst` events,
+particle distribution and enemy HP-drop data. Its upstream ER optimizer is a
+useful control only: it uses 350 iterations and explicit Raiden/Favonius
+exceptions, so it is not the production algorithm and must not be copied as-is.
+
+### Energy result explanation
+
+Energy-aware results should report, per character: selected ER, estimated
+minimum/range, margin, the largest energy sources, and any unresolved source.
+If the constraint consumes a main stat or a large part of the available damage
+budget, report the measured trade-off and suggest reviewing rotation, burst
+frequency or an energy weapon. Do not automatically declare a burst worthless:
+its damage/support contribution and energy cost must both be visible first.
+
+## 11. Permanent execution rules
 
 - Work sequentially without subagents or parallel agents.
 - Do not brute-force parameters or repeat expensive runs without a declared gate.

@@ -6,7 +6,7 @@ audited terminal enemy-damage seam and the topology information needed to
 decide whether a candidate may be replayed.  It is not a scorer, candidate
 generator, optimizer, or compatibility facade for the removed M/S pipelines.
 
-Schema v1 intentionally treats non-zero ``flat_dmg`` and direct-lunar damage
+Schema v1 intentionally treats non-zero ``flat_dmg`` and direct-reaction damage
 as exact-simulation cases.  Later engine provenance may make those formulae
 replayable, but that requires an explicit schema/version change rather than a
 silent relaxation of this contract.
@@ -61,6 +61,8 @@ class ReplayStatus(str, Enum):
 
 class DamageFormulaKind(str, Enum):
     NORMAL = "standard"
+    DIRECT_REACTION = "direct_reaction"
+    # Historical serialized spelling is kept distinct for identity round trips.
     DIRECT_LUNAR = "direct_lunar"
 
 
@@ -748,7 +750,7 @@ class TraceHitEvent:
                     "EXACT_IN_CELL requires attribution for every snapshot stat"
                 )
             if known_formula_kind is not DamageFormulaKind.NORMAL:
-                raise TraceContractError("direct-lunar formula is NEEDS_EXACT in schema v1")
+                raise TraceContractError("non-standard formula is NEEDS_EXACT in schema v1")
             if not math.isclose(
                 self.formula_inputs.flat_dmg.value,
                 0.0,
@@ -766,9 +768,9 @@ class TraceHitEvent:
         if known_formula_kind is None:
             if self.formula_replay_status is not ReplayStatus.UNSUPPORTED:
                 raise TraceContractError("unknown formula kinds must be UNSUPPORTED")
-        elif known_formula_kind is DamageFormulaKind.DIRECT_LUNAR:
+        elif known_formula_kind in {DamageFormulaKind.DIRECT_REACTION, DamageFormulaKind.DIRECT_LUNAR}:
             if self.formula_replay_status is ReplayStatus.EXACT_IN_CELL:
-                raise TraceContractError("direct-lunar formula is not exact in schema v1")
+                raise TraceContractError("direct-reaction formula is not exact in schema v1")
         if not math.isclose(
             self.formula_inputs.flat_dmg.value,
             0.0,

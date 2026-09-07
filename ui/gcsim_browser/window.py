@@ -25,6 +25,7 @@ from ui.gcsim_browser.optimizer_result import (
     OptimizerResultPage,
     OptimizerResultBuildsWidget,
 )
+from ui.utils.toggle_switch import ToggleSwitch
 from ui.utils.ui_palette import UI_TEXT_MUTED
 
 
@@ -65,6 +66,7 @@ class GcsimBrowserWorkspace(QWidget):
     run_all_requested = Signal(int, str)
     rotation_text_changed = Signal()
     optimizer_selected_requested = Signal(int, str)
+    optimizer_infinite_energy_changed = Signal(bool)
     optimizer_cancel_requested = Signal()
     optimizer_build_save_requested = Signal(dict)
 
@@ -328,10 +330,22 @@ class GcsimBrowserWorkspace(QWidget):
         mode_row.addWidget(self.optimizer_selected_button)
         mode_row.addWidget(self.optimizer_all_sets_button)
         mode_row.addWidget(self.optimizer_theory_button)
+        mode_row.addStretch(1)
+        self.optimizer_infinite_energy_label = QLabel()
+        self.optimizer_infinite_energy_switch = ToggleSwitch()
+        self.optimizer_infinite_energy_switch.toggled.connect(
+            self._on_optimizer_infinite_energy_toggled
+        )
+        mode_row.addWidget(self.optimizer_infinite_energy_label)
+        mode_row.addWidget(self.optimizer_infinite_energy_switch)
         optimizer_actions_layout.addLayout(mode_row)
         self.optimizer_future_note = QLabel()
         self.optimizer_future_note.setWordWrap(True)
         optimizer_actions_layout.addWidget(self.optimizer_future_note)
+        self.optimizer_energy_note = QLabel()
+        self.optimizer_energy_note.setWordWrap(True)
+        self.optimizer_energy_note.setStyleSheet(f"color: {UI_TEXT_MUTED};")
+        optimizer_actions_layout.addWidget(self.optimizer_energy_note)
         optimizer_layout.addWidget(optimizer_actions)
 
         optimizer_status, optimizer_status_layout = _make_section()
@@ -516,10 +530,14 @@ class GcsimBrowserWorkspace(QWidget):
         self.optimizer_selected_button.setText("Selected Sets")
         self.optimizer_all_sets_button.setText("All Sets")
         self.optimizer_theory_button.setText("Theory")
+        self.optimizer_infinite_energy_label.setText(
+            _fallback("gcsim.optimizer.infinite_energy", "Infinite energy")
+        )
         self.optimizer_future_note.setText(
             "All Sets and Theory are visible product modes but remain unavailable "
             "until their separate backend gates are complete."
         )
+        self._refresh_optimizer_energy_note()
         if not self.optimizer_progress_label.text():
             self.optimizer_progress_label.setText("Selected Sets is ready to start.")
         self.optimizer_result_builds.retranslate_ui()
@@ -640,11 +658,41 @@ class GcsimBrowserWorkspace(QWidget):
             self.rotation_editor.toPlainText(),
         )
 
+    def set_optimizer_infinite_energy_enabled(self, enabled: bool) -> None:
+        normalized = bool(enabled)
+        if self.optimizer_infinite_energy_switch.isChecked() != normalized:
+            self.optimizer_infinite_energy_switch.blockSignals(True)
+            try:
+                self.optimizer_infinite_energy_switch.setChecked(normalized)
+            finally:
+                self.optimizer_infinite_energy_switch.blockSignals(False)
+        self._refresh_optimizer_energy_note()
+
+    def _on_optimizer_infinite_energy_toggled(self, enabled: bool) -> None:
+        self._refresh_optimizer_energy_note()
+        self.optimizer_infinite_energy_changed.emit(bool(enabled))
+
+    def _refresh_optimizer_energy_note(self) -> None:
+        if self.optimizer_infinite_energy_switch.isChecked():
+            text = _fallback(
+                "gcsim.optimizer.energy_infinite_note",
+                "Energy mode: infinite. Selected behaves as before and does not "
+                "require enough energy to cast bursts.",
+            )
+        else:
+            text = _fallback(
+                "gcsim.optimizer.energy_requirements_note",
+                "Energy mode: requirements enabled. The current search does not yet "
+                "optimize Energy Recharge, so a rotation may fail from insufficient energy.",
+            )
+        self.optimizer_energy_note.setText(text)
+
     def set_optimizer_busy(self, busy: bool) -> None:
         self.prepare_button.setEnabled(not busy)
         self.run_selected_button.setEnabled(not busy)
         self.run_all_button.setEnabled(not busy and self._mode == MODE_ABYSS)
         self.optimizer_selected_button.setEnabled(not busy)
+        self.optimizer_infinite_energy_switch.setEnabled(not busy)
         self.optimizer_cancel_button.setEnabled(busy)
         if busy and not self._optimizer_elapsed_clock.isValid():
             self._start_optimizer_elapsed()

@@ -14,6 +14,31 @@ from run_workspace.gcsim.artifact_set_catalog import (
 
 
 class GcsimArtifactSetCatalogTest(unittest.TestCase):
+    def test_current_upstream_issue_filename_preserves_missing_bonus_and_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_set(root, package="alpha", key="alpha", source="""
+func init() { core.RegisterSetFunc(keys.Alpha, NewSet) }
+func NewSet(count int) { if count >= 2 {}; if count >= 4 {} }
+""")
+            _write_four_star_sets(root, set())
+            _write_issues(root, {})
+            (root / "internal/artifacts/alpha/config.yml").write_text(
+                "use: pipeline\nkind: artifact\nname: alpha\nshortcuts:\n  - alternate\n",
+                encoding="utf-8",
+            )
+            issue_dir = root / "ui/packages/docs/src/components/Issues"
+            current = issue_dir / "artifact.dm.json"
+            current.write_text(json.dumps({"alpha": ["4pc is not implemented yet"]}), encoding="utf-8")
+            blocked = load_gcsim_artifact_set_catalog(root)
+            self.assertFalse(blocked.get("alpha").four_piece_modeled)
+            current.write_text("{}", encoding="utf-8")
+            ready = load_gcsim_artifact_set_catalog(root)
+            self.assertTrue(ready.get("alpha").complete_four_piece_modeled)
+            self.assertNotEqual(blocked.source_fingerprint, ready.source_fingerprint)
+            (issue_dir / "artifact_data.json").unlink()
+            self.assertEqual(ready.source_fingerprint, load_gcsim_artifact_set_catalog(root).source_fingerprint)
+
     def test_catalog_distinguishes_modeled_and_explicitly_missing_bonuses(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

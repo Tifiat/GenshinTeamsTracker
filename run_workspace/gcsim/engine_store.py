@@ -263,8 +263,9 @@ class GcsimEngineStore:
         capabilities: tuple[str, ...] = (),
         metadata: Mapping[str, str] | None = None,
         smoke_check: Callable[[Path], bool | str | None] | None = None,
+        activate: bool = True,
     ) -> GcsimEngineUpdateResult:
-        """Prepare and activate a new engine only if patch/checks succeed."""
+        """Prepare after patch/checks succeed; optionally activate (manual/dev API)."""
 
         source_dir = Path(source_dir)
         if not source_dir.is_dir():
@@ -338,10 +339,11 @@ class GcsimEngineStore:
             )
             _write_manifest(staging_dir / MANIFEST_FILE_NAME, manifest)
             shutil.move(str(staging_dir), str(final_dir))
-            self.activate_engine(engine_id)
+            if activate:
+                self.activate_engine(engine_id)
             return GcsimEngineUpdateResult(
                 success=True,
-                activated=True,
+                activated=activate,
                 engine_id=engine_id,
                 engine_path=final_dir,
                 manifest=manifest,
@@ -370,10 +372,14 @@ class GcsimEngineStore:
         _validate_engine_id(engine_id)
         engine_dir = self.engines_dir / engine_id
         manifest = load_engine_manifest(engine_dir)
+        state = self._active_state()
+        previous = state.get("active_engine_id")
+        rollback = previous if previous and previous != engine_id else state.get("rollback_engine_id")
         self.root_dir.mkdir(parents=True, exist_ok=True)
         payload = {
             "schema_version": GCSIM_ENGINE_STATE_SCHEMA_VERSION,
             "active_engine_id": engine_id,
+            "rollback_engine_id": rollback,
         }
         _write_json_atomic(self.active_state_path, payload)
         return GcsimEngineInstallation(
@@ -383,21 +389,30 @@ class GcsimEngineStore:
         )
 
     def active_engine_id(self) -> str | None:
+        engine_id = self._active_state().get("active_engine_id")
+        return str(engine_id) if engine_id else None
+
+    def rollback_engine_id(self) -> str | None:
+        engine_id = self._active_state().get("rollback_engine_id")
+        return str(engine_id) if engine_id else None
+
+    def _active_state(self) -> dict:
         if not self.active_state_path.exists():
-            return None
+            return {}
         try:
             payload = json.loads(self.active_state_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
             raise GcsimEngineStoreError(
                 f"Could not read active GCSIM engine state: {exc}"
             ) from exc
-        if payload.get("schema_version") != GCSIM_ENGINE_STATE_SCHEMA_VERSION:
+        if not isinstance(payload, dict) or payload.get("schema_version") != GCSIM_ENGINE_STATE_SCHEMA_VERSION:
             raise GcsimEngineStoreError(
-                "Unsupported active GCSIM engine state schema: "
-                f"{payload.get('schema_version')!r}"
+                "Unsupported active GCSIM engine state schema"
             )
-        engine_id = payload.get("active_engine_id")
-        return str(engine_id) if engine_id else None
+        for key in ("active_engine_id", "rollback_engine_id"):
+            if payload.get(key) is not None:
+                _validate_engine_id(str(payload[key]))
+        return payload
 
     def get_active_engine(self) -> GcsimEngineInstallation | None:
         engine_id = self.active_engine_id()
@@ -432,7 +447,12 @@ class GcsimEngineStore:
             successful_entries,
             active_engine_id=active_engine_id,
             keep_successful=keep_successful,
+            protected_engine_ids=(self.rollback_engine_id(),),
         )
+        # Legacy state did not record rollback identity. Do not guess which
+        # existing installation was last known-good and delete it by mtime.
+        if active_engine_id and "rollback_engine_id" not in self._active_state():
+            kept_successful = tuple(dict.fromkeys((*kept_successful, *(entry.name for entry in successful_entries))))
         kept_failed = _kept_failed_engine_ids(
             failed_entries,
             keep_failed=keep_failed,
@@ -536,12 +556,16 @@ def _kept_successful_engine_ids(
     *,
     active_engine_id: str | None,
     keep_successful: int,
+    protected_engine_ids: tuple[str | None, ...] = (),
 ) -> tuple[str, ...]:
     keep_count = max(1, int(keep_successful))
     by_name = {entry.name: entry for entry in entries}
     kept: list[str] = []
     if active_engine_id and active_engine_id in by_name:
         kept.append(active_engine_id)
+    for engine_id in protected_engine_ids:
+        if engine_id and engine_id in by_name and engine_id not in kept:
+            kept.append(engine_id)
     newest = sorted(
         entries,
         key=lambda item: _path_mtime(item),

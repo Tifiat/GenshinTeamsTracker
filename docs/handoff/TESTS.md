@@ -76,27 +76,10 @@ Mirror the primary project owner under `tests/`:
   writes. Milestone 14 foundations cover strict oracle parity/recall/regret,
   benchmark matrix completeness, independent-context scheduler semantics,
   complete-reference/deep-layout response screening, and full selected-plan
-  identity. The current full GCSIM
-  backend suite passed 618/618 tests in 160.976s on 2026-07-28; use
-  `.venv\Scripts\python.exe -m unittest discover -s tests -t . -p
-  "test_gcsim*.py"`.
-  The directly affected AppShell/GCSIM Browser modules passed 202/202 tests in
-  129.178s on 2026-07-28. The broader `tests/ui` run passed 312 tests and had
-  one unrelated existing PvP layout failure at
-  `PvpBrowserTest.test_postdraft_player_sections_align_across_panes_at_supported_sizes`
-  (`0 != 7`); no optimizer/AppShell/GCSIM Browser test failed.
-  Active-engine compatibility smokes are explicit and outside the portable
-  unit suite: `python -m
-  run_workspace.gcsim.optimizer_reduced_oracle_smoke` and `python -m
-  run_workspace.gcsim.optimizer_main_response_smoke`.
-  The exact-current-artifacts FAST/GCSIM n=1000 gate is an opt-in live
-  integration test because it runs the real engine:
-  `$env:GTT_RUN_REAL_GCSIM_ACCEPTANCE='1'; .venv\Scripts\python.exe -m unittest
-  tests.run_workspace.gcsim.trace_equation.test_same_context_acceptance`.
-  Its 2026-08-26 run is intentionally red: identity binding passed, but the
-  single-seed FAST estimate missed the n=1000 mean by 1.692%, exposing
-  seed-dependent hit/reaction topology. Do not weaken the assertion; rerun only
-  after the stochastic-topology contract changes.
+  identity. Current Go optimizer contracts and Python integration coverage live
+  in `test_optimizer_go_*.py`; native tests live under `native/gcsim_optimizer/`.
+  Current real-engine acceptance gates and evidence are owned by
+  `GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md`.
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Decks UI preset
   persistence/conversion and root-resolved default path coverage
   (`test_deck_preset.py`), observed weapon-stack identity helper coverage

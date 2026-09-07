@@ -107,6 +107,7 @@ class GcsimOptimizerGoSelectedRequest:
     selected_team: Mapping[str, Any]
     team_index: int
     rotation_shell_text: str
+    infinite_energy_enabled: bool = True
     engine_store_dir: str = str(DEFAULT_GCSIM_ENGINE_STORE_DIR)
     optimizer_binary_path: str = str(DEFAULT_OPTIMIZER_BINARY)
     run_root: str = str(DEFAULT_SELECTED_RUN_ROOT)
@@ -211,7 +212,7 @@ class GcsimOptimizerGoSelectedSession:
                 "seed": str(seed),
                 "iterations": 1,
                 "workers": 1,
-                "ignore_burst_energy": True,
+                "ignore_burst_energy": bool(self.request.infinite_energy_enabled),
                 "output_mode": "compact_ir_v1",
             }
             _write_json(trace_request_path, trace_request)
@@ -494,7 +495,8 @@ def _prepare_inputs(
             f"Current team cannot be prepared for Selected: {report.issues!r}",
         )
     config_text = enforce_gcsim_optimizer_mvp_energy_policy(
-        report.full_config.assembly.config_text
+        report.full_config.assembly.config_text,
+        ignore_burst_energy=bool(request.infinite_energy_enabled),
     )
     character_keys = tuple(match.group(1).casefold() for match in _CHARACTER_RE.finditer(config_text))
     if len(character_keys) != 4 or len(set(character_keys)) != 4:
@@ -561,7 +563,7 @@ def _prepare_inputs(
             "rotation_sha256": text_sha256(request.rotation_shell_text),
             "target_sha256": text_sha256(target_text),
             "seeds": list(request.seeds),
-            "ignore_burst_energy": True,
+            "ignore_burst_energy": bool(request.infinite_energy_enabled),
         }
     )
     context = {

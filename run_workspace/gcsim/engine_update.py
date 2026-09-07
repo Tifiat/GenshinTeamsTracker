@@ -38,6 +38,7 @@ from .source_acquisition import (
     acquire_official_gcsim_source,
 )
 from .tree_identity import directory_sha256
+from .engine_compatibility import verify_engine_application_bundle
 from .runtime_probe import (
     DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
     GcsimRuntimeProbeResult,
@@ -117,6 +118,7 @@ class GcsimOfficialEngineUpdateReport:
     gtt_info_stdout: str
     gtt_info_stderr: str
     error: str = ""
+    application_compatibility_status: str = "not_requested"
     engine_cleanup_status: str = "not_requested"
     engine_cleanup_deleted_paths: tuple[str, ...] = ()
     engine_cleanup_deleted_bytes: int = 0
@@ -187,6 +189,7 @@ class GcsimOfficialEngineUpdateReport:
             "gtt_info_stdout": self.gtt_info_stdout,
             "gtt_info_stderr": self.gtt_info_stderr,
             "error": self.error,
+            "application_compatibility_status": self.application_compatibility_status,
             "engine_cleanup_status": self.engine_cleanup_status,
             "engine_cleanup_deleted_paths": list(self.engine_cleanup_deleted_paths),
             "engine_cleanup_deleted_bytes": self.engine_cleanup_deleted_bytes,
@@ -219,6 +222,8 @@ def prepare_official_gcsim_engine_update(
     runtime_probe_timeout_seconds: int = DEFAULT_GO_PROBE_TIMEOUT_SECONDS,
     prune_engine_store: bool = True,
     clean_go_build_cache: bool = False,
+    activate: bool = True,
+    compatibility_check: Callable[[Path, GcsimBuildArtifactResult], str] | None = None,
 ) -> GcsimOfficialEngineUpdateReport:
     store = GcsimEngineStore(store_dir)
     previous_active = store.active_engine_id()
@@ -338,7 +343,9 @@ def prepare_official_gcsim_engine_update(
             artifact_relative_path=artifact_relative_path,
             require_gtt_marker=require_gtt_marker,
             source_manifest_binding_input=source_manifest_binding_input,
+            compatibility_check=(compatibility_check or verify_engine_application_bundle) if activate and build_artifact else None,
         ),
+        activate=bool(activate and build_artifact),
     )
     report = _report_from_update_result(
         release=release,
@@ -352,6 +359,10 @@ def prepare_official_gcsim_engine_update(
         build_artifact=build_artifact,
         artifact_build_result=artifact_build_state["result"],
     )
+    application_status = metadata.get("application_compatibility_status", "not_requested")
+    report = replace(report, application_compatibility_status=application_status)
+    if application_status == "failed":
+        report = replace(report, check_status="application_compatibility_failed", runtime_ready=False)
     return _apply_post_update_cleanup(
         report,
         store=store,
@@ -388,6 +399,7 @@ def _make_engine_update_smoke_check(
     artifact_relative_path: str | Path,
     require_gtt_marker: bool,
     source_manifest_binding_input: dict[str, object],
+    compatibility_check: Callable[[Path, GcsimBuildArtifactResult], str] | None = None,
 ):
     def smoke_check(engine_dir: Path) -> str:
         layout_error = gcsim_source_layout_smoke_check(engine_dir)
@@ -411,6 +423,16 @@ def _make_engine_update_smoke_check(
             artifact_build_state["result"] = result
             metadata.update(result.metadata())
             if result.runtime_ready:
+                if compatibility_check is not None:
+                    try:
+                        compatibility_error = compatibility_check(engine_dir, result)
+                    except Exception as exc:  # Keep the installed engine on validator failure.
+                        compatibility_error = f"application compatibility check failed: {exc}"
+                    if compatibility_error:
+                        metadata["check_status"] = "application_compatibility_failed"
+                        metadata["application_compatibility_status"] = "failed"
+                        return compatibility_error
+                    metadata["application_compatibility_status"] = "passed"
                 metadata["check_status"] = "artifact_runtime_passed"
                 return ""
             metadata["check_status"] = result.status
@@ -480,7 +502,7 @@ def _source_manifest_binding_input(
             patch_files,
         )
     formula_ids = (
-        "gtt_trace_formula_v1",
+        "gtt_trace_formula_v3",
         "gtt_transformative_reaction_v1",
         "gtt_source_ir_v2",
     )
@@ -762,11 +784,11 @@ def _patch_files_for_report(metadata: dict[str, str]) -> tuple[str, ...]:
 
 def _resolve_patch_stack_dir(path: str | Path | None, *, backend: PatchBackend) -> Path | None:
     if path is not None:
-        return Path(path)
+        return Path(path).expanduser().resolve()
     if backend.name != "git":
         return None
     if DEFAULT_GCSIM_PATCH_STACK_DIR.exists():
-        return DEFAULT_GCSIM_PATCH_STACK_DIR
+        return DEFAULT_GCSIM_PATCH_STACK_DIR.resolve()
     return None
 
 
@@ -802,7 +824,7 @@ def _apply_post_update_cleanup(
     go_cleanup_allowed: bool,
 ) -> GcsimOfficialEngineUpdateReport:
     updated = report
-    if prune_engine_store:
+    if prune_engine_store and report.activated:
         try:
             prune_result = store.prune_generated_state()
         except Exception as exc:  # noqa: BLE001 - cleanup must not break activation.
@@ -954,12 +976,13 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--engine-id", default=None, help="Optional explicit engine id.")
+    parser.add_argument("--prepare-only", action="store_true", help="Prepare/build without switching the active engine; no activation compatibility gate is claimed.")
     parser.add_argument(
         "--probe-runtime",
         action="store_true",
         help=(
-            "Run an optional Go runtime probe. The new engine activates only if "
-            "source layout and `go run ./cmd/gcsim -version` pass."
+            "Run an optional development Go runtime probe. Without --build-artifact "
+            "this prepares sources only and never changes the active engine."
         ),
     )
     parser.add_argument(
@@ -967,8 +990,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "Build build/gtt-gcsim.exe with `go build` and verify that executable "
-            "with `-version`. The new engine activates only if build and artifact "
-            "runtime check pass."
+            "with `-version`. Activation also requires the complete application "
+            "capability/catalog/compact-consumer and semantic smoke checks."
         ),
     )
     parser.add_argument("--go-executable", default="go", help="Go executable name/path.")
@@ -1013,6 +1036,7 @@ def main(argv: list[str] | None = None) -> int:
         patch_backend=make_patch_backend(args.patch_backend),
         probe_runtime=args.probe_runtime,
         build_artifact=args.build_artifact,
+        activate=not args.prepare_only,
         go_executable=args.go_executable,
         go_work_dir=args.go_work_dir,
         runtime_probe_timeout_seconds=args.runtime_probe_timeout,

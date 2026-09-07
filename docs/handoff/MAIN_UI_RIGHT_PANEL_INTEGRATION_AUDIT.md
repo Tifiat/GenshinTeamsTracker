@@ -90,12 +90,10 @@ intended behavior or visual changes:
   routing/coordinator root.
 - `ui/right_panel/settings/account_data.py` owns the Account/Data/global
   settings page. `ui/account_data_page.py` is only a compatibility wrapper.
-- `ui/right_panel/history/viewer.py` currently owns the provisional independent
-  frozen History viewer. The accepted target keeps History adapter/host/read-only
-  policy under `ui/right_panel/history/` but replaces that separate viewer with
-  a snapshot-bound instance of the shared Run presentation. `ui/history_browser/`
-  continues to own the left History browser/list; its permanent PNG preview is
-  also provisional.
+- `ui/right_panel/history/viewer.py` owns the snapshot-bound host/read-only
+  policy around a separate instance of the shared `RunRightPanelWidget`.
+  `ui/history_browser/` owns the left History browser/list. Current History
+  behavior and remaining work live in `HISTORY_BROWSER.md`.
 - `ui/right_panel/pvp/` owns PvP right-dock pages:
   `host.py`, `decks/panel.py`, `play/panel.py`, `draft/panel.py`, and
   `draft/assignment/target_slot.py`. PvP page/stage/timer constants are

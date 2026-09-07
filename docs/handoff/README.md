@@ -12,24 +12,16 @@ Current maps:
 - `ACCOUNT_EQUIPMENT_STATE_DESIGN.md` - design and implemented service/UI status for persistent current weapon/artifact equipment state, separate from build presets and HoYoLAB observations.
 - `ARTIFACT_BROWSER_EQUIPMENT_UX.md` - Artifact Browser equip-mode UX, current equipment zone, preset apply behavior, and artifact/preset/weapon owner side-icon model.
 - `ABYSS_ENEMY_DATA.md` - Abyss enemy data source research.
-- `ABYSS_ENEMY_DATA_AUDIT_TASK.md` - original prompt for the Abyss enemy data audit.
 - `ABYSS_HP_FIXTURE.md` - historical `2026-05-16` Floor 12 HP research/debug fixture and source-join notes; not current runtime factual-DPS truth.
 - `ABYSS_MECHANICS_NOTES.md` - Abyss enemy mechanics parser tags and source notes.
 - `GCSIM.md` - GCSIM research and integration notes.
 - `GCSIM_ENGINE_INTEGRATION_PLAN.md` - authoritative current GCSIM status plus the historical implementation record for engine updates, patches, selected-team configs, sequential Abyss waves, typed results/history, and remaining UI/release work.
 - `GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` - sole authoritative, compact
   optimizer contract: product scopes, accepted Go architecture, proven and
-  unproven boundaries, GOB-0 through GOB-9, and mandatory cleanup gates.
-- `GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md` - sole active production-backend
-  redesign. A standalone Go optimizer owns compact formulas, artifacts, FGBS,
-  stochastic expectation and finalists; a minimal GCSIM adapter patch only
-  exposes runtime evidence and ordinary simulation. It owns GOB-0 through GOB-9,
-  mandatory Python cleanup and the current implementation order. GOB-3 through
-  GOB-9 are accepted: the real AppShell Selected button returns an
-  exact measured winner and twenty IDs. Repeated full UI runs took 3:33 and
-  3:40. Bounded GOB-8P preserved the winner and reduced the accepted Go boundary
-  to 159.06 seconds. GOB-9 then completed final reachability, patch/update and
-  rollback cleanup.
+  unproven boundaries, current stages, and mandatory cleanup gates.
+- `GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md` - detailed Go backend design,
+  implementation order/status, acceptance evidence, and patch/update/rollback
+  gates. Current stage details belong here, not in this index.
 - `GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST.json` - machine-readable current
   reuse/replace/delete/receipt disposition for the optimizer migration,
   including mandatory GOB-6 migration cleanup and GOB-9 final area cleanup.
@@ -44,7 +36,6 @@ Current maps:
   `.gttpvp` package handoff: current prototype gaps, seat-specific image rules,
   privacy/import boundaries, and the ordered path to a second-account archive.
 - `PVP_REFERENCE_SITE_AUDIT.md` - Abyss Draft and Gentor reference-site findings used by the PvP v0 contract.
-- `PVP_MODE_PLAN.md` - PvP planning history for local hot-seat Free Draft, deck JSON, future relay lobby, roadmap, risks, and resolved/open questions.
 - `PVP_RULESETS_AUDIT.md` - PvP/tournament ruleset source audit.
 - `PVP_RULESET_SOURCE_MATRIX.md` - current public/source matrix for mapping
   Gentor/Abyss/manual rulesets onto the PvP backend. Ruleset mapping is paused
@@ -56,30 +47,9 @@ Current maps:
 - `APP_SHELL_WORKSPACE_PLAN.md` - target AppShell architecture: left workspace host plus fixed right operations dock, with staged migration notes.
 - `RUN_WORKSPACE_SNAPSHOT_CONTRACT.md` - Run Workspace session/snapshot contract
   for durable history, GCSIM result attachment, and the future `main.py` switch.
-
-Durable backend modules:
-
-- `run_workspace/pvp/` - backend-only PvP v0 foundation for deck JSON,
-  `DeckValidationReport`, Free Draft v0 schedule/reducer/action log,
-  post-draft team and weapon assignment validation, match timer/result
-  summaries, and local-account Free Draft deck export from SQLite runtime
-  account data. It also contains the deterministic Free Draft smoke planner,
-  draft-system registry, local Free Draft controller/projection API, the
-  UI-facing board/read-model projection bridge with `unified_pool`, committed
-  board contract sample at
-  `samples/pvp/ui_contract/free_draft_board_projection_sample.json`, session
-  bundle snapshot/verifier, local-account full-loop smoke, and report-only
-  ruleset applicability/deck cost-preview/ruleset-balance application research
-  helpers. Deterministic dev smoke commands: `python -m
-  run_workspace.pvp.full_loop_smoke`, `python -m
-  run_workspace.pvp.free_draft_controller_smoke`, `python -m
-  run_workspace.pvp.ruleset_applicability_smoke`, `python -m
-  run_workspace.pvp.account_deck_export_smoke`, `python -m
-  run_workspace.pvp.account_full_loop_smoke`, `python -m
-  run_workspace.pvp.session_bundle_smoke`, and `python -m
-  run_workspace.pvp.ruleset_balance_smoke`. Backend fixtures/tests live in
-  `samples/pvp/` and `tests/run_workspace/pvp/`; PvP Browser UI tests live in
-  `tests/ui/pvp_browser/`.
+- `HISTORY_BROWSER.md` - current History Browser contract, shared read-only
+  Run presentation, and remaining History work.
+- `TESTS.md` - test ownership map and focused commands by feature area.
 
 Rules:
 

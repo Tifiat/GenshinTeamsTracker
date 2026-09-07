@@ -565,7 +565,7 @@ Python response/oracle/search chains, stale manifests and orphaned tests/tools
 were removed; Current/farming and continuous-target reference mathematics were
 retained under their explicit future owners.
 
-The engine integration now has exactly one patch:
+At GOB-9 the engine integration had exactly one historical patch:
 `0001-gtt-engine-adapter-v1.patch`, SHA-256
 `01ff5993aaf6c3726db30de0b6876c55401b5a3e66e1df979bee24e7c8245638`.
 It reproduces the accepted 4,314-file source tree exactly after a fresh apply.
@@ -574,6 +574,9 @@ Transactional update built and activated
 and restoration both pass. Ordinary n=1 and one real compact-seed handshake
 pass. The updater reuses a valid cached release archive and handles truncated
 downloads fail-closed.
+
+This receipt is superseded for current runtime identity by the cleaned v2.45
+patch and activation recorded below; it remains only as GOB-9 history.
 
 Regression result: 42 focused patch/update/input tests, 638 GCSIM tests, 189
 combined optimizer/AppShell UI tests, all Go tests and `go vet` pass. No full
@@ -620,8 +623,9 @@ It may be ported only after Selected Go acceptance and must stay isolated from
 normal FGBS unless a later measured design explicitly changes that rule.
 
 Energy/ER optimization, broad All Sets semantics, Theory UI and automatic equip
-remain outside the initial Go rewrite. The rewrite reaches current Selected
-capability first, cleans Python, then advances from that point in Go.
+were outside the initial Go rewrite. Current Selected and its cleanup are now
+complete; the next separately gated extension is cross-team formula validation,
+then energy-aware Selected. All Sets/Theory remain later stages.
 
 ## 10. Performance and execution rules
 
@@ -645,11 +649,12 @@ trace-only engine bookkeeping during ordinary simulation and capturing the two
 compact seeds concurrently. The saved-account product replay completed in
 57.0 seconds after preparation and returned the exact accepted twenty IDs.
 
-The next Selected work is release safety, not another search rewrite: adapt the
-single consolidated adapter patch to upstream v2.45.0 and rerun transactional
-patch/build/semantic checks. All Sets/Theory remains a separately contracted
-stage. Continuous-target Python math is reference input for that stage, not a
-Selected fallback.
+Selected release safety is complete on upstream v2.45.0: the reduced single
+adapter patch passed clean apply, build, capability, compact semantic parity,
+ordinary-simulation and structured-wave checks before transactional activation.
+Do not reopen Selected search or compatibility without a measured regression.
+All Sets/Theory remains a separately contracted stage. Continuous-target Python
+math is reference input for that stage, not a Selected fallback.
 
 ### GOB-10 — measured compute optimization
 
@@ -680,10 +685,64 @@ Proof on the saved real account:
 - expected UI total is about 62-64 s because unchanged request/config/database
   preparation previously measured about five seconds.
 
-Activated engine: `gcsim-v2.42.2-gob10-perf-20260901`; executable SHA-256
-`00834023d64f3853723ee2ca28af6b9bd5fbaacb1cbda4cf7e11dd44a45ff99a`.
+Historical GOB-10/v2.45 checkpoint: `gcsim-v2.45.0-clean-adapter-20260901`; executable SHA-256
+`4ce399e8fd0fae48ac8812fbe8e3fcd746b5e74c84554228fa660ef944cfb857`.
 Consolidated patch SHA-256:
-`dc4d99a243d957afb4c7dee64e7fef6ba22b7a030cbcf36f9f0242960fe09aef`.
-The updater's attempted `latest` v2.45.0 build failed closed at patch check and
-kept v2.42.2 active. This is an explicit compatibility task, not evidence that
-the GOB-10 optimization failed.
+`d7e0c0ab6b1133b179949396bcb104e68cf51ff07081b49b816f210e9a3b315c`.
+The previous `gcsim-v2.42.2-gob10-perf-20260901` remains installed as the
+rollback target. The v2.45 compatibility proof is recorded in the engine
+integration handoff; it does not alter the accepted GOB-10 search result.
+
+Historical GOB-11A checkpoint (2026-09-07) changed the engine identity to
+`gcsim-v2.45.0-gob11a-20260907`; executable SHA-256
+`ecbeb14af152c25e67bafb567912aebc1a8ceb3d8fb6e0a6a6cfc1529d4087c1`.
+The compact consumer schema stays v1; the engine's flattened formula registry
+advances to `gtt_trace_formula_v2` and the source/patch/binary binding changes.
+The adapter uses observed producer receipts and actual calculation branches for
+reaction classification. Legacy `direct_lunar` evidence remains readable, while
+new hits use `direct_reaction`. Direct-reaction candidate formulas were never
+correctly supported by the standard talent compiler: those hits now explicitly
+freeze, including future unknown terminal categories. GOB-11 owns their actual
+dependency coverage. Current-team channel expressions, baseline damage and
+coordinates are unchanged on both seeds. Go search/evaluator code is unchanged.
+The v2.45 catalog reader accepts `artifact.dm.json` and pipeline `kind: artifact`
+with canonical `name`, while retaining older engine layouts for rollback.
+
+The subsequent compatibility repair is now installed as
+`gcsim-v2.45.0-compat-20260907`, with GOB-11A explicitly pinned for rollback.
+Its flattened formula registry is v3; compact schema remains v1. The compiler
+removes unproven reaction owner crit/DMG% inputs and independently checks each
+terminal baseline; external reaction-support dependencies can still freeze.
+The native consumer rejects absent/null ordinary DPS fields. Current-team
+baseline damage stays unchanged; candidate reaction coordinates deliberately
+change. Search architecture is unchanged and finalist quality was not re-run.
+Official activation now includes actual consumer/catalog/ordinary/wave smokes;
+see GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md for receipt and remaining limits.
+
+## 12. Planned energy-aware Go extension
+
+Keep the existing request/formula/search/finalist ownership. Add a versioned
+energy-ledger section to compact evidence rather than a Python callback or a
+GCSIM run per candidate. The ledger records burst deadlines, normalized
+particle energy, flat energy, active/off-field distribution and typed
+target/stat/probability dependencies.
+
+The Go evaluator compiles each character's ledger into cumulative feasibility
+constraints. Required ER is the largest prefix shortage before any intended
+burst, not an averaged rate. Candidate formula damage may update enemy
+HP-threshold particle timing without rerunning the engine. Unknown or stochastic
+energy sources widen the margin/retained lane and are verified at the bounded
+finalist stage.
+
+Finalists are rendered with `ignore_burst_energy=false` and no boosted-energy
+injection. Besides DPS, verification compares the intended versus executed
+burst/action schedule. A failure cannot silently fall back to infinite energy.
+The current infinite-energy path remains an explicit user-selectable mode.
+
+The two UI controls are synchronized projections of the existing settings-owned
+`gcsim_boosted_energy_enabled` value; they are not independent booleans. The
+inline control is already visible at the user's request. Its finite-energy
+position passes `ignore_burst_energy=false` but is labelled diagnostic and may
+fail because ER-aware search is not implemented. Promote that position to a
+working energy-aware mode only after the ledger, constrained search and
+real-energy finalist acceptance all pass.

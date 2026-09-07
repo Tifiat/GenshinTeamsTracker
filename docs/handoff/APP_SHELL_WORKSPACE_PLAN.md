@@ -844,8 +844,7 @@ Sizing note:
   timers/T2 follow flags, compact runtime GCSIM chamber results, and active-mode
   Reset.
 - `AppShellController` remains the UI/account/equipment adapter and right-panel
-  view-model coordinator until the right-panel source-ownership refactor moves
-  widgets into `ui/right_panel/`.
+  view-model coordinator. Right-panel widgets live under `ui/right_panel/`.
 - `LeftWorkspaceHost` uses stable workspace ids through root AppShell. Current
   workspaces are Character/Weapon, lazy-created Artifacts, GCSIM Browser,
   `ui/history_browser/`, and PvP Decks/Play/Draft.
@@ -858,8 +857,8 @@ Sizing note:
   read/list saved bundles and select records through an isolated read-only
   `RunRightPanelWidget`. Snapshot v2 captures display details for every occupied
   slot and production Save materializes declared visible assets inside the
-  bundle without changing live team state. The next stage is the contracted
-  History tabs, period groups, and compact visual rows.
+  bundle without changing live team state. Current History UI status and
+  remaining work live in `HISTORY_BROWSER.md`.
 - GCSIM Browser output updates current-session Sim DPS rows, and current Abyss
   results are attached to immutable History when normal Run Save succeeds.
   DPS Dummy result attachment is still pending.

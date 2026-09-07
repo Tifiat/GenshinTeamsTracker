@@ -42,6 +42,22 @@ from run_workspace.gcsim.trace_equation import (
 
 
 class TraceEquationContractTests(unittest.TestCase):
+    def test_direct_reaction_and_legacy_spelling_remain_nonexact_and_round_trip(self) -> None:
+        base = _document()
+        for spelling in ("direct_reaction", "direct_lunar"):
+            with self.subTest(spelling=spelling):
+                hit = replace(
+                    base.hits[0],
+                    formula_inputs=replace(base.hits[0].formula_inputs, formula_kind=spelling),
+                    formula_replay_status=ReplayStatus.NEEDS_EXACT,
+                    formula_replay_reason_codes=("direct_reaction_requires_exact",),
+                )
+                self.assertIsNotNone(hit.formula_inputs.known_formula_kind)
+                document = TraceDocument.build(request=base.request, hits=(hit,), topology=base.topology)
+                self.assertEqual(decode_trace_document(encode_trace_document(document)), document)
+                with self.assertRaises(TraceContractError):
+                    replace(hit, formula_replay_status=ReplayStatus.EXACT_IN_CELL, formula_replay_reason_codes=())
+
     def test_document_round_trip_preserves_identity_and_is_immutable(self) -> None:
         document = _document()
         payload = encode_trace_document(document)

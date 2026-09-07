@@ -171,7 +171,9 @@ def build_gcsim_artifact(
     expected_gtt_capability: str = GTT_INFO_CAPABILITY,
     source_manifest_binding_input: Mapping[str, object] | None = None,
 ) -> GcsimBuildArtifactResult:
-    engine_dir = Path(engine_dir)
+    # Build/probe subprocesses run inside this directory. Resolve before forming
+    # their output paths so a caller's relative store is not prefixed twice.
+    engine_dir = Path(engine_dir).resolve()
     artifact_relative_path = Path(artifact_relative_path)
     if artifact_relative_path.is_absolute() or ".." in artifact_relative_path.parts:
         return _result(

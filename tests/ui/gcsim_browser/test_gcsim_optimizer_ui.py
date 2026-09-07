@@ -47,6 +47,22 @@ class GcsimOptimizerUiTests(unittest.TestCase):
 
         self.assertEqual(requests, [(1, "active furina;")])
 
+    def test_optimizer_energy_switch_is_one_controllable_view(self) -> None:
+        workspace = GcsimBrowserWorkspace()
+        changes: list[bool] = []
+        workspace.optimizer_infinite_energy_changed.connect(changes.append)
+
+        workspace.set_optimizer_infinite_energy_enabled(True)
+        self.assertTrue(workspace.optimizer_infinite_energy_switch.isChecked())
+        infinite_note = workspace.optimizer_energy_note.text()
+        self.assertTrue(infinite_note)
+        self.assertEqual(changes, [])
+
+        workspace.optimizer_infinite_energy_switch.setChecked(False)
+        self.assertEqual(changes, [False])
+        self.assertTrue(workspace.optimizer_energy_note.text())
+        self.assertNotEqual(workspace.optimizer_energy_note.text(), infinite_note)
+
     def test_progress_uses_mapping_contract_and_cancel_is_only_live_when_busy(self) -> None:
         workspace = GcsimBrowserWorkspace()
         workspace.set_optimizer_busy(True)

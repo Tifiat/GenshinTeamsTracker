@@ -28,6 +28,20 @@ This file is written for future coding agents. Keep it compact, English, and mos
   exact-finalist budget, stop widening exact verification and return a visibly
   degraded best-effort result; do not stop the offline equation scorer and do
   not launch an unbounded verification loop.
+- GCSIM energy mode has one persisted source,
+  `gcsim_boosted_energy_enabled`, shown both in Account/Settings and beside the
+  optimizer. Infinite mode maps Selected to `ignore_burst_energy=true`; the
+  other position passes `false` but ER-aware artifact search is not implemented
+  yet and is visibly diagnostic/possibly failing. Never add a second optimizer
+  energy setting.
+- Official GCSIM v2.45 owns Lunar/Stellar gameplay formulas. GTT may trace and
+  classify upstream formula paths, but must not reproduce future game mechanics
+  or hardcode characters/regions to make them work. GOB-11A passed: reaction
+  operators come from producer receipts/structural flags and the executed
+  calculation path, not a duplicated reaction-name/tag whitelist. Follow
+  observed hit/source/runtime edges; keep generic hooks. Direct-reaction
+  candidate dependencies remain explicitly frozen pending GOB-11, never passed
+  into the standard talent formula. Details: GCSIM_ENGINE_INTEGRATION_PLAN.md.
 - When the user is asking to discuss, clarify, reason about, decide on rules, or validate an approach, treat the turn as discussion-only. Do not edit files or apply changes until the user explicitly asks to implement, apply, save, or write them. This rule applies by intent in any language, not by exact words.
 - Do not treat an acknowledgement of understanding as permission to implement. Phrases in any language that mean "I understand", "got it", "yes, that is the idea", or similar are not approval to edit files.
 - Before implementing a task specification, do a brief preflight against the relevant current code and handoff contract. Look for incorrect assumptions, contradictions, missing ownership boundaries, and wording that can reasonably lead to materially different architecture, behavior, or visible UI. Ask focused questions and wait for answers before editing when those issues affect the solution. Do not turn this into a questionnaire for incidental details that can be resolved safely from existing project patterns.
@@ -246,7 +260,7 @@ GenshinTeamsTracker is a local PySide6 desktop tool for:
   v1 schemas, canonical decimal-string transport, deterministic Python/Go
   identities and shared fixtures under `tests/fixtures/gcsim_optimizer_go_v1/`.
   The module uses only the Go standard library. The single consolidated patch
-  `0001-gtt-engine-adapter-v1.patch` owns the opt-in engine compact-member seam;
+  `0001-gtt-engine-adapter-v245.patch` owns the opt-in engine compact-member seam;
   the standalone module owns validation, formula
   evaluation, fixed-panel stochastic aggregation, bounded Selected FGBS and
   common-context staged finalist verification. AppShell Selected binding is
@@ -619,9 +633,10 @@ Important direction:
 - Artifact optimization belongs inside the GCSIM application boundary. Read
   `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` before any optimizer
   task; it is the sole authoritative optimizer contract.
-- Accepted product scopes are Selected Sets, All Sets and Theory. Current work
-  is Selected only. All Sets, Theory/farming guidance, broader reaction
-  controls and ER optimization remain deferred until Selected is accepted.
+- Accepted product scopes are Selected Sets, All Sets and Theory. Base Selected
+  is accepted. Next are a bounded cross-team/rotation generalization pass in
+  explicit infinite-energy mode and then the separately gated energy-aware
+  Selected extension. All Sets and Theory/farming guidance remain later scopes.
 - The production backend is a clean standalone Go module under planned
   `native/gcsim_optimizer`. A minimal consolidated GCSIM adapter patch emits
   compact engine-neutral formula/support evidence and runs ordinary finalist
@@ -668,12 +683,36 @@ Important direction:
   hashing, added trace-disabled engine fast paths and captured the two compact
   seeds concurrently. The full saved-account replay took 57.0 seconds after
   preparation and returned the same twenty artifact IDs. The consolidated
-  patch is validated on GCSIM v2.42.2; `latest` v2.45.0 currently fails its
-  patch check and must be adapted and release-validated as a separate update
-  task before that upstream version can activate.
-- Before cutover, audit every engine patch present at that time, consolidate
-  required changes into one versioned patch, and prove automatic update plus
-  rollback. Never hard-code a historical patch-number range.
+  patch was cleaned, adapted and release-validated on GCSIM v2.45.0. Active
+  engine `gcsim-v2.45.0-compat-20260907` matches the isolated validated
+  artifact; `gcsim-v2.45.0-gob11a-20260907` is the explicitly pinned rollback.
+  GOB-11A preserved both fixed-seed formula graphs, corrected direct-reaction
+  fallback and the v2.45 artifact catalog filename/config schema. Future
+  upstream releases must repeat clean apply, build, capability and semantic
+  smoke gates before activation; never force-apply a version-bound patch.
+- Post-GOB-11A compatibility repairs are installed: reaction snapshots no longer
+  invent owner artifact crit/DMG% dependencies; terminal formulas have an
+  independent observed-damage guard; missing/null DPS fields are rejected.
+  Official activation now requires full capabilities/catalog/actual compact
+  consumer and ordinary/wave semantic smokes. Preparation alone never activates;
+  cleanup pins rollback rather than choosing by mtime. Formula registry is v3.
+  Read
+  `docs/handoff/GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md` before GOB-11 or the
+  next engine update. External EM/reaction-bonus dependence still has explicit
+  freezes; API-discovery drift remains possible and opaque reason shares are
+  not measured unknown damage. Two current-team seeds pass, not all new teams.
+- Before cutover, audit every engine patch present at that time, remove obsolete
+  changes and prove automatic update plus rollback. Packaging may use capability-
+  atomic optional groups, but never partially activate the required pieces of a
+  feature or hard-code a historical patch-number range.
+- The shared energy switch is implemented in Settings and beside the optimizer.
+  Infinite mode preserves current Selected behavior; the other position passes
+  real burst requirements but is explicitly marked diagnostic because the
+  search does not yet optimize ER. Planned energy-aware Selected must record
+  burst deadlines, normalized particle and flat energy, active/off-field
+  distribution and typed target/stat-dependent sources; Go enforces cumulative
+  deadline constraints and ordinary GCSIM checks only bounded finalists. Do not
+  copy upstream's 350-iteration/hardcoded ER optimizer.
 - Optimizer work may change optimizer-owned code and narrow generic engine/
   materializer/scheduler boundaries. Do not repair importer, equipment,
   Artifact Browser presets, History or global AppShell behavior as side work
@@ -686,7 +725,7 @@ Important direction:
   own timer persistence or saved-run data. Factual DPS is app-owned HP/time math
   in run/session result code, while GCSIM output is separate `sim DPS`.
 - GCSIM should not be crammed into the small TeamCard. The right panel should show only compact factual/sim DPS summary and a readable GCSIM button/status; detailed GCSIM/rotation editing should open as a larger overlay/drawer around the right panel area. If GCSIM lacks a character/reaction implementation, show a clear unavailable status.
-- Abyss enemy data audit exists at `docs/handoff/ABYSS_ENEMY_DATA.md`; the original prompt is `docs/handoff/ABYSS_ENEMY_DATA_AUDIT_TASK.md`.
+- Abyss enemy data source research lives in `docs/handoff/ABYSS_ENEMY_DATA.md`.
 - Audit result: no single reliable source currently provides current Abyss lineup + monster ids + waves/positions + ready HP totals + resists. MVP should use a resilient source join: current period/lineup/wave notes from Fandom, source-like monster ids/stats/icons/resists from AnimeGameData/GCSIM/Yatta/Ambr where available, and Fandom enemy/level-scaling pages as fallback/cross-check for floor HP multipliers, enemy HP tables, Abyss-specific resist states, and mechanics notes.
 - Factual Abyss DPS should use confidence states. Prefer source-like/period-specific HP multipliers; if those are missing but enemy ids/counts/levels/base HP are matched, a Fandom general floor-multiplier estimate may be shown with an explicit `estimated_from_floor_multiplier` warning. If core inputs are missing/ambiguous, produce no-data/warning states instead of guessed DPS. The accepted Fact DPS tooltip already exposes source/match confidence details; do not add separate near-cell source UI unless a later product decision asks for it.
 - Historical Floor 12 HP fixture notes live in `docs/handoff/ABYSS_HP_FIXTURE.md`.

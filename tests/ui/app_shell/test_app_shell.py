@@ -2073,6 +2073,28 @@ class AppShellTest(unittest.TestCase):
 
         self.assertTrue(shell.controller.gcsim_boosted_energy_enabled)
         self.assertEqual(shell.controller.gcsim_chamber_results, ())
+        self.assertTrue(
+            shell.left_host.gcsim_browser_workspace.optimizer_infinite_energy_switch.isChecked()
+        )
+
+    def test_optimizer_energy_switch_updates_the_settings_switch(self) -> None:
+        shell = AppShell()
+        target = not shell.controller.gcsim_boosted_energy_enabled
+
+        with patch(
+            "ui.right_panel.settings.account_data.set_gcsim_boosted_energy_enabled"
+        ) as persist:
+            shell.left_host.gcsim_browser_workspace.optimizer_infinite_energy_switch.setChecked(
+                target
+            )
+            self._app.processEvents()
+
+        self.assertEqual(
+            shell.right_dock.account_page.gcsim_boosted_energy_switch.isChecked(),
+            target,
+        )
+        self.assertEqual(shell.controller.gcsim_boosted_energy_enabled, target)
+        persist.assert_called_once()
 
     def test_app_shell_selected_gcsim_finish_stores_and_refreshes_right_panel(self) -> None:
         shell = AppShell()

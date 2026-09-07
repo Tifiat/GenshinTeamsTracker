@@ -8,8 +8,9 @@ import tempfile
 import unittest
 import zipfile
 
-from run_workspace.gcsim.engine_store import GcsimEngineStore
+from run_workspace.gcsim.engine_store import GcsimEngineStore, load_engine_manifest
 from run_workspace.gcsim.engine_update import (
+    _resolve_patch_stack_dir,
     make_patch_backend,
     prepare_official_gcsim_engine_update,
 )
@@ -25,6 +26,33 @@ from run_workspace.gcsim.source_acquisition import (
 
 
 class GcsimEngineUpdateTest(unittest.TestCase):
+    def test_application_gate_failure_keeps_previous_active(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store = GcsimEngineStore(root / "store")
+            old = _install_old_active_engine(store, root)
+            archive = _write_fake_gcsim_archive(root / "gcsim.zip")
+            runner = FakeGoRunner(_completed(stdout="go version go1.22.0 windows/amd64\n"),
+                _write_fake_artifact, _completed(stdout="gcsim version built\n"))
+            report = prepare_official_gcsim_engine_update(release="v-test", store_dir=store.root_dir,
+                source_cache_dir=root / "sources", source_acquirer=_archive_acquirer(archive, tag="v-test"),
+                build_artifact=True, artifact_build_runner=runner, go_work_dir=root / ".go-test",
+                compatibility_check=lambda _path, _build: "injected incompatible compact consumer")
+            self.assertFalse(report.success)
+            self.assertFalse(report.activated)
+            self.assertEqual(store.active_engine_id(), old)
+            self.assertEqual(report.check_status, "application_compatibility_failed")
+            self.assertIn("incompatible compact", report.error)
+
+    def test_relative_patch_stack_is_resolved_before_staged_git_apply(self) -> None:
+        relative = Path("relative-patch-stack")
+        resolved = _resolve_patch_stack_dir(
+            relative,
+            backend=make_patch_backend("git"),
+        )
+        self.assertEqual(resolved, relative.resolve())
+        self.assertTrue(resolved.is_absolute())
+
     def test_valid_cached_release_archive_is_reused_without_redownload(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -49,7 +77,7 @@ class GcsimEngineUpdateTest(unittest.TestCase):
             self.assertEqual(acquisition.archive_path, archive)
             self.assertTrue((acquisition.source_dir / "go.mod").is_file())
 
-    def test_fake_official_source_acquisition_activates_engine(self) -> None:
+    def test_source_only_preparation_does_not_activate_engine(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             store_dir = root / "store"
@@ -65,15 +93,14 @@ class GcsimEngineUpdateTest(unittest.TestCase):
             )
 
             self.assertTrue(report.success)
-            self.assertTrue(report.activated)
+            self.assertFalse(report.activated)
             self.assertFalse(report.runtime_ready)
             self.assertEqual(report.runtime_check_status, "not_requested")
             self.assertEqual(report.upstream_ref, "v-test")
             self.assertEqual(report.patch_count, 1)
             active = GcsimEngineStore(store_dir).get_active_engine()
-            self.assertIsNotNone(active)
-            assert active is not None
-            self.assertTrue((active.path / "GTT_PATCH.txt").exists())
+            self.assertIsNone(active)
+            self.assertTrue((Path(report.engine_path) / "GTT_PATCH.txt").exists())
 
     def test_go_missing_probe_keeps_old_active_engine(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -201,7 +228,7 @@ class GcsimEngineUpdateTest(unittest.TestCase):
             )
 
             self.assertTrue(report.success)
-            self.assertTrue(report.activated)
+            self.assertFalse(report.activated)
             self.assertTrue(report.runtime_ready)
             self.assertEqual(report.runtime_check_status, "runtime_probe_passed")
             self.assertEqual(report.go_version, "go1.22.0")
@@ -209,9 +236,8 @@ class GcsimEngineUpdateTest(unittest.TestCase):
             self.assertEqual(report.go_arch, "amd64")
             self.assertIn("go run ./cmd/gcsim -version", report.runtime_probe_command)
             active = GcsimEngineStore(store_dir).get_active_engine()
-            self.assertIsNotNone(active)
-            assert active is not None
-            metadata = active.manifest.metadata
+            self.assertIsNone(active)
+            metadata = load_engine_manifest(Path(report.engine_path)).metadata
             self.assertEqual(metadata["runtime_ready"], "true")
             self.assertEqual(metadata["runtime_check_status"], "runtime_probe_passed")
             self.assertEqual(metadata["go_version"], "go1.22.0")
@@ -275,7 +301,7 @@ class GcsimEngineUpdateTest(unittest.TestCase):
             )
 
             self.assertTrue(report.success)
-            self.assertTrue(report.activated)
+            self.assertFalse(report.activated)
             self.assertTrue(report.runtime_ready)
             self.assertEqual(report.patch_backend, "git")
             self.assertEqual(report.patch_count, 1)
@@ -286,9 +312,8 @@ class GcsimEngineUpdateTest(unittest.TestCase):
             self.assertEqual(report.runtime_check_status, "runtime_probe_passed")
             self.assertEqual(len(git_runner.calls), 2)
             active = GcsimEngineStore(store_dir).get_active_engine()
-            self.assertIsNotNone(active)
-            assert active is not None
-            self.assertEqual(active.manifest.patch_metadata["patch_apply_status"], "passed")
+            self.assertIsNone(active)
+            self.assertEqual(load_engine_manifest(Path(report.engine_path)).patch_metadata["patch_apply_status"], "passed")
 
     def test_patch_backend_factory_selects_git_backend(self) -> None:
         self.assertIsInstance(make_patch_backend("git"), GitApplyPatchBackend)
@@ -310,6 +335,7 @@ class GcsimEngineUpdateTest(unittest.TestCase):
                 source_cache_dir=root / "sources",
                 source_acquirer=_archive_acquirer(archive, tag="v-test"),
                 build_artifact=True,
+                compatibility_check=lambda _path, _build: "",  # Tested independently with real bundle gates.
                 artifact_build_runner=runner,
                 go_work_dir=root / ".go-test",
             )
@@ -464,6 +490,7 @@ class GcsimEngineUpdateTest(unittest.TestCase):
                 patch_backend=GitApplyPatchBackend(runner=git_runner),
                 source_acquirer=_archive_acquirer(archive, tag="v-test"),
                 build_artifact=True,
+                compatibility_check=lambda _path, _build: "",  # This test owns only marker metadata.
                 artifact_build_runner=go_runner,
                 go_work_dir=root / ".go-test",
             )
@@ -641,9 +668,8 @@ class GcsimEngineUpdateTest(unittest.TestCase):
 
             self.assertTrue(report.success)
             active = GcsimEngineStore(root / "store").get_active_engine()
-            self.assertIsNotNone(active)
-            assert active is not None
-            metadata = active.manifest.metadata
+            self.assertIsNone(active)
+            metadata = load_engine_manifest(Path(report.engine_path)).metadata
             self.assertEqual(metadata["upstream_repo"], GCSIM_UPSTREAM_REPO)
             self.assertEqual(metadata["upstream_release_request"], "latest")
             self.assertEqual(metadata["upstream_ref"], "v-test")

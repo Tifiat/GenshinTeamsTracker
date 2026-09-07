@@ -19,6 +19,8 @@ from typing import Mapping
 
 
 _CONFIG_KEY_RE = re.compile(r"(?m)^\s*key\s*:\s*([^\s#]+)\s*$")
+_CONFIG_PIPELINE_NAME_RE = re.compile(r"(?m)^name\s*:\s*([a-z0-9_]+)\s*$")
+_CONFIG_ARTIFACT_KIND_RE = re.compile(r"(?m)^kind\s*:\s*artifact\s*$")
 _REGISTER_RE = re.compile(r"\bcore\.RegisterSetFunc\s*\(")
 _REGISTER_KEY_RE = re.compile(
     r"\bcore\.RegisterSetFunc\s*\(\s*keys\.(?P<key>[A-Za-z0-9_]+)\s*,"
@@ -52,6 +54,7 @@ _ISSUES_RELATIVE_PATH = (
     / "Issues"
     / "artifact_data.json"
 )
+_ISSUES_CURRENT_RELATIVE_PATH = _ISSUES_RELATIVE_PATH.with_name("artifact.dm.json")
 _OPTIMIZER_SUBSTATS_RELATIVE_PATH = Path("pkg") / "optimization" / "substats.go"
 _FOUR_STAR_SET_BLOCK_RE = re.compile(
     r"artifactSets4Star\s*=\s*\[\]keys\.Set\s*\{(?P<body>.*?)\}",
@@ -203,7 +206,11 @@ def load_gcsim_artifact_set_catalog(
             f"GCSIM artifact implementation directory is missing: {artifacts_dir}"
         )
 
-    issue_path = root / _ISSUES_RELATIVE_PATH
+    # v2.45 renamed the generated docs data; its object-of-lists schema is
+    # unchanged. Keep the old path readable for installed rollback engines.
+    issue_path = root / _ISSUES_CURRENT_RELATIVE_PATH
+    if not issue_path.is_file():
+        issue_path = root / _ISSUES_RELATIVE_PATH
     if require_issue_metadata and not issue_path.is_file():
         raise GcsimArtifactSetCatalogError(
             f"GCSIM artifact issue metadata is missing: {issue_path}"
@@ -229,6 +236,9 @@ def load_gcsim_artifact_set_catalog(
             continue
         config_text = config_path.read_text(encoding="utf-8")
         match = _CONFIG_KEY_RE.search(config_text)
+        if match is None and _CONFIG_ARTIFACT_KIND_RE.search(config_text):
+            # Current upstream pipeline uses its canonical name as the key.
+            match = _CONFIG_PIPELINE_NAME_RE.search(config_text)
         if match is None:
             raise GcsimArtifactSetCatalogError(
                 f"Artifact package has no config key: {config_path}"

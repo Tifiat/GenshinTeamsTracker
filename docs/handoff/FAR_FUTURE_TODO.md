@@ -37,18 +37,18 @@ idea.
   missing/duplicate/unknown/unsupported fields, and does not execute
   third-party TypeScript scripts.
 - XLSX import and Gentor website/API adapter remain future work after the
-  internal schema/report are useful. Next PvP step is UI/import flow or deck
-  validation, not another source search.
+  internal schema/report are useful. Current PvP priorities live in
+  `PVP_UI_ROADMAP.md`.
 - Deck builder should evaluate total cost, tier constraints, invalid choices,
   and why a deck is invalid.
-- Lobby/networking stages should be realistic:
-  - local/hotseat lobby;
+- The accepted online direction is relay-first; its sequence and initial roles
+  live in `PVP_V0_CONTRACT.md`. Optional connectivity research, not an active
+  implementation order:
   - LAN/direct IP or manual connection;
   - import/export lobby state fallback;
   - investigate P2P with connection code;
   - investigate STUN/signaling/relay;
-  - optional user-hosted relay or future server only if resources/donations
-    justify it.
+  - optional user-hosted relay.
 - Do not promise fully reliable serverless P2P; NAT, CG-NAT, firewalls,
   routers, and provider restrictions can break direct connections.
 - PvP roles: player 1, player 2, spectator, moderator/judge, host.

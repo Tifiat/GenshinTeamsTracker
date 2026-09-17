@@ -38,3 +38,4 @@ assets/hd/weapons/
 /.codex_tmp/
 /native/gcsim_optimizer/gtt-optimizer.exe
 /gtt-wave-scenario.json
+/app-shell-*.png

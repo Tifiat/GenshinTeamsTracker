@@ -936,10 +936,9 @@ class SourceParameterBinding:
             _trimmed(self.stat_key, "candidate parameter stat_key")
             if self.read_mode is ValueReadMode.CONSTANT:
                 raise TraceContractError("candidate stat parameter cannot be constant")
-            if not self.candidate_dependency_complete:
-                raise TraceContractError(
-                    "candidate stat parameter dependency must be complete"
-                )
+            # An owned stat read may have a known artifact response while its
+            # external modifier ancestry remains frozen. Keep that explicit
+            # flag; a partial read is not an unbound/malformed coordinate.
         elif self.kind is SourceParameterKind.FROZEN_SOURCE_VALUE:
             if any(value is not None for value in (self.actor_index, self.actor_key, self.stat_key)):
                 raise TraceContractError(
@@ -1415,6 +1414,10 @@ def evaluate_source_value_binding(
         value = parameter.observed_value
         if parameter.kind is SourceParameterKind.CANDIDATE_STAT:
             assert parameter.actor_key is not None and parameter.stat_key is not None
+            if not parameter.candidate_dependency_complete:
+                uncertainties.add(
+                    f"candidate_stat_external_dependencies_unresolved:{parameter.parameter_key}"
+                )
             coordinate = (parameter.actor_key, parameter.stat_key)
             if coordinate in normalized:
                 value = normalized[coordinate]

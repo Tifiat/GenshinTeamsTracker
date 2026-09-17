@@ -3,10 +3,50 @@
 Scope: authoritative product and architecture contract for the AppShell
 History Browser.
 
-The visual MVP is implemented: History has local Abyss/DPS Dummy/PvP modes in
-the right header, a compact period navigator/enemy preview, visual saved-run
-rows, and an isolated shared read-only Run presentation for selected snapshots.
-Normal browsing has no Refresh command or always-visible PNG preview.
+<!-- handoff-current: history-browser -->
+Reviewed 2026-09-17: the user likes v6 compact and approved v7's portrait-based
+team identity. Splash-art download research was explicitly cancelled: do not
+implement or queue it. History now uses side icons for character slots and a
+front portrait of the first occupied slot for the team picture. The comparison
+setting and its AppShell signal were removed; obsolete saved values are ignored.
+
+V7 expansion replaces the wide team header with a left identity panel, large
+bonuses and a team timer aligned beside the three room results. Character/stat
+columns are denser; the overall header/total stays dominant. The saved
+444-second run is 666px tall at width 1220 (previously 770), 706px at 864;
+below 800, two columns preserve readability (1186px at 720). PNG is 1600x888.
+Compact geometry remains 120/180/220px at 1220/864/720, with whole-run zebra,
+one total column and no DPS. Expanded/export/right-panel DPS remain.
+The final header moves the bare total left and centers `Abyss · 12` above a
+14px month range (`9.2026–10.2026`), without the save timestamp. It never invents
+a missing/invalid period end; the old fixture displays `8.2026`.
+
+Side icons reuse ArtifactCardDelegate's untrimmed calibrated canvas and shared
+owner-badge face ratio. A common bottom anchor allows hats above the text/card
+edge instead of shrinking faces individually. Bonus variants use alpha >64
+bounds to exclude faint Pyro glow from sizing; 30px compact/32px expanded cells
+now scale visible content consistently. Source files remain unchanged.
+
+Artwork hover offers upload/reset; an export-bar menu provides keyboard access.
+The override belongs only to this saved record/team and survives restart/source
+removal. It is stored under `data/history/presentation`, never in immutable
+snapshot JSON; export includes it without hover controls. See the stable
+presentation-asset boundary below.
+
+All 19 focused automated checks passed (ten cards, four AppShell, five HiDPI).
+The subsequent header-only edit passed render and month-range edge checks.
+Native verification reached the real History compact list, then was stopped
+because the app was being used concurrently. The user explicitly postponed
+upload/reset/export/restart checks. They remain unverified through the real UI;
+automated tests and rendered PNG are not substitutes. Details and resume steps
+are in the [v7 evidence](../design/history/README.md). Next: review the final v7 corrections
+in [TODO](../../TODO.md). No full locale/monitor matrix, real DPS Dummy save,
+or frontend migration is implied.
+
+One pre-contract 2026-06-13 bundle is v1, rejected by the existing v2 reader;
+the top unreadable-snapshot count remains visible and the file was preserved.
+Normal browsing has no permanent PNG preview and generates no PNG on selection.
+<!-- /handoff-current -->
 
 ## Ownership And Boundaries
 
@@ -21,7 +61,10 @@ Normal browsing has no Refresh command or always-visible PNG preview.
 - Opening History automatically reloads the configured immutable snapshot root without
   resetting or rebuilding the live Abyss/DPS Dummy/PvP session.
 - History never reads current account equipment, Artifact Browser presets,
-  account/profile data, DBs, settings, or network state to render a saved run.
+  account/profile data, DBs or network state to reconstruct saved run facts.
+  Character slots use bundle-local side icons, falling back to portraits only
+  when absent. Team art uses the first occupied slot's front portrait. There
+  is no longer a user-facing Profile/Portrait comparison setting.
 - The Abyss period navigator may read production Floor 12 source-data caches
   for its period catalog and enemy preview only. A selected saved-run row and
   its right panel use only frozen snapshot fields and bundle-local assets.
@@ -96,15 +139,68 @@ teams, selection, timers, results, and settings unchanged.
   count. Invalid/too-short end dates are omitted rather than inferred.
 - Cache data is preferred for this period preview; latest snapshot enemy data
   is the fallback. Saved-run rows never borrow cache/account assets.
-- Each saved-run row is a compact visual double-team row with character
-  portraits, weapon icons, artifact set/build indicators, and all three chamber
-  result blocks.
-- Each chamber block shows saved time plus factual DPS and sim DPS when present.
+- Each compact row has two dense team strips, four characters horizontally per team
+  at normal panel width (two columns below 680 design pixels),
+  weapon/refinement and set/count icons, main-stat shorthand, team bonuses,
+  completion seconds and all three chamber result blocks.
+- Compact scale is a height budget, not a scaled-down expanded report: at the
+  864px reference viewport, target <=180px for an ordinary two-team run. A head
+  occupies essentially the full 44px character strip; adjacent equipment is
+  slightly smaller and C stays beside the name. At sufficient width, reclaim
+  horizontal gaps for right-hand timers (ordinary run <=140px tall
+  at 1220px). The narrower fallback uses a separate results strip. Extra height
+  is reserved for genuinely narrower content or additional set information.
+  Title/date are expanded/export-only; the period navigator already owns them.
+- Compact adjacent runs alternate background brightness, not the two teams
+  inside one run. A shared total-time column visually binds the whole record.
+  Order team name, large bonuses, team time; put chamber times in one line.
+  Overall total is the strongest time accent, then team time, then chamber time.
+- Compact cards omit all factual/simulated DPS by explicit user decision.
+  Expanded chamber blocks and PNG show saved time plus both DPS types when
+  present; the frozen data and shared right-panel fields are unchanged.
+- Row click (also Enter/Space) expands inline and loads the same snapshot on the
+  right; repeating it collapses the card without clearing right selection.
+  Opening a different row collapses the previous one. There is no expand arrow.
+- Expansion replaces the compact composition inside the same widget; never
+  append a second export report or duplicate character headers below it.
+  On-screen layout uses readable font floors and maps painted hit regions back
+  to widget coordinates when compensating sub-1 DPR. Expanded chamber results
+  sit below the character grid; compact results use the width-dependent layout
+  above, intentionally omitting DPS.
+  Export scaling is separate from screen
+  layout; PNG still shares the expanded painter and frozen data.
+- The expanded composition stacks two teams. Each has a left identity/art panel
+  with large bonuses and a team timer aligned beside room results, plus four character columns
+  with level/C, weapon/R, sets, shorthand and overall stats, followed by a
+  separate three-chamber band with frozen enemies/counts, seconds and DPS.
+  It intentionally omits individual artifact pieces and precise timer editors.
+  The report header centers the mode/floor and month-year period, with the
+  unlabeled total at top left. It does not mix save date with the Abyss period;
+  invalid/short ends are omitted, and no missing date is inferred.
+- Side icons preserve the calibrated full canvas like ArtifactCardDelegate:
+  the shared owner-badge size ratio defines a common face scale, with one
+  bottom anchor and top overhang for hats. Never trim each side silhouette to
+  fit independently; that reintroduces unequal heads. Front portraits/art may
+  trim transparent margins and use a rounded cover crop. Bonus content uses
+  alpha >64 bounds, ignoring faint glow, in both compact and expanded views.
+  Loader cache keys include the threshold. These are prepared variants, never
+  mutations of bundle files; no decoding or alpha scan occurs during painting.
+- Soft team/element gradients, visible section/card borders, alternating stat
+  rows and numeric separators distinguish the hierarchy. Overall total, team
+  totals and room times lead; name/C sit above the smaller equipment beside
+  the taller head. Two-set builds and enemy
+  overflow reserve extra height; absent saved stats remain empty.
+- Character hover uses a custom, non-activating, screen-clamped popup with
+  weapon/character levels, C/R, frozen stats and sets over an element gradient.
+  All card popups use the visible hover point through the opt-in shared
+  `anchored_tooltip_rect` boundary; never anchor enemies to the whole card.
+  Other `CustomTooltipPopup` callers keep their existing default placement.
+  Scroll, collapse, hide, resize and export dismiss pending/visible popups.
 
 ### DPS Dummy
 
-- Each saved-run row shows one visual team, target/setup summary, duration/time,
-  factual DPS, and sim DPS when present.
+- Each saved-run row shows one visual team, target/setup summary and duration.
+  Factual/simulated DPS appear in expansion/export, not compact mode.
 
 Rows use frozen display data and copied bundle assets. Missing optional result
 values use clear unavailable/not-run states, not raw ids, paths, or debug keys.
@@ -136,14 +232,39 @@ validating the new contract.
 
 ## Export
 
+### Per-record presentation assets
+
+`run_workspace/history_artwork.py` owns optional user artwork separately from
+immutable domain facts. The key hashes resolved bundle path plus bundle id;
+each team has an atomically replaced PNG under
+`data/history/presentation/<key>/team-<index>.png`. Moving the bundle changes
+the decoration identity; portability/profile export of these overrides is not
+implemented. No DB/account/network lookup occurs while browsing History.
+
+`HistoryRunRowWidget` opens the local file dialog, validates PNG/JPEG/WebP
+(32 MiB, 24 million pixels), applies EXIF orientation, bounds the long edge to
+1600px and persists its own PNG copy. Cancelling or invalid input leaves the
+previous image intact. Reset deletes only that team's override. Hover clicks
+upload/reset without collapsing or reselecting the card; the keyboard menu
+provides the same commands. Only left-card/export decoration changes; the
+frozen right Run and live session remain read-only/unaffected.
+
 - A permanent selected-run PNG preview is not part of normal History browsing.
-- The current text-first `history_snapshot_preview.py` renderer is transitional
-  and must not define the final History/export visual language.
-- A future explicit Preview/Export/Share flow should render PNG from the same
-  shared RunCard/TeamCard presentation used by Run and History.
+- Expanded cards expose Save PNG with a native destination dialog. Export uses
+  the same expanded painter, side icons and per-record team artwork, with no
+  interaction chrome. Width is 1600px; height fits saved stats/enemy rows.
+- `ui/right_panel/common/history_card.py` owns shared painting and custom hover;
+  `run_workspace/history_browser_catalog.py` adapts frozen data/assets;
+  `run_workspace/history_presentation.py` owns shared
+  saved-build shorthand. Pixmaps are prepared outside paint/hover via the
+  shared HiDPI path; selection does not generate an image or rebuild every row.
+- The old text-first `history_snapshot_preview.py` remains a transitional
+  utility and is not used by this browser/export path.
+- Dedicated Preview/Share commands remain later work; inline expansion and
+  explicit PNG save are already implemented.
 - Structured XLSX/data export remains a later feature.
 
-## Current State And Next Stage
+## Implemented Baseline And Remaining Scope
 
 Snapshot Bundle v2 and production Save capture frozen display details for every
 occupied slot and materialize declared visible assets inside the bundle without
@@ -152,7 +273,12 @@ the snapshot-to-shared-right-panel adapter, isolated read-only Run panel, first
 occupied slot selection, frozen slot navigation, disabled timers/state changes,
 hidden commands, and removal of the permanent PNG area are implemented.
 
-The compact left-browser MVP is implemented with reusable summary components.
-Future work is visual polish from manual smoke, fuller DPS Dummy input capture,
-real PvP History, filters/sorting beyond newest-first, and an explicit shared
-presentation-based export flow.
+The v7 composition and saved-build formatting repair are implemented. The user
+approved compact density and the portrait-based identity direction; final v7
+corrections still need review. The rejected first pass,
+v2, one-team study and oversized v3 compact report are historical references.
+V7 visual review, fuller DPS Dummy
+input capture, real PvP History, filters/sorting beyond newest-first and further
+Preview/Share/data-export features remain open in TODO. Original concept and
+actual app samples are distinct, linked references; neither implies acceptance
+of untested data/layouts.

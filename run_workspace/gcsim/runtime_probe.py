@@ -288,7 +288,9 @@ def _go_sandbox_env(go_root: Path) -> dict[str, str]:
     go_root.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
     env["GOMODCACHE"] = str(go_root / "pkg" / "mod")
-    env["GOCACHE"] = str(go_root / "build-cache")
+    # Managed research scopes own their compiler cache, including calls through
+    # this helper (which would otherwise override the runner's GOCACHE).
+    env["GOCACHE"] = env.get("GTT_MANAGED_GO_CACHE") or str(go_root / "build-cache")
     env["GOBIN"] = str(go_root / "bin")
     for key in ("GOMODCACHE", "GOCACHE", "GOBIN"):
         Path(env[key]).mkdir(parents=True, exist_ok=True)

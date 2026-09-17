@@ -2,7 +2,7 @@
 
 Planning date: 2026-06-04
 
-Status reviewed: 2026-09-07
+Status reviewed: 2026-09-16
 
 Scope: implementation-direction handoff for GTT-modified GCSIM engine integration. This is not a final Codex implementation task and not a rigid architecture freeze. It records the current product/engineering vector, open questions, and contracts that future Codex tasks must respect unless a later handoff explicitly supersedes them.
 
@@ -18,9 +18,26 @@ Related references:
 
 ## Current Authoritative Status
 
-Current engine: `gcsim-v2.45.0-compat-20260907`; pinned rollback:
-`gcsim-v2.45.0-gob11a-20260907`. The compatibility repair and its bounded
-acceptance are recorded in GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md.
+Current engine identity, pinned rollback, active patch, hashes, acceptance and
+immediate optimizer work are owned by
+[GCSIM_GOB11_GP3_CHECKPOINT.md](GCSIM_GOB11_GP3_CHECKPOINT.md).
+This document owns engine/update/Browser contracts, not a second optimizer
+status log.
+
+Typed AttackEvent numeric fields/getters are version-sensitive integration
+seams; arithmetic/conditions are read from source. New internal observations
+retain strict validation, and unsupported writes/operands retain diagnosed
+freezes. The earlier scalar/callback receipts are historical install checkpoints.
+The additive pilot extends the existing core/reactable calculation seams with
+scalar observation markers and optional capture plumbing. It does not copy
+reaction formulas into the consumer: nested source recipes reuse its arithmetic
+compiler. Source tests follow changed upstream coefficients. These named engine
+seams remain version-sensitive and must pass apply/build/semantic gates after
+an update; unsupported source expressions remain local freezes, not guaranteed
+future coverage. The internal live field ledger includes non-callback writes.
+The needless upstream reaction-to-lunar comment change was removed. No new
+gameplay mechanics were added. Earlier compatibility acceptance remains
+recorded in GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md.
 Full cross-team reaction coverage and pre-MVP patch cleanup remain open.
 
 The functional backend for the current selected-team Abyss Browser path is
@@ -66,7 +83,7 @@ resolution, and the enemy registry/Snap fallback pipeline. Coverage reports
 should find real exceptions and upstream gaps; they are not a requirement to
 hand-curate every automatically resolvable entity into one global mapping file.
 
-Status-review verification on 2026-07-17:
+Historical verification on 2026-07-17 (not rerun in this reconciliation):
 
 - all 233 `tests/run_workspace/gcsim/` tests passed;
 - all 18 `tests/ui/gcsim_browser/` worker/report tests passed;
@@ -78,7 +95,8 @@ Status-review verification on 2026-07-17:
   current active-registry/upstream gaps unless a concrete identity bug proves
   otherwise.
 
-Concurrent work boundary: PvP UI work is active in parallel. Do not refactor
+Shared ownership boundary (not a claim that another task is currently running):
+coordinate PvP/AppShell changes. Do not refactor
 `ui/app_shell.py` or introduce scoped PvP GCSIM as part of the normal GCSIM UI
 pass. Until the later AppShell refactor, keep GCSIM work inside the existing
 hooks and prefer `ui/gcsim_browser/`, `ui/right_panel/live_run/gcsim/`, and
@@ -93,19 +111,19 @@ Do not grow a second optimizer roadmap here.
 
 ### Product boundary
 
-Accepted user modes are:
+Product scopes are:
 
-1. Selected Sets: account search under editable concrete set packages;
+1. Selected Sets: account search preserving currently equipped4p or2+2 packages;
 2. All Sets: account search across every feasible modeled concrete set in the
    frozen shared artifact database;
 3. Theory: inventory-independent equal-investment set comparison, fixed `4p`
    before `2p+2p`.
 
-The ready source config may prefill Selected Sets UI controls but never supplies
-an optimizer baseline or accepted candidate. For either account scope,
-`include_2p2p` adds complete distinct-set pairs. Theoretical `4p`/`2p+2p` shape
-is an explicit operation. FAST is the sole working search evaluator; STANDARD
-remains a development control and is not a user-facing speed mode.
+Selected derives its baseline and required set tiers from current equipment,
+then verifies they match the prepared config. It does not have a separate set
+picker. Future All Sets/package controls (including optional2+2 scope) and Theory
+remain design work, not implemented switches. FAST is the working search
+evaluator; no legacy Python strategy or STANDARD user speed mode is restored.
 
 Underlying theoretical `4p`, theoretical `2p+2p`, and account operations may
 retain separate typed/cache identities.
@@ -122,9 +140,9 @@ The optimizer reuses:
 
 For every candidate, all four source artifact stat/set blocks are replaced.
 Every character, weapon, talent, option, rotation, target, and engine semantic
-stays frozen. Source set lines may prefill selected-set controls, but source
-artifact rows never become privileged proposals or hidden account-domain
-filters.
+stays frozen. Selected preserves observed set-effect initialization order and
+required bonus tiers. Current equipment is a comparison/candidate seed, not an
+exclusive filter over the account's available artifact rows.
 
 The frozen Python evidence was observed from concrete incumbent artifact
 states. A second seed changed hit/reaction topology, proving that one full trace
@@ -134,8 +152,9 @@ the bounded stochastic panel natively in Go. The incumbent-delta Python form is
 a parity oracle only; artifact stats and set state are explicit Go candidate
 variables over the frozen non-artifact context.
 
-The optimizer does not query current-equipment, owner, preset, History, lock, or
-location state. Preset services are relevant only to a later explicit save UI.
+Selected preparation reads current equipment to establish its legal seed and
+chosen packages. Presets/History are not search-domain filters; the existing
+explicit result Save action reuses preset services and does not auto-equip.
 
 The account artifact domain is every `artifacts` row and matching
 `artifact_substats`, frozen from a true read-only SQLite transaction.
@@ -318,12 +337,23 @@ The app-level `Update GCSIM` action should be transactional:
 
 Implemented official-update gate: source-only/development probes and
 `--prepare-only` never activate or prune installed engines. Activation of a
-built engine requires the complete source/trace/compact/wave capability bundle,
+built engine requires the complete source/trace/compact/wave/effect-input capability bundle,
 matching artifact catalog, independent ordinary/compact DPS agreement, actual
 standalone-consumer validation and a two-wave smoke. Engine/consumer bytes are
 checked for stability during validation. The required bundle is currently
 atomic; optional patch groups remain future work. Explicit low-level manual
 activation is separate from this official-update workflow.
+
+All Sets requires `gtt_effect_inputs_v1`. Installed source verification excludes
+only generated build material and the exact root `gtt_engine_manifest.json`
+written after compilation; module/source changes remain identity failures.
+The2026-09-17 clean install exposed CRLF-only differences from its research tree:
+the exact hashes were retained, semantic source equivalence was checked and the
+new executable received separate bundle/winner controls. This does not relax
+ordinary updater hash validation. Generated absolute build overlays also need
+rebasing after staging is moved; the current installation did this explicitly.
+Normal updater relocation remains in the pre-MVP safety TODO, not a claimed
+generic repair. Current identities and acceptance live in GP-3.
 
 `active_engine.json` records `rollback_engine_id` as well as `active_engine_id`.
 Retention always protects that pin, not merely the newest directory. Legacy
@@ -651,6 +681,26 @@ The UI should label this separately from factual timer values and carry engine/s
 
 ## 6. Key Mapping
 
+### Deferred update-path/UI audit (user decision2026-09-17)
+
+The updater must be reviewed end-to-end through application consumers, not just
+patch/build success. Cover import character/weapon resolution, persisted mapping
+refresh/invalidation after an engine change WITHOUT requiring reimport, active
+artifact/enemy registry paths, selected-team snapshots, prepared normal/optimizer
+configs, source caches, UI readiness, rollback and restart. Include newly added
+entities and generated registry filename/layout changes in regression scenarios.
+The Jahoda incident used old2.42.2 import registries while2.45 supported her;
+the current narrow fix is not evidence that all other paths are aligned.
+Artifact/enemy report/preparation defaults also need explicit audit rather than
+assuming they follow the corrected account resolver.
+
+Settings/GCSIM should later display the actual active release and local modified
+build identity. A future picker may offer already retained compatible patched/
+built installations through the existing bounded store and activation/rollback
+gate; merely downloaded/unvalidated sources must not be shown as ready engines.
+These are documented future tasks, not UI changes authorized in this repair.
+TODO owns scheduling; no second independent engine selection setting.
+
 Key mapping is a separate required task before reliable config/scenario generation.
 
 Contracts:
@@ -726,7 +776,7 @@ Manual smoke checklist for the current backend-MVP:
 
 ## 8. Talent Levels
 
-Current GCSIM v2.42.2 validates config talent levels as parser/base values in the inclusive range `1..10` (`pkg/core/player/character/character.go`). Account/HoYoLAB observed talent rows may include constellation-boosted displayed levels above 10, so displayed levels are not GCSIM-ready.
+The original GCSIM v2.42.2 source inspection established the base-talent contract: it validates config talent levels as parser/base values in the inclusive range `1..10` (`pkg/core/player/character/character.go`). Account/HoYoLAB observed talent rows may include constellation-boosted displayed levels above 10, so displayed levels are not GCSIM-ready.
 
 Pure helper `run_workspace/gcsim/config_talents.py` now prepares parser-safe levels before config output. It consumes the three active `skill_type=1` talents plus active constellation rows, considers only active C3/C5 (`pos in 3,5` and `is_actived=true`), extracts text inside HoYoLAB `<color=...>...</color>` markup, normalizes both colored references and talent names, and subtracts the +3 bonus only when a colored reference matches exactly one active talent. Unresolved active C3/C5 rows warn with `constellation_talent_bonus_not_resolved`; any level that remains above 10 after normalization is capped with `post_normalization_talent_level_capped_to_gcsim_range`. GCSIM output must never receive a talent level above 10, and unresolved/special cases are not silently treated as exact.
 

@@ -232,6 +232,23 @@ class SourceDependenciesV4Tests(unittest.TestCase):
         self.assertIsNotNone(furina_entry)
         self.assertEqual(furina_entry.template.status, SourceSliceStatus.SUPPORTED)
 
+    def test_partial_owned_stat_keeps_formula_and_reports_external_boundary(self) -> None:
+        request, raw, binding, _ = _fixture()
+        parameter = raw["source_value_bindings"][1]["parameters"][1]
+        parameter["candidate_dependency_complete"] = False
+        evidence = decode_engine_trace_v4(
+            canonical_json(raw), request=request, source_manifest_binding=binding,
+        )
+        for inputs, expected in (({}, 1100.0), ({("furina", "max_hp"): 22000.0}, 2200.0)):
+            result = evaluate_source_value_binding(evidence, "source-binding:1:0", inputs)
+            self.assertAlmostEqual(result.candidate_value, expected)
+            self.assertIn("candidate_stat_external_dependencies_unresolved:p1", result.uncertainty_codes)
+            self.assertFalse(result.authoritative)
+            self.assertFalse(result.hard_prune_allowed)
+        parameter["actor_index"] = None
+        with self.assertRaises(TraceContractError):
+            decode_engine_trace_v4(canonical_json(raw), request=request, source_manifest_binding=binding)
+
     def test_v4_rejects_source_and_runtime_binding_tampering(self) -> None:
         request, raw, binding, _ = _fixture()
         mutations = (

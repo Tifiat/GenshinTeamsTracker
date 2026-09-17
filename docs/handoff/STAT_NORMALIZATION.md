@@ -24,7 +24,9 @@ Confirmed:
 
 - `CharacterDetailsData` and `CharacterStatSnapshot` can now carry character, weapon, and artifact-build contributions.
 - They intentionally do not compute final totals yet.
-- The next risky backend step is normalizing stat identifiers and numeric units before TeamCard, Character Details, and GCSIM config generation use the data.
+- The original next step, normalizing stat identifiers and units, is implemented.
+  `run_workspace/display_stats.py` separately computes selected-build display
+  rows; the pure contribution/normalization layers intentionally do not own them.
 - Current artifact summaries use HoYoLAB/Artiscan `property_type` integers and `raw_value` numbers in display percent points. Example: `46.6%` becomes `46.6`.
 - GCSIM config `add stats` expects percent-like stats as decimal ratios. Example: `46.6%` should become `0.466`.
 
@@ -253,7 +255,7 @@ Risk:
 
 ## 7. Final Stat Calculator Boundary
 
-Confirmed current boundary:
+Pure snapshot-layer boundary (distinct from the display calculator):
 
 - `CharacterStatSnapshot` is a contribution/snapshot container, not a final calculator.
 - Character base contribution includes base HP/ATK/DEF and ascension bonus separately.
@@ -264,11 +266,12 @@ Confirmed current boundary:
 - Conditional bonuses are not applied.
 - Resonance formulas are not applied.
 
-MVP recommendation:
-
-- First normalize numeric values and keys.
-- Then build a conservative partial-total calculator that can report exactly what was included/excluded.
-- Only calculate final-looking HP/ATK/DEF/CR/CD/ER/EM when inputs are unambiguous and included sources are clearly labeled.
+Normalization and the separate selected-build display calculator are implemented.
+`run_workspace/display_stats.py::build_character_display_stats` combines explicit
+base/reference and selected equipment sources. Direct static equipment effects
+and modeled team bonuses use the shared display/source layer; they are not
+implicitly applied inside `CharacterStatSnapshot`. Preserve source explanations
+and keep conditional combat/talent effects outside ordinary display totals.
 
 ## 8. GCSIM Config Generator Boundary
 

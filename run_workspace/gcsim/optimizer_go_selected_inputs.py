@@ -1,6 +1,6 @@
 """Narrow, production-owned input boundary for the Go Selected optimizer.
 
-This module intentionally contains only the current fixed-4p equipment snapshot,
+This module intentionally contains only the current fixed-set equipment snapshot,
 the config/equipment identity check, and the optimizer energy policy.  It must
 not import the historical Python search or trace-analysis packages.
 """
@@ -50,8 +50,7 @@ class GcsimOptimizerGoSelectedInputError(ValueError):
 class SelectedEquippedWearer:
     wearer: GcsimOptimizerWearerIdentity
     assignment: GcsimOptimizerWearerArtifactAssignment
-    target_set_uid: str
-    target_set_count: int
+    target_sets: tuple[tuple[str, int], ...]
     set_counts: tuple[tuple[str, int], ...]
 
     def __post_init__(self) -> None:
@@ -63,17 +62,12 @@ class SelectedEquippedWearer:
             raise GcsimOptimizerGoSelectedInputError(
                 "selected wearer/assignment mismatch"
             )
-        if not self.target_set_uid or self.target_set_uid.strip() != self.target_set_uid:
-            raise GcsimOptimizerGoSelectedInputError("selected target set is invalid")
-        if self.target_set_count not in (4, 5):
-            raise GcsimOptimizerGoSelectedInputError(
-                "selected target set count must be four or five"
-            )
         if (
             tuple(sorted(self.set_counts)) != self.set_counts
+            or len(dict(self.set_counts)) != len(self.set_counts)
             or any(not uid or count <= 0 for uid, count in self.set_counts)
             or sum(count for _uid, count in self.set_counts) != 5
-            or dict(self.set_counts).get(self.target_set_uid) != self.target_set_count
+            or self.target_sets != selected_set_requirements(self.set_counts)
         ):
             raise GcsimOptimizerGoSelectedInputError(
                 "selected equipped set counts are invalid"
@@ -83,8 +77,7 @@ class SelectedEquippedWearer:
         return {
             "wearer": self.wearer.to_dict(),
             "assignment": self.assignment.to_dict(),
-            "target_set_uid": self.target_set_uid,
-            "target_set_count": self.target_set_count,
+            "target_sets": dict(self.target_sets),
             "set_counts": dict(self.set_counts),
         }
 
@@ -168,6 +161,21 @@ class SelectedBoundWearerInput:
     @property
     def artifact_ids(self) -> tuple[int, ...]:
         return tuple(value for _slot, value in self.artifact_ids_by_slot)
+
+
+def selected_set_requirements(counts: tuple[tuple[str, int], ...]) -> tuple[tuple[str, int], ...]:
+    """Keep equipped bonus tiers: one 4p or two distinct 2p, never infer a set."""
+    if (len(dict(counts)) != len(counts)
+            or any(not uid or uid.strip() != uid or count < 1 for uid, count in counts)
+            or sum(count for _, count in counts) > 5):
+        raise GcsimOptimizerGoSelectedInputError("invalid selected set counts")
+    four = tuple((uid, 4) for uid, count in counts if count >= 4)
+    if len(four) == 1:
+        return four
+    two = tuple(sorted((uid, 2) for uid, count in counts if count >= 2))
+    if len(two) == 2:
+        return two
+    raise GcsimOptimizerGoSelectedInputError("Selected requires one 4p set or two distinct 2p sets")
 
 
 def enforce_gcsim_optimizer_mvp_energy_policy(
@@ -296,18 +304,12 @@ def load_selected_equipped_team_snapshot(
                 "selected equipped artifact slot mismatch"
             )
         counts = Counter(artifact.set_uid for artifact in artifacts)
-        active_four_piece = sorted(uid for uid, count in counts.items() if count >= 4)
-        if len(active_four_piece) != 1:
-            raise GcsimOptimizerGoSelectedInputError(
-                f"selected actor {character_key!r} needs one active 4p set"
-            )
-        target_uid = active_four_piece[0]
+        targets = selected_set_requirements(tuple(sorted(counts.items())))
         wearers.append(
             SelectedEquippedWearer(
                 wearer=wearer,
                 assignment=assignment,
-                target_set_uid=target_uid,
-                target_set_count=counts[target_uid],
+                target_sets=targets,
                 set_counts=tuple(sorted(counts.items())),
             )
         )

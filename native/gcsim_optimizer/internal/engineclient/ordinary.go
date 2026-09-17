@@ -43,14 +43,22 @@ type ordinaryPayload struct {
 // verification stage. Call VerifyUnchanged after the stage; individual
 // candidates deliberately do not reread the executable.
 type BoundEngine struct {
-	binaryPath     string
-	artifactSHA256 string
+	binaryPath           string
+	artifactSHA256       string
+	sourceManifestSHA256 string
+	effectInputs         bool
 }
 
 func BindEngine(request contracts.OptimizerRequest) (BoundEngine, error) {
 	bound := BoundEngine{
-		binaryPath:     request.Engine.BinaryPath,
-		artifactSHA256: request.Engine.ArtifactSHA256,
+		binaryPath:           request.Engine.BinaryPath,
+		artifactSHA256:       request.Engine.ArtifactSHA256,
+		sourceManifestSHA256: request.Engine.SourceManifestSHA256,
+	}
+	for _, capability := range request.Engine.Capabilities {
+		if capability == contracts.EffectInputsCapability {
+			bound.effectInputs = true
+		}
 	}
 	if err := bound.VerifyUnchanged(); err != nil {
 		return BoundEngine{}, fmt.Errorf("verify bound engine before stage: %w", err)

@@ -1,0 +1,159 @@
+{
+  "schema_version": 1,
+  "status": "scalar_pilot_passed_generalization_incomplete",
+  "date": "2026-09-09",
+  "engine_id": "gcsim-v2.45.0-gob11-scalar-20260909",
+  "rollback_engine_id": "gcsim-v2.45.0-gob11-boundary-20260908",
+  "engine_sha256": "e92696e37df1bc1ba3e3b2fe72084bdde32d88ddd8a72dd486534b14735a9251",
+  "patch_sha256": "df987971534813c3c30e4d7918b452bc851bc1bb56a1d981f3b2d2dbc9d5f6d7",
+  "patch_entries": 101,
+  "recipe_abi": "gtt_numeric_recipe_v1",
+  "wire_schema_unchanged": true,
+  "isolated_build": {
+    "success": true,
+    "activated": true,
+    "engine_id": "gcsim-v2.45.0-gob11-scalar-20260909",
+    "artifact_sha256": "e92696e37df1bc1ba3e3b2fe72084bdde32d88ddd8a72dd486534b14735a9251",
+    "application_compatibility_status": "passed",
+    "error": "",
+    "seconds": 90.17199999999957
+  },
+  "production_build": {
+    "success": true,
+    "activated": true,
+    "engine_id": "gcsim-v2.45.0-gob11-scalar-20260909",
+    "artifact_sha256": "e92696e37df1bc1ba3e3b2fe72084bdde32d88ddd8a72dd486534b14735a9251",
+    "application_compatibility_status": "passed",
+    "error": "",
+    "seconds": 67.46900000000005
+  },
+  "captures": [
+    {
+      "case": "flins_1",
+      "seconds": 2.1400000000003274,
+      "channels": 509,
+      "dps": 149533.87600633712,
+      "frozen_share": 0.2526237447680465,
+      "max_baseline_hit_error": 2.9103830456733704e-11,
+      "baseline_matches": true
+    },
+    {
+      "case": "flins_2",
+      "seconds": 1.9219999999995707,
+      "channels": 497,
+      "dps": 157056.150742581,
+      "frozen_share": 0.258418801139091,
+      "max_baseline_hit_error": 2.9103830456733704e-11,
+      "baseline_matches": true
+    },
+    {
+      "case": "bloom",
+      "seconds": 2.3590000000003783,
+      "channels": 543,
+      "dps": 110800.22276952828,
+      "frozen_share": 0.1818813651911839,
+      "max_baseline_hit_error": 0.0,
+      "baseline_matches": true
+    },
+    {
+      "case": "chasca",
+      "seconds": 1.7029999999995198,
+      "channels": 383,
+      "dps": 146804.75210250367,
+      "frozen_share": 0.0,
+      "channels_identical": true
+    },
+    {
+      "case": "chasca",
+      "seconds": 1.6869999999998981,
+      "channels": 372,
+      "dps": 141937.51118001807,
+      "frozen_share": 0.0,
+      "channels_identical": true
+    }
+  ],
+  "stat_response_subsets": [
+    {
+      "amount": 187,
+      "coordinate": "flins.em",
+      "engine_damage": 6779506.025477183,
+      "engine_delta": 331524.4671053253,
+      "formula_damage": 6779506.025477183,
+      "hits": 30,
+      "original_damage": 6447981.558371858,
+      "predicted_delta": 331524.4671053253,
+      "relative_error": 0
+    },
+    {
+      "amount": 0.466,
+      "coordinate": "flins.atk_percent",
+      "engine_damage": 7961557.562668468,
+      "engine_delta": 1513576.0042966101,
+      "formula_damage": 7961557.562668467,
+      "hits": 30,
+      "original_damage": 6447981.558371858,
+      "predicted_delta": 1513576.0042966092,
+      "relative_error": 1.1697743403657914e-16
+    },
+    {
+      "amount": 0.1,
+      "coordinate": "flins.crit_rate",
+      "engine_damage": 6697074.5148501275,
+      "engine_delta": 249092.95647826977,
+      "formula_damage": 6697074.5148501275,
+      "hits": 30,
+      "original_damage": 6447981.558371858,
+      "predicted_delta": 249092.95647826977,
+      "relative_error": 0
+    },
+    {
+      "amount": 0.466,
+      "coordinate": "flins.electro_damage_bonus",
+      "engine_damage": 6447981.558371858,
+      "engine_delta": 0,
+      "formula_damage": 6447981.558371858,
+      "hits": 30,
+      "original_damage": 6447981.558371858,
+      "predicted_delta": 0,
+      "relative_error": 0
+    },
+    {
+      "amount": 0.2,
+      "coordinate": "columbina.hp_percent",
+      "engine_damage": 4723724.257842875,
+      "engine_delta": 181064.6015943205,
+      "formula_damage": 4714967.899461273,
+      "hits": 174,
+      "original_damage": 4542659.656248555,
+      "predicted_delta": 172308.24321271852,
+      "relative_error": 0.0018536980364727387
+    },
+    {
+      "amount": 187,
+      "coordinate": "columbina.em",
+      "engine_damage": 4680042.176259275,
+      "engine_delta": 137382.52001072,
+      "formula_damage": 4680042.176259275,
+      "hits": 174,
+      "original_damage": 4542659.656248555,
+      "predicted_delta": 137382.52001072,
+      "relative_error": 0
+    }
+  ],
+  "checks": [
+    "engine sourcegen/compact/optimization Go packages passed",
+    "native formula/contracts Go packages passed, including portable candidate-engine observations",
+    "six Python engine compatibility tests passed",
+    "clean isolated and production application bundle gates passed",
+    "both Chasca channel arrays unchanged"
+  ],
+  "portable_samples": "tests/fixtures/gcsim_optimizer_go_v1/gob11_numeric_response_samples_v1.json",
+  "limitations": [
+    "Not a whole-team dependency pass or full Selected search",
+    "Cloud contributor group and post-producer callback composition remain unresolved",
+    "Columbina HP subset response has 0.18537% damage residual; not accepted as fully modeled",
+    "No dedicated Stellar-team validation; shared upstream branch only",
+    "General live Stat/helper/foreign snapshot discovery remains pending",
+    "No live equipment, source note or Chasca rotation edits"
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-17",
+  "owner": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
+  "status": "bounded_joint_context_and_winner_response_pass_not_ordinary_DPS_or_UI_acceptance",
+  "fixture": "copied_bloom_account_Selected2plus2_original_equipment_and_two_fixed_seeds",
+  "engine_sha256": "a15faaa4181173d3ad808d2825f0dd56d99b92c4b58a6a3b7ce5442892d7fa62",
+  "source_manifest_sha256": "3176efa51c7ea5ed44df1f82658299c0a98522afb7a01fa2fdbf10bebce53f82",
+  "source_sets": 42,
+  "offline_guide": {
+    "source_verification_seconds": 7.4966212,
+    "source_discovery_seconds": 0.0893126,
+    "one_seed_guide_seconds": 3.1926365,
+    "one_seed_refresh_seconds": 3.1603144,
+    "source_features": 728,
+    "unresolved_source_features": 345,
+    "features_are_not_hit_or_damage_coverage": true,
+    "joint_proposals": 6,
+    "joint_seeds": 6,
+    "joint_raw_evaluations": 9,
+    "joint_proposal_seconds": 0.340206,
+    "new_engine_calls": 0
+  },
+  "joint_capture": {
+    "new_n1_calls": 5,
+    "ordinary_calls": 0,
+    "selected_formula_dps": 128740.32785887273,
+    "joint_formula_dps": [135176.80329544138, 137087.8547988775],
+    "selected_search_seconds": 34.0670415,
+    "baseline_capture_ms": 4878.0019,
+    "two_seed_guide_seconds": 5.2101851,
+    "two_joint_capture_and_refinement_seconds": 100.9308755,
+    "total_seconds": 146.9357161,
+    "search_config_equal_for_selected_and_joint": true,
+    "first_frontier_width": 32,
+    "recheck_frontier_width": 8,
+    "max_expanded_per_actor": 20000,
+    "max_cycles": 2,
+    "finalist_limit": 8,
+    "pair_finalist_limit": 24
+  },
+  "winner_response": {
+    "new_n1_calls": 2,
+    "formula_dps": 137087.8547988775,
+    "fresh_expected_dps": 137087.85479887752,
+    "relative_residual": 2.1230057541882264e-16,
+    "ordinary_measurement": false,
+    "initial_harness_validation_failure_spent_engine_calls": 0
+  },
+  "new_calls_this_receipt": 7,
+  "effect_queue_consolidation_joint_stage_calls": 31,
+  "limits": [
+    "two joint contexts only, not global search or an optimum guarantee",
+    "source alternatives and shared keys guide proposals but do not prove activation or reuse",
+    "two-seed conditional expectation is not a large ordinary simulation panel",
+    "no installed engine, patch, database, equipment, energy setting or UI changed"
+  ],
+  "reproducers": [
+    "tools/experiments/gcsim/all_sets_preflight/refresh_guide.py",
+    "tools/experiments/gcsim/all_sets_preflight/capture_transfers.py",
+    "tools/experiments/gcsim/all_sets_preflight/verify_transfer_winner.py"
+  ]
+}

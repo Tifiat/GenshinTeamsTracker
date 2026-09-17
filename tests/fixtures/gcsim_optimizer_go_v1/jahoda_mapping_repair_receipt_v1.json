@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-17",
+  "owner": "docs/handoff/GCSIM_GOB11_ROTATION_VALIDATION.md",
+  "status": "account_mapping_and_preparation_pass_real_UI_pending",
+  "cause": "account_import_resolver_used_pinned_v2.42.2_registry_instead_of_active_v2.45.0",
+  "bounded_repair_attempts": 2,
+  "first_attempt": "active_root_selected_but_legacy_registry_filenames_absent_no_DB_write_or_engine_call",
+  "repair": [
+    "default_import_resolver_reads_active_engine_generated_or_legacy_registry_layout_no_old_release_fallback",
+    "selected_team_snapshot_cannot_override_DB_owned_character_key_status_or_method",
+    "only_Jahoda_three_derived_mapping_fields_and_resolution_provenance_repaired_in_live_DB_with_row_backup"
+  ],
+  "before_ready": false,
+  "after_ready": true,
+  "full_config_ready": true,
+  "account_equipment_preserved": true,
+  "saved_rotations_and_settings_preserved": true,
+  "weapons": {
+    "flins": "bloodsoakedruins",
+    "columbina": "sacrificialjade",
+    "ineffa": "fracturedhalo",
+    "jahoda": "skywardharp"
+  },
+  "ordinary_debug_samples": 1,
+  "compact_calls": 0,
+  "optimizer_calls": 0,
+  "seed": "4419793716787603659",
+  "engine_sha256": "77a6bebd341eee23af5042754a5acb8db0e6663a657be7be2f54faa8061c2b5c",
+  "damage_counts": {"Filled Treasure Flask": 6, "Unfilled Treasure Flask": 0, "Meowball": 52},
+  "focused_unit_tests": 36,
+  "ui_verified": false,
+  "ui_blocker": "native_Windows_computer_use_tools_unavailable",
+  "limits": [
+    "real_account_preparation_and_one_execution_sample_not_optimizer_formula_or_DPS_acceptance",
+    "broader_engine_update_path_audit_stale_mapping_refresh_and_settings_version_UI_are_future_TODO_not_implemented_here"
+  ]
+}

@@ -33,6 +33,7 @@ class GcsimOptimizerUiTests(unittest.TestCase):
         self.assertTrue(workspace.optimizer_selected_button.isEnabled())
         self.assertFalse(workspace.optimizer_all_sets_button.isEnabled())
         self.assertFalse(workspace.optimizer_theory_button.isEnabled())
+        self.assertIn("2+2", workspace.optimizer_description.text())
 
     def test_selected_button_sends_current_team_and_rotation(self) -> None:
         workspace = GcsimBrowserWorkspace()
@@ -46,6 +47,24 @@ class GcsimOptimizerUiTests(unittest.TestCase):
         workspace.optimizer_selected_button.click()
 
         self.assertEqual(requests, [(1, "active furina;")])
+
+    def test_all_sets_gate_signal_and_busy_share_existing_result_surface(self) -> None:
+        workspace = GcsimBrowserWorkspace()
+        workspace.set_optimizer_all_sets_available(True)
+        workspace.rotation_editor.setPlainText("active furina;")
+        requests = []
+        workspace.optimizer_all_sets_requested.connect(lambda team, text: requests.append((team, text)))
+        workspace.optimizer_all_sets_button.click()
+        self.assertEqual(requests, [(0, "active furina;")])
+        self.assertEqual(workspace._optimizer_mode, "all_sets")
+        self.assertIn("10", workspace.optimizer_elapsed_label.text())
+        workspace.set_optimizer_busy(True)
+        self.assertFalse(workspace.optimizer_all_sets_button.isEnabled())
+        self.assertFalse(workspace.optimizer_selected_button.isEnabled())
+        workspace.set_optimizer_busy(False)
+        self.assertTrue(workspace.optimizer_all_sets_button.isEnabled())
+        workspace.set_optimizer_all_sets_available(False)
+        self.assertFalse(workspace.optimizer_all_sets_button.isEnabled())
 
     def test_optimizer_energy_switch_is_one_controllable_view(self) -> None:
         workspace = GcsimBrowserWorkspace()

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
+from run_workspace.history_presentation import history_build_stat_badge
 
 from run_workspace.abyss.source_data import AbyssFloorSourceData
 from run_workspace.abyss.source_data_cache import list_cached_abyss_floor_source_data
@@ -17,6 +18,7 @@ from run_workspace.history_snapshot import (
     HistorySnapshotBundle,
     HistorySnapshotBundleReadError,
     HistorySnapshotBundleStore,
+    HistoryStatRowSnapshot,
 )
 
 
@@ -39,12 +41,30 @@ class HistorySlotVisual:
     build_label: str = ""
     set_labels: tuple[str, ...] = ()
     set_icon_paths: tuple[str, ...] = ()
+    side_icon_path: str = ""
+    element: str = ""
+    weapon_level: int | None = None
+    stat_badge: str = ""
+    set_counts: tuple[int, ...] = ()
+    stat_rows: tuple[HistoryStatRowSnapshot, ...] = ()
+    bonuses: tuple[HistoryBonusVisual, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class HistoryBonusVisual:
+    identity: str
+    label: str = ""
+    icon_path: str = ""
+    tooltip: str = ""
+    applied: bool = True
+    source_kind: str = ""
 
 
 @dataclass(frozen=True, slots=True)
 class HistoryTeamVisual:
     team_index: int
     slots: tuple[HistorySlotVisual, ...] = ()
+    bonuses: tuple[HistoryBonusVisual, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,6 +92,7 @@ class HistoryRunVisual:
     factual_dps: float | None = None
     sim_dps: float | None = None
     warnings_count: int = 0
+    sides: tuple[HistorySideVisual, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -221,6 +242,7 @@ def _run_visual(bundle: HistorySnapshotBundle, path: Path) -> HistoryRunVisual:
         factual_dps=None if dummy is None else dummy.factual_dps,
         sim_dps=sim_values[0] if sim_values else None,
         warnings_count=len(_bundle_warnings(bundle)),
+        sides=_snapshot_sides(bundle, path),
     )
 
 
@@ -254,9 +276,29 @@ def _team_visual(team: Any, bundle_dir: Path) -> HistoryTeamVisual:
                 set_icon_paths=tuple(
                     _bundle_asset_path(bundle_dir, item.icon_ref) for item in bonuses
                 ),
+                side_icon_path=_bundle_asset_path(bundle_dir, "" if character is None else character.side_icon_ref),
+                element="" if character is None else character.element,
+                weapon_level=None if weapon is None else weapon.level,
+                stat_badge=history_build_stat_badge(build),
+                set_counts=tuple(item.piece_count for item in bonuses),
+                stat_rows=slot.stat_rows,
+                bonuses=tuple(
+                    HistoryBonusVisual(
+                        identity=f"{item.source_kind}:{item.source_id}",
+                        label=item.tooltip_title or item.label,
+                        icon_path=_bundle_asset_path(bundle_dir, item.icon_ref),
+                        tooltip="\n".join(filter(None, (item.tooltip_title or item.label,
+                            item.tooltip_body, *item.tooltip_effects, item.not_applied_reason))),
+                        applied=item.applied, source_kind=item.source_kind,
+                    ) for item in slot.bonus_sources
+                ),
             )
         )
-    return HistoryTeamVisual(team_index=team.team_index, slots=tuple(slots))
+    team_bonuses = {
+        item.identity: item for slot in slots for item in slot.bonuses
+        if item.source_kind not in {"artifact_set_static", "weapon_passive_static"}
+    }
+    return HistoryTeamVisual(team_index=team.team_index, slots=tuple(slots), bonuses=tuple(team_bonuses.values()))
 
 
 def _chamber_visual(

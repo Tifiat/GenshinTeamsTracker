@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "stage": "post_GOB11A_compatibility_repair",
+  "date": "2026-09-07",
+  "status": "pass_bounded_repair_not_cross_team_acceptance",
+  "upstream": {
+    "release": "v2.45.0",
+    "revision": "304c1d34ee53bf693fed540803a6b2abc24092da"
+  },
+  "installation": {
+    "active_engine_id": "gcsim-v2.45.0-compat-20260907",
+    "rollback_engine_id": "gcsim-v2.45.0-gob11a-20260907",
+    "rollback_and_restore_verified": true,
+    "production_matches_isolated_validated_binary": true,
+    "trusted_app_engine_context": true,
+    "artifact_sha256": "47e47cdcd6873e486548bcf5e0b166f82b107b9c71092ee137e2781a6e7fbaae",
+    "standalone_consumer_sha256": "acc700407129ff6f71e1e107f241af59f8ce4ddf48bd19c95321ef29ff4f3613",
+    "patch_path": "run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v245.patch",
+    "patch_sha256": "22f097feee2514c03a441536175d7352c516bc3deadca9cc9de09f1533e2a04b",
+    "source_manifest_body_sha256": "96cd34877825b93e296179c8007d5b6babcc2cfb8a4a7d91171276b72c2497c0",
+    "formula_registry": "gtt_trace_formula_v3",
+    "compact_schema_version": 1,
+    "application_compatibility_status": "passed",
+    "production_pruned": false
+  },
+  "successful_build_and_gate_seconds": {
+    "isolated": 85.419,
+    "production": 62.548,
+    "note": "Cached local build/update durations, not optimizer runtimes or first-install estimates."
+  },
+  "successful_acceptance_simulations": {
+    "isolated_bundle": 3,
+    "current_team_compact": 2,
+    "production_bundle": 3,
+    "note": "Only final passing acceptance. Additional earlier wave-gate diagnostic attempts are not included; this is not total-turn simulation count."
+  },
+  "current_team_seeds": [
+    {
+      "seed": "742031889",
+      "channels": 383,
+      "capture_seconds": 1.748,
+      "baseline_damage_equal": true,
+      "reaction_channels": 84,
+      "changed_coordinate_channels": 84,
+      "new_terminal_mismatch_or_incomplete_reasons": [],
+      "actual_consumer_accepted": true
+    },
+    {
+      "seed": "742031890",
+      "channels": 372,
+      "capture_seconds": 1.677,
+      "baseline_damage_equal": true,
+      "reaction_channels": 73,
+      "changed_coordinate_channels": 73,
+      "new_terminal_mismatch_or_incomplete_reasons": [],
+      "actual_consumer_accepted": true
+    }
+  ],
+  "regressions": {
+    "owner_reaction_EM_matches_independent_upstream_producer": true,
+    "unproven_owner_reaction_CR_CD_DMG_coordinates_removed": true,
+    "fixed_special_crit_and_proven_cross_owner_crit_edge_retained": true,
+    "terminal_mismatch_freezes_only_affected_channel": true,
+    "missing_null_result_numbers_rejected_explicit_zero_accepted": true,
+    "preparation_does_not_activate": true,
+    "incompatible_bundle_keeps_previous_engine": true,
+    "rollback_retention_independent_of_mtime": true,
+    "dummy_wave_resistance_map_initialized": true,
+    "unknown_health_API_not_claimed_supported": true
+  },
+  "tests": {
+    "focused_python": 84,
+    "native_packages_passed": ["internal/engineclient", "internal/finalists", "cmd/gtt-optimizer"],
+    "engine_packages_passed": ["pkg/gttcompact", "pkg/enemy", "pkg/gtt"],
+    "source_api_test_passed": "TestUnknownHealthAPINotClaimedAsSupported",
+    "full_repository_suite_run": false,
+    "full_optimizer_runs": 0,
+    "new_team_rotations": 0
+  },
+  "remaining_boundaries": [
+    "external_reaction_EM_and_reaction_bonus_dependencies_explicitly_frozen",
+    "unsupported_direct_reaction_candidate_dependencies_not_implemented",
+    "source_API_discovery_remains_version_sensitive",
+    "opaque_reason_shares_overlap_and_are_not_measured_damage_attribution",
+    "cross_owner_flat_max_HP_is_guarded_but_not_reproduced_in_a_live_account_case",
+    "finalist_quality_not_reproven_by_same_trace_baseline_equality",
+    "pre_MVP_all_patches_audit_and_optional_packaging_remain_required"
+  ]
+}

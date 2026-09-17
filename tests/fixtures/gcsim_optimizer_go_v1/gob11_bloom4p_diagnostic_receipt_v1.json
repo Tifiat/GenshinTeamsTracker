@@ -1,0 +1,811 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-16",
+  "status": "bounded_diagnostic_search_completed_strict_nahida_response_gate_failed",
+  "engine": "gcsim-v2.45.0-gob11-gp3-20260916",
+  "substitutions": [
+    {
+      "actor": "kuki",
+      "old_weapon_id": 11436,
+      "new_weapon_key": "darkironsword"
+    },
+    {
+      "actor": "lauma",
+      "old_sets": [
+        [
+          "GildedDreams",
+          2
+        ],
+        [
+          "WanderersTroupe",
+          2
+        ]
+      ],
+      "new_sets": [
+        [
+          "GildedDreams",
+          4
+        ]
+      ],
+      "old_artifact_ids": [
+        31,
+        32,
+        127,
+        64,
+        129
+      ],
+      "new_artifact_ids": [
+        31,
+        32,
+        33,
+        140,
+        129
+      ],
+      "authority": "User2026-09-16 approved any suitable test4p;2+2 deferred until core Selected complete",
+      "rationale": "Deepwood on Nahida, Silken Moon on Kuki; Gilded EM contributes to Lauma damage/support"
+    }
+  ],
+  "gate": {
+    "passed": false,
+    "explicit_n1": 6,
+    "hits": 543,
+    "seconds": 21.578999999997905,
+    "wholly_frozen_hits": 0,
+    "checks": [
+      {
+        "case": "bloom",
+        "actor": "lauma",
+        "coordinate": "lauma.em",
+        "amount": 187,
+        "baseline": "bloom.json",
+        "changed": "delta-0.json"
+      },
+      {
+        "case": "bloom",
+        "actor": "kukishinobu",
+        "coordinate": "kukishinobu.em",
+        "amount": 187,
+        "baseline": "bloom.json",
+        "changed": "delta-1.json"
+      },
+      {
+        "case": "bloom",
+        "actor": "columbina",
+        "coordinate": "columbina.hp_percent",
+        "amount": 0.2,
+        "baseline": "bloom.json",
+        "changed": "delta-2.json"
+      },
+      {
+        "case": "bloom",
+        "actor": "nahida",
+        "coordinate": "nahida.em",
+        "amount": 187,
+        "baseline": "bloom.json",
+        "changed": "delta-3.json"
+      }
+    ]
+  },
+  "points": [
+    {
+      "coordinate": "lauma.em",
+      "amount": 187,
+      "predicted_damage": 10946649.083313536,
+      "engine_damage": 10946649.083313536,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "groups": [
+        {
+          "group": "columbina/reaction/tag/20",
+          "hits": 2,
+          "responsive_hits": 0,
+          "formula_damage": 29044.417195161288,
+          "engine_damage": 29044.417195161288,
+          "relative_error": 0
+        },
+        {
+          "group": "kukishinobu/direct/tag/4",
+          "hits": 65,
+          "responsive_hits": 0,
+          "formula_damage": 95265.62354954513,
+          "engine_damage": 95265.62354954513,
+          "relative_error": 0
+        },
+        {
+          "group": "kukishinobu/reaction/tag/23",
+          "hits": 68,
+          "responsive_hits": 42,
+          "formula_damage": 2822898.633614433,
+          "engine_damage": 2822898.633614433,
+          "relative_error": 0
+        },
+        {
+          "group": "columbina/direct/tag/6",
+          "hits": 5,
+          "responsive_hits": 0,
+          "formula_damage": 84390.03643507956,
+          "engine_damage": 84390.03643507956,
+          "relative_error": 0
+        },
+        {
+          "group": "nahida/direct/tag/4",
+          "hits": 44,
+          "responsive_hits": 0,
+          "formula_damage": 872442.5929595568,
+          "engine_damage": 872442.5929595568,
+          "relative_error": 0
+        },
+        {
+          "group": "lauma/direct/tag/1",
+          "hits": 5,
+          "responsive_hits": 4,
+          "formula_damage": 31400.696157628903,
+          "engine_damage": 31400.696157628907,
+          "relative_error": 1.1585662906418887e-16
+        },
+        {
+          "group": "kukishinobu/direct/tag/1",
+          "hits": 5,
+          "responsive_hits": 0,
+          "formula_damage": 1726.667151362993,
+          "engine_damage": 1726.6671513629929,
+          "relative_error": 1.316835588513677e-16
+        },
+        {
+          "group": "columbina/reaction/tag/31",
+          "hits": 172,
+          "responsive_hits": 172,
+          "formula_damage": 4896664.435337772,
+          "engine_damage": 4896664.435337772,
+          "relative_error": 0
+        },
+        {
+          "group": "kukishinobu/direct/tag/6",
+          "hits": 48,
+          "responsive_hits": 0,
+          "formula_damage": 75475.65689302387,
+          "engine_damage": 75475.65689302387,
+          "relative_error": 0
+        },
+        {
+          "group": "nahida/direct/tag/1",
+          "hits": 11,
+          "responsive_hits": 0,
+          "formula_damage": 13087.43878820183,
+          "engine_damage": 13087.438788201827,
+          "relative_error": 2.779748479413182e-16
+        },
+        {
+          "group": "columbina/direct/tag/1",
+          "hits": 17,
+          "responsive_hits": 0,
+          "formula_damage": 17746.377304855047,
+          "engine_damage": 17746.377304855047,
+          "relative_error": 0
+        },
+        {
+          "group": "columbina/direct/tag/4",
+          "hits": 52,
+          "responsive_hits": 0,
+          "formula_damage": 357622.27788622834,
+          "engine_damage": 357622.27788622834,
+          "relative_error": 0
+        },
+        {
+          "group": "lauma/direct/tag/5",
+          "hits": 44,
+          "responsive_hits": 43,
+          "formula_damage": 681414.1837946074,
+          "engine_damage": 681414.1837946074,
+          "relative_error": 0
+        },
+        {
+          "group": "lauma/reaction/tag/31",
+          "hits": 5,
+          "responsive_hits": 5,
+          "formula_damage": 967470.0462460776,
+          "engine_damage": 967470.0462460776,
+          "relative_error": 0
+        }
+      ]
+    },
+    {
+      "coordinate": "kukishinobu.em",
+      "amount": 187,
+      "predicted_damage": 10556217.691135481,
+      "engine_damage": 10556217.691135481,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "groups": [
+        {
+          "group": "kukishinobu/direct/tag/6",
+          "hits": 48,
+          "responsive_hits": 14,
+          "formula_damage": 77613.8955087074,
+          "engine_damage": 77613.8955087074,
+          "relative_error": 0
+        },
+        {
+          "group": "nahida/direct/tag/1",
+          "hits": 11,
+          "responsive_hits": 0,
+          "formula_damage": 13087.43878820183,
+          "engine_damage": 13087.438788201827,
+          "relative_error": 2.779748479413182e-16
+        },
+        {
+          "group": "columbina/direct/tag/1",
+          "hits": 17,
+          "responsive_hits": 0,
+          "formula_damage": 17746.377304855047,
+          "engine_damage": 17746.377304855047,
+          "relative_error": 0
+        },
+        {
+          "group": "columbina/direct/tag/4",
+          "hits": 52,
+          "responsive_hits": 0,
+          "formula_damage": 357622.27788622834,
+          "engine_damage": 357622.27788622834,
+          "relative_error": 0
+        },
+        {
+          "group": "columbina/direct/tag/6",
+          "hits": 5,
+          "responsive_hits": 0,
+          "formula_damage": 84390.03643507956,
+          "engine_damage": 84390.03643507956,
+          "relative_error": 0
+        },
+        {
+          "group": "nahida/direct/tag/4",
+          "hits": 44,
+          "responsive_hits": 0,
+          "formula_damage": 872442.5929595568,
+          "engine_damage": 872442.5929595568,
+          "relative_error": 0
+        },
+        {
+          "group": "lauma/reaction/tag/31",
+          "hits": 5,
+          "responsive_hits": 0,
+          "formula_damage": 838101.8221781942,
+          "engine_damage": 838101.8221781942,
+          "relative_error": 0
+        },
+        {
+          "group": "lauma/direct/tag/1",
+          "hits": 5,
+          "responsive_hits": 0,
+          "formula_damage": 30522.758260612118,
+          "engine_damage": 30522.758260612118,
+          "relative_error": 0
+        },
+        {
+          "group": "lauma/direct/tag/5",
+          "hits": 44,
+          "responsive_hits": 0,
+          "formula_damage": 639696.3432095655,
+          "engine_damage": 639696.3432095655,
+          "relative_error": 0
+        },
+        {
+          "group": "columbina/reaction/tag/20",
+          "hits": 2,
+          "responsive_hits": 0,
+          "formula_damage": 29044.417195161288,
+          "engine_damage": 29044.417195161288,
+          "relative_error": 0
+        },
+        {
+          "group": "kukishinobu/direct/tag/4",
+          "hits": 65,
+          "responsive_hits": 56,
+          "formula_damage": 99283.03217599753,
+          "engine_damage": 99283.03217599753,
+          "relative_error": 0
+        },
+        {
+          "group": "kukishinobu/direct/tag/1",
+          "hits": 5,
+          "responsive_hits": 0,
+          "formula_damage": 1726.667151362993,
+          "engine_damage": 1726.6671513629929,
+          "relative_error": 1.316835588513677e-16
+        },
+        {
+          "group": "kukishinobu/reaction/tag/23",
+          "hits": 68,
+          "responsive_hits": 68,
+          "formula_damage": 2980436.2539511244,
+          "engine_damage": 2980436.2539511244,
+          "relative_error": 0
+        },
+        {
+          "group": "columbina/reaction/tag/31",
+          "hits": 172,
+          "responsive_hits": 0,
+          "formula_damage": 4514503.778130834,
+          "engine_damage": 4514503.778130834,
+          "relative_error": 0
+        }
+      ]
+    },
+    {
+      "coordinate": "columbina.hp_percent",
+      "amount": 0.2,
+      "predicted_damage": 10582247.477607306,
+      "engine_damage": 10582247.477607306,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "groups": [
+        {
+          "group": "kukishinobu/direct/tag/1",
+          "hits": 5,
+          "responsive_hits": 0,
+          "formula_damage": 1726.667151362993,
+          "engine_damage": 1726.6671513629929,
+          "relative_error": 1.316835588513677e-16
+        },
+        {
+          "group": "kukishinobu/reaction/tag/23",
+          "hits": 68,
+          "responsive_hits": 0,
+          "formula_damage": 2774795.962382434,
+          "engine_damage": 2774795.962382434,
+          "relative_error": 0
+        },
+        {
+          "group": "columbina/direct/tag/4",
+          "hits": 52,
+          "responsive_hits": 52,
+          "formula_damage": 398017.660952277,
+          "engine_damage": 398017.660952277,
+          "relative_error": 0
+        },
+        {
+          "group": "nahida/direct/tag/4",
+          "hits": 44,
+          "responsive_hits": 0,
+          "formula_damage": 872442.5929595568,
+          "engine_damage": 872442.5929595568,
+          "relative_error": 0
+        },
+        {
+          "group": "lauma/direct/tag/1",
+          "hits": 5,
+          "responsive_hits": 0,
+          "formula_damage": 30522.758260612118,
+          "engine_damage": 30522.758260612118,
+          "relative_error": 0
+        },
+        {
+          "group": "lauma/direct/tag/5",
+          "hits": 44,
+          "responsive_hits": 0,
+          "formula_damage": 639696.3432095655,
+          "engine_damage": 639696.3432095655,
+          "relative_error": 0
+        },
+        {
+          "group": "columbina/reaction/tag/31",
+          "hits": 172,
+          "responsive_hits": 172,
+          "formula_damage": 4695568.379725142,
+          "engine_damage": 4695568.379725142,
+          "relative_error": 0
+        },
+        {
+          "group": "kukishinobu/direct/tag/6",
+          "hits": 48,
+          "responsive_hits": 0,
+          "formula_damage": 75475.65689302387,
+          "engine_damage": 75475.65689302387,
+          "relative_error": 0
+        },
+        {
+          "group": "nahida/direct/tag/1",
+          "hits": 11,
+          "responsive_hits": 0,
+          "formula_damage": 13087.43878820183,
+          "engine_damage": 13087.438788201827,
+          "relative_error": 2.779748479413182e-16
+        },
+        {
+          "group": "columbina/direct/tag/1",
+          "hits": 17,
+          "responsive_hits": 0,
+          "formula_damage": 17746.377304855047,
+          "engine_damage": 17746.377304855047,
+          "relative_error": 0
+        },
+        {
+          "group": "columbina/direct/tag/6",
+          "hits": 5,
+          "responsive_hits": 5,
+          "formula_damage": 96583.27932334988,
+          "engine_damage": 96583.27932334988,
+          "relative_error": 0
+        },
+        {
+          "group": "lauma/reaction/tag/31",
+          "hits": 5,
+          "responsive_hits": 5,
+          "formula_damage": 842274.3199122159,
+          "engine_damage": 842274.3199122159,
+          "relative_error": 0
+        },
+        {
+          "group": "columbina/reaction/tag/20",
+          "hits": 2,
+          "responsive_hits": 0,
+          "formula_damage": 29044.417195161288,
+          "engine_damage": 29044.417195161288,
+          "relative_error": 0
+        },
+        {
+          "group": "kukishinobu/direct/tag/4",
+          "hits": 65,
+          "responsive_hits": 0,
+          "formula_damage": 95265.62354954513,
+          "engine_damage": 95265.62354954513,
+          "relative_error": 0
+        }
+      ]
+    },
+    {
+      "coordinate": "nahida.em",
+      "amount": 187,
+      "predicted_damage": 10370334.005367009,
+      "engine_damage": 10443541.940704731,
+      "residual": 73207.9353377223,
+      "relative_error": 0.007009876127598739,
+      "groups": [
+        {
+          "group": "kukishinobu/direct/tag/1",
+          "hits": 5,
+          "responsive_hits": 0,
+          "formula_damage": 1726.667151362993,
+          "engine_damage": 1755.0248054862577,
+          "relative_error": 0.01615797909785537
+        },
+        {
+          "group": "kukishinobu/reaction/tag/23",
+          "hits": 68,
+          "responsive_hits": 0,
+          "formula_damage": 2774795.962382434,
+          "engine_damage": 2774795.962382434,
+          "relative_error": 0
+        },
+        {
+          "group": "kukishinobu/direct/tag/6",
+          "hits": 48,
+          "responsive_hits": 0,
+          "formula_damage": 75475.65689302387,
+          "engine_damage": 75475.65689302387,
+          "relative_error": 0
+        },
+        {
+          "group": "columbina/direct/tag/1",
+          "hits": 17,
+          "responsive_hits": 0,
+          "formula_damage": 17746.377304855047,
+          "engine_damage": 18128.02196475991,
+          "relative_error": 0.021052746992847076
+        },
+        {
+          "group": "columbina/direct/tag/6",
+          "hits": 5,
+          "responsive_hits": 0,
+          "formula_damage": 84390.03643507956,
+          "engine_damage": 84390.03643507956,
+          "relative_error": 0
+        },
+        {
+          "group": "nahida/direct/tag/4",
+          "hits": 44,
+          "responsive_hits": 23,
+          "formula_damage": 889769.159760419,
+          "engine_damage": 959225.2107702254,
+          "relative_error": 0.0724084920099582
+        },
+        {
+          "group": "lauma/direct/tag/1",
+          "hits": 5,
+          "responsive_hits": 0,
+          "formula_damage": 30522.758260612118,
+          "engine_damage": 30585.9598525704,
+          "relative_error": 0.0020663596062678266
+        },
+        {
+          "group": "lauma/direct/tag/5",
+          "hits": 44,
+          "responsive_hits": 0,
+          "formula_damage": 639696.3432095655,
+          "engine_damage": 642114.1495458207,
+          "relative_error": 0.0037653839865782767
+        },
+        {
+          "group": "columbina/reaction/tag/20",
+          "hits": 2,
+          "responsive_hits": 0,
+          "formula_damage": 29044.417195161288,
+          "engine_damage": 29044.417195161288,
+          "relative_error": 0
+        },
+        {
+          "group": "kukishinobu/direct/tag/4",
+          "hits": 65,
+          "responsive_hits": 0,
+          "formula_damage": 95265.62354954513,
+          "engine_damage": 95623.76672897322,
+          "relative_error": 0.003745336454306185
+        },
+        {
+          "group": "columbina/reaction/tag/31",
+          "hits": 172,
+          "responsive_hits": 13,
+          "formula_damage": 4515897.105268499,
+          "engine_damage": 4515897.105268499,
+          "relative_error": 0
+        },
+        {
+          "group": "nahida/direct/tag/1",
+          "hits": 11,
+          "responsive_hits": 0,
+          "formula_damage": 13087.43878820183,
+          "engine_damage": 13590.169694450484,
+          "relative_error": 0.036992246421613265
+        },
+        {
+          "group": "columbina/direct/tag/4",
+          "hits": 52,
+          "responsive_hits": 0,
+          "formula_damage": 357622.27788622834,
+          "engine_damage": 357622.27788622834,
+          "relative_error": 0
+        },
+        {
+          "group": "lauma/reaction/tag/31",
+          "hits": 5,
+          "responsive_hits": 5,
+          "formula_damage": 845294.1812820213,
+          "engine_damage": 845294.1812820213,
+          "relative_error": 0
+        }
+      ]
+    }
+  ],
+  "search": {
+    "winner": [
+      {
+        "wearer_key": "columbina",
+        "slot": "flower",
+        "artifact_id": 61
+      },
+      {
+        "wearer_key": "columbina",
+        "slot": "plume",
+        "artifact_id": 1536
+      },
+      {
+        "wearer_key": "columbina",
+        "slot": "sands",
+        "artifact_id": 1355
+      },
+      {
+        "wearer_key": "columbina",
+        "slot": "goblet",
+        "artifact_id": 184
+      },
+      {
+        "wearer_key": "columbina",
+        "slot": "circlet",
+        "artifact_id": 1565
+      },
+      {
+        "wearer_key": "kukishinobu",
+        "slot": "flower",
+        "artifact_id": 66
+      },
+      {
+        "wearer_key": "kukishinobu",
+        "slot": "plume",
+        "artifact_id": 67
+      },
+      {
+        "wearer_key": "kukishinobu",
+        "slot": "sands",
+        "artifact_id": 112
+      },
+      {
+        "wearer_key": "kukishinobu",
+        "slot": "goblet",
+        "artifact_id": 69
+      },
+      {
+        "wearer_key": "kukishinobu",
+        "slot": "circlet",
+        "artifact_id": 70
+      },
+      {
+        "wearer_key": "lauma",
+        "slot": "flower",
+        "artifact_id": 31
+      },
+      {
+        "wearer_key": "lauma",
+        "slot": "plume",
+        "artifact_id": 1344
+      },
+      {
+        "wearer_key": "lauma",
+        "slot": "sands",
+        "artifact_id": 33
+      },
+      {
+        "wearer_key": "lauma",
+        "slot": "goblet",
+        "artifact_id": 34
+      },
+      {
+        "wearer_key": "lauma",
+        "slot": "circlet",
+        "artifact_id": 35
+      },
+      {
+        "wearer_key": "nahida",
+        "slot": "flower",
+        "artifact_id": 90
+      },
+      {
+        "wearer_key": "nahida",
+        "slot": "plume",
+        "artifact_id": 81
+      },
+      {
+        "wearer_key": "nahida",
+        "slot": "sands",
+        "artifact_id": 92
+      },
+      {
+        "wearer_key": "nahida",
+        "slot": "goblet",
+        "artifact_id": 1573
+      },
+      {
+        "wearer_key": "nahida",
+        "slot": "circlet",
+        "artifact_id": 94
+      }
+    ],
+    "winner_measured": {
+      "iterations": 1000,
+      "dps": "124224.89392793331",
+      "standard_error": "62.688645541412605",
+      "engine_result_sha256": "86ee35572de9b0c09bceb422de317c3b76bc23d74b3586b57a1aa5ae69f18a70"
+    },
+    "initial_measured": {
+      "rank": 7,
+      "source": "mandatory_current",
+      "assignment": [
+        [
+          1,
+          2,
+          3,
+          184,
+          5
+        ],
+        [
+          66,
+          67,
+          68,
+          69,
+          70
+        ],
+        [
+          31,
+          32,
+          33,
+          140,
+          129
+        ],
+        [
+          105,
+          106,
+          92,
+          220,
+          185
+        ]
+      ],
+      "assignment_sha256": "a0460682c5580aee096ffb47960c3252d531027f4502fc22b09f8eab467f61dd",
+      "formula_dps": 110458.32090042332,
+      "measured_dps": 110577.2565503767,
+      "standard_deviation": 1797.2235082059437,
+      "standard_error": 80.37427870218282,
+      "formula_residual_dps": 118.9356499533751,
+      "iterations": 500,
+      "elapsed_ms": 8107.8772,
+      "config_sha256": "49b29f4703252535d07422a7c413e9f6cf8a04455c74f2e95c1cc18c636d5e97",
+      "engine_result_sha256": "8c5b4e3edafb857034835b1a72f63cd123405afbe743b1b8a9f23ee85d60dbfb"
+    },
+    "measured_gain_percent": 12.342173972582726,
+    "formula_dps": "131479.0295574717",
+    "formula_residual": "-7254.135629538374",
+    "formula_relative_error_percent": 5.839518473444398,
+    "timings": {
+      "total_ms": 89061,
+      "compile_ms": 774.8856,
+      "search_ms": 17724.3754,
+      "screen_n128_ms": 19108.3712,
+      "final_simulation_ms": 38040.879199999996,
+      "preparation_capture_validation_serialization_ms": 13412.488599999997
+    },
+    "stop_reason": "provisional_stable",
+    "cycles": 2,
+    "screen_candidates": 25,
+    "final_candidates": 7,
+    "adaptive_status": "extended_unresolved_leaders",
+    "warnings": [
+      "formula_rank_not_measurement_authority",
+      "measured_top_confidence_overlap",
+      "opaque_formula_boundaries_present"
+    ],
+    "opaque_reasons": [
+      "attack_field_operand_dependency_frozen",
+      "attack_mod_closure_expression_collapsed",
+      "attack_provider_unattributed",
+      "callback_provider_unattributed",
+      "captured_scalar_schedule_frozen",
+      "flat_damage_source_binding_missing",
+      "flat_dmg_expression_collapsed",
+      "flat_source_parameter_dependencies_incomplete",
+      "gadget_wave_state_lineage_not_instrumented",
+      "helper_return_control_flow_frozen",
+      "max_hp_candidate_dependency_incomplete",
+      "modifier_candidate_dependency_incomplete",
+      "multiplier_source_expression_not_instrumented",
+      "numeric_expression_candidate_dependency_incomplete",
+      "numeric_recipe_input_frozen_atk_info_mult",
+      "numeric_recipe_input_frozen_defmod",
+      "numeric_recipe_input_frozen_elevation",
+      "numeric_recipe_input_frozen_grpmult",
+      "numeric_recipe_input_frozen_mult",
+      "numeric_recipe_input_frozen_resmod",
+      "post_damage_callback_state_effects_unmodeled",
+      "provider_transition_timeline_incomplete",
+      "reaction_bonus_provider_paths_incomplete",
+      "reaction_bonus_provider_unattributed",
+      "reaction_bonus_schedule_frozen",
+      "reaction_em_external_dependencies_frozen",
+      "reaction_parent_lineage_not_instrumented",
+      "reaction_topology_aggregate_only",
+      "stat_mod_dependency_expression_collapsed",
+      "stat_read_external_dependencies_incomplete",
+      "transformative_reaction_formula_mismatch",
+      "unknown_reaction_operator",
+      "untyped_callback_state_effects_unmodeled"
+    ]
+  },
+  "preserved": {
+    "original_db_sha256": "1830489c49159c273f5bc6f8ffd407360ec632b848fa6aae0a056527998a8495",
+    "original_rotation_sha256": "0b11fa2557619ed29439cbe9bc04b61ee23ff8d846139ef9315b852b70839d72",
+    "copied_db_sha256": "4b014ccbf04d2e866bc4d098a2cb53a2e3a8ef4e202c5b5a7a51ba77a62d1b62",
+    "copied_equipment_matches_prepared_fixture": true,
+    "search_pre_post_db_hash_assertion_passed": true,
+    "initial_copy_hash_note": "Recorded before prepare connections closed; not a post-checkpoint byte identity claim. Logical equipped IDs verified separately."
+  },
+  "next_diagnostic": [
+    "Nahida skill snapshot-EM flat operand; inspect actual observed owner/ref before any repair",
+    "Wandering Evenstar local stat vectors returned by closures: source manifest marks both modifier_amount entries opaque with modifier_output_assignment_count",
+    "These are source-level leads, not a proved complete attribution of the measured residual; no name-specific gameplay patch"
+  ],
+  "roadmap": "Selected2+2 is deferred until core Selected functionality is complete, then immediate next extension",
+  "limitations": [
+    "failed strict gate retained; successful search is not full formula acceptance",
+    "0.7009876% measured Nahida perturbation residual is one point, not an error bound for all builds",
+    "no engine/optimizer code changes, no visible UI click, no live equipment/source rotation edits",
+    "shared handoffs not edited after user reported concurrent cleanup; use this receipt to merge new findings"
+  ],
+  "known_boundary_samples": "gob11_bloom4p_known_boundary_samples_v1.json"
+}

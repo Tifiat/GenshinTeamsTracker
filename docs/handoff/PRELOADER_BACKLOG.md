@@ -21,7 +21,7 @@ algorithmic shortcut that should be fixed directly.
 - Keep measurement details in `docs/handoff/performance_measurements/`; keep
   this file as the curated loader queue.
 
-## Current Measurement Source
+## Historical Measurement Sources (2026-06-13)
 
 - Weak 1366px HP Notebook baseline:
   `docs/handoff/performance_measurements/2026-06-13_appshell_perf_probe_baseline_c371ef4_hp_1366.md`.
@@ -32,6 +32,11 @@ algorithmic shortcut that should be fixed directly.
 - Command:
   `.\.venv\Scripts\python.exe tools\experiments\appshell_perf_probe.py --mode all --importtime`.
 - Commit: `c371ef4`.
+
+These measurements describe the recorded commit/device, not the current tree.
+Remeasure the selected subsystem before implementing a loader or claiming a
+current speedup. Costs below are retained as evidence; no new profiling was
+performed during the 2026-09-16 documentation reconciliation.
 
 ## Backlog Items
 

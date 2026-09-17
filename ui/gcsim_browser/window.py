@@ -66,6 +66,7 @@ class GcsimBrowserWorkspace(QWidget):
     run_all_requested = Signal(int, str)
     rotation_text_changed = Signal()
     optimizer_selected_requested = Signal(int, str)
+    optimizer_all_sets_requested = Signal(int, str)
     optimizer_infinite_energy_changed = Signal(bool)
     optimizer_cancel_requested = Signal()
     optimizer_build_save_requested = Signal(dict)
@@ -85,6 +86,8 @@ class GcsimBrowserWorkspace(QWidget):
         super().__init__(parent)
         self._mode = mode if mode in {MODE_ABYSS, MODE_DPS_DUMMY} else MODE_ABYSS
         self._selected_chamber_index = 0
+        self._optimizer_mode = "selected"
+        self._optimizer_all_sets_available = False
         self._target_mode_preview = ""
         self._energy_mode_preview = ""
         self._targets_preview_by_team: tuple[tuple[str, ...], ...] = ((), ())
@@ -325,6 +328,7 @@ class GcsimBrowserWorkspace(QWidget):
         )
         self.optimizer_all_sets_button = QPushButton()
         self.optimizer_all_sets_button.setEnabled(False)
+        self.optimizer_all_sets_button.clicked.connect(self._request_optimizer_all_sets)
         self.optimizer_theory_button = QPushButton()
         self.optimizer_theory_button.setEnabled(False)
         mode_row.addWidget(self.optimizer_selected_button)
@@ -524,8 +528,8 @@ class GcsimBrowserWorkspace(QWidget):
         self._refresh_context()
         self.optimizer_title.setText("Artifact optimizer")
         self.optimizer_description.setText(
-            "Uses the active team, current rotation and each character's currently "
-            "equipped 4-piece set. It searches account artifacts but never equips them."
+            _fallback("gcsim.optimizer.selected_description",
+                      "Uses the active team, current rotation and equipped 4-piece or 2+2 sets. Searches account artifacts without equipping them.")
         )
         self.optimizer_selected_button.setText("Selected Sets")
         self.optimizer_all_sets_button.setText("All Sets")
@@ -645,15 +649,33 @@ class GcsimBrowserWorkspace(QWidget):
         self.run_all_requested.emit(team_index, self.rotation_editor.toPlainText())
 
     def _request_optimizer_selected(self) -> None:
+        self._request_optimizer_mode("selected")
+
+    def _request_optimizer_all_sets(self) -> None:
+        self._request_optimizer_mode("all_sets")
+
+    def set_optimizer_all_sets_available(self, available: bool) -> None:
+        self._optimizer_all_sets_available = bool(available)
+        self.optimizer_all_sets_button.setEnabled(
+            self._optimizer_all_sets_available and self.optimizer_selected_button.isEnabled()
+        )
+
+    def _request_optimizer_mode(self, mode: str) -> None:
+        self._optimizer_mode = mode
         team_index = max(0, int(self.team_tabs.currentIndex()))
         if self._mode == MODE_DPS_DUMMY:
             team_index = 0
         self.optimizer_result.setPlainText("")
         self.optimizer_result_builds.clear()
         self._start_optimizer_elapsed()
-        self.optimizer_progress_label.setText("Preparing Selected Sets input...")
+        self.optimizer_progress_label.setText(
+            tr("gcsim.optimizer.preparing_all") if mode == "all_sets"
+            else "Preparing Selected Sets input..."
+        )
         self.optimizer_progress_bar.setRange(0, 0)
-        self.optimizer_selected_requested.emit(
+        signal = (self.optimizer_all_sets_requested if mode == "all_sets"
+                  else self.optimizer_selected_requested)
+        signal.emit(
             team_index,
             self.rotation_editor.toPlainText(),
         )
@@ -692,6 +714,7 @@ class GcsimBrowserWorkspace(QWidget):
         self.run_selected_button.setEnabled(not busy)
         self.run_all_button.setEnabled(not busy and self._mode == MODE_ABYSS)
         self.optimizer_selected_button.setEnabled(not busy)
+        self.optimizer_all_sets_button.setEnabled(not busy and self._optimizer_all_sets_available)
         self.optimizer_infinite_energy_switch.setEnabled(not busy)
         self.optimizer_cancel_button.setEnabled(busy)
         if busy and not self._optimizer_elapsed_clock.isValid():
@@ -716,6 +739,9 @@ class GcsimBrowserWorkspace(QWidget):
             "cancelled": "Selected Sets cancelled",
             "failed": "Selected Sets failed",
         }
+        if self._optimizer_mode == "all_sets":
+            for terminal in ("completed", "cancelled", "failed"):
+                labels[terminal] = tr("gcsim.optimizer.all_" + terminal)
         self.optimizer_progress_label.setText(labels.get(stage, stage))
         if stage in {"completed", "cancelled", "failed"}:
             self._stop_optimizer_elapsed(stage)
@@ -775,7 +801,8 @@ class GcsimBrowserWorkspace(QWidget):
         if self._optimizer_elapsed_clock.isValid() and not self._optimizer_elapsed_terminal_stage:
             elapsed_ms = max(elapsed_ms, int(self._optimizer_elapsed_clock.elapsed()))
         elapsed = _format_optimizer_elapsed(elapsed_ms)
-        estimate = _fallback("gcsim.optimizer.estimate", "1–3 min")
+        estimate = (tr("gcsim.optimizer.all_estimate") if self._optimizer_mode == "all_sets"
+                    else _fallback("gcsim.optimizer.estimate", "1–3 min"))
         if not self._optimizer_elapsed_clock.isValid():
             template = _fallback(
                 "gcsim.optimizer.estimate_ready",
@@ -805,6 +832,7 @@ class GcsimBrowserWorkspace(QWidget):
         self.run_selected_button.setEnabled(not busy)
         self.run_all_button.setEnabled(not busy and self._mode == MODE_ABYSS)
         self.optimizer_selected_button.setEnabled(not busy)
+        self.optimizer_all_sets_button.setEnabled(not busy and self._optimizer_all_sets_available)
         if message:
             self._set_result_text(message)
 

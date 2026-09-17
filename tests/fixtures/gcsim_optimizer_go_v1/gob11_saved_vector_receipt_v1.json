@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-13",
+  "status": "saved_vector_response_passed_reaction_bonus_boundary_open",
+  "production_engine_unchanged": "gcsim-v2.45.0-gob11-additive2-20260913",
+  "full_response_gate_passed": false,
+  "isolated_build": {
+    "success": true,
+    "activated": true,
+    "engine_id": "gcsim-v2.45.0-gob11-vector-20260913",
+    "artifact_sha256": "b29652b33c991abe83a51df8efdbe3abe977f3a82ff9b3d174a6a4fdab33f7f7",
+    "application_compatibility_status": "passed",
+    "error": "",
+    "seconds": 104.65600000000268
+  },
+  "tested_patch_sha256": "21e4a5526fd91c9ab7ca61d594ff6808b4ee61e12ce0262ccfbedf0b158cc674",
+  "pending_delta_sha256": "800f7ddfeaaf3ff4b1b3b8255598ba69599ecbbd668541184a5e49917a1da55c",
+  "pending_delta_file": "tools/experiments/gcsim/gob11_contributor_group/engine_delta.patch",
+  "pending_test_only_additions": [
+    "portable actual saved-vector event slices and engine compiler regression"
+  ],
+  "explicit_n1_captures": 4,
+  "updater_gates_additional": true,
+  "full_selected_or_n1000": false,
+  "shared_vector_reads_checked": 348,
+  "shared_vector_fresh_response_passed": true,
+  "shared_vector_delta_values": [
+    37.4
+  ],
+  "team_response": {
+    "coordinate": "sucrose.em",
+    "delta": 187,
+    "baseline": 17134388.14092994,
+    "predicted": 17295469.287480406,
+    "fresh_expected": 17451226.115765218,
+    "residual": -155756.82828481123,
+    "relative_error": 0.008925265608936353,
+    "failed_reaction_hits": 162
+  },
+  "first_independent_boundary": {
+    "hit": 11,
+    "frame": 276,
+    "shared_buff_first_observed_frame": 356,
+    "em_before": 356,
+    "em_after": 356,
+    "reaction_bonus_before": 1.7296152,
+    "reaction_bonus_after": 1.7716901999999999,
+    "changed_bonus_providers": [
+      {
+        "key": "ascendant-gleam",
+        "before": 0.22961519999999996,
+        "after": 0.27169019999999994
+      }
+    ],
+    "source": "pkg/simulation/setup.go::setupAscendantGleam",
+    "shape": "captured scalar shared by delayed updates and reaction-modifier closure; source stat depends on observed actor/branch"
+  },
+  "portable_vector_event_counts": [
+    5,
+    5
+  ],
+  "limitations": [
+    "not a full response gate pass; no production activation",
+    "remaining team residual not exhaustively attributed solely to the first independent boundary",
+    "no broad repeated controls after targeted gate failed; previous cloud evidence remains historical",
+    "no live DB, gear, user rotation or visible UI changes"
+  ]
+}

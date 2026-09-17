@@ -140,6 +140,7 @@ func (node IRNode) validate(memberField string, prior map[uint32]struct{}) error
 	allowed := map[string]bool{
 		"constant": true, "artifact_stat": true, "add": true, "multiply": true,
 		"min": true, "max": true, "power": true, "opaque_frozen": true,
+		"select_lt": true,
 	}
 	if !allowed[node.Operation] {
 		return fmt.Errorf("%s.operation is unsupported", field)
@@ -166,6 +167,10 @@ func (node IRNode) validate(memberField string, prior map[uint32]struct{}) error
 	case "power":
 		if len(node.Inputs) != 2 || node.Value != "" || node.Coordinate != "" {
 			return fmt.Errorf("%s power must contain exactly two inputs", field)
+		}
+	case "select_lt":
+		if len(node.Inputs) != 4 || node.Value != "" || node.Coordinate != "" {
+			return fmt.Errorf("%s select_lt must contain left, right, true, false inputs", field)
 		}
 	default:
 		if len(node.Inputs) < 2 || node.Value != "" || node.Coordinate != "" {
@@ -241,8 +246,18 @@ func (result OptimizerResult) Validate() error {
 }
 
 func (result OptimizerResult) validateSuccess() error {
-	if err := validateSHA256("compact_ir_sha256", result.CompactIRSHA256, false); err != nil {
-		return err
+	if (result.CompactIRSHA256 == "") == (result.SetContextPanelSHA256 == "") {
+		return fmt.Errorf("success requires exactly one compact IR or set-context panel identity")
+	}
+	if result.CompactIRSHA256 != "" {
+		if err := validateSHA256("compact_ir_sha256", result.CompactIRSHA256, false); err != nil {
+			return err
+		}
+	}
+	if result.SetContextPanelSHA256 != "" {
+		if err := validateSHA256("set_context_panel_sha256", result.SetContextPanelSHA256, false); err != nil {
+			return err
+		}
 	}
 	if err := validateResultArtifacts("winner", result.Winner); err != nil {
 		return err

@@ -1,0 +1,3636 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-16",
+  "status": "isolated_repair_validated_partial_boundaries_not_promoted",
+  "engine_id": "gcsim-v2.45.0-dependency-audit5-20260916",
+  "binary_sha256": "2e910ca6ba8adf90d23ca41345ae85326855bb0677778703b749219d1dd582b5",
+  "candidate_build_patch_sha256": "22fff9df4ef46fb61db31bd8b755461e689f3b6cdd46facfb6f23cb841461a28",
+  "pending_delta_sha256": "21c24cec4f9a1a104f76d9a33bd1e4a43552de46d4daa6b93852a2af64cd9004",
+  "production_changed": false,
+  "visible_ui_tested": false,
+  "ui_blocker": "Windows native computer-use tools absent from callable tool inventory; CUA native APIs disabled. No replacement click-handler claim.",
+  "controls": {
+    "seed": 742031889,
+    "iterations": 1,
+    "energy_ignored": true,
+    "stat_mutation": "append add-stats without changing original character declaration order",
+    "baseline_cases": 12,
+    "stat_points": 43,
+    "exact_per_hit_points": 38
+  },
+  "public_sources": {
+    "gaming_melt": "https://gcsim.app/db/gtNnJTkcfcDg",
+    "lunar_crystallize": "https://gcsim.app/db/wNHmwLJH6RKJ",
+    "spread": "https://gcsim.app/db/qGdPFjmGbnGm",
+    "aggravate": "https://gcsim.app/db/LCHPRD6m7TtT",
+    "vaporize": "https://gcsim.app/db/hrwTfHDRG9z8",
+    "burgeon": "https://gcsim.app/db/cWBjFFQPJfFf",
+    "burning": "https://gcsim.app/db/pm7j7grtQ6tc",
+    "physical": "https://gcsim.app/db/mCzhk7WnqcrG"
+  },
+  "public_fixture_scope": "Account-owned characters; public gear/constellations retained for formula coverage only, not account Selected DPS acceptance.",
+  "responses": [
+    {
+      "aligned": true,
+      "base_hits": 111,
+      "case": "gaming_melt",
+      "changed": "gaming_melt-plus.json",
+      "deltas": {
+        "gaming.em": 50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 5269351.534443305,
+      "first_mismatches": [],
+      "fresh_hits": 111,
+      "group_errors": {
+        "bennett/tag/4/direct": 1.8189894035458565e-12,
+        "bennett/tag/6/direct": 7.275957614183426e-12,
+        "citlali/tag/4/direct": 1.3642420526593924e-12,
+        "citlali/tag/6/direct": 4.729372449219227e-11,
+        "diona/tag/4/direct": 2.0463630789890885e-12,
+        "diona/tag/6/direct": 2.2737367544323206e-12,
+        "gaming/tag/1/direct": 3.092281986027956e-11,
+        "gaming/tag/3/direct": -1.1641532182693481e-10,
+        "gaming/tag/6/direct": 0
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.660884295871273e-16,
+      "mismatched_hits": 0,
+      "predicted": 5269351.534443305,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 111,
+      "case": "gaming_melt",
+      "changed": "gaming_melt-minus.json",
+      "deltas": {
+        "gaming.em": -50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 5041399.210019521,
+      "first_mismatches": [],
+      "fresh_hits": 111,
+      "group_errors": {
+        "bennett/tag/4/direct": 1.8189894035458565e-12,
+        "bennett/tag/6/direct": 7.275957614183426e-12,
+        "citlali/tag/4/direct": 1.3642420526593924e-12,
+        "citlali/tag/6/direct": 4.729372449219227e-11,
+        "diona/tag/4/direct": 2.0463630789890885e-12,
+        "diona/tag/6/direct": 2.2737367544323206e-12,
+        "gaming/tag/1/direct": 3.092281986027956e-11,
+        "gaming/tag/3/direct": -1.1641532182693481e-10,
+        "gaming/tag/6/direct": 0
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.660884295871273e-16,
+      "mismatched_hits": 0,
+      "predicted": 5041399.210019522,
+      "relative_error": 1.8473493881708929e-16,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 413,
+      "case": "lunar_crystallize",
+      "changed": "lunar_crystallize-plus.json",
+      "deltas": {
+        "navia.em": 50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10045113.499857271,
+      "first_mismatches": [],
+      "fresh_hits": 413,
+      "group_errors": {
+        "columbina/tag/2/direct": 0,
+        "columbina/tag/26/reaction": 4.3655745685100555e-11,
+        "columbina/tag/30/reaction": 5.820766091346741e-11,
+        "columbina/tag/32/reaction": 0,
+        "columbina/tag/4/direct": 2.1827872842550278e-11,
+        "columbina/tag/6/direct": -1.4551915228366852e-11,
+        "ineffa/tag/1/direct": 0,
+        "ineffa/tag/26/reaction": 1.4551915228366852e-11,
+        "ineffa/tag/30/reaction": -7.275957614183426e-12,
+        "ineffa/tag/4/direct": 3.183231456205249e-11,
+        "ineffa/tag/6/direct": -1.4551915228366852e-11,
+        "navia/tag/1/direct": -8.731149137020111e-11,
+        "navia/tag/27/reaction": 0,
+        "navia/tag/4/direct": 9.094947017729282e-13,
+        "navia/tag/6/direct": 7.275957614183426e-12,
+        "xilonen/tag/1/direct": -7.275957614183426e-12,
+        "xilonen/tag/27/reaction": 0,
+        "xilonen/tag/4/direct": -1.4551915228366852e-11,
+        "xilonen/tag/6/direct": 0
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 2.8592591675039714e-16,
+      "mismatched_hits": 0,
+      "predicted": 10045113.499857271,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 413,
+      "case": "lunar_crystallize",
+      "changed": "lunar_crystallize-minus.json",
+      "deltas": {
+        "navia.em": -50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10007048.80245925,
+      "first_mismatches": [],
+      "fresh_hits": 413,
+      "group_errors": {
+        "columbina/tag/2/direct": 0,
+        "columbina/tag/26/reaction": 4.3655745685100555e-11,
+        "columbina/tag/30/reaction": 5.820766091346741e-11,
+        "columbina/tag/32/reaction": 0,
+        "columbina/tag/4/direct": 2.1827872842550278e-11,
+        "columbina/tag/6/direct": -1.4551915228366852e-11,
+        "ineffa/tag/1/direct": 0,
+        "ineffa/tag/26/reaction": 1.4551915228366852e-11,
+        "ineffa/tag/30/reaction": -7.275957614183426e-12,
+        "ineffa/tag/4/direct": 3.183231456205249e-11,
+        "ineffa/tag/6/direct": -1.4551915228366852e-11,
+        "navia/tag/1/direct": -8.731149137020111e-11,
+        "navia/tag/27/reaction": 0,
+        "navia/tag/4/direct": 9.094947017729282e-13,
+        "navia/tag/6/direct": 7.275957614183426e-12,
+        "xilonen/tag/1/direct": -7.275957614183426e-12,
+        "xilonen/tag/27/reaction": 0,
+        "xilonen/tag/4/direct": -1.4551915228366852e-11,
+        "xilonen/tag/6/direct": 0
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 2.8592591675039714e-16,
+      "mismatched_hits": 0,
+      "predicted": 10007048.80245925,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 364,
+      "case": "spread",
+      "changed": "spread-plus.json",
+      "deltas": {
+        "tighnari.em": 50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 3236934.485668678,
+      "first_mismatches": [],
+      "fresh_hits": 364,
+      "group_errors": {
+        "fischl/tag/1/direct": 4.547473508864641e-13,
+        "fischl/tag/4/direct": 1.3642420526593924e-11,
+        "fischl/tag/6/direct": 0,
+        "kukishinobu/tag/4/direct": 6.0822458181064576e-12,
+        "kukishinobu/tag/6/direct": 5.4569682106375694e-12,
+        "nahida/tag/1/direct": 7.275957614183426e-12,
+        "nahida/tag/2/direct": 0,
+        "nahida/tag/4/direct": 6.730260793119669e-11,
+        "tighnari/tag/2/direct": -1.0913936421275139e-11,
+        "tighnari/tag/4/direct": 3.637978807091713e-12,
+        "tighnari/tag/6/direct": 3.001332515850663e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 2.9145112086219083e-16,
+      "mismatched_hits": 0,
+      "predicted": 3236934.485668678,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 364,
+      "case": "spread",
+      "changed": "spread-minus.json",
+      "deltas": {
+        "tighnari.em": -50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 3181360.7310071085,
+      "first_mismatches": [],
+      "fresh_hits": 364,
+      "group_errors": {
+        "fischl/tag/1/direct": 4.547473508864641e-13,
+        "fischl/tag/4/direct": 1.3642420526593924e-11,
+        "fischl/tag/6/direct": 0,
+        "kukishinobu/tag/4/direct": 6.0822458181064576e-12,
+        "kukishinobu/tag/6/direct": 5.4569682106375694e-12,
+        "nahida/tag/1/direct": 7.275957614183426e-12,
+        "nahida/tag/2/direct": 0,
+        "nahida/tag/4/direct": 6.730260793119669e-11,
+        "tighnari/tag/2/direct": -4.3655745685100555e-11,
+        "tighnari/tag/4/direct": 0,
+        "tighnari/tag/6/direct": -1.6370904631912708e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 2.727451679749046e-16,
+      "mismatched_hits": 0,
+      "predicted": 3181360.7310071085,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 509,
+      "case": "aggravate",
+      "changed": "aggravate-plus.json",
+      "deltas": {
+        "keqing.em": 50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 4884242.803221882,
+      "first_mismatches": [],
+      "fresh_hits": 509,
+      "group_errors": {
+        "fischl/tag/1/direct": -4.547473508864641e-13,
+        "fischl/tag/4/direct": 1.1971224012086168e-10,
+        "fischl/tag/6/direct": 4.547473508864641e-12,
+        "keqing/tag/1/direct": 3.637978807091713e-12,
+        "keqing/tag/2/direct": -9.094947017729282e-13,
+        "keqing/tag/4/direct": -1.3642420526593924e-11,
+        "keqing/tag/6/direct": 6.366462912410498e-12,
+        "lanyan/tag/0/direct": 0,
+        "lanyan/tag/1/direct": -2.2737367544323206e-13,
+        "lanyan/tag/18/reaction": 0,
+        "lanyan/tag/4/direct": 2.1827872842550278e-11,
+        "lanyan/tag/6/direct": 0,
+        "nahida/tag/1/direct": 1.8189894035458565e-12,
+        "nahida/tag/2/direct": -3.637978807091713e-12,
+        "nahida/tag/4/direct": 4.18367562815547e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 2.5886317119914934e-16,
+      "mismatched_hits": 0,
+      "predicted": 4884242.803221883,
+      "relative_error": 1.90679008422991e-16,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 509,
+      "case": "aggravate",
+      "changed": "aggravate-minus.json",
+      "deltas": {
+        "keqing.em": -50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 4771595.859350883,
+      "first_mismatches": [],
+      "fresh_hits": 509,
+      "group_errors": {
+        "fischl/tag/1/direct": -4.547473508864641e-13,
+        "fischl/tag/4/direct": 1.1971224012086168e-10,
+        "fischl/tag/6/direct": 4.547473508864641e-12,
+        "keqing/tag/1/direct": -7.275957614183426e-12,
+        "keqing/tag/2/direct": -9.094947017729282e-13,
+        "keqing/tag/4/direct": -1.3642420526593924e-11,
+        "keqing/tag/6/direct": -2.7284841053187847e-12,
+        "lanyan/tag/0/direct": 0,
+        "lanyan/tag/1/direct": -2.2737367544323206e-13,
+        "lanyan/tag/18/reaction": 0,
+        "lanyan/tag/4/direct": 2.1827872842550278e-11,
+        "lanyan/tag/6/direct": 0,
+        "nahida/tag/1/direct": 1.8189894035458565e-12,
+        "nahida/tag/2/direct": -3.637978807091713e-12,
+        "nahida/tag/4/direct": 4.18367562815547e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 2.749163784697747e-16,
+      "mismatched_hits": 0,
+      "predicted": 4771595.859350883,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 370,
+      "case": "vaporize",
+      "changed": "vaporize-plus.json",
+      "deltas": {
+        "xiangling.em": 50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 4422900.830031422,
+      "first_mismatches": [],
+      "fresh_hits": 370,
+      "group_errors": {
+        "bennett/tag/1/direct": 5.4569682106375694e-12,
+        "bennett/tag/4/direct": -4.729372449219227e-11,
+        "bennett/tag/6/direct": -2.9103830456733704e-11,
+        "furina/tag/4/direct": 3.3651303965598345e-11,
+        "furina/tag/6/direct": -5.4569682106375694e-12,
+        "xiangling/tag/1/direct": -9.094947017729282e-13,
+        "xiangling/tag/4/direct": -3.637978807091713e-12,
+        "xiangling/tag/6/direct": 4.274625098332763e-11,
+        "xingqiu/tag/0/direct": 0,
+        "xingqiu/tag/1/direct": 2.2737367544323206e-13,
+        "xingqiu/tag/4/direct": -1.4551915228366852e-11,
+        "xingqiu/tag/6/direct": -1.8189894035458565e-12
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 4.857539173189587e-16,
+      "mismatched_hits": 0,
+      "predicted": 4422900.830031422,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 370,
+      "case": "vaporize",
+      "changed": "vaporize-minus.json",
+      "deltas": {
+        "xiangling.em": -50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 4329271.677466273,
+      "first_mismatches": [],
+      "fresh_hits": 370,
+      "group_errors": {
+        "bennett/tag/1/direct": 5.4569682106375694e-12,
+        "bennett/tag/4/direct": -4.729372449219227e-11,
+        "bennett/tag/6/direct": -2.9103830456733704e-11,
+        "furina/tag/4/direct": 3.3651303965598345e-11,
+        "furina/tag/6/direct": -5.4569682106375694e-12,
+        "xiangling/tag/1/direct": 0,
+        "xiangling/tag/4/direct": -7.275957614183426e-12,
+        "xiangling/tag/6/direct": 1.546140993013978e-11,
+        "xingqiu/tag/0/direct": 0,
+        "xingqiu/tag/1/direct": 2.2737367544323206e-13,
+        "xingqiu/tag/4/direct": -1.4551915228366852e-11,
+        "xingqiu/tag/6/direct": -1.8189894035458565e-12
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 4.857539173189587e-16,
+      "mismatched_hits": 0,
+      "predicted": 4329271.677466273,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 1124,
+      "case": "burgeon",
+      "changed": "burgeon-plus.json",
+      "deltas": {
+        "thoma.em": 50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 8942903.51807815,
+      "first_mismatches": [],
+      "fresh_hits": 1124,
+      "group_errors": {
+        "freminet/tag/0/direct": 0,
+        "freminet/tag/1/direct": 9.458744898438454e-11,
+        "freminet/tag/14/reaction": 0,
+        "freminet/tag/4/direct": 3.6834535421803594e-11,
+        "freminet/tag/6/direct": -1.4551915228366852e-11,
+        "nahida/tag/1/direct": -3.410605131648481e-13,
+        "nahida/tag/19/reaction": 0,
+        "nahida/tag/2/direct": 3.637978807091713e-12,
+        "nahida/tag/22/reaction": 0,
+        "nahida/tag/4/direct": -9.913492249324918e-11,
+        "thoma/tag/1/direct": 0,
+        "thoma/tag/19/reaction": 0,
+        "thoma/tag/22/reaction": 0,
+        "thoma/tag/4/direct": 0,
+        "thoma/tag/6/direct": -1.8189894035458565e-12,
+        "xingqiu/tag/0/direct": 0,
+        "xingqiu/tag/1/direct": 0,
+        "xingqiu/tag/20/reaction": 0,
+        "xingqiu/tag/4/direct": 5.4569682106375694e-12,
+        "xingqiu/tag/6/direct": 1.000444171950221e-10
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.3249533219742513e-16,
+      "mismatched_hits": 0,
+      "predicted": 8942903.51807815,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 1124,
+      "case": "burgeon",
+      "changed": "burgeon-minus.json",
+      "deltas": {
+        "thoma.em": -50
+      },
+      "dense_interpreter_error": 0,
+      "expected": 8670404.469457567,
+      "first_mismatches": [],
+      "fresh_hits": 1124,
+      "group_errors": {
+        "freminet/tag/0/direct": 0,
+        "freminet/tag/1/direct": 9.458744898438454e-11,
+        "freminet/tag/14/reaction": 0,
+        "freminet/tag/4/direct": 3.6834535421803594e-11,
+        "freminet/tag/6/direct": -1.4551915228366852e-11,
+        "nahida/tag/1/direct": -3.410605131648481e-13,
+        "nahida/tag/19/reaction": 0,
+        "nahida/tag/2/direct": 3.637978807091713e-12,
+        "nahida/tag/22/reaction": 0,
+        "nahida/tag/4/direct": -9.913492249324918e-11,
+        "thoma/tag/1/direct": 0,
+        "thoma/tag/19/reaction": 0,
+        "thoma/tag/22/reaction": 0,
+        "thoma/tag/4/direct": 0,
+        "thoma/tag/6/direct": -1.8189894035458565e-12,
+        "xingqiu/tag/0/direct": 0,
+        "xingqiu/tag/1/direct": 0,
+        "xingqiu/tag/20/reaction": 0,
+        "xingqiu/tag/4/direct": 5.4569682106375694e-12,
+        "xingqiu/tag/6/direct": 1.000444171950221e-10
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.3249533219742513e-16,
+      "mismatched_hits": 0,
+      "predicted": 8670404.469457567,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 505,
+      "case": "burning",
+      "changed": "burning-plus.json",
+      "deltas": {
+        "kinich.atk_percent": 0.2
+      },
+      "dense_interpreter_error": 0,
+      "expected": 6048761.321118265,
+      "first_mismatches": [],
+      "fresh_hits": 505,
+      "group_errors": {
+        "bennett/tag/19/reaction": 0,
+        "bennett/tag/4/direct": 4.547473508864641e-12,
+        "bennett/tag/6/direct": 1.4551915228366852e-11,
+        "dehya/tag/19/reaction": 0,
+        "dehya/tag/4/direct": -3.637978807091713e-12,
+        "emilie/tag/0/direct": 0,
+        "emilie/tag/19/reaction": 0,
+        "emilie/tag/4/direct": -4.547473508864641e-11,
+        "emilie/tag/6/direct": 0,
+        "kinich/tag/19/reaction": 0,
+        "kinich/tag/4/direct": -2.1827872842550278e-11,
+        "kinich/tag/6/direct": 1.4551915228366852e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.9547002412770876e-16,
+      "mismatched_hits": 0,
+      "predicted": 6048761.321118265,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 505,
+      "case": "burning",
+      "changed": "burning-minus.json",
+      "deltas": {
+        "kinich.atk_percent": -0.2
+      },
+      "dense_interpreter_error": 0,
+      "expected": 5662530.391850216,
+      "first_mismatches": [],
+      "fresh_hits": 505,
+      "group_errors": {
+        "bennett/tag/19/reaction": 0,
+        "bennett/tag/4/direct": 4.547473508864641e-12,
+        "bennett/tag/6/direct": 1.4551915228366852e-11,
+        "dehya/tag/19/reaction": 0,
+        "dehya/tag/4/direct": -3.637978807091713e-12,
+        "emilie/tag/0/direct": 0,
+        "emilie/tag/19/reaction": 0,
+        "emilie/tag/4/direct": -4.547473508864641e-11,
+        "emilie/tag/6/direct": 0,
+        "kinich/tag/19/reaction": 0,
+        "kinich/tag/4/direct": -3.892637323588133e-10,
+        "kinich/tag/6/direct": -1.8189894035458565e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.9624939092746174e-16,
+      "mismatched_hits": 0,
+      "predicted": 5662530.391850215,
+      "relative_error": -1.6447109510544656e-16,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 558,
+      "case": "physical",
+      "changed": "physical-plus.json",
+      "deltas": {
+        "freminet.physical_damage_bonus": 0.2
+      },
+      "dense_interpreter_error": 0,
+      "expected": 4438531.452775884,
+      "first_mismatches": [],
+      "fresh_hits": 558,
+      "group_errors": {
+        "fischl/tag/1/direct": -4.547473508864641e-13,
+        "fischl/tag/12/reaction": 0,
+        "fischl/tag/13/reaction": 0,
+        "fischl/tag/4/direct": 1.000444171950221e-11,
+        "fischl/tag/6/direct": 3.637978807091713e-12,
+        "freminet/tag/0/direct": 0,
+        "freminet/tag/1/direct": 9.094947017729282e-11,
+        "freminet/tag/12/reaction": 0,
+        "freminet/tag/14/reaction": 0,
+        "freminet/tag/4/direct": -1.7053025658242404e-12,
+        "freminet/tag/6/direct": 3.637978807091713e-12,
+        "mika/tag/1/direct": -3.410605131648481e-13,
+        "mika/tag/4/direct": 0,
+        "xingqiu/tag/0/direct": 0,
+        "xingqiu/tag/1/direct": -2.2737367544323206e-13,
+        "xingqiu/tag/13/reaction": 0,
+        "xingqiu/tag/4/direct": -5.4569682106375694e-12,
+        "xingqiu/tag/6/direct": -1.7280399333685637e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.4167822190120185e-16,
+      "mismatched_hits": 0,
+      "predicted": 4438531.452775884,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 558,
+      "case": "physical",
+      "changed": "physical-minus.json",
+      "deltas": {
+        "freminet.physical_damage_bonus": -0.2
+      },
+      "dense_interpreter_error": 0,
+      "expected": 4063791.3609148697,
+      "first_mismatches": [],
+      "fresh_hits": 558,
+      "group_errors": {
+        "fischl/tag/1/direct": -4.547473508864641e-13,
+        "fischl/tag/12/reaction": 0,
+        "fischl/tag/13/reaction": 0,
+        "fischl/tag/4/direct": 1.000444171950221e-11,
+        "fischl/tag/6/direct": 3.637978807091713e-12,
+        "freminet/tag/0/direct": 0,
+        "freminet/tag/1/direct": -1.8189894035458565e-11,
+        "freminet/tag/12/reaction": 0,
+        "freminet/tag/14/reaction": 0,
+        "freminet/tag/4/direct": -5.991296347929165e-11,
+        "freminet/tag/6/direct": 3.637978807091713e-12,
+        "mika/tag/1/direct": -3.410605131648481e-13,
+        "mika/tag/4/direct": 0,
+        "xingqiu/tag/0/direct": 0,
+        "xingqiu/tag/1/direct": -2.2737367544323206e-13,
+        "xingqiu/tag/13/reaction": 0,
+        "xingqiu/tag/4/direct": -5.4569682106375694e-12,
+        "xingqiu/tag/6/direct": -1.7280399333685637e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.5488502356256546e-16,
+      "mismatched_hits": 0,
+      "predicted": 4063791.3609148697,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 543,
+      "case": "bloom",
+      "changed": "bloom-nahida-em-187.json",
+      "deltas": {
+        "nahida.em": 187
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10443541.940704726,
+      "first_mismatches": [],
+      "fresh_hits": 543,
+      "group_errors": {
+        "columbina/tag/1/direct": 3.410605131648481e-12,
+        "columbina/tag/20/reaction": 0,
+        "columbina/tag/31/reaction": 0,
+        "columbina/tag/4/direct": 1.0913936421275139e-11,
+        "columbina/tag/6/direct": 1.8189894035458565e-12,
+        "kukishinobu/tag/1/direct": -2.2737367544323206e-13,
+        "kukishinobu/tag/23/reaction": 0,
+        "kukishinobu/tag/4/direct": -8.86757334228605e-12,
+        "kukishinobu/tag/6/direct": 0,
+        "lauma/tag/1/direct": -3.637978807091713e-12,
+        "lauma/tag/31/reaction": 0,
+        "lauma/tag/5/direct": -2.7284841053187847e-11,
+        "nahida/tag/1/direct": 1.1368683772161603e-12,
+        "nahida/tag/4/direct": -5.32054400537163e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.9709181684009974e-16,
+      "mismatched_hits": 0,
+      "predicted": 10443541.940704726,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 543,
+      "case": "bloom",
+      "changed": "bloom-nahida-em--187.json",
+      "deltas": {
+        "nahida.em": -187
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10160255.524614314,
+      "first_mismatches": [],
+      "fresh_hits": 543,
+      "group_errors": {
+        "columbina/tag/1/direct": 3.296918293926865e-12,
+        "columbina/tag/20/reaction": 0,
+        "columbina/tag/31/reaction": 0,
+        "columbina/tag/4/direct": 1.0913936421275139e-11,
+        "columbina/tag/6/direct": 1.8189894035458565e-12,
+        "kukishinobu/tag/1/direct": -2.2737367544323206e-13,
+        "kukishinobu/tag/23/reaction": 0,
+        "kukishinobu/tag/4/direct": 5.4569682106375694e-12,
+        "kukishinobu/tag/6/direct": 0,
+        "lauma/tag/1/direct": -3.524291969370097e-12,
+        "lauma/tag/31/reaction": 0,
+        "lauma/tag/5/direct": 3.001332515850663e-11,
+        "nahida/tag/1/direct": -2.0463630789890885e-12,
+        "nahida/tag/4/direct": -4.8203219193965197e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.3544050615382675e-16,
+      "mismatched_hits": 0,
+      "predicted": 10160255.524614314,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 543,
+      "case": "bloom",
+      "changed": "bloom-nahida-em--470.json",
+      "deltas": {
+        "nahida.em": -470
+      },
+      "dense_interpreter_error": 0,
+      "expected": 9908767.552866695,
+      "first_mismatches": [],
+      "fresh_hits": 543,
+      "group_errors": {
+        "columbina/tag/1/direct": -1.1368683772161603e-13,
+        "columbina/tag/20/reaction": 0,
+        "columbina/tag/31/reaction": 0,
+        "columbina/tag/4/direct": 1.0913936421275139e-11,
+        "columbina/tag/6/direct": 1.8189894035458565e-12,
+        "kukishinobu/tag/1/direct": 2.2737367544323206e-13,
+        "kukishinobu/tag/23/reaction": 0,
+        "kukishinobu/tag/4/direct": -3.296918293926865e-12,
+        "kukishinobu/tag/6/direct": 0,
+        "lauma/tag/1/direct": 0,
+        "lauma/tag/31/reaction": 0,
+        "lauma/tag/5/direct": -4.774847184307873e-11,
+        "nahida/tag/1/direct": 5.684341886080801e-13,
+        "nahida/tag/4/direct": -3.501554601825774e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 5.694843109456871e-16,
+      "mismatched_hits": 0,
+      "predicted": 9908767.552866695,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 543,
+      "case": "bloom",
+      "changed": "bloom-kuki-em-187.json",
+      "deltas": {
+        "kukishinobu.em": 187
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10556217.691135481,
+      "first_mismatches": [],
+      "fresh_hits": 543,
+      "group_errors": {
+        "columbina/tag/1/direct": -2.2737367544323206e-13,
+        "columbina/tag/20/reaction": 0,
+        "columbina/tag/31/reaction": 2.546585164964199e-11,
+        "columbina/tag/4/direct": 1.0913936421275139e-11,
+        "columbina/tag/6/direct": 1.8189894035458565e-12,
+        "kukishinobu/tag/1/direct": 2.2737367544323206e-13,
+        "kukishinobu/tag/23/reaction": 0,
+        "kukishinobu/tag/4/direct": 1.7053025658242404e-12,
+        "kukishinobu/tag/6/direct": 1.8189894035458565e-12,
+        "lauma/tag/1/direct": -1.1368683772161603e-13,
+        "lauma/tag/31/reaction": -5.820766091346741e-11,
+        "lauma/tag/5/direct": 3.183231456205249e-12,
+        "nahida/tag/1/direct": 1.8189894035458565e-12,
+        "nahida/tag/4/direct": 3.228706191293895e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.471460169631142e-16,
+      "mismatched_hits": 0,
+      "predicted": 10556217.691135481,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 543,
+      "case": "bloom",
+      "changed": "bloom-kuki-em--187.json",
+      "deltas": {
+        "kukishinobu.em": -187
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10105580.563297283,
+      "first_mismatches": [],
+      "fresh_hits": 543,
+      "group_errors": {
+        "columbina/tag/1/direct": -2.2737367544323206e-13,
+        "columbina/tag/20/reaction": 0,
+        "columbina/tag/31/reaction": 2.546585164964199e-11,
+        "columbina/tag/4/direct": 1.0913936421275139e-11,
+        "columbina/tag/6/direct": 1.8189894035458565e-12,
+        "kukishinobu/tag/1/direct": 2.2737367544323206e-13,
+        "kukishinobu/tag/23/reaction": -9.094947017729282e-11,
+        "kukishinobu/tag/4/direct": -2.9558577807620168e-12,
+        "kukishinobu/tag/6/direct": -1.8189894035458565e-12,
+        "lauma/tag/1/direct": -1.1368683772161603e-13,
+        "lauma/tag/31/reaction": -5.820766091346741e-11,
+        "lauma/tag/5/direct": 3.183231456205249e-12,
+        "nahida/tag/1/direct": 1.8189894035458565e-12,
+        "nahida/tag/4/direct": 3.228706191293895e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.471460169631142e-16,
+      "mismatched_hits": 0,
+      "predicted": 10105580.563297283,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 543,
+      "case": "bloom",
+      "changed": "bloom-kuki-atk_percent--0.245.json",
+      "deltas": {
+        "kukishinobu.atk_percent": -0.245
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10335957.452214016,
+      "first_mismatches": [],
+      "fresh_hits": 543,
+      "group_errors": {
+        "columbina/tag/1/direct": -2.2737367544323206e-13,
+        "columbina/tag/20/reaction": 0,
+        "columbina/tag/31/reaction": 2.546585164964199e-11,
+        "columbina/tag/4/direct": 1.0913936421275139e-11,
+        "columbina/tag/6/direct": 1.8189894035458565e-12,
+        "kukishinobu/tag/1/direct": 0,
+        "kukishinobu/tag/23/reaction": 0,
+        "kukishinobu/tag/4/direct": 6.480149750132114e-12,
+        "kukishinobu/tag/6/direct": 0,
+        "lauma/tag/1/direct": -1.1368683772161603e-13,
+        "lauma/tag/31/reaction": -5.820766091346741e-11,
+        "lauma/tag/5/direct": 3.183231456205249e-12,
+        "nahida/tag/1/direct": 1.8189894035458565e-12,
+        "nahida/tag/4/direct": 3.228706191293895e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.471460169631142e-16,
+      "mismatched_hits": 0,
+      "predicted": 10335957.452214016,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 364,
+      "case": "spread",
+      "changed": "spread-tighnari-em-1000.json",
+      "deltas": {
+        "tighnari.em": 1000
+      },
+      "dense_interpreter_error": 0,
+      "expected": 3466304.114731542,
+      "first_mismatches": [],
+      "fresh_hits": 364,
+      "group_errors": {
+        "fischl/tag/1/direct": 4.547473508864641e-13,
+        "fischl/tag/4/direct": 1.9099388737231493e-11,
+        "fischl/tag/6/direct": 0,
+        "kukishinobu/tag/4/direct": 6.536993168992922e-12,
+        "kukishinobu/tag/6/direct": 5.4569682106375694e-12,
+        "nahida/tag/1/direct": 1.0913936421275139e-11,
+        "nahida/tag/2/direct": 2.1827872842550278e-11,
+        "nahida/tag/4/direct": 6.730260793119669e-11,
+        "tighnari/tag/2/direct": 0,
+        "tighnari/tag/4/direct": 0,
+        "tighnari/tag/6/direct": -4.729372449219227e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 5.754603168259042e-16,
+      "mismatched_hits": 0,
+      "predicted": 3466304.114731542,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 413,
+      "case": "lunar_crystallize",
+      "changed": "lunar_crystallize-navia-crit_rate-0.3.json",
+      "deltas": {
+        "navia.crit_rate": 0.3
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10052204.303582864,
+      "first_mismatches": [],
+      "fresh_hits": 413,
+      "group_errors": {
+        "columbina/tag/2/direct": 0,
+        "columbina/tag/26/reaction": 4.3655745685100555e-11,
+        "columbina/tag/30/reaction": 5.820766091346741e-11,
+        "columbina/tag/32/reaction": 0,
+        "columbina/tag/4/direct": 2.1827872842550278e-11,
+        "columbina/tag/6/direct": -1.4551915228366852e-11,
+        "ineffa/tag/1/direct": 0,
+        "ineffa/tag/26/reaction": 1.4551915228366852e-11,
+        "ineffa/tag/30/reaction": -7.275957614183426e-12,
+        "ineffa/tag/4/direct": 3.183231456205249e-11,
+        "ineffa/tag/6/direct": -1.4551915228366852e-11,
+        "navia/tag/1/direct": 9.458744898438454e-11,
+        "navia/tag/27/reaction": 8.003553375601768e-11,
+        "navia/tag/4/direct": -6.002665031701326e-11,
+        "navia/tag/6/direct": 0,
+        "xilonen/tag/1/direct": -7.275957614183426e-12,
+        "xilonen/tag/27/reaction": 0,
+        "xilonen/tag/4/direct": -1.4551915228366852e-11,
+        "xilonen/tag/6/direct": 0
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.1461221096929957e-16,
+      "mismatched_hits": 0,
+      "predicted": 10052204.303582864,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 413,
+      "case": "lunar_crystallize",
+      "changed": "lunar_crystallize-navia-geo_damage_bonus-0.466.json",
+      "deltas": {
+        "navia.geo_damage_bonus": 0.466
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10541845.055552281,
+      "first_mismatches": [],
+      "fresh_hits": 413,
+      "group_errors": {
+        "columbina/tag/2/direct": 0,
+        "columbina/tag/26/reaction": 4.3655745685100555e-11,
+        "columbina/tag/30/reaction": 5.820766091346741e-11,
+        "columbina/tag/32/reaction": 0,
+        "columbina/tag/4/direct": 2.1827872842550278e-11,
+        "columbina/tag/6/direct": -1.4551915228366852e-11,
+        "ineffa/tag/1/direct": 0,
+        "ineffa/tag/26/reaction": 1.4551915228366852e-11,
+        "ineffa/tag/30/reaction": -7.275957614183426e-12,
+        "ineffa/tag/4/direct": 3.183231456205249e-11,
+        "ineffa/tag/6/direct": -1.4551915228366852e-11,
+        "navia/tag/1/direct": 1.8189894035458565e-10,
+        "navia/tag/27/reaction": 4.001776687800884e-11,
+        "navia/tag/4/direct": -1.4642864698544145e-10,
+        "navia/tag/6/direct": 9.458744898438454e-11,
+        "xilonen/tag/1/direct": -7.275957614183426e-12,
+        "xilonen/tag/27/reaction": -1.0913936421275139e-11,
+        "xilonen/tag/4/direct": -1.4551915228366852e-11,
+        "xilonen/tag/6/direct": 0
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 2.8592591675039714e-16,
+      "mismatched_hits": 0,
+      "predicted": 10541845.055552281,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 413,
+      "case": "lunar_crystallize",
+      "changed": "lunar_crystallize-columbina-hp_percent-0.466.json",
+      "deltas": {
+        "columbina.hp_percent": 0.466
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10393927.000925833,
+      "first_mismatches": [],
+      "fresh_hits": 413,
+      "group_errors": {
+        "columbina/tag/2/direct": 0,
+        "columbina/tag/26/reaction": 4.3655745685100555e-11,
+        "columbina/tag/30/reaction": 0,
+        "columbina/tag/32/reaction": 0,
+        "columbina/tag/4/direct": 6.184563972055912e-11,
+        "columbina/tag/6/direct": -7.275957614183426e-12,
+        "ineffa/tag/1/direct": 0,
+        "ineffa/tag/26/reaction": 1.4551915228366852e-11,
+        "ineffa/tag/30/reaction": -7.275957614183426e-12,
+        "ineffa/tag/4/direct": 3.183231456205249e-11,
+        "ineffa/tag/6/direct": -1.4551915228366852e-11,
+        "navia/tag/1/direct": -8.731149137020111e-11,
+        "navia/tag/27/reaction": 4.001776687800884e-11,
+        "navia/tag/4/direct": 9.094947017729282e-13,
+        "navia/tag/6/direct": 7.275957614183426e-12,
+        "xilonen/tag/1/direct": -7.275957614183426e-12,
+        "xilonen/tag/27/reaction": -1.0913936421275139e-11,
+        "xilonen/tag/4/direct": -1.4551915228366852e-11,
+        "xilonen/tag/6/direct": 0
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 5.14005687350031e-16,
+      "mismatched_hits": 0,
+      "predicted": 10393927.000925833,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 413,
+      "case": "lunar_crystallize",
+      "changed": "lunar_crystallize-columbina-em-187.json",
+      "deltas": {
+        "columbina.em": 187
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10415345.551679313,
+      "first_mismatches": [],
+      "fresh_hits": 413,
+      "group_errors": {
+        "columbina/tag/2/direct": 0,
+        "columbina/tag/26/reaction": 5.820766091346741e-11,
+        "columbina/tag/30/reaction": 4.3655745685100555e-11,
+        "columbina/tag/32/reaction": 1.4551915228366852e-11,
+        "columbina/tag/4/direct": 2.1827872842550278e-11,
+        "columbina/tag/6/direct": -1.4551915228366852e-11,
+        "ineffa/tag/1/direct": 0,
+        "ineffa/tag/26/reaction": 2.1827872842550278e-11,
+        "ineffa/tag/30/reaction": -7.275957614183426e-12,
+        "ineffa/tag/4/direct": 3.183231456205249e-11,
+        "ineffa/tag/6/direct": -1.4551915228366852e-11,
+        "navia/tag/1/direct": -8.731149137020111e-11,
+        "navia/tag/27/reaction": 4.001776687800884e-11,
+        "navia/tag/4/direct": 9.094947017729282e-13,
+        "navia/tag/6/direct": 7.275957614183426e-12,
+        "xilonen/tag/1/direct": -7.275957614183426e-12,
+        "xilonen/tag/27/reaction": 0,
+        "xilonen/tag/4/direct": -1.4551915228366852e-11,
+        "xilonen/tag/6/direct": 0
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 2.8592591675039714e-16,
+      "mismatched_hits": 0,
+      "predicted": 10415345.551679313,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 413,
+      "case": "lunar_crystallize",
+      "changed": "lunar_crystallize-xilonen-em-187.json",
+      "deltas": {
+        "xilonen.em": 187
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10030671.309721382,
+      "first_mismatches": [],
+      "fresh_hits": 413,
+      "group_errors": {
+        "columbina/tag/2/direct": 0,
+        "columbina/tag/26/reaction": 4.3655745685100555e-11,
+        "columbina/tag/30/reaction": 5.820766091346741e-11,
+        "columbina/tag/32/reaction": 0,
+        "columbina/tag/4/direct": 2.1827872842550278e-11,
+        "columbina/tag/6/direct": -1.4551915228366852e-11,
+        "ineffa/tag/1/direct": 0,
+        "ineffa/tag/26/reaction": 1.4551915228366852e-11,
+        "ineffa/tag/30/reaction": -7.275957614183426e-12,
+        "ineffa/tag/4/direct": 3.183231456205249e-11,
+        "ineffa/tag/6/direct": -1.4551915228366852e-11,
+        "navia/tag/1/direct": -8.731149137020111e-11,
+        "navia/tag/27/reaction": 6.912159733474255e-11,
+        "navia/tag/4/direct": 9.094947017729282e-13,
+        "navia/tag/6/direct": 7.275957614183426e-12,
+        "xilonen/tag/1/direct": -7.275957614183426e-12,
+        "xilonen/tag/27/reaction": -1.0913936421275139e-11,
+        "xilonen/tag/4/direct": -1.4551915228366852e-11,
+        "xilonen/tag/6/direct": 0
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.052178549252255e-16,
+      "mismatched_hits": 0,
+      "predicted": 10030671.309721382,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 370,
+      "case": "vaporize",
+      "changed": "vaporize-xingqiu-energy_recharge-0.518.json",
+      "deltas": {
+        "xingqiu.energy_recharge": 0.518
+      },
+      "dense_interpreter_error": 0,
+      "expected": 4377414.492629235,
+      "first_mismatches": [],
+      "fresh_hits": 370,
+      "group_errors": {
+        "bennett/tag/1/direct": 5.4569682106375694e-12,
+        "bennett/tag/4/direct": -4.729372449219227e-11,
+        "bennett/tag/6/direct": -2.9103830456733704e-11,
+        "furina/tag/4/direct": 3.3651303965598345e-11,
+        "furina/tag/6/direct": -5.4569682106375694e-12,
+        "xiangling/tag/1/direct": -9.094947017729282e-13,
+        "xiangling/tag/4/direct": -7.275957614183426e-12,
+        "xiangling/tag/6/direct": -2.7284841053187847e-12,
+        "xingqiu/tag/0/direct": 0,
+        "xingqiu/tag/1/direct": 2.2737367544323206e-13,
+        "xingqiu/tag/4/direct": -1.4551915228366852e-11,
+        "xingqiu/tag/6/direct": -1.8189894035458565e-12
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 4.857539173189587e-16,
+      "mismatched_hits": 0,
+      "predicted": 4377414.492629235,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 111,
+      "case": "gaming_melt",
+      "changed": "gaming_melt-gaming-atk_percent-0.466.json",
+      "deltas": {
+        "gaming.atk_percent": 0.466
+      },
+      "dense_interpreter_error": 0,
+      "expected": 5660583.603201747,
+      "first_mismatches": [],
+      "fresh_hits": 111,
+      "group_errors": {
+        "bennett/tag/4/direct": 1.8189894035458565e-12,
+        "bennett/tag/6/direct": 7.275957614183426e-12,
+        "citlali/tag/4/direct": 1.3642420526593924e-12,
+        "citlali/tag/6/direct": 4.729372449219227e-11,
+        "diona/tag/4/direct": 2.0463630789890885e-12,
+        "diona/tag/6/direct": 2.2737367544323206e-12,
+        "gaming/tag/1/direct": 0,
+        "gaming/tag/3/direct": -5.820766091346741e-11,
+        "gaming/tag/6/direct": 0
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.660884295871273e-16,
+      "mismatched_hits": 0,
+      "predicted": 5660583.603201747,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 111,
+      "case": "gaming_melt",
+      "changed": "gaming_melt-gaming-crit_rate-1.0.json",
+      "deltas": {
+        "gaming.crit_rate": 1
+      },
+      "dense_interpreter_error": 0,
+      "expected": 5378530.91318116,
+      "first_mismatches": [],
+      "fresh_hits": 111,
+      "group_errors": {
+        "bennett/tag/4/direct": 1.8189894035458565e-12,
+        "bennett/tag/6/direct": 7.275957614183426e-12,
+        "citlali/tag/4/direct": 1.3642420526593924e-12,
+        "citlali/tag/6/direct": 4.729372449219227e-11,
+        "diona/tag/4/direct": 2.0463630789890885e-12,
+        "diona/tag/6/direct": 2.2737367544323206e-12,
+        "gaming/tag/1/direct": 2.9103830456733704e-11,
+        "gaming/tag/3/direct": -1.0186340659856796e-10,
+        "gaming/tag/6/direct": -5.820766091346741e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.660884295871273e-16,
+      "mismatched_hits": 0,
+      "predicted": 5378530.91318116,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 1124,
+      "case": "burgeon",
+      "changed": "burgeon-nahida-em--187.json",
+      "deltas": {
+        "nahida.em": -187
+      },
+      "dense_interpreter_error": 0,
+      "expected": 8550472.264173511,
+      "first_mismatches": [],
+      "fresh_hits": 1124,
+      "group_errors": {
+        "freminet/tag/0/direct": 0,
+        "freminet/tag/1/direct": 8.003553375601768e-11,
+        "freminet/tag/14/reaction": 0,
+        "freminet/tag/4/direct": -1.3983481039758772e-10,
+        "freminet/tag/6/direct": 0,
+        "nahida/tag/1/direct": 4.547473508864641e-13,
+        "nahida/tag/19/reaction": 0,
+        "nahida/tag/2/direct": 7.275957614183426e-12,
+        "nahida/tag/22/reaction": 0,
+        "nahida/tag/4/direct": -5.047695594839752e-11,
+        "thoma/tag/1/direct": 1.8189894035458565e-12,
+        "thoma/tag/19/reaction": 0,
+        "thoma/tag/22/reaction": 0,
+        "thoma/tag/4/direct": 0,
+        "thoma/tag/6/direct": 0,
+        "xingqiu/tag/0/direct": 0,
+        "xingqiu/tag/1/direct": -1.3642420526593924e-12,
+        "xingqiu/tag/20/reaction": 0,
+        "xingqiu/tag/4/direct": -1.8189894035458565e-12,
+        "xingqiu/tag/6/direct": -9.094947017729282e-13
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 4.288696297058016e-16,
+      "mismatched_hits": 0,
+      "predicted": 8550472.264173511,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 509,
+      "case": "aggravate",
+      "changed": "aggravate-nahida-em-187.json",
+      "deltas": {
+        "nahida.em": 187
+      },
+      "dense_interpreter_error": 0,
+      "expected": 4921401.512396054,
+      "first_mismatches": [],
+      "fresh_hits": 509,
+      "group_errors": {
+        "fischl/tag/1/direct": -4.547473508864641e-13,
+        "fischl/tag/4/direct": -9.674749890109524e-11,
+        "fischl/tag/6/direct": 0,
+        "keqing/tag/1/direct": -2.1827872842550278e-11,
+        "keqing/tag/2/direct": -6.366462912410498e-12,
+        "keqing/tag/4/direct": 8.185452315956354e-12,
+        "keqing/tag/6/direct": 9.094947017729282e-13,
+        "lanyan/tag/0/direct": 0,
+        "lanyan/tag/1/direct": 9.094947017729282e-13,
+        "lanyan/tag/18/reaction": 0,
+        "lanyan/tag/4/direct": 0,
+        "lanyan/tag/6/direct": 1.6370904631912708e-11,
+        "nahida/tag/1/direct": 0,
+        "nahida/tag/2/direct": 3.637978807091713e-12,
+        "nahida/tag/4/direct": -2.523847797419876e-11
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 2.5723567060665007e-16,
+      "mismatched_hits": 0,
+      "predicted": 4921401.512396053,
+      "relative_error": -1.892392994698071e-16,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 383,
+      "case": "chasca",
+      "changed": "chasca-bennett-hp_percent-0.466.json",
+      "deltas": {
+        "bennett.hp_percent": 0.466
+      },
+      "dense_interpreter_error": 0,
+      "expected": 9839364.84279112,
+      "first_mismatches": [
+        {
+          "actor": "furina",
+          "channel": "hit/000267",
+          "got": 9338.427350304253,
+          "index": 266,
+          "want": 10056.767915712273
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000280",
+          "got": 14984.219750981138,
+          "index": 279,
+          "want": 16506.09303543951
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000285",
+          "got": 11078.573115557198,
+          "index": 284,
+          "want": 11310.808083368252
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000288",
+          "got": 29500.20628783755,
+          "index": 287,
+          "want": 27912.624841156812
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000291",
+          "got": 9656.006490009187,
+          "index": 290,
+          "want": 9673.150805347375
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000296",
+          "got": 17806.249591724863,
+          "index": 295,
+          "want": 17837.864727682663
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000302",
+          "got": 9656.006490009187,
+          "index": 301,
+          "want": 9673.150805347375
+        }
+      ],
+      "fresh_hits": 383,
+      "group_errors": {
+        "bennett/tag/11/reaction": 0,
+        "bennett/tag/4/direct": -1.3642420526593924e-12,
+        "bennett/tag/6/direct": -3.637978807091713e-12,
+        "chasca/tag/11/reaction": 0,
+        "chasca/tag/13/reaction": 0,
+        "chasca/tag/16/reaction": 0,
+        "chasca/tag/18/reaction": 0,
+        "chasca/tag/2/direct": 8.36735125631094e-11,
+        "chasca/tag/4/direct": 1.8189894035458565e-12,
+        "chasca/tag/6/direct": 7.275957614183426e-12,
+        "furina/tag/13/reaction": 0,
+        "furina/tag/4/direct": -950.7711376308762,
+        "furina/tag/6/direct": -3.637978807091713e-12,
+        "ororon/tag/0/direct": -5.4569682106375694e-12,
+        "ororon/tag/13/reaction": 0,
+        "ororon/tag/4/direct": 1.8189894035458565e-12,
+        "ororon/tag/6/direct": 9.549694368615746e-12
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 0.09220069711171654,
+      "mismatched_hits": 7,
+      "predicted": 9838414.071653487,
+      "relative_error": -9.66293203701069e-05,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 383,
+      "case": "chasca",
+      "changed": "chasca-bennett-healing_bonus-0.359.json",
+      "deltas": {
+        "bennett.healing_bonus": 0.359
+      },
+      "dense_interpreter_error": 0,
+      "expected": 9843599.69220566,
+      "first_mismatches": [
+        {
+          "actor": "furina",
+          "channel": "hit/000266",
+          "got": 7383.657148929643,
+          "index": 265,
+          "want": 8059.353827377879
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000267",
+          "got": 9338.427350304253,
+          "index": 266,
+          "want": 10148.827838659856
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000280",
+          "got": 14984.219750981138,
+          "index": 279,
+          "want": 16652.43367815824
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000285",
+          "got": 11078.573115557198,
+          "index": 284,
+          "want": 11403.868883328045
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000288",
+          "got": 29500.20628783755,
+          "index": 287,
+          "want": 30283.56724537833
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000291",
+          "got": 9656.006490009187,
+          "index": 290,
+          "want": 9896.02690474383
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000296",
+          "got": 17806.249591724863,
+          "index": 295,
+          "want": 18248.861495134046
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000302",
+          "got": 9656.006490009187,
+          "index": 301,
+          "want": 9896.02690474383
+        }
+      ],
+      "fresh_hits": 383,
+      "group_errors": {
+        "bennett/tag/11/reaction": 0,
+        "bennett/tag/4/direct": -1.3642420526593924e-12,
+        "bennett/tag/6/direct": -3.637978807091713e-12,
+        "chasca/tag/11/reaction": 0,
+        "chasca/tag/13/reaction": 0,
+        "chasca/tag/16/reaction": 0,
+        "chasca/tag/18/reaction": 0,
+        "chasca/tag/2/direct": 8.36735125631094e-11,
+        "chasca/tag/4/direct": 1.8189894035458565e-12,
+        "chasca/tag/6/direct": 7.275957614183426e-12,
+        "furina/tag/13/reaction": 0,
+        "furina/tag/4/direct": -5185.620552171036,
+        "furina/tag/6/direct": -3.637978807091713e-12,
+        "ororon/tag/0/direct": -5.4569682106375694e-12,
+        "ororon/tag/13/reaction": 0,
+        "ororon/tag/4/direct": 1.8189894035458565e-12,
+        "ororon/tag/6/direct": 9.549694368615746e-12
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 0.10017838589954413,
+      "mismatched_hits": 8,
+      "predicted": 9838414.071653487,
+      "relative_error": -0.000526801242870426,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 383,
+      "case": "chasca",
+      "changed": "chasca-chasca-atk_percent-0.466.json",
+      "deltas": {
+        "chasca.atk_percent": 0.466
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10699973.274128558,
+      "first_mismatches": [],
+      "fresh_hits": 383,
+      "group_errors": {
+        "bennett/tag/11/reaction": 0,
+        "bennett/tag/4/direct": -1.3642420526593924e-12,
+        "bennett/tag/6/direct": -3.637978807091713e-12,
+        "chasca/tag/11/reaction": 0,
+        "chasca/tag/13/reaction": 0,
+        "chasca/tag/16/reaction": 0,
+        "chasca/tag/18/reaction": 0,
+        "chasca/tag/2/direct": 1.6552803572267294e-10,
+        "chasca/tag/4/direct": 0,
+        "chasca/tag/6/direct": 7.275957614183426e-11,
+        "furina/tag/13/reaction": 0,
+        "furina/tag/4/direct": 0,
+        "furina/tag/6/direct": -3.637978807091713e-12,
+        "ororon/tag/0/direct": -5.4569682106375694e-12,
+        "ororon/tag/13/reaction": 0,
+        "ororon/tag/4/direct": 1.8189894035458565e-12,
+        "ororon/tag/6/direct": 9.549694368615746e-12
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 2.773897555891637e-16,
+      "mismatched_hits": 0,
+      "predicted": 10699973.274128558,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 509,
+      "case": "flins_1",
+      "changed": "flins_1-flins-em-187.json",
+      "deltas": {
+        "flins.em": 187
+      },
+      "dense_interpreter_error": 0,
+      "expected": 17606682.769803375,
+      "first_mismatches": [],
+      "fresh_hits": 509,
+      "group_errors": {
+        "columbina/tag/1/direct": 0,
+        "columbina/tag/26/reaction": -5.820766091346741e-11,
+        "columbina/tag/30/reaction": 0,
+        "columbina/tag/4/direct": 8.185452315956354e-12,
+        "columbina/tag/6/direct": -7.275957614183426e-12,
+        "flins/tag/0/direct": 0,
+        "flins/tag/1/direct": -1.0459189070388675e-11,
+        "flins/tag/26/reaction": -5.820766091346741e-11,
+        "flins/tag/30/reaction": -6.402842700481415e-10,
+        "flins/tag/4/direct": 1.0913936421275139e-11,
+        "ineffa/tag/1/direct": 3.410605131648481e-13,
+        "ineffa/tag/26/reaction": -1.0186340659856796e-10,
+        "ineffa/tag/30/reaction": 0,
+        "ineffa/tag/4/direct": 2.7284841053187847e-12,
+        "ineffa/tag/6/direct": -1.0913936421275139e-11,
+        "sucrose/tag/1/direct": 0,
+        "sucrose/tag/16/reaction": 0,
+        "sucrose/tag/18/reaction": 0,
+        "sucrose/tag/26/reaction": -7.275957614183426e-12,
+        "sucrose/tag/4/direct": 0,
+        "sucrose/tag/6/direct": 1.0231815394945443e-12
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 2.580004612867585e-16,
+      "mismatched_hits": 0,
+      "predicted": 17606682.769803375,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 509,
+      "case": "flins_1",
+      "changed": "flins_1-flins-crit_damage-0.622.json",
+      "deltas": {
+        "flins.crit_damage": 0.622
+      },
+      "dense_interpreter_error": 0,
+      "expected": 18864290.989134792,
+      "first_mismatches": [],
+      "fresh_hits": 509,
+      "group_errors": {
+        "columbina/tag/1/direct": 0,
+        "columbina/tag/26/reaction": -2.9103830456733704e-11,
+        "columbina/tag/30/reaction": 0,
+        "columbina/tag/4/direct": 8.185452315956354e-12,
+        "columbina/tag/6/direct": -7.275957614183426e-12,
+        "flins/tag/0/direct": 0,
+        "flins/tag/1/direct": -2.864908310584724e-11,
+        "flins/tag/26/reaction": -1.1641532182693481e-10,
+        "flins/tag/30/reaction": -7.8580342233181e-10,
+        "flins/tag/4/direct": -3.637978807091713e-12,
+        "ineffa/tag/1/direct": 3.410605131648481e-13,
+        "ineffa/tag/26/reaction": -8.731149137020111e-11,
+        "ineffa/tag/30/reaction": 0,
+        "ineffa/tag/4/direct": 2.7284841053187847e-12,
+        "ineffa/tag/6/direct": -1.0913936421275139e-11,
+        "sucrose/tag/1/direct": 0,
+        "sucrose/tag/16/reaction": 0,
+        "sucrose/tag/18/reaction": 0,
+        "sucrose/tag/26/reaction": -7.275957614183426e-12,
+        "sucrose/tag/4/direct": 0,
+        "sucrose/tag/6/direct": 1.0231815394945443e-12
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.2131874679090224e-16,
+      "mismatched_hits": 0,
+      "predicted": 18864290.989134792,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 509,
+      "case": "flins_1",
+      "changed": "flins_1-columbina-hp_percent-0.466.json",
+      "deltas": {
+        "columbina.hp_percent": 0.466
+      },
+      "dense_interpreter_error": 0,
+      "expected": 17753204.311611738,
+      "first_mismatches": [],
+      "fresh_hits": 509,
+      "group_errors": {
+        "columbina/tag/1/direct": 0,
+        "columbina/tag/26/reaction": -4.3655745685100555e-11,
+        "columbina/tag/30/reaction": 0,
+        "columbina/tag/4/direct": -8.094502845779061e-11,
+        "columbina/tag/6/direct": 0,
+        "flins/tag/0/direct": 0,
+        "flins/tag/1/direct": -1.0459189070388675e-11,
+        "flins/tag/26/reaction": -1.3096723705530167e-10,
+        "flins/tag/30/reaction": -2.473825588822365e-10,
+        "flins/tag/4/direct": 1.0913936421275139e-11,
+        "ineffa/tag/1/direct": 3.410605131648481e-13,
+        "ineffa/tag/26/reaction": -7.275957614183426e-11,
+        "ineffa/tag/30/reaction": 0,
+        "ineffa/tag/4/direct": 2.7284841053187847e-12,
+        "ineffa/tag/6/direct": -1.0913936421275139e-11,
+        "sucrose/tag/1/direct": 0,
+        "sucrose/tag/16/reaction": 0,
+        "sucrose/tag/18/reaction": 0,
+        "sucrose/tag/26/reaction": 0,
+        "sucrose/tag/4/direct": 0,
+        "sucrose/tag/6/direct": 1.0231815394945443e-12
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 4.723750859083594e-16,
+      "mismatched_hits": 0,
+      "predicted": 17753204.311611738,
+      "relative_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 497,
+      "case": "flins_2",
+      "changed": "flins_2-flins-em-187.json",
+      "deltas": {
+        "flins.em": 187
+      },
+      "dense_interpreter_error": 0,
+      "expected": 16526464.49386317,
+      "first_mismatches": [],
+      "fresh_hits": 497,
+      "group_errors": {
+        "columbina/tag/1/direct": 0,
+        "columbina/tag/26/reaction": -2.9103830456733704e-11,
+        "columbina/tag/30/reaction": 0,
+        "columbina/tag/4/direct": 8.185452315956354e-12,
+        "columbina/tag/6/direct": -7.275957614183426e-12,
+        "flins/tag/0/direct": 0,
+        "flins/tag/1/direct": 2.7284841053187847e-12,
+        "flins/tag/26/reaction": -1.4551915228366852e-10,
+        "flins/tag/30/reaction": -5.238689482212067e-10,
+        "flins/tag/4/direct": 0,
+        "ineffa/tag/1/direct": 2.2737367544323206e-13,
+        "ineffa/tag/26/reaction": -1.0186340659856796e-10,
+        "ineffa/tag/30/reaction": 0,
+        "ineffa/tag/4/direct": 4.547473508864641e-13,
+        "ineffa/tag/6/direct": 0,
+        "sucrose/tag/1/direct": -5.684341886080802e-14,
+        "sucrose/tag/16/reaction": 0,
+        "sucrose/tag/18/reaction": 0,
+        "sucrose/tag/2/direct": 0,
+        "sucrose/tag/4/direct": 0,
+        "sucrose/tag/6/direct": 8.526512829121202e-13
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 3.266067483300197e-16,
+      "mismatched_hits": 0,
+      "predicted": 16526464.493863167,
+      "relative_error": -1.1270681336123765e-16,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 383,
+      "case": "chasca",
+      "changed": "chasca-bennett-hp_percent--0.932.json",
+      "deltas": {
+        "bennett.hp_percent": -0.932
+      },
+      "dense_interpreter_error": 0,
+      "expected": 9797398.760298412,
+      "first_mismatches": [
+        {
+          "actor": "furina",
+          "channel": "hit/000195",
+          "got": 15330.582257097736,
+          "index": 194,
+          "want": 13140.499077512346
+        },
+        {
+          "actor": "chasca",
+          "channel": "hit/000233",
+          "got": 68068.11145640643,
+          "index": 232,
+          "want": 67636.78063546962
+        },
+        {
+          "actor": "chasca",
+          "channel": "hit/000234",
+          "got": 62933.2207309684,
+          "index": 233,
+          "want": 62501.889910031605
+        },
+        {
+          "actor": "chasca",
+          "channel": "hit/000237",
+          "got": 13623.397905931706,
+          "index": 236,
+          "want": 13497.032465991526
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000238",
+          "got": 12745.59662868145,
+          "index": 237,
+          "want": 11611.68750231814
+        },
+        {
+          "actor": "ororon",
+          "channel": "hit/000239",
+          "got": 3906.2156829634123,
+          "index": 238,
+          "want": 3877.12684277113
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000241",
+          "got": 6968.321166567792,
+          "index": 240,
+          "want": 6322.756295561488
+        },
+        {
+          "actor": "ororon",
+          "channel": "hit/000242",
+          "got": 3945.0008032197866,
+          "index": 241,
+          "want": 3896.5194028993183
+        }
+      ],
+      "fresh_hits": 383,
+      "group_errors": {
+        "bennett/tag/11/reaction": 0,
+        "bennett/tag/4/direct": -1.3642420526593924e-12,
+        "bennett/tag/6/direct": -3.637978807091713e-12,
+        "chasca/tag/11/reaction": 0,
+        "chasca/tag/13/reaction": 0,
+        "chasca/tag/16/reaction": 0,
+        "chasca/tag/18/reaction": 0,
+        "chasca/tag/2/direct": 5422.422621692809,
+        "chasca/tag/4/direct": 1.8189894035458565e-12,
+        "chasca/tag/6/direct": 7.275957614183426e-12,
+        "furina/tag/13/reaction": 0,
+        "furina/tag/4/direct": 35871.44083131507,
+        "furina/tag/6/direct": -3.637978807091713e-12,
+        "ororon/tag/0/direct": 116.822651374614,
+        "ororon/tag/13/reaction": 0,
+        "ororon/tag/4/direct": 1.8189894035458565e-12,
+        "ororon/tag/6/direct": 193.92560128188234
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 0.5799297265208679,
+      "mismatched_hits": 32,
+      "predicted": 9839003.372004075,
+      "relative_error": 0.004246495699884678,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 383,
+      "case": "chasca",
+      "changed": "chasca-furina-hp_percent--0.466.json",
+      "deltas": {
+        "furina.hp_percent": -0.466
+      },
+      "dense_interpreter_error": 0,
+      "expected": 9667884.49509759,
+      "first_mismatches": [
+        {
+          "actor": "furina",
+          "channel": "hit/000266",
+          "got": 5697.986225307292,
+          "index": 265,
+          "want": 6219.468812451144
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000267",
+          "got": 7332.065833239992,
+          "index": 266,
+          "want": 7985.864500128978
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000280",
+          "got": 11841.263789731014,
+          "index": 279,
+          "want": 13213.903407925342
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000285",
+          "got": 8899.745535948457,
+          "index": 284,
+          "want": 9217.109183180375
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000288",
+          "got": 23963.71182563066,
+          "index": 287,
+          "want": 24787.811758479325
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000291",
+          "got": 7954.143117797401,
+          "index": 290,
+          "want": 8207.82548771095
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000296",
+          "got": 14667.91243257194,
+          "index": 295,
+          "want": 15135.71779293232
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000302",
+          "got": 7954.143117797401,
+          "index": 301,
+          "want": 8207.82548771095
+        }
+      ],
+      "fresh_hits": 383,
+      "group_errors": {
+        "bennett/tag/11/reaction": 0,
+        "bennett/tag/4/direct": -1.3642420526593924e-12,
+        "bennett/tag/6/direct": -3.637978807091713e-12,
+        "chasca/tag/11/reaction": 0,
+        "chasca/tag/13/reaction": 0,
+        "chasca/tag/16/reaction": 0,
+        "chasca/tag/18/reaction": 0,
+        "chasca/tag/2/direct": 8.36735125631094e-11,
+        "chasca/tag/4/direct": 1.8189894035458565e-12,
+        "chasca/tag/6/direct": 7.275957614183426e-12,
+        "furina/tag/13/reaction": 0,
+        "furina/tag/4/direct": -4664.5545524951895,
+        "furina/tag/6/direct": 0,
+        "ororon/tag/0/direct": -5.4569682106375694e-12,
+        "ororon/tag/13/reaction": 0,
+        "ororon/tag/4/direct": 1.8189894035458565e-12,
+        "ororon/tag/6/direct": 9.549694368615746e-12
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 0.10387843590343299,
+      "mismatched_hits": 8,
+      "predicted": 9663219.940545097,
+      "relative_error": -0.000482479342286198,
+      "same_topology_hash": true
+    },
+    {
+      "aligned": true,
+      "base_hits": 383,
+      "case": "chasca",
+      "changed": "chasca-furina-hp_percent-0.466.json",
+      "deltas": {
+        "furina.hp_percent": 0.466
+      },
+      "dense_interpreter_error": 0,
+      "expected": 10010585.343298312,
+      "first_mismatches": [
+        {
+          "actor": "furina",
+          "channel": "hit/000256",
+          "got": 16627.223603176702,
+          "index": 255,
+          "want": 15021.138846686943
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000257",
+          "got": 24427.93858671424,
+          "index": 256,
+          "want": 22392.277037821386
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000266",
+          "got": 9109.137819119618,
+          "index": 265,
+          "want": 8836.30194562922
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000267",
+          "got": 11352.927139186559,
+          "index": 266,
+          "want": 11898.928661269054
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000280",
+          "got": 18094.01184962646,
+          "index": 279,
+          "want": 19359.54038628074
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000285",
+          "got": 13229.95096116116,
+          "index": 284,
+          "want": 13120.850772645408
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000288",
+          "got": 34821.57955626327,
+          "index": 287,
+          "want": 32074.535801019218
+        },
+        {
+          "actor": "furina",
+          "channel": "hit/000291",
+          "got": 11286.465867069579,
+          "index": 290,
+          "want": 11046.445452334938
+        }
+      ],
+      "fresh_hits": 383,
+      "group_errors": {
+        "bennett/tag/11/reaction": 0,
+        "bennett/tag/4/direct": -1.3642420526593924e-12,
+        "bennett/tag/6/direct": -3.637978807091713e-12,
+        "chasca/tag/11/reaction": 0,
+        "chasca/tag/13/reaction": 0,
+        "chasca/tag/16/reaction": 0,
+        "chasca/tag/18/reaction": 0,
+        "chasca/tag/2/direct": 8.36735125631094e-11,
+        "chasca/tag/4/direct": 1.8189894035458565e-12,
+        "chasca/tag/6/direct": 7.275957614183426e-12,
+        "furina/tag/13/reaction": 0,
+        "furina/tag/4/direct": 5881.848796774505,
+        "furina/tag/6/direct": -7.275957614183426e-12,
+        "ororon/tag/0/direct": -5.4569682106375694e-12,
+        "ororon/tag/13/reaction": 0,
+        "ororon/tag/4/direct": 1.8189894035458565e-12,
+        "ororon/tag/6/direct": 9.549694368615746e-12
+      },
+      "ignored_zero_damage_metadata_changes": 0,
+      "max_hit_relative_error": 0.10692163709304883,
+      "mismatched_hits": 10,
+      "predicted": 10016467.192095086,
+      "relative_error": 0.0005875629241512201,
+      "same_topology_hash": true
+    }
+  ],
+  "same_old_bloom_winner": {
+    "after_artifact_stats": [
+      {
+        "atk": 383,
+        "atk_percent": 0.134,
+        "crit_damage": 1.438,
+        "crit_rate": 0.218,
+        "def": 46,
+        "def_percent": 0.066,
+        "em": 322,
+        "energy_recharge": 0.104,
+        "hp": 6154,
+        "hp_percent": 0.466
+      },
+      {
+        "atk": 362,
+        "atk_percent": 0.053,
+        "crit_damage": 0.34199999999999997,
+        "crit_rate": 0.21,
+        "def": 38,
+        "em": 740,
+        "energy_recharge": 0.11,
+        "hp": 6782,
+        "hp_percent": 0.304
+      },
+      {
+        "atk": 366,
+        "atk_percent": 0.088,
+        "crit_damage": 1.103,
+        "crit_rate": 0.583,
+        "em": 490,
+        "hp": 5378,
+        "hp_percent": 0.204
+      },
+      {
+        "atk": 364,
+        "atk_percent": 0.5720000000000001,
+        "crit_damage": 1.508,
+        "crit_rate": 0.528,
+        "def": 42,
+        "def_percent": 0.256,
+        "dendro_damage_bonus": 0.466,
+        "em": 37,
+        "energy_recharge": 0.052,
+        "hp": 5019,
+        "hp_percent": 0.053
+      }
+    ],
+    "before_artifact_stats": [
+      {
+        "atk": 395,
+        "atk_percent": 0.047,
+        "crit_damage": 1.322,
+        "crit_rate": 0.3,
+        "def": 39,
+        "def_percent": 0.8379999999999999,
+        "em": 320,
+        "energy_recharge": 0.091,
+        "hp": 5646
+      },
+      {
+        "atk": 362,
+        "atk_percent": 0.298,
+        "crit_damage": 0.272,
+        "crit_rate": 0.11299999999999999,
+        "def": 38,
+        "em": 740,
+        "energy_recharge": 0.227,
+        "hp": 6782,
+        "hp_percent": 0.20500000000000002
+      },
+      {
+        "atk": 345,
+        "atk_percent": 0.146,
+        "crit_damage": 0.909,
+        "crit_rate": 0.377,
+        "def_percent": 0.051,
+        "em": 495,
+        "hp": 5886,
+        "hp_percent": 0.111,
+        "pyro_damage_bonus": 0.466
+      },
+      {
+        "atk": 344,
+        "atk_percent": 0.6,
+        "crit_damage": 0.6380000000000001,
+        "crit_rate": 0.225,
+        "def": 137,
+        "em": 507,
+        "energy_recharge": 0.11699999999999999,
+        "hp": 5467,
+        "hp_percent": 0.111
+      }
+    ],
+    "deltas": {
+      "columbina.atk": -12,
+      "columbina.atk_percent": 0.08700000000000001,
+      "columbina.crit_damage": 0.11599999999999988,
+      "columbina.crit_rate": -0.08199999999999999,
+      "columbina.damage_bonus": 0,
+      "columbina.em": 2,
+      "columbina.hp": 508,
+      "columbina.hp_percent": 0.466,
+      "columbina.hydro_damage_bonus": 0,
+      "kukishinobu.atk": 0,
+      "kukishinobu.atk_percent": -0.245,
+      "kukishinobu.crit_damage": 0.06999999999999995,
+      "kukishinobu.crit_rate": 0.097,
+      "kukishinobu.damage_bonus": 0,
+      "kukishinobu.electro_damage_bonus": 0,
+      "kukishinobu.em": 0,
+      "kukishinobu.hp": 0,
+      "kukishinobu.hp_percent": 0.09899999999999998,
+      "kukishinobu.physical_damage_bonus": 0,
+      "lauma.atk": 21,
+      "lauma.atk_percent": -0.057999999999999996,
+      "lauma.crit_damage": 0.19399999999999995,
+      "lauma.crit_rate": 0.20599999999999996,
+      "lauma.damage_bonus": 0,
+      "lauma.dendro_damage_bonus": 0,
+      "lauma.em": -5,
+      "nahida.atk": 20,
+      "nahida.atk_percent": -0.027999999999999914,
+      "nahida.crit_damage": 0.8699999999999999,
+      "nahida.crit_rate": 0.30300000000000005,
+      "nahida.damage_bonus": 0,
+      "nahida.dendro_damage_bonus": 0.466,
+      "nahida.em": -470
+    },
+    "reports": [
+      {
+        "aligned_channels": true,
+        "fresh_dps": 124174.70316429192,
+        "fresh_duration_ms": 93650,
+        "fresh_hits": 543,
+        "groups": {
+          "columbina/direct/tag/1": {
+            "Hits": 17,
+            "Predicted": 17909.619399981755,
+            "Fresh": 17909.619399981755
+          },
+          "columbina/direct/tag/4": {
+            "Hits": 52,
+            "Predicted": 475414.4092016991,
+            "Fresh": 475414.409201699
+          },
+          "columbina/direct/tag/6": {
+            "Hits": 5,
+            "Predicted": 119631.21173524421,
+            "Fresh": 119631.21173524421
+          },
+          "columbina/reaction/tag/20": {
+            "Hits": 2,
+            "Predicted": 29118.130715995165,
+            "Fresh": 29118.130715995165
+          },
+          "columbina/reaction/tag/31": {
+            "Hits": 172,
+            "Predicted": 5137317.545550809,
+            "Fresh": 5137317.545550809
+          },
+          "kukishinobu/direct/tag/1": {
+            "Hits": 5,
+            "Predicted": 1596.3438894254828,
+            "Fresh": 1596.3438894254825
+          },
+          "kukishinobu/direct/tag/4": {
+            "Hits": 65,
+            "Predicted": 100576.23009073615,
+            "Fresh": 100576.23009073615
+          },
+          "kukishinobu/direct/tag/6": {
+            "Hits": 48,
+            "Predicted": 83628.55961051775,
+            "Fresh": 83628.55961051775
+          },
+          "kukishinobu/reaction/tag/23": {
+            "Hits": 68,
+            "Predicted": 2773509.794702435,
+            "Fresh": 2773509.794702435
+          },
+          "lauma/direct/tag/1": {
+            "Hits": 5,
+            "Predicted": 38095.15729740683,
+            "Fresh": 38095.15729740683
+          },
+          "lauma/direct/tag/5": {
+            "Hits": 44,
+            "Predicted": 793000.1358657465,
+            "Fresh": 793000.1358657465
+          },
+          "lauma/reaction/tag/31": {
+            "Hits": 5,
+            "Predicted": 1038784.9374093993,
+            "Fresh": 1038784.9374093993
+          },
+          "nahida/direct/tag/1": {
+            "Hits": 11,
+            "Predicted": 27303.212181241965,
+            "Fresh": 27303.212181241965
+          },
+          "nahida/direct/tag/4": {
+            "Hits": 44,
+            "Predicted": 993075.6636853118,
+            "Fresh": 993075.6636853117
+          }
+        },
+        "hit123_fresh_factors": {},
+        "hit123_predicted_factors": {},
+        "mismatched_hits": [],
+        "old_duration_ms": 93650,
+        "old_hits": 543,
+        "predicted_dps": 124174.70316429192,
+        "seed": 742031889,
+        "topology_hash_equal": true
+      }
+    ]
+  },
+  "ordinary_trace_parity": [
+    {
+      "case": "gaming_melt",
+      "config": "gaming_melt.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//cryo/amp=false": 53,
+        "standard//cryo/amp=true": 24,
+        "standard//pyro/amp=false": 18,
+        "standard//pyro/amp=true": 16
+      },
+      "frames": [
+        3500,
+        3500
+      ],
+      "hits": 111,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "lunar_crystallize",
+      "config": "lunar_crystallize.txt",
+      "contributor_sizes": {
+        "2": 70,
+        "3": 25
+      },
+      "coverage": {
+        "direct_reaction//electro/amp=true": 54,
+        "direct_reaction//geo/amp=true": 1,
+        "standard//electro/amp=false": 86,
+        "standard//geo/amp=false": 221,
+        "standard//hydro/amp=false": 49,
+        "standard//physical/amp=false": 2
+      },
+      "frames": [
+        4990,
+        4990
+      ],
+      "hits": 413,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "spread",
+      "config": "spread.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//dendro/amp=false": 178,
+        "standard//electro/amp=false": 178,
+        "standard//physical/amp=false": 8
+      },
+      "frames": [
+        3589,
+        3589
+      ],
+      "hits": 364,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "aggravate",
+      "config": "aggravate.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//anemo/amp=false": 48,
+        "standard//dendro/amp=false": 45,
+        "standard//electro/amp=false": 386,
+        "standard//physical/amp=false": 15,
+        "standard/swirl-electro/electro/amp=false": 15
+      },
+      "frames": [
+        4655,
+        4655
+      ],
+      "hits": 509,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "vaporize",
+      "config": "vaporize.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//hydro/amp=false": 221,
+        "standard//hydro/amp=true": 14,
+        "standard//physical/amp=false": 14,
+        "standard//pyro/amp=false": 50,
+        "standard//pyro/amp=true": 71
+      },
+      "frames": [
+        3719,
+        3719
+      ],
+      "hits": 370,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "burgeon",
+      "config": "burgeon.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard///amp=false": 15,
+        "standard//cryo/amp=false": 116,
+        "standard//cryo/amp=true": 16,
+        "standard//dendro/amp=false": 76,
+        "standard//hydro/amp=false": 237,
+        "standard//hydro/amp=true": 51,
+        "standard//physical/amp=false": 152,
+        "standard//pyro/amp=false": 92,
+        "standard//pyro/amp=true": 28,
+        "standard/bloom/dendro/amp=false": 12,
+        "standard/burgeon/dendro/amp=false": 194,
+        "standard/burning/pyro/amp=false": 123,
+        "standard/shatter/physical/amp=false": 12
+      },
+      "frames": [
+        5114,
+        5114
+      ],
+      "hits": 1124,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "burning",
+      "config": "burning.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//dendro/amp=false": 218,
+        "standard//pyro/amp=false": 37,
+        "standard/burning/pyro/amp=false": 250
+      },
+      "frames": [
+        4293,
+        4293
+      ],
+      "hits": 505,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "physical",
+      "config": "physical.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard///amp=false": 16,
+        "standard//cryo/amp=false": 66,
+        "standard//electro/amp=false": 104,
+        "standard//hydro/amp=false": 224,
+        "standard//physical/amp=false": 90,
+        "standard/electrocharged/electro/amp=false": 32,
+        "standard/shatter/physical/amp=false": 8,
+        "standard/superconduct/cryo/amp=false": 18
+      },
+      "frames": [
+        5060,
+        5060
+      ],
+      "hits": 558,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "bloom",
+      "config": "bloom.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "direct_reaction//dendro/amp=true": 177,
+        "standard//dendro/amp=false": 104,
+        "standard//electro/amp=false": 113,
+        "standard//hydro/amp=false": 74,
+        "standard//physical/amp=false": 5,
+        "standard/bloom/dendro/amp=false": 2,
+        "standard/hyperbloom/dendro/amp=false": 68
+      },
+      "frames": [
+        5619,
+        5619
+      ],
+      "hits": 543,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "chasca",
+      "config": "chasca.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//anemo/amp=false": 26,
+        "standard//electro/amp=false": 117,
+        "standard//hydro/amp=false": 103,
+        "standard//hydro/amp=true": 2,
+        "standard//pyro/amp=false": 25,
+        "standard//pyro/amp=true": 26,
+        "standard/electrocharged/electro/amp=false": 46,
+        "standard/overload/pyro/amp=false": 16,
+        "standard/swirl-electro/electro/amp=false": 19,
+        "standard/swirl-hydro/hydro/amp=false": 3
+      },
+      "frames": [
+        4021,
+        4021
+      ],
+      "hits": 383,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "flins_1",
+      "config": "flins_1.txt",
+      "contributor_sizes": {
+        "2": 11,
+        "3": 38,
+        "4": 10
+      },
+      "coverage": {
+        "direct_reaction//electro/amp=true": 106,
+        "standard//anemo/amp=false": 21,
+        "standard//electro/amp=false": 276,
+        "standard//hydro/amp=false": 79,
+        "standard//physical/amp=false": 3,
+        "standard/swirl-electro/electro/amp=false": 20,
+        "standard/swirl-hydro/hydro/amp=false": 4
+      },
+      "frames": [
+        6899,
+        6899
+      ],
+      "hits": 509,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "flins_2",
+      "config": "flins_2.txt",
+      "contributor_sizes": {
+        "2": 24,
+        "3": 19,
+        "4": 12
+      },
+      "coverage": {
+        "direct_reaction//electro/amp=true": 92,
+        "standard//anemo/amp=false": 35,
+        "standard//electro/amp=false": 254,
+        "standard//hydro/amp=false": 75,
+        "standard//physical/amp=false": 2,
+        "standard/swirl-electro/electro/amp=false": 29,
+        "standard/swirl-hydro/hydro/amp=false": 10
+      },
+      "frames": [
+        6170,
+        6170
+      ],
+      "hits": 497,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "spread",
+      "config": "spread-tighnari-em-1000.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//dendro/amp=false": 178,
+        "standard//electro/amp=false": 178,
+        "standard//physical/amp=false": 8
+      },
+      "frames": [
+        3589,
+        3589
+      ],
+      "hits": 364,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "chasca",
+      "config": "chasca-bennett-hp_percent-0.466.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//anemo/amp=false": 26,
+        "standard//electro/amp=false": 117,
+        "standard//hydro/amp=false": 103,
+        "standard//hydro/amp=true": 2,
+        "standard//pyro/amp=false": 25,
+        "standard//pyro/amp=true": 26,
+        "standard/electrocharged/electro/amp=false": 46,
+        "standard/overload/pyro/amp=false": 16,
+        "standard/swirl-electro/electro/amp=false": 19,
+        "standard/swirl-hydro/hydro/amp=false": 3
+      },
+      "frames": [
+        4021,
+        4021
+      ],
+      "hits": 383,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "flins_1",
+      "config": "flins_1-columbina-hp_percent-0.466.txt",
+      "contributor_sizes": {
+        "2": 11,
+        "3": 38,
+        "4": 10
+      },
+      "coverage": {
+        "direct_reaction//electro/amp=true": 106,
+        "standard//anemo/amp=false": 21,
+        "standard//electro/amp=false": 276,
+        "standard//hydro/amp=false": 79,
+        "standard//physical/amp=false": 3,
+        "standard/swirl-electro/electro/amp=false": 20,
+        "standard/swirl-hydro/hydro/amp=false": 4
+      },
+      "frames": [
+        6899,
+        6899
+      ],
+      "hits": 509,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    }
+  ],
+  "health_owner_parity": [
+    {
+      "case": "chasca",
+      "config": "chasca.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//anemo/amp=false": 26,
+        "standard//electro/amp=false": 117,
+        "standard//hydro/amp=false": 103,
+        "standard//hydro/amp=true": 2,
+        "standard//pyro/amp=false": 25,
+        "standard//pyro/amp=true": 26,
+        "standard/electrocharged/electro/amp=false": 46,
+        "standard/overload/pyro/amp=false": 16,
+        "standard/swirl-electro/electro/amp=false": 19,
+        "standard/swirl-hydro/hydro/amp=false": 3
+      },
+      "frames": [
+        4021,
+        4021
+      ],
+      "hits": 383,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "chasca",
+      "config": "chasca-bennett-hp_percent-0.466.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//anemo/amp=false": 26,
+        "standard//electro/amp=false": 117,
+        "standard//hydro/amp=false": 103,
+        "standard//hydro/amp=true": 2,
+        "standard//pyro/amp=false": 25,
+        "standard//pyro/amp=true": 26,
+        "standard/electrocharged/electro/amp=false": 46,
+        "standard/overload/pyro/amp=false": 16,
+        "standard/swirl-electro/electro/amp=false": 19,
+        "standard/swirl-hydro/hydro/amp=false": 3
+      },
+      "frames": [
+        4021,
+        4021
+      ],
+      "hits": 383,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "chasca",
+      "config": "chasca-bennett-healing_bonus-0.359.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//anemo/amp=false": 26,
+        "standard//electro/amp=false": 117,
+        "standard//hydro/amp=false": 103,
+        "standard//hydro/amp=true": 2,
+        "standard//pyro/amp=false": 25,
+        "standard//pyro/amp=true": 26,
+        "standard/electrocharged/electro/amp=false": 46,
+        "standard/overload/pyro/amp=false": 16,
+        "standard/swirl-electro/electro/amp=false": 19,
+        "standard/swirl-hydro/hydro/amp=false": 3
+      },
+      "frames": [
+        4021,
+        4021
+      ],
+      "hits": 383,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "chasca",
+      "config": "chasca-chasca-atk_percent-0.466.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//anemo/amp=false": 26,
+        "standard//electro/amp=false": 117,
+        "standard//hydro/amp=false": 103,
+        "standard//hydro/amp=true": 2,
+        "standard//pyro/amp=false": 25,
+        "standard//pyro/amp=true": 26,
+        "standard/electrocharged/electro/amp=false": 46,
+        "standard/overload/pyro/amp=false": 16,
+        "standard/swirl-electro/electro/amp=false": 19,
+        "standard/swirl-hydro/hydro/amp=false": 3
+      },
+      "frames": [
+        4021,
+        4021
+      ],
+      "hits": 383,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    }
+  ],
+  "additional_health_parity": [
+    {
+      "case": "chasca",
+      "config": "chasca.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//anemo/amp=false": 26,
+        "standard//electro/amp=false": 117,
+        "standard//hydro/amp=false": 103,
+        "standard//hydro/amp=true": 2,
+        "standard//pyro/amp=false": 25,
+        "standard//pyro/amp=true": 26,
+        "standard/electrocharged/electro/amp=false": 46,
+        "standard/overload/pyro/amp=false": 16,
+        "standard/swirl-electro/electro/amp=false": 19,
+        "standard/swirl-hydro/hydro/amp=false": 3
+      },
+      "frames": [
+        4021,
+        4021
+      ],
+      "hits": 383,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "chasca",
+      "config": "chasca-bennett-hp_percent--0.932.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//anemo/amp=false": 26,
+        "standard//electro/amp=false": 117,
+        "standard//hydro/amp=false": 103,
+        "standard//hydro/amp=true": 2,
+        "standard//pyro/amp=false": 25,
+        "standard//pyro/amp=true": 26,
+        "standard/electrocharged/electro/amp=false": 46,
+        "standard/overload/pyro/amp=false": 16,
+        "standard/swirl-electro/electro/amp=false": 19,
+        "standard/swirl-hydro/hydro/amp=false": 3
+      },
+      "frames": [
+        4021,
+        4021
+      ],
+      "hits": 383,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "chasca",
+      "config": "chasca-furina-hp_percent--0.466.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//anemo/amp=false": 26,
+        "standard//electro/amp=false": 117,
+        "standard//hydro/amp=false": 103,
+        "standard//hydro/amp=true": 2,
+        "standard//pyro/amp=false": 25,
+        "standard//pyro/amp=true": 26,
+        "standard/electrocharged/electro/amp=false": 46,
+        "standard/overload/pyro/amp=false": 16,
+        "standard/swirl-electro/electro/amp=false": 19,
+        "standard/swirl-hydro/hydro/amp=false": 3
+      },
+      "frames": [
+        4021,
+        4021
+      ],
+      "hits": 383,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    },
+    {
+      "case": "chasca",
+      "config": "chasca-furina-hp_percent-0.466.txt",
+      "contributor_sizes": {},
+      "coverage": {
+        "standard//anemo/amp=false": 26,
+        "standard//electro/amp=false": 117,
+        "standard//hydro/amp=false": 103,
+        "standard//hydro/amp=true": 2,
+        "standard//pyro/amp=false": 25,
+        "standard//pyro/amp=true": 26,
+        "standard/electrocharged/electro/amp=false": 46,
+        "standard/overload/pyro/amp=false": 16,
+        "standard/swirl-electro/electro/amp=false": 19,
+        "standard/swirl-hydro/hydro/amp=false": 3
+      },
+      "frames": [
+        4021,
+        4021
+      ],
+      "hits": 383,
+      "max_damage_difference": 0,
+      "ordinary_trace_exact": true
+    }
+  ],
+  "selected": {
+    "elapsed_ms": 98156,
+    "formula_dps": "127062.72329722902",
+    "measured": {
+      "iterations": 1000,
+      "dps": "127151.85099592291",
+      "standard_error": "71.73394524892296",
+      "engine_result_sha256": "e4e7a5d50c858bb62facea59600364616a95f19804e61a3089f85fe264873fad"
+    },
+    "formula_residual": "89.12769869389012",
+    "warnings": [
+      "formula_rank_not_measurement_authority",
+      "measured_top_confidence_overlap",
+      "opaque_formula_boundaries_present"
+    ],
+    "winner": [
+      {
+        "wearer_key": "columbina",
+        "slot": "flower",
+        "artifact_id": 61
+      },
+      {
+        "wearer_key": "columbina",
+        "slot": "plume",
+        "artifact_id": 1536
+      },
+      {
+        "wearer_key": "columbina",
+        "slot": "sands",
+        "artifact_id": 1355
+      },
+      {
+        "wearer_key": "columbina",
+        "slot": "goblet",
+        "artifact_id": 184
+      },
+      {
+        "wearer_key": "columbina",
+        "slot": "circlet",
+        "artifact_id": 1565
+      },
+      {
+        "wearer_key": "kukishinobu",
+        "slot": "flower",
+        "artifact_id": 66
+      },
+      {
+        "wearer_key": "kukishinobu",
+        "slot": "plume",
+        "artifact_id": 67
+      },
+      {
+        "wearer_key": "kukishinobu",
+        "slot": "sands",
+        "artifact_id": 68
+      },
+      {
+        "wearer_key": "kukishinobu",
+        "slot": "goblet",
+        "artifact_id": 69
+      },
+      {
+        "wearer_key": "kukishinobu",
+        "slot": "circlet",
+        "artifact_id": 129
+      },
+      {
+        "wearer_key": "lauma",
+        "slot": "flower",
+        "artifact_id": 31
+      },
+      {
+        "wearer_key": "lauma",
+        "slot": "plume",
+        "artifact_id": 1344
+      },
+      {
+        "wearer_key": "lauma",
+        "slot": "sands",
+        "artifact_id": 33
+      },
+      {
+        "wearer_key": "lauma",
+        "slot": "goblet",
+        "artifact_id": 34
+      },
+      {
+        "wearer_key": "lauma",
+        "slot": "circlet",
+        "artifact_id": 156
+      },
+      {
+        "wearer_key": "nahida",
+        "slot": "flower",
+        "artifact_id": 105
+      },
+      {
+        "wearer_key": "nahida",
+        "slot": "plume",
+        "artifact_id": 106
+      },
+      {
+        "wearer_key": "nahida",
+        "slot": "sands",
+        "artifact_id": 112
+      },
+      {
+        "wearer_key": "nahida",
+        "slot": "goblet",
+        "artifact_id": 108
+      },
+      {
+        "wearer_key": "nahida",
+        "slot": "circlet",
+        "artifact_id": 203
+      }
+    ],
+    "candidates": [
+      {
+        "rank": 1,
+        "artifacts": [
+          {
+            "wearer_key": "columbina",
+            "slot": "flower",
+            "artifact_id": 61
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "plume",
+            "artifact_id": 1536
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "sands",
+            "artifact_id": 1355
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "goblet",
+            "artifact_id": 184
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "circlet",
+            "artifact_id": 1565
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "flower",
+            "artifact_id": 66
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "plume",
+            "artifact_id": 67
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "sands",
+            "artifact_id": 68
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "goblet",
+            "artifact_id": 69
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "circlet",
+            "artifact_id": 129
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "flower",
+            "artifact_id": 31
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "plume",
+            "artifact_id": 1344
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "sands",
+            "artifact_id": 33
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "goblet",
+            "artifact_id": 34
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "circlet",
+            "artifact_id": 156
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "flower",
+            "artifact_id": 105
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "plume",
+            "artifact_id": 106
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "sands",
+            "artifact_id": 112
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "goblet",
+            "artifact_id": 108
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "circlet",
+            "artifact_id": 203
+          }
+        ],
+        "formula_dps": "127062.72329722902",
+        "measured": {
+          "iterations": 1000,
+          "dps": "127151.85099592291",
+          "standard_error": "71.73394524892296",
+          "engine_result_sha256": "e4e7a5d50c858bb62facea59600364616a95f19804e61a3089f85fe264873fad"
+        },
+        "formula_residual": "89.12769869389012"
+      },
+      {
+        "rank": 2,
+        "artifacts": [
+          {
+            "wearer_key": "columbina",
+            "slot": "flower",
+            "artifact_id": 61
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "plume",
+            "artifact_id": 1533
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "sands",
+            "artifact_id": 1355
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "goblet",
+            "artifact_id": 184
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "circlet",
+            "artifact_id": 1565
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "flower",
+            "artifact_id": 66
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "plume",
+            "artifact_id": 67
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "sands",
+            "artifact_id": 68
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "goblet",
+            "artifact_id": 69
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "circlet",
+            "artifact_id": 129
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "flower",
+            "artifact_id": 31
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "plume",
+            "artifact_id": 1344
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "sands",
+            "artifact_id": 33
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "goblet",
+            "artifact_id": 34
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "circlet",
+            "artifact_id": 156
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "flower",
+            "artifact_id": 105
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "plume",
+            "artifact_id": 106
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "sands",
+            "artifact_id": 112
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "goblet",
+            "artifact_id": 108
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "circlet",
+            "artifact_id": 203
+          }
+        ],
+        "formula_dps": "126994.7962525131",
+        "measured": {
+          "iterations": 1000,
+          "dps": "127051.89328347932",
+          "standard_error": "69.63982484343079",
+          "engine_result_sha256": "7766bbd176c28efd1a4022ca4fdc662b946c5f517a569101b4762c7631d581d4"
+        },
+        "formula_residual": "57.09703096622252"
+      },
+      {
+        "rank": 3,
+        "artifacts": [
+          {
+            "wearer_key": "columbina",
+            "slot": "flower",
+            "artifact_id": 61
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "plume",
+            "artifact_id": 1533
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "sands",
+            "artifact_id": 1355
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "goblet",
+            "artifact_id": 184
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "circlet",
+            "artifact_id": 1565
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "flower",
+            "artifact_id": 66
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "plume",
+            "artifact_id": 67
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "sands",
+            "artifact_id": 68
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "goblet",
+            "artifact_id": 69
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "circlet",
+            "artifact_id": 129
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "flower",
+            "artifact_id": 31
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "plume",
+            "artifact_id": 1344
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "sands",
+            "artifact_id": 33
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "goblet",
+            "artifact_id": 34
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "circlet",
+            "artifact_id": 35
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "flower",
+            "artifact_id": 105
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "plume",
+            "artifact_id": 106
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "sands",
+            "artifact_id": 112
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "goblet",
+            "artifact_id": 108
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "circlet",
+            "artifact_id": 203
+          }
+        ],
+        "formula_dps": "126954.97221466688",
+        "measured": {
+          "iterations": 1000,
+          "dps": "126955.84075811821",
+          "standard_error": "66.86474555258498",
+          "engine_result_sha256": "41baa5a5d64aa94fd9c24b98ac68aa5266c4c1ec74247efb3d037e87b35467c0"
+        },
+        "formula_residual": "0.8685434513317887"
+      },
+      {
+        "rank": 4,
+        "artifacts": [
+          {
+            "wearer_key": "columbina",
+            "slot": "flower",
+            "artifact_id": 61
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "plume",
+            "artifact_id": 1533
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "sands",
+            "artifact_id": 1355
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "goblet",
+            "artifact_id": 184
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "circlet",
+            "artifact_id": 1565
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "flower",
+            "artifact_id": 66
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "plume",
+            "artifact_id": 67
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "sands",
+            "artifact_id": 68
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "goblet",
+            "artifact_id": 69
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "circlet",
+            "artifact_id": 129
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "flower",
+            "artifact_id": 31
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "plume",
+            "artifact_id": 1344
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "sands",
+            "artifact_id": 33
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "goblet",
+            "artifact_id": 34
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "circlet",
+            "artifact_id": 156
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "flower",
+            "artifact_id": 105
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "plume",
+            "artifact_id": 106
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "sands",
+            "artifact_id": 112
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "goblet",
+            "artifact_id": 1573
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "circlet",
+            "artifact_id": 203
+          }
+        ],
+        "formula_dps": "126947.1523579966",
+        "measured": {
+          "iterations": 500,
+          "dps": "126806.41644849177",
+          "standard_error": "103.97773070924177",
+          "engine_result_sha256": "1b822d05fe0c384f4450d11a5b0cd7cd4f4fff545836ecc2fa3f7b3c0066060d"
+        },
+        "formula_residual": "-140.7359095048305"
+      },
+      {
+        "rank": 5,
+        "artifacts": [
+          {
+            "wearer_key": "columbina",
+            "slot": "flower",
+            "artifact_id": 61
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "plume",
+            "artifact_id": 1536
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "sands",
+            "artifact_id": 1355
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "goblet",
+            "artifact_id": 184
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "circlet",
+            "artifact_id": 1565
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "flower",
+            "artifact_id": 66
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "plume",
+            "artifact_id": 67
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "sands",
+            "artifact_id": 1582
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "goblet",
+            "artifact_id": 69
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "circlet",
+            "artifact_id": 129
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "flower",
+            "artifact_id": 31
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "plume",
+            "artifact_id": 1344
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "sands",
+            "artifact_id": 33
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "goblet",
+            "artifact_id": 34
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "circlet",
+            "artifact_id": 156
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "flower",
+            "artifact_id": 105
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "plume",
+            "artifact_id": 106
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "sands",
+            "artifact_id": 112
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "goblet",
+            "artifact_id": 108
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "circlet",
+            "artifact_id": 203
+          }
+        ],
+        "formula_dps": "126990.06466710159",
+        "measured": {
+          "iterations": 500,
+          "dps": "126795.81652214653",
+          "standard_error": "107.05302915694821",
+          "engine_result_sha256": "9f865458f35ede976544b8c07ffd4143d8e4a256a83d22cbcbd8a1363647e03c"
+        },
+        "formula_residual": "-194.24814495505416"
+      },
+      {
+        "rank": 6,
+        "artifacts": [
+          {
+            "wearer_key": "columbina",
+            "slot": "flower",
+            "artifact_id": 1
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "plume",
+            "artifact_id": 2
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "sands",
+            "artifact_id": 3
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "goblet",
+            "artifact_id": 184
+          },
+          {
+            "wearer_key": "columbina",
+            "slot": "circlet",
+            "artifact_id": 5
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "flower",
+            "artifact_id": 66
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "plume",
+            "artifact_id": 67
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "sands",
+            "artifact_id": 68
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "goblet",
+            "artifact_id": 69
+          },
+          {
+            "wearer_key": "kukishinobu",
+            "slot": "circlet",
+            "artifact_id": 70
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "flower",
+            "artifact_id": 31
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "plume",
+            "artifact_id": 32
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "sands",
+            "artifact_id": 33
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "goblet",
+            "artifact_id": 140
+          },
+          {
+            "wearer_key": "lauma",
+            "slot": "circlet",
+            "artifact_id": 129
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "flower",
+            "artifact_id": 105
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "plume",
+            "artifact_id": 106
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "sands",
+            "artifact_id": 92
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "goblet",
+            "artifact_id": 220
+          },
+          {
+            "wearer_key": "nahida",
+            "slot": "circlet",
+            "artifact_id": 185
+          }
+        ],
+        "formula_dps": "110458.32090042332",
+        "measured": {
+          "iterations": 500,
+          "dps": "110473.46619576351",
+          "standard_error": "88.57863095111549",
+          "engine_result_sha256": "f72c4665ce27bc3c302f520016c1c88f719a5606c81a1be01fdfec6a8b9afabd"
+        },
+        "formula_residual": "15.145295340189477"
+      }
+    ],
+    "preservation": {
+      "before": "0e1c6738566cb5c8e964ede1a59c9d888d0dbe89b454a6f634660d0dade70f56",
+      "after": "0e1c6738566cb5c8e964ede1a59c9d888d0dbe89b454a6f634660d0dade70f56",
+      "unchanged": true
+    },
+    "timing_scope": "One real default-budget backend run, concurrent regression work; not a clean speed benchmark."
+  },
+  "selected_execution": {
+    "timing": {
+      "compile_ms": 947.1195,
+      "offline_search_ms": 26526.0445,
+      "screen_n128_ms": 19789.1488,
+      "final_adaptive_verification_ms": 36294.1919,
+      "backend_total_ms": 83556.50469999999
+    },
+    "stop_reason": "max_cycles",
+    "completed_cycles": 2,
+    "accepted_steps": 5,
+    "initial_candidate": {
+      "rank": 6,
+      "artifacts": [
+        {
+          "wearer_key": "columbina",
+          "slot": "flower",
+          "artifact_id": 1
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "plume",
+          "artifact_id": 2
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "sands",
+          "artifact_id": 3
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "goblet",
+          "artifact_id": 184
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "circlet",
+          "artifact_id": 5
+        },
+        {
+          "wearer_key": "kukishinobu",
+          "slot": "flower",
+          "artifact_id": 66
+        },
+        {
+          "wearer_key": "kukishinobu",
+          "slot": "plume",
+          "artifact_id": 67
+        },
+        {
+          "wearer_key": "kukishinobu",
+          "slot": "sands",
+          "artifact_id": 68
+        },
+        {
+          "wearer_key": "kukishinobu",
+          "slot": "goblet",
+          "artifact_id": 69
+        },
+        {
+          "wearer_key": "kukishinobu",
+          "slot": "circlet",
+          "artifact_id": 70
+        },
+        {
+          "wearer_key": "lauma",
+          "slot": "flower",
+          "artifact_id": 31
+        },
+        {
+          "wearer_key": "lauma",
+          "slot": "plume",
+          "artifact_id": 32
+        },
+        {
+          "wearer_key": "lauma",
+          "slot": "sands",
+          "artifact_id": 33
+        },
+        {
+          "wearer_key": "lauma",
+          "slot": "goblet",
+          "artifact_id": 140
+        },
+        {
+          "wearer_key": "lauma",
+          "slot": "circlet",
+          "artifact_id": 129
+        },
+        {
+          "wearer_key": "nahida",
+          "slot": "flower",
+          "artifact_id": 105
+        },
+        {
+          "wearer_key": "nahida",
+          "slot": "plume",
+          "artifact_id": 106
+        },
+        {
+          "wearer_key": "nahida",
+          "slot": "sands",
+          "artifact_id": 92
+        },
+        {
+          "wearer_key": "nahida",
+          "slot": "goblet",
+          "artifact_id": 220
+        },
+        {
+          "wearer_key": "nahida",
+          "slot": "circlet",
+          "artifact_id": 185
+        }
+      ],
+      "formula_dps": "110458.32090042332",
+      "measured": {
+        "iterations": 500,
+        "dps": "110473.46619576351",
+        "standard_error": "88.57863095111549",
+        "engine_result_sha256": "f72c4665ce27bc3c302f520016c1c88f719a5606c81a1be01fdfec6a8b9afabd"
+      },
+      "formula_residual": "15.145295340189477"
+    },
+    "initial_identity_scope": "Exact ordered twenty wearer/slot/artifact rows match request.current_artifacts and search.initial.assignment in the same run."
+  },
+  "health_owner_repair": {
+    "scope": "Built and tested audit5: typed receiver ownership and original-position single-evaluation health-input ancestry; source and binary match.",
+    "scalar_regression": {
+      "frame": 93,
+      "baseline": 497.7933635413888,
+      "fresh_and_predicted": 590.228404695008,
+      "delta": {
+        "bennett.hp_percent": 0.466
+      }
+    },
+    "schedule_boundary_evidence": [
+      {
+        "point": "chasca-bennett-hp_percent-0.466",
+        "first_changed_health_frame": 2906,
+        "base_health_events_at_frame": 3,
+        "fresh_health_events_at_frame": 4,
+        "first_matched_state_difference_frame": 2926,
+        "first_hit_difference_frame": 2926,
+        "relative_team_error": -9.66293203701069e-05,
+        "mismatched_hits": 7,
+        "unmatched_state_events": 370
+      },
+      {
+        "point": "chasca-bennett-healing_bonus-0.359",
+        "first_changed_health_frame": 2812,
+        "base_health_events_at_frame": 1,
+        "fresh_health_events_at_frame": 2,
+        "first_matched_state_difference_frame": 2819,
+        "first_hit_difference_frame": 2832,
+        "relative_team_error": -0.000526801242870426,
+        "mismatched_hits": 8,
+        "unmatched_state_events": 180
+      },
+      {
+        "point": "chasca-bennett-hp_percent--0.932",
+        "first_changed_health_frame": 1880,
+        "base_health_events_at_frame": 4,
+        "fresh_health_events_at_frame": 0,
+        "first_matched_state_difference_frame": 2564,
+        "first_hit_difference_frame": 2171,
+        "relative_team_error": 0.004246495699884678,
+        "mismatched_hits": 32,
+        "unmatched_state_events": 3203
+      },
+      {
+        "point": "chasca-furina-hp_percent--0.466",
+        "first_changed_health_frame": 2812,
+        "base_health_events_at_frame": 1,
+        "fresh_health_events_at_frame": 2,
+        "first_matched_state_difference_frame": 2819,
+        "first_hit_difference_frame": 2832,
+        "relative_team_error": -0.000482479342286198,
+        "mismatched_hits": 8,
+        "unmatched_state_events": 180
+      },
+      {
+        "point": "chasca-furina-hp_percent-0.466",
+        "first_changed_health_frame": 2743,
+        "base_health_events_at_frame": 2,
+        "fresh_health_events_at_frame": 1,
+        "first_matched_state_difference_frame": 2760,
+        "first_hit_difference_frame": 2783,
+        "relative_team_error": 0.0005875629241512201,
+        "mismatched_hits": 10,
+        "unmatched_state_events": 710
+      }
+    ]
+  },
+  "known_limits": [
+    "Five HP/healing response controls differ after changed health-operation schedules; max absolute tested team residual0.42465%. Fixed-schedule reconstruction does not create previously absent health events or re-evaluate pet participant branches.",
+    "No universal arbitrary-Go dependency completeness; unsupported paths stay locally frozen.",
+    "Older prepended-stat matrices changed party declaration order and are superseded for response acceptance; do not treat their apparent topology/Flins HP failures as product failures."
+  ],
+  "tests": [
+    "audit5 source-generator full tree, runtime/compact/info/character/combat tests",
+    "native go test ./...",
+    "14 refreshed portable fresh-engine response slices plus one foreign health scalar through reference, dense and one-wearer evaluators",
+    "pending delta git apply --check against installed GP-3 source"
+  ]
+}

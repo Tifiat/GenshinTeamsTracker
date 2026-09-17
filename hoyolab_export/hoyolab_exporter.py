@@ -6,10 +6,11 @@ import subprocess
 import time
 import urllib.request
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Awaitable, Callable, Optional
 
 from PIL import Image
-from playwright.async_api import async_playwright, Route, Request, BrowserContext, Page
+from playwright.async_api import async_playwright, Route, Request, BrowserContext, Page, Error as PlaywrightError
 
 try:
     from .auth import AuthStatus, find_browser_exe, get_auth_status, mark_profile_clean
@@ -105,6 +106,7 @@ async def close_export_context(context: BrowserContext) -> None:
                 process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 process.kill()
+                process.wait(timeout=5)
         elif attached_debug_port is None:
             pages = list(context.pages)
             for page in pages:
@@ -113,6 +115,8 @@ async def close_export_context(context: BrowserContext) -> None:
                         await asyncio.wait_for(page.close(), timeout=2)
                 except Exception:
                     pass
+    except Exception as exc:
+        print(f"[HoYoLAB Exporter] Browser cleanup warning: {type(exc).__name__}")
     finally:
         playwright = getattr(context, "_playwright_instance", None)
         if playwright:
@@ -122,11 +126,18 @@ async def close_export_context(context: BrowserContext) -> None:
                 pass
 
         if process and process.poll() is None and not keep_browser_open:
-            process.kill()
+            try:
+                process.kill()
+                process.wait(timeout=5)
+            except Exception as exc:
+                print(f"[HoYoLAB Exporter] Browser stop warning: {type(exc).__name__}")
 
         process_profile = getattr(context, "_browser_profile_dir", None)
-        if process_profile:
-            mark_profile_clean(process_profile)
+        if process_profile and process and process.poll() is not None:
+            try:
+                mark_profile_clean(process_profile)
+            except Exception as exc:
+                print(f"[HoYoLAB Exporter] Profile cleanup warning: {type(exc).__name__}")
 
         await asyncio.sleep(0.2)
 
@@ -174,12 +185,13 @@ class HoyolabExporter:
             raise ValueError("image_format must be png or jpeg")
 
     async def _is_login_open(self, page: Page) -> bool:
-        if await page.locator("iframe#hyv-account-frame").count() > 0:
+        if await page.locator("iframe#hyv-account-frame").first.is_visible():
             return True
 
         for frame in page.frames:
             if "account.hoyolab.com/login-platform" in frame.url:
-                return True
+                if await (await frame.frame_element()).is_visible():
+                    return True
 
         return False
 
@@ -195,30 +207,6 @@ class HoyolabExporter:
 
     def _has_hoyolab_login_cookie(self) -> bool:
         return get_auth_status(self.profile_dir) == AuthStatus.LOGGED_IN
-
-    async def _block_user_input(self, page: Page):
-        await self._unblock_user_input(page)
-
-    async def _unblock_user_input(self, page: Page):
-        await page.evaluate("""
-                            () => {
-                                const blocker = document.getElementById('__abyss_tracker_blocker__');
-                                if (blocker) blocker.remove();
-                                document.body.style.overflow = '';
-                            }
-                            """)
-
-    async def _set_input_blocker_enabled(self, page: Page, enabled: bool):
-        await page.evaluate(
-            """
-            (enabled) => {
-                const blocker = document.getElementById('__abyss_tracker_blocker__');
-                if (!blocker) return;
-                blocker.style.pointerEvents = enabled ? 'auto' : 'none';
-            }
-            """,
-            enabled,
-        )
 
     def _html2canvas_patch_status_init_js(self) -> str:
         return r"""
@@ -654,9 +642,11 @@ class HoyolabExporter:
             f"r={{useCORS:!0,backgroundColor:null,scale:\\1,width:{self.fixed_container_width},windowWidth:{self.fixed_container_width}}}",
             body,
         )
-        html2canvas_strategy = "all_f_t_r_calls_runtime_wrapper"
-        html2canvas_target = "f()(t,r)"
-        html2canvas_match_count = body.count(html2canvas_target)
+        # Observed export call sites: legacy tarot/shared chunk and current
+        # r_m_ys_all character-list chunk (2026-09). Keep the match narrow.
+        html2canvas_targets = (("f()(t,r)", "t"), ("p()(e,r)", "e"))
+        html2canvas_strategy = "account_export_calls_runtime_wrapper"
+        html2canvas_match_count = sum(body.count(target) for target, _ in html2canvas_targets)
         html2canvas_matched = html2canvas_match_count > 0
 
         self.html2canvas_patch_status["attempted"] = True
@@ -667,22 +657,23 @@ class HoyolabExporter:
             self.html2canvas_patch_status["routeMatches"].append(url)
             self.html2canvas_patch_status["matchCount"] = html2canvas_match_count
 
-            body = body.replace(
-                html2canvas_target,
-                (
-                    "(window.__gtt_capture_html2canvas_root__&&"
-                    f"window.__gtt_capture_html2canvas_root__(t,r,{html2canvas_strategy!r}),"
-                    "f()(t,r).then(function(c){try{"
-                    "window.__gtt_last_export_canvas_data_url__="
-                    "c&&c.toDataURL?c.toDataURL('image/png'):null;"
-                    "}catch(e){window.__gtt_last_export_canvas_error__=String(e&&e.message||e);}"
-                    "return c;}))"
-                ),
-            )
+            for target, root_argument in html2canvas_targets:
+                body = body.replace(
+                    target,
+                    (
+                        "(window.__gtt_capture_html2canvas_root__&&"
+                        f"window.__gtt_capture_html2canvas_root__({root_argument},r,{html2canvas_strategy!r}),"
+                        f"{target}.then(function(c){{try{{"
+                        "window.__gtt_last_export_canvas_data_url__="
+                        "c&&c.toDataURL?c.toDataURL('image/png'):null;"
+                        "}catch(e){window.__gtt_last_export_canvas_error__=String(e&&e.message||e);}"
+                        "return c;}))"
+                    ),
+                )
         else:
             self.html2canvas_patch_status["routeMisses"].append(url)
             self.html2canvas_patch_status["errors"].append(
-                f"html2canvas runtime wrapper did not find {html2canvas_target!r} in route: {url}"
+                f"html2canvas runtime wrapper did not find a known export call in route: {url}"
             )
             debug_log(f"[HoYoLAB Exporter] html2canvas runtime wrapper did not match: {url}")
 
@@ -704,20 +695,29 @@ class HoyolabExporter:
         )
 
     async def _wait_until_ready_or_login(self, page: Page, timeout_ms: int = 5 * 60_000):
-        deadline = time.time() + timeout_ms / 1000
+        deadline = time.monotonic() + timeout_ms / 1000
+        navigation_failures = 0
 
-        while time.time() < deadline:
-            if await self._is_login_open(page):
-                await self._wait_for_login_if_needed(page, timeout_ms=timeout_ms)
+        while time.monotonic() < deadline:
+            try:
+                remaining_ms = max(1, int((deadline - time.monotonic()) * 1000))
+                await page.wait_for_load_state("domcontentloaded", timeout=remaining_ms)
+                await self._wait_for_login_if_needed(page)
+                # DOMContentLoaded can belong to an intermediate redirect document.
+                # Only this startup preparation is safe to repeat, never the import.
+                await self._dismiss_known_popups(page)
+                await self._wait_for_login_if_needed(page)
+                if await page.locator(".block-title-right").first.is_visible():
+                    return
+            except PlaywrightError as exc:
+                if "Execution context was destroyed" not in str(exc) or page.is_closed():
+                    raise
+                navigation_failures += 1
+                if navigation_failures >= 3:
+                    raise
+                debug_log("[HoYoLAB Exporter] Startup document changed; checking readiness again.")
 
-            if await page.locator(".block-title-right").count() > 0:
-                try:
-                    if await page.locator(".block-title-right").first.is_visible(timeout=500):
-                        return
-                except Exception:
-                    pass
-
-            await page.wait_for_timeout(500)
+            await page.wait_for_timeout(min(500, max(1, (deadline - time.monotonic()) * 1000)))
 
         raise RuntimeError("HoYoLAB page did not become ready: login window and character button were not found.")
 
@@ -729,17 +729,13 @@ class HoyolabExporter:
     async def _trusted_click(self, page: Page, selector: str, timeout: int = 30_000):
         locator = page.locator(selector).first
         await locator.wait_for(state="visible", timeout=timeout)
-        await self._set_input_blocker_enabled(page, False)
-
-        try:
-            await locator.click(timeout=timeout)
-        finally:
-            await self._set_input_blocker_enabled(page, True)
+        await locator.click(timeout=timeout)
 
     async def _dismiss_known_popups(self, page: Page, *, press_escape: bool = True) -> bool:
         dismissed = False
 
         for _ in range(5):
+            await self._wait_for_login_if_needed(page)
             clicked = await page.evaluate(
                 """
                 () => {
@@ -851,7 +847,11 @@ class HoyolabExporter:
                     f"[HoYoLAB Exporter] Click retry {attempt + 1} failed for "
                     f"{selector}: {safe_exception_summary(exc)}"
                 )
-                await self._dismiss_known_popups(page, press_escape=True)
+                try:
+                    await self._dismiss_known_popups(page, press_escape=True)
+                except Exception as cleanup_exc:
+                    print(f"[HoYoLAB Exporter] Popup cleanup warning: {type(cleanup_exc).__name__}")
+                    raise exc from cleanup_exc
                 await page.wait_for_timeout(800)
 
         if last_error is not None:
@@ -1023,18 +1023,38 @@ class HoyolabExporter:
         last_error: Exception | None = None
         loop = asyncio.get_running_loop()
         download_future = loop.create_future()
+        closed_future = loop.create_future()
+
+        def on_closed(*_):
+            if not closed_future.done():
+                closed_future.set_result("closed")
+
+        def on_crashed(*_):
+            if not closed_future.done():
+                closed_future.set_result("crashed")
+
+        def ensure_open():
+            if closed_future.done() or page.is_closed():
+                reason = closed_future.result() if closed_future.done() else "closed"
+                raise RuntimeError(f"HoYoLAB export page {reason} while waiting for image download")
 
         def on_download(download):
             if not download_future.done():
                 download_future.set_result(download)
 
         async def wait_for_download(timeout_ms: int):
-            return await asyncio.wait_for(
-                asyncio.shield(download_future),
-                timeout=timeout_ms / 1000,
+            ensure_open()
+            await asyncio.wait(
+                (download_future, closed_future),
+                timeout=timeout_ms / 1000, return_when=asyncio.FIRST_COMPLETED,
             )
+            ensure_open()
+            if download_future.done():
+                return download_future.result()
+            raise asyncio.TimeoutError
 
         async def return_download_if_ready():
+            ensure_open()
             if download_future.done():
                 return await download_future
             return None
@@ -1048,9 +1068,16 @@ class HoyolabExporter:
                     interval_ms=500,
                 )
             except Exception:
+                ensure_open()
                 return None
 
         page.on("download", on_download)
+        page.on("close", on_closed)
+        page.on("crash", on_crashed)
+        page.context.on("close", on_closed)
+        browser = page.context.browser
+        if browser is not None:
+            browser.on("disconnected", on_closed)
 
         try:
             for attempt in range(1, attempts + 1):
@@ -1073,6 +1100,7 @@ class HoyolabExporter:
                     try:
                         await self._ensure_share_popover_open(page, item_selector)
                     except Exception as exc:
+                        ensure_open()
                         last_error = exc
                         print(
                             "[HoYoLAB Exporter] Could not reopen share popover before "
@@ -1082,7 +1110,6 @@ class HoyolabExporter:
                         if attempt < attempts:
                             await page.wait_for_timeout(1200)
                         continue
-                    break
 
                 download = await return_download_if_ready()
                 if download is not None:
@@ -1101,6 +1128,7 @@ class HoyolabExporter:
                         trusted=True,
                     )
                 except Exception as exc:
+                    ensure_open()
                     last_error = exc
                     print(
                         "[HoYoLAB Exporter] Export image download click "
@@ -1135,6 +1163,7 @@ class HoyolabExporter:
                         return fallback
 
                 html2canvas_calls_after = await self._html2canvas_call_count(page)
+                ensure_open()
                 if html2canvas_calls_after > html2canvas_calls_before:
                     print(
                         "[HoYoLAB Exporter] html2canvas export generation started; "
@@ -1173,7 +1202,9 @@ class HoyolabExporter:
                 if attempt < attempts:
                     await page.wait_for_timeout(1200)
 
-            await self._debug_visible_blockers(page)
+            ensure_open()
+            if hoyolab_debug_logs_enabled():
+                await self._debug_visible_blockers(page)
 
             try:
                 if status_callback is not None:
@@ -1185,6 +1216,7 @@ class HoyolabExporter:
                 )
                 return fallback
             except Exception as fallback_exc:
+                ensure_open()
                 print(
                     "[HoYoLAB Exporter] html2canvas PNG fallback failed: "
                     f"{safe_exception_summary(fallback_exc)}"
@@ -1199,6 +1231,7 @@ class HoyolabExporter:
                     )
                     return dom_fallback
                 except Exception as dom_fallback_exc:
+                    ensure_open()
                     print(
                         "[HoYoLAB Exporter] DOM root screenshot fallback failed: "
                         f"{safe_exception_summary(dom_fallback_exc)}"
@@ -1210,10 +1243,18 @@ class HoyolabExporter:
                         )
                     raise fallback_exc
         finally:
-            try:
-                page.remove_listener("download", on_download)
-            except Exception:
-                pass
+            listeners = [(page, "download", on_download), (page, "close", on_closed),
+                         (page, "crash", on_crashed), (page.context, "close", on_closed)]
+            if browser is not None:
+                listeners.append((browser, "disconnected", on_closed))
+            for emitter, event, callback in listeners:
+                try:
+                    emitter.remove_listener(event, callback)
+                except Exception:
+                    pass
+            for future in (download_future, closed_future):
+                if not future.done():
+                    future.cancel()
 
     async def _dom_root_screenshot_download(self, page: Page) -> InMemoryDownload:
         selectors = [
@@ -1245,46 +1286,48 @@ class HoyolabExporter:
             after_character_list_open: Optional[Callable[[], Awaitable[None]]] = None,
             status_callback: Optional[Callable[[str], None]] = None,
     ):
-        await page.wait_for_load_state("domcontentloaded")
-        await self._dismiss_known_popups(page)
         await self._wait_until_ready_or_login(page)
-        await self._unblock_user_input(page)
+        if status_callback is not None:
+            status_callback("opening_character_list")
+        await self._click_with_popup_retry(page, ".block-title-right")
+        await page.locator(".me-share__btn").first.wait_for(state="visible", timeout=30_000)
 
-        try:
-            if status_callback is not None:
-                status_callback("opening_character_list")
-            await self._click_with_popup_retry(page, ".block-title-right")
-            await page.wait_for_timeout(2500)
+        if after_character_list_open is not None:
+            await after_character_list_open()
 
-            if after_character_list_open is not None:
-                await after_character_list_open()
+        if status_callback is not None:
+            status_callback("waiting_export_images")
+        await self._wait_for_export_images_ready(page)
+        if status_callback is not None:
+            status_callback("opening_share_menu")
+        await self._click_with_popup_retry(page, ".me-share__btn")
+        item_selector = '.me-share-popover__item:has(img[src*="35b0742f6ed3b58d65f1491ca1bf94e2"])'
+        await page.locator(item_selector).first.wait_for(state="visible", timeout=10_000)
 
-            if status_callback is not None:
-                status_callback("waiting_export_images")
-            await self._wait_for_export_images_ready(page)
-            if status_callback is not None:
-                status_callback("opening_share_menu")
-            await self._click_with_popup_retry(page, ".me-share__btn")
-            await page.wait_for_timeout(2500)
-
-            return await self._download_export_image_from_popover(
-                page,
-                '.me-share-popover__item:has(img[src*="35b0742f6ed3b58d65f1491ca1bf94e2"])',
-                status_callback=status_callback,
-            )
-
-        finally:
-            await self._unblock_user_input(page)
+        # The old input blocker is no longer installed. Its evaluate() cleanup
+        # raced navigation and could replace the original click/export failure.
+        return await self._download_export_image_from_popover(
+            page, item_selector, status_callback=status_callback,
+        )
 
     async def _prepare_export_page(self, page: Page):
         # Export tab only: patch html2canvas scale and width.
         await page.route("**/*role_combat_tarot*.js", self._patch_js_route)
+        await page.route("**/r_m_ys_all_*.js", self._patch_js_route)
 
 
 
     async def _create_context(self) -> BrowserContext:
         playwright = await async_playwright().start()
+        owner = SimpleNamespace(pages=[], _playwright_instance=playwright)
+        try:
+            return await self._connect_export_context(playwright, owner)
+        except BaseException:
+            # The caller has no context yet, so acquisition owns failed cleanup.
+            await close_export_context(owner)
+            raise
 
+    async def _connect_export_context(self, playwright, owner) -> BrowserContext:
         browser_exe = find_browser_exe()
         fixed_port = self.remote_debugging_port
 
@@ -1321,6 +1364,8 @@ class HoyolabExporter:
             "--disable-session-crashed-bubble",
             "about:blank",
         ])
+        owner._browser_process = process
+        owner._browser_profile_dir = self.profile_dir
 
         debug_port = fixed_port or wait_for_devtools_port(
             self.profile_dir,
@@ -1334,7 +1379,6 @@ class HoyolabExporter:
 
         await asyncio.sleep(0.3)
         if process.poll() is not None:
-            await playwright.stop()
             raise RuntimeError(
                 "Automation browser closed immediately after CDP connection. "
                 "Close any HoYoLAB authorization/automation browser windows and try again."

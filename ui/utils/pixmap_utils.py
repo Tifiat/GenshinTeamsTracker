@@ -37,6 +37,24 @@ def trim_transparent_pixmap(
     top = image.height()
     bottom = -1
 
+    if alpha_threshold == 0:
+        # Scan alpha bytes in C-backed byte operations. Keep every nonzero-alpha
+        # pixel, including faint antialiased edges; do not threshold the silhouette.
+        alpha = image.convertToFormat(QImage.Format.Format_Alpha8)
+        raw, stride, width = bytes(alpha.constBits()), alpha.bytesPerLine(), alpha.width()
+        for y in range(alpha.height()):
+            row = raw[y*stride:y*stride+width]
+            content = row.strip(b"\x00")
+            if not content:
+                continue
+            left = min(left, width-len(row.lstrip(b"\x00")))
+            right = max(right, len(row.rstrip(b"\x00"))-1)
+            top = min(top, y)
+            bottom = y
+        if right < left or bottom < top:
+            return pixmap
+        return pixmap.copy(QRect(left, top, right-left+1, bottom-top+1))
+
     for y in range(image.height()):
         for x in range(image.width()):
             if image.pixelColor(x, y).alpha() <= alpha_threshold:

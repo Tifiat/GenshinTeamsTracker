@@ -1,4 +1,5 @@
 import json
+from contextlib import closing
 from pathlib import Path
 from typing import Any
 
@@ -173,8 +174,14 @@ def import_character_details_payload(
     )
     equipment_rows = []
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn, conn:
         init_db(conn)
+        previous_equipment = {
+            (int(row["character_id"]), int(row["pos"])): int(row["artifact_id"])
+            for row in conn.execute("SELECT character_id, pos, artifact_id FROM artifact_equipment")
+        }
+        observed_artifact_ids: set[int] = set()
+        seen_characters: set[int] = set()
 
         for character in characters:
             base = character.get("base") or {}
@@ -184,12 +191,21 @@ def import_character_details_payload(
 
             if not character_id:
                 continue
+            character_id = int(character_id)
+            if character_id in seen_characters:
+                raise ValueError("Duplicate character in HoYoLAB detail snapshot")
+            seen_characters.add(character_id)
+            seen_positions: set[int] = set()
 
             for relic in character.get("relics") or []:
                 if not isinstance(relic, dict):
                     continue
 
                 normalized = normalize_relic(relic, property_map)
+                position = int(normalized["pos"])
+                if position in seen_positions:
+                    raise ValueError("Duplicate artifact slot in HoYoLAB detail snapshot")
+                seen_positions.add(position)
                 summary["relics_seen"] += 1
 
                 set_uid = resolve_hoyolab_set_uid(
@@ -228,7 +244,10 @@ def import_character_details_payload(
                     import_source="hoyolab",
                     import_format="character_detail",
                     json_imported=False,
+                    observed_artifact_ids=observed_artifact_ids,
+                    preferred_artifact_id=previous_equipment.get((character_id, position)),
                 )
+                observed_artifact_ids.add(artifact_id)
 
                 if inserted:
                     summary["artifacts_inserted"] += 1

@@ -65,9 +65,32 @@ func Compile(request contracts.OptimizerRequest, compact contracts.CompactIR) (*
 	for index, wearer := range request.Wearers {
 		actorKeys[index] = wearer.WearerKey
 	}
+	return CompileMembers(actorKeys, request.Stochastic.Seeds, compact.Members)
+}
+
+// CompileMembers is the shared arithmetic boundary after a caller has verified
+// its request or whole-team context envelope. It does not certify a set change.
+// Both Selected and All Sets use the same stochastic aggregation, response
+// ledger and dependency-aware hot path; never construct a fake Selected request
+// merely to compile a new set context.
+func CompileMembers(actorKeys []string, seeds []uint64, members []contracts.IRSeedMember) (*Panel, error) {
+	if len(actorKeys) != 4 || len(seeds) == 0 || len(members) != len(seeds) {
+		return nil, fmt.Errorf("invalid bound formula panel")
+	}
+	for i, key := range actorKeys {
+		if key == "" || (i > 0 && actorKeys[i-1] >= key) {
+			return nil, fmt.Errorf("formula actors must be canonical and distinct")
+		}
+	}
+	for i, seed := range seeds {
+		if i > 0 && seeds[i-1] >= seed {
+			return nil, fmt.Errorf("formula seeds must be canonical and distinct")
+		}
+	}
+	actorKeys = append([]string(nil), actorKeys...)
 	coordinateSet := make(map[string]struct{})
-	for memberIndex, member := range compact.Members {
-		if member.Seed != request.Stochastic.Seeds[memberIndex] {
+	for memberIndex, member := range members {
+		if member.Seed != seeds[memberIndex] {
 			return nil, fmt.Errorf("compact IR seed mismatch")
 		}
 		for _, node := range member.Nodes {
@@ -83,7 +106,7 @@ func Compile(request contracts.OptimizerRequest, compact contracts.CompactIR) (*
 	sort.Strings(coordinates)
 	consumerSets := make(map[string]map[string]struct{})
 	opaqueSet := make(map[string]struct{})
-	for _, member := range compact.Members {
+	for _, member := range members {
 		for _, channel := range member.Channels {
 			for _, coordinate := range channel.ResponseCoordinates {
 				if consumerSets[coordinate] == nil {
@@ -116,7 +139,7 @@ func Compile(request contracts.OptimizerRequest, compact contracts.CompactIR) (*
 	}
 	sort.Strings(opaqueReasons)
 	panel := &Panel{coordinates: coordinates, actorKeys: actorKeys, ledger: ledger, opaqueReasons: opaqueReasons}
-	for _, member := range compact.Members {
+	for _, member := range members {
 		compiled, err := formula.CompileSeedMember(member, actorKeys, coordinates)
 		if err != nil {
 			return nil, err
@@ -127,7 +150,7 @@ func Compile(request contracts.OptimizerRequest, compact contracts.CompactIR) (*
 	if err != nil {
 		return nil, err
 	}
-	for index, member := range compact.Members {
+	for index, member := range members {
 		declared := 0.0
 		for _, channel := range member.Channels {
 			value, err := strconv.ParseFloat(channel.BaselineDamage, 64)

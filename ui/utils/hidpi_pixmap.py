@@ -99,6 +99,8 @@ def load_hidpi_pixmap(
     cache: MutableMapping[tuple[object, ...], QPixmap | None] | None = None,
     cache_key_parts: tuple[object, ...] = (),
     surface: str = "",
+    trim_alpha: bool = False,
+    trim_alpha_threshold: int = 0,
 ) -> HidpiPixmapResult:
     cache = _DEFAULT_CACHE if cache is None else cache
     path = Path(path)
@@ -124,6 +126,8 @@ def load_hidpi_pixmap(
         int(transform_mode.value),
         int(mtime_ns),
         int(file_size),
+        bool(trim_alpha),
+        int(trim_alpha_threshold) if trim_alpha else 0,
         *cache_key_parts,
     )
     if key in cache:
@@ -138,6 +142,10 @@ def load_hidpi_pixmap(
         _trace(surface, path, logical_qsize, effective_dpr, physical_size, False)
         return HidpiPixmapResult(source, False, effective_dpr)
 
+    if trim_alpha:
+        # Explicit opt-in: normalized asset canvases keep their old semantics.
+        from ui.utils.pixmap_utils import trim_transparent_pixmap
+        source = trim_transparent_pixmap(source, alpha_threshold=trim_alpha_threshold)
     pixmap = source.scaled(physical_size, aspect_mode, transform_mode)
     pixmap.setDevicePixelRatio(effective_dpr)
     cache[key] = pixmap

@@ -30,7 +30,7 @@ type IndexedArtifact struct {
 
 type IndexedWearer struct {
 	WearerKey      string
-	SelectedSetUID string
+	SelectedSets   []contracts.SetRequirement
 	CurrentIDs     [slotCount]int64
 	incumbentStats map[string]float64
 }
@@ -68,18 +68,22 @@ func (index *Index) AssignmentStats(assignment Assignment) ([wearerCount]map[str
 	return output, nil
 }
 
-// SelectedSetCounts returns the exact number of selected-set pieces worn by
-// each actor. Legal Selected assignments always contain four or five.
-func (index *Index) SelectedSetCounts(assignment Assignment) ([wearerCount]int, error) {
-	var output [wearerCount]int
+// SelectedSetCounts returns actual counts for each selected bonus package.
+// Singleton off-set pieces have no active bonus and are not emitted.
+func (index *Index) SelectedSetCounts(assignment Assignment) ([wearerCount][]contracts.SetRequirement, error) {
+	var output [wearerCount][]contracts.SetRequirement
 	if err := index.ValidateAssignment(assignment); err != nil {
 		return output, err
 	}
 	for wearerIndex, wearerIDs := range assignment {
-		for _, artifactID := range wearerIDs {
-			if index.artifact(artifactID).SetUID == index.Wearers[wearerIndex].SelectedSetUID {
-				output[wearerIndex]++
+		for _, set := range index.Wearers[wearerIndex].SelectedSets {
+			count := 0
+			for _, artifactID := range wearerIDs {
+				if index.artifact(artifactID).SetUID == set.SetUID {
+					count++
+				}
 			}
+			output[wearerIndex] = append(output[wearerIndex], contracts.SetRequirement{SetUID: set.SetUID, Count: count})
 		}
 	}
 	return output, nil
@@ -128,7 +132,7 @@ func Build(request contracts.OptimizerRequest, coordinates []string) (*Index, er
 	for wearerIndex, wearer := range request.Wearers {
 		indexed := IndexedWearer{
 			WearerKey:      wearer.WearerKey,
-			SelectedSetUID: wearer.SelectedSetUID,
+			SelectedSets:   append([]contracts.SetRequirement(nil), wearer.SetRequirements()...),
 			incumbentStats: make(map[string]float64),
 		}
 		for slotIndex, assignment := range wearer.CurrentArtifacts {
@@ -153,7 +157,7 @@ func (index *Index) ValidateAssignment(assignment Assignment) error {
 	}
 	used := make(map[int64]struct{}, wearerCount*slotCount)
 	for wearerIndex, wearerIDs := range assignment {
-		setCount := 0
+		var setCounts [2]int
 		for slotIndex, artifactID := range wearerIDs {
 			artifactIndex, ok := index.artifactIndexByID[artifactID]
 			if !ok {
@@ -167,12 +171,16 @@ func (index *Index) ValidateAssignment(assignment Assignment) error {
 				return fmt.Errorf("artifact %d is assigned more than once", artifactID)
 			}
 			used[artifactID] = struct{}{}
-			if artifact.SetUID == index.Wearers[wearerIndex].SelectedSetUID {
-				setCount++
+			for i, set := range index.Wearers[wearerIndex].SelectedSets {
+				if artifact.SetUID == set.SetUID {
+					setCounts[i]++
+				}
 			}
 		}
-		if setCount < 4 {
-			return fmt.Errorf("wearer %s does not satisfy fixed four-piece", index.Wearers[wearerIndex].WearerKey)
+		for i, set := range index.Wearers[wearerIndex].SelectedSets {
+			if setCounts[i] < set.Count {
+				return fmt.Errorf("wearer %s does not satisfy fixed set package %s:%d", index.Wearers[wearerIndex].WearerKey, set.SetUID, set.Count)
+			}
 		}
 	}
 	return nil

@@ -1585,6 +1585,11 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.optimizer_selected_requested.connect(
             self._on_gcsim_optimizer_selected_requested
         )
+        self.left_host.gcsim_browser_workspace.optimizer_all_sets_requested.connect(
+            self._on_gcsim_optimizer_all_sets_requested
+        )
+        from run_workspace.gcsim.optimizer_go_all import all_sets_available
+        self.left_host.gcsim_browser_workspace.set_optimizer_all_sets_available(all_sets_available())
         self.left_host.gcsim_browser_workspace.optimizer_infinite_energy_changed.connect(
             self._on_gcsim_optimizer_infinite_energy_changed
         )
@@ -2145,9 +2150,15 @@ class AppShell(QWidget):
         team_index: int,
         rotation_shell_text: str,
     ) -> None:
+        self._on_gcsim_optimizer_requested(team_index, rotation_shell_text, all_sets=False)
+
+    def _on_gcsim_optimizer_all_sets_requested(self, team_index: int, rotation_shell_text: str) -> None:
+        self._on_gcsim_optimizer_requested(team_index, rotation_shell_text, all_sets=True)
+
+    def _on_gcsim_optimizer_requested(self, team_index: int, rotation_shell_text: str, *, all_sets: bool) -> None:
         if self._gcsim_browser_run_thread is not None:
             self.left_host.gcsim_browser_workspace.set_optimizer_result_text(
-                "Selected Sets failed\nReason: another GCSIM operation is already running."
+                tr("gcsim.optimizer.launch_busy")
             )
             self.left_host.gcsim_browser_workspace.update_optimizer_progress(
                 {"stage": "failed", "completed_work": 1, "total_work": 1}
@@ -2159,13 +2170,15 @@ class AppShell(QWidget):
         )
         if not _selected_team_has_characters(selected_team):
             self.left_host.gcsim_browser_workspace.set_optimizer_result_text(
-                "Selected Sets failed\nReason: active team has no characters."
+                tr("gcsim.optimizer.launch_empty_team")
             )
             self.left_host.gcsim_browser_workspace.update_optimizer_progress(
                 {"stage": "failed", "completed_work": 1, "total_work": 1}
             )
             return
-        request = GcsimOptimizerGoSelectedRequest(
+        from run_workspace.gcsim.optimizer_go_all import GcsimOptimizerGoAllSetsRequest
+        request_type = GcsimOptimizerGoAllSetsRequest if all_sets else GcsimOptimizerGoSelectedRequest
+        request = request_type(
             db_path=str(self.controller.equipment_db_path),
             selected_team=selected_team,
             team_index=normalized_team_index,
@@ -2197,7 +2210,9 @@ class AppShell(QWidget):
         worker = self._gcsim_browser_run_worker
         if isinstance(worker, GcsimBrowserSelectedOptimizerWorker):
             self.left_host.gcsim_browser_workspace.optimizer_progress_label.setText(
-                "Cancelling Selected Sets..."
+                tr("gcsim.optimizer.cancelling_all")
+                if self.left_host.gcsim_browser_workspace._optimizer_mode == "all_sets"
+                else "Cancelling Selected Sets..."
             )
             worker.cancel()
 

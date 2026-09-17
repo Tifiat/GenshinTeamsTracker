@@ -1,10 +1,9 @@
 # Run Workspace Session And Snapshot Contract
 
-Updated: 2026-06-18
+Status reconciled: 2026-09-16 (documentation/source review; no new UI/test run).
 
-Scope: planning and data contract for the next Run Workspace stages around
-typed session ownership, immutable history snapshots, and durable GCSIM result
-attachment. This is not a UI implementation plan for legacy cleanup, and it
+Scope: current typed session/immutable snapshot contract and remaining DPS
+Dummy, History/export and launch-migration work. This is not a UI implementation plan for legacy cleanup, and it
 does not switch `main.py`.
 
 ## Current State
@@ -50,8 +49,9 @@ does not switch `main.py`.
 - `run_workspace.history_snapshot_preview` renders a derived v0 PNG card from a
   supplied immutable bundle to `<bundle_dir>/preview/history_card.png`. It does
   not mutate `snapshot.json` and does not query live assets/caches. This
-  text-first renderer is transitional and must not define normal History
-  browsing or the final export design.
+  text-first renderer is transitional and is not used by normal History.
+  Current inline cards and explicit PNG export share the painter documented
+  in `HISTORY_BROWSER.md`.
 - AppShell now uses live in-memory Abyss timer state for the compact right-dock
   chamber table. T1/T2 timer edits update controller state and the right-panel
   view model immediately. T2 follows T1 until manually edited; if T1 is edited
@@ -70,10 +70,12 @@ does not switch `main.py`.
   boundary and exposed through AppShellController compatibility properties.
   Reset is wired through that boundary for the active live run mode. Save is
   wired to build/persist immutable bundles from typed session/view-model data;
-  the minimal History left workspace can read saved rows, select saved bundles,
-  and show provisional selected-snapshot details. The next History UI must use
-  a separate read-only instance of the shared Run presentation. History command
-  routing is still future work.
+  History reads grouped rows and presents selected bundles through a separate
+  read-only instance of the shared Run presentation. History routing is
+  implemented and preserves the live session; fuller DPS Dummy capture, PvP
+  History, filters and further data/Preview/Share export remain open. Compact/
+  expanded cards, tooltips and Save PNG are implemented; `HISTORY_BROWSER.md`
+  owns current visual behavior, checks and remaining acceptance.
 - `ui/widgets/timers.py` contains useful timer editing behavior but must not
   remain the durable owner of run/session state.
 - `ui/run_history_window.py` and `runs_history.json` are legacy image/path
@@ -85,44 +87,25 @@ does not switch `main.py`.
   summaries. DPS Dummy result attachment remains future work. UI widgets are
   not result persistence owners.
 
-## Production Switch Blockers
+## Production Entrypoint Readiness
 
-Before `main.py` can safely switch to `AppShell`, the new path needs a typed
-run/session layer that replaces the legacy right-panel ownership of timers,
-save/reset, and history entrypoints.
+`main.py` still launches the legacy app. This document does not authorize its
+switch. The earlier prerequisite list is largely implemented, not an open
+request to rebuild session/History ownership:
 
-Required before switch:
+- typed per-mode session/team/selection/timer/GCSIM state and active-mode Reset;
+- immutable snapshot-v2 building and normal Run Save;
+- History left-workspace routing and isolated shared read-only Run presentation;
+- Abyss session sim-result serialization.
 
-- `RunSessionState` or equivalent per-mode session model:
-  - active run type: `abyss` or `dps_dummy`;
-  - per-mode `TeamBuilderState`;
-  - selected team/slot target;
-  - timer/result state for the active mode;
-  - factual result rows derived from scenario data;
-  - dirty/reset state;
-  - external-bonus toggle state if it remains run-scoped.
-- `RunSessionController` or equivalent coordinator:
-  - set/switch mode without losing per-mode team state;
-  - accept team mutations from `AppShellController` or replace that layer;
-  - own save commands; Reset is already owned by typed live session state;
-  - build immutable run snapshots;
-  - expose a right-panel view model without reading widgets;
-  - route history opening to the correct left workspace state.
-- Right dock action wiring:
-  - Reset now resets the active live run mode through typed session state, not
-    legacy widgets.
-  - Save now builds and persists an immutable snapshot for the current run type.
-  - History must open/select a left History workspace, not a floating legacy
-    history window or right-dock-only button.
-- Startup scaling and Account/Data behavior from `AppShell` remain required.
+Before an explicitly approved switch, verify the actual startup/account/run/
+save/history path with current code and preserve startup adaptive scaling before
+QApplication. Review the remaining DPS Dummy inputs/results against the chosen
+release scope; the original first-switch contract did not require full GCSIM,
+PvP, legacy history migration or exact full-Abyss simulation. No current
+launch-readiness or user-path acceptance was performed by this documentation edit.
 
-Not required before the first `main.py` switch:
-
-- full GCSIM runner;
-- full new History browser UI, if save can be disabled until history exists;
-- PvP;
-- legacy history migration;
-- exact full-Abyss enemy wave simulation.
+Remaining feature work is listed in the final section and `TODO.md`.
 
 ## Session State Shape
 
@@ -351,7 +334,7 @@ the Reset/Save row are hidden; timers and saved state controls are visible but
 disabled; mutation, drag/drop, equipment commands, and command-only controls
 such as GCSIM Run are unavailable. Snapshot metadata is shown only on the left.
 
-Recommended order:
+Implemented History foundation:
 
 1. Done: define History Snapshot Bundle v2 schema, local write/read service,
    and tests.
@@ -366,8 +349,8 @@ Recommended order:
    view-model and enforce the read-only presentation policy.
 7. Done for visual MVP: History-local header modes, compact period enemy/HP
    preview, period dropdown, visual saved-run rows, and newest-first ordering.
-8. Route a future History command to activate/select that left workspace and
-   the relevant default run type section.
+8. AppShell workspace navigation already activates History with a mode derived
+   from the live context. Any future extra shortcut must reuse that route.
 
 History browsing is not a right-dock-only page: the browsing surface belongs on
 the left, while the right dock hosts History-local mode controls and selected
@@ -426,38 +409,19 @@ Integration rules:
   `docs/handoff/STAT_NORMALIZATION.md` before implementing config generation or
   result parsing.
 
-## Next Narrow Implementation Sequence
+## Remaining Implementation Work
 
-1. Done for the first live slice: typed session ownership exists for mode,
-   per-mode team state, selected target, external bonus flag, Abyss timers/T2
-   follow flags, and runtime compact GCSIM chamber results. Factual DPS rows
-   still use the existing right-panel view-model builder with AppShell-provided
-   Abyss source data.
-2. Add/keep pure tests for timer/session calculations, reset/default behavior,
-   factual DPS math, and GCSIM result stale/current metadata.
-3. Done: Reset is wired through the session controller so it resets the active
-   live run mode, not widgets, and does not wipe the inactive Abyss/DPS mode.
-4. Done: immutable History Snapshot Bundle v2 dataclasses/services exist under
-   `run_workspace.history_snapshot` with local temp-root tests.
-5. Done: backend-only builder maps supplied typed session/right-panel
-   view-model data into `HistorySnapshotBundle` records for Abyss and DPS
-   Dummy shapes.
-6. Done: RUN-page Save builds and persists immutable grouped bundles for the
-   active run type through `HistorySnapshotBundleStore`.
-7. Done as a foundation: the minimal History left workspace reads grouped
-   snapshots and supports row selection.
-8. Done: capture frozen display data for every occupied slot and copy declared
-   visible assets into each production bundle without retaining save-time
-   hydration in live state.
-9. Done: snapshot-to-shared-right-panel adapters and the contracted
-   read-only/hidden control policy drive an isolated shared Run panel; normal
-   row selection does not generate a permanent PNG preview.
-10. Done: History has Abyss/DPS Dummy modes, period navigation, compact visual
-    rows, newest-first ordering, and shared read-only snapshot details.
-11. Done for Abyss: Browser/GCSIM chamber results attach to typed session state
-    and snapshot metadata as `sim DPS`, separate from factual DPS.
-12. Add DPS Dummy current factual-DPS inputs/results and attach the existing
-    diagnostic GCSIM DPS Dummy run to typed session/snapshot state.
+The typed live session, active-mode Reset, immutable v2 Save, all-slot frozen
+details/assets, shared read-only History and Abyss sim-result attachment are
+implemented. Do not reopen their original implementation sequence.
+
+1. Complete DPS Dummy factual inputs/results and attach its diagnostic GCSIM
+   execution to typed session/snapshot data.
+2. Refine History cards from user feedback and extend filters/data export under
+   `HISTORY_BROWSER.md`; inline expansion and Save PNG already exist. Real PvP
+   History belongs to the PvP contract.
+3. Review launch readiness and perform actual user-path verification before an
+   explicitly approved `main.py` switch. Test only the area changed by that task.
 
 ## Non-Goals For The Next Stage
 

@@ -1,0 +1,2356 @@
+{
+  "schema_version": 1,
+  "scope": "FAILED response samples for future generic dependency repair; not accepted passing regression",
+  "samples": [
+    {
+      "case": "nahida_known_nahida_em_boundary",
+      "member": {
+        "seed": 742031889,
+        "duration_ms": 93650,
+        "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41",
+        "nodes": [
+          {
+            "node_id": 1,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.15"
+          },
+          {
+            "node_id": 2,
+            "operation": "constant",
+            "inputs": [],
+            "value": "423.18528000000003"
+          },
+          {
+            "node_id": 3,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.24"
+          },
+          {
+            "node_id": 4,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.8"
+          },
+          {
+            "node_id": 5,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.26784"
+          },
+          {
+            "node_id": 6,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 7,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 8,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 9,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 10,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1007.5840000000001"
+          },
+          {
+            "node_id": 11,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "nahida.em"
+          },
+          {
+            "node_id": 12,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 10,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 11,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 13,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 14,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 15,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 13,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 14,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 16,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 6,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 15,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 17,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 12,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 16,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 18,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 19,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 20,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 18,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 19,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 21,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 7,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 20,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 22,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 17,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 21,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 23,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 24,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 25,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 23,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 24,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 26,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 8,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 25,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 27,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 22,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 26,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 28,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 29,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 30,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 28,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 29,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 31,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 9,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 30,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 32,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 27,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 31,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 33,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 34,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 35,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 36,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 37,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 33,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 34,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 35,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 36,
+                "relation": "input/000003"
+              }
+            ]
+          },
+          {
+            "node_id": 38,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.15"
+          },
+          {
+            "node_id": 39,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 40,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 38,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 39,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 41,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 1,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 40,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 42,
+            "operation": "constant",
+            "inputs": [],
+            "value": "423.18528000000003"
+          },
+          {
+            "node_id": 43,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 44,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 42,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 43,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 45,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 2,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 44,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 46,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.24"
+          },
+          {
+            "node_id": 47,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 48,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 46,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 47,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 49,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 3,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 48,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 50,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.8"
+          },
+          {
+            "node_id": 51,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 52,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 50,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 51,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 53,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 4,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 52,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 54,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.2678400000000001"
+          },
+          {
+            "node_id": 55,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 56,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 54,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 55,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 57,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 5,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 56,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 58,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 53,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 57,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 59,
+            "operation": "constant",
+            "inputs": [],
+            "value": "2060.9115584"
+          },
+          {
+            "node_id": 60,
+            "operation": "constant",
+            "inputs": [],
+            "value": "808.578924"
+          },
+          {
+            "node_id": 61,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "nahida.atk_percent"
+          },
+          {
+            "node_id": 62,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 60,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 61,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 63,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "nahida.atk"
+          },
+          {
+            "node_id": 64,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 45,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 59,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 62,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 63,
+                "relation": "input/000003"
+              }
+            ]
+          },
+          {
+            "node_id": 65,
+            "operation": "constant",
+            "inputs": [],
+            "value": "3743.3760768"
+          },
+          {
+            "node_id": 66,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1446.8535"
+          },
+          {
+            "node_id": 67,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 68,
+            "operation": "constant",
+            "inputs": [],
+            "value": "5"
+          },
+          {
+            "node_id": 69,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 32,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 68,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 70,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1200"
+          },
+          {
+            "node_id": 71,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 32,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 70,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 72,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 73,
+            "operation": "power",
+            "inputs": [
+              {
+                "node_id": 71,
+                "relation": "base"
+              },
+              {
+                "node_id": 72,
+                "relation": "exponent"
+              }
+            ]
+          },
+          {
+            "node_id": 74,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 69,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 73,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 75,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 67,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 74,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 76,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 37,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 75,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 77,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 66,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 76,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 78,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.25"
+          },
+          {
+            "node_id": 79,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 77,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 78,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 80,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 65,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 79,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 81,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.8576"
+          },
+          {
+            "node_id": 82,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 64,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 81,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 83,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 80,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 82,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 84,
+            "operation": "constant",
+            "inputs": [],
+            "value": "2.21784"
+          },
+          {
+            "node_id": 85,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "nahida.damage_bonus"
+          },
+          {
+            "node_id": 86,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "nahida.dendro_damage_bonus"
+          },
+          {
+            "node_id": 87,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 41,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 58,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 84,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 85,
+                "relation": "input/000003"
+              },
+              {
+                "node_id": 86,
+                "relation": "input/000004"
+              }
+            ]
+          },
+          {
+            "node_id": 88,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.515"
+          },
+          {
+            "node_id": 89,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "nahida.crit_rate"
+          },
+          {
+            "node_id": 90,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 88,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 89,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 91,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 49,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 90,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 92,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.138"
+          },
+          {
+            "node_id": 93,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "nahida.crit_damage"
+          },
+          {
+            "node_id": 94,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 92,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 93,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 95,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 96,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 97,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 98,
+            "operation": "max",
+            "inputs": [
+              {
+                "node_id": 91,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 97,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 99,
+            "operation": "min",
+            "inputs": [
+              {
+                "node_id": 96,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 98,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 100,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 94,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 99,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 101,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 95,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 100,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 102,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.48717948717948717"
+          },
+          {
+            "node_id": 103,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.225"
+          },
+          {
+            "node_id": 104,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 83,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 87,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 101,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 102,
+                "relation": "input/000003"
+              },
+              {
+                "node_id": 103,
+                "relation": "input/000004"
+              }
+            ]
+          },
+          {
+            "node_id": 105,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 106,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 107,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 104,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 105,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 106,
+                "relation": "input/000002"
+              }
+            ]
+          }
+        ],
+        "channels": [
+          {
+            "channel_id": "hit/000116",
+            "kind": "direct",
+            "actor_key": "nahida",
+            "attack_tag": "tag/4",
+            "damage_type": "dendro",
+            "root_node_id": 107,
+            "hit_count": 1,
+            "baseline_damage": "28356.74457378805",
+            "response_coordinates": [
+              "nahida.atk",
+              "nahida.atk_percent",
+              "nahida.crit_damage",
+              "nahida.crit_rate",
+              "nahida.damage_bonus",
+              "nahida.dendro_damage_bonus",
+              "nahida.em"
+            ]
+          }
+        ],
+        "opaque_boundaries": []
+      },
+      "checks": [
+        {
+          "deltas": {
+            "nahida.em": 187
+          },
+          "engine_expected_damage": "30927.365909913"
+        }
+      ]
+    },
+    {
+      "case": "lauma_known_nahida_em_boundary",
+      "member": {
+        "seed": 742031889,
+        "duration_ms": 93650,
+        "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41",
+        "nodes": [
+          {
+            "node_id": 1,
+            "operation": "constant",
+            "inputs": [],
+            "value": "126.955584"
+          },
+          {
+            "node_id": 2,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.14"
+          },
+          {
+            "node_id": 3,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.32"
+          },
+          {
+            "node_id": 4,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 5,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 6,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 7,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 8,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 9,
+            "operation": "constant",
+            "inputs": [],
+            "value": "250"
+          },
+          {
+            "node_id": 10,
+            "operation": "constant",
+            "inputs": [],
+            "value": "100"
+          },
+          {
+            "node_id": 11,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1680.712"
+          },
+          {
+            "node_id": 12,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.em"
+          },
+          {
+            "node_id": 13,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 11,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 12,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 14,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 15,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 16,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 14,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 15,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 17,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 4,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 16,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 18,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 13,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 17,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 19,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 20,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 21,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 19,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 20,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 22,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 5,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 21,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 23,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 18,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 22,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 24,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 25,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 26,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 24,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 25,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 27,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 6,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 26,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 28,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 23,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 27,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 29,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 30,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 31,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 29,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 30,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 32,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 7,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 31,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 33,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 28,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 32,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 34,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 35,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 36,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 34,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 35,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 37,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 8,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 36,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 38,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 33,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 37,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 39,
+            "operation": "constant",
+            "inputs": [],
+            "value": "250"
+          },
+          {
+            "node_id": 40,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 41,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 39,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 40,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 42,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 9,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 41,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 43,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 38,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 42,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 44,
+            "operation": "constant",
+            "inputs": [],
+            "value": "100"
+          },
+          {
+            "node_id": 45,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 46,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 44,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 45,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 47,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 10,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 46,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 48,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 43,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 47,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 49,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 50,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 51,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 52,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 53,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 54,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 49,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 50,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 51,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 52,
+                "relation": "input/000003"
+              },
+              {
+                "node_id": 53,
+                "relation": "input/000004"
+              }
+            ]
+          },
+          {
+            "node_id": 55,
+            "operation": "constant",
+            "inputs": [],
+            "value": "126.955584"
+          },
+          {
+            "node_id": 56,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 57,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 55,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 56,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 58,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 1,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 57,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 59,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.14"
+          },
+          {
+            "node_id": 60,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 61,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 59,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 60,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 62,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 2,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 61,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 63,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.32"
+          },
+          {
+            "node_id": 64,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 65,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 63,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 64,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 66,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 3,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 65,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 67,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1384.1504974326801"
+          },
+          {
+            "node_id": 68,
+            "operation": "constant",
+            "inputs": [],
+            "value": "709.3273043800001"
+          },
+          {
+            "node_id": 69,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.atk_percent"
+          },
+          {
+            "node_id": 70,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 68,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 69,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 71,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.atk"
+          },
+          {
+            "node_id": 72,
+            "operation": "constant",
+            "inputs": [],
+            "value": "709.3273043800001"
+          },
+          {
+            "node_id": 73,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 62,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 72,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 74,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 58,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 67,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 70,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 71,
+                "relation": "input/000003"
+              },
+              {
+                "node_id": 73,
+                "relation": "input/000004"
+              }
+            ]
+          },
+          {
+            "node_id": 75,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1680.712"
+          },
+          {
+            "node_id": 76,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.em"
+          },
+          {
+            "node_id": 77,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 75,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 76,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 78,
+            "operation": "constant",
+            "inputs": [],
+            "value": "3.456"
+          },
+          {
+            "node_id": 79,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 77,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 78,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 80,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1446.8535"
+          },
+          {
+            "node_id": 81,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 82,
+            "operation": "constant",
+            "inputs": [],
+            "value": "5"
+          },
+          {
+            "node_id": 83,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 48,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 82,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 84,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1200"
+          },
+          {
+            "node_id": 85,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 48,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 84,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 86,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 87,
+            "operation": "power",
+            "inputs": [
+              {
+                "node_id": 85,
+                "relation": "base"
+              },
+              {
+                "node_id": 86,
+                "relation": "exponent"
+              }
+            ]
+          },
+          {
+            "node_id": 88,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 83,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 87,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 89,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 81,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 88,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 90,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 54,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 89,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 91,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 80,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 90,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 92,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.25"
+          },
+          {
+            "node_id": 93,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 91,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 92,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 94,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 79,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 93,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 95,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.728"
+          },
+          {
+            "node_id": 96,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 74,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 95,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 97,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 94,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 96,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 98,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.32"
+          },
+          {
+            "node_id": 99,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.damage_bonus"
+          },
+          {
+            "node_id": 100,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.dendro_damage_bonus"
+          },
+          {
+            "node_id": 101,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 66,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 98,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 99,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 100,
+                "relation": "input/000003"
+              }
+            ]
+          },
+          {
+            "node_id": 102,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.427"
+          },
+          {
+            "node_id": 103,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.crit_rate"
+          },
+          {
+            "node_id": 104,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 102,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 103,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 105,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.409"
+          },
+          {
+            "node_id": 106,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.crit_damage"
+          },
+          {
+            "node_id": 107,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 105,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 106,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 108,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 109,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 110,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 111,
+            "operation": "max",
+            "inputs": [
+              {
+                "node_id": 104,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 110,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 112,
+            "operation": "min",
+            "inputs": [
+              {
+                "node_id": 109,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 111,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 113,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 107,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 112,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 114,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 108,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 113,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 115,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.48717948717948717"
+          },
+          {
+            "node_id": 116,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.225"
+          },
+          {
+            "node_id": 117,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 97,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 101,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 114,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 115,
+                "relation": "input/000003"
+              },
+              {
+                "node_id": 116,
+                "relation": "input/000004"
+              }
+            ]
+          },
+          {
+            "node_id": 118,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 119,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 120,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 117,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 118,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 119,
+                "relation": "input/000002"
+              }
+            ]
+          }
+        ],
+        "channels": [
+          {
+            "channel_id": "hit/000119",
+            "kind": "direct",
+            "actor_key": "lauma",
+            "attack_tag": "tag/5",
+            "damage_type": "dendro",
+            "root_node_id": 120,
+            "hit_count": 1,
+            "baseline_damage": "19285.26284144876",
+            "response_coordinates": [
+              "lauma.atk",
+              "lauma.atk_percent",
+              "lauma.crit_damage",
+              "lauma.crit_rate",
+              "lauma.damage_bonus",
+              "lauma.dendro_damage_bonus",
+              "lauma.em"
+            ]
+          }
+        ],
+        "opaque_boundaries": []
+      },
+      "checks": [
+        {
+          "deltas": {
+            "nahida.em": 187
+          },
+          "engine_expected_damage": "19336.63414943441"
+        }
+      ]
+    }
+  ]
+}

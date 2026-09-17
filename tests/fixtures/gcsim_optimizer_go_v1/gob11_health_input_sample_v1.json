@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "scope": "Observed health-input scalar, not damage; same original typed getter evaluated once.",
+  "frame": 93,
+  "executing_provider": {
+    "known": true,
+    "kind": "character",
+    "key": "furina",
+    "owner_index": 1,
+    "piece_count": 0
+  },
+  "baseline_value": 497.7933635413888,
+  "member": {
+    "seed": 742031889,
+    "duration_ms": 1000,
+    "topology_sha256": "a1559c2842d83f3b5bb2e595706afaa8f0b73dd065d1cf767c54c711fafbbef5",
+    "nodes": [
+      {
+        "node_id": 1,
+        "operation": "constant",
+        "inputs": [],
+        "value": "12397.4035882"
+      },
+      {
+        "node_id": 2,
+        "operation": "constant",
+        "inputs": [],
+        "value": "1.124"
+      },
+      {
+        "node_id": 3,
+        "operation": "artifact_stat",
+        "inputs": [],
+        "coordinate": "bennett.hp_percent"
+      },
+      {
+        "node_id": 4,
+        "operation": "add",
+        "inputs": [
+          {
+            "node_id": 2,
+            "relation": "input/000000"
+          },
+          {
+            "node_id": 3,
+            "relation": "input/000001"
+          }
+        ]
+      },
+      {
+        "node_id": 5,
+        "operation": "constant",
+        "inputs": [],
+        "value": "4780"
+      },
+      {
+        "node_id": 6,
+        "operation": "artifact_stat",
+        "inputs": [],
+        "coordinate": "bennett.hp"
+      },
+      {
+        "node_id": 7,
+        "operation": "add",
+        "inputs": [
+          {
+            "node_id": 5,
+            "relation": "input/000000"
+          },
+          {
+            "node_id": 6,
+            "relation": "input/000001"
+          }
+        ]
+      },
+      {
+        "node_id": 8,
+        "operation": "constant",
+        "inputs": [],
+        "value": "1"
+      },
+      {
+        "node_id": 9,
+        "operation": "add",
+        "inputs": [
+          {
+            "node_id": 4,
+            "relation": "input/000000"
+          },
+          {
+            "node_id": 8,
+            "relation": "input/000001"
+          }
+        ]
+      },
+      {
+        "node_id": 10,
+        "operation": "multiply",
+        "inputs": [
+          {
+            "node_id": 1,
+            "relation": "input/000000"
+          },
+          {
+            "node_id": 9,
+            "relation": "input/000001"
+          }
+        ]
+      },
+      {
+        "node_id": 11,
+        "operation": "add",
+        "inputs": [
+          {
+            "node_id": 7,
+            "relation": "input/000000"
+          },
+          {
+            "node_id": 10,
+            "relation": "input/000001"
+          }
+        ]
+      },
+      {
+        "node_id": 12,
+        "operation": "constant",
+        "inputs": [],
+        "value": "0.016"
+      },
+      {
+        "node_id": 13,
+        "operation": "multiply",
+        "inputs": [
+          {
+            "node_id": 11,
+            "relation": "input/000000"
+          },
+          {
+            "node_id": 12,
+            "relation": "input/000001"
+          }
+        ]
+      }
+    ],
+    "channels": [
+      {
+        "channel_id": "state-event:249",
+        "kind": "direct",
+        "actor_key": "furina",
+        "attack_tag": "diagnostic-health-scalar",
+        "damage_type": "diagnostic",
+        "root_node_id": 13,
+        "hit_count": 1,
+        "baseline_damage": "497.7933635413888",
+        "response_coordinates": [
+          "bennett.hp",
+          "bennett.hp_percent"
+        ]
+      }
+    ],
+    "opaque_boundaries": []
+  },
+  "deltas": {
+    "bennett.hp_percent": 0.466
+  },
+  "fresh_engine_value": 590.228404695008
+}

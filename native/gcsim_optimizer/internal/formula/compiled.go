@@ -16,6 +16,7 @@ const (
 	opMin
 	opMax
 	opPower
+	opSelectLT
 )
 
 type compiledNode struct {
@@ -98,6 +99,8 @@ func CompileSeedMember(member contracts.IRSeedMember, actorKeys, coordinates []s
 			row.op = opMax
 		case "power":
 			row.op = opPower
+		case "select_lt":
+			row.op = opSelectLT
 		default:
 			return nil, fmt.Errorf("node %d unsupported operation %q", node.NodeID, node.Operation)
 		}
@@ -143,6 +146,20 @@ func (compiled *CompiledMember) EvaluateDamageDense(deltas []float64) (float64, 
 	}
 	score, err := compiled.evaluate(deltas, compiled.scratch, false)
 	return score.Damage, err
+}
+
+// EvaluateChannelDamageDense reuses the SAME program for cheap guide features.
+// Values retain the input member's channel order; no gameplay or set-effect
+// interpretation is introduced here. Like the other scratch path, sequential.
+func (compiled *CompiledMember) EvaluateChannelDamageDense(deltas []float64) ([]float64, error) {
+	if _, err := compiled.EvaluateDamageDense(deltas); err != nil {
+		return nil, err
+	}
+	out := make([]float64, len(compiled.channels))
+	for i, channel := range compiled.channels {
+		out[i] = compiled.scratch[channel.root]
+	}
+	return out, nil
 }
 
 // EvaluateDamageDenseForActor recalculates only the formula nodes that depend
@@ -216,6 +233,11 @@ func (compiled *CompiledMember) evaluateNodeSet(deltas, values []float64, nodes 
 			}
 		case opPower:
 			value = math.Pow(values[node.inputs[0]], values[node.inputs[1]])
+		case opSelectLT:
+			value = values[node.inputs[3]]
+			if values[node.inputs[0]] < values[node.inputs[1]] {
+				value = values[node.inputs[2]]
+			}
 		default:
 			return fmt.Errorf("compiled node %d has invalid operation", nodeID)
 		}
@@ -305,6 +327,11 @@ func evaluateConstantNode(node compiledNode, values []float64) (float64, error) 
 		}
 	case opPower:
 		value = math.Pow(values[node.inputs[0]], values[node.inputs[1]])
+	case opSelectLT:
+		value = values[node.inputs[3]]
+		if values[node.inputs[0]] < values[node.inputs[1]] {
+			value = values[node.inputs[2]]
+		}
 	default:
 		return 0, fmt.Errorf("invalid operation")
 	}

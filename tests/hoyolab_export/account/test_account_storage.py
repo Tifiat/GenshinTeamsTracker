@@ -6,6 +6,8 @@ import unittest
 from copy import deepcopy
 from contextlib import closing
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from hoyolab_export.account_storage import (
     AccountGcsimKeyResolution,
@@ -284,6 +286,38 @@ class AccountStorageTest(unittest.TestCase):
         self.assertEqual(weapon.gcsim_key, "testspear")
         self.assertEqual(weapon.status, "ready")
         self.assertEqual(weapon.method, "exact_normalized_name")
+
+    def test_default_gcsim_resolver_follows_active_engine_registry(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            shortcut = root / "pkg/shortcut"
+            shortcut.mkdir(parents=True)
+            (shortcut / "character.dm.go").write_text('package shortcut\nvar m = map[string]int{\n"newhero": 1,\n}\n')
+            (shortcut / "weapon.dm.go").write_text('package shortcut\nvar m = map[string]int{\n"newbow": 1,\n}\n')
+            (shortcut / "characters.go").write_text('package shortcut\nvar m = map[string]int{\n"oldhero": 1,\n}\n')
+            (shortcut / "weapons.go").write_text('package shortcut\nvar m = map[string]int{\n"oldbow": 1,\n}\n')
+            with patch("run_workspace.gcsim.engine_store.GcsimEngineStore.get_active_engine",
+                       return_value=SimpleNamespace(path=root)):
+                resolver = build_account_gcsim_key_resolver()
+                hero = resolver("character", "1", "New Hero")
+                weapon = resolver("weapon", "2", "New Bow")
+            self.assertEqual(hero.gcsim_key, "newhero")
+            self.assertEqual(weapon.gcsim_key, "newbow")
+            self.assertEqual(Path(hero.source_paths["character"]), shortcut / "character.dm.go")
+
+    def test_missing_active_engine_does_not_fall_back_to_pinned_old_sources(self) -> None:
+        with patch("run_workspace.gcsim.engine_store.GcsimEngineStore.get_active_engine", return_value=None):
+            result = build_account_gcsim_key_resolver()("character", "1", "Mona")
+        self.assertFalse(result.ready)
+        self.assertEqual(result.status, "registry_unavailable")
+
+    def test_unreadable_active_registry_does_not_fall_back(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch("run_workspace.gcsim.engine_store.GcsimEngineStore.get_active_engine",
+                       return_value=SimpleNamespace(path=Path(tmp))):
+                result = build_account_gcsim_key_resolver()("character", "1", "Mona")
+        self.assertFalse(result.ready)
+        self.assertEqual(result.status, "registry_unavailable")
 
     def test_read_adapter_returns_clean_records_without_current_equipped_semantics(self) -> None:
         with temp_artifact_db() as db_path:

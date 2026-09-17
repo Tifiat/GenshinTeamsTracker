@@ -1,0 +1,1246 @@
+{
+  "schema_version": 1,
+  "kind": "gob11_supplied_rotation_validation",
+  "date": "2026-09-08",
+  "handoff": "docs/handoff/GCSIM_GOB11_ROTATION_VALIDATION.md",
+  "status": "bounded_trace_failure_repaired_generalization_not_accepted",
+  "baseline_is_not_optimized_build": true,
+  "infinite_energy": true,
+  "live_equipment_written": false,
+  "visible_ui_clicked": false,
+  "production_path_exercised": "AppShell worker request -> _prepare_inputs -> _capture_compact_panel for fixed4p; same config materializer + engine capture only for 2+2",
+  "patch_sha256": "cef87ba147d78e52c4cb126cf5179f1f15c4385839cd3ed1a5de18928cf7685a",
+  "isolated_update": {
+    "success": true,
+    "activated": true,
+    "engine_id": "gcsim-v2.45.0-gob11-boundary-20260908",
+    "engine_path": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\.codex_tmp\\gob11-boundary-engine-store\\engines\\gcsim-v2.45.0-gob11-boundary-20260908",
+    "check_status": "gtt_info_passed",
+    "application_compatibility_status": "passed",
+    "artifact_sha256": "76f12ae8c2980a72815b46e46ee14aad1da07fbccec303b05460741ba7b06abf",
+    "error": "",
+    "seconds": 154.71900000001187
+  },
+  "boundary_replay": {
+    "members": [
+      {
+        "case": "flins_1",
+        "seed": 742031889,
+        "seconds": 3.4059999999881256,
+        "channels": 509,
+        "dps": 149533.87600633712,
+        "wholly_frozen_share": 0.8995657466398572,
+        "consumer_validated": true,
+        "channels_identical": true
+      },
+      {
+        "case": "flins_1",
+        "seed": 742031890,
+        "seconds": 3.375,
+        "channels": 510,
+        "dps": 149405.28090387303,
+        "wholly_frozen_share": 0.8994793015488699,
+        "consumer_validated": true,
+        "channels_identical": true
+      },
+      {
+        "case": "flins_2",
+        "seed": 742031889,
+        "seconds": 3.187000000005355,
+        "channels": 497,
+        "dps": 157056.150742581,
+        "wholly_frozen_share": 0.8913046265975664,
+        "consumer_validated": true,
+        "channels_identical": true
+      },
+      {
+        "case": "flins_2",
+        "seed": 742031890,
+        "seconds": 3.2030000000086147,
+        "channels": 500,
+        "dps": 161347.45994431825,
+        "wholly_frozen_share": 0.8941955643057221,
+        "consumer_validated": true,
+        "channels_identical": true
+      },
+      {
+        "case": "bloom",
+        "seed": 742031889,
+        "seconds": 4.844000000011874,
+        "channels": 543,
+        "dps": 110800.22276952828,
+        "wholly_frozen_share": 0.6973319736925332,
+        "consumer_validated": true
+      },
+      {
+        "case": "bloom",
+        "seed": 742031890,
+        "seconds": 3.7809999999881256,
+        "channels": 543,
+        "dps": 110800.22276952828,
+        "wholly_frozen_share": 0.6973319736925332,
+        "consumer_validated": true
+      }
+    ],
+    "engine_sha256": "76f12ae8c2980a72815b46e46ee14aad1da07fbccec303b05460741ba7b06abf"
+  },
+  "current_team_parity": [
+    {
+      "seed": "742031889",
+      "channels_identical": true
+    },
+    {
+      "seed": "742031890",
+      "channels_identical": true
+    }
+  ],
+  "limitations": [
+    "Selected fixed4p excludes supplied Lauma 2+2",
+    "direct reaction and multi-contributor dependencies frozen",
+    "post-producer reaction modifications frozen",
+    "seeded5p starter may not match supplied main stats",
+    "wholly_frozen_share is not total uncertain damage; variable channels can retain frozen subexpressions",
+    "n64 ordinary sample and two-seed graph are diagnostics, not final product DPS"
+  ],
+  "cases": [
+    {
+      "case": "flins_1",
+      "source_block_sha256": "e81d953528b348fbac2061e7d5f4748f680363e856b72b912ebdc4021a83e605",
+      "equipment": [
+        {
+          "actor": "flins",
+          "canonical_actor": "flins",
+          "character_id": 10000120,
+          "constellation": 0,
+          "level": 90,
+          "weapon": "bloodsoakedruins",
+          "refinement": 1,
+          "set_packages": [
+            [
+              "NightOfTheSkysUnveiling",
+              4
+            ]
+          ],
+          "artifact_ids": [
+            1,
+            1533,
+            63,
+            184,
+            1565
+          ]
+        },
+        {
+          "actor": "ineffa",
+          "canonical_actor": "ineffa",
+          "character_id": 10000116,
+          "constellation": 0,
+          "level": 90,
+          "weapon": "fracturedhalo",
+          "refinement": 1,
+          "set_packages": [
+            [
+              "AubadeOfMorningstarAndMoon",
+              4
+            ]
+          ],
+          "artifact_ids": [
+            71,
+            72,
+            73,
+            174,
+            1567
+          ]
+        },
+        {
+          "actor": "columbina",
+          "canonical_actor": "columbina",
+          "character_id": 10000125,
+          "constellation": 0,
+          "level": 90,
+          "weapon": "sacrificialjade",
+          "refinement": 4,
+          "set_packages": [
+            [
+              "SilkenMoonsSerenade",
+              4
+            ]
+          ],
+          "artifact_ids": [
+            66,
+            67,
+            68,
+            54,
+            1580
+          ]
+        },
+        {
+          "actor": "sucrose",
+          "canonical_actor": "sucrose",
+          "character_id": 10000043,
+          "constellation": 1,
+          "level": 90,
+          "weapon": "sacrificialfragments",
+          "refinement": 5,
+          "set_packages": [
+            [
+              "ViridescentVenerer",
+              4
+            ]
+          ],
+          "artifact_ids": [
+            152,
+            153,
+            154,
+            155,
+            1484
+          ]
+        }
+      ],
+      "substitutions": [],
+      "ordinary": {
+        "iterations": 64,
+        "mean_dps": 149163.46242258535,
+        "se_dps": 346.8066799096853,
+        "seconds": 2.4690000000118744
+      },
+      "compact_members": [
+        {
+          "seed": 742031889,
+          "duration_ms": 114983,
+          "baseline_dps": 149533.8760063369,
+          "wholly_frozen_damage_share": 0.8995657466398582,
+          "by_actor_kind": [
+            {
+              "actor": "ineffa",
+              "kind": "direct",
+              "damage": 1803556.3281375277,
+              "wholly_frozen_damage": 1436207.4645197084,
+              "channels": 90,
+              "coordinates": [
+                "ineffa.atk",
+                "ineffa.atk_percent",
+                "ineffa.crit_damage",
+                "ineffa.crit_rate",
+                "ineffa.damage_bonus",
+                "ineffa.electro_damage_bonus",
+                "ineffa.physical_damage_bonus"
+              ]
+            },
+            {
+              "actor": "columbina",
+              "kind": "direct",
+              "damage": 1556465.9200269938,
+              "wholly_frozen_damage": 1123290.6603442912,
+              "channels": 87,
+              "coordinates": [
+                "columbina.atk",
+                "columbina.atk_percent",
+                "columbina.crit_damage",
+                "columbina.crit_rate",
+                "columbina.damage_bonus",
+                "columbina.hp",
+                "columbina.hp_percent",
+                "columbina.hydro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "ineffa",
+              "kind": "reaction",
+              "damage": 3223923.910172596,
+              "wholly_frozen_damage": 3223923.910172596,
+              "channels": 58,
+              "coordinates": []
+            },
+            {
+              "actor": "sucrose",
+              "kind": "direct",
+              "damage": 209003.8939134118,
+              "wholly_frozen_damage": 172549.1254792429,
+              "channels": 32,
+              "coordinates": [
+                "sucrose.anemo_damage_bonus",
+                "sucrose.atk",
+                "sucrose.atk_percent",
+                "sucrose.crit_damage",
+                "sucrose.crit_rate",
+                "sucrose.damage_bonus",
+                "sucrose.hydro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "sucrose",
+              "kind": "reaction",
+              "damage": 170326.89974111208,
+              "wholly_frozen_damage": 0.0,
+              "channels": 24,
+              "coordinates": [
+                "sucrose.em"
+              ]
+            },
+            {
+              "actor": "flins",
+              "kind": "direct",
+              "damage": 2331074.513197197,
+              "wholly_frozen_damage": 1611528.4494615938,
+              "channels": 170,
+              "coordinates": [
+                "flins.atk",
+                "flins.atk_percent",
+                "flins.crit_damage",
+                "flins.crit_rate",
+                "flins.damage_bonus",
+                "flins.electro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "flins",
+              "kind": "reaction",
+              "damage": 6447981.558371858,
+              "wholly_frozen_damage": 6447981.558371858,
+              "channels": 30,
+              "coordinates": []
+            },
+            {
+              "actor": "columbina",
+              "kind": "reaction",
+              "damage": 1451520.6412759437,
+              "wholly_frozen_damage": 1451520.6412759437,
+              "channels": 18,
+              "coordinates": []
+            }
+          ],
+          "reason_codes": [
+            "callback_provider_unattributed",
+            "direct_reaction_dependency_formula_not_compiled",
+            "flat_dmg_expression_collapsed",
+            "gadget_wave_state_lineage_not_instrumented",
+            "modifier_candidate_dependency_incomplete",
+            "modifier_source_parameter_binding_incomplete",
+            "multiplier_source_expression_not_instrumented",
+            "nonstat_formula_provenance_missing",
+            "numeric_marker_replay_not_recomputed",
+            "post_damage_callback_state_effects_unmodeled",
+            "provider_transition_timeline_incomplete",
+            "reaction_bonus_dependencies_frozen",
+            "reaction_bonus_provider_paths_incomplete",
+            "reaction_bonus_provider_unattributed",
+            "reaction_em_external_dependencies_frozen",
+            "reaction_parent_lineage_not_instrumented",
+            "reaction_topology_aggregate_only",
+            "stat_mod_dependency_expression_collapsed",
+            "terminal_formula_not_instrumented",
+            "unknown_reaction_operator",
+            "untyped_callback_state_effects_unmodeled"
+          ]
+        },
+        {
+          "seed": 742031890,
+          "duration_ms": 114983,
+          "baseline_dps": 149405.28090387295,
+          "wholly_frozen_damage_share": 0.8994793015488706,
+          "by_actor_kind": [
+            {
+              "actor": "ineffa",
+              "kind": "direct",
+              "damage": 1724913.6777140612,
+              "wholly_frozen_damage": 1357564.814096242,
+              "channels": 89,
+              "coordinates": [
+                "ineffa.atk",
+                "ineffa.atk_percent",
+                "ineffa.crit_damage",
+                "ineffa.crit_rate",
+                "ineffa.damage_bonus",
+                "ineffa.electro_damage_bonus",
+                "ineffa.physical_damage_bonus"
+              ]
+            },
+            {
+              "actor": "columbina",
+              "kind": "direct",
+              "damage": 1674928.8218335207,
+              "wholly_frozen_damage": 1241753.5621508178,
+              "channels": 89,
+              "coordinates": [
+                "columbina.atk",
+                "columbina.atk_percent",
+                "columbina.crit_damage",
+                "columbina.crit_rate",
+                "columbina.damage_bonus",
+                "columbina.hp",
+                "columbina.hp_percent",
+                "columbina.hydro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "ineffa",
+              "kind": "reaction",
+              "damage": 3223923.910172596,
+              "wholly_frozen_damage": 3223923.910172596,
+              "channels": 58,
+              "coordinates": []
+            },
+            {
+              "actor": "sucrose",
+              "kind": "direct",
+              "damage": 209003.8939134118,
+              "wholly_frozen_damage": 172549.1254792429,
+              "channels": 32,
+              "coordinates": [
+                "sucrose.anemo_damage_bonus",
+                "sucrose.atk",
+                "sucrose.atk_percent",
+                "sucrose.crit_damage",
+                "sucrose.crit_rate",
+                "sucrose.damage_bonus",
+                "sucrose.hydro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "sucrose",
+              "kind": "reaction",
+              "damage": 170326.89974111208,
+              "wholly_frozen_damage": 0.0,
+              "channels": 24,
+              "coordinates": [
+                "sucrose.em"
+              ]
+            },
+            {
+              "actor": "flins",
+              "kind": "direct",
+              "damage": 2276468.011147519,
+              "wholly_frozen_damage": 1556921.9474119141,
+              "channels": 170,
+              "coordinates": [
+                "flins.atk",
+                "flins.atk_percent",
+                "flins.crit_damage",
+                "flins.crit_rate",
+                "flins.damage_bonus",
+                "flins.electro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "flins",
+              "kind": "reaction",
+              "damage": 6447981.558371858,
+              "wholly_frozen_damage": 6447981.558371858,
+              "channels": 30,
+              "coordinates": []
+            },
+            {
+              "actor": "columbina",
+              "kind": "reaction",
+              "damage": 1451520.6412759437,
+              "wholly_frozen_damage": 1451520.6412759437,
+              "channels": 18,
+              "coordinates": []
+            }
+          ],
+          "reason_codes": [
+            "callback_provider_unattributed",
+            "direct_reaction_dependency_formula_not_compiled",
+            "flat_dmg_expression_collapsed",
+            "gadget_wave_state_lineage_not_instrumented",
+            "modifier_candidate_dependency_incomplete",
+            "modifier_source_parameter_binding_incomplete",
+            "multiplier_source_expression_not_instrumented",
+            "nonstat_formula_provenance_missing",
+            "numeric_marker_replay_not_recomputed",
+            "post_damage_callback_state_effects_unmodeled",
+            "provider_transition_timeline_incomplete",
+            "reaction_bonus_dependencies_frozen",
+            "reaction_bonus_provider_paths_incomplete",
+            "reaction_bonus_provider_unattributed",
+            "reaction_em_external_dependencies_frozen",
+            "reaction_parent_lineage_not_instrumented",
+            "reaction_topology_aggregate_only",
+            "stat_mod_dependency_expression_collapsed",
+            "terminal_formula_not_instrumented",
+            "unknown_reaction_operator",
+            "untyped_callback_state_effects_unmodeled"
+          ]
+        }
+      ],
+      "full_selected_search_run": false,
+      "stat_probe": {
+        "delta": "flins:em:187",
+        "mean_dps": 153122.33733068654,
+        "team_dps_delta": 3958.874908101192,
+        "independent_difference_se": 538.573162084522,
+        "delta_over_se": 7.350672456047668,
+        "iterations": 64,
+        "seconds": 2.734000000025844,
+        "compact_dps_delta": 0,
+        "proof": "no Flins EM coordinate in either complete captured graph"
+      }
+    },
+    {
+      "case": "flins_2",
+      "source_block_sha256": "bbe000b016c0eae6f5fbfc1eb2a4021fdcc27512774e604d58320c06fbdb6a7b",
+      "equipment": [
+        {
+          "actor": "flins",
+          "canonical_actor": "flins",
+          "character_id": 10000120,
+          "constellation": 0,
+          "level": 90,
+          "weapon": "bloodsoakedruins",
+          "refinement": 1,
+          "set_packages": [
+            [
+              "NightOfTheSkysUnveiling",
+              4
+            ]
+          ],
+          "artifact_ids": [
+            1,
+            1533,
+            63,
+            184,
+            1565
+          ]
+        },
+        {
+          "actor": "ineffa",
+          "canonical_actor": "ineffa",
+          "character_id": 10000116,
+          "constellation": 0,
+          "level": 90,
+          "weapon": "fracturedhalo",
+          "refinement": 1,
+          "set_packages": [
+            [
+              "AubadeOfMorningstarAndMoon",
+              4
+            ]
+          ],
+          "artifact_ids": [
+            71,
+            72,
+            73,
+            174,
+            1567
+          ]
+        },
+        {
+          "actor": "columbina",
+          "canonical_actor": "columbina",
+          "character_id": 10000125,
+          "constellation": 0,
+          "level": 90,
+          "weapon": "sacrificialjade",
+          "refinement": 4,
+          "set_packages": [
+            [
+              "SilkenMoonsSerenade",
+              4
+            ]
+          ],
+          "artifact_ids": [
+            66,
+            67,
+            68,
+            54,
+            1580
+          ]
+        },
+        {
+          "actor": "sucrose",
+          "canonical_actor": "sucrose",
+          "character_id": 10000043,
+          "constellation": 1,
+          "level": 90,
+          "weapon": "sacrificialfragments",
+          "refinement": 5,
+          "set_packages": [
+            [
+              "ViridescentVenerer",
+              4
+            ]
+          ],
+          "artifact_ids": [
+            152,
+            153,
+            154,
+            155,
+            1484
+          ]
+        }
+      ],
+      "substitutions": [],
+      "ordinary": {
+        "iterations": 64,
+        "mean_dps": 158978.20687920906,
+        "se_dps": 373.168742754351,
+        "seconds": 2.25
+      },
+      "compact_members": [
+        {
+          "seed": 742031889,
+          "duration_ms": 102833,
+          "baseline_dps": 157056.15074258085,
+          "wholly_frozen_damage_share": 0.8913046265975673,
+          "by_actor_kind": [
+            {
+              "actor": "ineffa",
+              "kind": "direct",
+              "damage": 2381118.795074087,
+              "wholly_frozen_damage": 1997369.6373017072,
+              "channels": 90,
+              "coordinates": [
+                "ineffa.atk",
+                "ineffa.atk_percent",
+                "ineffa.crit_damage",
+                "ineffa.crit_rate",
+                "ineffa.damage_bonus",
+                "ineffa.electro_damage_bonus",
+                "ineffa.physical_damage_bonus"
+              ]
+            },
+            {
+              "actor": "columbina",
+              "kind": "direct",
+              "damage": 1675663.1232719936,
+              "wholly_frozen_damage": 1217852.3555490423,
+              "channels": 83,
+              "coordinates": [
+                "columbina.atk",
+                "columbina.atk_percent",
+                "columbina.crit_damage",
+                "columbina.crit_rate",
+                "columbina.damage_bonus",
+                "columbina.hp",
+                "columbina.hp_percent",
+                "columbina.hydro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "ineffa",
+              "kind": "reaction",
+              "damage": 3235748.016145878,
+              "wholly_frozen_damage": 3235748.016145878,
+              "channels": 52,
+              "coordinates": []
+            },
+            {
+              "actor": "sucrose",
+              "kind": "direct",
+              "damage": 44752.0610791029,
+              "wholly_frozen_damage": 0.0,
+              "channels": 44,
+              "coordinates": [
+                "sucrose.anemo_damage_bonus",
+                "sucrose.atk",
+                "sucrose.atk_percent",
+                "sucrose.crit_damage",
+                "sucrose.crit_rate",
+                "sucrose.damage_bonus",
+                "sucrose.hydro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "sucrose",
+              "kind": "reaction",
+              "damage": 277707.23805012606,
+              "wholly_frozen_damage": 0.0,
+              "channels": 39,
+              "coordinates": [
+                "sucrose.em"
+              ]
+            },
+            {
+              "actor": "flins",
+              "kind": "direct",
+              "damage": 1549856.5045516563,
+              "wholly_frozen_damage": 958385.1065651858,
+              "channels": 149,
+              "coordinates": [
+                "flins.atk",
+                "flins.atk_percent",
+                "flins.crit_damage",
+                "flins.crit_rate",
+                "flins.damage_bonus",
+                "flins.electro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "flins",
+              "kind": "reaction",
+              "damage": 5524466.5592699535,
+              "wholly_frozen_damage": 5524466.5592699535,
+              "channels": 24,
+              "coordinates": []
+            },
+            {
+              "actor": "columbina",
+              "kind": "reaction",
+              "damage": 1461242.8518690192,
+              "wholly_frozen_damage": 1461242.8518690192,
+              "channels": 16,
+              "coordinates": []
+            }
+          ],
+          "reason_codes": [
+            "callback_provider_unattributed",
+            "direct_reaction_dependency_formula_not_compiled",
+            "flat_dmg_expression_collapsed",
+            "gadget_wave_state_lineage_not_instrumented",
+            "modifier_candidate_dependency_incomplete",
+            "modifier_source_parameter_binding_incomplete",
+            "multiplier_source_expression_not_instrumented",
+            "nonstat_formula_provenance_missing",
+            "numeric_marker_replay_not_recomputed",
+            "post_damage_callback_state_effects_unmodeled",
+            "provider_transition_timeline_incomplete",
+            "reaction_bonus_dependencies_frozen",
+            "reaction_bonus_provider_paths_incomplete",
+            "reaction_bonus_provider_unattributed",
+            "reaction_em_external_dependencies_frozen",
+            "reaction_parent_lineage_not_instrumented",
+            "reaction_topology_aggregate_only",
+            "stat_mod_dependency_expression_collapsed",
+            "terminal_formula_not_instrumented",
+            "unknown_reaction_operator",
+            "untyped_callback_state_effects_unmodeled"
+          ]
+        },
+        {
+          "seed": 742031890,
+          "duration_ms": 102833,
+          "baseline_dps": 161347.45994431814,
+          "wholly_frozen_damage_share": 0.8941955643057227,
+          "by_actor_kind": [
+            {
+              "actor": "ineffa",
+              "kind": "direct",
+              "damage": 2386494.408614426,
+              "wholly_frozen_damage": 2002745.2508420462,
+              "channels": 88,
+              "coordinates": [
+                "ineffa.atk",
+                "ineffa.atk_percent",
+                "ineffa.crit_damage",
+                "ineffa.crit_rate",
+                "ineffa.damage_bonus",
+                "ineffa.electro_damage_bonus",
+                "ineffa.physical_damage_bonus"
+              ]
+            },
+            {
+              "actor": "columbina",
+              "kind": "direct",
+              "damage": 1952361.3972278764,
+              "wholly_frozen_damage": 1494550.6295049244,
+              "channels": 86,
+              "coordinates": [
+                "columbina.atk",
+                "columbina.atk_percent",
+                "columbina.crit_damage",
+                "columbina.crit_rate",
+                "columbina.damage_bonus",
+                "columbina.hp",
+                "columbina.hp_percent",
+                "columbina.hydro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "ineffa",
+              "kind": "reaction",
+              "damage": 3235748.016145878,
+              "wholly_frozen_damage": 3235748.016145878,
+              "channels": 52,
+              "coordinates": []
+            },
+            {
+              "actor": "sucrose",
+              "kind": "direct",
+              "damage": 44752.0610791029,
+              "wholly_frozen_damage": 0.0,
+              "channels": 44,
+              "coordinates": [
+                "sucrose.anemo_damage_bonus",
+                "sucrose.atk",
+                "sucrose.atk_percent",
+                "sucrose.crit_damage",
+                "sucrose.crit_rate",
+                "sucrose.damage_bonus",
+                "sucrose.hydro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "sucrose",
+              "kind": "reaction",
+              "damage": 277707.23805012606,
+              "wholly_frozen_damage": 0.0,
+              "channels": 39,
+              "coordinates": [
+                "sucrose.em"
+              ]
+            },
+            {
+              "actor": "flins",
+              "kind": "direct",
+              "damage": 1709070.8161976866,
+              "wholly_frozen_damage": 1117599.418211216,
+              "channels": 151,
+              "coordinates": [
+                "flins.atk",
+                "flins.atk_percent",
+                "flins.crit_damage",
+                "flins.crit_rate",
+                "flins.damage_bonus",
+                "flins.electro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "flins",
+              "kind": "reaction",
+              "damage": 5524466.5592699535,
+              "wholly_frozen_damage": 5524466.5592699535,
+              "channels": 24,
+              "coordinates": []
+            },
+            {
+              "actor": "columbina",
+              "kind": "reaction",
+              "damage": 1461242.8518690192,
+              "wholly_frozen_damage": 1461242.8518690192,
+              "channels": 16,
+              "coordinates": []
+            }
+          ],
+          "reason_codes": [
+            "callback_provider_unattributed",
+            "direct_reaction_dependency_formula_not_compiled",
+            "flat_dmg_expression_collapsed",
+            "gadget_wave_state_lineage_not_instrumented",
+            "modifier_candidate_dependency_incomplete",
+            "modifier_source_parameter_binding_incomplete",
+            "multiplier_source_expression_not_instrumented",
+            "nonstat_formula_provenance_missing",
+            "numeric_marker_replay_not_recomputed",
+            "post_damage_callback_state_effects_unmodeled",
+            "provider_transition_timeline_incomplete",
+            "reaction_bonus_dependencies_frozen",
+            "reaction_bonus_provider_paths_incomplete",
+            "reaction_bonus_provider_unattributed",
+            "reaction_em_external_dependencies_frozen",
+            "reaction_parent_lineage_not_instrumented",
+            "reaction_topology_aggregate_only",
+            "stat_mod_dependency_expression_collapsed",
+            "terminal_formula_not_instrumented",
+            "unknown_reaction_operator",
+            "untyped_callback_state_effects_unmodeled"
+          ]
+        }
+      ],
+      "full_selected_search_run": false
+    },
+    {
+      "case": "bloom",
+      "source_block_sha256": "1a03ecbfffe0c93bdfbee7d9fee31fc7a39e4da84cd4aa470915a497fc683977",
+      "equipment": [
+        {
+          "actor": "columbina",
+          "canonical_actor": "columbina",
+          "character_id": 10000125,
+          "constellation": 0,
+          "level": 90,
+          "weapon": "sacrificialjade",
+          "refinement": 4,
+          "set_packages": [
+            [
+              "NightOfTheSkysUnveiling",
+              4
+            ]
+          ],
+          "artifact_ids": [
+            1,
+            2,
+            3,
+            184,
+            5
+          ]
+        },
+        {
+          "actor": "kuki",
+          "canonical_actor": "kukishinobu",
+          "character_id": 10000065,
+          "constellation": 6,
+          "level": 90,
+          "weapon": "darkironsword",
+          "refinement": 2,
+          "set_packages": [
+            [
+              "SilkenMoonsSerenade",
+              4
+            ]
+          ],
+          "artifact_ids": [
+            66,
+            67,
+            68,
+            69,
+            70
+          ]
+        },
+        {
+          "actor": "lauma",
+          "canonical_actor": "lauma",
+          "character_id": 10000119,
+          "constellation": 0,
+          "level": 90,
+          "weapon": "blackmarrowlantern",
+          "refinement": 5,
+          "set_packages": [
+            [
+              "GildedDreams",
+              2
+            ],
+            [
+              "WanderersTroupe",
+              2
+            ]
+          ],
+          "artifact_ids": [
+            31,
+            32,
+            127,
+            64,
+            129
+          ]
+        },
+        {
+          "actor": "nahida",
+          "canonical_actor": "nahida",
+          "character_id": 10000073,
+          "constellation": 1,
+          "level": 90,
+          "weapon": "wanderingevenstar",
+          "refinement": 4,
+          "set_packages": [
+            [
+              "DeepwoodMemories",
+              4
+            ]
+          ],
+          "artifact_ids": [
+            105,
+            106,
+            92,
+            220,
+            185
+          ]
+        }
+      ],
+      "substitutions": [
+        {
+          "actor": "kuki",
+          "old_weapon_id": 11436,
+          "new_weapon_key": "darkironsword"
+        }
+      ],
+      "ordinary": {
+        "iterations": 64,
+        "mean_dps": 110841.41367869197,
+        "se_dps": 237.75654426908287,
+        "seconds": 1.6559999999881256
+      },
+      "compact_members": [
+        {
+          "seed": 742031889,
+          "duration_ms": 93650,
+          "baseline_dps": 110800.2227695283,
+          "wholly_frozen_damage_share": 0.6973319736925344,
+          "by_actor_kind": [
+            {
+              "actor": "nahida",
+              "kind": "direct",
+              "damage": 885530.0317477586,
+              "wholly_frozen_damage": 0.0,
+              "channels": 55,
+              "coordinates": [
+                "nahida.atk",
+                "nahida.atk_percent",
+                "nahida.crit_damage",
+                "nahida.crit_rate",
+                "nahida.damage_bonus",
+                "nahida.dendro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "columbina",
+              "kind": "direct",
+              "damage": 459758.6916261631,
+              "wholly_frozen_damage": 0.0,
+              "channels": 74,
+              "coordinates": [
+                "columbina.atk",
+                "columbina.atk_percent",
+                "columbina.crit_damage",
+                "columbina.crit_rate",
+                "columbina.damage_bonus",
+                "columbina.hp",
+                "columbina.hp_percent",
+                "columbina.hydro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "lauma",
+              "kind": "direct",
+              "damage": 705933.5787558765,
+              "wholly_frozen_damage": 0.0,
+              "channels": 49,
+              "coordinates": [
+                "lauma.atk",
+                "lauma.atk_percent",
+                "lauma.crit_damage",
+                "lauma.crit_rate",
+                "lauma.damage_bonus",
+                "lauma.dendro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "lauma",
+              "kind": "reaction",
+              "damage": 834927.5175316082,
+              "wholly_frozen_damage": 834927.5175316082,
+              "channels": 5,
+              "coordinates": []
+            },
+            {
+              "actor": "columbina",
+              "kind": "reaction",
+              "damage": 4542659.656248555,
+              "wholly_frozen_damage": 4513615.239053394,
+              "channels": 174,
+              "coordinates": [
+                "columbina.em"
+              ]
+            },
+            {
+              "actor": "kukishinobu",
+              "kind": "direct",
+              "damage": 172467.9475939321,
+              "wholly_frozen_damage": 0.0,
+              "channels": 118,
+              "coordinates": [
+                "kukishinobu.atk",
+                "kukishinobu.atk_percent",
+                "kukishinobu.crit_damage",
+                "kukishinobu.crit_rate",
+                "kukishinobu.damage_bonus",
+                "kukishinobu.electro_damage_bonus",
+                "kukishinobu.hp",
+                "kukishinobu.hp_percent",
+                "kukishinobu.physical_damage_bonus"
+              ]
+            },
+            {
+              "actor": "kukishinobu",
+              "kind": "reaction",
+              "damage": 2775163.4388624323,
+              "wholly_frozen_damage": 1887281.2298727725,
+              "channels": 68,
+              "coordinates": [
+                "kukishinobu.em"
+              ]
+            }
+          ],
+          "reason_codes": [
+            "attack_mod_closure_expression_collapsed",
+            "attack_provider_unattributed",
+            "callback_provider_unattributed",
+            "direct_reaction_dependency_formula_not_compiled",
+            "flat_damage_source_binding_missing",
+            "flat_dmg_expression_collapsed",
+            "flat_template_baseline_mismatch",
+            "gadget_wave_state_lineage_not_instrumented",
+            "modifier_candidate_dependency_incomplete",
+            "multiplier_source_expression_not_instrumented",
+            "post_damage_callback_state_effects_unmodeled",
+            "provider_transition_timeline_incomplete",
+            "reaction_bonus_dependencies_frozen",
+            "reaction_bonus_provider_paths_incomplete",
+            "reaction_bonus_provider_unattributed",
+            "reaction_em_external_dependencies_frozen",
+            "reaction_parent_lineage_not_instrumented",
+            "reaction_terminal_dependency_not_compiled",
+            "reaction_topology_aggregate_only",
+            "stat_mod_dependency_expression_collapsed",
+            "transformative_reaction_formula_mismatch",
+            "unknown_reaction_operator",
+            "untyped_callback_state_effects_unmodeled"
+          ]
+        },
+        {
+          "seed": 742031890,
+          "duration_ms": 93650,
+          "baseline_dps": 110800.2227695283,
+          "wholly_frozen_damage_share": 0.6973319736925344,
+          "by_actor_kind": [
+            {
+              "actor": "nahida",
+              "kind": "direct",
+              "damage": 885530.0317477586,
+              "wholly_frozen_damage": 0.0,
+              "channels": 55,
+              "coordinates": [
+                "nahida.atk",
+                "nahida.atk_percent",
+                "nahida.crit_damage",
+                "nahida.crit_rate",
+                "nahida.damage_bonus",
+                "nahida.dendro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "columbina",
+              "kind": "direct",
+              "damage": 459758.6916261631,
+              "wholly_frozen_damage": 0.0,
+              "channels": 74,
+              "coordinates": [
+                "columbina.atk",
+                "columbina.atk_percent",
+                "columbina.crit_damage",
+                "columbina.crit_rate",
+                "columbina.damage_bonus",
+                "columbina.hp",
+                "columbina.hp_percent",
+                "columbina.hydro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "lauma",
+              "kind": "direct",
+              "damage": 705933.5787558765,
+              "wholly_frozen_damage": 0.0,
+              "channels": 49,
+              "coordinates": [
+                "lauma.atk",
+                "lauma.atk_percent",
+                "lauma.crit_damage",
+                "lauma.crit_rate",
+                "lauma.damage_bonus",
+                "lauma.dendro_damage_bonus"
+              ]
+            },
+            {
+              "actor": "lauma",
+              "kind": "reaction",
+              "damage": 834927.5175316082,
+              "wholly_frozen_damage": 834927.5175316082,
+              "channels": 5,
+              "coordinates": []
+            },
+            {
+              "actor": "columbina",
+              "kind": "reaction",
+              "damage": 4542659.656248555,
+              "wholly_frozen_damage": 4513615.239053394,
+              "channels": 174,
+              "coordinates": [
+                "columbina.em"
+              ]
+            },
+            {
+              "actor": "kukishinobu",
+              "kind": "direct",
+              "damage": 172467.9475939321,
+              "wholly_frozen_damage": 0.0,
+              "channels": 118,
+              "coordinates": [
+                "kukishinobu.atk",
+                "kukishinobu.atk_percent",
+                "kukishinobu.crit_damage",
+                "kukishinobu.crit_rate",
+                "kukishinobu.damage_bonus",
+                "kukishinobu.electro_damage_bonus",
+                "kukishinobu.hp",
+                "kukishinobu.hp_percent",
+                "kukishinobu.physical_damage_bonus"
+              ]
+            },
+            {
+              "actor": "kukishinobu",
+              "kind": "reaction",
+              "damage": 2775163.4388624323,
+              "wholly_frozen_damage": 1887281.2298727725,
+              "channels": 68,
+              "coordinates": [
+                "kukishinobu.em"
+              ]
+            }
+          ],
+          "reason_codes": [
+            "attack_mod_closure_expression_collapsed",
+            "attack_provider_unattributed",
+            "callback_provider_unattributed",
+            "direct_reaction_dependency_formula_not_compiled",
+            "flat_damage_source_binding_missing",
+            "flat_dmg_expression_collapsed",
+            "flat_template_baseline_mismatch",
+            "gadget_wave_state_lineage_not_instrumented",
+            "modifier_candidate_dependency_incomplete",
+            "multiplier_source_expression_not_instrumented",
+            "post_damage_callback_state_effects_unmodeled",
+            "provider_transition_timeline_incomplete",
+            "reaction_bonus_dependencies_frozen",
+            "reaction_bonus_provider_paths_incomplete",
+            "reaction_bonus_provider_unattributed",
+            "reaction_em_external_dependencies_frozen",
+            "reaction_parent_lineage_not_instrumented",
+            "reaction_terminal_dependency_not_compiled",
+            "reaction_topology_aggregate_only",
+            "stat_mod_dependency_expression_collapsed",
+            "transformative_reaction_formula_mismatch",
+            "unknown_reaction_operator",
+            "untyped_callback_state_effects_unmodeled"
+          ]
+        }
+      ],
+      "full_selected_search_run": false,
+      "stat_probe": {
+        "delta": "kukishinobu:em:187",
+        "mean_dps": 113020.69098054543,
+        "team_dps_delta": 2179.2773018534645,
+        "independent_difference_se": 332.4254138724274,
+        "delta_over_se": 6.555688015747769,
+        "iterations": 64,
+        "seconds": 1.625
+      }
+    }
+  ],
+  "production_update": {
+    "success": true,
+    "activated": true,
+    "engine_id": "gcsim-v2.45.0-gob11-boundary-20260908",
+    "engine_path": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\gcsim\\engines\\engines\\gcsim-v2.45.0-gob11-boundary-20260908",
+    "check_status": "gtt_info_passed",
+    "application_compatibility_status": "passed",
+    "artifact_sha256": "76f12ae8c2980a72815b46e46ee14aad1da07fbccec303b05460741ba7b06abf",
+    "error": "",
+    "seconds": 82.40600000001723
+  },
+  "installed_verification": {
+    "active_engine_id": "gcsim-v2.45.0-gob11-boundary-20260908",
+    "rollback_engine_id": "gcsim-v2.45.0-compat-20260907",
+    "binary_sha256": "76f12ae8c2980a72815b46e46ee14aad1da07fbccec303b05460741ba7b06abf",
+    "same_executable_as_isolated_replay": true
+  },
+  "current_team_constant_channels": [
+    {
+      "seed": 742031889,
+      "channels": 383,
+      "wholly_constant_channels": 0
+    },
+    {
+      "seed": 742031890,
+      "channels": 372,
+      "wholly_constant_channels": 0
+    }
+  ]
+}

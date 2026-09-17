@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 
 	"genshinteamstracker/native/gcsim_optimizer/internal/domain"
@@ -76,10 +77,34 @@ func New(artifactDomain *domain.Index, panel *evaluator.Panel, config Config) (*
 	if artifactDomain == nil || panel == nil {
 		return nil, fmt.Errorf("search domain and panel are required")
 	}
+	if !slices.Equal(artifactDomain.Coordinates, panel.Coordinates()) {
+		return nil, fmt.Errorf("search coordinate order mismatch")
+	}
+	for i, key := range panel.ActorKeys() {
+		if artifactDomain.Wearers[i].WearerKey != key {
+			return nil, fmt.Errorf("search wearer order mismatch")
+		}
+	}
 	if config.FirstFrontierWidth <= 0 || config.RecheckFrontierWidth <= 0 || config.MaxExpandedPerActor <= 0 || config.FinalistLimit < 2 || config.MaxCycles <= 0 || config.PairFinalistLimit < 2 {
 		return nil, fmt.Errorf("search config is invalid")
 	}
 	return &Engine{artifactDomain, panel, config}, nil
+}
+
+// RefineWearer exposes one existing bounded FGBS step for All Sets orchestration.
+// It does not run a whole Selected pipeline or grant an additional simulation
+// budget. The caller owns the shared context/queue/deadline across these steps.
+func (engine *Engine) RefineWearer(ctx context.Context, anchor domain.Assignment, wearerIndex int) (ActorStep, error) {
+	if wearerIndex < 0 || wearerIndex >= 4 {
+		return ActorStep{}, fmt.Errorf("wearer index outside team")
+	}
+	if err := ctx.Err(); err != nil {
+		return ActorStep{}, err
+	}
+	if err := engine.domain.ValidateAssignment(anchor); err != nil {
+		return ActorStep{}, err
+	}
+	return engine.searchActor(ctx, anchor, wearerIndex, 1, engine.config.FirstFrontierWidth)
 }
 
 func (engine *Engine) Run(ctx context.Context) (Result, error) {
@@ -172,7 +197,9 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 	}
 	byAssignment := map[domain.Assignment]ScoredAssignment{anchor: {anchor, anchorDPS, "anchor"}}
 	remaining := engine.config.MaxExpandedPerActor
-	for laneIndex, currentLane := range engine.lanes(anchor, wearerIndex) {
+	lanes := engine.lanes(anchor, wearerIndex)
+	pairedSets := len(engine.domain.Wearers[wearerIndex].SelectedSets) == 2
+	for laneIndex, currentLane := range lanes {
 		step.RawPhysicalBuilds = saturatingAdd(step.RawPhysicalBuilds, currentLane.raw)
 		if remaining <= 0 {
 			step.BudgetUnexpanded = saturatingAdd(step.BudgetUnexpanded, currentLane.raw)
@@ -183,6 +210,20 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 			return step, err
 		}
 		step.GuideEvaluations += guideCount
+		allowance := remaining
+		if pairedSets {
+			// Fifty possible slot patterns must share the existing actor budget;
+			// an early pattern must not consume it before others are considered.
+			allowance = remaining / (len(lanes) - laneIndex)
+			trial := anchor
+			trial[wearerIndex] = fallback
+			dps, err := engine.scoreActor(trial, wearerIndex)
+			if err != nil {
+				return step, err
+			}
+			step.CompleteEvaluations++
+			byAssignment[trial] = ScoredAssignment{trial, dps, fmt.Sprintf("actor_%d_lane_%d_anchor", wearerIndex, laneIndex)}
+		}
 		order := []int{0, 1, 2, 3, 4}
 		sort.SliceStable(order, func(i, j int) bool {
 			if len(currentLane.pools[order[i]]) != len(currentLane.pools[order[j]]) {
@@ -194,8 +235,8 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 		for depth, slotIndex := range order {
 			projected := len(frontier) * len(currentLane.pools[slotIndex])
 			take := projected
-			if take > remaining {
-				take = remaining
+			if take > allowance {
+				take = allowance
 				step.BudgetUnexpanded = saturatingAdd(step.BudgetUnexpanded, int64(projected-take))
 			}
 			builders := make(map[string]partial, take)
@@ -242,6 +283,7 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 				}
 			}
 			remaining -= emitted
+			allowance -= emitted
 			step.Expanded += emitted
 			step.GuideEvaluations += emitted
 			step.FrontierDiscarded += emitted - len(builders)
@@ -262,7 +304,7 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 			}
 			frontier = next
 			if len(frontier) == 0 || emitted < projected {
-				if depth < 4 && remaining <= 0 {
+				if depth < 4 && allowance <= 0 {
 					break
 				}
 			}
@@ -319,7 +361,11 @@ func (engine *Engine) lanes(anchor domain.Assignment, wearerIndex int) []lane {
 			occupied[id] = struct{}{}
 		}
 	}
-	target := engine.domain.Wearers[wearerIndex].SelectedSetUID
+	sets := engine.domain.Wearers[wearerIndex].SelectedSets
+	if len(sets) == 2 {
+		return engine.pairedSetLanes(occupied, sets[0].SetUID, sets[1].SetUID)
+	}
+	target := sets[0].SetUID
 	makeLane := func(offSlot int) lane {
 		var output lane
 		output.raw = 1

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-17",
+  "owner": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
+  "scope": "connected_UI_backend_input_preparation_and_native_request_validation_not_search_or_actual_UI_acceptance",
+  "status": "PASS_UI_restart_retry_pending",
+  "failed_run": "all_sets-20260917-024541-51464324",
+  "same_rotation_config_and_equipment_as_failed_run": true,
+  "canonical_source_manifest_sha256": "d0effbb1a54c453f5552692a5ef3c306cc827ae1cccdb8084a1f7b69441585b0",
+  "old_raw_manifest_sha256": "b9fc526f54bc41f2f36fda917a873c3d224cd0b7029c4819c2464baee70d112e",
+  "repaired_boundaries": [
+    "request_uses_build_canonical_manifest_identity_not_file_bytes_with_trailing_CRLF",
+    "valid_unmapped_set_offpieces_keep_physical_ID_and_raw_stats_without_claiming_set_bonus_support",
+    "development_budget_covers_All_Sets_600000ms_product_budget"
+  ],
+  "additional_observed_offpiece": {"artifact_id": 1566, "wearer": "ineffa", "set_uid": "HeartOfTheFurnace"},
+  "verified_set_sources": 42,
+  "native_request_validation": "PASS",
+  "source_envelope_sha256": "a2bc8010d435e4efba182ea8c09b815f1d2a1199cdae644651e7fdf8d64f0b43",
+  "regressions": [
+    "connected_request_and_source_preparation_with_no_newline_LF_CRLF_and_pretty_JSON",
+    "changed_manifest_binary_or_source_tree_rejected",
+    "offpiece_preserves_stats_but_cannot_nominate_unmodeled_set_packages_or_emit_set_bonus"
+  ],
+  "local_replay": ".codex_tmp/all-sets-manifest-20260917/check.py",
+  "engine_calls": 0,
+  "optimizer_searches": 0,
+  "ui_verified": false,
+  "engine_account_equipment_settings_mutated": false
+}

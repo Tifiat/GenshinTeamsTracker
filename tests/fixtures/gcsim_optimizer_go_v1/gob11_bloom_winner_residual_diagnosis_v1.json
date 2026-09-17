@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-16",
+  "status": "diagnosed_not_fixed",
+  "engine": "gcsim-v2.45.0-gob11-gp3-20260916",
+  "engine_binary_sha256": "82a5ae0a7eab4de02dd1d58a6be58850b2637d007b46347683e6fad36cf3df0b",
+  "patch_sha256": "0f25a323622f5be9e7f22ccf0ae17e71e7257c8205e56165ea1918969f24467f",
+  "assignment_sha256": "392e492e7828f649e2374703c27ce6be2033f69f67293f39e71190042f5291b9",
+  "prior_receipt": "gob11_bloom4p_diagnostic_receipt_v1.json",
+  "scope": {
+    "production_changes": false,
+    "new_search": false,
+    "new_engine_n1_calls": 4,
+    "new_n500_or_n1000_calls": 0,
+    "live_account_changes": false,
+    "ui_click_verified": false,
+    "method": "Production domain mapping and EvaluateSeedMember via temporary Go test overlay; two fresh compact winner captures and one detailed baseline/winner pair."
+  },
+  "selected_result": {
+    "formula_dps": 131479.0295574717,
+    "measured_n1000_dps": 124224.89392793331,
+    "measured_standard_error": 62.688645541412605,
+    "overestimate_dps": 7254.135629538374,
+    "overestimate_percent": 5.839518473444398
+  },
+  "same_schedule_replay": {
+    "seeds": [742031889, 742031890],
+    "hits_per_seed": 543,
+    "duration_ms": 93650,
+    "aligned_channel_ids_actors_tags": true,
+    "topology_hash_equal": true,
+    "detailed_seed_742031889_hit_frames_source_snapshot_ability_element_reaction_flags_equal": true,
+    "predicted_dps_each_seed": 131479.0295574717,
+    "fresh_expected_dps_each_seed": 124174.70316429192,
+    "overestimate_dps": 7304.32639317978,
+    "interpretation": "The dominant residual is candidate dependency loss, not changed hit schedule or critical sampling noise."
+  },
+  "residual_by_group_dps": {
+    "nahida/direct/tag/4": 7082.560288863125,
+    "columbina/reaction/tag/31": 85.01739326255864,
+    "lauma/direct/tag/5": 81.62335315180367,
+    "nahida/direct/tag/1": 31.200286298104196,
+    "columbina/direct/tag/1": 10.560935624743228,
+    "kukishinobu/direct/tag/4": 10.406512872946687,
+    "lauma/direct/tag/1": 2.1336389862214626,
+    "kukishinobu/direct/tag/1": 0.8239841204057776
+  },
+  "nahida_skill_share_of_residual_percent": 96.96390752029217,
+  "matched_groups": [
+    "kukishinobu/reaction/tag/23: 68 hyperbloom hits",
+    "lauma/reaction/tag/31",
+    "columbina/direct/tag/4",
+    "columbina/direct/tag/6"
+  ],
+  "nahida_artifact_em": {"baseline": 507, "winner": 37, "delta": -470},
+  "representative_skill_hit": {
+    "hit_id": 123,
+    "ability": "Tri-Karma Purification",
+    "frame": 1714,
+    "predicted_damage": 51523.52834507544,
+    "fresh_expected_damage": 31529.073859308228,
+    "predicted_factors": {
+      "scaling_atk": 2058.271348528,
+      "flat": 8349.668457243191,
+      "talent": 1.8576,
+      "bonus_multiplier": 2.68384,
+      "crit_multiplier": 2.642544,
+      "defense": 0.48717948717948717,
+      "resistance": 1.225
+    },
+    "fresh_factors": {
+      "scaling_atk": 1860.871348528,
+      "flat": 6603.52445724319,
+      "talent": 1.8576,
+      "bonus_multiplier": 2.221424,
+      "crit_multiplier": 2.3639846016000003,
+      "defense": 0.48717948717948717,
+      "resistance": 1.225
+    },
+    "source_losses": [
+      "No original FlatDmg terminal source binding: snap.Stats[EM] * talent EM scale remains frozen; discrepancy 1746.144 = 470 * observed engine scale 3.7152. Spread response is present, not the missing term in this sample.",
+      "A4 saved stat vector remains frozen: old CR 0.24 and DMG 0.8 versus fresh CR 0.1012752 and DMG 0.337584. Source template stops at modifier_nested_control_flow.",
+      "Wandering Evenstar self ATK remains frozen: old 423.18528 versus fresh 225.78528. Candidate scaling ATK excess is exactly 197.4. Modifier closure local vectors stop at modifier_output_assignment_count."
+    ]
+  },
+  "remaining_lunar_bonus": {
+    "representative_hit_id": 35,
+    "ability": "Gravity Interference (Lunar-Bloom)",
+    "old_ascendant_gleam": 0.11807939972037598,
+    "fresh_ascendant_gleam": 0.10454751798168598,
+    "kuki_base_atk": 613.6907818,
+    "artifact_atk_percent_old": 0.298,
+    "artifact_atk_percent_new": 0.053,
+    "difference_explained_by_engine_source": "613.6907818 * (0.298 - 0.053) * 0.009 / 100 = 0.01353188173869",
+    "boundary": "setupAscendantGleam SelectStat(true, BaseATK, ATKP, ATK).TotalATK branch; GP3 NonExtraStat(EM) captured-scalar support does not cover this stats-container branch. Preserve Extra exclusion."
+  },
+  "limitations": [
+    "This is a failing diagnostic receipt, not a passing regression or repaired formula.",
+    "Per-mechanism errors interact multiplicatively; group totals must not be presented as an additive attribution to individual missing modifiers.",
+    "Identified weapon transfer loss also affects ordinary team attacks; only representative factor attribution was isolated, not every event independently.",
+    "No global guarantee for all lunar reactions, teams or schedules follows from this fixture.",
+    "Positive EM checks near an A4 cap do not cover large negative EM changes crossing the cap."
+  ],
+  "evidence_root": ".codex_tmp/gob11-bloom-winner-audit-20260916",
+  "evidence_sha256": {
+    "comparison.json": "24f127c5d74ee29e3f50600e88ead40aa30e417d752dae580c3ec1a0933fe588",
+    "winner-742031889.json": "d1811b09fbdb2031626f17291f6917bf063cda43622159317005b1798adc25cd",
+    "winner-742031890.json": "03e05c70ce6377d441e9cb991165c315294f88539c2d703d0c08fe9168dea2c5",
+    "base-detailed.json": "163f87a7720405bf963d39a92392e7ecdba8076efb88a5281cb0a4e2a8a93ccb",
+    "winner-detailed.json": "2f9542a4109f60ec7b0a84758dab27b1fc3b20b73dea41f8f1d645284b1ec1ac"
+  }
+}

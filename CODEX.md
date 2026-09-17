@@ -13,6 +13,30 @@ This file is written for future coding agents. Keep it compact, English, and mos
   stop and ask the user to create or assign a visible worker task; never spawn
   a subagent or delegate automatically. This rule remains active until the user
   explicitly rescinds it.
+- Scoped exception requested2026-09-17: the proposed overnight session may use
+  at most one subagent at a time for an isolated task, especially the readable
+  rotation editor. The user STARTED the session; bounded N0 cleanup is now
+  verified after renewed permission for agent-run scripts. The user ran the
+  exact `tools/cleanup_optimizer_binaries.ps1` helper; all five reviewed legacy
+  binaries are absent. Do not broaden its allowlist or revive those outputs.
+  The overnight heartbeat was deleted at the user's request; do not recreate
+  it. Continue only the explicitly selected stage. Checkpoint/TODO own scope.
+  This is not a permanent repeal. Its scope, safe blocker handling and
+  handler-path verification exception are in the optimizer handoff's
+  "Overnight execution contract"; TODO owns its queue. History Browser is excluded.
+- Any new persistent generated/temp output needs an owner, finite retention
+  policy, actually wired cleaner and focused deletion/preservation tests in the
+  same change. An ignored folder or a cleanup TODO is not a lifecycle. Research
+  copies must name a deletion gate and keep only minimal reproducible evidence
+  after it; no accumulating cloned source trees/build caches. Measure generated
+  bytes before/after heavy experiments. See DATA_RUNTIME_BOUNDARIES.md.
+- New disposable optimizer experiments must use
+  `tools/managed_optimizer_experiment.py` (one whole capture/export sequence)
+  or an equivalent tested lifecycle, with all generated paths in its owned
+  scratch scope. It cleans on exit; failed cleanup/orphan residue blocks another
+  allocation. Never bypass that block by inventing a new scratch/cache folder.
+  Export minimal evidence first. Legacy scripts are not exempt when rerun;
+  adapt their outputs or scope them before running, not after disk growth.
 - Treat model/context usage as a scarce project resource. Work sequentially,
   reuse accepted traces/fixtures, prefer one narrow diagnostic over broad
   exploration, and do not brute-force architecture, patches, parameters or
@@ -33,15 +57,40 @@ This file is written for future coding agents. Keep it compact, English, and mos
   optimizer. Infinite mode maps Selected to `ignore_burst_energy=true`; the
   other position passes `false` but ER-aware artifact search is not implemented
   yet and is visibly diagnostic/possibly failing. Never add a second optimizer
-  energy setting.
-- Official GCSIM v2.45 owns Lunar/Stellar gameplay formulas. GTT may trace and
-  classify upstream formula paths, but must not reproduce future game mechanics
-  or hardcode characters/regions to make them work. GOB-11A passed: reaction
-  operators come from producer receipts/structural flags and the executed
-  calculation path, not a duplicated reaction-name/tag whitelist. Follow
-  observed hit/source/runtime edges; keep generic hooks. Direct-reaction
-  candidate dependencies remain explicitly frozen pending GOB-11, never passed
-  into the standard talent formula. Details: GCSIM_ENGINE_INTEGRATION_PLAN.md.
+  energy setting. Energy support is explicitly deferred until last; do not
+  change finite-energy behavior during Selected2+2 or All Sets work. TODO owns
+  the current user-decided stage order.
+- GCSIM owns gameplay formulas. GTT observes source arithmetic, runtime paths
+  and input ownership; never duplicate Lunar/Stellar coefficients or hardcode
+  character/region rules in the consumer. Unknown operands, ancestry and
+  branch/task/schedule changes remain diagnosed local boundaries. Zero wholly
+  frozen hits does not prove complete dependency coverage. Read the optimizer
+  contract and its linked current checkpoint before changing this area.
+- A set-package change cannot reuse a captured formula merely because hit
+  topology is unchanged. Require a scoped effect-replacement proof or fresh
+  context capture; a recognized2p stat assignment alone is not that proof.
+  Keep set-effect changes separate from raw artifact contributions and never
+  leave an old buff in place while adding the replacement.
+  Static replacement attestations are trusted verifier output, never UI flags
+  or inferred from a passing point witness. The isolated context pilot has no
+  enabled real-set proof producer; its synthetic certificates are test-only.
+  Source-discovered amount alternatives and old-context increment probes are
+  proposal features, not an additive set total or changed-set DPS. Neutral input
+  annotations must bind exact graph nodes and actual input owners, not displayed
+  damage actors or matching numeric values; see the Go design.
+- NonExtraStat must preserve Extra exclusion; never substitute ordinary Stat.
+  Validate original-flat recipes against their original producer before later
+  additions, and preserve observed evaluation count/order and cross-owner inputs.
+  A trace provider identifies executing code, not necessarily the stat owner;
+  bind artifact coordinates to the typed receiver/owner, including foreign HP.
+  Capture eligible health-input expressions at their original evaluation point,
+  once; do not reconstruct a saved input by re-reading later mutable stats.
+- Controlled stat-response probes must preserve the original character
+  declaration/initialization order, seed and settings. Append stat changes;
+  prepending a character statement can reorder the party and change RNG.
+  Diagnose alignment separately from formula error; test-runner success is not
+  a response-acceptance pass. Generated build overlays must resolve to the
+  actual installed source, not obsolete updater staging paths.
 - When the user is asking to discuss, clarify, reason about, decide on rules, or validate an approach, treat the turn as discussion-only. Do not edit files or apply changes until the user explicitly asks to implement, apply, save, or write them. This rule applies by intent in any language, not by exact words.
 - Do not treat an acknowledgement of understanding as permission to implement. Phrases in any language that mean "I understand", "got it", "yes, that is the idea", or similar are not approval to edit files.
 - Before implementing a task specification, do a brief preflight against the relevant current code and handoff contract. Look for incorrect assumptions, contradictions, missing ownership boundaries, and wording that can reasonably lead to materially different architecture, behavior, or visible UI. Ask focused questions and wait for answers before editing when those issues affect the solution. Do not turn this into a questionnaire for incidental details that can be resolved safely from existing project patterns.
@@ -72,16 +121,31 @@ This file is written for future coding agents. Keep it compact, English, and mos
   there. Use it only when the user explicitly asks, after clarification, or when
   a tool is genuinely reusable and no planned product surface owns it yet.
   Research probes still belong under `tools/experiments/`.
-- After every completed task that changes roadmap, architecture state, or reusable context, update the relevant handoff docs before final response. Mark completed subitems compactly, add durable new knowledge to `CODEX.md`/`TODO.md` or a dedicated handoff file, and remove stale active-task/development-log leftovers instead of letting old "next steps" linger.
-- After large stages, compact handoffs before the next major task: remove stale
-  next-step/development-log noise and move durable details into dedicated
-  handoff files. If root docs become long or contradictory, report:
-  "handoffs should be cleaned before the next major task."
-- After any task that changes UX or visible UI behavior, include a short manual
-  smoke-test checklist in the final response. List the concrete controls and
-  flows to click, the important state transitions to observe, and the expected
-  visible result; include preservation/regression checks for adjacent UI state
-  when relevant.
+- Complete [handoff maintenance](docs/handoff/HANDOFF_MAINTENANCE.md) before
+  the final reply whenever implementation, saved decisions or evidence change,
+  including failed/partial results. Reconcile affected owners, TODO and live
+  manifests; compact stale/duplicate content in the same task. Run the lightweight
+  handoff checker and the required semantic review; a warning to clean later
+  does not satisfy closeout.
+- User-reported bug fixes require final verification through the user's actual
+  interaction path on their computer. Identify the real launcher/run configuration,
+  entrypoint, interpreter, working directory and visible app window; reproduce
+  the reported controls/sequence there. After editing, ensure that process uses
+  the updated code (restart/rebuild when needed), then perform the same visible
+  interactions using Computer Use and inspect the final result and adjacent
+  persistent state. Include restart/retry when relevant to the reported failure.
+- Unit tests, direct backend calls, isolated widgets, offscreen Qt, smoke runners
+  and calling a button handler from Python supplement this check; none replace
+  a real click through the user's running UI. Do not call a fix complete based
+  only on those substitutes or leave the final reproduction to the user when
+  agent-side computer interaction is available and authorized. If access,
+  authentication or another real blocker prevents this, state the exact blocker
+  and unverified path; do not label the user-facing bug fixed.
+- Final reports must distinguish automated tests from actual user-path checks,
+  identify the launch/control path exercised and state remaining limitations.
+  For UX changes also include a short repeatable smoke checklist: concrete
+  controls, expected visible result and preservation checks. The checklist is
+  a record of the check, not a substitute for performing it.
 - After every completed pushable task, include one short Russian commit-message
   suggestion in impersonal passive/resultative wording, not first-person past
   wording. Prefer a style equivalent to "has been added/fixed/updated" or
@@ -153,829 +217,116 @@ This file is written for future coding agents. Keep it compact, English, and mos
   replace it, and which tests are pinning the temporary contract. Do not leave
   placeholders implicit.
 
-## Project Goal
-
-GenshinTeamsTracker is a local PySide6 desktop tool for:
-
-- importing a Genshin Impact account state from HoYoLAB;
-- cropping and showing local character/weapon icons;
-- dragging characters/weapons into team slots;
-- timing and saving runs;
-- importing artifact data into SQLite;
-- building an Artifact Browser with sets, custom tags/sets, sorting, build presets, target ownership, and future drag/drop build integration.
-
-## Main Areas
-
-- `main.py`: PySide6 app entrypoint.
-- `ui/main_window.py`: main app window, team builder, HoYoLAB import button, character/weapon filters.
-- `ui/character_assets.py`: shared HoYoLAB asset item helpers, character filter constants, character filter/sort logic.
-- `ui/utils/icon_utils.py`: cached, HiDPI-safe SVG UI icon tinting and auto-contrast helpers.
-- `ui/widgets/`: shared PySide widgets such as loader, draggable icons, history.
-- `hoyolab_export/`: HoYoLAB auth/export/import pipeline, artifact DB helpers, HoYoWiki catalog/cache helpers.
-- `localization/`: JSON-backed app localization.
-- `ui/artifact_browser/`: isolated Artifact Browser module.
-- `ui/history_browser/`: dedicated AppShell History Browser module for grouped
-  saved-bundle browsing and selection. Selected snapshots render through an
-  isolated read-only `RunRightPanelWidget`; normal browsing does not generate
-  a permanent selected PNG preview. The remaining left-browser contract lives
-  in `docs/handoff/HISTORY_BROWSER.md`.
-- `ui/character_browser/`: narrow adapters that translate character/weapon
-  asset records into reusable generic browser/grid item models, plus the shared
-  `CharacterFilterBar` used by normal AppShell Characters and the PvP Draft
-  pool.
-- AppShell top-level browser/workspace UI must live in its own `ui/<area>_browser/`
-  package when it grows beyond shell routing/glue. `ui/app_shell.py` coordinates
-  workspace/right-dock policy and may instantiate those widgets, but it should
-  not own feature-specific browser implementations. Current examples:
-  `ui/artifact_browser/`, `ui/gcsim_browser/`, `ui/history_browser/`, and
-  `ui/pvp_browser/`.
-- `run_workspace/pvp/`: isolated backend-only PvP v0 foundation for deck JSON,
-  deck validation, Decks UI preset persistence, Free Draft
-  schedule/reducer/action log, post-draft team and weapon assignment
-  validation, timer/result summaries, report-only ruleset
-  applicability/cost-preview/ruleset-balance application helpers, local-account
-  Free Draft deck export from SQLite runtime data, deterministic Free Draft
-  smoke planning, local-account full-loop smoke, draft-system registry, local
-  Free Draft controller/projection API, UI-facing board/read-model projection,
-  session bundle snapshot/verifier, and deterministic dev smokes (`python -m
-  run_workspace.pvp.full_loop_smoke`, `python -m
-  run_workspace.pvp.free_draft_controller_smoke`, `python -m
-  run_workspace.pvp.ruleset_applicability_smoke`, `python -m
-  run_workspace.pvp.account_deck_export_smoke`, `python -m
-  run_workspace.pvp.account_full_loop_smoke`, `python -m
-  run_workspace.pvp.session_bundle_smoke`, `python -m
-  run_workspace.pvp.ruleset_balance_smoke`). The backend remains isolated from
-  the legacy right panel, online transport, and History; AppShell currently has
-  PvP Decks/Play/Draft v0, including local manual pick/ban clicks wired through
-  the Free Draft controller.
-- `run_workspace/gcsim/`: functional backend for the current selected-runtime-
-  team Abyss Browser path: local engine lifecycle/patching/builds, generated
-  configs and Abyss wave scenarios, artifact execution/result parsing, typed
-  Run Session writeback, cleanup, and coverage diagnostics. Current Abyss sim
-  results are included in immutable History when normal Run Save succeeds; DPS
-  Dummy result attachment remains diagnostic/future. The
-  update path prunes generated engines to active + one previous successful +
-  one latest failed, deletes rebuildable `.go/build-cache` after successful Go
-  probe/build unless explicitly kept, and preserves `.go/pkg/mod` as the small
-  module cache. Manual cleanup/dry-run command: `python -m
-  run_workspace.gcsim.cleanup`. Patch-stack and Browser details live in
-  `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`.
-- `run_workspace/session.py`: first typed live Run Session owner for AppShell
-  mode/per-mode team state, selected slot target, external bonus state, Abyss
-  timers/T2 follow flags, runtime compact GCSIM chamber results, and active-mode
-  Reset. It is not snapshot persistence or History storage.
-- `run_workspace/history_snapshot.py`: immutable History Snapshot Bundle v2
-  schema plus caller-rooted local read/write/list service for supplied bundles.
-  AppShell Save uses grouped History storage.
-- `run_workspace/history_snapshot_preview.py`: derived PNG preview renderer for
-  immutable History snapshots. Output convention:
-  `<bundle_dir>/preview/history_card.png`; it does not mutate `snapshot.json`.
-  This text-first renderer is transitional and must not define the final
-  History browser or export presentation.
-- `docs/handoff/`: detailed project maps and research handoffs. Root `TODO.md` and `CODEX.md` remain the entrypoints.
-- Active GCSIM optimizer work has one authoritative handoff:
-  `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md`. The sole active
-  implementation design is
-  `docs/handoff/GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md`.
-- Production identity is `gtt_gcsim_optimizer_go_v1`: a standalone Go
-  optimizer plus a minimal versioned GCSIM adapter. GOB-3 through GOB-10 pass.
-  Selected keeps the 24-row formula pool, screens it plus Current at common
-  n=128, and sends at most seven retained/mandatory candidates to adaptive
-  n=500/n=1000 verification. The accepted winner remains the same twenty IDs.
-  GOB-10's full saved-account product replay took 57.0 s after preparation;
-  the expected complete UI path is about 62–64 s. Its result area shows a live
-  elapsed/1–3 minute estimate, compact four-by-five
-  artifact cards, and explicit per-character preset Save through the existing
-  Artifact Browser service. An additive result-v1 candidate list pages every
-  measured finalist without debug-file reads or extra simulation. Earlier
-  pre-optimization user runs took 3:33 and 3:40. GOB-8P's isolated exact-seven n=500
-  replay preserved the saved n=1000 winner and top-five set while cutting the
-  final stage from 92.54 to 46.36 seconds. Production keeps the recall-critical
-  n=128 screen, starts finalists at n=500, and extends only a two-to-four-row
-  group still within three combined standard errors at n=1000. The single full
-  Go acceptance resolved at n=500, kept the same known winner and finished in
-  159.06 s. GOB-9 final cleanup is complete; no repeat or parameter sweep is
-  authorized.
-- GOB-1 owns `native/gcsim_optimizer`, strict request/progress/compact-IR/result
-  v1 schemas, canonical decimal-string transport, deterministic Python/Go
-  identities and shared fixtures under `tests/fixtures/gcsim_optimizer_go_v1/`.
-  The module uses only the Go standard library. The single consolidated patch
-  `0001-gtt-engine-adapter-v245.patch` owns the opt-in engine compact-member seam;
-  the standalone module owns validation, formula
-  evaluation, fixed-panel stochastic aggregation, bounded Selected FGBS and
-  common-context staged finalist verification. AppShell Selected binding is
-  active; All Sets and Theory remain unavailable.
-- Replaced Python FAST/FGBS, stochastic Selected scoring and superseded search
-  strategies were removed at GOB-6. The frozen migration-leader JSON is a
-  parity receipt only and cannot become a fallback backend.
-- Continuous-target mathematics is retained only as
-  `FUTURE_GO_PORT_FOR_THEORY_ALL_SETS`; it is not Selected runtime and has no
-  artifact-deletion authority.
-- Old M/S/Gate, Selected V2, stat-map-first, CF-BB, Adaptive Oracle Exchange
-  and Contextual Scan plans are deleted/historical evidence, never continuation
-  work. GOB-9 removed their remaining unreachable adapters, tests, tools and
-  patch fragments. Newly discovered unused components still go into the cleanup
-  manifest immediately.
-- Permanent optimizer execution rule: work sequentially without subagents or
-  parallel agents, do not brute-force known formulas, and stop for user review
-  after three failed substantive approaches to the same blocker.
-- Scheduled continuation is not considered created until the automation tool
-  returns a persisted automation ID with active status. A rendered/suggested
-  card is only a proposal requiring user confirmation; never report it as an
-  active task. If anchored scheduling cannot be activated directly, say so
-  explicitly and continue only after the user returns or confirms the card.
-- `docs/handoff/TESTS.md`: test-suite layout and rules for choosing narrow
-  per-area `unittest` runs.
-- `docs/handoff/FAR_FUTURE_TODO.md`: non-MVP PvP, analytics, draft bot,
-  donation/support, monetization, and optional AI companion ideas. Read only
-  when the user asks about far-future ideas.
-- `docs/handoff/PVP_UI_ROADMAP.md`: PvP UI source of truth for the AppShell
-  mini-section, Decks-first direction, local Play setup, current v0 stages, and
-  target scoped PvP build flow.
-- `docs/handoff/DATA_RUNTIME_BOUNDARIES.md`: compact map of raw/source caches, runtime SQLite tables, visual asset caches, static/reference catalogs, and stored-vs-hidden UI rules.
-- `docs/obsidian/`: optional user-owned human maps. Ignore unless the user asks.
-- `data/`: local generated profile/account state. Treat as private/generated.
-- `assets/hoyolab/`: generated local account icons. Treat as private/generated.
-- `assets/artifact_sets/`: generated or seeded artifact set piece icons.
-
-Important generated/seed files:
-
-- `data/hoyolab/account_characters.json`
-- `data/hoyolab/account_weapons.json`
-- `data/hoyolab/account_character_details.json`
-- `data/hoyolab/account_language.json`
-- `data/hoyolab/crop_manifest.json`
-- `data/artifacts.db` (legacy filename; unified local SQLite runtime DB for account, equipment, artifact, and static-effect tables)
-- `data/static/artifact_set_catalog.json`
-
-## HoYoLAB Import Pipeline
-
-Current production command:
-
-```powershell
-python -m hoyolab_export.run_import
-```
-
-Pipeline summary:
-
-1. Open HoYoLAB with the app browser profile.
-2. Export the HoYoLAB image and capture layout/root metadata.
-3. Collect `character/list` and clean inventory JSON.
-4. Fetch batch `character/detail` for real character ids.
-5. Detect HoYoLAB content language from the real detail request.
-6. Resolve the current Spiral Abyss period for source-data cache refresh:
-   HoYoLAB overview first, then Fandom latest, then Nanoka live metadata.
-7. Save `account_language.json` and `account_character_details.json`.
-8. Ensure artifact set catalog and localized set names.
-9. Ensure HoYoLAB `relic.set.id -> set_uid` mapping via a service EN-pass when needed.
-10. Import/update artifacts into `data/artifacts.db`.
-11. Crop characters/weapons and merge current assets/manifest.
-
-Critical rules:
-
-- Do not use image matching, cv2, perceptual hashes, or external artifact databases.
-- Do not assume HoYoLAB `set_id` equals HoYoWiki `entry_page_id`.
-- Do not import EN `character/detail` as user data. It is only for set id/name mapping.
-- Do not overwrite localized character, weapon, stat, or artifact display data with the EN service payload.
-- HoYoLAB/API content language and UI language are separate.
-- Ordinary HoYoLAB update must preserve existing local HoYoLAB data/assets if it fails early.
-- Ordinary HoYoLAB update must not fetch all HoYoWiki character/weapon detail pages. Character/weapon stats catalogs are refreshed only through the explicit static catalog refresh path.
-- Abyss source-data period refresh uses source priority HoYoLAB -> Fandom latest -> Nanoka live, records fallback metadata in `data/hoyolab/spiral_abyss_period.json`, and must not use local system date as source-data authority.
-- Abyss source-data JSON stores monster icon cache references as cache-file-relative paths and resolves them at load/runtime; do not persist machine-specific absolute `cached_icon_path` values.
-- Destructive profile cleanup belongs to explicit profile sign-out or offline profile restore.
-- The export image stage drives HoYoLAB's share/save-image UI. It waits briefly for visible
-  `gt-image--loading` placeholders, retries the save-image click if no browser download event
-  arrives, then falls back to the captured html2canvas PNG or a DOM-root screenshot.
-- Far pre-release asset-quality idea: allow choosing generated account character
-  portrait/icon resolution such as `lowres`, `1k`, `2k`, or `4k`, then
-  regenerate/replace the cropped character icons. This should be mostly a
-  HoYoLAB export scale / screenshot canvas setting because the crop grid is
-  expected to adapt to the exported layout automatically. Keep it late, after
-  Run Workspace/card visuals stabilize.
-
-## HoYoWiki Static Catalogs
-
-Character and weapon stat catalogs are static/generated catalog data, not account import data.
-
-- Explicit refresh command: `python -m hoyolab_export.hoyowiki_catalog_refresh`.
-- Default language is `en-us`; display localization can be added later.
-- Cache outputs:
-  - `data/cache/hoyowiki/character_stats_catalog.json`
-  - `data/cache/hoyowiki/weapon_stats_catalog.json`
-- Refresh flow:
-  - fetch character list from HoYoWiki `menu_id=2`;
-  - fetch weapon list from HoYoWiki `menu_id=4`;
-  - fetch detail pages only inside the explicit refresh command;
-  - parse character/weapon `component_id == "ascension"`;
-  - missing-only/default mode keeps valid cached entries and fetches missing/invalid ones;
-  - `--force` refetches all entries after parser/source changes;
-  - one failed entry is reported without discarding safe existing cache entries.
-- Mapping report list fetching is separate from catalog refresh detail fetching. Do not make mapping/report utilities fetch every detail page.
-- Normal HoYoLAB import best-effort refreshes only missing/new canonical artifact sets and the small `Moonsign`/`Hexerei` trait catalog because those catalogs directly affect newly imported account/artifact data. It must not full-recheck every existing artifact set icon during ordinary import. Character/weapon stats detail catalogs still use the explicit refresh command.
-- Future release can ship sanitized seed/static catalogs and then refresh only missing/new entries after game updates.
-- HoYoWiki entries with empty/no ascension rows are not automatically non-playable junk. Some may be announced/future playable characters whose final stats are unavailable. Classify them as `future_pending_stats` / `stats_unavailable_yet` unless another source proves they are truly non-playable. If a matched account character has no stat rows, future `CharacterStatSnapshot` should warn instead of crashing.
-- Traveler is special/deferred for account mapping. HoYoWiki Traveler elemental variants are normal catalog entries, but account Traveler / localized Traveler names must not be aliased to one variant. A future model should treat account Traveler as a special/default character, auto-detect HoYoWiki elemental Traveler variants, use a default Traveler icon/card with popup/dropdown element selection, separate shared account level from variant-specific talents/constellations, keep Traveler marked as `standard_5_star`, and include Traveler in planned tri-state filtering alongside special/default character filtering.
-- Account stat-snapshot readiness is separate from GCSIM key readiness. Local account counts can change with the imported account/cache; ordinary non-Traveler rows should remain usable for `CharacterStatSnapshot` when HoYoLAB base/reference data and HoYoWiki stat rows match, while Traveler stays special/deferred until the dedicated Traveler model exists.
-- Minimal `CharacterStatSnapshot` foundation exists in `hoyolab_export/character_stat_snapshot.py`. It is read-only/backend-only and partial: it preserves character base HP/ATK/DEF, ascension bonus separately, weapon base ATK/secondary stat, optional artifact summary, and warnings. Direct always-on display-stat artifact/weapon effects are structured separately in SQLite for TeamBuilder display rows; formula effects, conditional bonuses, talents, constellations, and resonances remain excluded.
-- HoYoLAB account detail stat sheet is the preferred source for account base/reference extraction when available, not the final TeamBuilder virtual-build result. Source-field map: `docs/handoff/ACCOUNT_CHARACTER_DETAIL_FIELDS.md`; normalized SQLite storage map: `docs/handoff/ACCOUNT_SQLITE_STORAGE.md`. Useful fields live at `account_character_details.json -> json.data.list[]`: `base_properties`, `extra_properties`, `element_properties`, `selected_properties`, `weapon.main_property`, `weapon.sub_property`, `weapon.desc`, `weapon.promote_level`, and `skills[]`. Property rows use `property_type/base/add/final`; preserve `property_type` as the stable key. Character ascension/promote phase is not required as a raw HoYoLAB field because account sync matches the correct HoYoWiki row by factual HoYoLAB base HP, then DEF, then derived character ATK. Weapon `promote_level` exists. HoYoLAB `final` rows describe current in-game equipment and must not be rendered as selected-build final stats when TeamBuilder has a virtual build selected.
-- HoYoWiki character stats catalog remains useful for ascension bonus extraction, Traveler/reference/fallback data, and possible future guide/recommendation parsing. It should not be the primary right-panel current stat source when the HoYoLAB stat sheet exists. For account runtime ascension bonuses, use `extract_character_ascension_bonus_by_base_stats(...)` and store a bonus only when the HoYoWiki row/phase is matched by HoYoLAB base stat; do not use level-only `after ascension` guesses for account SQLite runtime data.
-- Resonance trait source terms are `Moonsign` and `Hexerei`. Search and model those exact terms; do not replace them with guessed labels. Current HoYoLAB account-source fields do not contain these traits, so `Moonsign`/`Hexerei` come from the static/reference trait catalog in `hoyolab_export/character_trait_catalog.py`. Raw HoYoWiki/source payloads may be cached in `data/cache/hoyowiki/character_trait_catalog.json`, but normalized trait definitions, memberships, and Hexerei tooltip sections live in SQLite (`character_trait_definitions`, `character_trait_memberships`, `character_trait_tooltip_sections`). Account sync joins owned-character tags into SQLite `character_identity` as runtime fields for filters/history/PvP/resonance calculation. Hexerei tooltip text uses en-us entry `9347` as canonical source and the content language as localized override with en-us fallback; UI/runtime reads SQLite helpers, never web/raw JSON on hover. Normal HoYoLAB import best-effort refreshes membership; targeted tooltip refresh command: `python -m hoyolab_export.character_trait_catalog --refresh-hexerei-tooltips --language ru-ru`.
-- Pure account stat-sheet helper exists in `hoyolab_export/account_stat_sheet.py`: `parse_account_character_stat_sheet(...)`, `extract_account_character_base_values(...)`, and `extract_account_weapon_property_values(...)`. It is explicit-input only, preserves `property_type`, derives character base ATK as account base ATK minus weapon base ATK, and does not mutate DB/UI/network state.
-- Narrow HoYoWiki ascension helpers exist in `hoyolab_export/character_ascension_bonus.py`: `extract_character_ascension_bonus_by_base_stats(...)` is the account-runtime path and selects a bonus by matching HoYoLAB base HP/DEF/derived ATK to the HoYoWiki level row; `extract_character_ascension_bonus(...)` remains legacy/reference level-policy behavior.
-- Account character/weapon runtime storage now has clean local SQLite tables in the existing `data/artifacts.db`: `account_characters`, `account_character_talents`, and `account_weapon_observed_stacks`; see `docs/handoff/ACCOUNT_SQLITE_STORAGE.md`. The DB filename is legacy and must not be read as artifact-only. `account_characters.name` and observed weapon `name` are localized HoYoLAB display text. Account sync now also stores `catalog_english_name` plus resolved GCSIM key/status/method fields for characters and observed weapon stacks by joining local HoYoWiki stats caches to the local GCSIM shortcut registry once per sync. Identity-sensitive adapters should use stable IDs and stored resolved GCSIM key fields, not localized display names. Normal HoYoLAB import (`python -m hoyolab_export.run_import`) syncs these tables automatically after raw/source cache files and crop manifest are written. Raw/source cache files remain `data/hoyolab/account_characters.json`, `data/hoyolab/account_weapons.json`, and `data/hoyolab/account_character_details.json`, but normal UI/runtime account loading should use SQLite read adapters, not raw JSON. Adapter/manual debug CLI: `hoyolab_export/account_storage.py`, command `python -m hoyolab_export.account_storage` (`--download-side-icons` optionally caches already-known side icon URLs for manual resync). Read adapter functions: `list_account_characters`, `get_account_character`, `list_account_character_talents`, `list_account_weapon_observed_stacks`, `get_account_weapon_observed_stack`, and `get_account_weapon_observed_stack_by_id`. UI asset helpers in `ui/character_assets.py` convert account SQLite records into legacy grid asset items. Character rows upsert by authoritative HoYoLAB `character_id`, side icon paths are deterministic local cache refs when present/downloaded by normal import or explicit manual cache, cached side icon files are reused, side icon failures are non-fatal, talents upsert by `(character_id, skill_id)`, and empty/broken character/detail sources do not wipe character/talent rows.
-- Weapon storage is reconstructed observed stacks, not full inventory and not current-equipped canonical refs. HoYoLAB weapon id is a type id, not a unique account weapon instance id; exact observed weapon identity uses normalized `weapon_fingerprint` over weapon id, rarity, level, refinement, promote level, base ATK, secondary stat type/value. Identical fingerprints dedupe and update non-decreasing `known_count`; later smaller/zero observations never delete or decrease stacks. Normal weapon asset grids intentionally hide 1-2 star observed stacks by the same `IGNORED_WEAPON_RARITIES` / `weaponIgnored` rule used by `crop_manifest`; those stacks remain stored but are not expected to have visible `weaponAssets`. Do not revive the interrupted `account_weapons` / `account_current_equipped_weapons` / `get_current_equipped_weapon_for_character(...)` current-ref model as canonical storage.
-- Runtime account visual rules: dummy/mannequin IDs from `crop_manifest` are explicitly filtered before portrait/side-icon fallback; weapon stack icon paths are resolved by weapon `icon` URL key / `weapon_id`, not equipped-character or source row order; weapon tooltips use display stat names such as `Energy Recharge` / `CRIT Rate`, not raw `P23` / `P20` ids.
-- For future data-boundary questions, first read `docs/handoff/DATA_RUNTIME_BOUNDARIES.md`; it summarizes raw HoYoLAB source/cache, SQLite account runtime state, artifact SQLite storage, visual asset/cache layers, static/reference catalogs, and explicit non-stored areas.
-- Before main UI, right-panel integration, left workspace, Artifact Browser embedding, history, or PvP layout work, read `docs/handoff/APP_SHELL_WORKSPACE_PLAN.md`. The target is a new AppShell with a left workspace host and reduced fixed-width right operations dock, not the legacy `ui/main_window.py` right column patched in place. Separate prototype launch command: `python -m ui.app_shell_smoke`; `main.py` still launches the legacy app until the user approves switching it. The AppShell Character/Weapon workspace uses overlay scrollbars for its icon grids and has typed `TeamBuilderState` wiring: roster character clicks are a sequential quick-pick per right-panel mode, selected roster portraits get team-colored slot markers, selected-character weapon type auto-filters the weapon grid until selection is cleared/switched, repeated selected right-panel slot click clears target selection, and weapon clicks assign only to a selected compatible character slot. The `Artifacts` left workspace lazy-embeds `ArtifactBrowserWindow(embedded=True)` and reflects the right-panel selected character as the browser operation target through target-selector selection plus current-equipment preview. The `PvP` left workspace has Decks/Play/Draft v0: it switches the right dock to `Decks` / `Play` / `Draft`, keeps Account/Data global, hides Abyss/DPS Dummy controls, persists local deck presets under `data/pvp/decks/`, starts local in-memory Free Draft sessions from Play, and renders the current intermediate Draft board through the Free Draft controller/projection. Manual artifact equip/unequip, preset preview/deselect, preset apply, conflict confirmation, owner side icons, current-equipment highlights, and right-panel refresh are wired through `hoyolab_export.account_equipment`. AppShell passes normalized local visible asset paths into right-panel details so slot portraits, weapon icons, and team-bonus member icons do not fall back to text when SQLite/manifest paths are relative. Weapon assignment persists through `hoyolab_export.account_equipment.equip_weapon(...)`, repeated current weapon clicks unequip through `unequip_weapon(...)`, restores through `get_equipped_weapon_for_character(...)`, respects weapon type and `known_count`, clears old weapon passive tooltip/static-effect rows before applying the new weapon context, and enriches right-panel details only from the current weapon's SQLite `weapon_passive_tooltips` / `weapon_display_stat_effects`. Current equipped artifacts are read from `account_character_equipped_artifacts`, converted into a runtime-only current-equipment artifact snapshot, and shown in right-panel artifact stats/set bonuses without creating `artifact_builds` rows. `AppShellController` keeps independent in-memory team selections for Abyss and DPS Dummy, but equipment is per character and SQLite-backed, not per-mode session memory. Removing a character from a team slot does not unequip persistent equipment. Do not migrate smoke-only right-panel builders into production, and do not revive legacy history/right-panel layout as the target design.
-- AppShell `RightOperationsDock` owns a persistent header above its content stack. The header is one visually continuous row of same-style tab buttons with ordinary spacing only: page-specific controls such as Abyss / DPS Dummy or Decks, followed by global actions such as Account. The zones are architectural, not visually separated. Account remains present when PvP replaces the normal run controls. Account opens the compact localized Account/Data page inside the same dock and does not switch the left workspace. `LeftWorkspaceHost` owns left pages and lazy construction, but left-nav clicks request stable workspace ids through root `AppShell`; AppShell is the coordination point for workspace-driven right-dock policies. Run-mode and workspace routing use stable ids, never localized display text. Character/Weapon workspace mutation clicks are routed by root AppShell and are allowed only while the dock RUN page is active; Account/Data and Decks are not normal TeamBuilder operation pages. When switching from a non-RUN page to a run mode, update controller state and the right-panel model before exposing the RUN page so a stale previous-mode frame cannot paint. Future empty-database startup should auto-open Account/Data setup; future Support/Donate may add a compact nearby action but is not implemented yet.
-- Future startup preload/cache smoothing is documented in `docs/handoff/APP_SHELL_WORKSPACE_PLAN.md` and `TODO.md`. It may prewarm heavy workspaces/widgets and pixmap/text/marquee caches behind a startup loader later, but it must not replace fixing current layout or synchronous rebuild bugs.
-- AppShell resize twitch is considered system/environment live-resize behavior for now: an isolated PySide probe reproduced it outside the app, and it is reduced on a 144Hz monitor without desktop holes. No active app-level workaround is planned.
-- Persistent equipment Stage A/B/C is implemented in `hoyolab_export/account_equipment.py` and initialized through `hoyolab_export.artifact_db.init_db`: canonical `account_character_equipped_artifacts` references `artifacts.id` with one artifact owner max, canonical `account_character_equipped_weapons` references `account_weapon_observed_stacks.weapon_fingerprint` and validates assignments against `known_count`. No fake weapon instance ids are created. Existing `artifact_equipment` and weapon observed `equipped_character_id` metadata remain HoYoLAB provenance/seed inputs, not a second canonical state. AppShell uses this state for weapon restore/assignment/unequip, current artifact snapshots, and Artifact Browser artifact equip/apply.
-- Persistent account equipment design and implemented behavior are documented in `docs/handoff/ACCOUNT_EQUIPMENT_STATE_DESIGN.md` and `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`. Build presets remain reusable definitions; the explicit apply-preset action copies a preset into exactly one character's current equipped state, incomplete presets clear missing target slots, and later manual equipment edits do not mutate the preset. HoYoLAB observation helpers exist but are not wired to live import; missing HoYoLAB equipment data means "no data", not "clear local equipment". AppShell restores current weapons and current artifacts from SQLite; artifact ids are converted into a runtime current-equipment snapshot for selected-details stats/set bonuses, not persisted as a fake saved build.
-- AppShell performance status: use `GTT_PERF_LOG=1` or `python -m ui.app_shell_smoke --perf-log` for timing logs. The quick-pick marker bottleneck is fixed with a visible `character_id -> AssetIconLabel` registry and marker-only `set_selection_marker(...)` updates. Roster clicks update markers immediately and schedule debounced/coalesced hydration, weapon-filter sync, and right-panel refresh. AppShell filters use session-cached character/weapon asset lists; roster/weapon card pixmaps use shared high-DPI scaled pixmap caches. Right-panel team/slot widgets and selected details update in place. Follow-up high-DPI click polish keeps slot selected-state changes from reloading portrait/weapon PNGs, caches the final composited `_fit_pixmap(...)` canvas per DPR/source, and avoids the old duplicate `AssetIconLabel` startup pixmap update. Remaining work: filter grid reloads still recreate visible card widgets, and bonus-strip chip rebuilds can still cost a visible first hydrated switch on high-DPI screens.
-- Real no-network smoke runner: `python -m hoyolab_export.character_stat_snapshot_smoke --limit 2`. It reads only allowlisted account JSON and local stats caches, then builds sanitized examples from `account_character_details.json` wiki links. Real smoke succeeded for ordinary matched-ready characters; current level-70 examples select character `after` values with `character_ascension_phase_assumed`, Traveler remains skipped/special_deferred, artifact summary is still missing, and final totals are still not computed.
-- Artifact-only build snapshot foundation exists in `hoyolab_export/artifact_build_snapshot.py`. It converts explicit already-loaded build summary/preset data into `ArtifactBuildSnapshot` and can be passed into `CharacterStatSnapshot`; neither layer queries Artifact Browser DB/UI. Existing raw build summary shape comes from `hoyolab_export.artifact_db.calculate_raw_build_summary(...)`: `artifact_ids_by_pos`, `missing_positions`, `set_counts`, `total_stats`, `crit_value`, and `proc_count`; build preset rows add provenance/slot details such as `id`, `name`, `slots[].artifact_id`, `set_uid`, main stat fields, rarity, and level. Build id/name are provenance only, not immutable history by themselves. Direct static artifact set/weapon passive display effects may be loaded from SQLite effect tables by the TeamCard adapter; conditional bonuses, derived formulas, resonances, talents, constellations, and final combat totals are still not applied.
-- Real Artifact Browser build snapshot smoke exists: `python -m hoyolab_export.artifact_build_snapshot_smoke --build-name test111` or `--build-id <id>`. The smoke opens `data/artifacts.db` read-only, selects one build, calls existing raw build summary helpers, converts to `ArtifactBuildSnapshot`, and optionally passes it as explicit artifact input into the character snapshot smoke. `--build-name` is only for explicit smoke/debug convenience; final app/team-builder flows must pass `build_id` internally because names are display/provenance, not stable identity. Current `test111` smoke confirmed build id 20, four slots, missing position 5, active 2+2 set metadata, CV 95.6, proc count 12, and no DB/UI access inside `CharacterStatSnapshot`.
-- TeamCard / CharacterDetails backend data adapter exists in `hoyolab_export/team_card_data.py`. `build_character_details_data(...)` accepts explicit selected account character/weapon data plus prepared `ArtifactBuildSnapshot` input. `build_character_details_data_with_build_id(...)` is the outer read-only Artifact Browser DB adapter for selected `build_id`; it loads the preset, calculates the raw build summary, converts it to `ArtifactBuildSnapshot`, and then passes only the prepared snapshot into `CharacterStatSnapshot`. `build_current_equipment_artifact_snapshot(...)` builds the same snapshot shape from persistent current equipment rows and existing artifact ids without writing preset/build tables. Build names remain display/provenance only, final UI/team-builder flows must pass build ids/records internally, final totals are not computed, and set bonus formulas, conditional bonuses, resonances, and weapon passives are not applied.
-- `CharacterDetailsData` in `hoyolab_export/team_card_data.py` now carries both the existing `CharacterStatSnapshot` provenance layer and a parsed HoYoLAB `account_stat_sheet` when the raw account detail record is supplied. It also carries `ascension_bonus` from `hoyolab_export/character_ascension_bonus.py` as reference/fallback. `CharacterStatSnapshot` remains explicit-input only and does not query raw files/DB/UI.
-- Real no-network `CharacterDetailsData` smoke exists: `python -m hoyolab_export.team_card_data_smoke --character-id 10000050 --weapon-id 13407 --weapon-level 70 --weapon-refinement 5 --weapon-promote-level 4 --build-id 20`. It reads SQLite account runtime storage and `data/artifacts.db` read-only, not raw account JSON. Current smoke selects Thoma, an explicit Favonius Lance observed weapon option, and build id 20 / `test111`; artifact contribution is present, GCSIM readiness stays false, and formula/passive/resonance application stays disabled.
-- Minimal backend TeamBuilder slot-state model exists in `run_workspace/team_builder.py`. It stores typed selections (`SelectedCharacterRef`, `SelectedWeaponRef`, `SelectedArtifactBuildRef`) instead of legacy image paths, supports empty four-slot teams, set/clear/swap/move operations, duplicate character detection, and optional prepared `CharacterDetailsData` attachment. It is backend-only and does not replace the legacy right panel yet. Weapon allocation remains deferred; selected weapons carry a variant key and allocation warning, but no unique weapon instance ids are invented.
-- Isolated read-only TeamCard prototype exists as a pure view-model in `run_workspace/team_card_view_model.py` and a small QWidget in `ui/team_card_prototype.py`. Manual visual smoke launcher: `python -m ui.team_card_prototype_smoke` for real no-network Thoma + build id 20, or `python -m ui.team_card_prototype_smoke --fake` for fake data. It consumes `TeamBuilderState` plus optional `CharacterDetailsData`, shows empty/filled four-slot teams, character/weapon/build labels, artifact summaries, statuses, and compact warnings. It is not wired into the legacy right panel and is not the final Run Workspace.
-- Isolated Right Panel / TeamBuilder Prototype v6 exists as a pure view-model in `run_workspace/right_panel_prototype_view_model.py`, display stat helper in `run_workspace/display_stats.py`, and a live-run QWidget implementation in `ui/right_panel/live_run/panel.py`; `ui/right_panel_prototype.py` is a compatibility facade. Manual smoke launcher: `python -m ui.right_panel_prototype_smoke` with fake data by default, or `python -m ui.right_panel_prototype_smoke --real-thoma` for the existing no-network Thoma + build id 20 sample plus deterministic Hexerei/Moonsign validation teams when local account data is available; `--team-preset moonsign|hexerei|resonance-sanity` and `--summary` provide no-GUI team bonus sanity checks. The no-preset sandbox loader now uses SQLite account runtime records and observed weapon stacks, not raw account detail JSON. It keeps the v4/v5 layout direction, enforces a minimum standalone content width, uses square character portraits with aligned weapon/build boxes, labels chamber factual/sim columns as DPS, and shows selected-character virtual build display rows from character base + selected weapon + selected artifact build + ascension/baselines. The build box uses compact Artifact Browser preset-row set semantics: active set icons plus 2p/4p overlay/count, with `Equip`/`ART` placeholders for no-preset slots. The slot main-stat badge is derived from the selected `ArtifactBuildSnapshot` slot data, specifically actual sands/goblet main stats, and must not come from target recommendations, character element, HoYoLAB current-final stats, or display-stat row order. Selected weapon meta includes weapon base ATK and secondary stat from selected SQLite observed weapon stack/account runtime data. The selected-details bottom area is now a bonus source strip for modeled external bonuses, with source chips/tooltips for direct static artifact set effects, direct static weapon passive effects, elemental resonance, `Moonsign`, and `Hexerei`; the `Apply external bonuses` toggle excludes external stat rows such as artifact/weapon static effects and elemental resonance, not base stats, selected weapon base/secondary, or artifact main/sub totals. Bonus source chips use `[large source icon] [separate compact effect badge(s)]`, and tooltips are formatted once with title, one `Effects:` section, and one source/note/breakdown body. `Moonsign` is a capped Lunar Reaction DMG indicator shown for teams with at least 2 `moonsign` characters; it reads team member stats after direct external stat bonuses when the toggle is on, requires a non-`moonsign` trigger teammate for a nonzero value, and does not add back into normal stat rows. Bonus strip source icons use cached alpha-trim scaling; compact Hexerei/member side icons use a separate cached bottom-aligned side-icon renderer so hats/hair can clip upward instead of shrinking the whole character. `Hexerei` is shown only with 2+ Hexerei members, remains display/tooltip-only, and member tooltips resolve unlocked SQLite Hexerei sections by account constellation with localized override/en-us fallback. Real smoke selected weapons are explicit observed weapon options from SQLite, not inferred from current-equipped provenance. It is visual-only, not wired into the legacy right panel, and implements no drag/drop, equip conflict logic, history export, or GCSIM execution.
-- Display stat rows are virtual TeamBuilder results in this order: HP, ATK, DEF, EM, Crit Rate, Crit DMG, ER, then damage/healing bonuses. HoYoLAB stat-sheet `final` rows are reference/debug only for TeamBuilder slots and must not be shown as selected-build final stats. HoYoWiki contribution rows are fallback/provenance only. Raw partial labels such as `Base HP`, `Weapon ATK`, `Asc ...`, `Art CR`, `WATK`, and `AER` are internal/debug provenance and should not be rendered as selected-detail final stats. Direct static artifact set and weapon passive effects come only from normalized SQLite rows (`artifact_set_display_stat_effects`, `weapon_display_stat_effects`); JSON seed/audit files are not runtime storage, and derived/conditional/talent/constellation effects are not applied.
-- Candidate Run Workspace/UI work around the right-panel prototype: inspect real
-  multi-character layout, no-preset states, and build-slot readability when that
-  area is actively being changed; refine proportions only when needed for the
-  current task.
-- Stat normalization / GCSIM stat-key mapping handoff exists at `docs/handoff/STAT_NORMALIZATION.md`; backend code exists in `hoyolab_export/stat_normalization.py`. It maps artifact `property_type` values to normalized keys/GCSIM `add stats` keys, converts percent-point values like `46.6%` to ratio values like `0.466`, keeps flat stats unchanged, treats Crit Value / Proc Count as virtual metrics, and intentionally does not compute final totals or apply passives/set bonuses/resonances.
-- Weapon passive/refinement text is reference data only. Do not parse free text into formulas or auto-apply passive bonuses unless a future effect is explicitly modeled/whitelisted.
-- Future source note: Russian HoYoWiki character pages may expose recommendation blocks for weapons, artifacts, and teams/allies. This may later feed right-side guide/info content, draft bot heuristics, and recommended stat/build hints; do not parse it now.
-- Standard 5-star filter uses `assets/filters/standard.png` and tri-state behavior: all / only Standard 5-star / exclude Standard 5-star. Membership is stored as static trait `standard_5_star` in SQLite `character_identity`; HoYoWiki entry `2952` is source context, while the current API payload is not a clean structured character list, so membership is seeded by explicit HoYoWiki character entry ids. Traveler is intentionally included and must remain included when the dedicated Traveler model is implemented.
-
-## Artifact Database
-
-SQLite DB: `data/artifacts.db`.
-
-Key tables:
-
-- `artifact_sets`
-- `artifact_set_piece_icons`
-- `artifact_set_names`
-- `artifact_set_bonus_descriptions`
-- `artifact_set_display_stat_effects`
-- `weapon_display_stat_effects`
-- `weapon_passive_tooltips`
-- `artifacts`
-- `artifact_substats`
-- `artifact_equipment`
-- `artifact_tags`
-- `artifact_tag_links`
-- `artifact_builds`
-- `artifact_build_slots`
-- `artifact_build_targets`
-- `artifact_import_batches`
-
-Current artifact identity model:
-
-- canonical artifact set identity is `set_uid`;
-- canonical set catalog comes from HoYoWiki `en-us`;
-- localized set names live in `artifact_set_names`;
-- localized artifact set 2p/4p bonus descriptions live in `artifact_set_bonus_descriptions`;
-- localized weapon passive/effect tooltip text lives in `weapon_passive_tooltips`
-  by `(weapon_id, lang)`; HoYoLAB account weapon `desc` is only flavor/lore
-  text and is not a combat passive;
-- HoYoLAB account/API mapping lives in `artifact_sets.hoyolab_set_id`;
-- Artiscan/GOOD set-key mapping lives in `artifact_sets.artiscan_set_key`;
-- browser icons come from `artifact_set_piece_icons.local_path` by `(set_uid, pos)`;
-- custom sets are `artifact_tags` + `artifact_tag_links`;
-- build presets use `artifact_builds`, `artifact_build_slots`, and `artifact_build_targets`.
-- `artifacts.fingerprint` is kept for legacy/current HoYoLAB identity behavior.
-- `artifacts.content_fingerprint` is source-independent and is based on normalized artifact content:
-  set_uid, position, rarity, level, main stat type/value, and sorted substat type/value pairs.
-- JSON imports mark only newly inserted artifacts with `json_imported=1`, `import_source`,
-  `import_format`, and `import_batch_id`; pre-existing duplicate artifacts are not relabeled.
-
-Build preset target model:
-
-- one preset can target Universal and/or multiple characters;
-- targets are ownership/category filters, not equipment/apply state;
-- selecting multiple targets in the UI means intersection: show presets whose target set contains all selected targets;
-- Universal is only included when Universal itself is selected.
-
-Artifact Browser equip-context design:
-
-- There should be one shared Artifact Browser, not separate browser instances per slot.
-- It supports account-wide browse mode and equip mode for exactly one operation target. If the right panel has a selected character, that character is the Artifact Browser operation target and initially syncs as the browser's single selected character so presets appear. If the user deselects it inside the browser, browser selection clears for preset browsing while the right-panel target remains as a secondary/background operation target for free artifact clicks. If the right panel has no target, the browser may use exactly one selected character target. With 0 or 2+ browser-selected characters, equip mode is off and free artifact clicks do not equip.
-- Current equipment is separate from presets. The browser shows a top current-equipment zone over persistent current equipment, not a fake/temporary preset.
-- Current/preset zone: plain current-equipment text with no dark label slab, current set bonuses and main-stat badge, no edit/delete controls, and one large apply-preset action only when a saved preset is selected. Repeated click on the selected preset deselects it and returns to current equipment.
-- Clicking a preset previews/selects it only. The explicit apply-preset action copies the preset artifacts into exactly one character's current equipment through `account_equipment`. If the preset has missing slots, those target slots are cleared so the live equipment matches what the preset shows.
-- Manual artifact clicks in equip mode equip the clicked artifact to the operation target through the equipment service. In preset-edit mode, artifact clicks edit/construct the preset only.
-- If a preset contains artifacts currently worn by other characters, show a compact confirmation with owner side icons before applying. Accepted apply uses equipment service move/swap semantics and does not mutate the preset definition.
-- Artifact owner icons, preset owner icons, and weapon owner icons are derived from persistent current equipment tables. `artifact_build_targets` remains intended/available target metadata, not current wearer metadata. Weapon owner display must use `weapon_fingerprint` + `known_count` without fake weapon instance ids. Future weapon move/swap UI must require an explicit current owner/source choice when all known copies of a fingerprint are assigned; do not silently steal exhausted assigned weapons by fingerprint.
-- Embedded Artifact Browser geometry is calibrated around a compact minimum-width landing: one `GRID_SIZE.width()` artifact cell, compact Assignment minimum, target rows using `MarqueeButton` with a reserved portrait/icon zone and marquee text only in the name area, and fixed preset/current-equipment panel. Divmod/remainder adaptive fit is implemented from these source values: extra width that is not enough for another artifact column goes to Assignment as preferred/current width, not as a propagated minimum. Do not reintroduce candidate-width search or guessed card/gap constants.
-
-Old per-artifact icon cache path has been removed from current code. Do not reintroduce:
-
-- `artifact_icons`
-- `icon_id`
-- `artifact_icon_cache`
-- `upsert_icon`
-- `cache_icons`
-
-Old DBs may still physically contain old columns/tables until a later DB cleanup.
-
-## Artifact Browser
-
-Current module: `ui/artifact_browser/`.
-
-Important files:
-
-- `window.py`: `ArtifactBrowserWindow`, layout, edit modes, custom sets, build presets, build target selector.
-- `store.py`: in-memory store, grouping, sorting, custom set options.
-- `queries.py`: SQLite read/write wrappers for artifacts, custom sets, build presets.
-- `models.py`: `ArtifactItem`, substats, tags, computed `cv` and `proc_count`.
-- `list_model.py`: Qt model for artifact ids.
-- `card_delegate.py`: card renderer and shared edit-selection highlight.
-- `filter_popup.py`: game/custom set popup.
-- `sort_popup.py`: stat sorting popup.
-- `region_popup.py`: multi-select region popup for the build target selector.
-- `stat_types.py`: property ids, badges, localizable sort options.
-- `json_import_actions.py`: Artiscan/GOOD JSON import and clear actions for the browser UI.
-
-Current functional state:
-
-- Uses `QListView + ArtifactListModel + ArtifactCardDelegate`.
-- Normal QListView blue selection is disabled; cards use delegate state/highlight.
-- Filters by artifact position.
-- Filters by game sets and custom sets.
-- Game set icons come from set-piece icon catalog.
-- Artifact set 2p/4p bonus descriptions are imported from HoYoWiki list payload
-  `display_field.two_set_effect` / `display_field.four_set_effect` and stored per
-  `(set_uid, lang, piece_count)`.
-- Shared edit-selection mode is used for custom-set and build-preset editing.
-- Bottom edit bar has save/cancel only.
-- Static UI strings touched so far are localized in `ru`, `en`, and `pt-br`.
-- Current UI is prototype quality; do not polish QWidget rows as final design.
-
-Custom sets:
-
-- `queries.py` supports list/create/delete/get/replace for custom sets.
-- `store.py` loads custom set options from DB, including empty custom sets.
-- `filter_popup.py` custom tab has create/edit/delete with inline delete confirmation.
-- Empty custom set names are rejected with localized invalid input state.
-- After creating a custom set, the browser enters edit mode for it.
-- Dirty custom-set edits ask before close/reload/switching.
-
-Build presets:
-
-- Build data layer supports create/update/delete/list/get, slot replacement, target replacement, and raw summary calculation.
-- Preset panel is compact and fixed-width.
-- Preset list scrolls independently; preview block stays fixed at the bottom.
-- Build preview has an explicit fixed geometry: target strip, 5 artifact mini-cards, set bonus preview container, and compact stat summary. Do not confuse this preview set-bonus rendering with compact preset-row metadata rendering.
-- Build preset rows show compact metadata near the name:
-  - no active bonus: `NO / BONUS`;
-  - single active 2p: one set icon with badge `2`;
-  - 4p: one set icon with badge `4`;
-  - 2+2: one diagonal composite icon with one badge `2`;
-  - row icons use a trim/scale/mask/composite pipeline through `ui/utils/pixmap_utils.py`.
-- Compact preset-row bonus icons use in-memory cache plus persistent PNG cache under `data/cache/ui/preset_bonus_icons/`.
-- Compact preset-row set bonus icons have custom tooltips backed by stored
-  `artifact_set_bonus_descriptions`; 4p shows 2p+4p rows, single 2p shows one row,
-  and 2+2 diagonal composite shows two 2p rows.
-- Build target preview row is a baked-pixmap horizontal scroll strip, not many child widgets:
-  - target icons are not clickable and no tooltip is planned there;
-  - drag-scrolls horizontally;
-  - wheel-scrolls horizontally;
-  - uses gradient edge hints with chevrons;
-  - Universal target uses `users.svg` inside a rounded card.
-- Target preview icons and final strips use in-memory cache plus persistent PNG caches under:
-  - `data/cache/ui/target_preview_icons/`;
-  - `data/cache/ui/target_preview_strips/`.
-- Build edit mode uses the same tint/highlight/bottom save-cancel infrastructure as custom sets.
-- Build preset inline rename focus is fixed: entering preset edit mode focuses the name input and selects its text, so typing/backspace works immediately without an extra click.
-- Clicking an artifact while editing assigns/replaces the slot for that artifact position.
-- Saved preset selection highlights selected artifacts and may move them to the front of the current artifact list.
-- Build target selector is a middle column: fixed vertical filters on the left, scrollable Universal/character target list on the right.
-- Build target selector region filtering is implemented as a popup opened by
-  `assets/filters/Statue.png`.
-- Character region data comes from HoYoWiki character list `menu_id=2` and is cached in
-  `data/cache/hoyowiki/character_region_catalog.json`.
-- Region/trait identity is joined into SQLite `character_identity`; read adapters expose
-  `region_key`, `region_name`, `traits`, and `is_standard_5_star` for every account character when matched.
-- Region and `Moonsign`/`Hexerei` filters are OR inside their own group, then AND
-  with selected element/weapon/rarity filters. Standard 5-star is a tri-state
-  filter using `assets/filters/standard.png`.
-- Region/trait joins prefer HoYoWiki entry ids and use normalized localized names only as fallback.
-- `assets/filters/Icon_Back.png` is used as the build target selector reset-all filter button.
-- Editing a saved build preset temporarily switches selected targets to that preset's targets; after save/cancel, the previous target browsing selection is restored.
-- Enter/Return saves and Esc cancels when a custom-set or build-preset edit mode is active.
-- Main UI and Artifact Browser share character asset/filter/sort helpers via `ui/character_assets.py`.
-- Artifact Browser SVG UI icons should use `ui/utils/icon_utils.py` auto-contrast helpers. Current direct `QIcon(...)` uses in the browser are for non-SVG assets such as PNG filters, portraits, and artifact set icons.
-- Artifact Browser has fixed bottom-row JSON actions under the artifact list:
-  - Import JSON supports multiple Artiscan/GOOD files and uses backend content-fingerprint dedupe.
-  - Clear JSON deletes only `json_imported=1` artifacts from `import_source='artiscan'`,
-    clears affected build preset slots, then optionally deletes affected presets.
-
-Sorting:
-
-- Default sort: rarity desc, level desc, effective crit value desc, set name, artifact name, id.
-- Explicit Crit Value sort also uses effective crit value for circlets, including CR/CD main stat contribution.
-- User sort popup supports Crit Value first, regular stat options, and Proc Count last.
-- Sort and Sets popups order game/custom sets by owned piece count descending.
-- Proc Count is virtual: sum of `ArtifactSubstat.times`.
-- Artiscan/GOOD sample data may have no `times`; proc count is then `0`.
-- If selected sort includes normal stat types, main-stat priority is applied before selected stat values.
-- For circlets, when Crit Value is the first sort key, neither CR nor CD is explicitly selected,
-  and another normal stat follows, CR/CD main-stat circlets are sorted by total effective CV
-  before the later normal-stat tie-break.
-
-Known near-term Artifact Browser work:
-
-- Do not wire Artifact Browser into the current legacy right panel as a disconnected button.
-- Before main integration, design/implement the shared Run Workspace and team snapshot path.
-- Pre-release visual pass: round/crop normal character preview portraits only after all
-  card-like windows and slots are present, so the final card treatment is consistent.
-
-## Main UI Architecture Direction
-
-The current main-window right panel is legacy/prototype UI. Do not keep polishing it as the final structure. Replace it with a shared Run Workspace concept.
-
-Important direction:
-
-- Useful legacy behavior may be extracted into helpers/modules when it still fits the new model, for example wheel-based timer editing.
-- Separate Account/Inventory, Team Builder, Scenario/Run, and Presentation/Export concerns.
-- Run Workspace should have at least Abyss and DPS Dummy modes. The active mode controls team layout, visible inputs, history target, and saved run type.
-- TeamCard and RunCard concepts should be shared by main Run Workspace, Abyss history, DPS Dummy history, export, simulator UI, and most PvP post-draft flows.
-- History must render a selected snapshot through a separate read-only instance
-  of the same current mode-specific Run presentation classes and view-model
-  shape used by the live pipeline. Do not create History-specific copies of
-  team, slot, selected-details, timer, chamber, build, or result widgets.
-- History saved-run rows are compact visual rows: DPS Dummy uses one team and
-  Abyss uses a paired/double-team row with character, weapon, set/build,
-  chamber-time, factual-DPS, and sim-DPS presentation.
-- History mode selection is a separate right-header policy with stable
-  `abyss`/`dps_dummy`/`pvp` ids; it must not emit live Run/PvP mode commands.
-  Production Abyss cache data is allowed only for the History period catalog
-  and enemy preview. Selected rows/right-panel details remain snapshot-only
-  and bundle-local.
-- Saved runs must be immutable structured snapshots, not live references to current account/build state and not image-only records.
-- Run snapshots should preserve characters, weapons, constellations/refinements when available, artifacts, active set bonuses, relevant stats, timers, and run metadata.
-- Artifact Browser integration should feed artifact builds/build presets into Team Builder and TeamCard. When saving a run, snapshot actual selected build data, not only a live preset id.
-- Use "DPS" or "factual DPS" for HP/time results and reserve "sim DPS" for simulator output.
-- GCSIM backend is complete for the current selected-team Abyss Browser MVP;
-  remaining normal GCSIM work is primarily Browser UI, run orchestration, DPS
-  Dummy result attachment, and release packaging. PvP remains a separate
-  architecture driver. Keep interfaces flexible enough for simulator
-  results, tournament rulesets, draft flows, and PvP result export later.
-  Detailed GCSIM research is in `docs/handoff/GCSIM.md` and current engine/UI
-  state is in `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`; read them before
-  implementing engine download, runner, config generation, or result parsing.
-- Artifact optimization belongs inside the GCSIM application boundary. Read
-  `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md` before any optimizer
-  task; it is the sole authoritative optimizer contract.
-- Accepted product scopes are Selected Sets, All Sets and Theory. Base Selected
-  is accepted. Next are a bounded cross-team/rotation generalization pass in
-  explicit infinite-energy mode and then the separately gated energy-aware
-  Selected extension. All Sets and Theory/farming guidance remain later scopes.
-- The production backend is a clean standalone Go module under planned
-  `native/gcsim_optimizer`. A minimal consolidated GCSIM adapter patch emits
-  compact engine-neutral formula/support evidence and runs ordinary finalist
-  simulations. The optimizer must not import `gcsim/internal`.
-- Python/UI sends one canonical account/team/rotation/artifact request and
-  receives progress, exact twenty artifact IDs and the engine-measured adaptive
-  n=500/n=1000 result. There is no per-candidate Python/Go traffic.
-- Selected enforces fixed 4p packages, at most one off-set piece per character,
-  legal main stats and twenty globally unique physical IDs. Complete builds are
-  evaluated contextually; no permanent independent item score may silently
-  delete combinations.
-- Known formula dependencies continue through direct damage, reactions,
-  healing/support and capped mechanics. Unknown behavior freezes at the last
-  typed boundary, remains visible in the receipt and never becomes zero,
-  dominance or a legacy fallback.
-- Compact `artifact_stat` leaves are signed deltas from the incumbent artifact
-  vector. Evaluating an all-zero delta must reproduce channel baseline within
-  absolute `1e-6`; synthetic fixtures must preserve this invariant.
-- GOB-3 stochastic members use the request's sorted fixed seed panel with equal
-  weights; seed numbers are never hard-coded into the aggregator.
-  Candidate sample SD uses Bessel `N-1`, SE is `SD/sqrt(N)`, missing actors
-  contribute zero, topology may differ, and overlapping opaque exposure values
-  are never summed as damage. GOB-3 has no hard-prune or product authority.
-- FGBS principles retained for Go are response-ledger completeness, revocable
-  saturation, complete five-slot wearer search, cyclic team best response and
-  bounded dependency/conflict refinement. Python implementation structure is
-  not being ported line by line.
-- Formula estimates select a small finalist set. Product DPS is the common-
-  context GCSIM result: common n=128 screening, n=500 for every retained
-  finalist, and n=1000 only for a bounded unresolved group. GOB-10 measured
-  the complete saved-account product boundary at 57.0 seconds plus about five
-  seconds of unchanged UI preparation, with exactly the accepted winner. The
-  cold Selected target remains 190 seconds, the fail-safe kill remains 360
-  seconds, and future All Sets is 600 seconds.
-- The remaining Current backend is comparison-only. Do not use it as proposal
-  source or hidden fallback, and do not delete it before Selected, All Sets and
-  Theory are accepted or explicitly abandoned by the user.
-- GOB-1 through GOB-10 own contracts, adapter, stochastic expectation, artifact
-  evaluation, Go search, migration cleanup, finalists and UI. GOB-8 is
-  functionally accepted: the actual AppShell button completed with exact IDs
-  and measured n=1000 DPS after per-seed duration handling was corrected. The
-  previous 3:33-3:40 runs were the performance baseline. GOB-9 passed cleanup.
-  GOB-10 then made formula evaluation dependency-aware, removed repeated engine
-  hashing, added trace-disabled engine fast paths and captured the two compact
-  seeds concurrently. The full saved-account replay took 57.0 seconds after
-  preparation and returned the same twenty artifact IDs. The consolidated
-  patch was cleaned, adapted and release-validated on GCSIM v2.45.0. Active
-  engine `gcsim-v2.45.0-compat-20260907` matches the isolated validated
-  artifact; `gcsim-v2.45.0-gob11a-20260907` is the explicitly pinned rollback.
-  GOB-11A preserved both fixed-seed formula graphs, corrected direct-reaction
-  fallback and the v2.45 artifact catalog filename/config schema. Future
-  upstream releases must repeat clean apply, build, capability and semantic
-  smoke gates before activation; never force-apply a version-bound patch.
-- Post-GOB-11A compatibility repairs are installed: reaction snapshots no longer
-  invent owner artifact crit/DMG% dependencies; terminal formulas have an
-  independent observed-damage guard; missing/null DPS fields are rejected.
-  Official activation now requires full capabilities/catalog/actual compact
-  consumer and ordinary/wave semantic smokes. Preparation alone never activates;
-  cleanup pins rollback rather than choosing by mtime. Formula registry is v3.
-  Read
-  `docs/handoff/GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md` before GOB-11 or the
-  next engine update. External EM/reaction-bonus dependence still has explicit
-  freezes; API-discovery drift remains possible and opaque reason shares are
-  not measured unknown damage. Two current-team seeds pass, not all new teams.
-- Before cutover, audit every engine patch present at that time, remove obsolete
-  changes and prove automatic update plus rollback. Packaging may use capability-
-  atomic optional groups, but never partially activate the required pieces of a
-  feature or hard-code a historical patch-number range.
-- The shared energy switch is implemented in Settings and beside the optimizer.
-  Infinite mode preserves current Selected behavior; the other position passes
-  real burst requirements but is explicitly marked diagnostic because the
-  search does not yet optimize ER. Planned energy-aware Selected must record
-  burst deadlines, normalized particle and flat energy, active/off-field
-  distribution and typed target/stat-dependent sources; Go enforces cumulative
-  deadline constraints and ordinary GCSIM checks only bounded finalists. Do not
-  copy upstream's 350-iteration/hardcoded ER optimizer.
-- Optimizer work may change optimizer-owned code and narrow generic engine/
-  materializer/scheduler boundaries. Do not repair importer, equipment,
-  Artifact Browser presets, History or global AppShell behavior as side work
-  without discussing the required contract change first.
-
-- Before coding new History, DPS Dummy GCSIM result persistence, or the production
-  AppShell switch, read `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. The
-  next Run Workspace stage is typed run/session state plus immutable Abyss/DPS
-  Dummy snapshots; right-panel widgets display/command that state but must not
-  own timer persistence or saved-run data. Factual DPS is app-owned HP/time math
-  in run/session result code, while GCSIM output is separate `sim DPS`.
-- GCSIM should not be crammed into the small TeamCard. The right panel should show only compact factual/sim DPS summary and a readable GCSIM button/status; detailed GCSIM/rotation editing should open as a larger overlay/drawer around the right panel area. If GCSIM lacks a character/reaction implementation, show a clear unavailable status.
-- Abyss enemy data source research lives in `docs/handoff/ABYSS_ENEMY_DATA.md`.
-- Audit result: no single reliable source currently provides current Abyss lineup + monster ids + waves/positions + ready HP totals + resists. MVP should use a resilient source join: current period/lineup/wave notes from Fandom, source-like monster ids/stats/icons/resists from AnimeGameData/GCSIM/Yatta/Ambr where available, and Fandom enemy/level-scaling pages as fallback/cross-check for floor HP multipliers, enemy HP tables, Abyss-specific resist states, and mechanics notes.
-- Factual Abyss DPS should use confidence states. Prefer source-like/period-specific HP multipliers; if those are missing but enemy ids/counts/levels/base HP are matched, a Fandom general floor-multiplier estimate may be shown with an explicit `estimated_from_floor_multiplier` warning. If core inputs are missing/ambiguous, produce no-data/warning states instead of guessed DPS. The accepted Fact DPS tooltip already exposes source/match confidence details; do not add separate near-cell source UI unless a later product decision asks for it.
-- Historical Floor 12 HP fixture notes live in `docs/handoff/ABYSS_HP_FIXTURE.md`.
-  They cover the `2026-05-16` research/debug fixture and parser risks; current
-  AppShell factual DPS should use the production source-data cache from
-  `run_workspace/abyss/source_data*.py`, not that fixture as runtime truth.
-- Abyss mechanics audit exists at `docs/handoff/ABYSS_MECHANICS_NOTES.md`. It uses the historical `2026-05-16` fixture enemy list and records parser tags/warnings for shields, wards, invulnerability, state-specific RES, paralyze/downed windows, true damage HP events, summons/adds, elemental/reaction requirements, and mode-specific stat blocks.
-- Historical fixture/report code exists in `hoyolab_export/abyss_sources.py` and
-  `hoyolab_export/abyss_fixture_report.py` for reproducing that research path;
-  production-style source refresh/runtime paths live under
-  `run_workspace/abyss/source_data*.py`.
-- Backend Abyss mechanics parser/report code exists in `hoyolab_export/abyss_mechanics.py`. It parses Fandom enemy-page wikitext snippets into structured fields and UI-warning/bot tags without mixing Normal/Abyss/Local Legend/Stygian stat blocks into one "true" block. Future Abyss UI work is mechanics-warning integration only, not another Fact DPS tooltip/source-summary redesign.
-
-Active PvP v0 contract exists at `docs/handoff/PVP_V0_CONTRACT.md`; current
-backend implementation status exists at `docs/handoff/PVP_BACKEND_STATUS.md`;
-PvP UI direction exists at `docs/handoff/PVP_UI_ROADMAP.md`. The backend
-implementation target is a full local Hot-seat / Ghost Deck offline loop with
-two deck JSON inputs, characters + weapons, default pick/ban schedule, team and
-weapon assignment, timers, and winner summary. Decks mode v0, Play/local match
-setup v0, Draft board visual MVP, and local post-draft
-Assignment/Weapon/Timers/Completed result v0 are implemented. Timers/results
-is a playable left Draft scene with six instances of the shared live-Abyss
-wheel/keyboard timer editor. Inputs are remaining clocks clamped to
-`10:00..05:00`; UI converts them to elapsed seconds for backend results and the
-total/chevron/difference scoreboard. The scene also shows wave-separated
-enemies, solo/multi HP, and cached current Abyss data. PvP player colors are
-configurable from Account settings through one shared palette source; all Draft
-and post-draft seat accents derive from it without changing widget geometry.
-Post-draft Assignment/Weapon players are vertical right-panel accordion
-sections. Each full-width color-tinted header sits directly above its own body
-and toggles that seat in both panes; the left body keeps its painted player
-accent, while the right container must not paint a side stripe or reserve extra
-horizontal geometry. Do not reintroduce side-by-side top controls or duplicate
-left-side player toggles. Collapse-only updates synchronously change visibility
-without calling the right model refresh or left grid reload. During post-draft
-layout rebuilds, live scoped source workspaces must be hidden and reparented
-under the PvP workspace, never through `setParent(None)`, because a parentless
-visible Qt widget can flash as an empty top-level window. Scoped runtime weapon
-equipment follows normal AppShell semantics: an occupied single-copy weapon
-swaps with the selected character's current weapon when present, and all
-affected visible slots/owner badges refresh.
-Future room
-admission still needs explicit
-Abyss-period agreement/server-authority validation. Left/main PvP
-workspaces live under `ui/pvp_browser/`; PvP right-dock ownership lives under
-`ui/right_panel/pvp/`.
-Decks persists `gtt.pvp_deck_preset` JSON under
-`data/pvp/decks/`, shows account characters/weapons in view/edit mode, and
-validates by converting presets to backend `DraftDeck`. Play chooses Player
-1/Player 2 local deck presets and starts an in-memory local
-`FreeDraftController`. Draft consumes the backend `unified_pool`, renders one
-dense image-backed painted character pool with two-sided seat constellation
-badges, shares the normal character filter bar and pool/player scopes, sends
-legal pick/ban clicks through backend action payloads, shows a semantic
-action-colored 22-position order strip, and reuses the same grid-item adapter
-for visual right-panel pick/ban zones. It can complete the full Free Draft schedule
-locally, then continues through the scoped AppShell build pipeline, manual
-timers, and read-only result summary. Candidate PvP follow-ups live in
-`docs/handoff/PVP_UI_ROADMAP.md`; do not treat older post-draft polish wording
-as fixed priority.
-Shared observed weapon-stack identity for Deck presets and
-future PvP screens lives in `run_workspace/pvp/weapon_identity.py`.
-Reference-site findings live in
-`docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`; PvP/tournament ruleset audit exists
-at `docs/handoff/PVP_RULESETS_AUDIT.md`, with the current source/applicability
-matrix at `docs/handoff/PVP_RULESET_SOURCE_MATRIX.md`. Backend foundation now
-lives under `run_workspace/pvp/`; focused UI/backend tests and synthetic
-deck/ruleset fixtures live under `tests/ui/pvp_browser/`,
-`tests/run_workspace/pvp/`, and `samples/pvp/`.
-Current local-account deck export entrypoint is
-`python -m run_workspace.pvp.account_deck_export_smoke`; default mode is dry-run,
-and explicit `--write` writes generated/private deck JSON under `data/pvp/decks/`.
-Current local-account full-loop smoke entrypoint is
-`python -m run_workspace.pvp.account_full_loop_smoke`; default mode writes no
-files and `--json` prints a compact structured report.
-Current Free Draft controller smoke entrypoint is
-`python -m run_workspace.pvp.free_draft_controller_smoke`; default mode uses
-synthetic deck fixtures and writes no files, `--json` prints compact structured
-projection/board reports, `--account` explicitly uses local account data, and
-`--step-demo` prints the first few manual controller transitions. The UI-facing
-Free Draft board projection lives in `run_workspace/pvp/free_draft_board.py`
-and is exposed by `FreeDraftController.to_board_projection()` /
-`to_board_dict()`. The committed frontend-contract fixture is
-`samples/pvp/ui_contract/free_draft_board_projection_sample.json`; it is built
-from synthetic deck fixtures and covers initial, after-two-actions, and
-final/result board states. Validate board projection dictionaries with
-`validate_free_draft_board_projection_dict(...)`. Backend modules that need the
-account-derived Player 2 deck copy should import
-`run_workspace.pvp.account_deck_copy.copy_deck_for_player_2`, not the
-`account_full_loop_smoke` CLI module.
-Current offscreen PvP UI full-flow smoke entrypoint is
-`python -m run_workspace.pvp.ui_full_flow_smoke`; it creates temp local decks,
-completes pick/ban, assignment, weapon assignment, timers, and result without
-writing sessions/history. `python -m run_workspace.pvp.ui_full_flow_smoke
---account` runs the same UI path against local PvP deck presets/account assets
-without writing sessions/history and should catch real deck weapon stack/type
-identity regressions that synthetic fixtures can miss.
-Current PvP session bundle smoke entrypoint is
-`python -m run_workspace.pvp.session_bundle_smoke`; default mode uses synthetic
-fixtures and writes no files, `--account` explicitly uses local account data,
-and `--write` writes generated/private JSON under `data/pvp/sessions/`.
-Current PvP ruleset/balance application smoke entrypoint is
-`python -m run_workspace.pvp.ruleset_balance_smoke`; default mode uses
-synthetic deck/ruleset fixtures and writes no files, `--json` prints compact
-structured output, `--account` explicitly uses local account data, and
-`--session-bundle` attaches a compact report summary to a synthetic session
-bundle without making it PvP History.
-Far-future PvP, analytics, draft bot, support/donation, monetization, and AI
-companion ideas live in `docs/handoff/FAR_FUTURE_TODO.md`; do not load them for
-normal MVP task planning unless the user asks.
-
-## Artiscan Notes
-
-Sample files live under `samples/artiscan/`.
-
-Observed GOOD shape:
-
-- format: GOOD
-- source: Artiscan
-- artifacts list includes `rarity`, `level`, `mainStatKey`, `slotKey`, `setKey`, `substats`, `location`, `lock`
-- substats include `key` and `value`
-- no roll/proc `times` data observed
-
-Do not build Artiscan assumptions from image matching. Use structured GOOD fields.
-
-Current Artiscan state:
-
-- Backend parser/import helper exists for Artiscan/GOOD JSON.
-- Artiscan main stat numeric values use deterministic max main-stat values by rarity/stat key.
-- `location` and `lock` are ignored in the MVP.
-- These importer facts are not the optimizer input contract. The optimizer reads
-  the already-populated shared `artifacts`/`artifact_substats` tables and does
-  not call or filter by Artiscan.
-- KNOWN ACCEPTED ISSUE (explicit user decision): exact content twins may collapse
-  into one artifact through `content_fingerprint`. This intentionally preserves
-  cross-source deduplication when the same item is observed through account data
-  and Artiscan. Two genuinely distinct, exactly identical artifacts are
-  therefore undercounted, but that case is considered negligibly rare. It is
-  not an optimizer blocker; do not change this identity policy unless the user
-  explicitly reopens it.
-- First-day/future improvement: automatic proc counting for imported artifacts.
-
-## Main UI State
-
-Main window current behavior:
-
-- Dynamic HoYoLAB button:
-  - no auth: authorize / choose profile;
-  - auth + no local data: import from HoYoLAB;
-  - auth + local data: update HoYoLAB data.
-- Button runs `python -m hoyolab_export.run_import` through `QProcess`.
-- `HoYoLABLoadingDialog` consumes `[STATUS] ...` lines.
-- On success, UI refreshes grids without a success popup.
-- Import button has cooldown so Chrome/profile cleanup can settle.
-- Character/weapon grids read account runtime records from SQLite via `ui/character_assets.py`.
-- Grids use `account_characters` / `account_weapon_observed_stacks` for tooltips, filters, sort fields, image paths, and observed weapon stack counts; `crop_manifest.json` remains import/sync source-cache input.
-- Character grid sort is rarity desc, level desc, name, filename.
-- Filters are compact icon rows, multi-select OR inside a group and AND between groups.
-- Filtered grids remain left-aligned with fixed icon spacing.
-- `Profile...` menu has save profile, load profile, sign out.
-- Sign-out is the destructive account boundary and can also clear artifact DB.
-
-## Offline Profile
-
-Offline profile export/import:
-
-- ZIP based.
-- Includes allowlisted current JSON/assets/artifact DB only, including
-  `account_language.json` with account characters, weapons, details, and crop
-  manifest.
-- Excludes HoYoLAB browser profile, cookies, sessions, debug, downloads.
-- Uses SQLite backup snapshot for `data/artifacts.db`.
-- Writes local export-state marker so sign-out can warn if current data may not be saved.
-
-## Localization
-
-Localization is JSON-backed, not Qt `.ts/.qm`.
-
-Files:
-
-- `localization/i18n.py`
-- `localization/locales/ru.json`
-- `localization/locales/en.json`
-- `localization/locales/pt-br.json`
-
-Rules:
-
-- UI code should use `tr("key")`.
-- Default UI language is `ru`.
-- Supported UI languages: `ru`, `en`, `pt-br`.
-- Selected language and small UI preferences are stored in local ignored
-  `settings.json`. Current extra preference: Abyss Fact DPS multi-target HP mode
-  (`abyss_fact_dps_multi_target_enabled`), default false/solo-target.
-- `GTT_LANGUAGE` or `GTT_LANG` can override UI language for a process.
-- Character/weapon/artifact dynamic names from HoYoLAB should keep the HoYoLAB content language.
-- Keep `pt-br.json` in sync when adding keys.
-
-## Security / Privacy
-
-Never save or commit:
-
-- cookies;
-- auth tokens;
-- raw request headers;
-- raw network dumps outside explicit ignored debug folders;
-- browser profile data.
-
-Normal clean outputs may contain:
-
-- ids and display names;
-- levels, rarity, refinements, constellations;
-- icons and local crop files;
-- artifact DB rows.
-
-Debug files are private and ignored.
-
-## Future Direction
-
-History:
-
-- Current AppShell History code reads grouped bundles, selects rows, adapts
-  frozen snapshot data into the shared right-panel view-model, and displays an
-  isolated read-only `RunRightPanelWidget`. The old QLabel details viewer and
-  permanent selected PNG area are no longer used for normal browsing.
-- The accepted target is a snapshot-bound read-only instance of the same
-  Abyss/DPS Dummy Run presentation used by live state. Slot inspection and
-  tooltips remain available; mutation, drag/drop, timer/state editing, commands,
-  mode tabs, and live Reset/Save behavior follow the policy in
-  `docs/handoff/HISTORY_BROWSER.md`.
-- Immutable History Snapshot Bundle v2 backend schema/service lives in
-  `run_workspace/history_snapshot.py`, with a backend-only builder in
-  `run_workspace/history_snapshot_builder.py`. RUN-page Save writes grouped
-  bundles under `data/history/snapshots`, captures display details for every
-  occupied slot, and materializes declared visible assets inside the bundle.
-  History visual MVP now includes automatic reload, History-local right-header
-  modes, cached/saved Abyss period navigation, compact enemy/HP preview and
-  visual saved-run rows. PvP History remains an inert placeholder; filters,
-  export, fuller DPS Dummy capture, and smoke-driven polish remain future work.
-
-Artifact Browser final UI:
-
-- Final visual style should be Genshin-like.
-- Use delegates/theme/assets rather than QWidget rows when polishing.
-- Keep `store`, `queries`, and models independent from visual skin.
-- Do final UI/performance refactor only after functionality is stable.
-
-Legacy note:
-
-- Do not revive legacy mask-based image detection unless explicitly asked.
-- Preferred HoYoLAB extraction path is DOM/layout/coordinate based.
-
-Far-future inspiration / non-MVP ideas live in
-`docs/handoff/FAR_FUTURE_TODO.md`.
+## Project And Launch Paths
+
+GenshinTeamsTracker is a local PySide6 desktop application for account import,
+team/equipment building, Abyss/DPS runs, immutable History, and offline PvP.
+
+- `main.py` still launches legacy `ui.main_window.App`.
+- Current AppShell development/user path: `python -m ui.app_shell_smoke`;
+  the recorded user launcher is PyCharm Run Current File on that file with
+  the project `.venv/Scripts/python.exe`. Reconfirm the actual running path
+  for a user-path check. Do not switch `main.py` without the user's approval.
+- `ui/app_shell.py` coordinates workspaces; feature UI belongs in
+  `ui/<area>_browser/`. Right-dock ownership is
+  `ui/right_panel/{common,live_run,history,pvp,settings}`.
+- `run_workspace/session.py` owns live mode/team/timer/result state;
+  `history_snapshot.py` and `history_snapshot_builder.py` own immutable saves.
+  Widgets display and command state, not persistence.
+- `hoyolab_export/` owns account import, SQLite adapters, catalogs and equipment.
+  `native/gcsim_optimizer/` owns the active Go optimizer;
+  `run_workspace/gcsim/` owns Python integration and engine lifecycle.
+
+## Read Only The Relevant Handoff
+
+The full index and document authority rules are in `docs/handoff/README.md`.
+`TODO.md` contains open work, not the implementation history.
+
+| Work area | Read first under `docs/handoff/` |
+| --- | --- |
+| Data/source/cache ownership | `DATA_RUNTIME_BOUNDARIES.md` |
+| Account tables and source fields | `ACCOUNT_SQLITE_STORAGE.md`, `ACCOUNT_CHARACTER_DETAIL_FIELDS.md` |
+| Import failures, lifecycle and verification | `HOYOLAB_IMPORT_RELIABILITY.md` |
+| Current equipment | `ACCOUNT_EQUIPMENT_STATE_DESIGN.md` |
+| Artifact storage/import/browser | `ARTIFACT_BROWSER.md`, `ARTIFACT_BROWSER_EQUIPMENT_UX.md` |
+| UI ownership and launch migration | `APP_SHELL_WORKSPACE_PLAN.md`, `MAIN_UI_RIGHT_PANEL_INTEGRATION_AUDIT.md` |
+| Run/History/DPS Dummy | `RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`, `HISTORY_BROWSER.md` |
+| Abyss runtime data and mechanics | `ABYSS_ENEMY_DATA.md`, `ABYSS_MECHANICS_NOTES.md` |
+| Normal GCSIM and engine updates | `GCSIM_ENGINE_INTEGRATION_PLAN.md`, `GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md` |
+| Optimizer architecture and next gates | `GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md`, then its current checkpoint |
+| PvP product/backend/UI | `PVP_V0_CONTRACT.md`, `PVP_BACKEND_STATUS.md`, `PVP_UI_ROADMAP.md` |
+| Two-player profile exchange | `PVP_PROFILE_PACKAGE.md` |
+| Stat units and display boundaries | `STAT_NORMALIZATION.md` |
+| Tests and performance follow-up | `TESTS.md`, `PRELOADER_BACKLOG.md` |
+
+Do not load `FAR_FUTURE_TODO.md` for ordinary MVP work unless requested.
+`GCSIM.md`, old checkpoints, source audits and measurement reports are dated
+evidence; their old next-step labels do not override the current owner document.
+
+## Stable Domain Boundaries
+
+- `data/artifacts.db` is the unified local runtime SQLite DB, despite its name.
+  Normal UI reads SQLite adapters; raw HoYoLAB JSON is import/source cache.
+  Keep small rebuildable JSON caches where appropriate, not blanket DB migration.
+- Character/weapon/artifact identity uses stable IDs and stored resolved keys,
+  not localized display names or local image paths. Observed weapons are
+  fingerprinted stacks with non-decreasing `known_count`, not unique instances.
+- Current equipment, HoYoLAB observations and reusable build presets are
+  separate. Removing a team member does not unequip them. Equipment is per
+  character, while normal team selection is per mode and PvP equipment is scoped.
+- HoYoLAB `Change equipment` is implemented, default OFF. Enabled imports
+  apply fresh observations in one validated equipment batch after account sync.
+  Missing observations do not mean clear equipment; saved presets are preserved.
+- Artifact content twins normally dedupe. Simultaneous distinct HoYoLAB wearers
+  can prove extra copies; reuse their IDs on reimport. Never infer copies from
+  repeated rows alone. Full import publication across DB/JSON/images is not atomic.
+- Account/API content language is separate from UI language. EN service detail
+  payloads are mapping input only. Catalog detail refresh is explicit; ordinary
+  import must not fetch every HoYoWiki character/weapon detail page.
+- Selected-build display stats use base/reference data plus selected equipment,
+  not HoYoLAB in-game `final` rows. Apply only explicitly modeled static effects;
+  passive text is reference, not a formula. Traveler element modeling is deferred.
+- History freezes every occupied slot's display data and visible assets.
+  It reuses an isolated read-only Run panel, never live account lookups or a
+  permanent PNG preview. Abyss sim results are included by normal Run Save;
+  DPS Dummy result attachment and real PvP History remain open.
+  [History visual references/notes](docs/design/history/README.md) preserve the
+  approved starting concept, rejected first-pass samples and current variants.
+  Implementation, verification and visual-review status belong to
+  `HISTORY_BROWSER.md`; expansion must transform the existing card in place.
+- Fact DPS is HP/time from the production Abyss cache; sim DPS is GCSIM output.
+  Missing authoritative period/cache/HP yields unavailable, not the old fixture.
+- PvP reuses the normal build UI with independent source providers and scoped
+  runtime state. Its development `.gttpvp` is not yet a portable public format.
+- The Go optimizer is the sole Selected/All Sets backend. Selected preserves
+  currently equipped4p or2+2 packages with one flexible piece; All Sets has a
+  separate source-aware bounded package coordinator over the same search,
+  capture and final measurement modules. Removed Python strategies
+  must not return as fallbacks. Current is comparison-only; continuous-target
+  Python math is retained only for a future Go port for Theory/All Sets.
+  Current acceptance, active engine and user-approved fixture substitutions
+  live in `GCSIM_GOB11_GP3_CHECKPOINT.md`; do not duplicate their logs here.
+
+## Localization, Private Data And Scheduling
+
+- Localization is JSON-backed through `localization/i18n.py`; use `tr` /
+  `tr_for_language` with synchronized `ru`, `en`, `pt-br` keys.
+  Default UI language is `ru`; `GTT_LANGUAGE` / `GTT_LANG` override a process.
+  Small preferences live in ignored `settings.json`.
+- Never commit cookies, tokens, request headers, browser profiles or private
+  debug/network dumps. `data/`, `assets/hoyolab/` and import profiles are local
+  generated/private state; sanitized static seeds are a separate explicit scope.
+- Normal offline profile export is an allowlisted ZIP with a SQLite backup,
+  account JSON/assets and language metadata; it excludes auth/debug/downloads.
+  It is separate from PvP exchange. Sign-out/restore are destructive boundaries.
+- Scheduled continuation exists only after the automation tool returns a
+  persisted active automation ID. A suggested card is not an active schedule.
+
+## Handoff Maintenance
+
+Lifecycle owner: [HANDOFF_MAINTENANCE.md](docs/handoff/HANDOFF_MAINTENANCE.md).
+Root rules/pointers, open TODO work, current checkpoints and dated evidence have
+separate owners. Update current facts in place and reconcile their dependents.
+Ordinary handoff maintenance is included in the authorized task; preserve
+concurrent edits and historical evidence. The protocol's structural check is
+necessary but does not replace semantic review or product/UI verification.

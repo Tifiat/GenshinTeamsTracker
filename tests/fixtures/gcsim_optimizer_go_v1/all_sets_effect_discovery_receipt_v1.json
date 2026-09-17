@@ -1,0 +1,558 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-16",
+  "owner": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
+  "status": "source_discovery_and_isolated_reaction_input_response_pass_not_all_sets_product",
+  "discovery": {
+    "amount_terms": 138,
+    "attack_vocabulary_sha256": "062c907b364ddce5ff30e3deca4d92e9f199b2263f1b2c420163968b85d9874a",
+    "boundary_counts": {
+      "callback_or_helper_unresolved": 11,
+      "expression_shape": 77,
+      "implicit_or_multi_value_declaration": 1,
+      "iteration_count_requires_context": 2,
+      "iteration_membership_requires_context": 24,
+      "multi_value_assignment": 38,
+      "switch_join_requires_context": 21,
+      "unclassified_operation": 43
+    },
+    "catalog_sha256": "9049ed5ed5c33196961bf8bb2f1e8a54be37a0a658491f356d6c34079597c722",
+    "channel_feature_evaluations": 89,
+    "channel_feature_seconds": 0.2543871,
+    "channel_features": 728,
+    "channel_features_with_numeric_proxy": 280,
+    "constant_terms": 116,
+    "effects": 93,
+    "elapsed_seconds_including_evidence_write": 0.106297,
+    "engine_sha256": "2e910ca6ba8adf90d23ca41345ae85326855bb0677778703b749219d1dd582b5",
+    "kinds": {
+      "attack_bonus": 19,
+      "energy": 2,
+      "new_attack": 1,
+      "reaction_bonus": 9,
+      "resistance": 3,
+      "stat": 59
+    },
+    "new_engine_calls": 0,
+    "packages": [
+      {
+        "boundaries": 8,
+        "callback_edges": 2,
+        "constant_terms": 3,
+        "effects": 3,
+        "key": "adaycarvedfromrisingwinds",
+        "owner_signals_4p": 3,
+        "source_sha256": "84dba5408ed0034a0fd184ad5ed5f60e8235b723344f3a08052d98c4a1f40294",
+        "unresolved_signals_4p": 0
+      },
+      {
+        "boundaries": 3,
+        "callback_edges": 5,
+        "constant_terms": 9,
+        "effects": 2,
+        "key": "archaicpetra",
+        "owner_signals_4p": 1,
+        "source_sha256": "e36f2d57cfbb7d5ec615470e41dec765385b3e804c15c4f6405296c8f51cf047",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 2,
+        "callback_edges": 2,
+        "constant_terms": 3,
+        "effects": 2,
+        "key": "aubadeofmorningstarandmoon",
+        "owner_signals_4p": 1,
+        "source_sha256": "031de9a33d216b3c8d5ada89f13fe923eb6313c22aba4cd0a13e31b0888e8bbb",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 8,
+        "callback_edges": 2,
+        "constant_terms": 5,
+        "effects": 2,
+        "key": "blizzardstrayer",
+        "owner_signals_4p": 1,
+        "source_sha256": "a99661f08f8c73b420efcc00bc5ebd5233612ee04587c0c9ad1ee4949de94de9",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 5,
+        "callback_edges": 3,
+        "constant_terms": 2,
+        "effects": 2,
+        "key": "bloodstainedchivalry",
+        "owner_signals_4p": 1,
+        "source_sha256": "b4bf5823a9c205dcdedebf979cba47dedd72e55d91d672cf67e97809e75c5014",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 2,
+        "callback_edges": 2,
+        "constant_terms": 1,
+        "effects": 1,
+        "key": "retracingbolide",
+        "owner_signals_4p": 0,
+        "source_sha256": "7d7d100603c01a15784021ec76d96c993eeec92d6da897eb98f08855bfeff50d",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 12,
+        "callback_edges": 9,
+        "constant_terms": 1,
+        "effects": 3,
+        "key": "celestialgift",
+        "owner_signals_4p": 1,
+        "source_sha256": "06e061b51d066d0bd1786cf11e8c982566babc49fa1a79919fc5f8b034dbc27f",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 3,
+        "callback_edges": 2,
+        "constant_terms": 4,
+        "effects": 3,
+        "key": "crimsonwitchofflames",
+        "owner_signals_4p": 1,
+        "source_sha256": "4b8eed88a71da988f68a08b09799560dcd520e452c359d618ae407c3f51f2564",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 3,
+        "callback_edges": 2,
+        "constant_terms": 2,
+        "effects": 2,
+        "key": "deepwoodmemories",
+        "owner_signals_4p": 1,
+        "source_sha256": "1724538dcc4225cf0f03eb2dbe13d6b0ed27b459af6a19f50eb8da64d9f34a2f",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 4,
+        "callback_edges": 2,
+        "constant_terms": 3,
+        "effects": 3,
+        "key": "desertpavilionchronicle",
+        "owner_signals_4p": 1,
+        "source_sha256": "50dbce4ab069e5b52ad701ecaf9555e7101996c9117c70a6ec4180d850c4f8e6",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 9,
+        "callback_edges": 2,
+        "constant_terms": 6,
+        "effects": 3,
+        "key": "disenchantmentindeepshadow",
+        "owner_signals_4p": 1,
+        "source_sha256": "d8bd149fd990aab41a381854bfa3ba62df5c8a1e3a25144b316c44d7a2638094",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 2,
+        "callback_edges": 2,
+        "constant_terms": 1,
+        "effects": 1,
+        "key": "echoesofanoffering",
+        "owner_signals_4p": 1,
+        "source_sha256": "fe8d0a1fc36097a490ed2ca51da71306a4c60ee4ebfdeaf0151258a628ee2f7f",
+        "unresolved_signals_4p": 0
+      },
+      {
+        "boundaries": 2,
+        "callback_edges": 1,
+        "constant_terms": 1,
+        "effects": 2,
+        "key": "emblemofseveredfate",
+        "owner_signals_4p": 1,
+        "source_sha256": "f4d1328d775b12545c02edf1ada07c3ecaeb6de3916a43eec19e03fde76c21a4",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 4,
+        "callback_edges": 4,
+        "constant_terms": 2,
+        "effects": 2,
+        "key": "finaleofthedeepgalleries",
+        "owner_signals_4p": 1,
+        "source_sha256": "ac049603662dcd83185f0bbae8a7f0d39d85c26afe4f193d6f52503676104477",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 6,
+        "callback_edges": 6,
+        "constant_terms": 5,
+        "effects": 3,
+        "key": "flowerofparadiselost",
+        "owner_signals_4p": 1,
+        "source_sha256": "ce4f85bf23d9fc14d508b40a702225a5c0763d1d754d41609fc7043e47195926",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 2,
+        "callback_edges": 2,
+        "constant_terms": 1,
+        "effects": 2,
+        "key": "fragmentofharmonicwhimsy",
+        "owner_signals_4p": 1,
+        "source_sha256": "1ce9fd5c79e0f411bc211fddd5edfcbf0155a6bb1352e755862534e78d0e0398",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 5,
+        "callback_edges": 2,
+        "constant_terms": 1,
+        "effects": 2,
+        "key": "gildeddreams",
+        "owner_signals_4p": 1,
+        "source_sha256": "50dadeda750ae435a694451facd1305665e718b2181b9e1d5a788ceabdb679b2",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 3,
+        "callback_edges": 1,
+        "constant_terms": 2,
+        "effects": 2,
+        "key": "gladiatorsfinale",
+        "owner_signals_4p": 1,
+        "source_sha256": "facc23b29c0b154add12f9fcad6feb9c999b2b10a4f08a58547ecd3f127b219b",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 3,
+        "callback_edges": 6,
+        "constant_terms": 4,
+        "effects": 2,
+        "key": "goldentroupe",
+        "owner_signals_4p": 0,
+        "source_sha256": "c33fbf760acb7532aaeec68267901745520eb4e77bd831fd211dc2ca70e40854",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 2,
+        "callback_edges": 2,
+        "constant_terms": 2,
+        "effects": 2,
+        "key": "heartofdepth",
+        "owner_signals_4p": 1,
+        "source_sha256": "4496e0255ca50607b8deb79e6799ecdc6eb2e56de2be63c8b4ca353106d87bc1",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 9,
+        "callback_edges": 11,
+        "constant_terms": 1,
+        "effects": 2,
+        "key": "huskofopulentdreams",
+        "owner_signals_4p": 1,
+        "source_sha256": "b0f6e3d07fcd138643facbdc374bc44dd0297c2c7fd040787edd852972aedb33",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 7,
+        "callback_edges": 4,
+        "constant_terms": 1,
+        "effects": 2,
+        "key": "longnightsoath",
+        "owner_signals_4p": 0,
+        "source_sha256": "2a31e09202865d85653d7d6bc63c0e1addee0cbd79ed6e4e843825bddd2e9c5b",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 3,
+        "callback_edges": 3,
+        "constant_terms": 1,
+        "effects": 1,
+        "key": "maidenbeloved",
+        "owner_signals_4p": 1,
+        "source_sha256": "ee9b89106ab46e058a03987b2775638395a086dd97d8b70aa92a8d30954c8cad",
+        "unresolved_signals_4p": 0
+      },
+      {
+        "boundaries": 2,
+        "callback_edges": 5,
+        "constant_terms": 1,
+        "effects": 2,
+        "key": "marechausseehunter",
+        "owner_signals_4p": 0,
+        "source_sha256": "77367fa6bb548c39984c51fa692b2363f0fa12c5a8af5c5e184a510f5d830e67",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 7,
+        "callback_edges": 4,
+        "constant_terms": 6,
+        "effects": 3,
+        "key": "nightoftheskysunveiling",
+        "owner_signals_4p": 3,
+        "source_sha256": "add9cb6091aeff92eddbc49d49d298adfe91ad0507a96f3b187c1037a73da49f",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 13,
+        "callback_edges": 13,
+        "constant_terms": 3,
+        "effects": 2,
+        "key": "nighttimewhispersintheechoingwoods",
+        "owner_signals_4p": 3,
+        "source_sha256": "1dbccff7116e97e563f5eeed7c7e201bc0516572b9e81550541524a51204e20f",
+        "unresolved_signals_4p": 0
+      },
+      {
+        "boundaries": 4,
+        "callback_edges": 3,
+        "constant_terms": 2,
+        "effects": 2,
+        "key": "noblesseoblige",
+        "owner_signals_4p": 0,
+        "source_sha256": "ed93e0d4ff306c3733ee76458a17863f360af059571f3dc6f499abb5a3bb5184",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 9,
+        "callback_edges": 2,
+        "constant_terms": 6,
+        "effects": 2,
+        "key": "nymphsdream",
+        "owner_signals_4p": 6,
+        "source_sha256": "61f03df3bec5ce47b5ea4eb10bb767c3e23bb36487811441efe5abcc67869728",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 3,
+        "callback_edges": 2,
+        "constant_terms": 2,
+        "effects": 2,
+        "key": "obsidiancodex",
+        "owner_signals_4p": 1,
+        "source_sha256": "9bd5dad574ee6a2413a8dedf0215fcd3cbfa1beebf19cdd38f322d3c5377deea",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 2,
+        "callback_edges": 3,
+        "constant_terms": 1,
+        "effects": 2,
+        "key": "oceanhuedclam",
+        "owner_signals_4p": 1,
+        "source_sha256": "65b43ec69c857f8b22f2866e3328579ba64be2122dca944c82fdcd553f457579",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 3,
+        "callback_edges": 3,
+        "constant_terms": 3,
+        "effects": 2,
+        "key": "paleflame",
+        "owner_signals_4p": 3,
+        "source_sha256": "21540b8c460a4158a5766efb947b13b8a3fb34fa4a6ef8b5068b2aef83b4b001",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 5,
+        "callback_edges": 3,
+        "constant_terms": 2,
+        "effects": 3,
+        "key": "shimenawasreminiscence",
+        "owner_signals_4p": 1,
+        "source_sha256": "ebfde6684f353712cfa3c8d36aee17799fd4f47f8140d2bdc55efa4033616058",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 7,
+        "callback_edges": 4,
+        "constant_terms": 2,
+        "effects": 3,
+        "key": "scrolloftheheroofcindercity",
+        "owner_signals_4p": 0,
+        "source_sha256": "c118a2e6e35e17ca364eac8cf3abc65df91675717ab9e0ea3cf4dbf5bd677da4",
+        "unresolved_signals_4p": 3
+      },
+      {
+        "boundaries": 9,
+        "callback_edges": 2,
+        "constant_terms": 6,
+        "effects": 3,
+        "key": "silkenmoonsserenade",
+        "owner_signals_4p": 1,
+        "source_sha256": "8353b89a5672e6dff94fc35ff80829131adfcf21071f89e15d6034bd72bd73c3",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 7,
+        "callback_edges": 6,
+        "constant_terms": 1,
+        "effects": 1,
+        "key": "songofdayspast",
+        "owner_signals_4p": 1,
+        "source_sha256": "7e32c8730c5ac125ff00965b62636c4f81365a9996d81858d3440264f19380bb",
+        "unresolved_signals_4p": 0
+      },
+      {
+        "boundaries": 5,
+        "callback_edges": 3,
+        "constant_terms": 2,
+        "effects": 2,
+        "key": "tenacityofthemillelith",
+        "owner_signals_4p": 1,
+        "source_sha256": "12072ab00f9af9c174161c45354231bd46b6e5db07b4d43f99f57d8c2c654f6c",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 5,
+        "callback_edges": 10,
+        "constant_terms": 5,
+        "effects": 2,
+        "key": "thunderingfury",
+        "owner_signals_4p": 1,
+        "source_sha256": "eafa5acf8dcc8a27b8fc33bd5853ebceb6897cf63cc4ed283e291cf3d60c0e23",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 7,
+        "callback_edges": 3,
+        "constant_terms": 1,
+        "effects": 2,
+        "key": "unfinishedreverie",
+        "owner_signals_4p": 1,
+        "source_sha256": "c5f13c75cce437151754bcb77bd22c792dd3c223db2045fda6ff0dd1644491a3",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 3,
+        "callback_edges": 6,
+        "constant_terms": 1,
+        "effects": 2,
+        "key": "vermillionhereafter",
+        "owner_signals_4p": 1,
+        "source_sha256": "dce770a6a062395ffe9f902aa2c9c1780ea09c354df9ae5af978730ecfd8de2b",
+        "unresolved_signals_4p": 1
+      },
+      {
+        "boundaries": 11,
+        "callback_edges": 7,
+        "constant_terms": 6,
+        "effects": 4,
+        "key": "viridescentvenerer",
+        "owner_signals_4p": 1,
+        "source_sha256": "9d88898ccdcd1b1fe7a8f0f65be455369903ef2655f17b6f35e57f4f95c1bfcb",
+        "unresolved_signals_4p": 3
+      },
+      {
+        "boundaries": 5,
+        "callback_edges": 3,
+        "constant_terms": 3,
+        "effects": 3,
+        "key": "vourukashasglow",
+        "owner_signals_4p": 1,
+        "source_sha256": "1be1b3cd2e769b8753764c1bbd3e646bd111b8235fdeef94c397c474f26442fe",
+        "unresolved_signals_4p": 2
+      },
+      {
+        "boundaries": 3,
+        "callback_edges": 1,
+        "constant_terms": 2,
+        "effects": 2,
+        "key": "wandererstroupe",
+        "owner_signals_4p": 1,
+        "source_sha256": "d7d3b0fab7d0aeb9ea7ebbece408acb16fc693aeef54d2a06f4336c1b4489aa3",
+        "unresolved_signals_4p": 1
+      }
+    ],
+    "replacement_certified": false,
+    "saved_formula_decode_compile_seconds": 3.4409904,
+    "schema_version": 1,
+    "signal_count": 336,
+    "signal_probe_seconds": 0.030405,
+    "source_packages": 42,
+    "stat_vocabulary_sha256": "eed60aee668f04171a65476670971479d45ac965a74586df8e68674c30660d31",
+    "status": "source_discovery_and_old_context_signals_not_activation_or_ranking_acceptance",
+    "unique_formula_evaluations": 45
+  },
+  "neutral_input_controls": [
+    {
+      "baseline_dps": 110800.22276952829,
+      "case": "bloom",
+      "fresh_dps": 111208.69554029705,
+      "inputs": 100,
+      "new_engine_calls_in_replay": 0,
+      "one_offset_evaluation_seconds": 0.000659436,
+      "owner": "kukishinobu",
+      "predicted_dps": 111208.69554029705,
+      "relative_residual": 0
+    },
+    {
+      "baseline_dps": 149016.70804318853,
+      "case": "cloud",
+      "fresh_dps": 149990.30417243205,
+      "inputs": 115,
+      "new_engine_calls_in_replay": 0,
+      "one_offset_evaluation_seconds": 0.00067536,
+      "owner": "ineffa",
+      "predicted_dps": 149990.30417243205,
+      "relative_residual": 0
+    }
+  ],
+  "capture_timings": [
+    {
+      "case": "bloom",
+      "hits": 543,
+      "inputs": 336,
+      "mode": "baseline",
+      "wall_seconds": 2.6503648
+    },
+    {
+      "case": "bloom",
+      "hits": 543,
+      "inputs": 336,
+      "mode": "offset",
+      "wall_seconds": 2.6837923
+    },
+    {
+      "case": "cloud",
+      "hits": 509,
+      "inputs": 306,
+      "mode": "baseline",
+      "wall_seconds": 2.3534008
+    },
+    {
+      "case": "cloud",
+      "hits": 509,
+      "inputs": 306,
+      "mode": "offset",
+      "wall_seconds": 2.359504
+    }
+  ],
+  "new_engine_calls": 4,
+  "installed_binary_ui_energy_changed": false,
+  "parent_engine_sha256": "2e910ca6ba8adf90d23ca41345ae85326855bb0677778703b749219d1dd582b5",
+  "observer_source_changes": [
+    {
+      "path": "pkg/core/player/character/mods.go",
+      "parent_sha256": "1bcfda153927814c46ab84ecdaba8959c2a2157994615e90132c5aeb60bf601d",
+      "overlay_sha256": "5701f4c768eb8662107709bdd6ed297ade66d37094b834da71778eacf1c468d3"
+    },
+    {
+      "path": "pkg/gttcompact/model.go",
+      "parent_sha256": "f1d6c6b2b6af8f43ee870d0651becb71c0a31fab6178807d455a48f9a4843783",
+      "overlay_sha256": "8c0cc2ae17a1f8c12ae4cd9a52f5b4a0254a45b8783287e89accd5aa10c21f13"
+    },
+    {
+      "path": "pkg/gttcompact/compile.go",
+      "parent_sha256": "75737ab543868042fe47a450c8084b15977fdfc490e498ae8d1315caf6681ae5",
+      "overlay_sha256": "7dbb8682a6571e67dd8be3eceb68bacfdcf94d4e2caa9331f956cd9b04a0ec2e"
+    }
+  ],
+  "experimental_delta_sha256": "83566b9b41fca78847d5c5ce0c12f771dcaecac0359b96391385bd01d8155771",
+  "limits": [
+    "93 source effect sites are not a fraction of complete gameplay coverage.",
+    "Possible amount alternatives are not additive totals or activation/uptime proofs.",
+    "Raw-stat proxy and contextual increment keep old effects; neither is changed-set DPS.",
+    "Two fixed-seed artificial +0.1 reaction-bonus controls are not real-set replacement acceptance.",
+    "No resistance-input recipe, automatic proposal queue, real static proof producer or All Sets UI enabled.",
+    "Source observer remains isolated; no installed compatibility/update or UI claim."
+  ],
+  "capture_sha256": {
+    "bloom-baseline.json": "5dd352700c3fae00fe93c3e842c6b7738914ecf1a8759f699854deabf90e4e7b",
+    "bloom-offset.json": "d64a4103e7a495519a07b8d9a28c7153d742312051503458b4578e386a3677b4",
+    "cloud-baseline.json": "23e511c4a7e3eb0ea695d678739ab89b06c56640a3a9c5dd40fd2147e57b4799",
+    "cloud-offset.json": "fcf3abf976e49b4a16f80c9716e6f4a142038571a5461128829dc553f2ed13e6"
+  }
+}

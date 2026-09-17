@@ -365,7 +365,7 @@ class AccountEquipmentImportObservationTest(unittest.TestCase):
         self.assertEqual(owners, (1002,))
 
     def test_missing_observation_does_not_clear_local_equipment(self) -> None:
-        self.assertTrue(AUTO_APPLY_HOYOLAB_EQUIPMENT_ON_IMPORT_DEFAULT)
+        self.assertFalse(AUTO_APPLY_HOYOLAB_EQUIPMENT_ON_IMPORT_DEFAULT)
         with seeded_equipment_db() as conn:
             equip_artifact(conn, 1001, 1)
             equip_weapon(conn, 1001, "polearm-a")

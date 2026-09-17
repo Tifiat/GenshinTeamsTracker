@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Any
 
@@ -57,8 +58,9 @@ async def browser_fetch_json(
     method: str = "GET",
     body: dict[str, Any] | None = None,
     language: str | None = None,
+    timeout_sec: float = 60,
 ) -> dict[str, Any]:
-    return await page.evaluate(
+    return await asyncio.wait_for(page.evaluate(
         """
         async ({ url, method, body, language }) => {
             function readCookie(name) {
@@ -110,6 +112,7 @@ async def browser_fetch_json(
 
             const options = {
                 method,
+                signal: AbortSignal.timeout(60_000),
                 credentials: "include",
                 headers: {
                     "content-type": "application/json",
@@ -149,7 +152,7 @@ async def browser_fetch_json(
             "body": body,
             "language": language,
         },
-    )
+    ), timeout=timeout_sec)
 
 
 async def fetch_character_details_batch(
@@ -163,6 +166,8 @@ async def fetch_character_details_batch(
         raise RuntimeError("No real character ids found for HoYoLAB character/detail request.")
 
     roles_result = await browser_fetch_json(page, ROLES_URL, language=language)
+    if not roles_result.get("ok") or (roles_result.get("json") or {}).get("retcode") != 0:
+        raise RuntimeError("HoYoLAB roles request failed; check the account session.")
     role_id, server = pick_genshin_role(roles_result.get("json") or {})
 
     result = await browser_fetch_json(
@@ -178,8 +183,18 @@ async def fetch_character_details_batch(
     )
 
     payload = result.get("json") or {}
+    if not result.get("ok") or payload.get("retcode") != 0:
+        raise RuntimeError(
+            f"HoYoLAB character/detail failed: HTTP {result.get('status')}, "
+            f"retcode={payload.get('retcode')}"
+        )
     data = payload.get("data") or {}
-    items = data.get("list") or []
+    items = data.get("list")
+    if not isinstance(items, list) or not items:
+        raise RuntimeError("HoYoLAB character/detail has no non-empty data.list array")
+    returned_ids = {(item.get("base") or {}).get("id") for item in items if isinstance(item, dict)}
+    if not set(ids).issubset(returned_ids):
+        raise RuntimeError("HoYoLAB character/detail returned an incomplete character batch")
 
     result["source"] = "character/detail"
     result["capturedAt"] = int(time.time() * 1000)

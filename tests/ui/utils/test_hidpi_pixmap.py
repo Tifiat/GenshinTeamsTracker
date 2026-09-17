@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QColor, QPixmap
+from PySide6.QtGui import QColor, QImage, QPixmap
 from PySide6.QtWidgets import QApplication
 
 from ui.utils.hidpi_pixmap import (
@@ -74,6 +74,32 @@ class HidpiPixmapTests(unittest.TestCase):
         self.assertEqual(canvas.size(), QSize(33, 39))
         self.assertEqual(canvas.devicePixelRatio(), 1.5)
         self.assertEqual(logical_pixmap_size(canvas), QSize(22, 26))
+
+    def test_opt_in_alpha_trim_preserves_faint_pixels_source_and_cache_separation(self):
+        from ui.utils.pixmap_utils import trim_transparent_pixmap
+        image = QImage(80, 80, QImage.Format.Format_ARGB32)
+        image.fill(Qt.GlobalColor.transparent)
+        for y in range(30, 50):
+            for x in range(20, 60):
+                image.setPixelColor(x, y, QColor(210, 140, 90, 255))
+        image.setPixelColor(19, 29, QColor(210, 140, 90, 1))
+        source = QPixmap.fromImage(image)
+        trimmed = trim_transparent_pixmap(source)
+        self.assertEqual(trimmed.size(), QSize(41, 21))
+        self.assertEqual(trimmed.toImage().pixelColor(0, 0).alpha(), 1)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/"character.png"
+            source.save(str(path))
+            before = path.read_bytes()
+            cache = {}
+            full = load_hidpi_pixmap(path, 82, dpr=1, cache=cache)
+            tight = load_hidpi_pixmap(path, 82, dpr=1, cache=cache, trim_alpha=True)
+            reused = load_hidpi_pixmap(path, 82, dpr=1, cache=cache, trim_alpha=True)
+            self.assertEqual(full.pixmap.size(), QSize(82, 82))
+            self.assertEqual(tight.pixmap.size(), QSize(82, 42))
+            self.assertFalse(tight.cache_hit)
+            self.assertTrue(reused.cache_hit)
+            self.assertEqual(path.read_bytes(), before)
 
 
 if __name__ == "__main__":

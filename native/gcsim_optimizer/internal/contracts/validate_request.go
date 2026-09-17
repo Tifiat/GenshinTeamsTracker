@@ -162,7 +162,7 @@ func (request OptimizerRequest) validateWearers(artifacts map[int64]Artifact) er
 		if err := validateToken(field+".weapon_key", wearer.WeaponKey); err != nil {
 			return err
 		}
-		if err := validateToken(field+".selected_set_uid", wearer.SelectedSetUID); err != nil {
+		if err := validateSetRequirements(field, wearer); err != nil {
 			return err
 		}
 		if len(wearer.CurrentArtifacts) != len(canonicalSlots) {
@@ -194,8 +194,13 @@ func (request OptimizerRequest) validateWearers(artifacts map[int64]Artifact) er
 
 func (request OptimizerRequest) validatePolicies(artifacts map[int64]Artifact) error {
 	policy := request.Legality
-	if !policy.FixedFourPiece || policy.MaxOffSetPiecesPerWearer != 1 || !policy.GloballyUniqueArtifactIDs || policy.DefaultMinimumRarity != 5 {
+	if policy.FixedFourPiece == policy.FixedSetPackages || policy.MaxOffSetPiecesPerWearer != 1 || !policy.GloballyUniqueArtifactIDs || policy.DefaultMinimumRarity != 5 {
 		return fmt.Errorf("legality policy does not match Selected v1")
+	}
+	for _, wearer := range request.Wearers {
+		if policy.FixedFourPiece && len(wearer.SetRequirements()) != 1 {
+			return fmt.Errorf("fixed_four_piece policy cannot contain a 2+2 package")
+		}
 	}
 	if policy.AuthorizedLowerRarityArtifactIDs == nil {
 		return fmt.Errorf("legality.authorized_lower_rarity_artifact_ids must be an array")

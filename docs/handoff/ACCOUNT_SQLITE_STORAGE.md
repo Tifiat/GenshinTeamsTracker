@@ -32,6 +32,13 @@ HoYoLAB `side_icon` URLs and existing valid local icon files are reused. Account
 SQLite sync failures are reported as import warnings after the raw import, but
 do not delete the refreshed raw JSON/artifact results.
 
+AppShell's HoYoLAB "Change equipment" switch defaults OFF. With its explicit
+`--change-equipment` flag, import requires successful account storage sync and
+then applies only the fresh detail snapshot to canonical equipment. Weapon
+identity is reused through `weapon_equipment_from_detail_rows`; historical
+merged inventory/stack provenance must not be used as current assignments.
+See `ACCOUNT_EQUIPMENT_STATE_DESIGN.md` for copy limits and batch rollback.
+
 Manual/debug no-network sync command:
 
 ```powershell
@@ -71,6 +78,15 @@ Normal runtime/UI account data should read from the SQLite adapter in
   options (stack id/fingerprint or an explicit smoke selector). Source metadata
   about current-equipped observations is provenance/debug context, not a
   canonical selector.
+
+GCSIM import key resolution uses the active engine's registry at sync time,
+not the report helper's pinned old source cache. Known layouts are
+`pkg/shortcut/{character,weapon}.dm.go` and legacy `{characters,weapons}.go`
+within that same active engine. Explicit test/dev registry paths remain supported;
+missing active sources report unavailable without an old-release fallback.
+Selected runtime snapshots cannot override the fresh SQLite-owned character
+key/status/method. Engine changes without reimport still need the deferred
+mapping-refresh/update-path audit in the engine plan; do not claim it is solved.
 - persistent current equipment state uses `account_character_equipped_artifacts`
   and `account_character_equipped_weapons` through
   `hoyolab_export/account_equipment.py`; AppShell Stage B reads/writes current

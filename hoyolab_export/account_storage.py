@@ -1705,6 +1705,25 @@ def _weapon_observation_from_detail(
     )
 
 
+def weapon_equipment_from_detail_rows(detail_rows: list[dict[str, Any]]) -> dict[int, str]:
+    """Fresh snapshot only; use the same identity parser as account storage."""
+    result = {}
+    for detail in detail_rows:
+        character_id = _optional_int(_mapping(detail.get("base")).get("id"))
+        if not character_id or character_id in IGNORED_CHARACTER_IDS:
+            continue
+        if not _mapping(detail.get("weapon")).get("id"):
+            continue
+        if character_id in result:
+            raise ValueError("Duplicate character weapon observation")
+        observation = _weapon_observation_from_detail(
+            detail, account_weapon=None, observation_key=f"character:{character_id}",
+            weapon_wiki={}, icon_path="", source_files=(),
+        )
+        result[character_id] = observation.weapon_fingerprint
+    return result
+
+
 def _weapon_observation_from_account_weapon(
     account_weapon: Mapping[str, Any],
     *,
@@ -2009,8 +2028,6 @@ def build_account_gcsim_key_resolver(
 ) -> AccountGcsimKeyResolver:
     try:
         from run_workspace.gcsim.entity_key_readiness_report import (
-            DEFAULT_CHARACTER_SHORTCUT_SOURCE,
-            DEFAULT_WEAPON_SHORTCUT_SOURCE,
             GcsimEntityRegistry,
             ProjectEntity,
             audit_project_entity,
@@ -2027,8 +2044,34 @@ def build_account_gcsim_key_resolver(
             ),
         )
 
-    character_path = Path(character_source_path or DEFAULT_CHARACTER_SHORTCUT_SOURCE)
-    weapon_path = Path(weapon_source_path or DEFAULT_WEAPON_SHORTCUT_SOURCE)
+    # The report module's pinned old source is a dev fixture, not the engine
+    # currently used by the application. Resolve defaults at sync time so an
+    # engine update cannot leave later imports using an obsolete registry.
+    if character_source_path is None or weapon_source_path is None:
+        try:
+            from run_workspace.gcsim.engine_store import GcsimEngineStore
+
+            active_engine = GcsimEngineStore().get_active_engine()
+            if active_engine is None:
+                raise ValueError("no active GCSIM engine")
+            shortcut_root = active_engine.path / "pkg" / "shortcut"
+            def registry_file(current: str, legacy: str) -> Path:
+                generated = shortcut_root / current
+                # Both known layouts are inside THIS engine, never an older
+                # release's download cache. Unknown layouts fail unavailable.
+                return generated if generated.is_file() else shortcut_root / legacy
+            if character_source_path is None:
+                character_source_path = registry_file("character.dm.go", "characters.go")
+            if weapon_source_path is None:
+                weapon_source_path = registry_file("weapon.dm.go", "weapons.go")
+        except Exception as exc:
+            return _unavailable_gcsim_key_resolver(
+                source_paths={},
+                warnings=(WARNING_GCSIM_KEY_REGISTRY_UNAVAILABLE,
+                          f"gcsim_active_engine_unavailable:{type(exc).__name__}"),
+            )
+    character_path = Path(character_source_path)
+    weapon_path = Path(weapon_source_path)
     source_paths = {
         GCSIM_ENTITY_CHARACTER: project_relative_path(character_path),
         GCSIM_ENTITY_WEAPON: project_relative_path(weapon_path),

@@ -1,0 +1,968 @@
+{
+  "schema_version": 1,
+  "scope": "Original non-catalyzed flat Stat inputs; helper/additive reactions not accepted",
+  "samples": [
+    {
+      "case": "lauma_original_flat_em",
+      "member": {
+        "seed": 742031889,
+        "duration_ms": 93650,
+        "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41",
+        "nodes": [
+          {
+            "node_id": 1,
+            "operation": "constant",
+            "inputs": [],
+            "value": "126.955584"
+          },
+          {
+            "node_id": 2,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.32"
+          },
+          {
+            "node_id": 3,
+            "operation": "constant",
+            "inputs": [],
+            "value": "126.955584"
+          },
+          {
+            "node_id": 4,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 5,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 3,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 4,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 6,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 1,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 5,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 7,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.32"
+          },
+          {
+            "node_id": 8,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 9,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 7,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 8,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 10,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 2,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 9,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 11,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1695.3586379679002"
+          },
+          {
+            "node_id": 12,
+            "operation": "constant",
+            "inputs": [],
+            "value": "709.3273043800001"
+          },
+          {
+            "node_id": 13,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.atk_percent"
+          },
+          {
+            "node_id": 14,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 12,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 13,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 15,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.atk"
+          },
+          {
+            "node_id": 16,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 6,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 11,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 14,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 15,
+                "relation": "input/000003"
+              }
+            ]
+          },
+          {
+            "node_id": 17,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1410.712"
+          },
+          {
+            "node_id": 18,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.em"
+          },
+          {
+            "node_id": 19,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 17,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 18,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 20,
+            "operation": "constant",
+            "inputs": [],
+            "value": "3.456"
+          },
+          {
+            "node_id": 21,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 19,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 20,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 22,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.728"
+          },
+          {
+            "node_id": 23,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 16,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 22,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 24,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 21,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 23,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 25,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.32"
+          },
+          {
+            "node_id": 26,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.damage_bonus"
+          },
+          {
+            "node_id": 27,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.dendro_damage_bonus"
+          },
+          {
+            "node_id": 28,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 10,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 25,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 26,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 27,
+                "relation": "input/000003"
+              }
+            ]
+          },
+          {
+            "node_id": 29,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.45799999999999996"
+          },
+          {
+            "node_id": 30,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.crit_rate"
+          },
+          {
+            "node_id": 31,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 29,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 30,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 32,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.3159999999999998"
+          },
+          {
+            "node_id": 33,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.crit_damage"
+          },
+          {
+            "node_id": 34,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 32,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 33,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 35,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 36,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 37,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 38,
+            "operation": "max",
+            "inputs": [
+              {
+                "node_id": 31,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 37,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 39,
+            "operation": "min",
+            "inputs": [
+              {
+                "node_id": 36,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 38,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 40,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 34,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 39,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 41,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 35,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 40,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 42,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.48717948717948717"
+          },
+          {
+            "node_id": 43,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.225"
+          },
+          {
+            "node_id": 44,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 24,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 28,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 41,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 42,
+                "relation": "input/000003"
+              },
+              {
+                "node_id": 43,
+                "relation": "input/000004"
+              }
+            ]
+          },
+          {
+            "node_id": 45,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 46,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 47,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 44,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 45,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 46,
+                "relation": "input/000002"
+              }
+            ]
+          }
+        ],
+        "channels": [
+          {
+            "channel_id": "hit/000054",
+            "kind": "direct",
+            "actor_key": "lauma",
+            "attack_tag": "tag/5",
+            "damage_type": "dendro",
+            "root_node_id": 47,
+            "hit_count": 1,
+            "baseline_damage": "9854.435870841027",
+            "response_coordinates": [
+              "lauma.atk",
+              "lauma.atk_percent",
+              "lauma.crit_damage",
+              "lauma.crit_rate",
+              "lauma.damage_bonus",
+              "lauma.dendro_damage_bonus",
+              "lauma.em"
+            ]
+          }
+        ],
+        "opaque_boundaries": []
+      },
+      "checks": [
+        {
+          "deltas": {
+            "lauma.em": 187
+          },
+          "engine_expected_damage": "10670.405845732861"
+        }
+      ]
+    },
+    {
+      "case": "kukishinobu_original_flat_em",
+      "member": {
+        "seed": 742031889,
+        "duration_ms": 93650,
+        "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41",
+        "nodes": [
+          {
+            "node_id": 1,
+            "operation": "constant",
+            "inputs": [],
+            "value": "126.955584"
+          },
+          {
+            "node_id": 2,
+            "operation": "constant",
+            "inputs": [],
+            "value": "126.955584"
+          },
+          {
+            "node_id": 3,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 4,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 2,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 3,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 5,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 1,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 4,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 6,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1285.5262187764"
+          },
+          {
+            "node_id": 7,
+            "operation": "constant",
+            "inputs": [],
+            "value": "613.6907818"
+          },
+          {
+            "node_id": 8,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "kukishinobu.atk_percent"
+          },
+          {
+            "node_id": 9,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 7,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 8,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 10,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "kukishinobu.atk"
+          },
+          {
+            "node_id": 11,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 5,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 6,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 9,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 10,
+                "relation": "input/000003"
+              }
+            ]
+          },
+          {
+            "node_id": 12,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1350.5764"
+          },
+          {
+            "node_id": 13,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "kukishinobu.em"
+          },
+          {
+            "node_id": 14,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 12,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 13,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 15,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.25"
+          },
+          {
+            "node_id": 16,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 14,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 15,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 17,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.51424"
+          },
+          {
+            "node_id": 18,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 11,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 17,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 19,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 16,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 18,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 20,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 21,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "kukishinobu.damage_bonus"
+          },
+          {
+            "node_id": 22,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "kukishinobu.electro_damage_bonus"
+          },
+          {
+            "node_id": 23,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 20,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 21,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 22,
+                "relation": "input/000002"
+              }
+            ]
+          },
+          {
+            "node_id": 24,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.163"
+          },
+          {
+            "node_id": 25,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "kukishinobu.crit_rate"
+          },
+          {
+            "node_id": 26,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 24,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 25,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 27,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.772"
+          },
+          {
+            "node_id": 28,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "kukishinobu.crit_damage"
+          },
+          {
+            "node_id": 29,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 27,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 28,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 30,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 31,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 32,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 33,
+            "operation": "max",
+            "inputs": [
+              {
+                "node_id": 26,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 32,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 34,
+            "operation": "min",
+            "inputs": [
+              {
+                "node_id": 31,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 33,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 35,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 29,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 34,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 36,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 30,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 35,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 37,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.48717948717948717"
+          },
+          {
+            "node_id": 38,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.9"
+          },
+          {
+            "node_id": 39,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 19,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 23,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 36,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 37,
+                "relation": "input/000003"
+              },
+              {
+                "node_id": 38,
+                "relation": "input/000004"
+              }
+            ]
+          },
+          {
+            "node_id": 40,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 41,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 42,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 39,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 40,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 41,
+                "relation": "input/000002"
+              }
+            ]
+          }
+        ],
+        "channels": [
+          {
+            "channel_id": "hit/000122",
+            "kind": "direct",
+            "actor_key": "kukishinobu",
+            "attack_tag": "tag/4",
+            "damage_type": "electro",
+            "root_node_id": 42,
+            "hit_count": 1,
+            "baseline_damage": "1127.582269727827",
+            "response_coordinates": [
+              "kukishinobu.atk",
+              "kukishinobu.atk_percent",
+              "kukishinobu.crit_damage",
+              "kukishinobu.crit_rate",
+              "kukishinobu.damage_bonus",
+              "kukishinobu.electro_damage_bonus",
+              "kukishinobu.em"
+            ]
+          }
+        ],
+        "opaque_boundaries": []
+      },
+      "checks": [
+        {
+          "deltas": {
+            "kukishinobu.em": 187
+          },
+          "engine_expected_damage": "1150.6597426585963"
+        }
+      ]
+    }
+  ]
+}

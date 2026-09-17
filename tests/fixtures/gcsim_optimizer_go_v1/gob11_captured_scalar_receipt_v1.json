@@ -1,0 +1,184 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-13",
+  "status": "isolated_bounded_response_gate_passed_production_pending",
+  "isolated_build": {
+    "success": true,
+    "activated": true,
+    "engine_id": "gcsim-v2.45.0-gob11-captured-scalar2-20260913",
+    "artifact_sha256": "82a5ae0a7eab4de02dd1d58a6be58850b2637d007b46347683e6fad36cf3df0b",
+    "application_compatibility_status": "passed",
+    "error": "",
+    "seconds": 226.09299999999348
+  },
+  "production_engine_unchanged": "gcsim-v2.45.0-gob11-additive2-20260913",
+  "tested_patch_sha256": "0f25a323622f5be9e7f22ccf0ae17e71e7257c8205e56165ea1918969f24467f",
+  "pending_delta_sha256": "b8b9f5f85de1b65e762bab7df96240fd6213c5676c5f90ef7c676bee0dc364ca",
+  "strict_response_gate_passed": true,
+  "controlled_points": [
+    {
+      "coordinate": "columbina.hp_percent",
+      "case": "bloom",
+      "amount": 0.2,
+      "predicted": 10614250.784343718,
+      "expected": 10614250.784343718,
+      "residual": 0.0,
+      "relative_error": 0.0
+    },
+    {
+      "coordinate": "lauma.em",
+      "case": "bloom",
+      "amount": 187,
+      "predicted": 10978802.486846747,
+      "expected": 10978802.486846747,
+      "residual": 0.0,
+      "relative_error": 0.0
+    },
+    {
+      "coordinate": "kukishinobu.em",
+      "case": "bloom",
+      "amount": 187,
+      "predicted": 10588236.801177152,
+      "expected": 10588236.801177152,
+      "residual": 0.0,
+      "relative_error": 0.0
+    },
+    {
+      "coordinate": "columbina.hp_percent",
+      "case": "flins_1",
+      "amount": 0.2,
+      "predicted": 17401635.06597745,
+      "expected": 17401635.065977454,
+      "residual": -3.725290298461914e-09,
+      "relative_error": 2.1407702691946226e-16
+    },
+    {
+      "coordinate": "flins.em",
+      "case": "flins_1",
+      "amount": 187,
+      "predicted": 17606682.76980336,
+      "expected": 17606682.76980336,
+      "residual": 0.0,
+      "relative_error": 0.0
+    },
+    {
+      "coordinate": "ineffa.em",
+      "case": "flins_1",
+      "amount": 187,
+      "predicted": 17499752.950984843,
+      "expected": 17499752.950984847,
+      "residual": -3.725290298461914e-09,
+      "relative_error": 2.1287673654000146e-16
+    },
+    {
+      "coordinate": "columbina.em",
+      "case": "flins_1",
+      "amount": 187,
+      "predicted": 17320878.592770293,
+      "expected": 17320878.592770293,
+      "residual": 0.0,
+      "relative_error": 0.0
+    },
+    {
+      "coordinate": "sucrose.em",
+      "case": "flins_1",
+      "amount": 187,
+      "predicted": 17451226.115765218,
+      "expected": 17451226.115765218,
+      "residual": 0.0,
+      "relative_error": 0.0
+    },
+    {
+      "coordinate": "flins.crit_rate",
+      "case": "flins_1",
+      "amount": 0.2,
+      "predicted": 17470232.762771096,
+      "expected": 17470232.762771096,
+      "residual": 0.0,
+      "relative_error": 0.0
+    },
+    {
+      "coordinate": "ineffa.crit_damage",
+      "case": "flins_1",
+      "amount": 0.4,
+      "predicted": 17650696.5240224,
+      "expected": 17650696.5240224,
+      "residual": 0.0,
+      "relative_error": 0.0
+    },
+    {
+      "coordinate": "flins.electro_damage_bonus",
+      "case": "flins_1",
+      "amount": 0.466,
+      "predicted": 17469696.60663073,
+      "expected": 17469696.60663073,
+      "residual": 0.0,
+      "relative_error": 0.0
+    },
+    {
+      "coordinate": "columbina.hp_percent",
+      "case": "flins_2",
+      "amount": 0.2,
+      "predicted": 16418208.403915362,
+      "expected": 16418208.403915364,
+      "residual": -1.862645149230957e-09,
+      "relative_error": 1.1344996380888667e-16
+    }
+  ],
+  "baseline_checks": [
+    {
+      "case": "flins_1",
+      "hits": 509,
+      "max_baseline_damage_error": 0.0
+    },
+    {
+      "case": "flins_2",
+      "hits": 497,
+      "max_baseline_damage_error": 0.0
+    },
+    {
+      "case": "bloom",
+      "hits": 543,
+      "max_baseline_damage_error": 2.9103830456733704e-11
+    },
+    {
+      "case": "chasca-1",
+      "hits": 383,
+      "max_baseline_damage_error": 0.0
+    },
+    {
+      "case": "chasca-2",
+      "hits": 372,
+      "max_baseline_damage_error": 0.0
+    }
+  ],
+  "explicit_final_build_n1_captures": 17,
+  "updater_gates_additional": true,
+  "earlier_this_turn_probes": {
+    "vector_stage_n1": 4,
+    "first_scalar_build_successful_n1": 15,
+    "first_scalar_build_failed_chasca_n1": 1,
+    "reason": "First scalar control caught invalid empty add; repaired to literal zero and final-build controls rerun"
+  },
+  "source_boundaries": [
+    "single captured float local, <=16 simple writes, no shadow/address escape; unique typed runtime parameter",
+    "executed cap/min/max/stat branch from source; unsupported SelectStat snapshot/other operands remain local freezes",
+    "NonExtraStat excludes Extra; actual captured cell identity and update time, no source-name dispatch",
+    "reaction bonus consumer captures original modifier outputs once and their sum; neutral arithmetic IR unchanged",
+    "observed tasks, source switching, schedule and future branches remain frozen topology"
+  ],
+  "remaining": [
+    "production install/parity and full supplied-team search still pending",
+    "Lauma2+2 legality still needs user choice before Selected",
+    "bounded points are not proof of every modifier/stat/rotation or of full-search performance"
+  ],
+  "portable_samples": "gob11_captured_scalar_samples_v1.json",
+  "sample_nodes": [
+    949,
+    949,
+    120,
+    157,
+    954,
+    954
+  ]
+}

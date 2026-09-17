@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "stage": "GOB-11A",
+  "status": "pass_bounded_current_team_and_structural_regressions",
+  "date": "2026-09-07",
+  "upstream": {
+    "release": "v2.45.0",
+    "revision": "304c1d34ee53bf693fed540803a6b2abc24092da"
+  },
+  "installation": {
+    "active_engine_id": "gcsim-v2.45.0-gob11a-20260907",
+    "rollback_engine_id": "gcsim-v2.45.0-clean-adapter-20260901",
+    "rollback_and_restore_verified": true,
+    "production_matches_isolated_validated_binary": true,
+    "trusted_app_engine_context": true,
+    "artifact_sha256": "ecbeb14af152c25e67bafb567912aebc1a8ceb3d8fb6e0a6a6cfc1529d4087c1",
+    "patch_path": "run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v245.patch",
+    "patch_sha256": "e8c84d5930719e4b2f24f1e378ebab47557c3acd67e21aa4d05267b3bd21edbd",
+    "source_manifest_body_sha256": "1c3e36cd059388a6c5a727d95dd50f19d5a8c3242b6357360c2955eb41f9743e",
+    "formula_registry": "gtt_trace_formula_v2",
+    "compact_schema_version": 1
+  },
+  "classification": {
+    "duplicated_reaction_name_or_tag_whitelist_removed": true,
+    "uses_producer_receipts_structural_flags_and_executed_path": true,
+    "new_gameplay_formulas_added": false,
+    "legacy_direct_lunar_read_compatibility_retained": true,
+    "unknown_direct_formula_is_frozen_not_standard_talent": true
+  },
+  "synthetic_regression": {
+    "observed_damage": 1850,
+    "previous_incorrect_standard_formula_damage": 250,
+    "new_frozen_damage": 1850,
+    "unknown_direct_candidate_coordinates": 0,
+    "adjacent_supported_hit_remains_variable": true,
+    "unknown_tag_and_renamed_display_ability_covered": true
+  },
+  "current_team_compact_parity": [
+    {
+      "seed": "742031889",
+      "channels_per_engine": 383,
+      "channel_records_equal": true,
+      "canonical_channel_expressions_equal": true,
+      "opaque_boundaries_equal": true,
+      "old_member_sha256": "33541d3bd6ee43e0dc661435b5f7eabb5c6583dcdeb23f798fc759a18a0e103a",
+      "new_member_sha256": "29176530d16249018fd03aabb1ea70eb061f35640f3079c1d3606e4c11ff661f"
+    },
+    {
+      "seed": "742031890",
+      "channels_per_engine": 372,
+      "channel_records_equal": true,
+      "canonical_channel_expressions_equal": true,
+      "opaque_boundaries_equal": true,
+      "old_member_sha256": "888ce6cfc4218d05e6403eac170d52498967ccdf28ea6700db768b125a62de60",
+      "new_member_sha256": "a1398ef4df965a472c389fd7d5049bc2db45cf3bfabf109ac3fe8223fffbe90c"
+    }
+  ],
+  "canonicalization_note": "Raw node order differs because commutative constant inputs follow map iteration order. Compare recursive channel expressions with sorted inputs only for add, multiply, min and max; do not claim byte equality.",
+  "smoke": {
+    "ordinary_trace_off_old_new_parity": true,
+    "two_wave_smoke": true,
+    "wave_duration_seconds": 1.0333333333333334,
+    "both_new_members_accepted_by_production_optimizer_validator": true
+  },
+  "tests": {
+    "python_core_focused_passed": 58,
+    "python_catalog_selected_focused_passed": 15,
+    "go_packages_passed": [
+      "./pkg/enemy",
+      "./pkg/gttcompact",
+      "./pkg/core/combat",
+      "./pkg/optimization",
+      "./pkg/core/event",
+      "./pkg/gtt"
+    ],
+    "go_reaction_lineage_focused_passed": "./internal/tests/reactable -run TestReactionFormula|Test.*GTT -count=1",
+    "full_suite_run": false
+  },
+  "simulation_budget": {
+    "compact_old_new_two_seeds": 4,
+    "ordinary_trace_off_old_new": 2,
+    "waves": 1,
+    "total_short_simulation_invocations": 7,
+    "full_optimizer_runs": 0,
+    "ui_button_end_to_end_runs": 0
+  },
+  "limits": [
+    "Direct reaction candidate dependencies remain frozen; this is not complete Lunar formula support.",
+    "Current-team parity is not cross-team coverage; GOB-11 remains next.",
+    "Frozen observed damage is not a newly derived random-outcome expectation.",
+    "No guarantee of compatibility with untested future upstream changes."
+  ]
+}

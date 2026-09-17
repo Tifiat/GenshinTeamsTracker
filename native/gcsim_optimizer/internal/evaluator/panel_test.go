@@ -64,6 +64,29 @@ func TestCompiledPanelUsesEachSeedsOwnDuration(t *testing.T) {
 	if math.Abs(fast-want) > 1e-12 {
 		t.Fatalf("hot path duration lost: got %v want %v", fast, want)
 	}
+	for _, amount := range []float64{0, .2, -.1} {
+		deltas := make([]float64, len(panel.Coordinates()))
+		for i := range deltas {
+			deltas[i] = amount
+		}
+		rows, e := panel.EvaluateChannelDPS(deltas)
+		if e != nil {
+			t.Fatal(e)
+		}
+		total := 0.0
+		for i, row := range rows {
+			if len(row) != len(compact.Members[i].Channels) {
+				t.Fatal("channel order/count lost")
+			}
+			for _, value := range row {
+				total += value
+			}
+		}
+		expected, e := panel.EvaluateDPS(deltas)
+		if e != nil || math.Abs(total-expected) > 1e-12 {
+			t.Fatal(total, expected, e)
+		}
+	}
 }
 
 func fixtures(t *testing.T) (contracts.OptimizerRequest, contracts.CompactIR) {

@@ -143,14 +143,22 @@ class GcsimBrowserSelectedOptimizerWorker(QObject):
 
     def __init__(self, request: GcsimOptimizerGoSelectedRequest) -> None:
         super().__init__()
-        self._session = GcsimOptimizerGoSelectedSession(
+        from run_workspace.gcsim.optimizer_go_all import (
+            GcsimOptimizerGoAllSetsRequest, GcsimOptimizerGoAllSetsSession,
+        )
+        session_type = (GcsimOptimizerGoAllSetsSession
+                        if isinstance(request, GcsimOptimizerGoAllSetsRequest)
+                        else GcsimOptimizerGoSelectedSession)
+        self._session = session_type(
             request,
             progress_callback=self.progress.emit,
         )
 
     @Slot()
     def run(self) -> None:
-        self.finished.emit(self._session.run())
+        payload = self._session.run()
+        payload["mode"] = self._session.run_mode
+        self.finished.emit(payload)
 
     def cancel(self) -> None:
         # Called directly by the UI thread. The session only sets a thread-safe

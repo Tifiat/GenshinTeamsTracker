@@ -45,6 +45,10 @@ func VerifyAdaptive(
 	sigmaThreshold float64,
 	maxExtensionCandidates int,
 ) (VerificationResult, error) {
+	return VerifyAdaptiveWithRenderer(ctx, request, candidates, FixedRenderer(request, index), runRoot, baseIterations, extensionIterations, maxParallelism, cpuBudget, sigmaThreshold, maxExtensionCandidates)
+}
+
+func VerifyAdaptiveWithRenderer(ctx context.Context, request contracts.OptimizerRequest, candidates []search.ScoredAssignment, render CandidateRenderer, runRoot string, baseIterations, extensionIterations, maxParallelism, cpuBudget int, sigmaThreshold float64, maxExtensionCandidates int) (VerificationResult, error) {
 	var output VerificationResult
 	if baseIterations <= 0 || extensionIterations <= baseIterations {
 		return output, fmt.Errorf("adaptive verification requires a positive base and a larger extension iteration count")
@@ -55,8 +59,8 @@ func VerifyAdaptive(
 	if err := os.Mkdir(runRoot, 0o700); err != nil {
 		return output, fmt.Errorf("create adaptive finalist root: %w", err)
 	}
-	base, err := VerifyDynamicWaves(
-		ctx, request, index, candidates,
+	base, err := VerifyDynamicWavesWithRenderer(
+		ctx, request, candidates, render,
 		filepath.Join(runRoot, fmt.Sprintf("base-n%d", baseIterations)),
 		baseIterations, maxParallelism, cpuBudget,
 	)
@@ -93,8 +97,8 @@ func VerifyAdaptive(
 		}
 		extensionCandidates = append(extensionCandidates, candidate)
 	}
-	extension, err := VerifyDynamicWaves(
-		ctx, request, index, extensionCandidates,
+	extension, err := VerifyDynamicWavesWithRenderer(
+		ctx, request, extensionCandidates, render,
 		filepath.Join(runRoot, fmt.Sprintf("extension-n%d", extensionIterations)),
 		extensionIterations, maxParallelism, cpuBudget,
 	)

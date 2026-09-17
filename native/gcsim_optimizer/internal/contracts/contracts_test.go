@@ -216,6 +216,36 @@ func TestEveryContractRejectsUnknownVersion(t *testing.T) {
 	}
 }
 
+func TestResultRequiresExactlyOneFormulaIdentity(t *testing.T) {
+	result, err := DecodeResult(readFixture(t, "result_v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result.SetContextPanelSHA256 = result.CompactIRSHA256
+	if err := result.Validate(); err == nil {
+		t.Fatal("two identities accepted")
+	}
+	result.CompactIRSHA256 = ""
+	if err := result.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(result)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DecodeResult(payload); err != nil {
+		t.Fatal(err)
+	}
+	result.SetContextPanelSHA256 = "invalid"
+	if err := result.Validate(); err == nil {
+		t.Fatal("invalid panel identity accepted")
+	}
+	result.SetContextPanelSHA256 = ""
+	if err := result.Validate(); err == nil {
+		t.Fatal("missing identities accepted")
+	}
+}
+
 func TestResultRejectsDuplicatePhysicalArtifact(t *testing.T) {
 	result, err := DecodeResult(readFixture(t, "result_v1.json"))
 	if err != nil {

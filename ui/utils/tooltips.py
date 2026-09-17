@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from PySide6.QtCore import QObject, QEvent, QPoint, QRect, QSize, Qt, QTimer
+from PySide6.QtGui import QScreen
 from PySide6.QtWidgets import QApplication, QLabel, QWidget
 
 
@@ -25,6 +26,17 @@ QLabel {
 """
 
 TooltipTextProvider = str | Callable[[], str]
+
+
+def anchored_tooltip_rect(owner: QWidget, anchor: QPoint, size: QSize) -> tuple[QRect, QScreen]:
+	"""Convert the visible hover point to global logical coordinates exactly once."""
+	point = owner.mapToGlobal(anchor)
+	screen = QApplication.screenAt(point) or owner.screen()
+	area = screen.availableGeometry().adjusted(8, 8, -8, -8)
+	rect = QRect(point + QPoint(10, 12), size)
+	if rect.bottom() > area.bottom():
+		rect.moveBottom(point.y() - 10)
+	return CustomTooltipPopup._clamp_rect(rect, area), screen
 
 
 class CustomTooltipPopup(QLabel):
@@ -87,12 +99,19 @@ class CustomTooltipPopup(QLabel):
 
 		return rect
 
-	def show_for(self, owner: QWidget, text: str) -> None:
+	def show_for(self, owner: QWidget, text: str, *, anchor: QPoint | None = None) -> None:
 		if not text:
 			self.hide()
 			return
 
 		self.setText(text)
+		if anchor is not None:
+			rect, screen = anchored_tooltip_rect(owner, anchor, self._content_size())
+			self.setScreen(screen)
+			self.setFixedSize(rect.size())
+			self.move(rect.topLeft())
+			self.show()
+			return
 		global_top_center = owner.mapToGlobal(QPoint(owner.width() // 2, 0))
 		global_bottom_center = owner.mapToGlobal(QPoint(owner.width() // 2, owner.height()))
 
@@ -175,7 +194,11 @@ class CustomTooltipController(QObject):
 		self._popup.hide()
 
 	def eventFilter(self, watched, event) -> bool:
-		if watched is self.owner:
+		# Qt may deliver a final teardown event after the Python wrapper has
+		# already cleared instance attributes.  Ignore it instead of raising from
+		# the virtual eventFilter override during application/test shutdown.
+		owner = getattr(self, "owner", None)
+		if owner is not None and watched is owner:
 			event_type = event.type()
 			if event_type == QEvent.Type.Enter:
 				self.show_later()

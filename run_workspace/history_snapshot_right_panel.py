@@ -30,6 +30,7 @@ from run_workspace.right_panel_prototype_view_model import (
     RightPanelTeamPrototypeViewModel,
 )
 from run_workspace.team_card_view_model import TeamCardArtifactSummaryViewModel
+from run_workspace.history_presentation import LEGACY_BUILD_WARNINGS, history_build_stat_badge
 
 
 def first_occupied_history_slot(
@@ -138,6 +139,7 @@ def _slot_view_model(
     warnings = _dedupe(
         (*slot.warnings, *((build.warnings if build is not None else ())))
     )
+    warnings = tuple(item for item in warnings if item not in LEGACY_BUILD_WARNINGS)
     artifact_icon = ""
     if build is not None:
         artifact_icon = next(
@@ -176,7 +178,7 @@ def _slot_view_model(
             )
             for item in active_sets
         ),
-        stat_badge=_artifact_stat_badge(build),
+        stat_badge=history_build_stat_badge(build),
         warning_count=len(warnings),
         warning_tooltip="\n".join(warnings),
         artifact_summary=(
@@ -553,16 +555,6 @@ def _artifact_badge(build) -> str:
     if bonuses:
         return f"{bonuses[0].piece_count}p"
     return "ART"
-
-
-def _artifact_stat_badge(build) -> str:
-    if build is None:
-        return ""
-    goblet = next((item for item in build.artifact_slots if int(item.position) == 4), None)
-    if goblet is not None and goblet.main_stat is not None:
-        row = goblet.main_stat
-        return row.icon_label or _square_label(row.label or row.key, "")
-    return ""
 
 
 def _square_label(value: str, fallback: str) -> str:

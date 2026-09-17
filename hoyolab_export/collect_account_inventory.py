@@ -176,14 +176,20 @@ async def wait_for_character_list_response(
     character_list_future: asyncio.Future[list[dict[str, Any]]] = asyncio.Future()
 
     async def on_response(response: Response) -> None:
+        if character_list_future.done():
+            return
         if "/event/game_record/genshin/api/character/list" not in response.url:
             return
 
         try:
-            payload = await response.json()
-            items = payload.get("data", {}).get("list", [])
-            if not isinstance(items, list):
-                raise RuntimeError("character/list response has no data.list array")
+            if not response.ok:
+                raise RuntimeError(f"HoYoLAB character/list HTTP {response.status}")
+            payload = await asyncio.wait_for(response.json(), timeout=timeout_sec)
+            if payload.get("retcode") != 0:
+                raise RuntimeError(f"HoYoLAB character/list retcode={payload.get('retcode')}")
+            items = (payload.get("data") or {}).get("list")
+            if not isinstance(items, list) or not items:
+                raise RuntimeError("character/list response has no non-empty data.list array")
             if not character_list_future.done():
                 character_list_future.set_result(items)
                 print(f"[HoYoLAB Inventory] Captured character/list: {len(items)} characters")
@@ -191,7 +197,10 @@ async def wait_for_character_list_response(
             if not character_list_future.done():
                 character_list_future.set_exception(exc)
 
-    page.on("response", lambda response: asyncio.create_task(on_response(response)))
+    page.on("response", on_response)
+    character_list_future.add_done_callback(
+        lambda _: page.remove_listener("response", on_response)
+    )
     return character_list_future
 
 

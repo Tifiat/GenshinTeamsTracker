@@ -50,6 +50,11 @@ func EvaluateSeedMember(member contracts.IRSeedMember, artifactDeltas map[string
 			}
 		case "power":
 			value = math.Pow(values[node.Inputs[0].NodeID], values[node.Inputs[1].NodeID])
+		case "select_lt":
+			value = values[node.Inputs[3].NodeID]
+			if values[node.Inputs[0].NodeID] < values[node.Inputs[1].NodeID] {
+				value = values[node.Inputs[2].NodeID]
+			}
 		default:
 			return MemberScore{}, fmt.Errorf("node %d unsupported operation %q", node.NodeID, node.Operation)
 		}

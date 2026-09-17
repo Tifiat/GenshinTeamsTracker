@@ -22,7 +22,7 @@ ARTIFACT_POS_BY_SLOT_KEY = {
     "circlet": 5,
 }
 EQUIPMENT_SOURCES = ("manual", "hoyolab_import", "preset_equip", "future_sync")
-AUTO_APPLY_HOYOLAB_EQUIPMENT_ON_IMPORT_DEFAULT = True
+AUTO_APPLY_HOYOLAB_EQUIPMENT_ON_IMPORT_DEFAULT = False
 
 
 class EquipmentError(ValueError):
@@ -609,6 +609,87 @@ def apply_hoyolab_artifact_equipment_observation(
         source_import_batch_id=import_batch_id,
         observed_at=observed_at,
     )
+
+
+def apply_hoyolab_equipment_snapshot(
+    conn: sqlite3.Connection,
+    *,
+    artifacts: list[tuple[int, int]],
+    weapons: dict[int, str],
+) -> dict[str, int]:
+    """Apply only fresh visible assignments, atomically, without manual swaps.
+
+    Unobserved slots survive unless their item is needed by an observed owner.
+    This never creates items, increases weapon counts or edits saved presets.
+    """
+    init_account_equipment_storage(conn)
+    artifact_targets = []
+    seen_slots = set()
+    seen_artifacts = set()
+    for character_id, artifact_id in artifacts:
+        character_id = _validate_character(conn, character_id)
+        artifact_id, slot = _artifact_slot(conn, artifact_id)
+        if (character_id, slot) in seen_slots or artifact_id in seen_artifacts:
+            raise EquipmentError("Conflicting artifact observations")
+        seen_slots.add((character_id, slot))
+        seen_artifacts.add(artifact_id)
+        artifact_targets.append((character_id, slot, artifact_id))
+
+    from collections import Counter
+    required = Counter(weapons.values())
+    capacities = {}
+    for character_id, fingerprint in weapons.items():
+        character = _character_row(conn, character_id)
+        weapon = _weapon_stack_row(conn, fingerprint)
+        if character is None or weapon is None:
+            raise EquipmentNotFoundError("Observed character/weapon missing from account storage")
+        _validate_weapon_compatibility(character, weapon)
+        capacities[fingerprint] = max(1, int(weapon["known_count"] or 1))
+        if required[fingerprint] > capacities[fingerprint]:
+            raise EquipmentCapacityError("Observed weapon assignments exceed known copies")
+
+    now = utc_now()
+    displaced_weapon_owners = 0
+    conn.execute("SAVEPOINT hoyolab_equipment_apply")
+    try:
+        for character_id, slot, artifact_id in artifact_targets:
+            conn.execute(
+                "DELETE FROM account_character_equipped_artifacts "
+                "WHERE artifact_id = ? OR (character_id = ? AND slot_key = ?)",
+                (artifact_id, character_id, slot),
+            )
+        for character_id in weapons:
+            conn.execute("DELETE FROM account_character_equipped_weapons WHERE character_id = ?", (character_id,))
+        for fingerprint, count in required.items():
+            # Public read helpers initialize schema via executescript, which
+            # commits and would destroy this savepoint. Read inside the batch.
+            owners = [int(row[0]) for row in conn.execute(
+                "SELECT character_id FROM account_character_equipped_weapons WHERE weapon_fingerprint = ?",
+                (fingerprint,),
+            )]
+            excess = max(0, len(owners) + count - capacities[fingerprint])
+            # Existing indistinguishable spare copies may remain assigned.
+            # Only displace owners necessary to satisfy the fresh observation.
+            for owner in sorted(owners, reverse=True)[:excess]:
+                conn.execute("DELETE FROM account_character_equipped_weapons WHERE character_id = ?", (owner,))
+                displaced_weapon_owners += 1
+        for character_id, slot, artifact_id in artifact_targets:
+            _upsert_equipped_artifact(
+                conn, character_id, slot, artifact_id, source="hoyolab_import",
+                source_import_batch_id=None, observed_at=now, updated_at=now,
+            )
+        for character_id, fingerprint in weapons.items():
+            _upsert_equipped_weapon(
+                conn, character_id, fingerprint, source="hoyolab_import",
+                source_import_batch_id=None, observed_at=now, updated_at=now,
+            )
+    except Exception:
+        conn.execute("ROLLBACK TO hoyolab_equipment_apply")
+        conn.execute("RELEASE hoyolab_equipment_apply")
+        raise
+    conn.execute("RELEASE hoyolab_equipment_apply")
+    return {"artifacts": len(artifact_targets), "weapons": len(weapons),
+            "displacedWeaponOwners": displaced_weapon_owners}
 
 
 def apply_hoyolab_weapon_equipment_observation(

@@ -4,7 +4,8 @@ Purpose: document the persistent account equipment state for AppShell,
 Artifact Browser equip/apply, right-panel selected details, and owner side-icon
 display.
 
-Implementation status: Stage A is implemented in
+Implementation status (reconciled 2026-09-16): Stages A/B/B2/C and the
+optional import switch are implemented. Stage A lives in
 `hoyolab_export/account_equipment.py` and initialized through
 `hoyolab_export/artifact_db.py::init_db`. The schema and focused service helpers
 exist, with tests in
@@ -59,11 +60,14 @@ main stat, and substats.
 Current import dedupes artifacts by `content_fingerprint` first when available,
 then by `fingerprint`. In the inspected local DB there were no duplicate
 `fingerprint` or `content_fingerprint` groups. Exact duplicate artifacts are
-theoretically possible in the game, but the current storage cannot represent two
-indistinguishable artifacts with identical structured content because they
-dedupe to one row. Do not solve that inside equipment state; if duplicate exact
-artifact copies become important, artifact import identity must be extended
-first.
+theoretically possible in the game. The accepted 2026-09-08 exception is limited
+to the same complete HoYoLAB snapshot showing identical artifacts on different
+characters: import allocates distinct stable artifact ids for those visible
+copies. It reuses existing content matches first, including previously observed
+copies, and preserves per-character/slot observation ids where possible.
+Repeated/reordered imports and later smaller observations do not create further
+copies or delete old ones. Duplicate character/slot rows are invalid evidence.
+Other import paths retain ordinary content deduplication.
 
 Recommended equipment reference:
 
@@ -104,7 +108,7 @@ promote level, base ATK, secondary stat type, and secondary stat value. It
 explicitly excludes equipped character, localized name, description, icon path,
 and source row order.
 
-The inspected local DB had 66 observed weapon stack rows with total
+The historical identity-audit DB had 66 observed weapon stack rows with total
 `known_count = 73`; four stacks had `known_count > 1`. Therefore equipment
 state must allow multiple characters to reference one stack only up to
 `known_count`.
@@ -151,7 +155,7 @@ These observations are useful for provenance, first seed, or an explicit sync
 action. They are not canonical current equipment state and should not overwrite
 user-managed equipment during normal import.
 
-## Proposed SQLite Schema
+## Implemented SQLite Schema
 
 Stage A implementation creates these tables through the normal artifact DB
 initialization path.
@@ -481,21 +485,34 @@ Current Stage A policy:
    - `apply_hoyolab_weapon_equipment_observation(...)`
 2. These helpers call the same service as manual equip actions and set
    `source='hoyolab_import'`.
-3. They are not wired into live import yet.
+3. AppShell Account / HoYoLAB now has a persistent "Change equipment" switch,
+   default OFF (`hoyolab_change_equipment_on_import` in app settings). The UI
+   snapshots it into `--change-equipment` for that import subprocess; changing
+   the switch alone never changes equipment, and it is disabled during import.
+   Without that flag, CLI/backend imports also preserve user equipment.
+   After successful account-storage sync, enabled imports apply the fresh
+   snapshot via `apply_hoyolab_equipment_snapshot`, not sequential manual swaps.
 4. Missing HoYoLAB character/slot/equipment data means "no data" and must not
    clear local equipment.
-5. A future setting should be able to disable automatic application of HoYoLAB
-   equipment observations during import.
+5. The batch validates character/item references, weapon compatibility and
+   known copy capacity before writes. A savepoint covers both equipment tables;
+   no helper that commits schema initialization may run inside it. Failure
+   rolls back the whole equipment application. Raw import publication still
+   has its separately documented non-atomic file/DB boundary.
+6. Observed assignments take priority over local ownership. A required artifact
+   moves to its observed wearer; an unobserved weapon wearer is displaced only
+   if known copies cannot cover both assignments. Missing slots otherwise stay.
+   No equipment operation creates items/increases weapon counts or edits presets.
 
 Tradeoffs:
 
 - applying explicit observations gives the local state a useful starting point;
 - the missing-data rule avoids accidental destructive clears from partial
   payloads;
-- a future disable-auto-apply setting protects user-managed planning/equip
-  changes when the user does not want HoYoLAB observations applied.
+- the default-OFF switch protects user-managed planning/equip changes when
+  the user does not want HoYoLAB observations applied.
 
-## Migration Path
+## Completed Implementation Stages
 
 Stage A: storage foundation - implemented 2026-05-26
 
@@ -513,7 +530,8 @@ Stage B: AppShell equipment persistence
 - character add restores persistent current weapon;
 - character remove does not delete equipment;
 - current artifact ids are restored read-only into details metadata;
-- artifact-derived stats/display are deferred.
+- artifact-derived stats/display were deferred at Stage B and implemented in
+  Stage B2 below.
 
 Stage B2: current artifact live snapshot - implemented 2026-05-26
 
@@ -548,11 +566,11 @@ Stage C: Artifact Browser embedded target UI and equipment writes - implemented
 - manual artifact click equips in equip mode and repeated current-target click
   unequips.
 
-Stage F: HoYoLAB seed/sync
+Stage F: HoYoLAB seed/sync - implemented, default OFF
 
 - optional application of explicit observed equipment through the Stage A
   helpers;
-- future auto-apply setting;
+- implemented default-OFF HoYoLAB import equipment switch;
 - never clear local equipment from missing HoYoLAB payload data.
 
 ## Risks And Open Questions
@@ -561,8 +579,9 @@ Stage F: HoYoLAB seed/sync
   wear the same stack, the UI must identify which owner is being moved.
 - Duplicate indistinguishable weapons: the model can track count usage, not
   physical copies.
-- Duplicate indistinguishable artifacts: current artifact import dedupes exact
-  structured duplicates, so true duplicate artifact copies are not represented.
+- Duplicate indistinguishable artifacts: only simultaneous distinct wearers in
+  one HoYoLAB snapshot prove additional copies. Other ambiguous observations
+  reuse existing artifacts and cannot prove physical identity.
 - Incomplete preset behavior: the current UX decision is exact apply, so missing
   preset slots clear target slots. The UI should make the selected preset
   preview obvious before confirmation.
@@ -572,13 +591,38 @@ Stage F: HoYoLAB seed/sync
 - Missing/deleted weapon stacks: if an observed stack disappears from storage,
   equipment helpers should either block deletion or surface an invalid reference
   repair state.
-- Import refresh: normal import should not overwrite canonical equipment;
-  explicit sync policy is still needed.
+- Import refresh: OFF preserves canonical equipment; ON explicitly applies
+  fresh observations under the batch policy above.
 - Account/profile scope: if multi-account/profile support appears later, these
   tables need an account/profile key before they can safely support more than
   one account.
 
 ## Documentation Status
+
+### Import Switch Verification (2026-09-08)
+
+- 94 focused tests passed: original import/navigation/lifecycle/storage tests
+  plus equipment batch swaps, missing-slot preservation, weapon copy capacity,
+  partial-write rollback, OFF/ON pipeline paths, failed account sync, setting
+  persistence/CLI propagation and simultaneous artifact-copy/reimport cases.
+- Real Computer Use path: PyCharm Run Current File `ui/app_shell_smoke.py`
+  with project `.venv`, Account -> Update with switch OFF, then switch ON ->
+  Update. OFF preserved all 57 equipped-artifact rows and 24 weapon rows plus
+  28 presets/140 slots/98 targets against a verified pre-import backup.
+- OFF imported six genuinely different artifact contents (588 -> 594 rows),
+  with no duplicate content groups. ON reused the imported artifacts (zero
+  inserted), applied all 251 fresh artifact and 77 weapon assignments, and
+  preserved presets/old artifact ids. No FK errors/copy-capacity violations;
+  database integrity `ok`. The copy edge case was simulated in tests, not
+  observed on this real account.
+- Restarted the same PyCharm entrypoint: switch remained ON; visible weapon
+  wearer icons and a selected Furina slot restored persistent weapon/artifact
+  equipment. Loader/browser closed and controls recovered in both live runs.
+- Verified backup: `exports/hoyolab_before_import_20260908_165322`, SQLite
+  snapshot plus 749 hashed files including settings. Actual UI state after
+  verification is ON; the absent-setting/new-install default remains OFF.
+- Deferred reusable `?` help-icon/custom-tooltip module is tracked in TODO;
+  it was not implemented as part of this switch.
 
 Stage A schema/service foundation is implemented. This document remains the
 source for Stage B+ wiring decisions. Artifact Browser UX details live in

@@ -1,0 +1,872 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-16",
+  "owner": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
+  "status": "isolated_effect_inputs_automatic_queue_and_winner_response_pass_not_product_acceptance",
+  "resistance_controls": [
+    {
+      "baseline_dps": 110800.22276952829,
+      "case": "bloom",
+      "evaluation_seconds": 0.0010068,
+      "fresh_dps": 123564.36023760207,
+      "matched_inputs": 351,
+      "new_engine_calls_in_replay": 0,
+      "ports": 543,
+      "predicted_dps": 123564.36023760207,
+      "relative_residual": 0
+    },
+    {
+      "baseline_dps": 149016.70804318853,
+      "case": "cloud",
+      "evaluation_seconds": 0,
+      "fresh_dps": 171051.42715103942,
+      "matched_inputs": 402,
+      "new_engine_calls_in_replay": 0,
+      "ports": 509,
+      "predicted_dps": 171051.42715103942,
+      "relative_residual": 0
+    }
+  ],
+  "resistance_capture_timings": [
+    {
+      "case": "bloom",
+      "hits": 543,
+      "inputs": 336,
+      "mode": "baseline",
+      "wall_seconds": 2.7393253
+    },
+    {
+      "case": "bloom",
+      "hits": 543,
+      "inputs": 336,
+      "mode": "offset",
+      "wall_seconds": 2.796744
+    },
+    {
+      "case": "cloud",
+      "hits": 509,
+      "inputs": 306,
+      "mode": "baseline",
+      "wall_seconds": 3.5927480000000003
+    },
+    {
+      "case": "cloud",
+      "hits": 509,
+      "inputs": 306,
+      "mode": "offset",
+      "wall_seconds": 2.8059526999999997
+    }
+  ],
+  "source_curves": [
+    {
+      "source_sha256": "ab865b77026601e0d76652f8a32c9f5b658c53f8da3feb1479e1262ccaa497e5",
+      "recipe_sha256": "6e0817c47ff80c0401e841929d484000b121da07f120b5b65460f44defb0b4a0",
+      "function": "calc",
+      "root": {
+        "op": "select",
+        "args": [
+          {
+            "op": "binary:&&",
+            "args": [
+              {
+                "op": "binary:>=",
+                "args": [
+                  {
+                    "op": "input"
+                  },
+                  {
+                    "op": "constant",
+                    "value": "0"
+                  }
+                ]
+              },
+              {
+                "op": "binary:<",
+                "args": [
+                  {
+                    "op": "input"
+                  },
+                  {
+                    "op": "constant",
+                    "value": "0.75"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "binary:-",
+            "args": [
+              {
+                "op": "constant",
+                "value": "1"
+              },
+              {
+                "op": "input"
+              }
+            ]
+          },
+          {
+            "op": "select",
+            "args": [
+              {
+                "op": "binary:>=",
+                "args": [
+                  {
+                    "op": "input"
+                  },
+                  {
+                    "op": "constant",
+                    "value": "0.75"
+                  }
+                ]
+              },
+              {
+                "op": "binary:/",
+                "args": [
+                  {
+                    "op": "constant",
+                    "value": "1"
+                  },
+                  {
+                    "op": "binary:+",
+                    "args": [
+                      {
+                        "op": "binary:*",
+                        "args": [
+                          {
+                            "op": "constant",
+                            "value": "4"
+                          },
+                          {
+                            "op": "input"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "constant",
+                        "value": "1"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "op": "binary:-",
+                "args": [
+                  {
+                    "op": "constant",
+                    "value": "1"
+                  },
+                  {
+                    "op": "binary:/",
+                    "args": [
+                      {
+                        "op": "input"
+                      },
+                      {
+                        "op": "constant",
+                        "value": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "source_sha256": "ab865b77026601e0d76652f8a32c9f5b658c53f8da3feb1479e1262ccaa497e5",
+      "recipe_sha256": "6e0817c47ff80c0401e841929d484000b121da07f120b5b65460f44defb0b4a0",
+      "function": "calcDirectReaction",
+      "root": {
+        "op": "select",
+        "args": [
+          {
+            "op": "binary:&&",
+            "args": [
+              {
+                "op": "binary:>=",
+                "args": [
+                  {
+                    "op": "input"
+                  },
+                  {
+                    "op": "constant",
+                    "value": "0"
+                  }
+                ]
+              },
+              {
+                "op": "binary:<",
+                "args": [
+                  {
+                    "op": "input"
+                  },
+                  {
+                    "op": "constant",
+                    "value": "0.75"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "binary:-",
+            "args": [
+              {
+                "op": "constant",
+                "value": "1"
+              },
+              {
+                "op": "input"
+              }
+            ]
+          },
+          {
+            "op": "select",
+            "args": [
+              {
+                "op": "binary:>=",
+                "args": [
+                  {
+                    "op": "input"
+                  },
+                  {
+                    "op": "constant",
+                    "value": "0.75"
+                  }
+                ]
+              },
+              {
+                "op": "binary:/",
+                "args": [
+                  {
+                    "op": "constant",
+                    "value": "1"
+                  },
+                  {
+                    "op": "binary:+",
+                    "args": [
+                      {
+                        "op": "binary:*",
+                        "args": [
+                          {
+                            "op": "constant",
+                            "value": "4"
+                          },
+                          {
+                            "op": "input"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "constant",
+                        "value": "1"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "op": "binary:-",
+                "args": [
+                  {
+                    "op": "constant",
+                    "value": "1"
+                  },
+                  {
+                    "op": "binary:/",
+                    "args": [
+                      {
+                        "op": "input"
+                      },
+                      {
+                        "op": "constant",
+                        "value": "2"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "joined_guide": [
+    {
+      "case": "bloom",
+      "compile_seconds": 2.0653368,
+      "feature_seconds": 0.1764487,
+      "features": 728,
+      "graph_sha256": "86a154cde2c98631f9ba27e494fb5115bbbbfa7d3ed383c5ae7a5856b625b209",
+      "new_engine_calls": 0,
+      "numeric_features_by_kind": {
+        "attack_bonus": 108,
+        "reaction_bonus": 71,
+        "resistance": 4,
+        "stat": 200
+      },
+      "seed": 742031889,
+      "status": "source_input_join_not_whole_set_or_activation_proof",
+      "unresolved_terms_by_kind": {
+        "attack_bonus": 12,
+        "energy": 12,
+        "new_attack": 4,
+        "reaction_bonus": 41,
+        "resistance": 8,
+        "stat": 280
+      }
+    },
+    {
+      "case": "cloud",
+      "compile_seconds": 1.8966649,
+      "feature_seconds": 0.1529463,
+      "features": 728,
+      "graph_sha256": "32b424ab552bd87de3b25aabd0cd3f3cf6a575210832689dcdd0944aa6612c38",
+      "new_engine_calls": 0,
+      "numeric_features_by_kind": {
+        "attack_bonus": 108,
+        "reaction_bonus": 70,
+        "stat": 206
+      },
+      "seed": 742031889,
+      "status": "source_input_join_not_whole_set_or_activation_proof",
+      "unresolved_terms_by_kind": {
+        "attack_bonus": 12,
+        "energy": 12,
+        "new_attack": 4,
+        "reaction_bonus": 42,
+        "resistance": 12,
+        "stat": 274
+      }
+    }
+  ],
+  "proposal_queue": {
+    "elapsed_seconds": 0.8551178,
+    "limit": 16,
+    "feasible_by_wearer": [
+      492,
+      492,
+      492,
+      492
+    ],
+    "raw_formula_evaluations": 1968,
+    "slope_evaluations": 33,
+    "unqueued": 1948,
+    "proposals": [
+      {
+        "wearer": 0,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "deepwoodmemories",
+              "count": 2
+            },
+            {
+              "set_uid": "tenacityofthemillelith",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 132931.89982868498,
+        "raw_advantage_not_candidate_gain": 13473.094935239482,
+        "priority_not_candidate_dps": 14737.890147000682,
+        "hint": {
+          "PeakIncrement": 2539.3478054178754,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": true
+        },
+        "lane": "wearer"
+      },
+      {
+        "wearer": 1,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "flowerofparadiselost",
+              "count": 4
+            }
+          ]
+        },
+        "raw_context_dps": 110735.85028272861,
+        "raw_advantage_not_candidate_gain": -217.2923317248351,
+        "priority_not_candidate_dps": -5960.5812300014895,
+        "hint": {
+          "PeakIncrement": 1521.6294844102092,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": true
+        },
+        "lane": "wearer"
+      },
+      {
+        "wearer": 2,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "gildeddreams",
+              "count": 2
+            },
+            {
+              "set_uid": "scrolloftheheroofcindercity",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 116854.0915990182,
+        "raw_advantage_not_candidate_gain": 854.5344105121767,
+        "priority_not_candidate_dps": 854.5344105121767,
+        "hint": {
+          "PeakIncrement": 2748.8317262587384,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": true
+        },
+        "lane": "wearer"
+      },
+      {
+        "wearer": 3,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "silkenmoonsserenade",
+              "count": 4
+            }
+          ]
+        },
+        "raw_context_dps": 110334.38906052531,
+        "raw_advantage_not_candidate_gain": -3485.4723765573435,
+        "priority_not_candidate_dps": -9676.577794708686,
+        "hint": {
+          "PeakIncrement": 7264.918382686864,
+          "SharedGroups": {},
+          "Shared": true,
+          "NewOutput": false,
+          "Unresolved": true
+        },
+        "lane": "wearer"
+      },
+      {
+        "wearer": 0,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "tenacityofthemillelith",
+              "count": 4
+            }
+          ]
+        },
+        "raw_context_dps": 128724.07918601157,
+        "raw_advantage_not_candidate_gain": 9265.274292566071,
+        "priority_not_candidate_dps": 11055.358997161808,
+        "hint": {
+          "PeakIncrement": 2539.3478054178754,
+          "SharedGroups": {
+            "stat:tom-4pc": 525.2894928345363
+          },
+          "Shared": true,
+          "NewOutput": false,
+          "Unresolved": false
+        },
+        "lane": "shared_effect"
+      },
+      {
+        "wearer": 0,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "emblemofseveredfate",
+              "count": 2
+            },
+            {
+              "set_uid": "tenacityofthemillelith",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 130808.30156590638,
+        "raw_advantage_not_candidate_gain": 11349.496672460882,
+        "priority_not_candidate_dps": 12614.291884222082,
+        "hint": {
+          "PeakIncrement": 2539.3478054178754,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": true
+        },
+        "lane": "unresolved"
+      },
+      {
+        "wearer": 0,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "obsidiancodex",
+              "count": 2
+            },
+            {
+              "set_uid": "tenacityofthemillelith",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 131897.8197142965,
+        "raw_advantage_not_candidate_gain": 12439.014820850993,
+        "priority_not_candidate_dps": 13703.810032612193,
+        "hint": {
+          "PeakIncrement": 2539.3478054178754,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": false
+        },
+        "lane": "wearer_diversity"
+      },
+      {
+        "wearer": 1,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "flowerofparadiselost",
+              "count": 2
+            },
+            {
+              "set_uid": "scrolloftheheroofcindercity",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 111051.4008387008,
+        "raw_advantage_not_candidate_gain": 98.25822424735816,
+        "priority_not_candidate_dps": -6166.774821766809,
+        "hint": {
+          "PeakIncrement": 999.8853366726976,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": true
+        },
+        "lane": "wearer_diversity"
+      },
+      {
+        "wearer": 2,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "scrolloftheheroofcindercity",
+              "count": 2
+            },
+            {
+              "set_uid": "wandererstroupe",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 116638.59671914976,
+        "raw_advantage_not_candidate_gain": 639.0395306437422,
+        "priority_not_candidate_dps": 639.0395306437422,
+        "hint": {
+          "PeakIncrement": 2748.8317262587384,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": true
+        },
+        "lane": "wearer_diversity"
+      },
+      {
+        "wearer": 3,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "obsidiancodex",
+              "count": 4
+            }
+          ]
+        },
+        "raw_context_dps": 114410.12242990943,
+        "raw_advantage_not_candidate_gain": 590.2609928267775,
+        "priority_not_candidate_dps": -10127.484684598432,
+        "hint": {
+          "PeakIncrement": 2738.278123412997,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": false
+        },
+        "lane": "wearer_diversity"
+      },
+      {
+        "wearer": 0,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "adaycarvedfromrisingwinds",
+              "count": 2
+            },
+            {
+              "set_uid": "tenacityofthemillelith",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 131259.79377684157,
+        "raw_advantage_not_candidate_gain": 11800.988883396072,
+        "priority_not_candidate_dps": 13065.784095157273,
+        "hint": {
+          "PeakIncrement": 2539.3478054178754,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": false
+        },
+        "lane": "wearer_diversity"
+      },
+      {
+        "wearer": 1,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "deepwoodmemories",
+              "count": 2
+            },
+            {
+              "set_uid": "flowerofparadiselost",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 111016.20074126286,
+        "raw_advantage_not_candidate_gain": 63.05812680941017,
+        "priority_not_candidate_dps": -6201.974919204757,
+        "hint": {
+          "PeakIncrement": 999.8853366726976,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": true
+        },
+        "lane": "wearer_diversity"
+      },
+      {
+        "wearer": 2,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "gildeddreams",
+              "count": 2
+            },
+            {
+              "set_uid": "noblesseoblige",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 116584.9074895863,
+        "raw_advantage_not_candidate_gain": 585.3503010802815,
+        "priority_not_candidate_dps": 585.3503010802815,
+        "hint": {
+          "PeakIncrement": 2748.8317262587384,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": false
+        },
+        "lane": "wearer_diversity"
+      },
+      {
+        "wearer": 3,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "nighttimewhispersintheechoingwoods",
+              "count": 2
+            },
+            {
+              "set_uid": "noblesseoblige",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 115338.75781437468,
+        "raw_advantage_not_candidate_gain": 1518.8963772920251,
+        "priority_not_candidate_dps": -11014.612313193615,
+        "hint": {
+          "PeakIncrement": 922.5151103525675,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": false
+        },
+        "lane": "wearer_diversity"
+      },
+      {
+        "wearer": 0,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "tenacityofthemillelith",
+              "count": 2
+            },
+            {
+              "set_uid": "wandererstroupe",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 130700.87710368165,
+        "raw_advantage_not_candidate_gain": 11242.072210236147,
+        "priority_not_candidate_dps": 12506.867421997347,
+        "hint": {
+          "PeakIncrement": 2539.3478054178754,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": false
+        },
+        "lane": "wearer_diversity"
+      },
+      {
+        "wearer": 1,
+        "package": {
+          "sets": [
+            {
+              "set_uid": "gildeddreams",
+              "count": 2
+            },
+            {
+              "set_uid": "silkenmoonsserenade",
+              "count": 2
+            }
+          ]
+        },
+        "raw_context_dps": 110990.05883967385,
+        "raw_advantage_not_candidate_gain": 36.91622522039688,
+        "priority_not_candidate_dps": -6228.11682079377,
+        "hint": {
+          "PeakIncrement": 999.8853366726976,
+          "SharedGroups": {},
+          "Shared": false,
+          "NewOutput": false,
+          "Unresolved": true
+        },
+        "lane": "wearer_diversity"
+      }
+    ]
+  },
+  "source_changes": [
+    {
+      "name": "model.go",
+      "before_sha256": "8c0cc2ae17a1f8c12ae4cd9a52f5b4a0254a45b8783287e89accd5aa10c21f13",
+      "after_sha256": "3a3c25f81611a6456b8bc807b8421d5823b4213c9d00472cef5df7eb41c2bac3"
+    },
+    {
+      "name": "compile.go",
+      "before_sha256": "7dbb8682a6571e67dd8be3eceb68bacfdcf94d4e2caa9331f956cd9b04a0ec2e",
+      "after_sha256": "ee4f6a2c91a3d2537fb8e097047adc7485d5a8ace240b7fd2baa3192c3a7f40d"
+    },
+    {
+      "name": "builder.go",
+      "before_sha256": "c15b2285e731e0f1ab98434eb3b20744941678728ed1411893c8b0cc2955e911",
+      "after_sha256": "b0e656ce506abb8c91cd27b533fdad285594259cb2f41ef4fb2dd5a75d31b7d0"
+    },
+    {
+      "name": "direct.go",
+      "before_sha256": "2adb20f25750b332c8aa5edec091909e7d22841713ee7daa4bea9c6b94233bbd",
+      "after_sha256": "088e34a027ec506a3a0e3314a7f2ac3ed94424f974e65859084fae50cb5e9017"
+    },
+    {
+      "name": "numeric_recipe.go",
+      "before_sha256": "c704f2b80dceb6cc51bd605fe4573bfe960bb7247167a83b2727f14432aa5cd5",
+      "after_sha256": "b4ffa4f63846a728099a7b0d63d3829a72904e676db5691be32f58fa7854afb8"
+    },
+    {
+      "name": "contributor_group.go",
+      "before_sha256": "36562a8bca1b162264d4eec9ae221a338014fba10c1c91a265190cbf8985613d",
+      "after_sha256": "3b94b8b05cfffb7721b2351d2e319c84a0079bd1748f385ba55b53346b6bb317"
+    },
+    {
+      "name": "damage.go",
+      "before_sha256": "e1f3abe528033032fb781fdf2cd7b4e18091a9d13d194958cd4810088f186966",
+      "after_sha256": "4d57a4e2ebf620cac5e8b8fa7b1c0a524db318e3e5619ad049661a6c0a67a870"
+    }
+  ],
+  "experimental_delta_sha256": "23db0a8824caf94565031e9af8837ae56df7727d08a80fbed00cbef5ea5cab60",
+  "new_engine_calls": 14,
+  "cumulative_effect_stage_engine_calls": 18,
+  "installed_source_binary_ui_energy_changed": false,
+  "limitations": [
+    "guide uses one fixed seed; raw package seed guide uses saved two-seed panel",
+    "source alternatives and raw counterfactuals are not whole-set DPS or activation proof",
+    "literal shared keys group proposal hints only, not certified removal or stacking semantics",
+    "16 is an isolated queue experiment, not the released product budget",
+    "no product capture budget, provider-transfer acceptance, ordinary finalist panel or All Sets UI"
+  ],
+  "automatic_four_proposal_capture": {
+    "baseline_dps": 110800.22276952828,
+    "candidate_stat_response_controls": 0,
+    "new_engine_calls": 8,
+    "ordinary_finalist_calls": 0,
+    "provider_seconds": [
+      12.8925661,
+      10.2337349,
+      11.1940929,
+      10.5847659
+    ],
+    "refine_total_seconds": 57.7938841,
+    "rows": [
+      {
+        "context_sha256": "1883713aeac97e334c6af3df2b0a54e48938f4f4613dc822173a77fffea4e2d2",
+        "expanded": 1000,
+        "package": "deepwoodmemories:2+tenacityofthemillelith:2",
+        "priority_not_candidate_dps": 14737.890147000682,
+        "wearer": "columbina",
+        "winner_formula_dps": 130994.39970227583
+      },
+      {
+        "context_sha256": "e77f99c4296d02cbdc75fafedb91215b1338ffdb5aa68e611858f9c7057fc049",
+        "expanded": 1000,
+        "package": "flowerofparadiselost:4",
+        "priority_not_candidate_dps": -5960.5812300014895,
+        "wearer": "kukishinobu",
+        "winner_formula_dps": 106371.89418838703
+      },
+      {
+        "context_sha256": "8133e73c7385ec20b78e795bac96b79d7b6ee247ec90741570365774bfccb70b",
+        "expanded": 1000,
+        "package": "gildeddreams:2+scrolloftheheroofcindercity:2",
+        "priority_not_candidate_dps": 854.5344105121767,
+        "wearer": "lauma",
+        "winner_formula_dps": 114082.65731183352
+      },
+      {
+        "context_sha256": "f46c92b149107240741088c7a5eaa0f08a214f24cc49c8c1980e9d4afe243aa2",
+        "expanded": 1000,
+        "package": "silkenmoonsserenade:4",
+        "priority_not_candidate_dps": -9676.577794708686,
+        "wearer": "nahida",
+        "winner_formula_dps": 98349.42648933012
+      }
+    ],
+    "status": "automatic_queue_own_context_refinement_not_quality_acceptance"
+  },
+  "automatic_winner_response": {
+    "formula_dps": 130994.39970227583,
+    "fresh_expected_dps": 130994.39970227583,
+    "new_engine_calls": 2,
+    "ordinary_measurement": false,
+    "package": "deepwoodmemories:2+tenacityofthemillelith:2",
+    "relative_residual": 0,
+    "wall_seconds": 12.8090304,
+    "wearer": "columbina"
+  }
+}

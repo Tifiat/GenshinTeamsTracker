@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "status": "clean_source_candidate_transport_and_bundle_parity_pass_not_installed_or_product_acceptance",
+  "candidate_binary_sha256": "a15faaa4181173d3ad808d2825f0dd56d99b92c4b58a6a3b7ce5442892d7fa62",
+  "candidate_source_manifest_sha256": "3176efa51c7ea5ed44df1f82658299c0a98522afb7a01fa2fdbf10bebce53f82",
+  "candidate_patch_sha256": "7a6b8013d30bd168fdd98209bdfd0e673e4d330a38398f19369b0f8a36e367d0",
+  "observer_capability": "gtt_effect_inputs_v1",
+  "new_n1_calls": 6,
+  "call_breakdown": {"failed_transport_binding": 1, "transport_parity": 2, "ordinary_compact_waves_compatibility": 3},
+  "effect_queue_and_observer_stage_total_n1_calls": 24,
+  "fixed_transport_issue": "engine ReadConfig normalizes CRLF and appends newline; exact raw input and resolved text now have separate digests",
+  "controls": [
+    {"case": "bloom", "expected_dps": 110800.22276952828, "responses": 9, "max_relative_response_residual": 0, "reaction_inputs": 336, "resistance_inputs": 543, "process_ms": 3862.257, "decode_ms": 2142.3777},
+    {"case": "cloud", "expected_dps": 149016.70804318856, "responses": 9, "max_relative_response_residual": 0, "reaction_inputs": 306, "resistance_inputs": 509, "process_ms": 4890.9386, "decode_ms": 2713.3156}
+  ],
+  "checks": ["patch_applies_to_pristine_v245", "normal_source_generator_preserves_input_marker", "compact_trace_optimization_marker_unit_tests", "native_contracts_and_vet", "catalog", "ordinary_compact_parity", "installed_consumer_validation", "sequential_waves", "binaries_unchanged"],
+  "limits": ["not_installed", "no_All_Sets_CLI_or_UI", "not_optimized_Selected_quality_comparison", "not_finalist_measurement", "no_real_set_reuse_certificate", "partial_formula_and_schedule_limits_unchanged"]
+}

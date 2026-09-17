@@ -9,6 +9,7 @@ product result. Candidate generation/evaluation never crosses this boundary.
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import ExitStack
 from dataclasses import dataclass
 import hashlib
 import json
@@ -46,9 +47,16 @@ from .optimizer_go_selected_inputs import (
     bind_selected_report_config_and_snapshot,
     enforce_gcsim_optimizer_mvp_energy_policy,
     load_selected_equipped_team_snapshot,
+    selected_set_requirements,
 )
 from .selected_team_config import build_selected_team_full_config_report
 from .settings import GcsimRunSettings
+from .source_manifest_build import canonical_json as canonical_source_manifest_json
+from .optimizer_run_retention import (
+    DEFAULT_GO_RUN_ROOT,
+    prune_go_optimizer_runs_best_effort,
+    run_directory_lease,
+)
 
 
 DEFAULT_SELECTED_SEEDS = (742_031_889, 742_031_890)
@@ -60,7 +68,7 @@ DEFAULT_DEVELOPMENT_TIMEOUT_MS = 360_000
 DEFAULT_OPTIMIZER_BINARY = (
     PROJECT_ROOT / "native" / "gcsim_optimizer" / "gtt-optimizer.exe"
 )
-DEFAULT_SELECTED_RUN_ROOT = PROJECT_ROOT / "data" / "gcsim" / "optimizer-go-runs"
+DEFAULT_SELECTED_RUN_ROOT = DEFAULT_GO_RUN_ROOT
 REQUIRED_ENGINE_CAPABILITIES = frozenset(
     {"gtt_compact_equation_v1", "gtt_trace_equation_v6"}
 )
@@ -118,6 +126,8 @@ class GcsimOptimizerGoSelectedRequest:
 class GcsimOptimizerGoSelectedSession:
     """One cancellable Selected request; instances are single-use."""
 
+    run_mode = "selected"
+
     def __init__(
         self,
         request: GcsimOptimizerGoSelectedRequest,
@@ -139,13 +149,17 @@ class GcsimOptimizerGoSelectedSession:
                 _stop_process(process)
 
     def run(self) -> dict[str, Any]:
-        run_dir = _new_run_dir(self.request.run_root)
+        run_dir = _new_run_dir(self.request.run_root, mode=self.run_mode)
         started = time.monotonic()
+        leases = ExitStack()
+        lease_started = False
         try:
             run_dir.mkdir(parents=True, exist_ok=False)
+            leases.enter_context(run_directory_lease(run_dir))
+            lease_started = True
             prepared = _prepare_inputs(self.request, run_dir)
             self._require_not_cancelled()
-            compact = self._capture_compact_panel(
+            compact = self._prepare_formula_inputs(
                 prepared=prepared,
                 run_dir=run_dir,
                 started=started,
@@ -164,6 +178,7 @@ class GcsimOptimizerGoSelectedSession:
                 "request_sha256": prepared["request_sha256"],
                 "run_dir": str(run_dir),
                 "elapsed_ms": int((time.monotonic() - started) * 1000),
+                "mode": self.run_mode,
             }
         except GcsimOptimizerGoSelectedError as exc:
             status = "cancelled" if exc.code == "cancelled" else "failed"
@@ -188,6 +203,22 @@ class GcsimOptimizerGoSelectedSession:
             }
             _write_json(run_dir / "selected-result.json", payload)
             return payload
+
+        finally:
+            try:
+                if lease_started:
+                    retention = prune_go_optimizer_runs_best_effort(self.request.run_root, run_dir)
+                    try:
+                        _write_json(run_dir / "retention.json", retention)
+                    except OSError:
+                        pass  # diagnostic failure must not hide the actual result
+            finally:
+                leases.close()
+
+    def _prepare_formula_inputs(self, *, prepared, run_dir, started):
+        return self._capture_compact_panel(
+            prepared=prepared, run_dir=run_dir, started=started
+        )
 
     def _capture_compact_panel(
         self,
@@ -295,18 +326,9 @@ class GcsimOptimizerGoSelectedSession:
                 "optimizer_binary_missing",
                 "Selected optimizer binary is missing. Reinstall/update the application.",
             )
-        request_path = run_dir / "request.json"
-        compact_path = run_dir / "compact.json"
         output_path = run_dir / "optimizer-output.json"
         stderr_path = run_dir / "optimizer-progress.jsonl"
-        command = (
-            str(binary),
-            "verify-fgbs",
-            str(request_path),
-            str(compact_path),
-            str(run_dir / "verification"),
-            "all",
-        )
+        command = self._optimizer_command(binary, run_dir)
         stderr_lines: list[str] = []
         with output_path.open("w", encoding="utf-8", newline="\n") as output:
             process = subprocess.Popen(
@@ -376,6 +398,10 @@ class GcsimOptimizerGoSelectedSession:
             )
         _write_json(run_dir / "selected-result.json", result)
         return result
+
+    def _optimizer_command(self, binary: Path, run_dir: Path) -> tuple[str, ...]:
+        return (str(binary), "verify-fgbs", str(run_dir / "request.json"),
+                str(run_dir / "compact.json"), str(run_dir / "verification"), "all")
 
     def _run_process(
         self,
@@ -536,7 +562,17 @@ def _prepare_inputs(
         raise GcsimOptimizerGoSelectedError(
             "source_manifest_missing", "Selected engine source manifest is missing."
         )
-    source_manifest_sha256 = _file_sha256(source_manifest_path)
+    # The engine embeds the canonical JSON body hash, not the on-disk hash
+    # (the build writer appends a platform-dependent line ending).
+    try:
+        source_manifest_body = json.loads(source_manifest_path.read_bytes())
+        source_manifest_sha256 = hashlib.sha256(
+            canonical_source_manifest_json(source_manifest_body).encode("utf-8")
+        ).hexdigest()
+    except (OSError, ValueError, TypeError) as exc:
+        raise GcsimOptimizerGoSelectedError(
+            "source_manifest_invalid", "Selected engine source manifest is invalid."
+        ) from exc
     patch_manifest_sha256 = str(
         engine_manifest.patch_metadata.get("patch_stack_sha256", "") or ""
     ).casefold()
@@ -607,10 +643,15 @@ def _prepare_inputs(
         },
         "budgets": {
             "product_timeout_ms": int(request.product_timeout_ms),
-            "development_timeout_ms": DEFAULT_DEVELOPMENT_TIMEOUT_MS,
+            "development_timeout_ms": max(
+                DEFAULT_DEVELOPMENT_TIMEOUT_MS, int(request.product_timeout_ms)
+            ),
         },
         "cancellation": {"mode": "process_interrupt_v1"},
     }
+    if any("selected_sets" in row for row in request_payload["wearers"]):
+        request_payload["legality"]["fixed_four_piece"] = False
+        request_payload["legality"]["fixed_set_packages"] = True
     request_sha256 = canonical_sha256(request_payload)
     _write_canonical(run_dir / "request.json", request_payload)
     return {
@@ -627,17 +668,14 @@ def _request_wearers(config_text: str, wearers: tuple[Any, ...]) -> list[dict[st
     }
     output = []
     for wearer in sorted(wearers, key=lambda row: row.actor_key):
-        selected = [key for key, count in wearer.active_sets if count >= 4]
-        if len(selected) != 1:
-            raise GcsimOptimizerGoSelectedError(
-                "selected_fixed_set_missing",
-                f"{wearer.actor_key} needs one currently equipped 4p/5p set.",
-            )
+        selected = selected_set_requirements(wearer.active_sets)
         output.append(
             {
                 "wearer_key": wearer.actor_key,
                 "weapon_key": weapons[wearer.actor_key],
-                "selected_set_uid": selected[0],
+                **({"selected_set_uid": selected[0][0]} if len(selected) == 1 else {
+                    "selected_sets": [{"set_uid": uid, "count": count} for uid, count in selected]
+                }),
                 "current_artifacts": [
                     {
                         "wearer_key": wearer.actor_key,
@@ -657,7 +695,7 @@ def _request_artifacts(database: Any, reference_actor: str, snapshot: Any) -> li
     )
     artifacts: list[dict[str, Any]] = []
     for artifact in database.artifacts:
-        if not artifact.default_eligible or not artifact.gcsim_set_key:
+        if not artifact.default_eligible:
             continue
         materialized = materialize_gcsim_optimizer_artifact_stat_vector(
             artifact, wearer=reference
@@ -679,7 +717,10 @@ def _request_artifacts(database: Any, reference_actor: str, snapshot: Any) -> li
             {
                 "artifact_id": artifact.artifact_id,
                 "slot": artifact.position_key,
-                "set_uid": artifact.gcsim_set_key.casefold(),
+                # Unregistered sets still provide ordinary off-piece stats.
+                # Keep their concrete identity; only the verified set catalog
+                # can nominate an active 4p/2+2 package in the Go search.
+                "set_uid": (artifact.gcsim_set_key or artifact.set_uid).casefold(),
                 "rarity": artifact.rarity,
                 "level": artifact.level,
                 "main_stat": {
@@ -702,8 +743,12 @@ def _request_artifacts(database: Any, reference_actor: str, snapshot: Any) -> li
 
 
 def format_gcsim_optimizer_go_selected_result(payload: Mapping[str, Any]) -> str:
+    from localization import tr
+    all_sets = payload.get("mode") == "all_sets"
     if not payload.get("success"):
         title = "Selected Sets cancelled" if payload.get("status") == "cancelled" else "Selected Sets failed"
+        if all_sets:
+            title = tr("gcsim.optimizer.all_cancelled" if payload.get("status") == "cancelled" else "gcsim.optimizer.all_failed")
         return "\n".join(
             (
                 title,
@@ -719,7 +764,7 @@ def format_gcsim_optimizer_go_selected_result(payload: Mapping[str, Any]) -> str
             f"{row.get('slot')}={row.get('artifact_id')}"
         )
     lines = [
-        "Selected Sets complete",
+        tr("gcsim.optimizer.all_completed") if all_sets else "Selected Sets complete",
         f"Final DPS: {measured.get('dps') or '-'}",
         f"Standard error: {measured.get('standard_error') or '-'}",
         f"Formula estimate: {result.get('formula_dps') or '-'}",
@@ -807,9 +852,9 @@ def _remaining_ms(started: float, total_ms: int) -> int:
     return remaining
 
 
-def _new_run_dir(root: str | Path) -> Path:
+def _new_run_dir(root: str | Path, *, mode: str = "selected") -> Path:
     stamp = time.strftime("%Y%m%d-%H%M%S")
-    return Path(root).expanduser().resolve() / f"selected-{stamp}-{uuid4().hex[:8]}"
+    return Path(root).expanduser().resolve() / f"{mode}-{stamp}-{uuid4().hex[:8]}"
 
 
 def _write_canonical(path: Path, payload: Any) -> None:

@@ -1561,12 +1561,20 @@ class PvpBrowserTest(unittest.TestCase):
         draft_panel.postdraft_toggle_buttons_by_seat["player_1"].click()
         QApplication.processEvents()
         QApplication.processEvents()
+        draft_panel._sync_postdraft_pane_geometry()
         for seat in ("player_1", "player_2"):
             left_zone = workspace.draft_workspace.source_zone_frames_by_seat[seat]
             right_zone = draft_panel.target_zone_frames_by_seat[seat]
             self.assertEqual(
-                left_zone.y(),
-                right_zone.y(),
+                workspace.draft_workspace.scroll_area.viewport().mapToGlobal(
+                    QPoint(0, 0)
+                ).y()
+                + workspace.draft_workspace.scroll_content.y()
+                + workspace.draft_workspace._scoped_build_source_frame.y()
+                + left_zone.y(),
+                draft_panel.match_scroll.viewport().mapToGlobal(QPoint(0, 0)).y()
+                + draft_panel.match_frame.y()
+                + right_zone.y(),
             )
             self.assertEqual(left_zone.height(), right_zone.height())
         self.assertEqual(

@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-16",
+  "authority": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
+  "status": "bounded_static_reuse_demonstrated_conditional_reuse_not_implemented",
+  "engine_id": "gcsim-v2.45.0-dependency-audit5-20260916",
+  "engine_sha256": "2e910ca6ba8adf90d23ca41345ae85326855bb0677778703b749219d1dd582b5",
+  "catalog_engine_binding_sha256": "a2749d6b9bebe1ac039a75cedc9600d91a042dd6bf2fa57345fe37b3fb7f9178",
+  "standalone_wire_binding_sha256": "a314ce419d913710a8f96a6b6e8035629fb39c68d62ee8199ecba061b7eb145d",
+  "source_and_wire_identity_revalidated": true,
+  "catalog_fingerprint": "9049ed5ed5c33196961bf8bb2f1e8a54be37a0a658491f356d6c34079597c722",
+  "catalog_modeled_five_star_4p": 42,
+  "two_piece_proof_counts": {
+    "unique_source": 17,
+    "static_stat": 25
+  },
+  "proof_limit": "Existing classifier recognizes constructor stat assignments, not a whole-lifecycle replacement certificate. Init/helpers/key collisions/order/stat-read coverage require a gate.",
+  "inventory": {
+    "scope": "saved fixture inventory, optimistic single-wearer slot feasibility only; no team ID/conflict proof",
+    "five_star_sets_present": 35,
+    "slot_feasible_4p_count": 27,
+    "slot_feasible_2plus2_count": 465,
+    "slot_feasible_4p_keys": [
+      "adaycarvedfromrisingwinds",
+      "archaicpetra",
+      "aubadeofmorningstarandmoon",
+      "blizzardstrayer",
+      "celestialgift",
+      "deepwoodmemories",
+      "emblemofseveredfate",
+      "flowerofparadiselost",
+      "gildeddreams",
+      "gladiatorsfinale",
+      "goldentroupe",
+      "heartofdepth",
+      "huskofopulentdreams",
+      "maidenbeloved",
+      "marechausseehunter",
+      "nightoftheskysunveiling",
+      "nighttimewhispersintheechoingwoods",
+      "noblesseoblige",
+      "obsidiancodex",
+      "paleflame",
+      "scrolloftheheroofcindercity",
+      "shimenawasreminiscence",
+      "silkenmoonsserenade",
+      "songofdayspast",
+      "tenacityofthemillelith",
+      "viridescentvenerer",
+      "wandererstroupe"
+    ]
+  },
+  "gate": {
+    "static_fixture_gate_passed": true,
+    "negative_controls_detected": true,
+    "scope": "bounded fixture responses only, not production reuse authorization"
+  },
+  "timings": {
+    "catalog_seconds": 5.047966300000553,
+    "matrix_process_seconds": 11.730989200004842,
+    "total_seconds": 39.09927750000497,
+    "new_engine_calls": 7,
+    "equivalent_set_key": "flowerofparadiselost",
+    "source_base_sha256": "64f2de1b637b70896ca2c4dbc99160ea07a2d03585a03d4dd74717613fd12843"
+  },
+  "baseline": {
+    "hits": 543,
+    "nodes": 82740,
+    "duration_ms": 93650,
+    "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41",
+    "expected_damage": 10376440.862366324,
+    "groups": {
+      "columbina/tag/1/direct/hydro": 17,
+      "columbina/tag/20/reaction/dendro": 2,
+      "columbina/tag/31/reaction/dendro": 172,
+      "columbina/tag/4/direct/hydro": 52,
+      "columbina/tag/6/direct/hydro": 5,
+      "kukishinobu/tag/1/direct/physical": 5,
+      "kukishinobu/tag/23/reaction/dendro": 68,
+      "kukishinobu/tag/4/direct/electro": 65,
+      "kukishinobu/tag/6/direct/electro": 48,
+      "lauma/tag/1/direct/dendro": 5,
+      "lauma/tag/31/reaction/dendro": 5,
+      "lauma/tag/5/direct/dendro": 44,
+      "nahida/tag/1/direct/dendro": 11,
+      "nahida/tag/4/direct/dendro": 44
+    }
+  },
+  "capture_timings": [
+    {
+      "case": "remove_static",
+      "capture_seconds": 2.9185105999931693,
+      "bytes": 8481653,
+      "sha256": "e4ba18def129f03ea2b313a4be12b5ea23de33fdc5d5699137584e793f7ff12d",
+      "config_sha256": "28061278353157438220dc131b3674c92879b99307d33b600de0c08cebce6536",
+      "hits": 543,
+      "nodes": 80112,
+      "duration_ms": 93650,
+      "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41"
+    },
+    {
+      "case": "replace_static",
+      "capture_seconds": 2.880869899992831,
+      "bytes": 8509602,
+      "sha256": "aeacee5e2ca2f34dca93e43627d072c7d6b23990496e7cfb9f664abea82a6a80",
+      "config_sha256": "514e90825e7bfc24bbf90dec903be13626eb231349a18f7c3c6e9c430d9054f3",
+      "hits": 543,
+      "nodes": 80382,
+      "duration_ms": 93650,
+      "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41"
+    },
+    {
+      "case": "equivalent_static",
+      "capture_seconds": 2.7903559999977006,
+      "bytes": 8748578,
+      "sha256": "ae2f17cd7232d06d1ce5e047a8915ae5fe2f32dcca1003ee0cf2939121d49ce0",
+      "config_sha256": "35621671de80a61ffb20093f8c383bfb225764976964285d7ebe69f929a50700",
+      "hits": 543,
+      "nodes": 82740,
+      "duration_ms": 93650,
+      "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41"
+    },
+    {
+      "case": "activate_conditional",
+      "capture_seconds": 2.5339603000029456,
+      "bytes": 8744373,
+      "sha256": "1516a44e55fb8123729fc016eee754bef232b7cfad5dfb090063b568df191910",
+      "config_sha256": "5f3e68d9a91f0531978948782392995bc82f89a1fd5a3a0caae332ae9a64835d",
+      "hits": 543,
+      "nodes": 82788,
+      "duration_ms": 93650,
+      "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41"
+    },
+    {
+      "case": "remove_resistance",
+      "capture_seconds": 2.5776640999974916,
+      "bytes": 8748643,
+      "sha256": "840ce09ee749eaf0fd6685cdd15f3652200c62ccf217bc4dc98265c88c8966cd",
+      "config_sha256": "af715361798fdb39dce31068d819c2291f97e55f1cbc7fb2f73369459377cace",
+      "hits": 543,
+      "nodes": 82740,
+      "duration_ms": 93650,
+      "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41"
+    },
+    {
+      "case": "add_team_buff",
+      "capture_seconds": 2.5491292999940924,
+      "bytes": 8436861,
+      "sha256": "3ddf6a92e57dd5006a87be2fd3dbef39021fad11b03bd89edfe2aecbaccca792",
+      "config_sha256": "06e85c0fb9a43f8cc98d5d44d8b36f423a23df40b6ae32b5fdca8c36e595f437",
+      "hits": 543,
+      "nodes": 79684,
+      "duration_ms": 93650,
+      "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41"
+    },
+    {
+      "case": "new_damage",
+      "capture_seconds": 2.4273251999984495,
+      "bytes": 8093328,
+      "sha256": "bc9ae30ddac8fb8b4b04855f7bac663c20cca7f929529ef3e74d35689b2be845",
+      "config_sha256": "235573e7d098d975dc0719e51956a67534762fd212e66444cb830726303b13c5",
+      "hits": 561,
+      "nodes": 76328,
+      "duration_ms": 93650,
+      "topology_sha256": "ace94a68265dd06f73916b764fa9f9faa6c95c0002f00ae84e4dd5a22c4f9dea"
+    }
+  ],
+  "responses": [
+    {
+      "case": "remove_static",
+      "aligned": true,
+      "base_hits": 543,
+      "fresh_hits": 543,
+      "mismatched_hits": 0,
+      "relative_error": 0,
+      "dense_interpreter_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "case": "replace_static",
+      "aligned": true,
+      "base_hits": 543,
+      "fresh_hits": 543,
+      "mismatched_hits": 0,
+      "relative_error": 0,
+      "dense_interpreter_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "case": "equivalent_static",
+      "aligned": true,
+      "base_hits": 543,
+      "fresh_hits": 543,
+      "mismatched_hits": 0,
+      "relative_error": 0,
+      "dense_interpreter_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "case": "activate_conditional",
+      "aligned": true,
+      "base_hits": 543,
+      "fresh_hits": 543,
+      "mismatched_hits": 190,
+      "relative_error": -0.025779953533865252,
+      "dense_interpreter_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "case": "remove_resistance",
+      "aligned": true,
+      "base_hits": 543,
+      "fresh_hits": 543,
+      "mismatched_hits": 347,
+      "relative_error": 0.13080109451356486,
+      "dense_interpreter_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "case": "add_team_buff",
+      "aligned": true,
+      "base_hits": 543,
+      "fresh_hits": 543,
+      "mismatched_hits": 275,
+      "relative_error": -0.0034784524198460823,
+      "dense_interpreter_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "case": "new_damage",
+      "aligned": false,
+      "base_hits": 543,
+      "fresh_hits": 561,
+      "same_topology_hash": false
+    },
+    {
+      "case": "restore_static_offline",
+      "aligned": true,
+      "base_hits": 543,
+      "fresh_hits": 543,
+      "mismatched_hits": 0,
+      "relative_error": 0,
+      "dense_interpreter_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "case": "negative_control_ghost_old_bonus",
+      "aligned": true,
+      "base_hits": 543,
+      "fresh_hits": 543,
+      "mismatched_hits": 232,
+      "relative_error": 0.025397243123387963,
+      "dense_interpreter_error": 0,
+      "same_topology_hash": true
+    },
+    {
+      "case": "negative_control_double_new_bonus",
+      "aligned": true,
+      "base_hits": 543,
+      "fresh_hits": 543,
+      "mismatched_hits": 49,
+      "relative_error": 0.007767410900375343,
+      "dense_interpreter_error": 0,
+      "same_topology_hash": true
+    }
+  ],
+  "notes": [
+    "Seven new n1 same-seed captures, baseline reused. No full search or n500/n1000 runs.",
+    "Static removed/restored/equivalent/replaced effects match all543 hits in this fixture.",
+    "Conditional/team/resistance shortcut mismatches are expected negative evidence, not an accepted All Sets result or regression in fixed-set Selected.",
+    "Same topology hash is not sufficient for set-effect reuse: removed resistance changes damage with unchanged hits.",
+    "New-damage package changes total hits543 to561; old graph lacks those outputs.",
+    "No engine patch, installed binary, UI, energy behavior, DB, gear or saved rotation was changed.",
+    "No universal4p source analyzer is present. Unknown effects are not zero; fresh per-context captures are the current safe route.",
+    "Repeated full Selected pipelines are not the proposed All Sets design; next pilot needs shared preparation and a bounded context budget."
+  ],
+  "portable_samples": "all_sets_preflight_samples_v1.json",
+  "reproduction": {
+    "probe": "tools/experiments/gcsim/all_sets_preflight/probe.py",
+    "raw_output": ".codex_tmp/all-sets-preflight-20260916",
+    "source_run": ".codex_tmp/selected-2plus2-20260916/run"
+  }
+}

@@ -6,18 +6,60 @@ import tempfile
 import threading
 import time
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from run_workspace.gcsim.optimizer_go_selected import (
     DEFAULT_PRODUCT_TIMEOUT_MS,
     GcsimOptimizerGoSelectedRequest,
     GcsimOptimizerGoSelectedSession,
+    _TARGET_RE,
     _progress_row,
+    _request_artifacts,
     format_gcsim_optimizer_go_selected_result,
 )
 
 
 class GcsimOptimizerGoSelectedTests(unittest.TestCase):
+    def test_unmapped_set_piece_keeps_its_id_and_stats_as_an_offpiece(self) -> None:
+        # Synthetic metadata only; actual stat conversion has its own tests.
+        common = dict(position_key="goblet", rarity=5, level=20)
+        items = [
+            SimpleNamespace(artifact_id=1, default_eligible=True, gcsim_set_key="known", set_uid="Known", **common),
+            SimpleNamespace(artifact_id=2, default_eligible=True, gcsim_set_key="", set_uid="UnmappedSet", **common),
+            SimpleNamespace(artifact_id=3, default_eligible=False, gcsim_set_key="", set_uid="InvalidSet", **common),
+        ]
+        vector = SimpleNamespace(ready=True, stat_vector=SimpleNamespace(contributions=[
+            SimpleNamespace(source_kind="main", gcsim_key="atk%", normalized_value="0.466"),
+            SimpleNamespace(source_kind="substat", gcsim_key="em", normalized_value="42"),
+        ]))
+        snapshot = SimpleNamespace(wearers=[SimpleNamespace(wearer=SimpleNamespace(gcsim_character_key="actor"))])
+        with patch("run_workspace.gcsim.optimizer_go_selected.materialize_gcsim_optimizer_artifact_stat_vector", return_value=vector):
+            rows = _request_artifacts(SimpleNamespace(artifacts=items), "actor", snapshot)
+        self.assertEqual([row["artifact_id"] for row in rows], [1, 2])
+        self.assertEqual(rows[1]["set_uid"], "unmappedset")
+        self.assertEqual(rows[1]["main_stat"], rows[0]["main_stat"])
+        self.assertEqual(rows[1]["substats"], rows[0]["substats"])
+
+    def test_shared_jahoda_rotation_is_paste_ready_without_test_header(self) -> None:
+        # User-facing sample, not engine defaults: prevent the supplied rotation
+        # from passing a smoke only because a harness silently adds its target.
+        from run_workspace.gcsim.config_assembly import audit_rotation_shell
+
+        rotation = (
+            Path(__file__).parents[2] / "fixtures" / "gcsim_optimizer_go_v1"
+            / "flins_jahoda_no_burst_rotation.txt"
+        ).read_text(encoding="utf-8")
+        audit = audit_rotation_shell(rotation)
+        self.assertTrue(audit.ready)
+        self.assertEqual(audit.active_character_key, "ineffa")
+        self.assertEqual(len(audit.target_placeholder_lines), 1)
+        self.assertEqual(len(tuple(_TARGET_RE.finditer(rotation))), 1)
+        self.assertFalse(audit.manual_block_lines)
+        self.assertIn("options swap_delay=12 iteration=1000;", rotation)
+        self.assertNotIn("ignore_burst_energy=", rotation)
+        self.assertNotIn("jahoda burst", rotation)
+
     def test_working_UI_timeout_allows_six_minute_prototype_run(self) -> None:
         self.assertEqual(DEFAULT_PRODUCT_TIMEOUT_MS, 360_000)
 

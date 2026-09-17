@@ -47,6 +47,13 @@ class ImportPipelineAccountStorageTest(unittest.TestCase):
 
 
 class ImportPipelineStaticCatalogTest(unittest.TestCase):
+    def setUp(self) -> None:
+        # Catalog orchestration fixtures must never open the user's runtime DB.
+        for name in ("connect_db", "rebuild_character_trait_reference_from_catalog"):
+            patcher = patch("hoyolab_export.import_pipeline." + name)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
     def test_static_catalog_sync_refreshes_artifact_sets_and_traits(self) -> None:
         class FakeTraitEntry:
             traits = ("moonsign",)

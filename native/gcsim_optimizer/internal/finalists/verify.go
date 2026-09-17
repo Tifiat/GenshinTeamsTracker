@@ -62,8 +62,27 @@ type preparedCandidate struct {
 	runDir    string
 }
 
+// CandidateRenderer binds a finalist to its own complete set context. It is
+// trusted application code, not a user-provided score/activation certificate.
+// The ordinary measurement, engine identity, CPU plan and iteration policy are
+// shared by Selected and All Sets.
+type CandidateRenderer func(search.ScoredAssignment, int, int) (RenderedConfig, error)
+
+func FixedRenderer(request contracts.OptimizerRequest, index *domain.Index) CandidateRenderer {
+	return func(c search.ScoredAssignment, iterations, workers int) (RenderedConfig, error) {
+		return RenderConfig(request, index, c.Assignment, iterations, workers)
+	}
+}
+
 func Verify(ctx context.Context, request contracts.OptimizerRequest, index *domain.Index, candidates []search.ScoredAssignment, runRoot string, iterations, workers, parallelism int) (VerificationResult, error) {
+	return VerifyWithRenderer(ctx, request, candidates, FixedRenderer(request, index), runRoot, iterations, workers, parallelism)
+}
+
+func VerifyWithRenderer(ctx context.Context, request contracts.OptimizerRequest, candidates []search.ScoredAssignment, render CandidateRenderer, runRoot string, iterations, workers, parallelism int) (VerificationResult, error) {
 	var output VerificationResult
+	if render == nil {
+		return output, fmt.Errorf("missing finalist context renderer")
+	}
 	if len(candidates) == 0 {
 		return output, fmt.Errorf("at least one finalist is required")
 	}
@@ -88,7 +107,7 @@ func Verify(ctx context.Context, request contracts.OptimizerRequest, index *doma
 			return output, fmt.Errorf("duplicate finalist assignment at rank %d", rank+1)
 		}
 		seen[candidate.Assignment] = struct{}{}
-		rendered, err := RenderConfig(request, index, candidate.Assignment, iterations, workers)
+		rendered, err := render(candidate, iterations, workers)
 		if err != nil {
 			return output, fmt.Errorf("render finalist %d: %w", rank+1, err)
 		}
@@ -209,6 +228,10 @@ func PlanDynamicWaves(candidateCount, maxParallelism, cpuBudget int) ([]Verifica
 // rows into the same measured ordering contract as Verify. It never drops or
 // duplicates a finalist.
 func VerifyDynamicWaves(ctx context.Context, request contracts.OptimizerRequest, index *domain.Index, candidates []search.ScoredAssignment, runRoot string, iterations, maxParallelism, cpuBudget int) (VerificationResult, error) {
+	return VerifyDynamicWavesWithRenderer(ctx, request, candidates, FixedRenderer(request, index), runRoot, iterations, maxParallelism, cpuBudget)
+}
+
+func VerifyDynamicWavesWithRenderer(ctx context.Context, request contracts.OptimizerRequest, candidates []search.ScoredAssignment, render CandidateRenderer, runRoot string, iterations, maxParallelism, cpuBudget int) (VerificationResult, error) {
 	var output VerificationResult
 	plan, err := PlanDynamicWaves(len(candidates), maxParallelism, cpuBudget)
 	if err != nil {
@@ -231,7 +254,7 @@ func VerifyDynamicWaves(ctx context.Context, request contracts.OptimizerRequest,
 		start := wave.StartRank - 1
 		end := start + wave.CandidateCount
 		waveRoot := filepath.Join(runRoot, fmt.Sprintf("wave-%02d", wave.Index))
-		result, err := Verify(ctx, request, index, candidates[start:end], waveRoot, iterations, wave.Workers, wave.Parallelism)
+		result, err := VerifyWithRenderer(ctx, request, candidates[start:end], render, waveRoot, iterations, wave.Workers, wave.Parallelism)
 		if err != nil {
 			return output, fmt.Errorf("verify dynamic wave %d: %w", wave.Index, err)
 		}

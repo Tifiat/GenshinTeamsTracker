@@ -1,0 +1,408 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-09-17",
+  "owner": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
+  "scope": "Manual second-pass exact allowlist; not a glob or age-based sweeper.",
+  "decision": "Superseded Aug trace/support/migration copies and pre-production GOB11 pilot clones/captures; consolidated patch, portable fixtures and current installed engine replace these copies. Retain small research scripts/patches. This is not source-code removal.",
+  "preserve": [
+    "all all-sets-* and jahoda-* raw evidence until UI gate",
+    "selected-2plus2-20260916 and gob11-gp3-production-20260916 input fixtures",
+    "gob11-dependency-repair-20260916 latest response/boundary witnesses",
+    "gob11-bloom-* residual diagnosis",
+    "stochastic_expectation_pair_20260829T215823705807Z deferred RNG work",
+    "gob10-performance-audit and registered gob10-performance-audit-worktree",
+    "history-design and v6_patch_index_20260824.git",
+    "all data/, debug/, exports/, assets/, source code and permanent fixtures"
+  ],
+  "targets": [
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_m",
+      "audited_bytes": 459541300
+    },
+    {
+      "path": ".codex_tmp/gob11-field-engine-store",
+      "audited_bytes": 366924960
+    },
+    {
+      "path": ".codex_tmp/support_replay_0020_fresh_absolute",
+      "audited_bytes": 353334062
+    },
+    {
+      "path": ".codex_tmp/support_replay_0016_type_store_v6",
+      "audited_bytes": 338004877
+    },
+    {
+      "path": ".codex_tmp/forwarded_attack_v1_store",
+      "audited_bytes": 293891890
+    },
+    {
+      "path": ".codex_tmp/gob11-captured-scalar-engine-store",
+      "audited_bytes": 281055045
+    },
+    {
+      "path": ".codex_tmp/gob11-additive-engine-store",
+      "audited_bytes": 280031656
+    },
+    {
+      "path": ".codex_tmp/gob11-helper-engine-store",
+      "audited_bytes": 279920802
+    },
+    {
+      "path": ".codex_tmp/gob11-numeric-engine-store",
+      "audited_bytes": 279397020
+    },
+    {
+      "path": ".codex_tmp/compat-engine-store-20260907",
+      "audited_bytes": 279090734
+    },
+    {
+      "path": ".codex_tmp/gob11a-engine-store",
+      "audited_bytes": 279036838
+    },
+    {
+      "path": ".codex_tmp/fanfare_v5_acceptance_store_20260824_d",
+      "audited_bytes": 258133548
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_n",
+      "audited_bytes": 235592689
+    },
+    {
+      "path": ".codex_tmp/gob11-cloud-engine-store",
+      "audited_bytes": 227429188
+    },
+    {
+      "path": ".codex_tmp/gob11-flat-stat-engine-store",
+      "audited_bytes": 227138247
+    },
+    {
+      "path": ".codex_tmp/gcsim-minimal-engine-store-v245",
+      "audited_bytes": 226602929
+    },
+    {
+      "path": ".codex_tmp/gcsim-minimal-engine-store-v242",
+      "audited_bytes": 214421566
+    },
+    {
+      "path": ".codex_tmp/support_replay_0021_fresh_absolute",
+      "audited_bytes": 211840158
+    },
+    {
+      "path": ".codex_tmp/gob3_staging_source",
+      "audited_bytes": 198414481
+    },
+    {
+      "path": ".codex_tmp/source_identity_v4_verify_0012_final_20260824_054358",
+      "audited_bytes": 177035389
+    },
+    {
+      "path": ".codex_tmp/gob11-vector-20260913",
+      "audited_bytes": 161548710
+    },
+    {
+      "path": ".codex_tmp/support_replay_0017_fresh",
+      "audited_bytes": 155300002
+    },
+    {
+      "path": ".codex_tmp/gob11-personal-20260909",
+      "audited_bytes": 150387279
+    },
+    {
+      "path": ".codex_tmp/reaction_formula_v3_acceptance",
+      "audited_bytes": 148939763
+    },
+    {
+      "path": ".codex_tmp/gob2_patched_source",
+      "audited_bytes": 144022344
+    },
+    {
+      "path": ".codex_tmp/gob11-vector-engine-store",
+      "audited_bytes": 140419312
+    },
+    {
+      "path": ".codex_tmp/source_identity_v4_work",
+      "audited_bytes": 140002329
+    },
+    {
+      "path": ".codex_tmp/gob11-boundary-engine-store",
+      "audited_bytes": 139580454
+    },
+    {
+      "path": ".codex_tmp/gcsim_source_cache",
+      "audited_bytes": 135800235
+    },
+    {
+      "path": ".codex_tmp/support_replay_0016_type_store_v5",
+      "audited_bytes": 135089735
+    },
+    {
+      "path": ".codex_tmp/support_replay_0016_type_store_v4",
+      "audited_bytes": 135081037
+    },
+    {
+      "path": ".codex_tmp/support_replay_0019_fresh_absolute",
+      "audited_bytes": 134469545
+    },
+    {
+      "path": ".codex_tmp/support_replay_0018_fresh_absolute",
+      "audited_bytes": 134459062
+    },
+    {
+      "path": ".codex_tmp/support_replay_0018_fresh_retry1",
+      "audited_bytes": 134435689
+    },
+    {
+      "path": ".codex_tmp/gcsim-v245-threeway-audit-20260901-041827",
+      "audited_bytes": 134037063
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_o",
+      "audited_bytes": 132638260
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_h",
+      "audited_bytes": 132634053
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_l",
+      "audited_bytes": 132633034
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_i",
+      "audited_bytes": 132632816
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_j",
+      "audited_bytes": 132631769
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_k",
+      "audited_bytes": 132631769
+    },
+    {
+      "path": ".codex_tmp/gcsim-v245-minpatch-audit-20260901",
+      "audited_bytes": 131935530
+    },
+    {
+      "path": ".codex_tmp/gob11-captured-scalar2-20260913",
+      "audited_bytes": 131309407
+    },
+    {
+      "path": ".codex_tmp/patch0013_baseline_20260824_b",
+      "audited_bytes": 130978448
+    },
+    {
+      "path": ".codex_tmp/gob11a-source-20260902",
+      "audited_bytes": 130586889
+    },
+    {
+      "path": ".codex_tmp/gcsim-v242-minpatch-audit-20260901",
+      "audited_bytes": 130020632
+    },
+    {
+      "path": ".codex_tmp/gob2_baseline_source",
+      "audited_bytes": 129998008
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_work_20260824_a",
+      "audited_bytes": 129621067
+    },
+    {
+      "path": ".codex_tmp/materialize_0012_stage_20260824_053523",
+      "audited_bytes": 129552106
+    },
+    {
+      "path": ".codex_tmp/trace_provenance_verify_0010",
+      "audited_bytes": 129342351
+    },
+    {
+      "path": ".codex_tmp/reaction_formula_v3_work",
+      "audited_bytes": 129270762
+    },
+    {
+      "path": ".codex_tmp/source_identity_v4_verify_0012_20260824_053737",
+      "audited_bytes": 128805988
+    },
+    {
+      "path": ".codex_tmp/gob11-cloud-20260913",
+      "audited_bytes": 128358513
+    },
+    {
+      "path": ".codex_tmp/trace_compile",
+      "audited_bytes": 125163785
+    },
+    {
+      "path": ".codex_tmp/gob11-captured-scalar-20260913",
+      "audited_bytes": 122177447
+    },
+    {
+      "path": ".codex_tmp/same_context_trace_diagnostic_20260826",
+      "audited_bytes": 94705494
+    },
+    {
+      "path": ".codex_tmp/support_replay_0016_store",
+      "audited_bytes": 84775076
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_e",
+      "audited_bytes": 84715701
+    },
+    {
+      "path": ".codex_tmp/support_replay_0016_type_store_v3",
+      "audited_bytes": 84562519
+    },
+    {
+      "path": ".codex_tmp/support_replay_0016_type_store",
+      "audited_bytes": 84550297
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_d",
+      "audited_bytes": 84400606
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_c",
+      "audited_bytes": 84400073
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_b",
+      "audited_bytes": 84398640
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_a",
+      "audited_bytes": 84398015
+    },
+    {
+      "path": ".codex_tmp/support_replay_0018_fresh",
+      "audited_bytes": 84375288
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_f",
+      "audited_bytes": 83922487
+    },
+    {
+      "path": ".codex_tmp/fanfare_v5_work_20260824_a",
+      "audited_bytes": 78685236
+    },
+    {
+      "path": ".codex_tmp/gob2_patch_validation_2",
+      "audited_bytes": 77999045
+    },
+    {
+      "path": ".codex_tmp/support_replay_0016_fresh_baseline",
+      "audited_bytes": 77924606
+    },
+    {
+      "path": ".codex_tmp/fanfare_v6_acceptance_store_20260824_g",
+      "audited_bytes": 77702846
+    },
+    {
+      "path": ".codex_tmp/trace_provenance_compile",
+      "audited_bytes": 77558992
+    },
+    {
+      "path": ".codex_tmp/reaction_formula_v3_verify_0011_20260824_c",
+      "audited_bytes": 77551154
+    },
+    {
+      "path": ".codex_tmp/reaction_formula_v3_verify_0011_20260824_b",
+      "audited_bytes": 77544666
+    },
+    {
+      "path": ".codex_tmp/trace_provenance_verify_0010_final",
+      "audited_bytes": 77516104
+    },
+    {
+      "path": ".codex_tmp/fanfare_v5_acceptance_store_20260824_c",
+      "audited_bytes": 77358908
+    },
+    {
+      "path": ".codex_tmp/same_context_trace_diagnostic_20260826_replay_modifier_v10c",
+      "audited_bytes": 68896429
+    },
+    {
+      "path": ".codex_tmp/same_context_trace_diagnostic_20260826_replay_modifier_v10",
+      "audited_bytes": 68589456
+    },
+    {
+      "path": ".codex_tmp/gob11-additive-20260913",
+      "audited_bytes": 68465177
+    },
+    {
+      "path": ".codex_tmp/same_context_trace_diagnostic_20260826_support_chain_v4",
+      "audited_bytes": 66857754
+    },
+    {
+      "path": ".codex_tmp/same_context_trace_diagnostic_20260826_task_context_v3",
+      "audited_bytes": 66804395
+    },
+    {
+      "path": ".codex_tmp/same_context_trace_diagnostic_20260826_task_context",
+      "audited_bytes": 66602971
+    },
+    {
+      "path": ".codex_tmp/same_context_trace_diagnostic_20260826_repaired_v4",
+      "audited_bytes": 66514726
+    },
+    {
+      "path": ".codex_tmp/same_context_trace_diagnostic_20260826_replay_arithmetic_v9",
+      "audited_bytes": 66329228
+    },
+    {
+      "path": ".codex_tmp/same_context_trace_diagnostic_20260826_replay_arithmetic_v8",
+      "audited_bytes": 66143633
+    },
+    {
+      "path": ".codex_tmp/gob11-helper-return-20260912",
+      "audited_bytes": 65668091
+    },
+    {
+      "path": ".codex_tmp/gob11-flat-stat-20260912",
+      "audited_bytes": 65506174
+    },
+    {
+      "path": ".codex_tmp/go_cache_fanfare_v6_d",
+      "audited_bytes": 52797796
+    },
+    {
+      "path": ".codex_tmp/go_cache_fanfare_v6_c",
+      "audited_bytes": 52795268
+    },
+    {
+      "path": ".codex_tmp/go_cache_fanfare_v6_b",
+      "audited_bytes": 52792246
+    },
+    {
+      "path": ".codex_tmp/go_cache_fanfare_v6_a",
+      "audited_bytes": 52781444
+    },
+    {
+      "path": ".codex_tmp/gob3_misplaced_build",
+      "audited_bytes": 51705856
+    },
+    {
+      "path": ".codex_tmp/gob11-attack-fields-20260909",
+      "audited_bytes": 49379889
+    },
+    {
+      "path": ".codex_tmp/gob11-numeric-20260909",
+      "audited_bytes": 44318178
+    },
+    {
+      "path": ".codex_tmp/forwarded_attack_v1_run",
+      "audited_bytes": 36199177
+    },
+    {
+      "path": ".codex_tmp/gob3e_real_panel",
+      "audited_bytes": 26733469
+    },
+    {
+      "path": ".codex_tmp/fanfare_v5_real_smoke_20260824_d",
+      "audited_bytes": 11482743
+    },
+    {
+      "path": ".codex_tmp/full_team_trace_prepared",
+      "audited_bytes": 12781878
+    }
+  ],
+  "audited_target_bytes": 13012524303
+}

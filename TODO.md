@@ -1,763 +1,270 @@
 # TODO: GenshinTeamsTracker
 
-This file is for future agents. Keep it current, English, and mostly ASCII. Completed history should stay compact unless it changes future architecture or implementation choices.
+Open work only. Optimizer items reconciled 2026-09-17 after All Sets backend installation;
+other sections retain their separately scoped review status.
+Read `CODEX.md` for execution/verification rules and `docs/handoff/README.md`
+for document ownership. Completed evidence stays with its subsystem.
+Items below are available scopes, not authorization to implement all of them.
 
-## Workflow Rules
+## 1. Active Optimizer Work
 
-- Read `CODEX.md` first.
-- Keep tool usage narrow and cheap.
-- Do not run tests, app startup, imports, DB scans, or broad validation unless the user asks or the change needs it.
-- Use `.venv\Scripts\python.exe` for local checks when the system interpreter lacks project dependencies.
-- Avoid scanning generated/private state:
-  - `hoyolab_export/profile`
-  - `data/`
-  - `assets/hoyolab`
-  - `assets/artifact_sets`
-  - large JSON/image folders
-- Expensive repeatable UI work should use both in-memory cache and persistent cache under `data/cache/...`; do not leave image processing/parsing in hot UI paths.
-- Update this file only with active tasks and useful follow-ups.
-- Before implementing a task specification, briefly inspect the relevant current code and handoff contract. Clarify only ambiguities that materially change architecture, behavior, or visible UI; use engineering judgment for narrow local implementation details after the contract is clear.
-- In this repo, handoff context means `CODEX.md`, `TODO.md`, and `docs/handoff/*.md`. When the user asks to update or clean handoffs, include all three entrypoints unless they narrow the scope.
-- After each completed task, update handoff docs before final response when the task changes roadmap, state, or reusable context: mark completed subitems compactly, add durable new knowledge to `CODEX.md`/`TODO.md` or a dedicated handoff file, and remove stale active-task/development-log leftovers.
-- After large stages, compact source-of-truth handoffs before the next major
-  task. If root docs become long, contradictory, or dominated by completed
-  history, report: "handoffs should be cleaned before the next major task."
-- After each completed pushable task, final responses should include one short
-  Russian commit-message suggestion in impersonal passive/resultative wording,
-  not first-person past wording. Prefer a style equivalent to "has been
-  added/fixed/updated" or "added/fixed/updated as a completed result", not a
-  style equivalent to "I added/fixed/updated".
-- Test-suite layout/rules live in `docs/handoff/TESTS.md`; keep new tests under
-  the matching project area and prefer narrow per-folder `unittest discover`
-  runs for the touched subsystem.
-- When adding/changing persistent structures, source/cache formats, domain models, raw payload discoveries, UI prototype contracts, or long-lived research, update the relevant handoff map in `docs/handoff/` and keep root docs as concise entrypoint pointers.
-- `docs/obsidian/` is a user-owned folder for optional human maps. It is not
-  source of truth; ignore it unless the user explicitly asks to work on
-  Obsidian maps.
+Contract: `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md`.
+Implementation: `docs/handoff/GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md`.
+Current evidence/resume: `docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md`.
+Engine safety: `docs/handoff/GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md`.
+Cleanup ownership: `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST.json`.
 
-## Current Artifact Browser State
+The checkpoint owns current acceptance and failure evidence; do not duplicate
+its changing metrics or infer UI acceptance from backend results.
 
-- Artifact Browser is stable enough to stop treating it as a pure prototype. It is embedded as an AppShell left workspace; current-equipment preview, manual artifact equip/unequip, preset apply, selected-card highlights, and owner side icons are wired through persistent current-equipment state.
-- Future equipment UX task: persist the last applied build-preset marker per character so the current-equipment zone can show `{preset}: {character}` after app restart and after switching characters, until that character's artifact equipment actually changes. Current implementation only has an in-memory `ArtifactBrowserWindow.applied_current_equipment_label`.
-- AppShell uses the embedded Artifact Browser footprint as a global top-level minimum, not the current page/current target `minimumSizeHint()`. Keep the minimum state-independent so Characters/Weapons and Artifacts cannot shrink below the fixed current-equipment/build-preview area.
-- Completed manual smoke passes: Build Target Selector, target persistence, build/target preview, JSON import/clear, build preset lifecycle, and custom sets.
-- Compact preset rows show set-bonus metadata, sands/goblet main-stat badge, and cached set-bonus icons.
-- Build preset inline rename focus is fixed: entering edit mode focuses the name field and selects text so typing/backspace works immediately without an extra click.
-- Build target preview strip is a baked pixmap strip with persistent caches; it is not many child widgets and intentionally has no tooltips.
-- Build preview set bonus cells and compact preset-row set bonus icons use stored 2p/4p set bonus descriptions and custom tooltips.
-- Region filters are implemented through `assets/filters/Statue.png`; character regions come from HoYoWiki character list `menu_id=2`, are cached at `data/cache/hoyowiki/character_region_catalog.json`, and are joined into SQLite `character_identity` for runtime filters.
-- Region/trait filters are multi-select: OR inside their own group, AND with element/weapon/rarity. Standard 5-star is tri-state: all / only Standard 5-star / exclude Standard 5-star.
-- Artifact Browser has fixed bottom-row `Import JSON` / `Clear JSON` buttons; JSON clear deletes only `json_imported=1` + `import_source='artiscan'` artifacts and clears affected build preset slots.
-- Sort and Sets popups toggle closed on repeated button click and order game/custom sets by owned piece count descending.
-- Region/trait joins prefer HoYoWiki entry ids when available and use normalized names only as fallback.
+- [ ] **Next N1:** All Sets efficiency/quality after bounded N0 storage recovery;
+  **N2** shared handler-path regressions and gated cleanup; **N3** Theory;
+  **N4** energy; **N5** readable rotation editor; **N6** other feasible TODO,
+  excluding History Browser. Start from the saved Jahoda review. The optimizer
+  handoff's "Overnight execution contract" owns the temporary one-agent,
+  blocker-parking and handler-verification exceptions; user start only.
+  no subagent started. Cleanup and archive verification are recorded in the
+  checkpoint. Preserve the bounded evidence archive, expanded N1 inputs and
+  dirty worktree; do not recreate all retired scratch for the next benchmark.
+  This replaces UI-first work order, not actual UI acceptance requirements.
+- [ ] **Remaining combined UI acceptance:** user-confirmed All Sets completion
+  and seven-page navigation do not accept Selected2+2/Save/cancel/preservation.
+  After restart check AppShell Selected with equipped2+2, preserved pairs,
+  finalist pages/save and unchanged live equipment. Milestone reminder delivered.
+  Do not repeat the accepted Jahoda full run as a startup check. Evidence and
+  backend/visible-UI limits belong to the checkpoint.
+- [ ] After this UI gate, complete mandatory All Sets area cleanup: remove
+  consolidated research deltas and disposable capture/overlay copies, retaining
+  permanent receipts, active/pinned rollback and the deployment backup until
+  rollback is no longer needed. Do not leave a second production patch stack.
+- [ ] **N1: bounded All Sets efficiency and quality:**
+  Jahoda user run hit the search deadline after five contexts, with55 proposals
+  pending. Prioritize feasible, team-promising sets before deep artifact search;
+  allocate effort by promise, not equally. Distinguish exploratory representatives
+  from global Top-N. Measure speed versus incumbent quality on saved/reduced
+  controls. Revisit the n128 screen only with an
+  explicit quality/budget comparison; no speculative search-budget expansion.
+- [ ] Extend account-level acceptance alongside these stages by mechanism, one
+  bounded fixture at a time. Eight public-config archetypes have controlled
+  formula coverage, not account-equipment DPS/search acceptance. General alias/
+  branch/schedule coverage remains partial; repair demonstrated losses.
+- [ ] Separate GCSIM database config import after team gates; source/API
+  discovery and parser/cache/attribution remain a separate scope.
+- [ ] **N3:** Theory/farming guidance using the future Go port of continuous-
+  target math; clearer unknown/frozen mechanic diagnostics.
+- [ ] **N4: energy support after All Sets and Theory (updated2026-09-17).** GOB-12 remains a label,
+  not an instruction to implement before All Sets. Do not modify the current
+  finite-energy diagnostic mode until that stage. Keep the single
+  `gcsim_boosted_energy_enabled` setting and its two synchronized UI views.
+  Finite-energy execution is currently diagnostic, not accepted ER-aware search.
+  Add a generic energy ledger, cumulative burst-deadline constraints in Go,
+  typed stat/HP/probability dependencies, bounded ordinary-engine finalist
+  checks and per-character ER/margin/source/uncertainty explanations.
+  Do not run GCSIM per candidate, average away event timing, or copy upstream
+  character-specific ER heuristics. Detailed contract is in the optimizer handoff.
+- [ ] Before MVP, re-audit every engine patch/seam then present, remove obsolete
+  code and repeat clean apply/build/capability/cross-team semantic/rollback
+  gates. Include normal updater relocation of generated absolute overlay paths
+  from staging to final source (the current All Sets installation was explicitly
+  relocated and checked). Required feature capabilities must activate atomically; optional
+  groups are a later packaging decision, not an excuse for partial activation.
+- [ ] **Engine-update application-path audit (user requested2026-09-17; later).**
+  Check every consumer of active engine/source/catalog identity, not only patch
+  application: import mappings, stored character/weapon keys, artifact/enemy
+  registry defaults, team snapshots, prepared configs, optimizer and normal-run
+  UI, caches, rollback and restart. Test an update/rollback with newly supported
+  entities and renamed generated registry files. A stale old-version mapping
+  must not silently block a supported entity. Explicitly cover stale mappings
+  after update without reimport; today's Jahoda repair is not this whole audit.
+  Owner: engine integration plan. Do not implement the broader audit now.
+- [ ] **Settings / GCSIM version visibility (later).** Show the active engine
+  version actually used, not the newest download. Later add selection among
+  retained, locally patched/built compatible installations if the bounded store
+  retains them. Reuse the engine store, validation and rollback; no second
+  engine preference or activation by directory existence alone. Documentation
+  only in the current task; UI implementation waits its stage.
+- [ ] Clean superseded isolated stores/captures only under the manifest's gates.
+  Preserve permanent receipts, the active/pinned rollback engines, Current
+  comparison until all product scopes are accepted/abandoned, and the future
+  Theory/All Sets math reference. Accepted GP-3 and dependency-audit deltas are
+  removed after consolidation; permanent regressions and audit helpers remain.
 
-## 1. Pre-Integration Architecture
+Performance boundaries remain: cold Selected target 190s; temporary fail-safe
+360s; future All Sets 600s. Retain the common n128 screen and bounded n500/n1000
+final policy. Do not repeat accepted full runs as routine documentation checks.
 
-- New target main app shell is documented in `docs/handoff/APP_SHELL_WORKSPACE_PLAN.md`: `[LeftWorkspaceHost] [RightOperationsDock]`. Treat `ui/main_window.py` as legacy once the new shell begins; do not patch the old right column as the final architecture.
-- Future AppShell tasks:
-  - continue the separate `AppShell` prototype launched by `python -m ui.app_shell_smoke`; `main.py` still launches legacy `ui.main_window.App`. Do not switch the production entrypoint yet: the compact chamber/result area has live in-memory Abyss timer and factual-DPS behavior, active-mode Reset is typed, RUN-page Save writes immutable grouped backend bundles, and History displays selected snapshots through an isolated read-only instance of the shared Run presentation without a permanent PNG preview. The approved future `main.py` switch must run startup adaptive scaling before constructing `QApplication`;
-  - keep the reduced fixed-width right operations dock around `ui.right_panel.live_run.panel.RunRightPanelWidget`; it must not be user-resizable or expand with the window;
-  - right-panel source ownership has been refactored into `ui/right_panel/{common,live_run,history,pvp,settings}` plus `dock.py`/`header.py`; `ui/right_panel_prototype.py`, `ui/account_data_page.py`, and old PvP right-panel exports remain compatibility shims. PvP page/stage constants are canonical in `ui/right_panel/pvp/_shared.py`; PvP Assignment/Weapons use scoped normal AppShell controller/workspace state, `CharacterWeaponWorkspace`, and `RunRightPanelWidget` with per-seat runtime weapon equipment state instead of mutating normal account equipment. Post-draft players are vertical right-panel accordion sections: each full-width color-tinted player header sits directly above its own body and collapses/expands that body together with the matching left source section. The right sections have no painted side accent that can clip or shift the pixel-tuned content; the left source retains the shared player-color strip. Collapse-only transitions update visibility synchronously without rebuilding the right model or reloading the left grids, and live source workspaces stay parented under PvP during layout rebuilds so Qt never promotes them to transient top-level windows. Scoped weapon assignment mirrors normal AppShell move/swap semantics, including exchanging the target's previous weapon with the prior owner when an occupied single-copy stack is selected. Draft now shares the normal character filter bar, uses configurable shared player colors plus semantic action overlays in its fixed 72x72 no-overlap order strip, and the left Timers scene shares the live-Abyss `10:00..05:00` remaining-clock editor while showing waves, readable fixed-width solo/multi HP, elapsed-second totals, winner/loser chevrons, difference, and a table-style Solo/Multi DPS summary. Next PvP build-flow gaps are Artifact Browser routing/equipment, executable scoped GCSIM, portable `.gttpvp` asset packaging, and a period-admission gate that validates both local seats or future online clients against the authoritative current Abyss period;
-  - harden the extracted Character/Weapon workspace as the first left workspace; it already uses overlay scrollbars, a painted pixel-aligned icon grid via `ui/utils/pixel_icon_grid.py`, typed `TeamBuilderState`, weapon type/rarity filters, selected-character weapon type auto-filtering, sequential roster quick-pick, per-mode team selection, roster slot markers, target-based compatible weapon assignment, persistent SQLite-backed current weapon restore/assignment through `account_equipment`, normalized local icon paths for right-panel display, and SQLite-backed weapon passive/effect enrichment for right-panel tooltips/bonus chips;
-  - AppShell left workspace navigation exists with Character/Weapon, lazy-created Artifacts, GCSIM Browser, the `ui/history_browser/` grouped History bundle foundation, and PvP Decks/Play/Draft v0 workspace pages. PvP Draft now uses one image-backed painted unified pool, opposite-side seat constellation badges, a painted 22-action order strip, and shared painted right-panel pick/ban grids; the old yellow QWidget/text-card Draft path is removed. `LeftWorkspaceHost` owns pages/lazy construction, while nav clicks request stable workspace ids through root `AppShell`; activating History must preserve the live session and replace its visible panel with a snapshot-bound, read-only instance of the same shared mode-specific Run presentation under the contract in `docs/handoff/HISTORY_BROWSER.md`;
-  - History visual MVP now has separate right-header Abyss/DPS Dummy/PvP modes, automatic reload, a read-only cache/snapshot period catalog, compact enemy/HP preview, period dropdown, visual rows, and shared read-only snapshot details. Next are smoke-driven polish, fuller DPS Dummy capture, real PvP History, filters/export, and durable GCSIM history attachment;
-  - keep roster clicks as quick-pick add/remove and right-panel slot clicks as selected build/details target toggle;
-  - AppShell quick-pick marker latency is fixed with incremental visible-card marker updates; roster clicks now update markers immediately and defer/coalesce right-panel refreshes through a short scheduler;
-  - AppShell filters now use session-cached character/weapon asset lists plus the reusable painted icon grid. The grid computes integer physical-pixel item/gap rectangles under fractional startup downscale and prepares cached HiDPI pixmaps outside paint events. Right-panel slot selection does not reload portrait/weapon PNGs, fitted right-panel PNG canvases are cached per DPR/source, and remaining performance work is to reduce first bonus-strip chip rebuild cost on high-DPI screens;
-  - AppShell/current prototype PNG rendering is now high-DPI aware through `ui/utils/hidpi_pixmap.py`: visible raster assets keep logical UI size, render at `logical_size * devicePixelRatio`, clamp startup downscale below 1.0 back to 1.0 for image rendering, and refresh on screen/DPR changes where converted. New AppShell/current UI PNG paths should use that helper; legacy `main.py`/old widgets remain future migration unless explicitly included later;
-  - reusable vector toggle switch exists at `ui/utils/toggle_switch.py`, with a
-    manual visual probe at `tools/experiments/toggle_switch_probe.py`. It is not
-    wired into production yet; future boolean settings such as Abyss
-    multi-target HP mode and Artifact Browser ON/OFF controls should use this
-    shared widget instead of text-only ON/OFF buttons;
-  - right-panel add/select/remove smoothness is now stable enough for manual UX: quick-pick uses fast UI state plus deferred hydration, team/slot widgets update in place, selected details use a stable skeleton/persistent bonus strip and keep selected-height reserve when empty, add-character cancels stale pending right-panel refreshes and no longer performs a visible intermediate minimal-details refresh before hydration, and right-panel repaint is deferred until the next event-loop tick when layout geometry has settled;
-  - Artifact Browser target-character filters now use stable in-layout target buttons with in-place visibility/state updates, so standard/all target filtering no longer rebuilds 65-73 buttons on every click. Do not reintroduce QWidget cache approaches that remove/re-add target buttons through layouts; keep buttons parented in one stable layout and update via visibility/state/content;
-  - Artifact Browser cold-start is audited/optimized enough for the future loader pass: embedded size policy no longer forces AppShell resize on first open, target character assets reuse the already-loaded Character/Weapon workspace session cache instead of a second SQLite pass, and remaining cold work is mostly SQLite store load plus one-time creation of target buttons;
-  - startup loader + persistent cache/bake work is a later pre-release smoothing task. Until that loader pass, keep remaining cold-start/stutter sources visible and measurable instead of hiding them behind persistent caches too early;
-  - when the loader pass starts, explicitly list all work hidden under it and bake/cache all repeatable loader-covered data together, for example Artifact Browser cold-start init/store data, target/preset UI prep, preset-edit controls, pixmap/text/marquee caches, and bulk persistent equipment/negative-cache prewarm;
-  - add future drag/swap for right-panel character cards within a team and between teams after quick-pick remains stable. The model already has whole-slot swap/move support; UI drag/drop should swap full slot payloads so character, weapon, artifact details, warnings, and current build display move together while team bonuses/resonances are recalculated from the resulting team composition;
-  - Artifact Browser is embedded as the `Artifacts` workspace and reflects the right-panel selected operation target through target highlight/current-equipment zone; artifact click equip/unequip, current-equipment preview, selected-card highlights, preset apply, conflict confirmation, and owner side icons are wired through current-equipment tables;
-  - persistent account equipment Stage B/B2 is implemented for AppShell: adding a character restores current weapon from SQLite, weapon clicks persist through `equip_weapon(...)`, equipment is per character not per mode, slot removal does not unequip, and current equipped artifact ids are converted into a runtime live snapshot for right-panel artifact stats/set bonuses without creating fake build presets;
-  - future import equipment auto-apply setting: HoYoLAB import should optionally apply observed current artifacts/weapons into the new `account_equipment` runtime tables after import. When enabled, apply through account equipment service helpers so artifacts/weapons follow the same move/swap semantics as manual equip; current import/storage paths still need an audit before wiring this behind a user-toggleable setting;
-  - Artifact Browser equipment UX is documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`: right-panel selected character can drive the browser operation target, the top current-equipment zone is current equipment rather than a preset, preset apply is explicit, incomplete preset apply clears missing target slots, and owner side icons come from current equipment tables;
-  - separate timer/run logic into a model/controller while keeping timer UI visually in the right operations dock;
-  - RightOperationsDock now owns a persistent same-style header row with page-specific Abyss / DPS Dummy controls plus an always-visible global Account action; live Reset/Save commands sit in the bottom RUN panel action row, not in the header. Account opens a compact localized Account/Data page in the same dock without changing the left workspace. The page reuses the current HoYoLAB import/update flow, offline profile save/load/sign-out actions, and language selector; AppShell refreshes account asset caches after import and clears only its runtime team state when an offline profile is loaded or signed out. Header routing uses stable ids rather than localized text. Future PvP can replace its page-specific controls while Account stays present;
-  - root AppShell now gates Character/Weapon workspace mutation clicks by the active right-dock page: roster and weapon clicks are no-op while Account/Data is open. Returning from a non-RUN page updates the requested controller mode and right-panel model before exposing RUN content, so the previous run mode cannot paint as a stale intermediate frame;
-  - future first-run/onboarding flow should handle empty-account startup: when the account database is empty, guide the user by opening/highlighting the Account/Data page as part of the onboarding/tutorial sequence. Do not implement this as an isolated Account/Data auto-open task now; debug it together with the first-opening guidance flow. A compact Support/Donate header action, fuller settings area, and fuller Account-page support area remain optional future directions, not current UI;
-  - keep PvP inside the AppShell `pvp` workspace/right-dock policy. Detailed PvP UI mode/stage direction lives in `docs/handoff/PVP_UI_ROADMAP.md`; Decks mode v0, Play/local match setup v0, backend/read-model `unified_pool`, readable unified-pool Draft board v0, and scoped Assignment/Weapon build flow are implemented. The target right panel should keep growing as a rich isolated PvP build flow with character, weapon, artifact, and scoped GCSIM stages by reusing the normal AppShell build pipeline against provider source data plus scoped PvP runtime state. After the current hot-seat Draft/Build/Timers flow is visually polished, add local draft setup: draft system/ruleset selection, immune configuration, optional extra prebans, and research-backed handling of tournament draft systems. Immune flows need a pre-main-draft stage where players ban/pick immunes; extra-preban flows need their own one-player or per-player pre-main-draft stage before the normal pick/ban schedule;
-  - clean legacy main-window right panel and legacy history only after the new shell is stable.
-- Do not keep developing the current main-window right panel as the final structure. It is legacy/prototype UI and should be replaced by a shared Run Workspace.
-- Do not blindly discard useful legacy behavior. Extract reusable logic into modules/helpers when it fits the new model, for example timer editing that reacts to mouse wheel and updates values.
-- Separate these domains clearly:
-  - Account / Inventory: imported characters, weapons, artifacts, build presets, local catalogs.
-  - Team Builder: current team composition, selected characters/weapons, selected artifact builds, calculated stats, resonances.
-  - Scenario / Run: Abyss run, DPS Dummy run, future PvP match, enemy/room/rules metadata, timers, results.
-  - Presentation / Export: shared TeamCard/RunCard components, history UI, PNG/XLSX export, simulator result presentation, PvP result export.
-- Saved run history must store immutable snapshots, not live references to current account/build state. If artifacts, levels, weapons, or presets change later, old saved runs must not silently change.
-- Snapshots must preserve structured information, not only images: characters, weapons, constellations/refinements when available, artifacts, set bonuses, stats, timers, run metadata, and enough data for useful later tooltips/details.
+## 2. Run Workspace, History And Export
 
-## 2. Main Run Workspace
+Owners: `APP_SHELL_WORKSPACE_PLAN.md`, `RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`,
+`HISTORY_BROWSER.md` under `docs/handoff/`.
 
-- Detailed next-stage session/snapshot contract: `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`.
-- Replace the legacy right panel with a Run Workspace that has at least two modes/tabs: Abyss and DPS Dummy.
-- Active mode controls team layout, visible inputs, which history tab opens from "open history", and which run type is saved.
-- If the panel is on DPS Dummy, history opens DPS Dummy history. If it is on Abyss, history opens Abyss history.
-- Abyss mode:
-  - two teams;
-  - rooms/chambers;
-  - timers per team per chamber;
-  - total timer;
-  - factual DPS based on enemy HP and clear time when enemy data exists;
-  - save run snapshot into the current Abyss season.
-- DPS Dummy mode:
-  - one team;
-  - one DPS result / target setup;
-  - same TeamCard logic;
-  - saved into DPS Dummy history;
-  - later connected to simulator UI.
-- Prefer UI wording "DPS" or "factual DPS" for HP/time calculation. Keep simulator output separate as "sim DPS" with explicit GCSIM label/logo where applicable.
-- Before extending History selection/routing/details or durable GCSIM history, keep using `run_workspace/history_snapshot_builder.py` to build immutable `HistorySnapshotBundle` records from typed run/session state. The right-panel widget must display/command this state; it must not be the source of truth for timers or saved runs.
+The AppShell session, Reset/Save, snapshot-v2 History, shared read-only Run panel,
+Abyss sim-result attachment and right-panel slot swaps already exist.
+`main.py` still starts the legacy app; changing that entrypoint requires the
+user's approval and the current launch-readiness review.
 
-## 3. Shared TeamCard / RunCard
+- [ ] Complete DPS Dummy factual inputs/target capture and attach its existing
+  diagnostic GCSIM results to typed session/snapshot state and History.
+- [ ] Review final v7 [History corrections](docs/design/history/README.md):
+  left team portrait/bonuses and timer beside room results, denser expanded
+  data, centered title/month range with total on the left, consistent side-icon
+  face scale, per-record custom artwork/upload/reset. Native interaction checks
+  are postponed by the user while using the app; resume path is in design notes.
+  Compact density and portrait-based team identity are user-approved; splash
+  downloads were cancelled and the comparison setting removed. Compact DPS
+  stays omitted; expanded/right-panel/export DPS remain. `HISTORY_BROWSER.md`
+  owns implementation evidence and remaining validation limits.
+- [ ] Add History filters/sorting beyond newest-first.
+- [ ] Implement real PvP History through the PvP-owned snapshot boundary.
+- [ ] Add dedicated PNG Preview/Share if needed beyond the implemented inline
+  expanded card and Save PNG. Do not restore a permanent PNG browser panel.
+- [ ] Add data-oriented XLSX export: period/date/type/chamber/side, team,
+  characters/weapons/artifact sets, timers, factual/sim DPS and warnings.
+  CSV/HTML may be later alternatives; standalone History import is not priority.
+- [ ] Review the remaining launch blockers with actual user-path checks before
+  an approved `main.py` switch; preserve adaptive scaling before QApplication.
+  Remove legacy right-panel/history code only after the replacement is stable.
+- [ ] Design first-run empty-account onboarding around Account/Data guidance.
+  Do not add an isolated auto-open workaround outside that flow.
+- [ ] Revisit roster-to-slot drag only if requested; right-panel slot-to-slot
+  and cross-team swaps are already connected. Preserve normal quick-pick markers
+  and complete slot data; do not revive old hide-used-card prototype wording.
 
-- Create reusable TeamCard / RunCard concepts shared by main Run Workspace, Abyss history, DPS Dummy history, export, simulator window, and most PvP post-draft flows.
-- PvP may use different visuals where needed, but the underlying team composition logic should remain reusable.
-- A team contains four characters. Each character tile/card should eventually show portrait, element, constellation, weapon, refinement when available, compact artifact set bonus info, useful current stats, and tooltip/details with full snapshot information.
-- Reuse the compact artifact set bonus rendering/tooltips already implemented in Artifact Browser where possible. Do not create a second incompatible set-bonus representation unless there is a concrete reason.
-- Visual design problem: weapon and artifact bonus info must stay readable without covering the portrait too much. Explore small attached badges/strips rather than fully overlaying the portrait.
-- Pre-release visual pass: round/crop normal character preview portraits only after all card-like windows and slots are present, so final card treatment is consistent.
-- Far pre-release asset quality pass: add a user/dev choice for generated account character portrait/icon resolution, for example `lowres`, `1k`, `2k`, and `4k`, then regenerate/replace the cropped character icons accordingly. This is expected to be a simple HoYoLAB export-scale/canvas-screenshot setting because the crop grid already adapts automatically to the exported layout; do not prioritize before the main Run Workspace/card visuals stabilize.
+## 3. PvP
 
-## 4. Team Selection and Snapshot Model
+Read `docs/handoff/PVP_PROFILE_PACKAGE.md` for the immediate sequence and
+`PVP_UI_ROADMAP.md` / `PVP_BACKEND_STATUS.md` for the rest of the feature.
 
-- New team builder should support drag from available list into slots, drag between slots, drag between teams, swap characters, clear slot, and disabled/hidden used characters in the available list.
-- Used weapons should disappear if unique. Weapon duplicates are first-day/future patch unless current data can distinguish instances safely; do not overcomplicate MVP.
-- Artifacts are not consumed by PvP deck rules unless a future ruleset explicitly says so. For normal team building, selected builds/artifacts should be shown and snapshotted.
-- Snapshot actual selected artifact/build data, active set bonuses, and relevant stats when saving a run. Do not rely only on a live build preset id.
+- [ ] Finish independent Player 1/Player 2 providers, including same-id
+  characters with seat-specific constellation/image data.
+- [ ] Replace development `.gttpvp` with an allowlisted minimal SQLite slice,
+  portable bitmap assets, hashes/schema/reference validation and managed cleanup.
+  Decide the explicit artifact/preset inclusion rule during schema design.
+- [ ] Only after those gates, produce the isolated second-account archive with
+  3-4 decks. Do not merge it into the main account or freeze the prototype format.
+- [ ] Add scoped Artifact Browser equipment, then executable scoped GCSIM via
+  normal build services. Do not mutate normal account equipment or clone its UI.
+- [ ] Add authoritative Abyss-period admission for both local seats/future clients.
+- [ ] Add PvP result PNG/export and History; preserve scoped providers in saves.
+- [ ] Later local setup: draft-system/ruleset selection, immunes and extra
+  prebans with explicit pre-main-draft stages. Ruleset mapping/import is paused
+  until usable real sources exist; do not infer executable schedules from costs.
+- [ ] Later ruleset-cost rendering, extended GTT artifact+preset JSON exchange,
+  final styling and online transport. Far-future product ideas remain in
+  `FAR_FUTURE_TODO.md`, not the immediate PvP queue.
 
-## 5. Artifact Browser Integration Into Main UI
+## 4. Artifact Browser And Equipment UX
 
-- Do not integrate Artifact Browser as a disconnected button. It should feed artifact builds/build presets into Team Builder and TeamCard.
-- The current Artifact Browser can still open as its own window. AppShell also embeds it as the `Artifacts` left workspace with target/current-equipment UI.
-- Preserve build presets as shared ownership categories, not "one build = one character".
-- A preset can belong to Universal and/or multiple character targets; selected target filters use intersection semantics and should not auto-include Universal unless Universal is selected.
-- Keep build data separate from visual skin/delegate rendering.
-- Equip-context rule: keep one shared Artifact Browser with browse mode and equip mode for exactly one operation target, not one browser per TeamBuilder slot. Selecting a preset only previews it; the explicit apply-preset action performs the equipment write.
-- Domain rule: current equipment is separate from build presets. A preset is a reusable definition; the live/free per-character equipment state is stored in persistent equipment tables.
-- Artifact Browser target/equip-mode UX is documented in `docs/handoff/ARTIFACT_BROWSER_EQUIPMENT_UX.md`. Equip mode is active only for exactly one operation target. Right-panel selected target wins when present; it initially syncs as the browser's single selected character so presets appear, and if the user deselects it in the browser it remains only as a secondary/background operation target. Without a right-panel target, the browser may use exactly one selected character. With 0 or 2+ browser-selected characters, free artifact clicks do not equip.
-- Current equipment flow status: embedded browser target selection/secondary marker, current-equipment preview, artifact equip/unequip, preset preview/deselect, preset apply, incomplete-preset clearing, conflict confirmation, owner markers, and selected-card highlights are wired through `account_equipment`.
-- The current-equipment zone is a top zone above presets, not an `artifact_build` preset. Selecting a preset previews it; the explicit apply-preset action copies preset artifacts into the operation target's current equipment.
-- Current/preset zone UX: current equipment is rendered as plain text on the existing panel background, with current set bonuses/main-stat badge and no edit/delete controls. When a saved preset is selected, the zone becomes one large apply-preset action. Repeated preset clicks deselect and return the preview to current equipment.
-- Applying an incomplete preset clears the missing target slots so current equipment matches exactly what the preset shows. The applied preset name may be temporary UI-buffer text only and resets to the default current-equipment label after manual artifact changes.
-- Manual artifact click in equip mode equips that artifact through the equipment service and does not mutate presets. In preset-edit mode, artifact clicks edit the preset only.
-- If a preset contains artifacts currently worn by other characters, show a compact confirmation with character side icons only before applying. Accepted apply uses equipment service move/swap semantics.
-- Current equipment set icons in the right-panel mini build box and static bonus strip must come from the same persistent artifact/set icon data used by Artifact Browser rows, not guessed paths. Text fallbacks such as `2p`, `4p`, or `2+2` are only for genuinely missing/invalid icon assets.
-- Artifact owner icons, preset owner icons, and weapon owner icons come from current equipment tables, not `artifact_build_targets`. Weapon owner icons must respect `weapon_fingerprint` + `known_count` without fake weapon instance ids.
-- Known visual bug: the weapon owner overlay/side icon can fail to appear on duplicate/count weapon stacks, for example two Favonius Sword 90 lvl R2/R5 copies. Weapon equips and selected weapon display can still be correct; the remaining issue is only overlay identity/count visual feedback.
-- Future weapon-card visual polish: if weapon thumbnails later receive a more noticeable corner radius, keep the occupied-weapon outline radius synchronized with the thumbnail shape. The current occupied outline intentionally uses only a minimal 3px rounding.
-- Later/post-release: add recommended artifact stat filters per character. Examples: Varesa should rank Electro DMG goblets higher, Ineffa should rank ATK goblets higher. This likely needs imported guide/recommendation data from external sources; do not implement it in the current equipment-flow work.
-- Future weapon panel move/swap UI: when all known copies of a `weapon_fingerprint` are assigned, require an explicit current owner/source choice before moving or swapping. Do not silently steal an exhausted assigned weapon by fingerprint.
+Owners: `docs/handoff/ARTIFACT_BROWSER.md`,
+`ARTIFACT_BROWSER_EQUIPMENT_UX.md`, `ACCOUNT_EQUIPMENT_STATE_DESIGN.md`.
 
-## 6. History Browser
+- [ ] Persist the last applied preset marker per character so
+  `{preset}: {character}` survives restart/target switches until that character's
+  artifacts actually change. Current `applied_current_equipment_label` is memory-only.
+- [ ] Reproduce/fix the reported missing weapon-owner side icon on duplicate/count
+  stacks (example: Favonius Sword level 90 R2/R5); distinguish overlay identity
+  from correct equip/display behavior and verify through the actual UI.
+- [ ] For exhausted weapon fingerprints, design explicit current-owner/source
+  selection before move/swap. Do not silently take an ambiguous assigned copy.
+- [ ] Unify reset controls and selection behavior across target/Sort/Sets popups.
+- [ ] Choose thresholds/colors before adding CV/Proc Count highlighting.
+- [ ] Later apply the shared compact toggle to external-bonus/browser on/off
+  controls where still needed. `ToggleSwitch` is already used by Account settings.
+- [ ] Later infer proc counts for Artiscan artifacts and review other structured
+  import/export compatibility. Keep content-copy identity and saved preset IDs.
+- [ ] After all card surfaces stabilize, do one portrait crop/rounding pass;
+  keep occupied-weapon outline radius aligned with any future thumbnail change.
+- [ ] Late asset-quality option: configurable export/crop resolution, followed
+  by regeneration. Verify scaling/crop behavior instead of assuming it is trivial.
+- [ ] Post-release recommended artifact-stat filters require sourced guide data;
+  do not hardcode character advice during equipment work.
 
-- History is an AppShell left workspace owned by `ui/history_browser/`. It reads
-  immutable snapshot bundles from the configured root; grouped storage and row
-  selection exist. Selection now opens an isolated read-only instance of the
-  shared Run panel, and normal browsing no longer generates a PNG preview.
-- Snapshot v2 captures frozen display details/assets for every occupied slot.
-  The visual MVP adds separate History header modes, cached/saved Abyss period
-  navigation, enemy/HP preview, compact visual rows, newest-first ordering, and
-  the shared read-only selected snapshot panel. The full contract is in
-  `docs/handoff/HISTORY_BROWSER.md`.
-- Backend-only `run_workspace/history_snapshot.py` defines the autonomous
-  immutable bundle schema/service and grouped storage:
-  `abyss/<period_start>/<bundle_id>/snapshot.json` or
-  `dps_dummy/<bundle_id>/snapshot.json`. Existing pre-contract/dev snapshots
-  are disposable and require no migration. `run_workspace/history_snapshot_builder.py`
-  builds bundles from supplied typed session/right-panel data; RUN-page Save now
-  writes grouped bundles.
-- Do not develop `ui/run_history_window.py` or `runs_history.json` as the final
-  History model.
+## 5. Abyss Data And Mechanics
 
-## 7. Abyss Data Updater and Enemy Model
+Owner: `docs/handoff/ABYSS_ENEMY_DATA.md`; parser research:
+`ABYSS_MECHANICS_NOTES.md`. Runtime cache/period refresh, enemy/wave HP,
+Fact DPS source-confidence tooltips and solo/multi-target setting already exist.
 
-- First production Abyss source-data boundary exists in
-  `run_workspace/abyss/source_data.py`. It converts Fandom-shaped composition
-  reports plus optional Nanoka-shaped tower reports into typed Floor 12 source
-  data with enemy rows, waves, chamber-side HP summaries, source URLs, match
-  methods/confidence, and warnings. Live production-safe debug update entrypoint
-  exists at `python -m run_workspace.abyss.source_data_update --period-start
-  YYYY-MM-DD --floor 12`; it fetches the Fandom period page, resolves Nanoka's
-  internal tower id from the Nanoka manifest by period, then fetches Nanoka
-  tower detail data. `--tower-id N` remains an explicit debug override only.
-  Persistent cache boundary exists in
-  `run_workspace/abyss/source_data_cache.py` and stores schema-v1
-  `AbyssFloorSourceData` JSON under the project-root-anchored path
-  `data/cache/abyss/source_data/<period_start>/floor_<floor>.json`; the update
-  CLI writes it only with `--save-cache`. Monster icon asset caching is also
-  backend-only there: `--save-cache` downloads icons by default into
-  `data/cache/abyss/source_data/<period_start>/floor_<floor>_assets/monster_icons/`
-  using Nanoka icon URLs first and Fandom composition icon URLs as fallback,
-  then stores `cached_icon_path` on rows for future tooltip UI. Persisted JSON
-  keeps these icon references cache-file-relative
-  (`floor_<floor>_assets/monster_icons/<file>`), not absolute user/profile
-  paths; the loader resolves them to local paths for Qt and can recover old
-  absolute cache entries by filename when the copied icon file exists under the
-  current period/floor asset directory. Icon downloads are bounded-parallel and
-  reuse existing URL-hash files even during source-data `--force`; force
-  refreshes source data, not identical already-cached icons.
-  It does not wire final UI; it supersedes the historical static fixture as the
-  runtime source-data path. HP source modes are now
-  explicit: `--hp-source auto` uses Nanoka as primary and Fandom enemy-page HP
-  as fallback only for missing HP, `--hp-source nanoka-only` keeps the old
-  no-enemy-page fallback path, and `--hp-source fandom-only` forces Fandom
-  enemy-page HP for validation. Source-data refresh uses one bounded network
-  worker setting (`--network-workers`, default 10) for Fandom enemy-page HP
-  fallback and monster icon downloads; `--fandom-hp-workers` remains a
-  compatibility alias. The fallback fetches unique enemy pages without a
-  persistent enemy-page HP cache. In normal Nanoka-backed modes, Fandom
-  composition and Nanoka source fetch run in parallel before join/build.
-  Normal HoYoLAB import now resolves the current Spiral Abyss period with source
-  priority HoYoLAB overview -> latest Fandom Spiral Abyss/Floors period page
-  -> Nanoka live tower metadata, stores it at
-  `data/hoyolab/spiral_abyss_period.json` with source/warning/fallback metadata,
-  and best-effort refreshes this period/floor source-data cache after a
-  successful import. This refresh is non-fatal; existing caches stay untouched
-  on source update failure. Manual backend/debug command:
-  `python -m hoyolab_export.abyss_source_refresh --write-period --update-cache`;
-  it skips same-period ready cache/assets by default, has `--force` for an
-  explicit refresh, has `--period-source auto|hoyolab|nanoka|fandom` for
-  period diagnostics, and passes `--hp-source auto|nanoka-only|fandom-only`
-  plus `--hp-multiplier` / `--network-workers` into the source-data updater.
-  Local system date is not a source-data authority for this refresh
-  path. Right panel Fact DPS now reads this local cache via
-  `run_workspace/abyss/source_data_runtime.py`, never fetches network data from
-  the right panel, and uses `solo_target_hp` as the default displayed HP mode.
-  Missing period/cache/HP leaves Fact DPS unavailable instead of falling back to
-  the invalid static fixture; missing cache is not permanently memoized in
-  AppShell. The source-data update report now includes lightweight timing fields
-  for Fandom, Nanoka, join/build, JSON cache save, and icon asset caching. The
-  Account/Data HoYoLAB import button already triggers the best-effort Abyss
-  source-data refresh after a successful import; same-period ready cache/assets
-  are skipped by default and `--force` refreshes explicitly. Fact DPS cells now
-  expose a compact cached-source-data tooltip payload and use the project's
-  custom tooltip surface. The accepted content is compact HTML/text with
-  enemies grouped by wave, monster icons, enemy names/levels/target mode/HP,
-  calculation mode, HP/sec, DPS result/reason, and source summary including
-  composition/name/count source, HP source, and match method/confidence. Native
-  Qt/system tooltips are not acceptable. Account/Data now has a persistent DPS
-  subzone toggle for multi-target HP mode, default off/solo-target.
-  Manual/debug period switcher exists at
-  `tools/future/abyss_period_switch.py`: it points AppShell at an already
-  cached period by rewriting only `data/hoyolab/spiral_abyss_period.json`,
-  refuses missing period/floor caches, preserves a `.debug_backup.json` period
-  backup by default, and never fetches or mutates source-data caches. Use it for
-  temporary historical-period checks such as 2026-02-16 / tower 116; normal
-  HoYoLAB import may overwrite the debug period-ref with the official current
-  period.
-- Useful Abyss debug commands from the project root:
-  - update/cache normal Nanoka-backed source data:
-    `.\.venv\Scripts\python.exe -m run_workspace.abyss.source_data_update --period-start YYYY-MM-DD --floor 12 --save-cache --hp-source auto --network-workers 10 --format text`
-  - force Fandom enemy-page HP fallback for validation:
-    `.\.venv\Scripts\python.exe -m run_workspace.abyss.source_data_update --period-start YYYY-MM-DD --floor 12 --save-cache --hp-source fandom-only --network-workers 10 --format text`
-  - switch AppShell to an already cached period:
-    `.\.venv\Scripts\python.exe tools\future\abyss_period_switch.py --period-start YYYY-MM-DD --floor 12 --format text`
-  - restore the previous period ref after a debug switch:
-    `.\.venv\Scripts\python.exe tools\future\abyss_period_switch.py --restore-backup --format text`
-- Need future AbyssSeason / room / chamber / wave / enemy model on top of this
-  source-data boundary.
-- For each Abyss chamber/side, data should ideally support enemies, waves, enemy HP, total HP, resistances, immunities, special states, invulnerability/phases where available, and icons.
-- Do not require this data for the app to function.
-- Abyss source research is done; see `docs/handoff/ABYSS_ENEMY_DATA.md` and
-  `docs/handoff/ABYSS_MECHANICS_NOTES.md`. `docs/handoff/ABYSS_HP_FIXTURE.md`
-  is a historical 2026-05-16 research/debug fixture, not current runtime
-  factual-DPS truth. Keep the source join resilient so one unavailable/stale
-  source does not break the feature.
-- Do not download a huge historical database initially. Update current Abyss info at the relevant time and create a new season/page if current Abyss data changed.
-- No network / no data fallback:
-  - future UI may create/use a provisional Abyss period based on the system
-    date only as an offline session placeholder, not as source-data authority;
-  - use the 16th day of month as the split point;
-  - use a localized period label such as `16.05 - 16.06.26`;
-  - show "no data" / localized equivalent where enemy data/HP is needed;
-  - factual DPS from enemy HP is unavailable when HP data is missing.
-- Keep in mind HP/time DPS is not exact damage dealt because waves, immunity, phases, shields, invulnerability, movement, and similar mechanics can distort it.
-- Abyss enemy data source research lives in `docs/handoff/ABYSS_ENEMY_DATA.md`.
-- Audit result: no single reliable source currently provides current Abyss lineup + monster ids + waves/positions + ready HP totals + resists. MVP should use a resilient source join: current period/lineup/wave notes from Fandom, source-like monster ids/stats/icons/resists from AnimeGameData/GCSIM/Yatta/Ambr where available, and Fandom enemy/level-scaling pages as fallback/cross-check for floor HP multipliers, enemy HP tables, Abyss-specific resist states, and mechanics notes.
-- Factual Abyss DPS should use confidence states, not a single yes/no gate. Prefer source-like/period-specific HP multipliers; if those are missing but enemy ids/counts/levels/base HP are matched, a Fandom general floor-multiplier estimate can be shown with an explicit `estimated_from_floor_multiplier` warning. If core inputs are missing/ambiguous, show enemy list/warnings and keep HP/time DPS unavailable. The accepted Fact DPS tooltip already exposes source/match confidence details; do not add separate near-cell source UI unless a later product decision asks for it.
-- `docs/handoff/ABYSS_HP_FIXTURE.md`, `hoyolab_export/abyss_sources.py`, and
-  `hoyolab_export/abyss_fixture_report.py` are historical audit/fixture
-  references only. Normal displayed AppShell Fact DPS must use the production
-  source-data cache (`run_workspace/abyss/source_data*.py`) and must not fall
-  back to the old invalid/static fixture path.
-- Abyss mechanics audit exists at `docs/handoff/ABYSS_MECHANICS_NOTES.md`. It
-  records Fandom structured fields/prose tags for shields, wards,
-  invulnerability, state RES, paralyze/downed windows, true damage HP events,
-  summons/adds, elemental/reaction requirements, and mode-specific stat blocks.
-- Backend Abyss mechanics parser/report code exists in `hoyolab_export/abyss_mechanics.py`. It parses Fandom enemy-page wikitext snippets into structured fields and warning tags such as `shield_check`, `ward_or_barrier`, `phase_invulnerability`, `state_res_override`, `paralyze_window`, `true_damage_hp_event`, `summons_or_adds`, `elemental_requirement`, `reaction_requirement`, `lunar_requirement`, `high_mobility`, and `mode_specific_stats`. Future Abyss UI work is mechanics-warning integration only, not another broad audit or Fact DPS tooltip/source-summary redesign.
+- [ ] Integrate prepared mechanics warnings into the UI: shields, wards,
+  invulnerability, state RES, summons and elemental/reaction requirements.
+  This is not another broad source audit or Fact DPS tooltip redesign.
+- [ ] Extend scenario/season modeling only for concrete missing fields or flows,
+  preserving the existing typed chamber/wave/enemy source boundary.
+- [ ] If an offline provisional period UI is needed, label it as a session
+  placeholder. A local calendar date must never become source-data authority.
+  Missing cache/HP keeps factual DPS unavailable; no static-fixture fallback.
 
-## 8. Stats / Resonance / Static Catalogs
+## 6. Normal GCSIM Browser And Release
 
-- Team selection UI should eventually display current stats for each character.
-- Stats may need character base stats by level/ascension, weapon base stats/substats, weapon level/refinement, artifact main/sub stats, static artifact set bonuses, and resonances.
-- HoYoLAB account detail stat-sheet fields are the preferred source for account base/reference extraction when available. Source-field map: `docs/handoff/ACCOUNT_CHARACTER_DETAIL_FIELDS.md`.
-- For TeamBuilder/right-panel selected details, do not use HoYoLAB stat-sheet `final` values as final stats when a virtual selected weapon/build is active; those finals describe current in-game equipment. Derive virtual build display stats from HoYoLAB base/reference values, selected weapon values, selected ArtifactBuildSnapshot totals, HoYoWiki ascension bonus matched by factual HoYoLAB base stat, and safe baselines.
-- HoYoLAB stat-sheet groups `base_properties`, `extra_properties`, `element_properties`, and `selected_properties` remain useful as reference/debug. Preserve `property_type` ids as primary keys.
-- Display stat order remains HP, ATK, DEF, EM, Crit Rate, Crit DMG, ER, then damage/healing bonuses. Hide zero stats except baselines: ER 100%, Crit Rate 5%, Crit DMG 50%. Raw contribution/provenance rows must not be rendered as final stat rows.
-- HoYoWiki character stats catalog remains useful for ascension bonus extraction, Traveler/reference/fallback, and possible guide/recommendation parsing; it is no longer the primary source for account right-panel current stats when HoYoLAB stat sheet is available. GCSIM may still be useful as simulator/reference data later; see `docs/handoff/GCSIM.md`.
-- Do not fully parse arbitrary set bonus text into formulas for MVP.
-- Reasonable stats MVP:
-  - calculate from known structured data;
-  - include direct static display-stat bonuses only when explicitly modeled in
-    SQLite (`artifact_set_display_stat_effects`, `weapon_display_stat_effects`);
-  - explain applied external bonuses in the Right Panel through compact
-    source chips. The prototype source item shape now covers
-    `elemental_resonance`, `moonsign`, `hexerei`, `artifact_set_static`, and
-    `weapon_passive_static`; future team bonuses should reuse that shape.
-  - keep localized weapon passive/effect tooltip text separate from structured
-    static effects: `weapon_passive_tooltips` is display/reference text by
-    `(weapon_id, lang)`, while `weapon_display_stat_effects` is the applied
-    whitelisted stat-effect table. HoYoLAB account weapon `desc` is flavor/lore,
-    not a combat passive.
-  - add a later separate "combat/ability bonuses" layer for scoped bonuses such
-    as Elemental Skill/Burst/Normal/Charged/Plunging DMG or CRIT modifiers.
-    These should not be mixed into ordinary visible character display stats.
-  - keep the Right Panel `Apply external bonuses` toggle scoped only to
-    external bonus rows. It must not disable base stats, selected weapon base
-    ATK/secondary stat, or artifact main/sub stat totals.
-  - skip conditional bonuses or mark them as condition-required/not automatically included;
-  - add manual toggles later if needed.
-- Right Panel prototype team bonus chips now include direct display-stat elemental resonances, a `Moonsign` Lunar Reaction DMG indicator, and display-only `Hexerei`. Use the in-game/source terms `moonsign` and `hexerei` when searching code/docs/sources; do not substitute guessed terms. Elemental resonances are inferred from character elements. Implemented stat contributors are Pyro `ATK +25%`, Hydro `HP +25%`, Cryo `CR +15%`, Geo selected-character elemental DMG `+15%`, and simplified Dendro `EM +50/+80/+100`; Electro/Anemo and non-display-stat resonance effects are not modeled in stat rows. `Moonsign` uses `character_identity.traits_json`, shows a capped Lunar Reaction DMG indicator only when at least 2 team members have `moonsign`, reads team member stats after direct external stat bonuses when the external-bonus toggle is on, requires a non-`moonsign` trigger teammate for a nonzero value, and does not alter normal display stat rows. Bonus strip source chips use `[large source icon] [separate compact effect badge(s)]`, with cached alpha-trim scaling so transparent PNG padding does not shrink source icons inside chips. Compact Hexerei/member side icons use a separate cached bottom-aligned side-icon renderer rather than alpha-fit cropping. The shared bonus tooltip formatter owns the single `Effects:` section so source bodies should not duplicate effect labels. `Hexerei` appears only with 2+ Hexerei team members and is tooltip/display-only; member tooltips read normalized SQLite Hexerei sections, filter locked sections by account constellation, prefer localized content-language rows, and fall back to en-us. `ui.right_panel_prototype_smoke` supports `--team-preset moonsign|hexerei|resonance-sanity` and `--summary` for no-GUI team bonus sanity checks.
-- `hoyolab_export/character_trait_catalog.py` refreshes HoYoWiki trait sources. Raw/source cache remains `data/cache/hoyowiki/character_trait_catalog.json`; normalized trait reference data lives in SQLite tables `character_trait_definitions`, `character_trait_memberships`, and `character_trait_tooltip_sections`. Account sync joins owned-character trait tags into SQLite `character_identity` as runtime fields for filters/history/PvP/resonance calculation. Targeted Hexerei tooltip refresh command: `python -m hoyolab_export.character_trait_catalog --refresh-hexerei-tooltips --language ru-ru`; it always refreshes en-us entry `9347` as canonical, then content-language override, with en-us fallback and no UI web reads.
-- Refactor future catalog/update code into a common location instead of scattering it in UI modules. Use bundled seed/static data, downloaded cache, schema version, source, timestamp, language, and updater modules.
-- App should work offline with last known or bundled data.
-- Data categories likely needing common catalog/updater support: artifact set catalog/icons, character base stats, weapon base stats, resonance definitions, current Abyss enemies/HP, monster stats, standard build profiles, tournament rulesets.
-- HoYoWiki character/weapon stats are static/generated catalog data, not account import data. Refresh them explicitly with the backend catalog refresh path; do not fetch every character/weapon detail page from UI hot paths or ordinary HoYoLAB account update.
-- Current explicit refresh path: `python -m hoyolab_export.hoyowiki_catalog_refresh`. It refreshes `data/cache/hoyowiki/character_stats_catalog.json` and `data/cache/hoyowiki/weapon_stats_catalog.json` from HoYoWiki lists plus detail pages, uses `en-us` by default, skips valid cached entries in missing-only mode, and supports `--force` after parser/source changes. Normal HoYoLAB import additionally best-effort refreshes only missing/new canonical artifact sets plus the small `Moonsign`/`Hexerei` trait catalog, so newly released sets/trait characters can be discovered without a separate manual step or a full icon recheck of every existing set.
-- Future release flow can generate full sanitized catalogs once, ship them as seed/static data where appropriate, and refresh only missing/new entries after game updates.
-- Future language/UI idea: support both application UI language and HoYoLAB
-  content language as separate choices, especially for localized reference
-  text such as weapon passive tooltips.
-- HoYoWiki entries with empty/no ascension rows are not automatically non-playable junk. Some may be announced/future playable characters whose final stats are not available yet. Classify them as `future_pending_stats` / `stats_unavailable_yet` unless another source proves they are truly non-playable. If a matched account character ever has no stat rows, future `CharacterStatSnapshot` should warn instead of crashing.
-- Traveler is special/deferred for account mapping: HoYoWiki list contains elemental Traveler variants as separate entries, but account Traveler / localized Traveler names must not be solved by aliasing to one variant. Future model should select an elemental Traveler variant explicitly while keeping shared account level and variant-specific talents/constellations separate. Account/default Traveler must remain marked with the `standard_5_star` trait for the Standard 5-star tri-state filter.
-- Account stat-snapshot readiness is separate from GCSIM key readiness. Local
-  account counts can change with the imported account/cache; ordinary
-  non-Traveler rows should remain usable for `CharacterStatSnapshot` when
-  HoYoLAB base/reference data and HoYoWiki stat rows match, while Traveler stays
-  special/deferred until the dedicated Traveler model exists.
-- Minimal `CharacterStatSnapshot` foundation exists for ordinary matched-ready characters/weapons. It is read-only/backend-only and partial: it preserves character base HP/ATK/DEF, ascension bonus separately, weapon base ATK/secondary stat, optional artifact summary, and warnings. Direct always-on display-stat artifact/weapon effects are structured separately in SQLite for TeamBuilder display rows; formulas, conditional bonuses, resonances, talents, and constellations remain excluded. Traveler remains `special_deferred`.
-- Account character source shape is documented in `docs/handoff/ACCOUNT_CHARACTER_DETAIL_FIELDS.md`: current account detail data exposes useful stat-sheet rows, weapon `promote_level`, and `skills[]` talent levels. Character ascension/promote phase is not required as a raw HoYoLAB field for the current account storage model; account sync matches the needed HoYoWiki row by factual HoYoLAB base HP, then DEF, then derived character ATK. The old HoYoWiki level-only row policy remains reference/fallback behavior only; do not use it as account runtime ascension bonus selection when HoYoLAB base stat rows are present.
-- Clean account character/weapon runtime storage now exists in local SQLite `data/artifacts.db` tables `account_characters`, `account_character_talents`, and `account_weapon_observed_stacks`; see `docs/handoff/ACCOUNT_SQLITE_STORAGE.md`. The DB filename is legacy and this is a unified runtime DB, not artifact-only storage. Normal HoYoLAB import (`python -m hoyolab_export.run_import`) now syncs these tables automatically after raw/source cache files and crop manifest are written. Raw/source cache files remain `data/hoyolab/account_characters.json`, `data/hoyolab/account_weapons.json`, and `data/hoyolab/account_character_details.json`, but normal UI/runtime account loading should use SQLite read adapters, not raw JSON. Adapter/manual debug CLI: `hoyolab_export/account_storage.py`, command `python -m hoyolab_export.account_storage` (`--download-side-icons` optionally caches already-known side icon URLs for manual resync). Read adapter functions: `list_account_characters`, `get_account_character`, `list_account_character_talents`, `list_account_weapon_observed_stacks`, `get_account_weapon_observed_stack`, and `get_account_weapon_observed_stack_by_id`. UI asset helpers in `ui/character_assets.py` convert account SQLite records into legacy grid asset items. Characters upsert by authoritative HoYoLAB `character_id`; `account_characters.name` and observed weapon `name` are localized HoYoLAB display text and must not be used as English identity keys for GCSIM mapping. Account sync stores `catalog_english_name` plus resolved `gcsim_character_key` / `gcsim_weapon_key` status and method fields by joining already-local HoYoWiki stats caches with the local GCSIM shortcut registry once per sync. Ready rows can feed future `GcsimMappingRef` construction directly; missing/ambiguous/unsupported rows remain controlled not-ready. Side icon paths are deterministic local cache refs when present/downloaded by normal import or explicit manual cache; cached side icon files are reused, failures are non-fatal; talents upsert by `(character_id, skill_id)`; empty/broken character/detail sources do not wipe character/talent rows.
-- Weapon storage is reconstructed observed stacks, not full inventory and not current-equipped canonical refs. HoYoLAB weapon id is a type id, not a unique account weapon instance id. Exact observed weapon identity uses normalized `weapon_fingerprint`; identical fingerprints dedupe and update non-decreasing `known_count`, while later smaller/zero observations never delete or decrease stacks. The interrupted `account_weapons` / current-equipped-ref model is replaced from the canonical path. Normal weapon asset grids intentionally hide 1-2 star observed stacks by the same `IGNORED_WEAPON_RARITIES` / `weaponIgnored` rule used by `crop_manifest`; those stacks remain stored but are not expected to have visible `weaponAssets`.
-- Runtime account visual rules: dummy/mannequin IDs from `crop_manifest` are explicitly filtered before portrait/side-icon fallback; weapon stack icon paths are resolved by weapon `icon` URL key / `weapon_id`, not equipped-character or source row order; weapon tooltips use display stat names such as `Energy Recharge` / `CRIT Rate`, not raw `P23` / `P20` ids.
-- Compact data/runtime boundary map exists at `docs/handoff/DATA_RUNTIME_BOUNDARIES.md`; read it before changing raw HoYoLAB caches, SQLite runtime tables, visual asset caches, static/reference catalogs, or stored-vs-hidden visual rules.
-- Pure account stat-sheet helper exists in `hoyolab_export/account_stat_sheet.py`: `parse_account_character_stat_sheet(...)`, `extract_account_character_base_values(...)`, and `extract_account_weapon_property_values(...)`. It is explicit-input only, preserves `property_type`, derives character base ATK as account base ATK minus weapon base ATK, and does not mutate DB/UI/network state.
-- Narrow HoYoWiki ascension helpers exist in `hoyolab_export/character_ascension_bonus.py`: `extract_character_ascension_bonus_by_base_stats(...)` is the account-runtime path and stores a bonus only after matching a HoYoWiki row/phase by HoYoLAB base stat; `extract_character_ascension_bonus(...)` remains legacy/reference level-policy behavior.
-- Future Traveler model: treat account Traveler as a special/default character with auto-detected HoYoWiki elemental Traveler variants, a default Traveler icon/card, and a popup/dropdown element selector. Keep Traveler marked as `standard_5_star` in the identity/trait layer and include it in planned tri-state filtering alongside special/default character filtering; do not solve this until the Run Workspace needs it.
-- Future source note: Russian HoYoWiki character pages may expose recommendation blocks for weapons, artifacts, and teams/allies. This could later feed right-side guide/info content, draft bot heuristics, and recommended stat/build hints. Do not parse it now.
-- Real no-network `CharacterStatSnapshot` smoke exists: `python -m hoyolab_export.character_stat_snapshot_smoke --limit 2`. It reads only allowlisted account JSON and local HoYoWiki stats caches, uses `account_character_details.json` wiki links, and builds sanitized examples for ordinary matched-ready characters. Equipped weapon promote phase is available from `account_character_details.json -> json.data.list[].weapon.promote_level`, so weapon before/after selection uses explicit weapon data. Artifact summary is still missing and final totals remain intentionally uncomputed.
-- Artifact-only build snapshot foundation exists in `hoyolab_export/artifact_build_snapshot.py`. It is explicit-input only: callers pass already-loaded raw build summaries/presets, and `CharacterStatSnapshot` carries the resulting artifact contribution without querying Artifact Browser DB/UI. Build id/name are provenance only; future saved runs still need actual artifact/build contents. Set bonus formulas, conditional bonuses, resonances, weapon passives, and final totals are still not applied.
-- Real Artifact Browser build snapshot smoke exists: `python -m hoyolab_export.artifact_build_snapshot_smoke --build-name test111` or `--build-id <id>`. It opens `data/artifacts.db` read-only, loads one selected build preset, converts the existing raw build summary into `ArtifactBuildSnapshot`, and can pass it into `CharacterStatSnapshot` as explicit artifact input. The `test111` smoke confirmed build id 20, four artifact slots, missing position 5, active 2+2 set metadata, CV 95.6, proc count 12. Build name is only acceptable for explicit smoke/debug selection; final UI/team-builder paths must pass `build_id`.
-- TeamCard / CharacterDetails backend data adapter exists in `hoyolab_export/team_card_data.py`. It accepts explicit selected account character + selected account weapon + prepared build snapshot, or an outer read-only build-id loader that converts the selected Artifact Browser preset to `ArtifactBuildSnapshot`. `CharacterStatSnapshot` remains DB/UI-free. `CharacterDetailsData` now carries selected character/weapon/build provenance, the snapshot/provenance layer, parsed HoYoLAB `account_stat_sheet` when raw account detail is supplied, HoYoWiki `ascension_bonus` reference data, warnings, and GCSIM-readiness notes.
-- Current-equipment artifact snapshot builder exists in `hoyolab_export/team_card_data.py`: `build_current_equipment_artifact_snapshot(...)` reads `account_character_equipped_artifacts`, reuses `calculate_raw_build_summary(..., slots=...)`, skips missing artifact rows softly with a warning, and returns a runtime-only `ArtifactBuildSnapshot` with `build_id=None`. AppShell uses it for right-panel artifact stats/set bonuses; it must not create or mutate `artifact_builds`, `artifact_build_slots`, or `artifact_build_targets`.
-- Real no-network `CharacterDetailsData` smoke exists: `python -m hoyolab_export.team_card_data_smoke --character-id 10000050 --weapon-id 13407 --weapon-level 70 --weapon-refinement 5 --weapon-promote-level 4 --build-id 20`. It reads SQLite account runtime storage and `data/artifacts.db` read-only, not raw account JSON. The smoke validates selected character + explicit observed weapon option + build id -> prepared details data with artifact contribution, while still not applying passives/set/resonance formulas.
-- Minimal backend TeamBuilder slot-state model exists in `run_workspace/team_builder.py`. It stores typed selections (`SelectedCharacterRef`, `SelectedWeaponRef`, `SelectedArtifactBuildRef`) instead of legacy image paths, supports set/clear/swap/move operations, detects duplicate selected characters, and can optionally carry prepared `CharacterDetailsData`. It does not replace the legacy right panel yet.
-- Isolated read-only TeamCard prototype exists: pure view-model in `run_workspace/team_card_view_model.py` plus isolated QWidget prototype in `ui/team_card_prototype.py`. Manual visual smoke launcher: `python -m ui.team_card_prototype_smoke` for real no-network Thoma + build id 20, or `python -m ui.team_card_prototype_smoke --fake` for fake data. It consumes `TeamBuilderState` / optional `CharacterDetailsData`, displays four slots, empty placeholders, character/weapon/build labels, artifact summary, status, and compact warnings. It is not wired into the legacy right panel and is not the final Run Workspace UI.
-- Isolated Right Panel / TeamBuilder Prototype v6 exists: pure view-model in `run_workspace/right_panel_prototype_view_model.py`, display stat helper in `run_workspace/display_stats.py`, and live-run QWidget implementation in `ui/right_panel/live_run/panel.py`; `ui/right_panel_prototype.py` is a compatibility facade. Manual visual smoke launcher: `python -m ui.right_panel_prototype_smoke` with fake data by default, or `python -m ui.right_panel_prototype_smoke --real-thoma` for the no-network Thoma + build id 20 sample plus several local no-preset character slots. The no-preset sandbox loader now uses SQLite account runtime records and observed weapon stacks, not raw account detail JSON. It keeps the v4/v5 layout, enforces a minimum standalone content width, uses square character portraits with aligned weapon/build boxes, keeps chamber factual/sim DPS columns, and shows selected-character virtual build display rows from character base + selected weapon + selected artifact build + ascension/baselines. The build box uses compact Artifact Browser preset-row set semantics: active set icons plus 2p/4p overlay/count, with `Equip`/`ART` placeholders for no-preset slots. The lower slot main-stat badge is derived from the selected artifact build snapshot's actual sands/goblet main stats; do not source it from target recommendations, character element, HoYoLAB current-final stats, or display-stat order. Selected weapon meta includes weapon base ATK and secondary stat from selected SQLite observed weapon stack/account runtime data. The selected-details bottom area is a compact external bonus source strip, not a plain set-name line; it shows modeled artifact-set and weapon-passive static effects with numeric chips and custom tooltips. Real smoke selected weapons are explicit observed weapon options from SQLite, not inferred from current-equipped provenance. It is visual-only and not wired into the legacy right panel.
-- Low-priority UI polish: replace the temporary full-strip click behavior for `Apply external bonuses` with the user's custom compact toggle component, then reuse that same toggle for the Artifact Browser on/off switch. Keep selection state shown by field/border styling rather than a checkbox.
-- Reusable UI rule: dense vertical card/grid panels should use `ui/utils/overlay_scroll.py::OverlayVerticalScrollArea` when native scrollbars would make content jump or reserve asymmetric empty space. It draws an auto-hidden scrollbar over the right edge, appears on scroll/edge hover/drag, and does not participate in layout width. The Right Panel prototype uses it first; apply the same utility to other suitable project scroll areas after visual verification.
-- Display stat rows are virtual TeamBuilder results in this order: HP, ATK, DEF, EM, Crit Rate, Crit DMG, ER, then damage/healing bonuses. HoYoLAB stat-sheet `final` rows are reference/debug only for TeamBuilder slots and must not be shown as selected-build final stats. Raw partial labels such as `Base HP`, `Weapon ATK`, `Asc ...`, `Art CR`, `WATK`, `AER`, etc. must not be shown as final selected-detail stat rows. Direct static artifact set/weapon passive display effects may be applied only from normalized SQLite rows; formula effects, conditional bonuses, resonances, talents, and constellations remain excluded.
-- Raw partial contribution labels such as `Base HP`, `Weapon ATK`, `Asc ...`, `Art CR`, `WATK`, `AER`, etc. are internal/debug provenance and should not be shown as final selected-detail stat rows.
-- Stat normalization / GCSIM stat-key mapping handoff exists at `docs/handoff/STAT_NORMALIZATION.md`; backend code exists in `hoyolab_export/stat_normalization.py`. It maps project artifact `property_type` values to normalized keys/GCSIM `add stats` keys, converts percent-point values like `46.6` to ratio values like `0.466`, keeps flat stats unchanged, treats Crit Value / Proc Count as virtual metrics, and intentionally does not compute final totals or apply passives/set bonuses/resonances.
-- Weapon passive/refinement text is reference data only for now; do not parse free text into stat formulas or auto-apply passive stat bonuses unless a future effect is explicitly modeled/whitelisted.
-- Standard 5-star filter exists with `assets/filters/standard.png` and tri-state behavior: show all / only Standard 5-star / exclude Standard 5-star. Membership is stored as static trait `standard_5_star` in `character_identity`; HoYoWiki entry `2952` is the source context, while the current API payload is not a clean structured character list, so the 5-star standard character membership is seeded by explicit HoYoWiki character entry ids. Traveler is intentionally included in this trait and must stay included when the dedicated Traveler model is implemented.
-- Future storage audit/refactor: account character/weapon runtime tables are started; next audits should decide which remaining generated JSON/cache files should stay as small rebuildable source caches or seeds and which should be normalized into SQLite/catalog DB tables. Prefer DB storage only for runtime-critical data that is frequently joined, mapped, filtered, queried, reported, or used by stat calculator/UI. Remaining likely candidates include HoYoWiki character stats, weapon stats, character traits, character region catalog, mapping reports / alias override tables, and other large generated account/catalog JSON files after usage audit. A two-layer model is acceptable: raw/source JSON cache for fetched HoYoWiki/HoYoLAB data plus normalized DB tables for lookup, mappings, aliases, reports, UI, and stat calculation.
+Owner: `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`.
+Selected-team Abyss prepare/run/results backend is implemented.
 
-## 9. Export
+- [ ] Finish Browser team/target/readiness/result presentation and navigation.
+  Correct the runtime `History persistence: disabled` wording: Abyss results
+  persist with Run Save; simulations are not individually auto-saved.
+- [ ] **N5 (after optimizer priorities):** readable rotation parsing/presets and
+  grouped action/condition buttons with dynamic text/punctuation on insertion
+  and deletion. Independently inventory the installed GCSIM DSL and official
+  docs; preserve raw input and unsupported constructs without lossy rewrites.
+  Start grammar with RU/EN, then other languages; shared UI keys still follow
+  project localization rules. One isolated subagent is authorized only after
+  the paused overnight session starts; no additional concurrent subagents.
+- [ ] Later discover published rotations by exact stable four-character roster,
+  with safe parsing, attribution, freshness and deduplication.
+- [ ] Add Browser progress/cancellation and run-artifact/debug retention controls.
+  Consider bounded parallel chamber runs only after measurement.
+- [ ] Release-validate a bundled known-good `gtt-gcsim.exe`; normal users must
+  not need Go/Git. Add dependency-aware advanced update/failure UX afterward.
+- [ ] Curate mapping overrides only for proved exceptions; Traveler/upstream
+  gaps remain controlled unavailable cases. Coordinate shared AppShell/PvP hooks
+  before touching them from the normal Browser track.
+- [ ] Research standard-build sources, license, format and actual contents
+  before adopting or labeling anything as KQM standards.
 
-- The current selected-snapshot PNG renderer is transitional and must not remain
-  as a permanent History browsing panel. Explicit export actions and XLSX remain
-  future work.
-- Target formats: PNG/image for visual sharing and XLSX for analysis/comparison. CSV/HTML can be optional fallback later.
-- Future PNG export must render from the same shared RunCard/TeamCard presentation used by live Run and History.
-- XLSX should be data-oriented and include season/period, date, run type, chamber/side, team, characters, weapons, artifact set bonuses, timers, factual DPS if available, sim DPS if available, notes/warnings.
-- Do not prioritize import of history as a separate feature. Later full offline profile import/export can include history.
+## 7. Account, Catalogs And Offline Profile
 
-## 10. GCSIM Integration
+Owners: `DATA_RUNTIME_BOUNDARIES.md`, `ACCOUNT_SQLITE_STORAGE.md`,
+`HOYOLAB_IMPORT_RELIABILITY.md` and `STAT_NORMALIZATION.md`.
 
-- GCSIM backend is functionally complete for the current selected-runtime-team Abyss Browser MVP. It prepares full configs, builds current cached Abyss scenarios, runs a selected chamber or sequential C1-C3 through the patched artifact, parses results, writes typed Run Session/right-panel Sim DPS rows, and includes current Abyss sim results in immutable History when the user saves the run. Remaining work is primarily Browser UI, run orchestration, DPS Dummy state attachment, and release packaging rather than another broad backend implementation phase.
-- Read before GCSIM work:
-  - `docs/handoff/GCSIM.md` for upstream research and CLI/result behavior;
-  - `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md` for the current GTT engine lifecycle, patch stack, Browser MVP, cleanup/retention policy, and production-readiness sequence;
-  - `docs/handoff/STAT_NORMALIZATION.md` for project stat normalization and GCSIM stat-key mapping rules.
-- Implemented enough to rely on:
-  - transactional local engine-store/update prototype with source acquisition, ordered patch backends, runtime probe/build-artifact checks, and active/rollback metadata;
-  - patch stack and `-gtt-info` capability validation owned by the dedicated GCSIM handoff rather than this root TODO;
-  - active-artifact runner plus backend/dev config readiness, key mapping reports, account-prepared config bridge, selected-runtime-team config adapter, and Abyss wave scenario bridge; `account_prepared_config.py` remains a dev/smoke bridge, not the Browser product team source;
-  - AppShell GCSIM Browser workspace prepares/runs from the current selected TeamBuilder/AppShell team state, not localized-name `team_names`; missing characters/weapons/artifact sets/artifacts/talents/levels/refinement/rotation errors produce grouped readiness summaries;
-  - Abyss Browser selected-chamber and `Run 3 chambers` actions require the current cached Abyss source identity and never fall back to backend smoke defaults; both write typed-session right-panel Sim DPS rows for matching team/chamber/side when a run result exists;
-  - DPS Dummy has a diagnostic backend run path that uses the selected team and manual rotation shell without Abyss identity, history persistence, no-code rotation support, or damage-correctness claims;
-  - GCSIM boosted/infinite energy is an explicit Account/GCSIM setting (`gcsim_boosted_energy_enabled`) that injects/replaces `energy every interval=480,720 amount=100;` only when enabled and clears stale runtime Sim DPS results when changed; dev CLI energy override remains in `account_prepared_config.py`;
-  - Sim DPS cells have tooltips with status, clear time, DPS, average total damage per sim run, source/config paths, target mode, stale reasons, warnings/issues, and explicit no-DPS-correctness notes. The current `History persistence: disabled` wording is stale: simulations are not auto-saved individually, but current Abyss session results are serialized as `sim_dps` summaries by normal Run Save;
-  - normal GCSIM Browser blocked-run output is compact/readiness-first with debug issue counts/codes instead of raw issue dict walls; the prepare/preflight path is exposed as `Check readiness`, with raw diagnostics kept behind Advanced/Debug UI;
-  - DPS Dummy reports energy mode and dummy target HP/resist/source for diagnostics;
-  - generated GCSIM engines are retention-pruned to active + one previous successful + one latest failed; `.go/build-cache` is rebuildable and cleaned after successful probe/build unless explicitly kept; `.go/pkg/mod` remains as the small module cache; optimizer evidence cache is automatically bounded to 20,000 JSON entries / 256 MiB and cleans stale atomic temp files; manual cleanup dry-run command is `python -m run_workspace.gcsim.cleanup`.
-- Real next work:
-  - finish the GCSIM Browser UI inside `ui/gcsim_browser/`: replace placeholder presentation, improve team/target/readiness/result details, correct save/history wording, and keep raw rotation code as the working expert input;
-  - add readable rotation parsing/presets and decide later whether a constrained no-code action builder is maintainable;
-  - FIRST-DAY/FUTURE IDEA: add automatic rotation discovery from published
-    gcsim.app configs. Match by the exact stable four-character GCSIM-key roster,
-    collect every matching rotation script, parse/cache it safely, and let the
-    user choose one. Source/API discovery, attribution, cache freshness, parser
-    hardening, and duplicate handling are a separate Browser/rotation task, not
-    optimizer input;
-  - add progress/cancellation, run-artifact/debug retention controls, and only after measurement optional bounded parallel chamber scheduling; current C1-C3 execution is deliberately sequential;
-  - attach successful DPS Dummy results to typed DPS Dummy session/snapshot state and History; the current DPS Dummy run is diagnostic only;
-  - produce and release-validate the bundled known-good `gtt-gcsim.exe`, then add dependency-aware advanced update UX without requiring Go/Git for normal use;
-  - treat global mapping reports as coverage/audit tools. Normal Browser identity already comes from stored account character/weapon keys, active-registry artifact-set resolution, and enemy registry/Snap matching; add explicit curated overrides only for proven exceptions, while Traveler/upstream-missing entities remain controlled unavailable cases;
-  - while PvP UI work is active, do not refactor `ui/app_shell.py` or implement scoped PvP GCSIM from this track. Use existing AppShell hooks and keep normal GCSIM UI work under `ui/gcsim_browser/` and `ui/right_panel/live_run/gcsim/` until the later AppShell refactor.
+- [ ] Model Traveler element selection explicitly: shared account level,
+  variant-specific talents/constellations, default icon and element selector.
+  Preserve `standard_5_star`; never alias localized Traveler to one variant.
+- [ ] Add a separate combat/ability-bonus layer only as its own contract.
+  Do not mix conditional/talent/ability effects into ordinary display stats.
+- [ ] Audit remaining catalogs for runtime-critical SQLite needs; retain small
+  rebuildable source JSON/seed caches. Share updater metadata/schema/language
+  conventions and support offline last-known/bundled data.
+- [ ] Prepare sanitized seed catalogs/resources for release, including artifact
+  catalog/icons; keep personal data and browser state ignored.
+- [ ] Consider separate user choices for UI and account/reference content language.
+- [ ] Broader offline profile: versioned safe restore/backup including History,
+  settings and needed caches where appropriate; continue excluding auth/debug.
+  This is separate from PvP profile exchange.
+- [ ] If full import crash recovery is requested, design publication recovery
+  without overwriting concurrent equipment/preset edits. Current DB + JSON +
+  image publication is not one transaction.
+- [ ] Add a reusable localized custom-tooltip help icon, including an explanation
+  of the already implemented HoYoLAB Change equipment setting.
+- [ ] Later remove physical legacy `artifacts.icon_id` / `artifact_icons`
+  leftovers through a deliberate migration after the browser path is stable.
 
-## 11. KQM / Standard Builds Research
+## 8. Performance And Packaging
 
-- Investigate where GCSIM gets default/standard character builds.
-- Do not hardcode "KQM standards" until source, license, and data format are verified.
-- Research whether this data is actually KQM standards, where it is stored, whether it can be used legally/technically, and what it contains: artifacts, talents, weapons, rotations, assumptions.
-- Future uses: simulator fallback, draft bot, account-independent team estimates, comparing user builds to standard baseline.
-
-## 12. GCSIM Artifact Optimizer
-
-### Source of truth
-
-- Current handoff: `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md`.
-- Active implementation design: `docs/handoff/GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md`.
-- Engine patch/update boundary: `docs/handoff/GCSIM_ENGINE_INTEGRATION_PLAN.md`.
-- Detailed evidence and deletion ownership: `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST.json`.
-- The old Python Selected search implementations and handoffs were removed at GOB-6; only a frozen migration-leader JSON remains as parity evidence.
-
-### Current status
-
-- Production identity: `gtt_gcsim_optimizer_go_v1`.
-- GOB-3 through GOB-7 pass. The two-member real panel matches Python within
-  `1e-6`; 483 artifacts and 37 formula coordinates are indexed in Go; clean
-  Go FGBS retained the Python leader, found a same-panel leader about 117.68
-  formula DPS higher, and completed cold in 64.39 s under the 190 s boundary.
-  GOB-6 cleanup also passes. GOB-7 proved formula rank alone cannot truncate the
-  24 candidates: the formula-rank-24 migration leader won measured n=1000.
-  Common n=128 screening plus at most seven mandatory finalists completed cold
-  in 170.67 s; the measured winner was 148744.23 DPS versus 143721.66 Current.
-  GOB-8 is functionally accepted: after correcting per-seed duration handling,
-  the actual restarted AppShell Selected button completed with 148910.10 DPS,
-  SE 68.49 and twenty unique IDs. Repeated pre-optimization full UI runs
-  completed in 3:33 and 3:40. GOB-10's saved-account product replay now
-  completes formula capture plus Go work in 57.0 s; unchanged UI preparation
-  adds about five seconds. It returns the same twenty artifact IDs, so the
-  190 s performance target now passes with substantial margin. The 360 s kill
-  remains only a fail-safe.
-- The clean product path is a standalone Go optimizer plus a minimal, versioned GCSIM adapter patch.
-- Python proved that the formula-guided complete-build method can find a stable useful leader inside the bounded Selected domain. It did not prove a global optimum.
-- The two-seed stochastic protocol produced a close aggregate estimate, but Python trace preparation failed the product runtime requirement. It is frozen as parity evidence, not continued as production code.
-- Selected has an accepted end-to-end stochastic artifact result. All Sets and
-  Theory results are not accepted yet.
-- Old M/S/Gate, Selected V2, CF-BB, Adaptive Oracle Exchange and Contextual Scan routes are forensic/deletion material, not fallbacks.
-
-### Active implementation sequence
-
-- [x] **GOB-0 — design freeze.** Architecture, process boundary, compact formula IR, ownership and acceptance stages are fixed.
-- [x] **GOB-1 — Go module and contracts.** Isolated standard-library module,
-  strict request/progress/IR/result v1 contracts, deterministic identities,
-  cancellation and shared four-wearer/twenty-artifact/two-seed fixtures pass
-  10 Go + 4 Python checks. Engine/search/UI calls: 0.
-- [x] **GOB-2 — compact engine adapter.** The historical patch 0022 introduced a validated
-  seed-member IR. Frozen-seed formula/candidate parity is within `1e-6`, output
-  is 15.19x smaller than raw trace, adapter work is about 117.5 ms, and the
-  complete one-seed command is 1.781 s. This is not multi-seed/search/UI proof.
-- [x] **GOB-3 — stochastic expectation in Go.** Compact multi-trace aggregation without Python trace-tree overhead.
-  - [x] **GOB-3A — contract freeze.** Generic request-owned fixed panel plus the
-    exact two-seed parity pair, incumbent-delta semantics, baseline invariant,
-    equal-weight mean, sample SD/SE, uncertainty coverage and non-authority
-    rules are fixed. Engine calls: 0.
-  - [x] **GOB-3B — synthetic Go aggregator.** Equal-weight mean, actor means,
-    SD/SE, zero-delta and reason/member coverage pass fail-closed Go tests.
-  - [x] **GOB-3C — exact staging engine build.** Historical 0001-0022 identity built
-    in isolation; active engine unchanged.
-  - [x] **GOB-3D — two real compact members.** Both frozen seeds captured
-    sequentially and validated; receipt is permanent, payloads remain temp.
-  - [x] **GOB-3E — Python/Go parity.** Real members, mean, actor totals, SD/SE
-    and all 25 uncertainty classes match within `1e-6`; no new engine run.
-  - [x] **GOB-3F — runtime/memory gate.** Cold validation cost was measured;
-    candidate work was moved to a compile-once indexed hot path.
-- [x] **GOB-4 — artifact domain and formula evaluator.** Real 483-artifact
-  Selected domain, fixed-4p/offpiece/global-ID legality and compiled candidate
-  arithmetic pass incumbent, broad-profile and 20 real swap parity controls.
-- [x] **GOB-5 — clean Go FGBS.** Response ledger, complete wearer frontiers,
-  dynamic anchors, recheck and dependency/conflict pair refinement pass reduced
-  exact controls and real-account acceptance in 64.39 s. Receipt:
-  `tests/fixtures/gcsim_optimizer_go_v1/gob5_real_account_acceptance_receipt_v1.json`.
-- [x] **GOB-6 — mandatory migration cleanup.** Fresh reachability scan found no
-  production/UI callers. Replaced Python FGBS/stochastic/Selected composition,
-  CF-BB, Adaptive Oracle, Contextual Scan, neutral oracle and their orphaned
-  tests/tools/handoffs were removed. Continuous-target Theory mathematics,
-  Current comparison, Go parity fixtures and engine update primitives remain.
-- [x] **GOB-7 — finalists and common n=1000.** Go screens the frozen 24-row
-  formula pool plus Current at common n=128, retains the measured top five plus
-  mandatory formula leader and Current (at most seven unique builds), and runs
-  common n=1000. The accepted clean attempt used 25 n=128 and 6 n=1000 engine
-  processes, finished in 170.67 s, returned 20 unique IDs and improved Current
-  by 5022.57 DPS (3.49%). Receipt:
-  `tests/fixtures/gcsim_optimizer_go_v1/gob7_common_n1000_acceptance_receipt_v1.json`.
-- [x] **GOB-8 — Selected UI functional acceptance.** The real button completed
-  end to end after the stochastic panel was corrected to use each seed's own
-  duration. It returned exact IDs and final n=1000 DPS. Performance acceptance
-  below 190 s is still open; observed full UI time was about 191.15 s. The UI
-  now shows live elapsed/3–8 minute estimated time and four compact 5-piece
-  result rows. Explicit per-character Save reuses Artifact Browser preset
-  storage; results are never auto-equipped. The fixed-arrow header pages every
-  already measured finalist as Top-1, Top-2, etc.
-- [x] **GOB-8C — clean repository checkpoint before performance work.** The
-  startup transient-window fix is integrated; the full 182-test AppShell module,
-  focused optimizer/trace checks, all Go tests and `go vet` pass. New source and
-  small parity fixtures are versioned, while the optimizer executable and
-  generated runs remain ignored. This is not the final GOB-9 patch/update audit.
-- [x] **GOB-8P — bounded performance rationalization.** Keep n=128: the latest
-  winner entered it at formula rank 20, not top-7.
-  - [x] One isolated exact-seven n=500 replay preserved the saved n=1000 winner
-    and top-five set, with a 6.43-sigma leader gap, while reducing final
-    verification from 92.54 to 46.36 seconds.
-  - [x] Implement the bounded adaptive final gate: all finalists receive n=500;
-    only a two-to-four-row unresolved leader group receives n=1000; a wider
-    overlap returns honestly without an unbounded extension.
-  - [x] One full Go product acceptance resolved the seven-row final at n=500
-    without extension, returned the same known winner and completed in 159.06 s.
-    The unchanged already-accepted UI binding may receive a user smoke click,
-    but no second development run or iteration sweep is authorized.
-- [x] **GOB-9 — mandatory final optimizer-area cleanup (after GOB-8P).** One
-  production Selected path and one consolidated engine patch remain.
-  - [x] First reachability slice: removed 27 unreachable legacy optimizer
-    modules, 24 orphaned tests, one orphaned tool, two bytecode-only Selected V2
-    directories and three old generated runs. Active AppShell/Selected imports
-    plus 19 focused tests pass without another GCSIM run.
-  - [x] Live Go request preparation is isolated in
-    `optimizer_go_selected_inputs.py`; importing Selected loads no historical
-    trace/search package.
-  - [x] Removed the unreachable legacy response/oracle/search chains, their
-    orphaned tests, tools and manifests. Retained Current/farming and the
-    isolated continuous-target mathematics for future All Sets/Theory.
-  - [x] Consolidated all 22 required engine deltas into
-    `0001-gtt-engine-adapter-v1.patch`; fresh apply, exact tree comparison,
-    build, activation, rollback/restore, ordinary n=1 and compact one-seed
-    handshake pass.
-  - [x] Focused update/patch checks (42), all GCSIM tests (638), combined
-    optimizer/AppShell UI checks (189), Go tests and `go vet` pass. No full
-    optimizer or n=500/n=1000 acceptance run was repeated.
-- [x] **GOB-10 — measured Selected compute optimization.** Preserve the complete
-  search and every verification gate while reducing repeated work.
-  - [x] Formula evaluation computes immutable nodes once and, for an actor
-    change, recomputes the complete cross-character dependency closure only.
-    The full saved-account search result is exactly equal to the accepted one;
-    search fell from about 66.8 s to 13.3 s.
-  - [x] Ordinary verification hashes the bound engine once before and once
-    after a whole stage instead of twice per candidate. The engine bypasses
-    trace-only event/modifier/MaxHP bookkeeping when trace is disabled.
-  - [x] The two independent compact seeds are captured concurrently with
-    deterministic output order and cancellable process ownership.
-  - [x] One full saved-account replay: compact 1.83 s, compile 0.47 s, search
-    13.27 s, 25-row n=128 screen 18.15 s, seven-row adaptive n=500 final
-    19.65 s, total 57.0 s after preparation. Same accepted twenty IDs; measured
-    winner 148874.50 DPS, SE 92.61. No n=1000 extension was needed.
-  - [x] Audited, reduced, adapted and release-validated the single consolidated
-    patch against GCSIM v2.45.0. Removed obsolete response/effect modes, the old
-    ER behavior change, the config-comment wave prototype and the generated
-    source-manifest snapshot. The current structured wave scenario and FAST
-    trace/source contracts remain. Isolated build, exact current-team compact
-    topology parity, ordinary simulation and two-wave smoke passed; production
-    activation produced the same executable and retained v2.42.2 for rollback.
-- [x] **GOB-11A — generic observed-reaction trace classification.** PASS
-  2026-09-07. Removed the duplicated ordinary/Lunar tag whitelist; generic
-  receipts and actual calculation paths now classify hits. `direct_reaction`
-  replaces the emitted legacy spelling, which remains readable. Unsupported
-  direct reactions now freeze instead of using the incorrect standard formula.
-  Both current-team seed graphs, ordinary trace-off damage, waves, installed
-  engine binding and rollback pass. Also fixed relative build output paths and
-  v2.45 artifact metadata/config reading at the application boundary. Full
-  optimizer search was not repeated. Receipt and remaining limits are in the
-  engine integration handoff; direct-reaction dependencies remain for GOB-11.
-- [x] **Pre-GOB-11 compatibility repair.** Installed 2026-09-07: UC-1 false
-  transformative crit/DMG% dependencies, UC-2 terminal parity, UC-3 required
-  result fields, and wave dummy initialization repaired. 84 focused Python
-  tests, targeted Go tests and both existing current-team seeds pass. External
-  EM/reaction-bonus dependence remains explicitly frozen, not fully implemented.
-- [ ] **GOB-11 — bounded cross-team/rotation generalization in infinite-energy
-  mode.** Compatibility prerequisites are complete in their bounded scope;
-  now resume the fixture scope:
-  direct alternative scaling, Vaporize/Melt, transformative reaction ownership,
-  snapshot/off-field damage and v2.45 Lunar multi-contributor mechanics.
-  Compare controlled stat-direction agreement and bounded finalist recall;
-  measure known/opaque damage only with valid attribution, not conservative
-  reason shares. Fix measured generic blockers; no broad account sweep.
-  Details: `docs/handoff/GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md`.
-- [x] **Engine updater activation/rollback safety.** UC-4 full required
-  capability/catalog/actual compact-consumer/semantic gates passed before real
-  activation; UC-5 pins previous active independently of mtime. Preparation
-  does not activate/prune. Actual rollback/restoration passed. API-discovery and
-  opaque-attribution limits UC-6/7 remain in the audit and pre-MVP patch re-audit.
-- [ ] **GOB-12 — energy-aware Selected.** Preserve current infinite-energy mode
-  and add a separately accepted energy-constrained mode.
-  - [x] Reuse the settings-owned `gcsim_boosted_energy_enabled` value for two
-    synchronized views: Settings and the inline optimizer switch. Selected now
-    writes/passes the matching `ignore_burst_energy` value. The finite-energy
-    position is visibly marked unsupported for ER-aware search and may fail;
-    it is a diagnostic boundary, not an accepted optimizer mode.
-  - [ ] Introduce/wrap an explicit `EnergyMode` only if it clarifies later
-    ledger ownership; do not fork the stored setting or change the accepted
-    two-state behavior.
-  - [ ] Extend compact evidence with a generic energy ledger: burst deadlines,
-    normalized particles/orbs, flat energy, active/off-field distribution,
-    enemy HP drops and typed stat/probability dependencies.
-  - [ ] Compile per-character cumulative burst-deadline constraints in Go and
-    enforce them contextually during build search. Do not average away event
-    timing and do not run GCSIM per artifact candidate.
-  - [ ] Predict candidate-dependent HP-threshold drops from the existing damage
-    timeline where proven; freeze/retain uncertainty otherwise.
-  - [ ] Verify only bounded finalists with real burst costs, no artificial
-    energy, and an intended-versus-executed action schedule check.
-  - [ ] Report selected/required ER, margin, important sources, uncertainty and
-    high-cost trade-offs; suggestions may mention rotation/burst frequency or
-    an energy weapon but must not declare a burst useless without contribution
-    evidence.
-- [ ] **Pre-MVP engine patch re-audit.** Even if the repository still contains
-  one patch, re-scan every patch and changed upstream seam present at that time,
-  remove newly obsolete code, regenerate one minimal versioned patch, and repeat
-  clean apply/build/capability/cross-team semantic smoke/rollback proof. The
-  completed v2.45 cleanup is evidence, not permission to skip this final gate.
-  - [ ] Review every explicit Lunar/Stellar trace branch against pristine
-    upstream at that time, including the GOB-11A result. Keep only generic
-    provenance/type mapping; remove any GTT gameplay-mechanic reproduction or
-    character/region-name dependency. Do not defer GOB-11A to this final audit.
-  - [ ] Decide physical packaging after the audit. Permit independently staged
-    optional patch groups only when capabilities disable an incompatible
-    feature cleanly; keep every required feature bundle atomic and retain the
-    previous verified engine if any required group fails.
-
-### Cleanup registry
-
-Deleted at GOB-6 after the fresh import/call-site scan:
-
-- Python FGBS, stochastic expectation and Selected composition code;
-- CF-BB, Adaptive Oracle Exchange, Contextual Scan and the neutral oracle;
-- their strategy tests, audits and three superseded handoffs.
-
-Deleted at GOB-9 after UI/product acceptance:
-
-- all remaining M/S/Gate and Selected V2 implementation fragments;
-- old optimizer factories, progress events and UI wiring that no button calls;
-- redundant engine patch fragments replaced by the consolidated adapter patch;
-- orphaned experimental scripts, tests and manifests without parity, updater,
-  rollback or debug ownership;
-- stale Python response/oracle/search modules. GOB-9 staging/handshake/smoke
-  copies are ignored, rebuildable local residue and remain outside Git.
-
-Retain deliberately:
-
-- the frozen Python migration-leader fixture as a permanent small Go parity receipt;
-- the Current comparison path until Selected, All Sets and Theory are each accepted or explicitly abandoned;
-- the continuous-optimum mathematics as `FUTURE_GO_PORT_FOR_THEORY_ALL_SETS`, not as Selected runtime code;
-- patch discovery, update, build, smoke-test and rollback primitives.
-
-Whenever work exposes another unused component, add its exact path and deletion gate to the cleanup manifest immediately. Do not preserve an implementation merely because it once produced evidence.
-
-### Next scopes after base Selected acceptance
-
-- All Sets support-set and wearer assignment.
-- Theory/farming guidance using the future Go port of the continuous optimum.
-- Broader reaction and Lunar-reaction adaptation controls are owned by GOB-11.
-- Energy-recharge optimization is owned by GOB-12.
-- User-facing unknown/frozen-mechanic diagnostics beyond the minimum Selected receipt.
-
-### Performance and release gates
-
-- Cold Selected performance target: 190 seconds.
-- Temporary working/development kill boundary: 360 seconds.
-- Future All Sets ceiling: 600 seconds.
-- No common n=1000 run before the reduced/parity gates pass.
-- The application ships one consolidated discovered patch stack with automatic staging, build/smoke validation, atomic activation and rollback.
-- Work remains sequential, without subagents or parallel agents; stop after three substantive failed approaches to one blocker.
-
-
-## 13. Offline Profile
-
-- Current profile import/export covers account characters, weapons, character
-  details, account language, crop manifest, allowed account assets, and artifact
-  DB. It should eventually become full offline profile import/export, not only
-  the current account/artifact snapshot.
-- This general offline-profile path is separate from PvP `.gttpvp`. PvP has
-  working development buttons/provider plumbing, but its current internal v1
-  archive is not a finalized portable export: it begins from a full DB copy,
-  filters only part of the account data, includes no bitmap assets, does not
-  fully validate the imported SQLite/deck/assets relationship, and Draft still
-  uses one host portrait map.
-- Future full profile should include, where safe: account characters, weapons, artifacts DB, build presets, run history, settings/local state needed for offline use, and relevant local catalog/cache data if appropriate.
-- It must not include cookies, auth tokens, browser profile/session data, or private debug dumps.
-- Use versioned profile format and safe restore/backup semantics.
-
-## 14. Far Future / Non-MVP Ideas
-
-- Far-future PvP/tournament, analytics, draft bot, donation/support, monetization, optional AI companion, and similar speculative ideas live in `docs/handoff/FAR_FUTURE_TODO.md`.
-- Do not load those ideas into normal MVP task planning unless the user asks about them or wants to add/update a far-future idea.
-- Active PvP v0 contract lives in `docs/handoff/PVP_V0_CONTRACT.md`; implementation status lives in `docs/handoff/PVP_BACKEND_STATUS.md`, and PvP UI direction lives in `docs/handoff/PVP_UI_ROADMAP.md`. Backend foundation now exists in `run_workspace/pvp/` with deck JSON, deck validation, Decks UI preset persistence (`run_workspace/pvp/deck_preset.py`), shared observed weapon-stack identity helper (`run_workspace/pvp/weapon_identity.py`), Free Draft schedule/reducer/action log, local Free Draft controller/projection API, UI-facing board/read-model projection with backend-owned `unified_pool` plus validator/sample fixture (`samples/pvp/ui_contract/free_draft_board_projection_sample.json`), post-draft team/weapon assignment validation, timer/result summaries, local-account Free Draft deck export/full-loop smoke from SQLite runtime data, draft-system registry, PvP session bundle snapshot/verifier, report-only ruleset applicability/cost previews/ruleset-balance application reports, and deterministic dev smokes (`python -m run_workspace.pvp.full_loop_smoke`, `python -m run_workspace.pvp.free_draft_controller_smoke`, `python -m run_workspace.pvp.free_draft_controller_smoke --json`, `python -m run_workspace.pvp.free_draft_controller_smoke --step-demo`, `python -m run_workspace.pvp.ui_full_flow_smoke`, `python -m run_workspace.pvp.ui_full_flow_smoke --account`, `python -m run_workspace.pvp.account_deck_export_smoke`, `python -m run_workspace.pvp.account_full_loop_smoke`, `python -m run_workspace.pvp.session_bundle_smoke`, `python -m run_workspace.pvp.ruleset_applicability_smoke`, `python -m run_workspace.pvp.ruleset_balance_smoke`). AppShell now has PvP Decks, Play/local setup, Draft board, and local post-draft Assignment/Weapon/Timers/Completed result v0 with current UI widgets under `ui/pvp_browser/`: Decks persists root-resolved local presets and validates them through backend `DraftDeck`; Play chooses Player 1/Player 2 deck presets and starts an in-memory local `FreeDraftController`; Draft consumes the backend `unified_pool`, renders one readable character pool, completes local pick/ban, then continues through PvP-owned assignment, weapon assignment, manual timers, and read-only result summary without normal TeamBuilder/Run mutation. Candidate PvP UI follow-ups and target scoped Artifact/GCSIM build-flow direction live in `docs/handoff/PVP_UI_ROADMAP.md`. Online relay, real Gentor/Abyss importer, richer rulesets/cost rendering, Traveler support, scoped PvP GCSIM scoring, PNG/export, and PvP History remain later stages.
-- Immediate PvP order is now explicit: (1) finish independent Player 1/Player 2
-  source/visual providers, including same-id characters with per-seat
-  constellation/image data; (2) replace the development `.gttpvp` archive with
-  a minimal allowlisted, validated, asset-portable profile export/import; (3)
-  only then produce the isolated second-account archive with 3-4 decks. The
-  package/provider contract and current gaps live in
-  `docs/handoff/PVP_PROFILE_PACKAGE.md`.
-- PvP reference-site findings live in `docs/handoff/PVP_REFERENCE_SITE_AUDIT.md`.
-- PvP/tournament source audit remains in `docs/handoff/PVP_RULESETS_AUDIT.md`; current public/source mapping status is in `docs/handoff/PVP_RULESET_SOURCE_MATRIX.md`. Gentor-like rulesets can currently feed cost/config research, but executable draft schedule derivation remains blocked until a source-specific adapter or explicit flow exists. Abyss Draft has no confirmed public parseable ruleset payload in this repo.
-
-## Other Future / Maintenance Items
-
-- Add color highlighting for build summary Crit Value and Proc Count later; choose thresholds/colors first.
-- Later unify reset controls in target selector, sort popup, and sets popup.
-- Future polish: make Sort popup and Sets popup selection behavior visually consistent with artifacts/targets/presets.
-- Artifact Browser geometry status: divmod/remainder adaptive fit is implemented
-  from the calibrated minimum layout (`GRID_SIZE.width()` artifact cell, compact
-  Assignment rows, fixed preset panel). Extra horizontal remainder goes to
-  Assignment width as a preferred/current width, not a propagated minimum. Do
-  not reintroduce candidate-width search or guessed card/gap constants.
-- Future startup preload/cache concept, after real optimization work, is tracked
-  in `docs/handoff/PRELOADER_BACKLOG.md`. Do not use that future loader as a
-  substitute for fixing duplicate work, avoidable rebuilds, or current layout
-  bugs. Keep TODO here as a pointer; detailed loader candidates belong in the
-  dedicated handoff with measurement context.
-- AppShell/Artifact Browser performance measurement on the weak 1366px HP
-  laptop is recorded in
-  `docs/handoff/performance_measurements/2026-06-13_appshell_artifact_browser_hp_1366.md`.
-  Follow-up optimization should reduce total work first: avoid full
-  `PixelIconGrid` pixmap refreshes for outline-only updates, avoid redundant
-  show-time pixmap preparation, remove duplicated account SQLite loads between
-  Character/Weapon and PvP workspaces, and profile Artifact Browser target
-  button creation before moving any work under a future loader.
-- Pre-release packaging/size audit: the current dev `.venv` is about `767 MB`,
-  mostly `PySide6` (`~628 MB`) plus `playwright` (`~104 MB`). PySide6 includes
-  large unused-looking pieces such as `Qt6WebEngineCore.dll`, `resources`,
-  `translations`, `qml`, Designer/tools, and extra plugins. Before public
-  release, build a clean distributable instead of shipping the dev environment:
-  exclude unused Qt WebEngine/QML/Designer/translations/plugins where safe,
-  exclude tests/docs/experiments/debug/raw profile/cache folders, keep user
-  runtime data outside the bundled app, and verify the final unpacked and
-  installer sizes. Target this as a dedicated packaging pass, not as ordinary
-  feature work.
-- AppShell resize twitch: isolated probe reproduced the effect outside the app,
-  and it is reduced on a 144Hz monitor without desktop holes. Treat it as
-  system/environment live-resize behavior for now; no active app-level fix is
-  planned.
-- First-day/future patch: automatic proc counting for imported Artiscan artifacts.
-- Check other export/import services and compatibility.
-- Do not do final cleanup of old DB physical schema until the new browser path is stable.
-- Later migration: recreate/drop old `artifacts.icon_id` and `artifact_icons` physical leftovers if they still exist in local DBs.
-- Keep `artifact_set_piece_icons` as the browser icon source by `(set_uid, pos)`.
-- Do not reintroduce per-artifact icon cache or `artifact_icons` fallback.
-- Keep `ru`, `en`, and `pt-br` locale files in sync when adding UI strings.
-- Commit seeded artifact catalog resources when ready: `data/static/artifact_set_catalog.json` and `assets/artifact_sets`.
-- Keep local account/generated state ignored: `data/hoyolab`, `data/artifacts.db`, `assets/hoyolab`, browser profile/session/debug/download outputs.
-- Keep Artiscan sample files under `samples/artiscan/` unless a future import task needs another layout.
+- [ ] **After optimizer work, open a separate full size/lifecycle audit.**
+  Measure source/runtime/package; inventory generators/cleaners; add bounds and
+  tests, then remove reviewed rebuildable duplicates. Preserve user data,
+  evidence, protected engines/worktrees; verify startup, rollback and sizes.
+- [ ] Refresh measurements before performance work. Existing weak-laptop
+  measurements in `docs/handoff/performance_measurements/` are dated June 2026,
+  not current universal costs. Follow `PRELOADER_BACKLOG.md`.
+- [ ] Reduce duplicate grid/pixmap/SQLite work first; profile remaining
+  bonus-strip hydration, target-button creation and Artifact Browser cold load.
+- [ ] In an explicitly selected loader stage, inventory and prepare necessary
+  cold work together: stores, targets/presets/edit controls, image/text/marquee
+  caches and equipment prewarm with complete invalidation keys.
+- [ ] Build a clean distributable instead of shipping the development venv.
+  Audit unused Qt/Playwright payloads, exclude development/private state, keep
+  user runtime data outside the app bundle and measure installer/unpacked size.
+  Historical venv size estimates must be remeasured for the chosen build.
+- [ ] Revisit resize twitch only with new evidence; an earlier isolated probe
+  reproduced environment-dependent live-resize behavior outside the app.

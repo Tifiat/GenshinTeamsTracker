@@ -1,11 +1,9 @@
-# GCSIM Optimizer Go Backend — authoritative redesign
+# GCSIM Optimizer Go Backend — implementation design and acceptance record
 
-Status: GOB-3 through GOB-10 PASS. Common n=128 remains recall authority; final
-verification starts at n=500 and extends only two to four statistically
-unresolved leaders at n=1000. The full saved-account product replay resolved at
-n=500 with the same winner in 57.0 seconds after preparation. Final reachability,
-patch consolidation, transactional update, rollback and compute optimization
-are complete.
+Current implementation, acceptance limits, active engine and next action:
+[GCSIM_GOB11_GP3_CHECKPOINT.md](GCSIM_GOB11_GP3_CHECKPOINT.md).
+This design's stage measurements remain historical evidence, not new-team
+performance or complete dependency-coverage guarantees.
 
 This document owns the clean rewrite of the active Selected optimizer backend
 in Go. It is not a line-by-line port of the Python implementation. Python FGBS
@@ -35,7 +33,7 @@ caching, batching and budgets while retaining the accepted correctness rules.
 
 The optimizer is a separate Go module/binary owned by GenshinTeamsTracker. It
 must not import `gcsim/internal/...` packages and must not be copied into the
-upstream engine patch. Proposed repository boundary:
+upstream engine patch. Implemented repository boundary:
 
 ```text
 native/gcsim_optimizer/
@@ -88,7 +86,7 @@ The UI/application materializes one canonical request containing:
 - current twenty-artifact assignment;
 - every eligible account artifact as `artifact_id`, slot, set UID, rarity/level
   and normalized raw main/sub-stat numbers;
-- Selected legality policy: fixed 4p, at most one off-set item per wearer,
+- Selected legality policy: fixed 4p or fixed two distinct 2p sets, one spare piece per wearer,
   twenty globally unique physical IDs and 5-star-only default;
 - predeclared stochastic seed policy and product/development time budgets;
 - final n=1000 fidelity and bounded finalist policy identity once FGBS-8 freezes
@@ -100,6 +98,16 @@ later only if measurement proves this single transfer material. Go does not read
 the application SQLite database in v1; this avoids duplicating DB schema and a
 Windows SQLite/CGO dependency. Input canonicalization and hashes prevent silent
 translation drift.
+
+`source_manifest_sha256` is the hash of the build's canonical JSON body, without
+its file newline; use `source_manifest_build.canonical_json`, not a file hash.
+The development budget must cover the selected mode's product budget (All Sets
+600s does not inherit Selected's shorter development limit).
+Calculation-valid5-star pieces from unregistered sets remain raw-stat offpieces:
+transport their concrete `set_uid` casefolded when no registered key exists.
+Only verified set capabilities can nominate active packages, and singleton
+offpieces never emit an engine set bonus. Do not drop an equipped physical ID
+just because its inactive set bonus is unmodeled.
 
 ### 3.2 Go -> Python progress/result
 
@@ -144,6 +152,18 @@ One-trace mode is allowed only with an explicit topology-stability certificate.
 Unknown mechanics freeze at the last understood boundary. Known formula regions
 continue to work. Material unknown share widens finalist retention and creates a
 debug receipt; it never becomes zero, a hard prune, or a crash.
+
+The pending 2026-09-16 dependency successor adds the neutral `select_lt` node:
+exactly four ordered inputs `(left, right, if_true, if_false)`, returning the
+third when `left < right` and the fourth otherwise. All inputs remain
+dependencies, including the currently unselected arm. Only bounded pure scalar
+source shapes are accepted; this is not general branch/task replay. Both arms
+are evaluated by the numeric DAG and must be valid numeric expressions, without
+gameplay side effects. Reference, dense, constant and one-wearer paths agree.
+Older consumers reject the unknown operator; engine and native consumer updates
+must be paired, with engine/patch identity in cache bindings. This is an
+arithmetic operator, not a character/reaction rule. Current installation and
+remaining acceptance gates are owned by the checkpoint linked above.
 
 ## 5. Clean Go mathematical representation
 
@@ -199,7 +219,15 @@ Go-specific opportunities that must be assessed with reduced exact controls:
 
 Language speed does not authorize larger hidden truncation or weaker quality.
 
-## 7. Implementation and acceptance stages
+## 7. Historical Implementation And Acceptance Stages
+
+GOB-0 through GOB-10 are complete. The entries below preserve the contracts,
+failures, repairs and measurements at each stage; engine IDs, next actions,
+performance failures and UI estimates inside them are not current runtime
+status. Current resume is `GCSIM_GOB11_GP3_CHECKPOINT.md`, gate order is owned by
+`GCSIM_OPTIMIZER_TRACE_EQUATION_HANDOFF.md`. Do not rerun completed stages merely
+because an old entry uses imperative wording.
+
 
 ### GOB-0 — contract/design freeze
 
@@ -529,8 +557,8 @@ at about 191.152 seconds; the Go receipt reports 188.407 seconds internally.
 Thus functionality is accepted and the 190-second full-UI performance target
 is still narrowly missed. The temporary working UI kill is 360 seconds.
 
-The accepted result surface also owns a live elapsed timer and a CPU-dependent
-3–8 minute estimate. A successful result is materialized from the returned IDs
+The GOB-8 result surface introduced a live elapsed timer with a then-current
+3-8 minute estimate; the current localized UI estimate is 1-3 minutes. A successful result is materialized from the returned IDs
 and the existing account artifact rows into four compact 5-piece rows. Artifact
 and element imagery is reused from existing project assets without generated or
 downloaded replacements. Per-character Save prompts for a preset name and
@@ -623,14 +651,534 @@ It may be ported only after Selected Go acceptance and must stay isolated from
 normal FGBS unless a later measured design explicitly changes that rule.
 
 Energy/ER optimization, broad All Sets semantics, Theory UI and automatic equip
-were outside the initial Go rewrite. Current Selected and its cleanup are now
-complete; the next separately gated extension is cross-team formula validation,
-then energy-aware Selected. All Sets/Theory remain later stages.
+were outside the initial Go rewrite. The initial Go Selected path and cleanup
+are complete; current core acceptance continues through the GP-3 checkpoint.
+The Selected2+2 extension below is implemented; installed/UI acceptance belongs
+to the checkpoint. All Sets is now a separate bounded extension; Theory remains later;
+TODO owns their order and explicitly leaves energy until last.
+
+### Selected 2+2 extension (2026-09-16)
+
+Selection still comes from current equipment through the same AppShell adapter.
+There is no second set picker, automatic equipment mutation or new engine patch.
+Accept active tiers4 or2+2, including5 and3+2 actual piece counts. Reject a lone
+2p,3+1+1, duplicates and ambiguous packages. A spare piece may belong to either
+chosen set or any third set; it cannot activate a different four-piece bonus.
+Both original2p bonuses stay in compact capture and ordinary finalist configs.
+
+Wire extension: old `selected_set_uid` and `fixed_four_piece=true` are retained
+for existing4p requests and their canonical hashes. A pair uses sorted
+`selected_sets=[{set_uid,count:2},{set_uid,count:2}]` instead; the request sets
+`fixed_set_packages=true` and `fixed_four_piece=false`. Exactly one policy and
+one wearer representation is allowed. Old consumers reject the new fields;
+deploy the paired Python adapter and Go binary together. The native domain
+normalizes both encodings into requirements, not duplicated search engines.
+Artifact IDs remain globally unique and wearer/slot-bound. The formula seed
+panel and artifact variables are unchanged; set effects are captured context.
+
+For2+2 the same bounded FGBS searches disjoint set-membership slot patterns:
+10 for3+2,10 for2+3,30 for2+2+off (at most50, dropping empty pools). This enumerates
+only five-slot labels, not artifact pairs or the team Cartesian product. Other
+wearers' occupied IDs are removed before constructing pools. Every legal build
+belongs to exactly one pattern; the original six4p lanes retain their order.
+Pair lanes share the existing20,000 frontier-expansion budget so the first lane
+cannot consume it all. Each visited lane retains its legal greedy completion
+even when frontier expansion stops. Guide completion evaluations are separately
+counted, as in4p; the expansion limit is not a bound on all evaluations. Finalist
+and simulation budgets are unchanged. No global optimum claim.
+
+Final rendering replaces each selected set row in place, keeping producer
+initialization order, emitting actual2/3 or4/5 counts exactly once. Unexpected
+set names, missing/duplicate rows and changed bonus tiers fail closed. Small
+exhaustive tests prove the50-pattern partition and controlled-domain search;
+real copied-account gates and installed/UI status belong to the checkpoint.
+
+### All Sets development plan (2026-09-16)
+
+The following is the staged design; its bounded implementation now exists. Current
+Selected captures concrete set effects as context; changing a package is not
+just changing artifact-stat leaves. Never retain the old set buff or assume a
+new conditional effect exists because its label is known. The user deferred
+manual2+2 acceptance until combined UI checks; TODO owns that reminder.
+
+Scope: existing account pieces, fixed team/weapons/rotation/target, proposed
+4p and distinct2+2 packages. Preserve one flexible piece and20 physical IDs.
+No inventory-independent ideal builds, automatic equip or energy-aware search.
+Keep a separate All Sets orchestration boundary over shared Go formula/domain/
+FGBS/finalist modules; do not clone Selected or revive removed Python searches.
+
+1. **Set-effect preflight and replacement contract.** Inspect current catalog,
+   compact provenance and generator against representative static, conditional,
+   team-buff/resistance and reaction effects. Determine when removal/addition
+   can be expressed completely as known formula inputs and when a fresh bound
+   capture is mandatory. Preserve producer ownership, effect identity/stacking,
+   activation timing, cross-owner dependencies and changed topology. A source
+   signature is a discovery clue, not proof of activation or reuse. Existing
+   `optimizer_two_piece_signatures.py` is only a narrow static-stat/reference
+   implementation, not a universal4p analyzer or active Go catalog. Exit: a
+   concrete neutral contract, focused no-ghost/double-buff response controls,
+   and measured capture/reuse cost before freezing the search budget.
+2. **Feasible package domain.** Build4p/2+2 candidates only where inventory slots
+   allow them; final feasibility is joint across wearers. Group proven identical
+   effects for arithmetic reuse without collapsing distinct physical items.
+   Unknown conditions are not zero effect and cannot justify hard exclusion.
+3. **Team-context proposals.** Use known formula response and available artifact
+   quality to prioritize package/wearer choices. Compare whole-team gains,
+   retain distinct personal/support/reaction routes and reconsider provider
+   transfers/duplicates as the team changes. No named character roles or always-
+   mandatory resistance set. Proposal scores guide order, not unsafe proof of
+   dominance. Freeze exact queue/widths after the first measured pilot; no claim
+   that independent best-per-character choices produce the best team.
+4. **Bounded shared search.** Reuse indexed artifacts and compiled context only
+   under proven identities. Couple package changes to legal complete builds;
+   use existing FGBS within each accepted formula context. New conditional/
+   schedule context requires evidence, not fabricated modifiers. One global
+   search/capture budget, not a full Selected pipeline for every set combination.
+   Preserve incumbent/diverse alternatives and enforce global ID conflicts.
+   If required capture count defeats600s, report that measured design blocker;
+   do not silently prune unknown sets or multiply simulations without a bound.
+5. **Acceptance and UI.** Small exhaustive controls for package/item synergy,
+   support transfers, non-stacking buffs,2+2 and ID conflicts; then bounded real
+   supplied teams. Use one shared ordinary-engine finalist panel and report
+   unresolved ranks/coverage. Time domain/discovery/capture/compile/search/
+   verification separately against600s. Reuse result cards/save and explicit
+   cancellation. Before combined UI acceptance remind the user about deferred
+   Selected2+2, then test All Sets. No performance success is assumed in advance.
+
+Step1 preflight, the isolated context/routing code and bound capture/domain
+pilot are recorded below; no real-set proof producer is enabled. Source
+grouping alone is not a reuse certificate. Broader tracing or weaker product coverage still requires an
+explicit tradeoff before scope expansion; no unrestricted search is authorized
+by the preflight's positive static controls.
+
+### All Sets effect/context boundary established by preflight
+
+Evidence: `tests/fixtures/gcsim_optimizer_go_v1/all_sets_preflight_receipt_v1.json`
+and `all_sets_preflight_samples_v1.json`. Research harness:
+`tools/experiments/gcsim/all_sets_preflight/`; current status/resume stays in GP-3.
+Seven new same-seed n1 captures on the original copied bloom config, no full
+search, DB/UI writes, engine changes or new final simulations. Four static
+remove/replace/equivalent/restore controls match all543 hits, including cross-
+owner effects. Two deliberately wrong old/double-bonus controls fail as intended.
+Conditional4p, team-buff and resistance changes require different formula
+context even when hits/topology match; new-damage package changes543 to561 hits.
+Those negative shortcuts do not mean fixed-set Selected has regressed.
+
+Source findings in the pinned engine:
+
+- `pkg/gttcompact/attack_fields.go::compileArtifactStatRead` composes observed
+  stats plus artifact deltas and represented modifier ancestry. This enables
+  the demonstrated static replacement through existing arithmetic.
+- `pkg/gttcompact/direct.go` embeds observed DefMod/ResMod as constants.
+  Existing Go IR carries arithmetic nodes/coordinates, not removable set-
+  provider identities. Never identify a bonus by its numeric value or label
+  and edit an arbitrary constant; hit topology does not certify effect context.
+- `optimizer_two_piece_signatures.py` recognizes25 of42 five-star2p constructor
+  stat shapes on this snapshot. It does not prove full NewSet/Init/helper
+  side-effect, modifier-key collision, initialization-order or read-binding
+  equivalence. The other17 are unproved, not useless. Existing catalog flags
+  are source/issue-backed discovery metadata, not semantic acceptance.
+- The old account fixture has27 slot-feasible4p packages and465 distinct2+2
+  pairs; these are optimistic single-wearer counts, not legal four-person teams.
+  A short capture costs2.43-2.92s here. Exhaustive package/team capture or full
+  Selected-per-package is not an acceptable design. Numbers are fixture-only.
+
+Neutral contract (isolated Go boundary implemented; product wiring remains open):
+
+1. A package context identifies each actual wearer, concrete set UID/tier,
+   parameters, initialization order, source/catalog/patch/binary identities,
+   fixed rotation/target/energy/seed policy and the artifact reference vector.
+   Effect entries keep source identity, scope (owner/team/target/new output),
+   represented amount/condition/timing dependencies and proof/unknown status.
+   Discovery data never pretends a conditional effect is active.
+2. Choose **identity reuse**, **proved static replacement**, or **fresh context**.
+   Static replacement needs complete changed-effect/lifecycle/read-binding
+   coverage and compatible modifier identities. Maintain its separate vector
+   `new static effect - captured static effect`; evaluation composes this with
+   the candidate's raw-artifact delta exactly once. Never write this vector
+   into the physical artifact database or final config stats. Unproved or
+   conditional changes route to fresh capture; no implicit zero effect or
+   silently accepted unchanged-topology shortcut.
+3. Fresh capture replaces set rows in the complete team config, retaining
+   character order and real raw artifact stats, then uses the existing compact
+   adapter/Go compiler. Old effects disappear by construction. Team buffs,
+   non-stacking sources and new hits are observed together, not added as four
+   independently measured set gains. No new game coefficients in the consumer.
+4. One capture/compiled context serves many item candidates. Bound and memoize
+   contexts by full identities within the run; share preparation and inventory
+   indexing. Keep current2-seed policy for product search; n1 here was a controlled
+   experiment, not authorization to reduce product fidelity. Context scheduling
+   and global600s budget must be measured before account-scale search.
+
+New hits are a distinct, uncommon effect class, not a synonym for every set
+change. A flat addition to an existing hit does not itself create another hit;
+Clam's scheduled attack is the concrete new-output preflight witness. A changed
+conditional buff/resistance can require a new formula without changing hit count.
+Discover new outputs from engine attack creation, never a set-name switch or
+the wording "additional damage". Candidate-dependent healing/other inputs of
+new outputs must remain formula dependencies where supported, not fixed damage.
+
+### Isolated All Sets context/routing implementation
+
+`native/gcsim_optimizer/internal/setcontext/` is a reusable boundary, not a
+second scorer or an enabled product mode:
+
+- `context.go`: immutable identities bind binary/source/patch/catalog,
+  reference stats, ordered seeds and exact full prepared config. Config bytes
+  retain weapons, target, rotation, energy, package counts/parameters and actor
+  initialization order. Replace a whole contiguous package at its original
+  position; reject ambiguous rows, duplicate sets, more than five pieces and
+  unknown owners. Preserve other text/raw-stat rows and line endings. The
+  renderer is intentionally for normalized prepared declarations, not arbitrary
+  rotation parsing. Final physical4p/2+2 legality still belongs to the domain.
+- `route.go`: identical-context reuse; otherwise a trusted, scoped static
+  certificate or fresh context. The static branch verifies context/graph/evidence
+  binding, complete lifecycle/read/modifier/schedule obligations, every changed
+  package's active2p/4p tiers, owner coordinates, modifier-key ambiguity and
+  candidate bounds. Keep `new effect - old effect` apart from raw artifact
+  deltas and compose once. Current proof metadata represents owner-static
+  effects only; team/target/new-output/conditional/unknown scope routes fresh.
+- `session.go`: sequential run-local cache, explicit maximum seed-member
+  capture reservations and outer cancellation/deadline, with no hidden retry.
+  Provider envelopes must match exact config/context/engine and the complete
+  seed panel. Compile with the existing shared formula compiler and verify
+  zero-delta baselines. Return to a cached context without recapture. Reuse
+  proofs always start from the actual captured origin, never chain old biases.
+
+Important authority limit: `StaticProof` is a trusted-verifier OUTPUT contract,
+not an automatic verifier and not JSON accepted from a UI/request. Its coverage
+fields must never be filled from constructor discovery or point tests. No real-
+set proof producer is enabled. The positive contract tests use a completely
+known synthetic model. Real transitions conservatively obtain their own
+captured graphs. `engine_provider.go` now connects the same boundary to actual
+engine subprocesses in isolated directories, not the installed product route.
+
+Evidence2026-09-16: all native Go suites PASS; the retained seven-change matrix
+uses eight saved members, no new engine calls, and reproduces fresh baselines
+within1.46e-11 DPS absolute roundoff. It also tests same-frame refusal, preserved
+543/561 hit counts, shared-compiler artifact response, cache/restoration and
+budget handling. `all_sets_context_routing_receipt_v1.json` records22.49s replay
+including large JSON validation/compilation, NOT All Sets search performance.
+The first harness pass found LF original versus CRLF probe files; rendering
+tests now use the matching newline frame, while capture identities stay exact.
+Both newline variants are covered; no relaxed production identity was added.
+
+### Bound capture/domain/search pilot and scope decision
+
+Implemented (installation and actual UI acceptance are checkpoint-owned):
+
+- `engineclient.RunCompact` preserves exact config bytes, emits the existing
+  compact adapter request, runs one explicit seed with cancellation/hidden
+  Windows process, verifies output and measures process/decode separately.
+  `setcontext.EngineProvider` requires the full ordered two-or-more seed panel,
+  exact binding and explicit existing energy flag; verify binary before/after
+  the stage. Separate exclusive directories prevent stale output reuse.
+- `evaluator.CompileMembers` shares the original Selected arithmetic, baseline,
+  response ledger and equal-seed weighting. `Handle.SearchPanel` is available
+  only for an exact captured context; substituted-bias handles cannot bypass
+  composition. The full native suite protects the existing Selected path.
+- `domain.FeasiblePackages` uses slot bitmasks:4p needs four distinct slots;
+  each2p needs two and their union four. Exclude occupied IDs for a one-wearer
+  step. No physical build Cartesian product. This is not joint team feasibility.
+  `PackageSeed` visits at most3^5 category patterns after one inventory scan;
+  its optional finite priorities guide order, not proof of optimality.
+  `ForPackages` shares immutable inventory and original capture-stat references.
+- `search.RefineWearer` is a bounded existing FGBS actor step. It enforces
+  coordinate/owner alignment and a legal whole-team anchor; other fifteen IDs
+  stay reserved. It is not a second search algorithm or full Selected-per-set.
+
+Evidence: `all_sets_capture_domain_receipt_v1.json`, reproduced by the isolated
+`capture_pilot.py` in `tools/experiments/gcsim/all_sets_preflight/`. Original
+copied bloom inventory only;492 optimistic packages (27x4p,465x2+2) in18.9ms.
+Two hand-selected witnesses, not an automatic queue: Lauma/Gilded4p and
+Kuki/Paradise4p. Two seeds each plus independent two-seed candidate controls:
+eight actual compact calls, two saved baseline members.1000-expansion research
+cap (not production default);20 unique IDs, other fifteen unchanged, cache
+reuse checked. Formula/fresh expected DPS match exactly at both candidates;
+neither improves the original baseline. Incumbent retention remains mandatory.
+
+Measured before the JSON optimization, milliseconds:
+
+| Step | Lauma/Gilded | Kuki/Paradise |
+| --- | ---: | ---: |
+| Engine processes, two seeds | 5829 | 5734 |
+| Strict result decode/validation | 3791 | 3574 |
+| Remaining capture/graph identity/compile | 1941 | 1806 |
+| Reduced one-wearer FGBS | 335 | 299 |
+| Independent candidate controls, two seeds | 9947 | 9329 |
+
+Full pilot receipt49.39s, Go test50.61s including deferred binary checks.
+Initial fixture-hash mismatch was corrected before any new engine calls:
+Selected's trace-context hash is not its prepared-config hash. Do not merge
+those namespaces. The permanent receipt records this and subsequent no-rerun
+harness cleanup. The new canonical JSON helper avoids one redundant generic
+marshal/decode; three same-file comparisons produce byte-identical output,
+median raw-canonicalization substep910->442ms. This is not a measured halving
+of capture or total search. Seven retained contexts also pass after the shared
+compiler refactor (19.78s, zero engine calls).
+
+**Capture-pilot decision (now resolved by path1 below):** the safe execution path
+works, but a complete cheap general4p guide is not yet available. Static2p descriptors
+recognize constructor shapes; they neither describe all conditional effects nor
+prove removal of an old set throughout its lifecycle. For example, the pinned
+Wanderer4p is installed in `Init`, Gilded prepares a team-dependent vector in
+`Init` and subscribes to reactions in `NewSet`, and Paradise uses an attack-tag
+filter plus timed stacks. These are source witnesses, not names to special-case.
+Current compact resistance/defense multipliers can still be observed constants.
+Keeping hit topology cannot authorize replacement; live source review reconfirmed
+this in `pkg/gttcompact/direct.go`.
+
+User decision after the pilot: path1 below is approved; path2 is not the chosen
+implementation. Continue sequentially until a new substantive decision is needed.
+The alternatives are retained only to explain the agreed scope:
+
+1. **Approved: generic effect discovery and formula-informed proposals.**
+   Describe source-backed amount, stat/tag applicability, recipient, activation,
+   stacking and possible new outputs, without set-name rules. Start with a
+   bounded source-shape/lifecycle pilot, not a universal Go interpreter. Keep
+   discovery/optimistic guide separate from certified replacement; unproved
+   activation is neither zero nor guaranteed. Reuse only certified contexts;
+   obtain fresh panels for shortlisted conditional/unknown/new-output changes.
+   If common effects need new engine provenance, scope that change and update
+   patch/compatibility gates instead of silently widening this consumer task.
+2. **Faster initial delivery, weaker coverage:** choose a bounded package queue
+   from currently available static/raw-item hints and exploratory alternatives,
+   capture each queued context, and disclose unexamined conditional effects.
+   This can miss strong support/reaction packages before understanding their
+   value. It must not be presented as the requested broad formula-informed
+   ranking or silently enabled as complete All Sets.
+
+No exhaustive per-package capture is proposed:492 contexts already precede
+wearer/team assignments, and a fresh context costs about11s here. That is not
+a measured full-search failure or proof of impossibility; it rules out the naive
+schedule under600s. No exact queue width or weakened coverage has been chosen.
+Implement the approved guide, freeze a measured global
+queue/capture/time budget, test package/item synergy and provider transfers,
+then common ordinary finalists/UI. Preserve incumbent/diversity and never
+hard-exclude unknown sets as useless.
+
+### Source recipes and neutral input guide (isolated implementation)
+
+`internal/seteffects` is the approved bounded source-discovery layer. It parses
+the complete catalog-supplied original Go package and hashes all supplied bytes.
+It does not execute Go, fetch imports, identify sets by name or grant certificates.
+The explicit seams are engine modifier/attack-creation APIs and their types.
+The engine's stat/attack enums supply vocabulary; unfamiliar enum shape rejects
+the affected mapping rather than shifting IDs. Renaming labels/locals and changing
+source coefficients are covered by tests.
+
+Source graph: assignments/returns, lexical guards, event/task/helper edges,
+unique returned Set receiver, immutable constructor fields, typed owner/team
+recipients and Amount-callback AttackInfo inputs. Mutable/escaped/shadowed roles,
+unresolved calls, loop membership, dynamic stacking and new outputs remain
+explicit. Limits:100000 AST nodes, expression depth32, activation depth12/64paths.
+These are refusal bounds, not evidence that everything within them is understood.
+Guard text collisions become unknown. Unknown expressions never establish zero.
+
+Recipes retain **alternative** amount states: e.g. one vector field written in
+different callbacks is not a sum of every write. Pure source constants fold with
+Go integer division preserved. Piece-count specialization and typed attack-tag
+conditions are separate from actual activation. Empty switch cases reach the
+post-switch code; trigger-hit filters are not reused as recipient-hit filters.
+Owner/team discovery does not prove runtime eligibility, uptime or stacking keys.
+
+Three proposal features exist, none a changed-set score:
+
+1. Raw-stat/channel proxy: perturb an existing captured artifact coordinate,
+   evaluate the SAME FAST program and retain only appropriate observed channels.
+   `EvaluateChannelDPS` preserves per-seed duration/weight. Source alternatives
+   are separate features. Unrepresented consumer coordinates are missing, not
+   a zero contribution. Extra semantics/indirect effects are not certified.
+2. Exact read-input increment: an isolated observer annotates an EXISTING
+   reaction-bonus sum with its actual reader owner, queried tag and graph node.
+   No new evaluation/event or gameplay call is introduced. The annotation is
+   separate from the unchanged compact member and requires exact graph hash and
+   observed-value checks. It is not a source-set replacement certificate.
+   `formula.CompileInterventions` adds offsets AFTER original node computation
+   and uses the existing arithmetic implementation; original artifact/foreign
+   dependencies and downstream contributor sorting survive. It is isolated from
+   the production FAST search hot path. `seteffects.InputProbe` connects source
+   terms to matching reader inputs, not to the actor printed on the final hit.
+3. Target-resistance increment: a bounded scalar slice reads the curve from
+   the bound engine source's actual Resistance/ResMod assignments. It accepts
+   pure float arithmetic/if branches with lazy branch evaluation, not calls,
+   loops or escaped/mutable inputs. Both current damage paths must agree on
+   the normalized source recipe. The isolated adapter annotates exact terminal
+   multiplier nodes with hit/target/element and observed resistance; it never
+   searches for a numerically equal constant. Dead nodes from failed formulas
+   are excluded. Direct numeric-recipe and contributor output paths are included.
+   Source/value/graph checks precede every probe. No curve coefficients are
+   copied into the consumer. Team modifier hints perturb all recognized
+   recipients together, preserving cross-owner nonlinear arithmetic.
+
+Evidence: `all_sets_effect_discovery_receipt_v1.json`, source-only42-package scan
+plus four new n1 controls on fixed copied bloom/cloud fixtures. Source discovery:
+93 effect sites,138 possible terms,116 source constants; NOT a percentage of
+complete mechanic or damage coverage. Parse/evidence0.106s, saved panel load/
+compile3.44s,728 features0.254s (280 have raw-stat numeric proxies). The isolated
+artificial +0.1 reaction-bonus controls exactly match native predicted DPS for
+Kuki and Ineffa;100-repeat offline average0.66-0.68ms per graph evaluation. No
+ordinary final panel, account-level package ranking or UI acceptance follows.
+
+Observer prototype: `tools/experiments/gcsim/all_sets_preflight/` with a retained
+three-copy delta `effect_inputs_experiment.patch` and added observer/test overlays.
+This is NOT a second production patch stack. Installed source/binaries remain
+unchanged. Remove the delta after eventual production consolidation, compatibility,
+ordinary parity and installation gates. Raw four-capture oracles stay until guide
+integration; live cleanup projection is owned by the checkpoint/manifest.
+
+The added resistance controls and source/input join are scoped by
+`all_sets_effect_guide_receipt_v1.json`. Installed compact resistance remains
+constant. The clean candidate now exports opt-in `gtt_effect_inputs_v1` alongside
+the unchanged compact member; its marker is in ORIGINAL engine source and the
+normal generator preserves it. No handwritten generated output is retained.
+`all_sets_observer_consolidation_receipt_v1.json` records clean patch, source
+generation, exact transport/stat-response and standard bundle gates. Candidate
+was isolated at that receipt; subsequent installation is checkpoint-owned. Experimental deltas are
+not additional production patch stacks. Unknown conditional/new-output cases
+retain exploratory/fresh-context routes, not hard exclusion.
+
+The sidecar binds exact member file bytes, original input config, resolved engine
+config, source manifest, seed and actor initialization order. Original/resolved
+text digests are distinct: upstream normalizes CRLF and adds a newline. Native
+canonical member hashes are a third, separate namespace. Missing capability,
+sidecar or mismatched provenance fails visibly; no stderr parsing or silent
+raw-stat-only downgrade. Selected keeps its old request unchanged. Observed
+port values are validated against their exact graph before guide intervention.
+An exact-context handle can lend snapshots to guide compilation; substituted
+contexts cannot inherit these observations. Guide reanchoring uses current raw
+artifact deltas and clears numerical proxy caches, without changing graph origin.
+
+#### Bounded package proposal pilot (not product budget/quality acceptance)
+
+The source-input guide is now a reusable `allsets.BuildGuide`, not only an
+experiment test. `optimizer_go_all_sources.py` checks binary, canonical manifest
+and complete original source-tree identity once; Go checks source envelopes and
+does the AST/math work. Unsupported syntax stays a local unknown; broken binding
+fails. Per-seed input responses are equal-weighted without renormalizing away
+unknown members. No-port/over-limit input families stay unresolved; other families
+continue. `Guide.Propose` requires the same graph/context/raw-stat anchor.
+Reanchoring resets cached probes and recomputes BOTH feature gains and raw-stat
+slopes at the current artifact combination. Actor-local scratch restores all
+other actors to that anchor, not to the original zero-delta equipment.
+
+#### Joint carrier/item proposal lane
+
+A literal shared source-key opportunity can move from one wearer to another
+while the old holder takes a different package. This is not a name-based list
+of mandatory support sets and does not certify activation/stacking.
+
+- Reserve only the other ten physical items. Enumerate slot-feasible PACKAGES,
+  then rank their independent linear item completions plus source opportunities.
+- Retain at most two package alternatives per role for each current shared key.
+  Combine only these bounded alternatives, not every pair of packages/items.
+  Unknown/dynamic keys remain on generic discovery lanes, not global-zero claims.
+- `domain.PairPackageSeed` selects the best two items per slot/category/wearer.
+  Only their at-most-four combinations are needed to avoid a shared physical ID:
+  the other wearer can occupy only one candidate in that slot. A five-step DP
+  over two package count vectors joins these slot choices. It is exact for the
+  supplied ADDITIVE priorities, not for nonlinear damage. A tiny exhaustive
+  synthetic oracle checks4p,2+2,shared IDs,ties and reserved items.
+- Rank joint proposals by old-context raw counterfactual relative to an equally
+  constructed current-package pair plus changes in source opportunity maxima.
+  This is neither replacement DPS nor an upper bound. Dedupe whole team packages.
+- `RefineTransfers` replaces both set blocks together, resolves ONE fresh context
+  via the existing shared session/deadline, then runs unchanged team FGBS. It
+  neither splices two individual set effects nor gets an extra simulation budget.
+  Unknown mechanics and new-output sets still require fresh contexts.
+
+These are bounded candidate generators. The two-alternative and queue widths
+are pilot settings; global product budget/quality and finalist/UI gates remain.
+
+#### Shared coordinator and ordinary measurement
+
+`allsets.Run` now owns the sequential search lifetime. It optimizes the starting
+packages once, preserves that Selected result and the original equipment, then
+uses one context session and one wall-clock/expansion allowance for all proposals.
+Each proposal retains its originating complete context and stat anchor. A better
+completed result can create a refreshed guide; an older pending proposal still
+uses its own context, never a mixture of the new and old buffs.
+
+The fair queue cursor survives refreshes: joint changes, wearer breadth,
+shared/new-output/unresolved routes, then remaining proposals. Whole contexts
+are deduplicated before capture. Unknown features are not proven zero and the
+bounded queue cannot promise to visit every route before its deadline. Report
+pending/unqueued work; do not claim exhaustive All Sets or global optimality.
+Budget expiry preserves completed candidates; source/binary/provenance failures
+remain failures. Capture reservations and failed artifact-work reservations are
+not secretly refunded. Finalists retain context diversity plus original and
+Selected baselines, all with20 unique physical items.
+
+The coarse `optimize-all-sets REQUEST SOURCES RUN_ROOT` command is implemented;
+installation/UI acceptance is a separate gate. Initial limits: at most8 complete
+two-seed contexts,3 guides,16 single and6 joint queued proposals per guide,
+1,280,000 artifact expansions and420s search inside the600s outer budget. Reserve
+150s for one shared finalist stage. Limits are explicit engineering bounds,
+not evidence that all teams/hardware meet the target; dated receipts own timing.
+
+`finalists.CandidateRenderer` reuses the existing n128/n500/bounded-n1000 verifier
+for context-specific sets and exact raw artifact stats. All Sets checks one
+unchanged non-set run frame and engine/source identities, then renders each
+candidate through the same `RenderConfig`; no second simulator or finalist
+arithmetic. Result identity is `set_context_panel_sha256` over bound graph/
+context/assignment identities, mutually exclusive with Selected's
+`compact_ir_sha256`. Hint priorities never become reported damage.
+
+`optimizer_go_all.py` is a narrow specialization of the common account/process
+adapter: source text is serialized once, all capture/search/math lives in Go.
+AppShell shares the worker lifecycle, cancellation, cards and preset saver.
+The All Sets display gate reads the installed capability metadata only; actual
+binary/source verification still occurs on every run. Source-tree input hashing
+excludes only generated build material and exact root `gtt_engine_manifest.json`
+store metadata; other source-side files remain hashed. No independent energy
+setting, inventory write or automatic equipment change is introduced.
+
+#### Single-wearer proposal lane
+
+`internal/allsets` is the separate coordinator; it does not change Selected's
+entrypoint, formula arithmetic or FGBS. The current prototype operates as follows:
+
+- Specialize source terms for2p/4p. Preserve unknown activation; do not sum
+  alternative assignments. A hint keeps the strongest individual numeric
+  opportunity, not an estimated total set bonus. Literal shared modifier keys
+  group team/target opportunities; dynamic keys remain unresolved.
+- Compute raw-stat slopes with the existing team FAST panel. These are only
+  weights for one legal seed per slot-mask-feasible package; no item is removed
+  for a low weight. Seed construction uses <=3^5 set-slot category patterns,
+  not physical artifact tuples. Main/substats and reserved IDs are retained.
+- Score raw stats on the unchanged context **only as a counterfactual hint**.
+  Compare that seed with a similarly built seed in the wearer's current package,
+  so weak original equipment does not dominate every queue position. Reset
+  the full-team arithmetic anchor between wearer-local probes.
+- Proposal priority is raw-seed difference plus change in the peak local
+  source opportunity and in shared-key group peaks across the team. Maxima
+  avoid adding alternative writes. This heuristic is not candidate DPS,
+  an upper bound, effect removal or a dominance/pruning certificate. An
+  existing shared-key opportunity is not counted again for another carrier.
+  This does not prove uptime or stacking; carrier transfers still need their
+  own joint proposal and fresh context.
+- One bounded queue reserves wearer breadth, shared-effect and available
+  new-output/unresolved lanes; remaining slots rotate across wearers. The
+  isolated16-entry measurement is not an approved/released capture budget.
+  Missing/unselected effects stay visible; no claim that every useful package
+  is retained. Incumbent is preserved independently, without recapture.
+- `Refine` resolves each shortlisted package through the shared context session
+  before handing its own panel and legal artifact domain to `RefineWearer`.
+  It cannot create another capture budget, retry or simulate artifacts itself.
+  Single-wearer results preserve the other15 physical IDs. They are formula
+  candidates, not ordinary-engine measured finalists.
+
+The first queue witness exposed duplicate shared-effect optimism and a raw
+equipment-strength bias; these were corrected before new package captures.
+Current acceptance/timings and immediate continuation belong to GP-3. The source
+observer, refreshed guide, joint pilot, shared coordinator and ordinary finalist
+adapter exist. Remaining release/installation/UI gates are owned by that current
+checkpoint, not this design history. No real-set reuse certificate producer exists.
 
 ## 10. Performance and execution rules
 
 - Selected cold product failure: >190 s total including compact evidence,
-  search, finalist n=1000 and result production.
+  search, adaptive finalist n500/n1000 and result production.
 - Development audit ceiling: 360 s unless the user explicitly changes it.
 - No subagents or parallel agents for this project.
 - Work sequentially; no parameter sweeps or brute-force retries.
@@ -639,22 +1187,15 @@ then energy-aware Selected. All Sets/Theory remain later stages.
 - No full-account/n1000 run before the preceding reduced/parity gate passes.
 - Preserve unrelated dirty-tree work; do not commit/push unless requested.
 
-## 11. Current next implementation block
+## 11. Current Continuation And Historical GOB-10 Evidence
 
-Selected GOB-0 through GOB-10 are complete. Do not revive a deleted Python
-strategy or repeat the accepted full-account run as routine validation.
-GOB-10 kept the search/result contract intact while making formula evaluation
-dependency-aware, binding engine identity once per verification stage, skipping
-trace-only engine bookkeeping during ordinary simulation and capturing the two
-compact seeds concurrently. The saved-account product replay completed in
-57.0 seconds after preparation and returned the exact accepted twenty IDs.
+Read [GCSIM_GOB11_GP3_CHECKPOINT.md](GCSIM_GOB11_GP3_CHECKPOINT.md) for the
+current acceptance/repair gate and [TODO](../../TODO.md) for user-decided scope
+order. Unknown ancestry/branch/schedule limits remain explicit. Do not reopen
+completed Go migration/search stages without a demonstrated defect.
 
-Selected release safety is complete on upstream v2.45.0: the reduced single
-adapter patch passed clean apply, build, capability, compact semantic parity,
-ordinary-simulation and structured-wave checks before transactional activation.
-Do not reopen Selected search or compatibility without a measured regression.
-All Sets/Theory remains a separately contracted stage. Continuous-target Python
-math is reference input for that stage, not a Selected fallback.
+The following GOB-10 measurements describe its saved fixture and older engine;
+they are retained evidence, not current cross-team or UI performance promises.
 
 ### GOB-10 — measured compute optimization
 

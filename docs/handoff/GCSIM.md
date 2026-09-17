@@ -614,11 +614,11 @@ Repo/source paths inspected in a temporary clone:
 - `pkg/gcs/parser/parseCharacter.go`: char/weapon/set/stat syntax.
 - `pkg/gcs/parser/parseTarget.go`: target syntax.
 - `pkg/gcs/parser/parse_test.go`: compact config examples.
-- `ui/packages/docs/docs/guides/installation.md`: CLI install/build docs.
-- `ui/packages/docs/docs/reference/cli.md`: CLI option docs.
-- `ui/packages/docs/docs/guides/understanding_config_files.md`: config structure and examples.
-- `ui/packages/docs/docs/reference/config.md`: options/enemy/reference syntax.
-- `ui/packages/docs/docs/guides/substat_optimizer.md`: KQM Standard substat optimizer docs.
+- [upstream installation guide](https://github.com/genshinsim/gcsim/blob/main/ui/packages/docs/docs/guides/installation.md): CLI install/build docs.
+- [upstream CLI reference](https://github.com/genshinsim/gcsim/blob/main/ui/packages/docs/docs/reference/cli.md): CLI option docs.
+- [upstream config guide](https://github.com/genshinsim/gcsim/blob/main/ui/packages/docs/docs/guides/understanding_config_files.md): config structure and examples.
+- [upstream config reference](https://github.com/genshinsim/gcsim/blob/main/ui/packages/docs/docs/reference/config.md): options/enemy/reference syntax.
+- [upstream substat optimizer guide](https://github.com/genshinsim/gcsim/blob/main/ui/packages/docs/docs/guides/substat_optimizer.md): KQM Standard substat optimizer docs.
 - `pkg/core/player/character/basestat.go`: character/weapon base stat calculation.
 - `pkg/simulation/setup.go`: target/team setup and resonance implementation.
 - `pkg/simulation/details.go`: character details and final snapshot stats in output.

@@ -679,26 +679,32 @@ def upsert_artifact(
     import_format: str | None = None,
     import_batch_id: int | None = None,
     json_imported: bool | None = None,
+    observed_artifact_ids: set[int] | None = None,
+    preferred_artifact_id: int | None = None,
 ) -> tuple[int, bool]:
     now = utc_now()
 
     existing = None
     if content_fingerprint:
-        existing = conn.execute(
+        candidates = conn.execute(
             """
             SELECT id
             FROM artifacts
             WHERE content_fingerprint = ?
-            LIMIT 1
+            ORDER BY id
             """,
             (content_fingerprint,),
-        ).fetchone()
+        ).fetchall()
+        candidates = sorted(candidates, key=lambda row: (row["id"] != preferred_artifact_id, row["id"]))
+        existing = next((row for row in candidates if row["id"] not in (observed_artifact_ids or set())), None)
 
     if existing is None:
-        existing = conn.execute(
+        candidate = conn.execute(
             "SELECT id FROM artifacts WHERE fingerprint = ?",
             (fingerprint,),
         ).fetchone()
+        if candidate is not None and candidate["id"] not in (observed_artifact_ids or set()):
+            existing = candidate
 
     if existing:
         artifact_id = int(existing["id"])
@@ -748,6 +754,15 @@ def upsert_artifact(
             ),
         )
         return artifact_id, False
+
+    if observed_artifact_ids:
+        # Only the importer supplies ids already seen on OTHER characters in
+        # this same snapshot. Reimports find existing copies by content above.
+        original_fingerprint = fingerprint
+        copy_index = 1
+        while conn.execute("SELECT 1 FROM artifacts WHERE fingerprint = ?", (fingerprint,)).fetchone():
+            copy_index += 1
+            fingerprint = f"{original_fingerprint}:observed-copy:{copy_index}"
 
     cursor = conn.execute(
         """

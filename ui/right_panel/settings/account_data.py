@@ -44,6 +44,7 @@ from run_workspace.gcsim.settings import (
     set_gcsim_boosted_energy_enabled,
 )
 from ui.utils.toggle_switch import ToggleSwitch
+from hoyolab_export.import_settings import change_equipment_on_import, set_change_equipment_on_import
 from ui.utils.pvp_colors import (
     pvp_player_color,
     reset_pvp_player_colors,
@@ -79,13 +80,14 @@ HOYOLAB_IMPORT_STATUSES = {
     "closing_browser": ("loader.closing_browser", 0.84),
     "importing_artifacts": ("loader.importing_artifacts", 0.87),
     "updating_hoyolab_data": ("loader.updating_hoyolab_data", 0.91),
-    "cropping_assets": ("loader.cropping_assets", 0.95),
+    "cropping_assets": ("loader.cropping_assets", 0.72),
     "syncing_account_storage": ("loader.syncing_account_storage", 0.965),
     "account_storage_sync_warning": ("loader.account_storage_sync_warning", 0.97),
     "updating_abyss_source_data": ("loader.updating_abyss_source_data", 0.972),
     "caching_abyss_monster_icons": ("loader.caching_abyss_monster_icons", 0.976),
     "skipping_abyss_source_data_refresh": ("loader.skipping_abyss_source_data_refresh", 0.976),
     "writing_import_log": ("loader.writing_import_log", 0.98),
+    "applying_equipment": ("loader.applying_equipment", 0.979),
     "done": ("loader.done", 1.0),
 }
 
@@ -173,6 +175,17 @@ class AccountDataPage(QWidget):
         self.btn_profile_menu.setMenu(self.profile_menu)
         action_row.addWidget(self.btn_profile_menu)
         account_layout.addLayout(action_row)
+        equipment_row = QHBoxLayout()
+        self.change_equipment_label = QLabel(tr("hoyolab.change_equipment"))
+        self.change_equipment_switch = ToggleSwitch()
+        self.change_equipment_switch.setAccessibleName(tr("hoyolab.change_equipment"))
+        self.change_equipment_switch.setChecked(change_equipment_on_import(settings_file=self._settings_file))
+        self.change_equipment_switch.toggled.connect(
+            lambda enabled: set_change_equipment_on_import(enabled, settings_file=self._settings_file)
+        )
+        equipment_row.addWidget(self.change_equipment_label, 1)
+        equipment_row.addWidget(self.change_equipment_switch)
+        account_layout.addLayout(equipment_row)
         root.addWidget(account_frame)
 
         language_frame = QFrame()
@@ -317,6 +330,7 @@ class AccountDataPage(QWidget):
         import_cooldown = self._hoyolab_import_cooldown_active
 
         self.btn_profile_menu.setEnabled(not import_running and not import_cooldown)
+        self.change_equipment_switch.setEnabled(not import_running and not import_cooldown)
 
         if import_running:
             self.btn_hoyolab_export.setEnabled(False)
@@ -510,29 +524,38 @@ class AccountDataPage(QWidget):
         self.refresh_hoyolab_auth_status()
 
     def run_hoyolab_export(self) -> None:
+        if self._hoyolab_export_process is not None or self._hoyolab_import_cooldown_active:
+            return
         if get_auth_status(HOYOLAB_PROFILE_DIR) != AuthStatus.LOGGED_IN:
             if self.ask_open_hoyolab_login():
                 self.open_hoyolab_login()
             self.refresh_hoyolab_auth_status()
             return
-        if self._hoyolab_export_process is not None or self._hoyolab_import_cooldown_active:
-            return
 
         self._show_hoyolab_loader()
         process = QProcess(self)
         process.setProgram(sys.executable)
-        process.setArguments(["-m", "hoyolab_export.run_import"])
+        arguments = ["-m", "hoyolab_export.run_import"]
+        if self.change_equipment_switch.isChecked():
+            arguments.append("--change-equipment")
+        process.setArguments(arguments)
         process.setWorkingDirectory(str(PROJECT_ROOT))
         process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
         process.readyReadStandardOutput.connect(self.read_hoyolab_import_output)
-        process.finished.connect(self.on_hoyolab_import_finished)
+        process.finished.connect(
+            lambda code, status: self._on_hoyolab_process_finished(process, code, status)
+        )
         self._hoyolab_export_process = process
         self._hoyolab_import_output_buffer = ""
         self._hoyolab_import_lines = []
         self.btn_hoyolab_export.setEnabled(False)
+        self.btn_profile_menu.setEnabled(False)
+        self.change_equipment_switch.setEnabled(False)
         self.btn_hoyolab_export.setToolTip(tr("hoyolab.import_running_tooltip"))
         process.start()
         if not process.waitForStarted(3000):
+            if self._hoyolab_export_process is not process:
+                return
             self._hoyolab_export_process = None
             process.deleteLater()
             self._close_hoyolab_loader()
@@ -600,20 +623,26 @@ class AccountDataPage(QWidget):
         ]
         return "\n".join(lines[-8:])
 
+    def _on_hoyolab_process_finished(self, process, exit_code, exit_status) -> None:
+        # A delayed signal from a previous run must never finish the current run.
+        if self._hoyolab_export_process is process:
+            self.on_hoyolab_import_finished(exit_code, exit_status)
+
     def on_hoyolab_import_finished(
         self,
         exit_code: int,
         exit_status: QProcess.ExitStatus,
     ) -> None:
         process = self._hoyolab_export_process
-        if process is not None:
-            self.read_hoyolab_import_output()
-            if self._hoyolab_import_output_buffer.strip():
-                line = self._hoyolab_import_output_buffer.strip()
-                print(line)
-                self._hoyolab_import_lines.append(line)
-                self._hoyolab_import_output_buffer = ""
-            process.deleteLater()
+        if process is None:
+            return
+        self.read_hoyolab_import_output()
+        if self._hoyolab_import_output_buffer.strip():
+            line = self._hoyolab_import_output_buffer.strip()
+            print(line)
+            self._hoyolab_import_lines.append(line)
+            self._hoyolab_import_output_buffer = ""
+        process.deleteLater()
         self._hoyolab_export_process = None
         self._hoyolab_import_cooldown_active = True
         self.btn_hoyolab_export.setEnabled(False)
@@ -642,6 +671,8 @@ class AccountDataPage(QWidget):
         )
 
     def export_profile(self, *, show_success: bool = True) -> bool:
+        if self._hoyolab_export_process is not None or self._hoyolab_import_cooldown_active:
+            return False
         path, _selected_filter = QFileDialog.getSaveFileName(
             self._dialog_parent(),
             tr("profile.export_dialog_title"),
@@ -669,6 +700,8 @@ class AccountDataPage(QWidget):
         return True
 
     def import_profile(self) -> bool:
+        if self._hoyolab_export_process is not None or self._hoyolab_import_cooldown_active:
+            return False
         path, _selected_filter = QFileDialog.getOpenFileName(
             self._dialog_parent(),
             tr("profile.import_dialog_title"),
@@ -782,6 +815,8 @@ class AccountDataPage(QWidget):
     def retranslate_ui(self) -> None:
         self.title_label.setText(tr("app_shell.account.title"))
         self.hoyolab_label.setText(tr("common.hoyolab"))
+        self.change_equipment_label.setText(tr("hoyolab.change_equipment"))
+        self.change_equipment_switch.setAccessibleName(tr("hoyolab.change_equipment"))
         self.btn_profile_menu.setText(tr("profile.menu_button"))
         self.action_export_profile.setText(tr("profile.export"))
         self.action_import_profile.setText(tr("profile.import"))

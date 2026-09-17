@@ -1,0 +1,941 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-16",
+  "status": "installed_bounded_formula_and_two_flins_searches_passed_bloom_set_choice_pending",
+  "install": {
+    "success": true,
+    "activated": true,
+    "engine_id": "gcsim-v2.45.0-gob11-gp3-20260916",
+    "artifact_sha256": "82a5ae0a7eab4de02dd1d58a6be58850b2637d007b46347683e6fad36cf3df0b",
+    "application_compatibility_status": "passed",
+    "error": "",
+    "seconds": 83.17199999999866
+  },
+  "installed_parity": {
+    "active": {
+      "active_engine_id": "gcsim-v2.45.0-gob11-gp3-20260916",
+      "rollback_engine_id": "gcsim-v2.45.0-gob11-additive2-20260913",
+      "schema_version": 1
+    },
+    "engine_sha256": "82a5ae0a7eab4de02dd1d58a6be58850b2637d007b46347683e6fad36cf3df0b",
+    "checks": [
+      {
+        "case": "flins_1",
+        "hits": 509,
+        "seconds": 0.5630000000019209,
+        "metadata_channels_identical": true,
+        "raw_nodes_identical": false
+      },
+      {
+        "case": "chasca-1",
+        "hits": 383,
+        "seconds": 2.186999999998079,
+        "metadata_channels_identical": true,
+        "raw_nodes_identical": false
+      }
+    ]
+  },
+  "patch_sha256": "0f25a323622f5be9e7f22ccf0ae17e71e7257c8205e56165ea1918969f24467f",
+  "patch_entries": 135,
+  "accepted_pending_delta_sha256": "b8b9f5f85de1b65e762bab7df96240fd6213c5676c5f90ef7c676bee0dc364ca",
+  "formula_receipt": "gob11_captured_scalar_receipt_v1.json",
+  "checks": [
+    "native formula/contracts passed including six captured-scalar samples",
+    "six Python engine compatibility tests passed",
+    "installed per-hit baseline plus eight stat-delta parity points passed",
+    "both unchanged Selected sessions passed; copied-account database byte hashes unchanged"
+  ],
+  "installed_explicit_n1_parity_captures": 2,
+  "searches": [
+    {
+      "case": "flins_1",
+      "request_sha256": "fc128a68f36d380f2cf3c324b87b50c823a7631734a3d263a1f64533b69f349b",
+      "initial_measured_dps": 149630.69028279194,
+      "initial_iterations": 500,
+      "winner": [
+        {
+          "wearer_key": "columbina",
+          "slot": "flower",
+          "artifact_id": 66
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "plume",
+          "artifact_id": 219
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "sands",
+          "artifact_id": 8
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "goblet",
+          "artifact_id": 69
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "circlet",
+          "artifact_id": 1580
+        },
+        {
+          "wearer_key": "flins",
+          "slot": "flower",
+          "artifact_id": 1537
+        },
+        {
+          "wearer_key": "flins",
+          "slot": "plume",
+          "artifact_id": 1535
+        },
+        {
+          "wearer_key": "flins",
+          "slot": "sands",
+          "artifact_id": 63
+        },
+        {
+          "wearer_key": "flins",
+          "slot": "goblet",
+          "artifact_id": 64
+        },
+        {
+          "wearer_key": "flins",
+          "slot": "circlet",
+          "artifact_id": 1565
+        },
+        {
+          "wearer_key": "ineffa",
+          "slot": "flower",
+          "artifact_id": 71
+        },
+        {
+          "wearer_key": "ineffa",
+          "slot": "plume",
+          "artifact_id": 72
+        },
+        {
+          "wearer_key": "ineffa",
+          "slot": "sands",
+          "artifact_id": 73
+        },
+        {
+          "wearer_key": "ineffa",
+          "slot": "goblet",
+          "artifact_id": 103
+        },
+        {
+          "wearer_key": "ineffa",
+          "slot": "circlet",
+          "artifact_id": 75
+        },
+        {
+          "wearer_key": "sucrose",
+          "slot": "flower",
+          "artifact_id": 152
+        },
+        {
+          "wearer_key": "sucrose",
+          "slot": "plume",
+          "artifact_id": 1329
+        },
+        {
+          "wearer_key": "sucrose",
+          "slot": "sands",
+          "artifact_id": 1481
+        },
+        {
+          "wearer_key": "sucrose",
+          "slot": "goblet",
+          "artifact_id": 1478
+        },
+        {
+          "wearer_key": "sucrose",
+          "slot": "circlet",
+          "artifact_id": 1484
+        }
+      ],
+      "winner_measured": {
+        "iterations": 500,
+        "dps": "189400.45996786215",
+        "standard_error": "118.27652396811875",
+        "engine_result_sha256": "b56fd631c9043e0699160390020d5a32e6d7dafa31865f34bcb16e3050cfff81"
+      },
+      "formula_dps": "184057.12548872936",
+      "measured_improvement_percent": 26.578618069533743,
+      "formula_residual": "5343.334479132784",
+      "formula_relative_error_percent": 2.821183475499189,
+      "timings": {
+        "total_ms": 119702,
+        "compile_ms": 765.6821,
+        "search_ms": 43678.5834,
+        "screen_n128_ms": 32197.0543,
+        "final_simulation_ms": 29264.1442,
+        "preparation_capture_validation_serialization_ms": 13796.536000000007
+      },
+      "screen_candidates": 25,
+      "final_candidates": [
+        {
+          "rank": 1,
+          "source": "actor_1_lane_4+n128_top",
+          "assignment": [
+            [
+              66,
+              219,
+              8,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1535,
+              63,
+              64,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              152,
+              67,
+              154,
+              1478,
+              1484
+            ]
+          ],
+          "formula_dps": 184084.4784328944,
+          "measured_dps": 189181.9753361648,
+          "standard_error": 117.1225440050902,
+          "iterations": 500
+        },
+        {
+          "rank": 2,
+          "source": "pair_refinement+n128_top",
+          "assignment": [
+            [
+              66,
+              219,
+              8,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1535,
+              63,
+              64,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              152,
+              1329,
+              1481,
+              1478,
+              1484
+            ]
+          ],
+          "formula_dps": 184057.12548872936,
+          "measured_dps": 189400.45996786215,
+          "standard_error": 118.27652396811875,
+          "iterations": 500
+        },
+        {
+          "rank": 3,
+          "source": "pair_refinement+n128_top",
+          "assignment": [
+            [
+              66,
+              219,
+              8,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1535,
+              63,
+              64,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              152,
+              1329,
+              154,
+              1478,
+              1484
+            ]
+          ],
+          "formula_dps": 184084.3699485767,
+          "measured_dps": 189210.45700979466,
+          "standard_error": 113.84268521143643,
+          "iterations": 500
+        },
+        {
+          "rank": 4,
+          "source": "pair_refinement+n128_top",
+          "assignment": [
+            [
+              66,
+              219,
+              8,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1535,
+              63,
+              64,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              152,
+              67,
+              1481,
+              1478,
+              1484
+            ]
+          ],
+          "formula_dps": 184056.33974755328,
+          "measured_dps": 189008.17365615012,
+          "standard_error": 115.68551852415176,
+          "iterations": 500
+        },
+        {
+          "rank": 5,
+          "source": "pair_refinement+n128_top",
+          "assignment": [
+            [
+              66,
+              219,
+              8,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1535,
+              63,
+              64,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              152,
+              67,
+              154,
+              155,
+              1484
+            ]
+          ],
+          "formula_dps": 184046.53321620054,
+          "measured_dps": 189211.34753871267,
+          "standard_error": 122.22142873676073,
+          "iterations": 500
+        },
+        {
+          "rank": 6,
+          "source": "mandatory_formula_leader",
+          "assignment": [
+            [
+              66,
+              219,
+              8,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1533,
+              63,
+              88,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              152,
+              67,
+              154,
+              1478,
+              1484
+            ]
+          ],
+          "formula_dps": 184141.71344347752,
+          "measured_dps": 187508.18351022634,
+          "standard_error": 149.58258795132338,
+          "iterations": 500
+        },
+        {
+          "rank": 7,
+          "source": "mandatory_current",
+          "assignment": [
+            [
+              66,
+              67,
+              68,
+              54,
+              1580
+            ],
+            [
+              1,
+              1533,
+              63,
+              184,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              174,
+              1567
+            ],
+            [
+              152,
+              153,
+              154,
+              155,
+              1484
+            ]
+          ],
+          "formula_dps": 149388.2750441294,
+          "measured_dps": 149630.69028279194,
+          "standard_error": 144.80384783871412,
+          "iterations": 500
+        }
+      ],
+      "completed_cycles": 2,
+      "accepted_steps": 4,
+      "guide_evaluations": 102703,
+      "complete_evaluations": 960,
+      "search_stop_reason": "provisional_stable",
+      "adaptive_status": "unresolved_panel_too_wide",
+      "warnings": [
+        "adaptive_finalist_panel_too_wide",
+        "formula_rank_not_measurement_authority",
+        "measured_top_confidence_overlap",
+        "opaque_formula_boundaries_present"
+      ],
+      "opaque_reasons": [
+        "attack_field_operand_dependency_frozen",
+        "callback_provider_unattributed",
+        "captured_scalar_schedule_frozen",
+        "contributor_membership_schedule_frozen",
+        "flat_dmg_expression_collapsed",
+        "gadget_wave_state_lineage_not_instrumented",
+        "max_hp_candidate_dependency_incomplete",
+        "modifier_candidate_dependency_incomplete",
+        "modifier_source_parameter_binding_incomplete",
+        "multiplier_source_expression_not_instrumented",
+        "numeric_expression_candidate_dependency_incomplete",
+        "numeric_marker_replay_not_recomputed",
+        "numeric_recipe_input_frozen_atk_elevation",
+        "numeric_recipe_input_frozen_atk_info_mult",
+        "numeric_recipe_input_frozen_defmod",
+        "numeric_recipe_input_frozen_elevation",
+        "numeric_recipe_input_frozen_grpmult",
+        "numeric_recipe_input_frozen_mult",
+        "numeric_recipe_input_frozen_resmod",
+        "post_damage_callback_state_effects_unmodeled",
+        "provider_transition_timeline_incomplete",
+        "reaction_bonus_provider_paths_incomplete",
+        "reaction_bonus_provider_unattributed",
+        "reaction_bonus_schedule_frozen",
+        "reaction_em_external_dependencies_frozen",
+        "reaction_parent_lineage_not_instrumented",
+        "reaction_topology_aggregate_only",
+        "saved_stat_vector_schedule_frozen",
+        "stat_mod_dependency_expression_collapsed",
+        "stat_read_external_dependencies_incomplete",
+        "unknown_reaction_operator",
+        "untyped_callback_state_effects_unmodeled"
+      ]
+    },
+    {
+      "case": "flins_2",
+      "request_sha256": "38e13912f86c1d65d842d83e01e929ea184a0c019b05fca41435e57109abc0ed",
+      "initial_measured_dps": 158168.891207365,
+      "initial_iterations": 500,
+      "winner": [
+        {
+          "wearer_key": "columbina",
+          "slot": "flower",
+          "artifact_id": 66
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "plume",
+          "artifact_id": 219
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "sands",
+          "artifact_id": 8
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "goblet",
+          "artifact_id": 69
+        },
+        {
+          "wearer_key": "columbina",
+          "slot": "circlet",
+          "artifact_id": 1580
+        },
+        {
+          "wearer_key": "flins",
+          "slot": "flower",
+          "artifact_id": 1537
+        },
+        {
+          "wearer_key": "flins",
+          "slot": "plume",
+          "artifact_id": 1533
+        },
+        {
+          "wearer_key": "flins",
+          "slot": "sands",
+          "artifact_id": 63
+        },
+        {
+          "wearer_key": "flins",
+          "slot": "goblet",
+          "artifact_id": 88
+        },
+        {
+          "wearer_key": "flins",
+          "slot": "circlet",
+          "artifact_id": 1565
+        },
+        {
+          "wearer_key": "ineffa",
+          "slot": "flower",
+          "artifact_id": 71
+        },
+        {
+          "wearer_key": "ineffa",
+          "slot": "plume",
+          "artifact_id": 72
+        },
+        {
+          "wearer_key": "ineffa",
+          "slot": "sands",
+          "artifact_id": 73
+        },
+        {
+          "wearer_key": "ineffa",
+          "slot": "goblet",
+          "artifact_id": 103
+        },
+        {
+          "wearer_key": "ineffa",
+          "slot": "circlet",
+          "artifact_id": 75
+        },
+        {
+          "wearer_key": "sucrose",
+          "slot": "flower",
+          "artifact_id": 152
+        },
+        {
+          "wearer_key": "sucrose",
+          "slot": "plume",
+          "artifact_id": 1329
+        },
+        {
+          "wearer_key": "sucrose",
+          "slot": "sands",
+          "artifact_id": 154
+        },
+        {
+          "wearer_key": "sucrose",
+          "slot": "goblet",
+          "artifact_id": 1478
+        },
+        {
+          "wearer_key": "sucrose",
+          "slot": "circlet",
+          "artifact_id": 1484
+        }
+      ],
+      "winner_measured": {
+        "iterations": 500,
+        "dps": "196747.8262112153",
+        "standard_error": "143.39629677544644",
+        "engine_result_sha256": "12222884b45dec0b93cce13f138a4ec74c7d2db53aa7b62e75caff78289840ea"
+      },
+      "formula_dps": "196177.73389100985",
+      "measured_improvement_percent": 24.390975184413442,
+      "formula_residual": "570.09232020544",
+      "formula_relative_error_percent": 0.28975787493246663,
+      "timings": {
+        "total_ms": 106233,
+        "compile_ms": 737.086,
+        "search_ms": 39277.2205,
+        "screen_n128_ms": 25457.9975,
+        "final_simulation_ms": 27937.8168,
+        "preparation_capture_validation_serialization_ms": 12822.879199999996
+      },
+      "screen_candidates": 25,
+      "final_candidates": [
+        {
+          "rank": 1,
+          "source": "actor_3_lane_2+n128_top",
+          "assignment": [
+            [
+              66,
+              219,
+              8,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1533,
+              63,
+              88,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              152,
+              67,
+              1481,
+              1478,
+              1484
+            ]
+          ],
+          "formula_dps": 196140.4977601723,
+          "measured_dps": 196587.59310122547,
+          "standard_error": 148.11926936759502,
+          "iterations": 500
+        },
+        {
+          "rank": 2,
+          "source": "actor_3_lane_1+n128_top",
+          "assignment": [
+            [
+              66,
+              219,
+              8,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1533,
+              63,
+              88,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              105,
+              153,
+              154,
+              1478,
+              1484
+            ]
+          ],
+          "formula_dps": 196161.73445227882,
+          "measured_dps": 196558.17239497576,
+          "standard_error": 151.53081999511556,
+          "iterations": 500
+        },
+        {
+          "rank": 3,
+          "source": "pair_refinement+n128_top",
+          "assignment": [
+            [
+              66,
+              219,
+              1355,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1533,
+              63,
+              88,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              152,
+              67,
+              1481,
+              1478,
+              1484
+            ]
+          ],
+          "formula_dps": 196085.63743830804,
+          "measured_dps": 196683.836028671,
+          "standard_error": 147.77791203070615,
+          "iterations": 500
+        },
+        {
+          "rank": 4,
+          "source": "actor_3_lane_2+n128_top",
+          "assignment": [
+            [
+              66,
+              219,
+              8,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1533,
+              63,
+              88,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              152,
+              1329,
+              1481,
+              1478,
+              1484
+            ]
+          ],
+          "formula_dps": 196143.521267945,
+          "measured_dps": 196389.27826297178,
+          "standard_error": 153.2026515792777,
+          "iterations": 500
+        },
+        {
+          "rank": 5,
+          "source": "pair_refinement+n128_top",
+          "assignment": [
+            [
+              66,
+              219,
+              8,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1535,
+              63,
+              64,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              152,
+              67,
+              154,
+              1478,
+              1484
+            ]
+          ],
+          "formula_dps": 196077.74209399108,
+          "measured_dps": 196552.76406582035,
+          "standard_error": 122.66527358795608,
+          "iterations": 500
+        },
+        {
+          "rank": 6,
+          "source": "mandatory_formula_leader",
+          "assignment": [
+            [
+              66,
+              219,
+              8,
+              69,
+              1580
+            ],
+            [
+              1537,
+              1533,
+              63,
+              88,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              103,
+              75
+            ],
+            [
+              152,
+              1329,
+              154,
+              1478,
+              1484
+            ]
+          ],
+          "formula_dps": 196177.73389100985,
+          "measured_dps": 196747.8262112153,
+          "standard_error": 143.39629677544644,
+          "iterations": 500
+        },
+        {
+          "rank": 7,
+          "source": "mandatory_current",
+          "assignment": [
+            [
+              66,
+              67,
+              68,
+              54,
+              1580
+            ],
+            [
+              1,
+              1533,
+              63,
+              184,
+              1565
+            ],
+            [
+              71,
+              72,
+              73,
+              174,
+              1567
+            ],
+            [
+              152,
+              153,
+              154,
+              155,
+              1484
+            ]
+          ],
+          "formula_dps": 158647.36441300367,
+          "measured_dps": 158168.891207365,
+          "standard_error": 155.3872412816514,
+          "iterations": 500
+        }
+      ],
+      "completed_cycles": 2,
+      "accepted_steps": 4,
+      "guide_evaluations": 102731,
+      "complete_evaluations": 960,
+      "search_stop_reason": "provisional_stable",
+      "adaptive_status": "unresolved_panel_too_wide",
+      "warnings": [
+        "adaptive_finalist_panel_too_wide",
+        "formula_rank_not_measurement_authority",
+        "measured_top_confidence_overlap",
+        "opaque_formula_boundaries_present"
+      ],
+      "opaque_reasons": [
+        "attack_field_operand_dependency_frozen",
+        "callback_provider_unattributed",
+        "captured_scalar_schedule_frozen",
+        "contributor_membership_schedule_frozen",
+        "flat_dmg_expression_collapsed",
+        "gadget_wave_state_lineage_not_instrumented",
+        "max_hp_candidate_dependency_incomplete",
+        "modifier_candidate_dependency_incomplete",
+        "modifier_source_parameter_binding_incomplete",
+        "multiplier_source_expression_not_instrumented",
+        "numeric_expression_candidate_dependency_incomplete",
+        "numeric_marker_replay_not_recomputed",
+        "numeric_recipe_input_frozen_atk_elevation",
+        "numeric_recipe_input_frozen_atk_info_mult",
+        "numeric_recipe_input_frozen_defmod",
+        "numeric_recipe_input_frozen_elevation",
+        "numeric_recipe_input_frozen_grpmult",
+        "numeric_recipe_input_frozen_mult",
+        "numeric_recipe_input_frozen_resmod",
+        "post_damage_callback_state_effects_unmodeled",
+        "provider_transition_timeline_incomplete",
+        "reaction_bonus_provider_paths_incomplete",
+        "reaction_bonus_provider_unattributed",
+        "reaction_bonus_schedule_frozen",
+        "reaction_em_external_dependencies_frozen",
+        "reaction_parent_lineage_not_instrumented",
+        "reaction_topology_aggregate_only",
+        "saved_stat_vector_schedule_frozen",
+        "stat_mod_dependency_expression_collapsed",
+        "stat_read_external_dependencies_incomplete",
+        "unknown_reaction_operator",
+        "untyped_callback_state_effects_unmodeled"
+      ]
+    }
+  ],
+  "limits": [
+    "no global optimum/recall guarantee; bounded search",
+    "formula is a ranking approximation: final winner residual is measured, not attributed to a source without diagnosis",
+    "near-tied top ranks unresolved within final budget; no unbounded n1000 widening",
+    "no visible UI click: actual Selected backend session called on copied fixtures",
+    "Lauma supplied2+2 requires user decision before full bloom Selected",
+    "live equipment, source note and saved Chasca rotation unchanged; no commit/push"
+  ]
+}

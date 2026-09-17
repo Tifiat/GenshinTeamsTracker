@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-17",
+  "owner": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
+  "status": "all_sets_installed_backend_pass_ui_pending",
+  "fixture": "copied_bloom_account_original_Lauma_2plus2_infinite_energy_two_fixed_seeds",
+  "cold_test_engine_sha256": "a15faaa4181173d3ad808d2825f0dd56d99b92c4b58a6a3b7ce5442892d7fa62",
+  "cold_test_source_manifest_sha256": "3176efa51c7ea5ed44df1f82658299c0a98522afb7a01fa2fdbf10bebce53f82",
+  "coordinator_pilot": {
+    "selected_formula_dps": 128740.32785887273,
+    "best_formula_dps": 140130.59483732365,
+    "new_n1_calls": 4,
+    "reused_members": 4,
+    "capture_members": 8,
+    "total_seconds": 171.618738,
+    "search_expansions": 414634,
+    "guides": 2,
+    "stop_reason": "context_budget"
+  },
+  "pilot_ordinary": {
+    "replay_seconds": 19.6373661,
+    "screen_seconds": 9.778910900000001,
+    "verify_seconds": 45.3038728,
+    "winner_measured_dps": 140138.54160208648,
+    "calls": {
+      "n128": 7,
+      "n500": 7,
+      "n1000": 3
+    }
+  },
+  "cold_cli": {
+    "exit_code": 0,
+    "wall_seconds": 396.06200000000536,
+    "measured_dps": "140089.8971880726",
+    "formula_dps": "140130.59483732365",
+    "capture_members": 16,
+    "stop_reason": "context_budget",
+    "includes_python_source_preparation": false,
+    "search_seconds": 363.0824743,
+    "guide_seconds_within_search": 14.9725222,
+    "proposal_seconds_within_search": 3.2134339999999995,
+    "capture_seconds_within_search": 93.4717531,
+    "artifact_search_seconds_within_search": 251.40083840000003,
+    "screen_seconds": 8.1641331,
+    "verify_seconds": 22.6196273,
+    "search_work": [
+      {
+        "context_sha256": "06c58c9f0a38a4cc77a8b4d9d00ec709c8645c420f9de012e7947e2abcafdfa5",
+        "lane": "selected",
+        "formula_dps": 128740.32785887273,
+        "CaptureSeconds": 11.7611343,
+        "SearchSeconds": 38.0053143,
+        "Expansions": 112987
+      },
+      {
+        "context_sha256": "f6fbb2f051df073481f610d922e4dd276b8e7e2aa48e8c144465c268f04c2d42",
+        "lane": "joint",
+        "formula_dps": 135176.80329544138,
+        "CaptureSeconds": 12.7463693,
+        "SearchSeconds": 33.950426,
+        "Expansions": 113200
+      },
+      {
+        "context_sha256": "f2d31340d1e45087994a405c820a9fba3cb89df1307820b83e69c746c634589b",
+        "lane": "wearer",
+        "formula_dps": 122214.67470556208,
+        "CaptureSeconds": 11.7201296,
+        "SearchSeconds": 24.168045,
+        "Expansions": 77918
+      },
+      {
+        "context_sha256": "53965f3d0f0df3f8219434d3fcdbb60ff989791095ed65cb13c97ab1c8807eb6",
+        "lane": "wearer",
+        "formula_dps": 140130.59483732365,
+        "CaptureSeconds": 11.5327859,
+        "SearchSeconds": 33.8192311,
+        "Expansions": 110529
+      },
+      {
+        "context_sha256": "3e70f75e3d66e661df3e64942f7bc43298a24d935b20417353e86c93a7684b34",
+        "lane": "joint",
+        "formula_dps": 138502.97153465037,
+        "CaptureSeconds": 11.9602059,
+        "SearchSeconds": 25.0366883,
+        "Expansions": 79304
+      },
+      {
+        "context_sha256": "fb3f58b85d281501d552bc3d0b471344ec0836fc4cba6feaa4132e1ee94f875e",
+        "lane": "wearer",
+        "formula_dps": 130960.56020574599,
+        "CaptureSeconds": 11.5531459,
+        "SearchSeconds": 26.211841,
+        "Expansions": 94067
+      },
+      {
+        "context_sha256": "39563299502c73104b66eac983846ee5ac93f6324fb88307fb7bfd46f6a10972",
+        "lane": "wearer",
+        "formula_dps": 129783.69210221255,
+        "CaptureSeconds": 10.5764661,
+        "SearchSeconds": 33.8191355,
+        "Expansions": 111765
+      },
+      {
+        "context_sha256": "e029934f16966d6a2a4809ea9af2c6b10d6dd29e69d7219f6ac4f9f23747ff67",
+        "lane": "wearer",
+        "formula_dps": 135853.92216679527,
+        "CaptureSeconds": 11.621516100000001,
+        "SearchSeconds": 36.3901572,
+        "Expansions": 113275
+      }
+    ],
+    "search_expansions": 813045,
+    "guides": 3,
+    "queued": 66,
+    "pending": 59,
+    "adaptive_status": "resolved_at_base",
+    "selected_formula_dps": 128740.32785887273,
+    "selected_measured_dps": 128770.2334517762,
+    "winner_standard_error": "84.067132369893",
+    "ordinary_calls": {
+      "n128": 7,
+      "n500": 7,
+      "n1000": 0
+    }
+  },
+  "installation": {
+    "status": "installed_backend_pass_ui_pending",
+    "engine_id": "gcsim-v2.45.0-allsets-20260917",
+    "engine_sha256": "77a6bebd341eee23af5042754a5acb8db0e6663a657be7be2f54faa8061c2b5c",
+    "consumer_sha256": "9c38cf8d6275bd81045be6ffece62d9198f93865e8f96e4d3790716a6fea18c4",
+    "patch_sha256": "7a6b8013d30bd168fdd98209bdfd0e673e4d330a38398f19369b0f8a36e367d0",
+    "source_manifest_sha256": "d0effbb1a54c453f5552692a5ef3c306cc827ae1cccdb8084a1f7b69441585b0",
+    "compact_n1_calls": 3,
+    "ordinary_n1_calls": 2,
+    "eol_only_file_count": 155,
+    "installed_source_packages": 42,
+    "winner_per_seed_dps": [
+      137087.85479887752,
+      137087.85479887752
+    ],
+    "rollback_engine_id": "gcsim-v2.45.0-dependency-audit5-20260916",
+    "ui_click_verified": false,
+    "ui_blocker": "native_windows_computer_use_tools_unavailable",
+    "rollback_patch_sha256": "22fff9df4ef46fb61db31bd8b755461e689f3b6cdd46facfb6f23cb841461a28",
+    "rollback_consumer_sha256": "b49573df4edf3f3d48b92e923fb46d43ab537a804e3ff40dae50b9f18b0b021f"
+  },
+  "combined_stage_compact_n1_calls": 54,
+  "call_accounting": "31 before coordinator +4 coordinator +16 cold CLI +1 bundle compact +2 installed winner; ordinary panels counted separately; earlier preflight pilot8 separate",
+  "automated_checks": {
+    "go_test_all": "pass",
+    "go_vet_all": "pass",
+    "python_focused_tests": 34
+  },
+  "limits": [
+    "one copied account fixture, not all-team quality or a global optimum",
+    "eight contexts selected by bounded source-aware hints, not all492 feasible wearer packages captured",
+    "cold CLI6:36 excludes Python request/source preparation, not a visible UI timing",
+    "installer rejected byte identity first;155 CRLF-only files explained source/binary hash change, generated semantic manifest equal excluding tree hash; new installed controls passed",
+    "no real native AppShell click; Windows computer-use tools unavailable",
+    "finite energy unchanged and ER-aware search deferred",
+    "Selected2plus2 actual UI and All Sets navigation/save/preservation still require acceptance"
+  ]
+}

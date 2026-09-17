@@ -1,0 +1,319 @@
+# GP-3 optimizer checkpoint — 2026-09-17
+
+## Status and authority
+
+<!-- handoff-current: gcsim-optimizer -->
+Reviewed 2026-09-17 after verified bounded disk recovery; N1 is next.
+All Sets result/paging is user-observed; Selected2+2 and remaining Save/cancel/
+preservation gates stay pending. Backend checks are not agent-side UI clicks.
+
+- Active engine: `gcsim-v2.45.0-allsets-20260917`
+- Rollback engine: `gcsim-v2.45.0-dependency-audit5-20260916`
+- Active patch: `run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v245.patch`
+- Patch SHA256: `7a6b8013d30bd168fdd98209bdfd0e673e4d330a38398f19369b0f8a36e367d0`
+- Acceptance status: `all_sets_installed_backend_pass_ui_pending`
+- Next block: `N1_all_sets_saved_context_efficiency`
+
+All Sets now shares the source-bound guide, context provider, FGBS, finalist
+verifier, UI worker/cards/save path. It selects feasible4p/2+2 packages without
+an exhaustive capture sweep. Source alternatives are hints, never replacement
+proofs or reported DPS. Changed packages get fresh two-seed contexts; no real-set
+static reuse certificate producer exists. Unknowns retain discovery lanes.
+
+Cold copied-bloom CLI:396.06s,8 contexts/16 n1,7 n128 and7 n500, no n1000 extension.
+Winner measured140089.90 versus optimized Selected128770.23 DPS; formula140130.59.
+Search363.08s includes captures93.47s, artifact search251.40s, guide14.97s,
+proposals3.21s. Screen8.16s; final22.62s. Python source preparation is excluded;
+this is not a real button timing or all-team speed/quality guarantee.
+The shared limit is8 contexts,3 guides,420s search inside600s total.
+
+Clean patch applies/builds on pristine2.45. Installation first rejected byte
+identity:155 source files differ only by CRLF/LF; generated semantics match.
+Installed ordinary/compact/waves and two saved-winner controls pass; exact
+source/binary hashes remain distinct. Root installation metadata is excluded
+from module-input hashing, while arbitrary source changes remain rejected.
+Combined stage54 compact n1; ordinary panels are separately counted in receipt.
+Full Go tests/vet and34 focused Python tests pass.
+
+User All Sets:8:24,191518.59 DPS at n1000; seven pages reviewed. Saved IDs/stats/
+sets match all seven simulations. Search exhausted420s after five contexts;
+55 proposals remain. Top1/2 overlap statistically. Bounded six-swap formula
+review found no improving tested replacement; it is not an optimality proof.
+Next: N1 on expanded saved inputs; five obsolete binaries are confirmed removed
+by the user-run exact helper. The user permits handler-path
+harnesses for that session; these do not establish visible UI acceptance.
+Selected2+2/Save/cancel/preservation checks and gated cleanup remain open.
+
+Live DB/equipment, source note, Chasca rotation and energy settings unchanged.
+Energy support remains last. Health-schedule boundaries from the
+[dependency audit](GCSIM_OPTIMIZER_DEPENDENCY_AUDIT_20260916.md) still apply.
+Zero frozen hits is not complete dependency coverage or an optimality proof.
+Go design owns algorithms; [TODO](../../TODO.md) owns remaining order.
+<!-- /handoff-current -->
+
+### N0 disk recovery and automatic output lifecycle
+
+Initial storage was38.439GiB. User cleanup removed the11 cache and97 research
+roots; both lists are confirmed absent. After renewed explicit authorization,
+the agent ran the guarded `-Deep -Apply` helper:82 directories removed, plus
+five old product runs pruned by the connected retention API. Fresh metadata
+scan:11,827,454,195 ->4,937,752,607 bytes (11.015 ->4.599GiB); no scan errors.
+DB, settings, active-engine state and active/rollback binary SHA256 are unchanged.
+Nine obsolete successful engines and one failed copy were removed; active,
+rollback and two referenced diagnostic versions remain. No new engine sim/UI
+check or subagent ran. Heartbeat `automation` was deleted at the user's request;
+N1 starts only after an explicit user instruction.
+
+49 diagnostic-only roots were losslessly archived before deleting expanded
+copies:2,733,677,780 ->452,616,823 bytes,19,797 files. Each member was read back
+with SHA256/CRC and originals rehashed before removal. Archive:
+`.codex_tmp/optimizer-retained-evidence-20260917.zip`; index/hashes are inside.
+Receipt: `tests/fixtures/gcsim_optimizer_go_v1/storage_retained_evidence_20260917.json`.
+The exact direct-delete/archive roots and one-archive512MiB lifecycle are in
+`tools/optimizer_deep_cleanup.json`; this supersedes older expanded-path notes.
+Restore only needed witnesses into managed scratch and adapt historical absolute
+roots; do not recreate all old copies. Current N1 user run, CLI baseline,
+Selected2+2 inputs, deployment backup, History and dirty GOB10 worktree stay
+expanded. Source patches/portable regressions and user profiles/exports stay.
+
+Separate inline deletion of five obsolete experimental binaries (206,964,736
+bytes) was rejected before execution. The user then ran the tested exact-file
+`tools/cleanup_optimizer_binaries.ps1 -Apply` helper; all five are confirmed
+absent and its absent-state preview/guard test passes. This does not claim that
+all unused project bytes are gone.
+
+The shared Selected/All Sets finally path now prunes recognized run diagnostics
+to50 runs/256MiB with leases/pins/current preservation and explicit overage.
+The new managed experiment runner owns one disposable job/cache at a time,
+cleans on success/error/cancel, and refuses another allocation after residual
+cleanup failure/force-kill. New or rerun generators must use this lifecycle or
+an equivalent tested one; arbitrary-output commands are not magically scoped.
+The N0 lifecycle coverage is connected for current Go optimizer runs, successful
+engine updates/build caches and managed research jobs. Removed historical debug
+and binary outputs have no product producer; rerunning their old scripts directly
+is outside the lifecycle and forbidden until adapted to managed scratch. The
+later exhaustive whole-project size/generator audit is recorded after optimizer
+work in TODO; this bounded review is not that audit.
+
+36 focused tests pass, including archive mutation/size/round-trip guards,
+real tiny child processes, timeout, junction
+and active-lease protection, both session handlers and manual-script preview.
+No actual optimizer UI rerun was performed for N0. Latest Jahoda user result is
+pinned only through N1 review; release that diagnostic pin after its evidence
+has been exported. Evidence and limits:
+`tests/fixtures/gcsim_optimizer_go_v1/generated_storage_audit_v1.json`.
+Then follow TODO N1-N6 and the trace handoff's "Overnight execution contract".
+One isolated subagent is temporarily permitted; History Browser is excluded.
+Real conceptual choices without a defensible default are parked while other
+independent authorized work continues. All existing acceptance limits persist.
+
+Joint evidence: `tests/fixtures/gcsim_optimizer_go_v1/all_sets_joint_context_receipt_v1.json`.
+Raw controls are now archive members under original paths: `.codex_tmp/all-sets-transfer-guide-20260917`,
+`.codex_tmp/all-sets-transfer-capture-20260917`,
+`.codex_tmp/all-sets-transfer-winner-20260917-run2`.
+
+Current integration evidence:
+`tests/fixtures/gcsim_optimizer_go_v1/all_sets_product_receipt_v1.json`.
+Installed engine SHA256:
+`77a6bebd341eee23af5042754a5acb8db0e6663a657be7be2f54faa8061c2b5c`.
+Installed shared optimizer SHA256:
+`9c38cf8d6275bd81045be6ffece62d9198f93865e8f96e4d3790716a6fea18c4`.
+Installed source manifest SHA256:
+`d0effbb1a54c453f5552692a5ef3c306cc827ae1cccdb8084a1f7b69441585b0`.
+Cold CLI used the source-equivalent candidate, not these byte-identical hashes;
+receipt preserves both identities and installed-control scope. Local deployment
+and prior patch/consumer/state backups: `.codex_tmp/all-sets-install-20260917/`.
+Cold evidence: `.codex_tmp/all-sets-cli-20260917-run2/`; bounded coordinator and
+ordinary evidence: `.codex_tmp/all-sets-coordinator-20260917/` and
+`.codex_tmp/all-sets-coordinator-ordinary-20260917/`. Preserve until UI gate.
+
+Actual UI checklist (NOT executed in this session): PyCharm's project-venv
+`ui.app_shell_smoke` -> GCSIM -> equipped2+2 Selected -> All Sets. Expect measured
+DPS,20 unique IDs, valid packages, stable top-N navigation and explicit preset
+save; live equipment must remain unchanged. Check cancellation in a separate run
+only when needed, not a repeated full search. Infinite energy stays as selected;
+finite-energy diagnostics are outside this acceptance.
+
+Separate user-requested Jahoda no-burst rotation smoke passed one ordinary debug
+sample; see [rotation validation](GCSIM_GOB11_ROTATION_VALIDATION.md).
+This does not extend All Sets/formula/account-DPS acceptance or change the UI gate.
+Its real-account mapping failure is repaired/backend-checked with one additional
+sample. The subsequent user run exposed an omitted target in the assistant's
+supplied rotation; the complete fixture now passes shared All Sets input
+preparation verbatim, with a regression. No search or UI acceptance is inferred.
+The next user run (`all_sets-20260917-024541-51464324`) supplied the target but
+failed source binding: request preparation hashed file bytes including CRLF,
+whereas build/source verification hashes canonical JSON. Fixed at the producer,
+retaining binary/full-tree checks. Connected regression covers no newline, LF,
+CRLF, pretty JSON, malformed JSON and real content mutation.
+Native validation then exposed two further common-adapter defects: an unmapped
+but valid5-star offpiece (Ineffa#1566, HeartOfTheFurnace) was dropped from the
+inventory, and All Sets600s was paired with a Selected360s development budget.
+Both are repaired without adding set mechanics, increasing the product limit,
+rebuilding the engine or changing live equipment. Offpiece stats/legality and
+non-emission of unsupported set bonuses have Python/Go regressions.
+`tests/fixtures/gcsim_optimizer_go_v1/all_sets_ui_input_repair_receipt_v1.json`
+records a verbatim failed-run rotation/config/equipment replay through request
+preparation,42-set source envelope and installed Go `validate-request`: PASS.
+An initial diagnostic used a different party declaration order; exact config
+comparison rejected it before source validation, then replay preserved UI order.
+That repair check used no simulations/search and left the actual AppShell retry
+pending; the later successful user run is reviewed below. The broader update-path
+audit and Settings version UI stay in TODO.
+
+## Generic mechanisms and limits
+
+### User All Sets review (2026-09-17)
+
+Evidence: `tests/fixtures/gcsim_optimizer_go_v1/all_sets_jahoda_user_review_v1.json`;
+run `all_sets-20260917-030320-7048d16f`. User observed completion and paged all
+seven candidates; no agent click/new simulation. Winner191518.59 versus initial
+182100.38 DPS; top1/2 difference71.68 is below combined standard error103.23.
+Every finalist's reported physical IDs reconstruct its final engine stats and
+active sets; largest formula residual0.767%, not proof of all response paths.
+
+The pool deliberately retains Current, Selected and context representatives.
+Thus displayed Top-N means ranked VERIFIED alternatives, not the highest seven
+formula candidates or globally best builds. Weak support-set carriers survive
+as exploratory controls. Five completed contexts used318.04s artifact search,
+73.70s capture,22.93s guide and5.07s proposal work; search hit420s with55 pending
+proposals. Screen11.28s plus final59.22s (two leaders extended to n1000) dominate
+the remainder of native491.81s; user504s includes app preparation/overhead.
+
+Six legal offline replacements used the existing two-seed formula for the exact
+rank1/rank7 context, preserved raw reference stats and reproduced each recorded
+baseline before scoring. Rank1 Ineffa ATK circlet124 -> CD1580 loses2061 formula
+DPS; Flins goblet88 ->64 loses417. Rank7 Flins Pyro goblet49 -> HP1563 loses368;
+two legal EM-sands173 + ATK-goblet88/64 changes also lose. These are bounded
+formula comparisons, not fresh ordinary measurements or an exhaustive proof.
+Pyro bonus adds no Flins damage; the two available Tenacity goblets have Pyro/HP
+mains, so substats/package constraints explain the tested choice. Top7's entire
+package is poor,161218 DPS, and is not recommended over the leader.
+Jahoda's reported15.84k contains8.32k Hydro and6.63k Lunar-Charged; Hydro goblet
+is meaningful, but her reactive/support contribution must not be ignored.
+Production code/settings/equipment unchanged; disposable Go probe removed.
+
+- Contributor receipts retain participant post-callback stats, source-derived
+  pre-crit arithmetic, actual crit/result and input ownership. The final
+  damage label is NOT assumed to own every input.
+- Bounded source verifier accepts independent crit draws, descending stable
+  sort and additive literal rank weights. Renames/changed weights pass;
+  unknown protocol fails closed. No copied Lunar/Stellar coefficients.
+- At most4 contributors ->16 crit states. Re-sort candidate-dependent values
+  INSIDE each state, then probability-weight. This is conditional expectation
+  for observed membership/schedule, not every possible rotation. Existing
+  neutral arithmetic IR is used; no new gameplay wire operator.
+- Saved vectors: directly returned receiver []float64 and <=16 simple indexed
+  writes. Runtime tracks actual cell identity/value (<=4096 cells per trace),
+  preserves LHS/RHS order and single gameplay evaluation. References stay
+  immutable; new allocations cannot inherit old refs. Keyed reads distinguish
+  equal output values; tracked zero retains dependencies.
+- Captured scalars: one float local, <=16 simple writes and observed modifier
+  return, including scheduled callbacks in free functions. Unique typed runtime
+  path required; shadowing/address escapes/compound writes reject the pilot.
+  Observed caps/min/max/stat arithmetic comes from source.
+- NonExtraStat retains actual Extra exclusion and modifier ancestry; it is
+  never an alias of Stat. Reaction-bonus consumer evaluates each original
+  Amount once and composes actual numeric refs, preserving foreign owners.
+  Empty sum is literal zero, not invalid zero-arity addition.
+- Ancestor discovery includes ordinary/producer/contributor bonus refs.
+  Unknown aliases/helper operands and changed branches/tasks/source switching
+  remain local frozen boundaries. Earlier GP-3 SelectStat/snapshot limits are
+  repaired in the installed successor described in the dependency audit.
+  Zero wholly frozen hits does NOT prove every subexpression is known.
+
+## Historical installed GP-3 evidence (before dependency repair)
+
+Durable fixtures: `tests/fixtures/gcsim_optimizer_go_v1/`
+`gob11_captured_scalar_receipt_v1.json` and
+`gob11_captured_scalar_samples_v1.json` (six portable direct/cloud samples).
+Earlier cloud/vector receipts retain their historical failed gates.
+
+Final candidate (2026-09-13):17 explicit n1 captures, five baselines and12 stat
+points, plus updater gates. All12 pass: participant EM/crit, cross-owner HP,
+no invented Electro bonus, three bloom points. Reaction checks are per hit;
+all543 bloom hits checked. Max measured team relative residual2.15e-16.
+Both Flins captures have zero wholly frozen hits, including59/55 cloud hits.
+Baselines unchanged from cloud core (bloom max2.91e-11 absolute roundoff).
+Two Chasca offline controls pass. All348 shared-vector EM reads separately
+passed earlier. The former1.7249% ->0.8925% residual is now CLOSED.
+These bounded points are not proof of every stat/rotation.
+
+Source/runtime/compiler regressions cover renames, ownership, zero, escapes,
+ambiguity, budgets and full-tree generation. Native reference/dense/one-wearer
+tests pass. First scalar build exposed an invalid empty-add record; repaired
+with regression, then all controls rerun. No three-attempt blocker remains.
+
+Production build/app gates passed in83.172s (2026-09-16). Two installed n1
+captures (Flins1/Chasca1) have identical channels/metadata and per-hit formula
+values at baseline plus eight stat deltas, tolerance1e-10. Raw independent-node
+order can vary with Go maps; semantic parity is the authority, not byte equality.
+Installed/isolated binaries have identical hashes.
+
+Historical local cloud-core cost (1000 offline evaluations, Flins1):
+full130us ->362us, wearer46us ->173us; compile91ms ->191ms.
+NOT final full-search timings or a weaker-PC guarantee.
+
+## Full Selected results (2026-09-16)
+
+Unmodified production SelectedSession on copied account/rotation fixtures,
+default360s product limit; no budget retuning or additional sampling loops.
+Both retained25 candidates at n128 and7 at final n500. Initial build was
+included in the SAME final panel. Each winner has20 distinct artifact IDs;
+the copied database is byte-identical before/after. Full IDs and evidence:
+`gob11_gp3_production_receipt_v1.json` in the permanent fixture directory.
+
+| Rotation | Initial n500 DPS | Winner n500 DPS | Gain | Wall time | Winner formula error |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Flins1 |149630.69|189400.46|26.58%|119.70s|2.82%|
+| Flins2 |158168.89|196747.83|24.39%|106.23s|0.29%|
+
+Time split (Flins1 / Flins2): preparation/capture/validation/serialization
+13.80/12.82s; formula compile0.77/0.74s; offline search43.68/39.28s;
+n128 screening32.20/25.46s; final simulations29.26/27.94s.
+Progress stage names are coarse; use explicit backend durations above.
+
+Both searches stop provisional_stable after2 cycles/4 accepted actor steps.
+Several leaders overlap statistically; adaptive status is
+unresolved_panel_too_wide. Existing budget guard correctly does not extend an
+overwide panel to n1000. No proof of a global optimum or exact top rank.
+Formula residual at the new winner is not zero despite controlled-point
+agreement; no specific source/branch/random cause has been proven for it.
+Do not attribute it to simulation noise or promise complete dependencies.
+
+## Acceptance gates and preserved decisions
+
+The [bloom diagnosis](GCSIM_BLOOM_WINNER_DIAGNOSTIC_20260916.md) retains the
+original failed witness. Its source-loss repairs, positive/negative and cap
+controls, actual combined-artifact replay and one subsequent bounded search
+are recorded in the [dependency audit](GCSIM_OPTIMIZER_DEPENDENCY_AUDIT_20260916.md).
+Do not repeat searches to compensate for an unexplained response loss.
+
+User decision 2026-09-16: the copied test-only Lauma 4p Gilded Dreams substitute
+is already authorized and was exercised; no repeated set approval is needed.
+Nahida retains Deepwood and Kuki Silken Moon. Preserve original 2+2 evidence.
+The original2+2 fixture now passes the installed backend gates in
+`selected_2plus2_acceptance_receipt_v1.json`; its actual AppShell check remains
+pending. Further team acceptance, All Sets and database import remain ordered
+in TODO. Energy-aware search is separate last-stage scope.
+
+## Reproduce / cleanup
+
+Historical ignored evidence: `.codex_tmp/gob11-captured-scalar2-20260913` (candidate),
+`.codex_tmp/gob11-gp3-production-20260916` (install/parity/search).
+Helpers: `gob11_captured_scalar_export.py`, `gob11_gp3_promote.py`,
+`gob11_gp3_accept.py`, `gob11_attack_field_evaluation_test.go` and overlay.
+The installed dependency successor is consolidated in the production patch;
+its evidence is linked from the dependency audit. Do not start over from an
+older isolated scalar/vector store or resurrect removed experimental deltas.
+Old cloud/vector/pending exporters MUST NOT regenerate the active patch.
+Previously accepted GP-3 delta files were removed after retaining that receipt;
+their implementation/tests are preserved in the active consolidated patch.
+Superseded isolated stores/captures are cleanup candidates, not runtime inputs.
+Preserve production active/pinned rollback and permanent source/native fixtures.
+
+Selected2+2 reproduction: `.codex_tmp/gob11_selected_pair_check.py` and
+`.codex_tmp/selected-2plus2-20260916/`. The copied SQLite fixture uses the backup
+API to retain committed WAL state, not a raw main-file copy. Keep captures and
+prior-consumer backup until UI acceptance; then they are disposable, while
+the permanent receipt and source/native regression tests remain.

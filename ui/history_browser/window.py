@@ -5,15 +5,17 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QSize, Qt, Signal
+from PySide6.QtGui import QImageReader
 from PySide6.QtWidgets import (
     QFrame,
+    QFileDialog,
     QHBoxLayout,
     QLabel,
     QMenu,
     QSizePolicy,
-    QScrollArea,
     QToolButton,
+    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -33,37 +35,51 @@ from run_workspace.history_browser_catalog import (
 )
 from run_workspace.history_snapshot_listing import load_history_snapshot_details_payload
 from ui.right_panel.common.metrics import _fit_pixmap
-from ui.right_panel.common.run_summary import CompactRunSummaryWidget
+from run_workspace.history_artwork import HistoryArtworkStore
+from ui.right_panel.common.history_card import HistoryCardWidget, render_history_card_png
+from ui.utils.overlay_scroll import OverlayVerticalScrollArea
+from ui.utils.tooltips import install_custom_tooltip
 from ui.utils.ui_palette import (
     UI_BG_BUTTON_CHECKED,
     UI_BG_BUTTON_HOVER,
     UI_BORDER_DEFAULT,
     UI_BORDER_SELECTED,
+    UI_HISTORY_BG_TOP,
+    UI_HISTORY_BG_BOTTOM,
+    UI_HISTORY_BORDER,
+    UI_HISTORY_TEXT,
+    UI_HISTORY_MUTED,
+    UI_HISTORY_TEAM_1,
 )
 
 
 HISTORY_BROWSER_STYLESHEET = f"""
 QFrame#HistoryRunRow {{
-    border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 6px;
+    border: none;
+    border-radius: 10px;
+    background: {UI_HISTORY_BG_BOTTOM};
 }}
 QFrame#HistoryRunRow:hover {{
-    background: {UI_BG_BUTTON_HOVER};
+    background: {UI_HISTORY_BG_BOTTOM};
 }}
 QFrame#HistoryRunRow[selected="true"] {{
-    border-color: {UI_BORDER_SELECTED};
-    background: {UI_BG_BUTTON_CHECKED};
+    background: {UI_HISTORY_BG_BOTTOM};
 }}
-QFrame#HistoryPeriodPreview, QFrame#HistoryEnemyChamber,
-QFrame#HistoryEnemySide, QFrame#CompactRunSlot,
-QFrame#CompactChamberSummary {{
-    border: 1px solid {UI_BORDER_DEFAULT};
-    border-radius: 4px;
+QFrame#HistoryPeriodPreview {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+        stop:0 {UI_HISTORY_BG_TOP}, stop:1 {UI_HISTORY_BG_BOTTOM});
+    border: 1px solid {UI_HISTORY_BORDER};
+    border-radius: 8px;
 }}
-QLabel#CompactRunSetLabel {{ font-size: 7px; }}
-QLabel#CompactRunMetric {{ font-size: 10px; }}
-QLabel#CompactRunTitle {{ font-weight: 600; }}
-QLabel#HistorySideHp {{ font-size: 10px; font-weight: 600; }}
+QFrame#HistoryEnemyChamber, QFrame#HistoryEnemySide {{ border: none; background: transparent; }}
+QLabel#CompactRunTitle {{ font-weight: 600; color: {UI_HISTORY_TEXT}; }}
+QLabel#HistorySideHp {{ font-size: 12px; font-weight: 600; color: {UI_HISTORY_MUTED}; }}
+QPushButton#HistoryExportButton {{
+    background: {UI_HISTORY_BG_TOP}; color: {UI_HISTORY_TEXT};
+    border: 1px solid {UI_HISTORY_BORDER}; border-radius: 5px;
+    padding: 5px 14px; font-size: 12px; font-weight: 600;
+}}
+QPushButton#HistoryExportButton:hover {{ border-color: {UI_HISTORY_TEAM_1}; }}
 """
 
 
@@ -94,6 +110,8 @@ class HistoryBrowserWorkspace(QFrame):
         self._catalog = HistoryBrowserCatalog()
         self._selected_period_start = ""
         self._selected_bundle_id = ""
+        self._expanded_bundle_id = ""
+        self._character_view = "profile"
         self._runs_by_bundle_id: dict[str, HistoryRunVisual] = {}
         self._row_widgets_by_bundle_id: dict[str, HistoryRunRowWidget] = {}
 
@@ -112,7 +130,7 @@ class HistoryBrowserWorkspace(QFrame):
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         root.addWidget(self.empty_label, 1)
 
-        self.scroll_area = QScrollArea()
+        self.scroll_area = OverlayVerticalScrollArea()
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
         self.scroll_area.setHorizontalScrollBarPolicy(
@@ -123,6 +141,7 @@ class HistoryBrowserWorkspace(QFrame):
         self.content_layout.setContentsMargins(0, 0, 0, 0)
         self.content_layout.setSpacing(8)
         self.scroll_area.setWidget(self.content_widget)
+        self.scroll_area.verticalScrollBar().valueChanged.connect(self._hide_card_tooltips)
         root.addWidget(self.scroll_area, 1)
         self.reload_data()
 
@@ -142,6 +161,7 @@ class HistoryBrowserWorkspace(QFrame):
         self._render()
 
     def reload_data(self) -> None:
+        previous_catalog = self._catalog
         if self.snapshot_root is None:
             self._catalog = HistoryBrowserCatalog()
         else:
@@ -171,6 +191,9 @@ class HistoryBrowserWorkspace(QFrame):
         } | {run.bundle_id for run in self._catalog.dps_dummy_runs}
         if self._selected_bundle_id not in available_ids:
             self._selected_bundle_id = ""
+            self._expanded_bundle_id = ""
+        if self._catalog == previous_catalog and self.content_layout.count():
+            return
         self._render()
         if not self._selected_bundle_id:
             self.snapshot_selected.emit(None)
@@ -180,6 +203,10 @@ class HistoryBrowserWorkspace(QFrame):
 
     def selected_bundle_id(self) -> str:
         return self._selected_bundle_id
+
+    def _hide_card_tooltips(self, _value: int = 0) -> None:
+        for row in self._row_widgets_by_bundle_id.values():
+            row.card.dismiss_tooltip()
 
     def selected_period_start(self) -> str:
         return self._selected_period_start
@@ -258,12 +285,15 @@ class HistoryBrowserWorkspace(QFrame):
             self.content_layout.addWidget(empty)
 
     def _render_runs(self, runs: tuple[HistoryRunVisual, ...]) -> None:
-        for run in runs:
+        for index, run in enumerate(runs):
             self._runs_by_bundle_id[run.bundle_id] = run
             row = HistoryRunRowWidget(
                 run,
                 selected=run.bundle_id == self._selected_bundle_id,
+                character_view=self._character_view,
+                alternate=bool(index % 2),
             )
+            row.set_expanded(run.bundle_id == self._expanded_bundle_id)
             row.clicked.connect(self._on_row_clicked)
             self._row_widgets_by_bundle_id[run.bundle_id] = row
             self.content_layout.addWidget(row)
@@ -287,6 +317,7 @@ class HistoryBrowserWorkspace(QFrame):
 
     def _clear_selection(self) -> None:
         self._selected_bundle_id = ""
+        self._expanded_bundle_id = ""
         self.snapshot_selected.emit(None)
 
     def _on_row_clicked(self, bundle_id: str) -> None:
@@ -294,8 +325,10 @@ class HistoryBrowserWorkspace(QFrame):
         if run is None or self.snapshot_root is None:
             return
         self._selected_bundle_id = bundle_id
+        self._expanded_bundle_id = "" if self._expanded_bundle_id == bundle_id else bundle_id
         for row_id, row in self._row_widgets_by_bundle_id.items():
             row.set_selected(row_id == bundle_id)
+            row.set_expanded(row_id == self._expanded_bundle_id)
         payload = load_history_snapshot_details_payload(
             self.snapshot_root,
             bundle_id,
@@ -375,17 +408,110 @@ class HistoryRunRowWidget(QFrame):
         parent: QWidget | None = None,
         *,
         selected: bool = False,
+        character_view: str = "profile",
+        alternate: bool = False,
     ) -> None:
         super().__init__(parent)
         self.run = run
         self.setObjectName("HistoryRunRow")
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setProperty("selected", bool(selected))
-        self.setMinimumHeight(130 if run.run_type == HISTORY_MODE_ABYSS else 76)
-        self.setMaximumHeight(150 if run.run_type == HISTORY_MODE_ABYSS else 96)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(CompactRunSummaryWidget(run))
+        layout.setSpacing(0)
+        self.artwork_store = HistoryArtworkStore()
+        self.card = HistoryCardWidget(run, self, character_view=character_view, alternate=alternate,
+                                      artwork_paths=self.artwork_store.paths(run))
+        self.card.clicked.connect(self.click)
+        self.card.artwork_requested.connect(self._choose_artwork)
+        self.card.artwork_reset_requested.connect(self._reset_artwork)
+        layout.addWidget(self.card)
+        self.export_bar = QWidget(self)
+        bar = QHBoxLayout(self.export_bar)
+        bar.setContentsMargins(12, 4, 12, 8)
+        self.export_status = QLabel()
+        self.export_status.setWordWrap(True)
+        bar.addWidget(self.export_status, 1)
+        # Keyboard-accessible counterpart of the artwork hover actions.
+        self.artwork_button = QToolButton(self)
+        self.artwork_button.setText(tr("history.card.artwork.menu"))
+        self.artwork_button.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        menu = QMenu(self.artwork_button)
+        for team in run.teams:
+            submenu = menu.addMenu(tr("history.card.team").format(value=team.team_index+1))
+            submenu.addAction(tr("history.card.artwork.change"),
+                              lambda checked=False, i=team.team_index: self._choose_artwork(i))
+            submenu.addAction(tr("history.card.artwork.reset"),
+                              lambda checked=False, i=team.team_index: self._reset_artwork(i))
+        self.artwork_button.setMenu(menu)
+        bar.addWidget(self.artwork_button)
+        self.export_button = QPushButton(tr("history.card.export"))
+        self.export_button.setObjectName("HistoryExportButton")
+        self.export_button.clicked.connect(self._export_png)
+        bar.addWidget(self.export_button)
+        layout.addWidget(self.export_bar)
+        self.export_bar.hide()
+
+    def set_expanded(self, expanded: bool) -> None:
+        self.card.set_expanded(expanded)
+        self.export_bar.setVisible(expanded)
+
+    def _export_png(self) -> None:
+        self.card.dismiss_tooltip()
+        filename, _ = QFileDialog.getSaveFileName(self, tr("history.card.export"),
+            f"{self.run.bundle_id}.png", tr("history.card.png_filter"))
+        if not filename:
+            return
+        if not filename.lower().endswith(".png"):
+            filename += ".png"
+        try:
+            render_history_card_png(self.run, filename, character_view=self.card.character_view,
+                                    artwork_paths=self.card.artwork_paths)
+        except OSError as exc:
+            self.export_status.setText(tr("history.card.export_error").format(error=exc))
+        else:
+            self.export_status.setText(tr("history.card.export_saved").format(path=filename))
+
+    def _choose_artwork(self, team_index: int) -> None:
+        self.card.dismiss_tooltip()
+        filename, _ = QFileDialog.getOpenFileName(self, tr("history.card.artwork.change"), "",
+                                                  tr("history.card.artwork.filter"))
+        if not filename:
+            return
+        try:
+            if Path(filename).stat().st_size > 32*1024*1024:
+                raise ValueError("Image too large")
+            reader = QImageReader(filename)
+            reader.setAutoTransform(True)
+            size = reader.size()
+            if not size.isValid() or size.width()*size.height() > 24_000_000:
+                raise ValueError("Invalid image dimensions")
+            if max(size.width(), size.height()) > 1600:
+                reader.setScaledSize(size.scaled(1600, 1600, Qt.AspectRatioMode.KeepAspectRatio))
+            image = reader.read()
+            if image.isNull():
+                raise ValueError("Unreadable image")
+            data = QByteArray()
+            buffer = QBuffer(data)
+            buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+            if not image.save(buffer, "PNG"):
+                raise ValueError("Image conversion failed")
+            buffer.close()
+            self.artwork_store.save(self.run, team_index, bytes(data))
+        except (OSError, ValueError):
+            self.export_status.setText(tr("history.card.artwork.error"))
+            return
+        self.card.set_artwork_paths(self.artwork_store.paths(self.run))
+        self.export_status.clear()
+
+    def _reset_artwork(self, team_index: int) -> None:
+        try:
+            self.artwork_store.reset(self.run, team_index)
+        except OSError:
+            self.export_status.setText(tr("history.card.artwork.error"))
+            return
+        self.card.set_artwork_paths(self.artwork_store.paths(self.run))
+        self.export_status.clear()
 
     @property
     def summary(self) -> HistoryRunVisual:
@@ -420,7 +546,7 @@ def _enemy_icon(enemy: HistoryEnemyVisual) -> QLabel:
         label.setText((enemy.name or "?")[:1].upper())
     hp = "-" if enemy.hp is None else _compact_hp(enemy.hp)
     level = "-" if enemy.level is None else str(enemy.level)
-    label.setToolTip(
+    install_custom_tooltip(label,
         tr("app_shell.history.enemy.tooltip").format(
             name=enemy.name or "-",
             level=level,

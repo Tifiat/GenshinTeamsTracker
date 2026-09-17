@@ -51,6 +51,9 @@ func run(ctx context.Context, arguments []string) error {
 	if len(arguments) == 5 && arguments[0] == "verify-fgbs" {
 		return verifyFGBS(ctx, arguments[1], arguments[2], arguments[3], arguments[4])
 	}
+	if len(arguments) == 4 && arguments[0] == "optimize-all-sets" {
+		return optimizeAllSets(ctx, arguments[1], arguments[2], arguments[3])
+	}
 	if len(arguments) != 2 || (arguments[0] != "validate-request" && arguments[0] != "validate-seed-member") {
 		return fmt.Errorf("usage: gtt-optimizer (validate-request|validate-seed-member) INPUT.json | (aggregate-fixed-panel|benchmark-fixed-panel) REQUEST.json COMPACT.json DELTAS.json [REPEATS] | search-fgbs REQUEST.json COMPACT.json | verify-fgbs REQUEST.json COMPACT.json RUN_ROOT (controls|all)")
 	}
@@ -267,18 +270,23 @@ func (emitter *progressEmitter) emit(stage string, completed, total int64, cance
 }
 
 func buildProductResult(request contracts.OptimizerRequest, compact contracts.CompactIR, searchResult search.Result, verification finalists.VerificationResult, debugReceiptPath string) (contracts.OptimizerResult, error) {
+	compactSHA256, err := contracts.CanonicalSHA256(compact)
+	if err != nil {
+		return contracts.OptimizerResult{}, fmt.Errorf("identify product compact IR: %w", err)
+	}
+	return buildMeasuredProductResult(request, compactSHA256, "", searchResult.OpaqueReasons, nil, verification, debugReceiptPath)
+}
+
+func buildMeasuredProductResult(request contracts.OptimizerRequest, compactSHA256, setPanelSHA256 string, opaqueReasons, extraWarnings []string, verification finalists.VerificationResult, debugReceiptPath string) (contracts.OptimizerResult, error) {
 	winner := verification.Winner
 	assignments := productAssignments(request, winner.Assignment)
 	requestSHA256, err := contracts.CanonicalSHA256(request)
 	if err != nil {
 		return contracts.OptimizerResult{}, fmt.Errorf("identify product request: %w", err)
 	}
-	compactSHA256, err := contracts.CanonicalSHA256(compact)
-	if err != nil {
-		return contracts.OptimizerResult{}, fmt.Errorf("identify product compact IR: %w", err)
-	}
 	warnings := []string{"formula_rank_not_measurement_authority"}
-	if len(searchResult.OpaqueReasons) > 0 {
+	warnings = append(warnings, extraWarnings...)
+	if len(opaqueReasons) > 0 {
 		warnings = append(warnings, "opaque_formula_boundaries_present")
 	}
 	if verification.Adaptive != nil && verification.Adaptive.Status == finalists.AdaptiveUnresolvedPanelWide {
@@ -314,14 +322,15 @@ func buildProductResult(request contracts.OptimizerRequest, compact contracts.Co
 		})
 	}
 	result := contracts.OptimizerResult{
-		SchemaVersion:   contracts.SchemaVersion,
-		SchemaKind:      contracts.ResultSchemaKind,
-		RequestSHA256:   requestSHA256,
-		CompactIRSHA256: compactSHA256,
-		Status:          "success",
-		Winner:          assignments,
-		Candidates:      rankedCandidates,
-		FormulaDPS:      decimalText(winner.FormulaDPS),
+		SchemaVersion:         contracts.SchemaVersion,
+		SchemaKind:            contracts.ResultSchemaKind,
+		RequestSHA256:         requestSHA256,
+		CompactIRSHA256:       compactSHA256,
+		SetContextPanelSHA256: setPanelSHA256,
+		Status:                "success",
+		Winner:                assignments,
+		Candidates:            rankedCandidates,
+		FormulaDPS:            decimalText(winner.FormulaDPS),
 		Measured: &contracts.MeasuredResult{
 			Iterations:         winner.Iterations,
 			DPS:                decimalText(winner.MeasuredDPS),

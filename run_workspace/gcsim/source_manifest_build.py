@@ -346,7 +346,9 @@ def compute_patched_source_tree_sha256(engine_dir: str | Path) -> str:
             if path.is_symlink() or not path.is_file():
                 continue
             relative = path.relative_to(engine_root).as_posix()
-            if relative == generated_go:
+            # Store metadata is written AFTER compilation, not a module input.
+            # Exclude only this exact root file, not arbitrary JSON/source files.
+            if relative in {generated_go, "gtt_engine_manifest.json"}:
                 continue
             rows.append({"path": relative, "sha256": _file_sha256(path)})
     rows.sort(key=lambda row: row["path"])

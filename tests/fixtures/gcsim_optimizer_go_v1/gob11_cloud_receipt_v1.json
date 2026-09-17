@@ -1,0 +1,271 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-13",
+  "status": "isolated_cloud_core_passed_shared_stat_boundary_open",
+  "strict_all_point_gate_passed": false,
+  "failed_per_hit_cases": {
+    "delta-7.json": 162
+  },
+  "production_engine_unchanged": "gcsim-v2.45.0-gob11-additive2-20260913",
+  "tested_build": {
+    "success": true,
+    "activated": true,
+    "engine_id": "gcsim-v2.45.0-gob11-cloud-20260913",
+    "artifact_sha256": "2367c55c01344be8c3d60936fad2a00dcacc958d12b8c81e9e6294bdccdd0fd2",
+    "application_compatibility_status": "passed",
+    "error": "",
+    "seconds": 143.125
+  },
+  "tested_patch_sha256": "59db2be2eaadb1301f2029628ba941a5a35ebabf682bf328760e92779308adda",
+  "pending_delta_patch": "tools/experiments/gcsim/gob11_contributor_group/engine_delta.patch",
+  "pending_delta_sha256": "4856f0a04e54fe778edac42983ba1054dd9abc7d80916fa614397fc1f036e4d6",
+  "pending_only_refinements": [
+    "fixed literal source-weight guard plus regression",
+    "suppress obsolete missing-producer diagnostic for sealed groups",
+    "test uses canonical element-bonus coordinate"
+  ],
+  "captures": [
+    {
+      "case": "flins_1",
+      "cloud_hits": 59,
+      "max_contributors": 4,
+      "wholly_frozen_hits": 0,
+      "max_noncloud_baseline_error": 0.0,
+      "mean_replaces_realized_cloud": true
+    },
+    {
+      "case": "flins_2",
+      "cloud_hits": 55,
+      "max_contributors": 4,
+      "wholly_frozen_hits": 0,
+      "max_noncloud_baseline_error": 0.0,
+      "mean_replaces_realized_cloud": true
+    }
+  ],
+  "baseline_capture_summary": [
+    {
+      "case": "flins_1",
+      "seconds": 2.625,
+      "channels": 509,
+      "dps": 149016.7080431885,
+      "frozen_share": 0.0,
+      "max_baseline_hit_error": 20906.90736456777
+    },
+    {
+      "case": "flins_2",
+      "seconds": 2.375,
+      "channels": 497,
+      "dps": 157071.04028411233,
+      "frozen_share": 0.0,
+      "max_baseline_hit_error": 21071.0055500324
+    },
+    {
+      "case": "bloom",
+      "seconds": 2.9070000000065193,
+      "channels": 543,
+      "dps": 110800.22276952828,
+      "frozen_share": 0.0,
+      "max_baseline_hit_error": 7.275957614183426e-12
+    },
+    {
+      "case": "chasca",
+      "seconds": 1.9679999999934807,
+      "channels": 383,
+      "dps": 146804.75210250367,
+      "frozen_share": 0.0,
+      "channels_identical": true
+    },
+    {
+      "case": "chasca",
+      "seconds": 2.0780000000086147,
+      "channels": 372,
+      "dps": 141937.51118001807,
+      "frozen_share": 0.0,
+      "channels_identical": true
+    }
+  ],
+  "explicit_n1_captures": 17,
+  "updater_gates_additional": true,
+  "full_selected_or_n1000": false,
+  "controlled_points": [
+    {
+      "changed": "delta-0.json",
+      "coordinate": "columbina.hp_percent",
+      "amount": 0.2,
+      "original": 10376440.862366326,
+      "predicted_damage": 10614250.784343718,
+      "fresh_expected_damage": 10614250.784343718,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "cloud_max_group_relative_error": 0,
+      "known_boundary": false
+    },
+    {
+      "changed": "delta-1.json",
+      "coordinate": "lauma.em",
+      "amount": 187,
+      "original": 10376440.862366326,
+      "predicted_damage": 10978802.486846745,
+      "fresh_expected_damage": 10978802.486846745,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "cloud_max_group_relative_error": 0,
+      "known_boundary": false
+    },
+    {
+      "changed": "delta-2.json",
+      "coordinate": "kukishinobu.em",
+      "amount": 187,
+      "original": 10376440.862366326,
+      "predicted_damage": 10588236.801177152,
+      "fresh_expected_damage": 10588236.801177152,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "cloud_max_group_relative_error": 0,
+      "known_boundary": false
+    },
+    {
+      "changed": "delta-3.json",
+      "coordinate": "columbina.hp_percent",
+      "amount": 0.2,
+      "original": 17134388.14092994,
+      "predicted_damage": 17401635.065977447,
+      "fresh_expected_damage": 17401635.065977447,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "cloud_max_group_relative_error": 0,
+      "known_boundary": false
+    },
+    {
+      "changed": "delta-4.json",
+      "coordinate": "flins.em",
+      "amount": 187,
+      "original": 17134388.14092995,
+      "predicted_damage": 17606682.769803364,
+      "fresh_expected_damage": 17606682.769803364,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "cloud_max_group_relative_error": 1.827394950189051e-16,
+      "known_boundary": false
+    },
+    {
+      "changed": "delta-5.json",
+      "coordinate": "ineffa.em",
+      "amount": 187,
+      "original": 17134388.140929937,
+      "predicted_damage": 17499752.950984843,
+      "fresh_expected_damage": 17499752.950984843,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "cloud_max_group_relative_error": 0,
+      "known_boundary": false
+    },
+    {
+      "changed": "delta-6.json",
+      "coordinate": "columbina.em",
+      "amount": 187,
+      "original": 17134388.140929937,
+      "predicted_damage": 17320878.592770286,
+      "fresh_expected_damage": 17320878.592770286,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "cloud_max_group_relative_error": 0,
+      "known_boundary": false
+    },
+    {
+      "changed": "delta-7.json",
+      "coordinate": "sucrose.em",
+      "amount": 187,
+      "original": 17134388.140929945,
+      "predicted_damage": 17150216.424285114,
+      "fresh_expected_damage": 17451226.115765218,
+      "residual": -301009.6914801039,
+      "relative_error": 0.01724862708690569,
+      "cloud_max_group_relative_error": 0.02268747168151017,
+      "known_boundary": true
+    },
+    {
+      "changed": "delta-8.json",
+      "coordinate": "flins.crit_rate",
+      "amount": 0.2,
+      "original": 17134388.14092994,
+      "predicted_damage": 17470232.762771096,
+      "fresh_expected_damage": 17470232.762771096,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "cloud_max_group_relative_error": 0,
+      "known_boundary": false
+    },
+    {
+      "changed": "delta-9.json",
+      "coordinate": "ineffa.crit_damage",
+      "amount": 0.4,
+      "original": 17134388.140929945,
+      "predicted_damage": 17650696.5240224,
+      "fresh_expected_damage": 17650696.5240224,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "cloud_max_group_relative_error": 0,
+      "known_boundary": false
+    },
+    {
+      "changed": "delta-10.json",
+      "coordinate": "flins.electro_damage_bonus",
+      "amount": 0.466,
+      "original": 17134388.14092994,
+      "predicted_damage": 17469696.60663073,
+      "fresh_expected_damage": 17469696.60663073,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "cloud_max_group_relative_error": 0,
+      "known_boundary": false
+    },
+    {
+      "changed": "delta-11.json",
+      "coordinate": "columbina.hp_percent",
+      "amount": 0.2,
+      "original": 16152086.285536107,
+      "predicted_damage": 16418208.403915368,
+      "fresh_expected_damage": 16418208.403915368,
+      "residual": 0.0,
+      "relative_error": 0.0,
+      "cloud_max_group_relative_error": 0,
+      "known_boundary": false
+    }
+  ],
+  "cost": [
+    {
+      "active_nodes": 28714,
+      "compile_ms": 191.086,
+      "flins_nodes": 13028,
+      "flins_us": 172.9006,
+      "folder": "gob11-cloud-20260913",
+      "full_us": 361.78929999999997,
+      "raw_nodes": 73494,
+      "repetitions": 1000
+    },
+    {
+      "active_nodes": 11377,
+      "compile_ms": 91.359,
+      "flins_nodes": 4121,
+      "flins_us": 46.0865,
+      "folder": "gob11-additive-20260913",
+      "full_us": 130.0615,
+      "raw_nodes": 34857,
+      "repetitions": 1000
+    }
+  ],
+  "known_boundaries": [
+    "Sucrose A4 shared vector modifier: modifier_output_assignment_count; NonExtraStat read must preserve Extra exclusion",
+    "reaction bonus/elevation and unknown source ancestry retain local freezes",
+    "observed participants, event schedule and later crit-dependent behavior remain topology boundaries",
+    "no full artifact search, engine production activation or visible UI verification"
+  ],
+  "samples_file": "gob11_cloud_samples_v1.json",
+  "sample_nodes": [
+    906,
+    906,
+    911,
+    911
+  ]
+}

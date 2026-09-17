@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "kind": "gtt_selected_2plus2_acceptance_receipt",
+  "date": "2026-09-16",
+  "authority": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
+  "status": "installed_backend_pass_actual_2plus2_UI_pending",
+  "scope": "Original copied-account bloom fixture with Lauma Gilded Dreams plus Wanderers Troupe; infinite energy only; no live account edits",
+  "engine": {
+    "id": "gcsim-v2.45.0-dependency-audit5-20260916",
+    "binary_sha256": "2e910ca6ba8adf90d23ca41345ae85326855bb0677778703b749219d1dd582b5",
+    "patch_sha256": "22fff9df4ef46fb61db31bd8b755461e689f3b6cdd46facfb6f23cb841461a28",
+    "changed_for_this_extension": false
+  },
+  "consumer": {
+    "installed_path": "native/gcsim_optimizer/gtt-optimizer.exe",
+    "tested_and_installed_sha256": "b49573df4edf3f3d48b92e923fb46d43ab537a804e3ff40dae50b9f18b0b021f",
+    "installed_pair_request_validation_passed": true,
+    "installed_legacy_4p_request_validation_passed": true,
+    "legacy_4p_request_sha256": "c4ffb7b633b47406c16e740425c747a555a9662d84489e15ce793d9947cd775a"
+  },
+  "automated_checks": {
+    "go_test_all": "pass",
+    "go_vet_all": "pass",
+    "selected_input_session_contract_unittests": 14,
+    "offscreen_optimizer_ui_unittests": 8,
+    "synthetic_pair_partition_patterns": 50,
+    "synthetic_partition_exhaustive_unique_and_small_search_optimum": true,
+    "pair_lane_budget_and_occupied_id_controls": true,
+    "legacy_4p_canonical_fixture_unchanged": true
+  },
+  "capture": {
+    "request_sha256": "6ff24f7655a212408a6cf8613f5420c53d6fff3243cf6f65ac70f19bcc04d4e3",
+    "compact_ir_sha256": "2f09198f1abe70023133d87f5890b70aa27054e36fdbb6100e9a410f80fca0cc",
+    "seeds": [742031889, 742031890],
+    "validated_zero_delta_members": 2,
+    "prep_capture_plus_explicit_validation_seconds": 13.969,
+    "timing_scope": "Separate gate, not a complete UI run or pure production preparation benchmark"
+  },
+  "controlled_responses": [
+    {"delta": "lauma.em +187", "aligned": true, "hits": 543, "mismatched_hits": 0, "team_relative_error": 0, "max_hit_relative_error": 3.471460169631142e-16, "dense_interpreter_error": 0},
+    {"delta": "kukishinobu.em +187", "aligned": true, "hits": 543, "mismatched_hits": 0, "team_relative_error": 0, "max_hit_relative_error": 3.471460169631142e-16, "dense_interpreter_error": 0}
+  ],
+  "bounded_search": {
+    "status": "success",
+    "stop_reason": "provisional_stable",
+    "cycles": 2,
+    "returned_finalists": 6,
+    "every_finalist_has_20_unique_ids_and_preserved_packages": true,
+    "final_iterations": 500,
+    "measured_dps": 128706.56436825187,
+    "standard_error": 87.246102455915,
+    "formula_dps": 128641.98331592338,
+    "measured_minus_formula": 64.58105232848902,
+    "winner_engine_result_sha256": "eee3a124e076c3ee694e8baea856b23fb3fb44331f9af51445008c0c8126f302",
+    "verification_receipt_sha256": "652a2148f13b7542c070e474092ef93674426b6fd6e6f390ea230e8393ee8348",
+    "search_bridge_wall_seconds": 82.531,
+    "backend_timings_ms": {
+      "compile": 965.4027,
+      "offline_search": 33841.6402,
+      "screen_n128": 21340.7537,
+      "final_verification": 19737.8428,
+      "backend_total": 75885.6394
+    },
+    "timing_scope": "Search bridge reused the accepted compact panel; excludes separately measured preparation and diagnostic stat-response gates",
+    "lauma_frontier_expansions_each_cycle": 20000,
+    "lauma_guide_evaluations_each_cycle": 24114,
+    "winner_lauma": [
+      {"slot": "flower", "artifact_id": 31, "set_uid": "gildeddreams"},
+      {"slot": "plume", "artifact_id": 1344, "set_uid": "gildeddreams"},
+      {"slot": "sands", "artifact_id": 127, "set_uid": "wandererstroupe"},
+      {"slot": "goblet", "artifact_id": 1428, "set_uid": "noblesseoblige"},
+      {"slot": "circlet", "artifact_id": 129, "set_uid": "wandererstroupe"}
+    ],
+    "warnings": ["adaptive_finalist_panel_too_wide", "formula_rank_not_measurement_authority", "measured_top_confidence_overlap", "opaque_formula_boundaries_present"]
+  },
+  "preservation": {
+    "copied_database_before_and_after_sha256": "29b23d59e679016ede97f8cb2852c82334162b2d5f13565091dc86647319e9a5",
+    "original_fixture_opened_readonly": true,
+    "live_account_settings_equipment_and_rotations_untouched": true,
+    "fixture_copy_method": "SQLite backup, including committed WAL state",
+    "harness_preflight_correction": "Initial raw main-file copy omitted the existing authorized Kuki weapon stored in WAL; corrected before engine capture. Not a product weapon fallback or account mutation."
+  },
+  "ui": {
+    "actual_new_2plus2_click_verified": false,
+    "blocker": "Computer Use exposes only an empty in-app browser; apps list is empty and native Qt control is unavailable",
+    "required_route": "Restart project AppShell, equip an existing 2+2 package, enable infinite energy, run Selected Sets, inspect both preserved pairs and finalist navigation/save",
+    "prior_4p_user_report": "gob11_user_selected_log_review_v1.json is historical, not acceptance of this extension"
+  },
+  "limits": [
+    "One account fixture, not every package or global optimum",
+    "Near-tied measured ranks remain uncertain",
+    "Existing five changed-health-schedule formula boundaries remain disclosed",
+    "Energy-aware search remains unsupported and its runtime was not changed"
+  ],
+  "ignored_reproduction_paths": [".codex_tmp/gob11_selected_pair_check.py", ".codex_tmp/selected-2plus2-20260916"],
+  "cleanup": "Keep copied fixture, tested binary and prior-consumer backup through actual UI acceptance; then remove disposable captures without touching durable tests/receipt or active/rollback engines"
+}

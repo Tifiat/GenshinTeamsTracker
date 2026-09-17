@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-16",
+  "authority": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
+  "engine_sha256": "2e910ca6ba8adf90d23ca41345ae85326855bb0677778703b749219d1dd582b5",
+  "catalog_sha256": "9049ed5ed5c33196961bf8bb2f1e8a54be37a0a658491f356d6c34079597c722",
+  "request_sha256": "f0f313790d2eb54bac96ae94fd60846c44a7134a116e73663a1b5b863808df35",
+  "source_inventory_scope": "saved original 2+2 bloom account fixture, not live DB",
+  "feasible_packages": 492,
+  "baseline_dps": 110800.22276952828,
+  "baseline_decode_compile_ms": 5531.6044,
+  "domain_build_feasibility_ms": 18.8925,
+  "new_engine_calls": 8,
+  "context_capture_members": 4,
+  "candidate_response_members": 4,
+  "replayed_baseline_members": 2,
+  "max_expanded_per_actor": 1000,
+  "context_timings": [
+    {
+      "context_sha256": "5d03ca00896f0685ee51175f65becfb1a136d25666eec41040fcaad40ccac037",
+      "seed": 742031889,
+      "process_ms": 2907.9219,
+      "decode_ms": 1872.6938,
+      "result_sha256": "42b1cc7eb903ec347802fa9e5d1b3aa5955c7f427d4c2f29acce83c163d1b3b3"
+    },
+    {
+      "context_sha256": "5d03ca00896f0685ee51175f65becfb1a136d25666eec41040fcaad40ccac037",
+      "seed": 742031890,
+      "process_ms": 2920.8592,
+      "decode_ms": 1918.1424,
+      "result_sha256": "c104b88203ff762269d8e8821b0a051c9ff4760af7e792be009864aff82a2152"
+    },
+    {
+      "context_sha256": "ec20f2997ba9b6b76f7da340e0ca058ddd1dc21329164234962f3a4e6582da27",
+      "seed": 742031889,
+      "process_ms": 2834.3305,
+      "decode_ms": 1757.5629,
+      "result_sha256": "693235900b2c33f011a5fac5de45f4a4021b2af256952bb097fccc1dc7c14a55"
+    },
+    {
+      "context_sha256": "ec20f2997ba9b6b76f7da340e0ca058ddd1dc21329164234962f3a4e6582da27",
+      "seed": 742031890,
+      "process_ms": 2899.4772,
+      "decode_ms": 1815.9589,
+      "result_sha256": "202bb6762316c9fc77ebfb984ea6c5c63118502b590651990b97f12f5ea734c3"
+    }
+  ],
+  "elapsed_seconds": 49.3883986,
+  "installed_binary_ui_energy_changed": false,
+  "product_acceptance": false,
+  "status": "bounded_fresh_context_domain_search_response_pass_not_all_sets_product",
+  "cases": [
+    {
+      "actor": "lauma",
+      "package": "gildeddreams:4",
+      "context_sha256": "5d03ca00896f0685ee51175f65becfb1a136d25666eec41040fcaad40ccac037",
+      "route": "fresh_context_capture",
+      "proposal_ms": 1.0057,
+      "capture_compile_ms": 11561.0102,
+      "search_ms": 334.5165,
+      "verification_ms": 9946.759399999999,
+      "observed_two_seed_expected_dps": 110589.05612282627,
+      "relative_response_residual": 0,
+      "candidate_member_sha256": [
+        "5ff0f15c901c62d97fdc1ec907e9f300ce82b33600732fd94c32fd75eba34d27",
+        "56c7cd3599e232578d5f34c9dc43834f9d4b0aceccf7db2f8fad7417981a7d8b"
+      ],
+      "context_hits": 1086,
+      "opaque_reasons": [
+        "attack_field_operand_dependency_frozen",
+        "attack_mod_closure_expression_collapsed",
+        "attack_provider_unattributed",
+        "callback_provider_unattributed",
+        "captured_scalar_schedule_frozen",
+        "flat_dmg_expression_collapsed",
+        "flat_source_parameter_dependencies_incomplete",
+        "gadget_wave_state_lineage_not_instrumented",
+        "helper_return_control_flow_frozen",
+        "max_hp_candidate_dependency_incomplete",
+        "modifier_candidate_dependency_incomplete",
+        "multiplier_source_expression_not_instrumented",
+        "numeric_expression_candidate_dependency_incomplete",
+        "numeric_recipe_input_frozen_atk_info_mult",
+        "numeric_recipe_input_frozen_defmod",
+        "numeric_recipe_input_frozen_elevation",
+        "numeric_recipe_input_frozen_grpmult",
+        "numeric_recipe_input_frozen_mult",
+        "numeric_recipe_input_frozen_resmod",
+        "post_damage_callback_state_effects_unmodeled",
+        "provider_transition_timeline_incomplete",
+        "pure_reduction_observed_membership",
+        "pure_scalar_observed_schedule",
+        "reaction_bonus_provider_paths_incomplete",
+        "reaction_bonus_provider_unattributed",
+        "reaction_bonus_schedule_frozen",
+        "reaction_parent_lineage_not_instrumented",
+        "reaction_topology_aggregate_only",
+        "saved_stat_vector_schedule_frozen",
+        "stat_mod_dependency_expression_collapsed",
+        "stat_read_external_dependencies_incomplete",
+        "stats_container_observed_schedule",
+        "transformative_reaction_formula_mismatch",
+        "unknown_reaction_operator",
+        "untyped_callback_state_effects_unmodeled"
+      ],
+      "cached_reuse": true,
+      "formula_dps": 110589.05612282627,
+      "exceeds_original_baseline": false,
+      "search_counts": {
+        "expanded": 1000,
+        "guide_evaluations": 1136,
+        "complete_evaluations": 64,
+        "frontier_discarded": 802,
+        "budget_unexpanded": 40666
+      }
+    },
+    {
+      "actor": "kukishinobu",
+      "package": "flowerofparadiselost:4",
+      "context_sha256": "ec20f2997ba9b6b76f7da340e0ca058ddd1dc21329164234962f3a4e6582da27",
+      "route": "fresh_context_capture",
+      "proposal_ms": 0,
+      "capture_compile_ms": 11113.5277,
+      "search_ms": 298.71,
+      "verification_ms": 9329.454699999998,
+      "observed_two_seed_expected_dps": 103902.03696877489,
+      "relative_response_residual": 0,
+      "candidate_member_sha256": [
+        "f578ad7841485d4d939c06d355d627c4d48b7137bdc0fd319498154271dcdf0f",
+        "6bdfe6aec62c4b2ccf54b280d23035e376c57a0fd0378deb03001b15234a186e"
+      ],
+      "context_hits": 1086,
+      "opaque_reasons": [
+        "attack_field_operand_dependency_frozen",
+        "attack_mod_closure_expression_collapsed",
+        "attack_provider_unattributed",
+        "callback_provider_unattributed",
+        "captured_scalar_schedule_frozen",
+        "flat_dmg_expression_collapsed",
+        "flat_source_parameter_dependencies_incomplete",
+        "gadget_wave_state_lineage_not_instrumented",
+        "helper_return_control_flow_frozen",
+        "max_hp_candidate_dependency_incomplete",
+        "modifier_candidate_dependency_incomplete",
+        "multiplier_source_expression_not_instrumented",
+        "numeric_expression_candidate_dependency_incomplete",
+        "numeric_recipe_input_frozen_atk_info_mult",
+        "numeric_recipe_input_frozen_defmod",
+        "numeric_recipe_input_frozen_elevation",
+        "numeric_recipe_input_frozen_grpmult",
+        "numeric_recipe_input_frozen_mult",
+        "numeric_recipe_input_frozen_resmod",
+        "post_damage_callback_state_effects_unmodeled",
+        "provider_transition_timeline_incomplete",
+        "pure_reduction_observed_membership",
+        "pure_scalar_observed_schedule",
+        "reaction_bonus_provider_paths_incomplete",
+        "reaction_bonus_provider_unattributed",
+        "reaction_bonus_schedule_frozen",
+        "reaction_parent_lineage_not_instrumented",
+        "reaction_topology_aggregate_only",
+        "saved_stat_vector_schedule_frozen",
+        "stat_mod_dependency_expression_collapsed",
+        "stat_read_external_dependencies_incomplete",
+        "stats_container_observed_schedule",
+        "transformative_reaction_formula_mismatch",
+        "unknown_reaction_operator",
+        "untyped_callback_state_effects_unmodeled"
+      ],
+      "cached_reuse": true,
+      "formula_dps": 103902.03696877489,
+      "exceeds_original_baseline": false,
+      "search_counts": {
+        "expanded": 1000,
+        "guide_evaluations": 1128,
+        "complete_evaluations": 64,
+        "frontier_discarded": 856,
+        "budget_unexpanded": 20329
+      }
+    }
+  ],
+  "canonical_read_optimization": {
+    "canonical_bytes_identical": true,
+    "input_bytes": 8748578,
+    "input_sha256": "64f2de1b637b70896ca2c4dbc99160ea07a2d03585a03d4dd74717613fd12843",
+    "new_engine_calls": 0,
+    "new_ms": [
+      438.1781,
+      442.2573,
+      451.3025
+    ],
+    "old_ms": [
+      944.2283,
+      897.962,
+      910.1216
+    ],
+    "scope": "same saved compact member, raw canonical comparison substep only, three sequential repetitions",
+    "strict_member_decode_passed": true
+  },
+  "post_refactor_saved_context_replay": {
+    "elapsed_seconds": 19.7772525,
+    "new_engine_calls": 0,
+    "replayed_members": 8,
+    "all_seven_contexts_passed": true
+  },
+  "limits": [
+    "Two hand-selected 4p proposals; not automatic ranking of all sets or joint whole-team optimum.",
+    "1000-expansion pilot cap is not a changed production search default.",
+    "Two fixed-seed conditional expected DPS checks are not ordinary n500/n1000 or UI acceptance.",
+    "Neither tested package winner beats the original team baseline; retaining incumbent is mandatory.",
+    "Timing was measured before the JSON substep optimization; no claimed post-change full pipeline speedup.",
+    "Actual full-inventory or 600s All Sets budget acceptance remains untested.",
+    "No real-set static replacement proof producer or general 4p effect guide enabled."
+  ],
+  "repair_notes": [
+    "Initial harness attempt stopped before new engine calls: incorrectly compared Selected trace-context hash to config hash. Corrected to the validated request identity.",
+    "Post-run harness cleanup preserves reference-stat identity for candidate config and reads its energy flag explicitly; no additional engine reruns."
+  ]
+}

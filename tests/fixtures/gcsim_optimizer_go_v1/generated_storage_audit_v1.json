@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-09-17",
+  "current_owner": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
+  "status": "deep_cleanup_complete_exact_5_binaries_user_removed_confirmed_absent",
+  "audit_scope": "recursive_file_metadata_no_link_following_no_account_content_read",
+  "before_total_bytes": 41273459987,
+  "before_roots_bytes": {
+    ".codex_tmp": 29500384839,
+    ".go": 6292751451,
+    "data": 2803287552,
+    ".venv": 811279368,
+    "debug": 725409681,
+    "exports": 338837148
+  },
+  "largest_sources_bytes": {
+    ".go/build-cache": 6217621302,
+    ".codex_tmp/gob11-dependency-repair-20260916": 4132738255,
+    ".codex_tmp/support_replay_0016_go": 2283755947,
+    ".codex_tmp/support_replay_0016_task_context_go": 1565615828,
+    ".codex_tmp/go_cache_fanfare_v6_h": 1562967946,
+    ".codex_tmp/go_cache": 1384250868,
+    "data/gcsim/optimizer-go-runs": 392473317
+  },
+  "causes": [
+    "unbounded_retained_research_source_copies_and_per_experiment_Go_caches",
+    "shared_Go_build_cache_accumulation",
+    "new_optimizer_go_runs_root_omitted_from_legacy_cleanup",
+    "legacy_optimizer_post_run_retention_hook_no_longer_called"
+  ],
+  "product_change": "shared_Selected_AllSets_session_finally_calls_lease_aware_retention",
+  "retention": {
+    "ordinary_keep_count": 50,
+    "ordinary_max_bytes": 268435456,
+    "preserve": [
+      "current_run",
+      "OS_leased_active_runs",
+      "manual_gtt_retain_pin",
+      "unrecognized_directories",
+      "outside_links"
+    ],
+    "oversized_latest_or_protected_bytes": "explicit_report_not_false_hard_cap"
+  },
+  "checks": {
+    "unittest_command": ".venv/Scripts/python.exe -m unittest tests.tools.test_archive_optimizer_evidence tests.tools.test_optimizer_manual_cleanup tests.tools.test_managed_optimizer_experiment tests.run_workspace.gcsim.test_optimizer_run_retention tests.run_workspace.gcsim.test_gcsim_cleanup tests.run_workspace.gcsim.test_optimizer_go_selected tests.run_workspace.gcsim.test_optimizer_go_all",
+    "tests_passed": 35,
+    "scope": "retention_handlers_and_managed_tiny_children_success_error_timeout_lease_junction_failure_guards_plus_read_only_manual_preview",
+    "actual_UI_checked": false,
+    "engine_runs": 0
+  },
+  "cleanup": {
+    "result": "exec_command_rejected_blocked_by_policy_before_execution",
+    "deleted_paths": [],
+    "deleted_bytes": 0,
+    "no_retry_through_alternate_execution_path": true
+  },
+  "manual_cleanup_helper": {
+    "path": "tools/cleanup_optimizer_caches.ps1",
+    "user_requested": true,
+    "allowlisted_cache_directories": 11,
+    "audited_target_bytes": 16433863464,
+    "preview_default": true,
+    "explicit_apply_required": true,
+    "syntax_check": "pass",
+    "real_read_only_preview": "pass_11_present",
+    "unsafe_path_guards": "pass_project_root_outside_path_unlisted_user_data",
+    "destructive_mode_executed_by_agent": false,
+    "scope": "default_confirmed_caches_only_Research_switch_separate_exact_allowlist",
+    "user_reported_completed": true,
+    "subsequent_read_only_observation": "all_11_exact_cache_roots_absent"
+  },
+  "second_pass": {
+    "allowlist": "tools/optimizer_research_cleanup.json",
+    "audited_target_count": 97,
+    "audited_target_bytes": 13012524303,
+    "remaining_scratch_directory_bytes_before_second_removal": 19235683881,
+    "remaining_scratch_immediate_file_bytes": 48458796,
+    "remaining_project_total": "not_remeasured; do_not_present_subtraction_estimate_as_fresh_measurement",
+    "real_preview": "pass_97_present_no_registered_worktree_or_active_rollback_overlay_dependency",
+    "removal": "all_97_paths_confirmed_absent_after_user_cleanup_agent_repeat_removed_0",
+    "preserved_dependency_repair_witness_bytes": 4132738255,
+    "scope_limits": "not_a_whole_project_purge_preserve_current_gated_evidence_and_private_data"
+  },
+  "managed_research": {
+    "runner": "tools/managed_optimizer_experiment.py",
+    "root": ".codex_tmp/managed-optimizer",
+    "maximum_active_jobs": 1,
+    "completed_jobs_retained": 0,
+    "go_helper": "runtime_probe._go_sandbox_env_respects_job_GTT_MANAGED_GO_CACHE",
+    "cleanup_failure_or_force_kill": "next_allocation_refuses_until_residue_inspected_no_unbounded_new_folders",
+    "limit": "not_a_sandbox_or_running_job_peak_byte_cap_commands_must_route_outputs_and_wait_for_children",
+    "test_generated_bytes": "tiny_temporary_fixtures_removed_in_tests_not_legacy_workspace_deletion"
+  },
+  "auto_cleanup_coverage": {
+    "current_optimizer_go_runs": "connected_shared_Selected_AllSets_finally_lease_aware_count_and_byte_retention",
+    "engine_versions": "connected_successful_engine_update_prunes_generated_state_preserving_active_and_rollback",
+    "go_build_cache": "engine_update_CLI_cleans_after_successful_probe_or_build_unless_explicitly_kept",
+    "disposable_optimizer_research": "managed_runner_owns_job_local_Go_and_OS_temp_and_cleans_success_error_timeout_cancel",
+    "removed_historical_debug_and_binary_outputs": "no_product_producer_direct_legacy_rerun_forbidden_until_adapted_to_managed_scratch",
+    "scope_limit": "bounded_review_of_N0_deleted_output_classes_not_a_full_repository_generator_audit_post_optimizer_TODO_owns_that_stage"
+  },
+  "automation": {
+    "id": "automation",
+    "status": "DELETED_BY_USER_REQUEST",
+    "next_stage": "explicit_user_selected_stage_only"
+  },
+  "deep_cleanup": {
+    "reviewed_on": "2026-09-17",
+    "authorization": "User explicitly renewed authorization for agent-executed cleanup scripts",
+    "before_total_bytes": 11827454195,
+    "after_total_bytes": 4937752607,
+    "net_freed_bytes": 6889701588,
+    "after_roots_bytes": {
+      ".codex_tmp": 1380987238,
+      "data": 1358946742,
+      ".venv": 811279368,
+      "hoyolab_export": 390712691,
+      "exports": 338837148,
+      "debug": 170617788,
+      ".git": 141727651,
+      ".go": 75130149,
+      "tools": 70822894,
+      "ui": 52735284,
+      "assets": 41459097,
+      "run_workspace": 38029461,
+      "docs": 35199700,
+      "tests": 22919858,
+      "native": 7218961,
+      "samples": 264636,
+      "localization": 205110,
+      ".idea": 48707,
+      ".obsidian": 12366,
+      ".agents": 4218,
+      "__pycache__": 790
+    },
+    "deep_plan": "tools/optimizer_deep_cleanup.json",
+    "result": "PowerShell Deep Apply exit_0_82_directories_removed_all_targets_confirmed_absent",
+    "direct_obsolete_directory_bytes": 4499946504,
+    "archived_original_bytes": 2733677780,
+    "archive_bytes": 452616823,
+    "archive_receipt": "tests/fixtures/gcsim_optimizer_go_v1/storage_retained_evidence_20260917.json",
+    "archive_verification": "19797 members independently read back with SHA256 and ZIP CRC; originals rehashed before removal",
+    "run_retention": {
+      "status": "pruned",
+      "removed_runs": 5,
+      "removed_bytes": 108756562,
+      "errors": [],
+      "last_user_run_pinned": true
+    },
+    "protected_hashes": [
+      {
+        "path": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\artifacts.db",
+        "unchanged": true
+      },
+      {
+        "path": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\settings.json",
+        "unchanged": true
+      },
+      {
+        "path": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\gcsim\\engines\\active_engine.json",
+        "unchanged": true
+      },
+      {
+        "path": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\gcsim\\engines\\engines\\gcsim-v2.45.0-allsets-20260917\\build\\gtt-gcsim.exe",
+        "unchanged": true
+      },
+      {
+        "path": "C:\\Users\\user\\Desktop\\GenshinTeamsTracker\\data\\gcsim\\engines\\engines\\gcsim-v2.45.0-dependency-audit5-20260916\\build\\gtt-gcsim.exe",
+        "unchanged": true
+      }
+    ],
+    "dirty_worktree": "gob10-performance-audit-worktree_kept_3_modified_sources_plus_untracked_experiment_and_profiles",
+    "retained_engines": [
+      "gcsim-v2.45.0-allsets-20260917",
+      "gcsim-v2.45.0-dependency-audit5-20260916",
+      "gcsim-v2.45.0-gob11-gp3-20260916",
+      "gcsim-v2.42.2-gob10-perf-20260901"
+    ],
+    "blocked_extra_binaries": {
+      "result": "separate_inline_exec_rejected_then_exact_helper_run_by_user_all_five_confirmed_absent",
+      "helper": "tools/cleanup_optimizer_binaries.ps1",
+      "helper_preview": "pass_0_present_after_user_cleanup_audited_total_206964736_bytes",
+      "helper_guards": "pass_exact_allowlist_outside_unlisted_and_directory_rejection_runtime_code_also_rejects_links_and_active_builds",
+      "bytes": 206964736,
+      "paths": [
+        ".codex_tmp/gcsim-trace-provenance-v2.exe",
+        ".codex_tmp/gob10-performance-audit/gtt-gcsim-fastpath-event-overlay.exe",
+        ".codex_tmp/gob10-performance-audit/gtt-gcsim-fastpath-overlay.exe",
+        ".codex_tmp/gob10-performance-audit/gtt-gcsim-fastpath.exe",
+        ".codex_tmp/gob10-performance-audit/search-main-baseline.test.exe"
+      ]
+    },
+    "tests_passed": 36,
+    "engine_simulations": 0,
+    "actual_UI_checked": false,
+    "scan_errors": [],
+    "limits": "Not a claim that every unused byte is removed. Profiles/exports/history/user files/dirty worktree and bounded diagnostics remain. No permanent execution-policy changes."
+  }
+}

@@ -749,6 +749,12 @@ def _build_slot_payload(
     db_character = _account_character_by_id(conn, character_id)
     if db_character:
         character = {**db_character, **_without_empty(character)}
+        # These are account-owned derived identities, not editable build values.
+        # A team snapshot from before import/repair must not override fresh DB
+        # readiness or inject a different engine key for the same stable ID.
+        for field_name in ("gcsim_character_key", "gcsim_character_key_status",
+                           "gcsim_character_key_method"):
+            character[field_name] = db_character.get(field_name, "")
     character_report = _account_character_report(character)
     character_ready = (
         _text(character.get("gcsim_character_key_status")) == "ready"

@@ -2,9 +2,11 @@
 
 Research date: 2026-05-18
 
-Scope: research/audit only. No app code, HoYoLAB import, app startup, account data,
-or generated/private project folders were touched. Temporary external clones/cache
-were used under the OS temp directory to inspect public data schemas.
+Document role: current production source-data notes in the Overview, followed
+by the historical 2026-05 source audit. The original audit changed no app/account
+state. Historical source availability and MVP recommendations are not a current
+network verification or task queue; runtime ownership is `run_workspace/abyss/source_data*.py`.
+Use the implemented period/HP/cache rules below and open work in `TODO.md`.
 
 Follow-up fixture:
 
@@ -463,7 +465,7 @@ Source:
   - `pkg/model/curves.go`
   - `pkg/shortcut/enemies_gen.go`
   - `protos/model/data.proto`
-  - `ui/packages/docs/docs/reference/config.md`
+  - [upstream config reference](https://github.com/genshinsim/gcsim/blob/main/ui/packages/docs/docs/reference/config.md)
   - `ui/packages/docs/docs/reference/enemies/*.md`
 
 Confirmed:

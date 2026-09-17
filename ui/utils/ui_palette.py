@@ -47,3 +47,22 @@ UI_EQUIPPED_WEAPON_ACCENT = UI_ACCENT_TEAM_1
 UI_BG_FOREIGN_EQUIPPED = "#2d2327"
 UI_BG_FOREIGN_EQUIPPED_HOVER = "#38272d"
 UI_BORDER_FOREIGN_EQUIPPED = UI_STATE_DANGER
+
+# Saved-run reports and their element-tinted tooltips.
+UI_HISTORY_TEAM_1 = "#59cbd0"
+UI_HISTORY_TEAM_2 = "#dbc478"
+UI_HISTORY_BG_TOP = "#1d2b35"
+UI_HISTORY_BG_BOTTOM = "#121c26"
+UI_HISTORY_ALT_TOP = "#354550"
+UI_HISTORY_ALT_BOTTOM = "#293641"
+UI_HISTORY_BORDER = "#365561"
+UI_HISTORY_GRID = "#7194a6"
+UI_HISTORY_TEXT = "#edf5fb"
+UI_HISTORY_MUTED = "#9db6c7"
+UI_HISTORY_FACT = "#84e1bf"
+UI_HISTORY_SIM = "#8fd5ff"
+UI_ELEMENT_ACCENTS = {
+    "pyro": "#d98262", "hydro": "#69afe6", "anemo": "#65cbb6",
+    "electro": "#b096db", "dendro": "#9abc65", "cryo": "#9ed8df",
+    "geo": "#d7b767",
+}

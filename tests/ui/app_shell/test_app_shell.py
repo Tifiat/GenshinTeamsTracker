@@ -3522,12 +3522,15 @@ class AppShellTest(unittest.TestCase):
         )
 
     def test_incompatible_weapon_fails_soft(self) -> None:
-        controller = AppShellController.empty()
-        controller.add_or_replace_character(_character_asset("10000050", "Thoma", weapon_type=13))
+        with temp_app_shell_db() as db_path:
+            controller = AppShellController.empty(equipment_db_path=db_path)
+            controller.add_or_replace_character(
+                _character_asset("10000050", "Thoma", weapon_type=13)
+            )
 
-        changed = controller.assign_weapon_to_selected_slot(
-            _weapon_asset("11401", "Sword", weapon_type=1)
-        )
+            changed = controller.assign_weapon_to_selected_slot(
+                _weapon_asset("11401", "Sword", weapon_type=1)
+            )
 
         self.assertFalse(changed)
         self.assertIsNone(controller.state.team(0).slot(0).weapon)

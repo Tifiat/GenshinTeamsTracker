@@ -62,16 +62,8 @@ func RenderConfig(request contracts.OptimizerRequest, index *domain.Index, assig
 	text := request.Context.PreparedConfig.Text
 	for wearerIndex, wearer := range request.Wearers {
 		var replacements int
-		text, replacements, err = replaceActorLine(
-			text,
-			wearer.WearerKey,
-			"set",
-			fmt.Sprintf(`%s add set=%q count=%d;`, wearer.WearerKey, wearer.SelectedSetUID, setCounts[wearerIndex]),
-		)
-		if err != nil || replacements != 1 {
-			if err == nil {
-				err = fmt.Errorf("expected exactly one set row, found %d", replacements)
-			}
+		text, err = replaceSelectedSetLines(text, wearer, setCounts[wearerIndex])
+		if err != nil {
 			return RenderedConfig{}, fmt.Errorf("render %s set: %w", wearer.WearerKey, err)
 		}
 		statText, err := formatStats(stats[wearerIndex])
@@ -97,6 +89,30 @@ func RenderConfig(request contracts.OptimizerRequest, index *domain.Index, assig
 	}
 	digest := sha256.Sum256([]byte(text))
 	return RenderedConfig{Text: text, SHA256: hex.EncodeToString(digest[:])}, nil
+}
+
+// Replace each known set at its original position: do not duplicate a pair,
+// discard a second bonus, or change initialization order by rebuilding blocks.
+func replaceSelectedSetLines(text string, wearer contracts.Wearer, counts []contracts.SetRequirement) (string, error) {
+	all := regexp.MustCompile(`(?m)^[ \t]*` + regexp.QuoteMeta(wearer.WearerKey) + `[ \t]+add[ \t]+set\b[^\r\n]*;[ \t]*\r?$`)
+	if len(all.FindAllStringIndex(text, -1)) != len(counts) {
+		return "", fmt.Errorf("set row count does not match fixed package")
+	}
+	for _, set := range counts {
+		pattern := regexp.MustCompile(`(?m)^[ \t]*` + regexp.QuoteMeta(wearer.WearerKey) + `[ \t]+add[ \t]+set="` + regexp.QuoteMeta(set.SetUID) + `"[ \t]+count=(\d+);[ \t]*\r?$`)
+		matches := pattern.FindAllStringSubmatch(text, -1)
+		if len(matches) != 1 {
+			return "", fmt.Errorf("expected one row for selected set %s", set.SetUID)
+		}
+		original, _ := strconv.Atoi(matches[0][1])
+		for _, required := range wearer.SetRequirements() {
+			if required.SetUID == set.SetUID && (original < required.Count || original > required.Count+1) {
+				return "", fmt.Errorf("prepared set count does not preserve bonus tier")
+			}
+		}
+		text = pattern.ReplaceAllString(text, fmt.Sprintf(`%s add set=%q count=%d;`, wearer.WearerKey, set.SetUID, set.Count))
+	}
+	return text, nil
 }
 
 func replaceActorLine(text, actor, kind, replacement string) (string, int, error) {

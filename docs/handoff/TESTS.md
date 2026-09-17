@@ -2,7 +2,9 @@
 
 Purpose: keep the unit/integration test suite cheap to navigate and cheap to
 run by feature area. Root `CODEX.md` and `TODO.md` stay as entrypoints; this
-file owns the detailed test-layout rules.
+file owns the detailed test-layout rules. Coverage descriptions are navigation,
+not proof that the suite passed on the current tree. Historical test counts
+remain in dated receipts; documentation maintenance does not rerun product tests.
 
 ## Layout
 
@@ -19,67 +21,70 @@ Mirror the primary project owner under `tests/`:
 - `tests/hoyolab_export/tournament/` - tournament ruleset validation.
 - `tests/run_workspace/abyss/` - Run Workspace Abyss source data, factual DPS,
   runtime fixture/cache behavior.
-- `tests/run_workspace/gcsim/` - backend GCSIM lifecycle, config generation,
-  mapping, wave scenarios, cleanup, artifact runner, and optimizer contracts.
-  Milestone 0R coverage pins schema v4, separate `.v4` operation namespaces,
-  `stat_space=static_build_contribution`, and fail-closed pre-v4 payloads.
-  Milestone 3 coverage includes hand-checkable reduced exhaustive account and
-  theoretical `4p` oracles, global no-reuse, replacement witnesses,
-  adversarial zero- through four-wearer states, and pruning-winner survival.
-  Milestone 4 coverage includes package-scoped database-reachable main layouts,
-  exact multi-scale roll exchanges, isolated-loss/joint-win EM, set-aware
-  reopening, renamed-character invariance, unusual-main/threshold/support
-  branches, and complete branch traces. Milestone 5 coverage includes exact
-  ordered top-K parity, set-feasible upper-bound laziness, every offpiece/`5p`
-  shape, low-CV threshold survival, conflict shadow repair, identical-content
-  fingerprints, and database-row-order invariance. Milestone 6 coverage
-  includes reduced-oracle score parity, wearer-order
-  invariance, evidence-driven contested-piece reassignment, coordinated
-  three-wearer repair, and distinct pool/bound/cancel/deadline outcomes.
-  Milestone 7 coverage includes enrichment recovery, coupled-EM finalist
-  protection, exact-config run sharing with physical witness retention,
-  cached/uncached semantic parity, cancellation cache safety, common
-  high-fidelity evidence, and close-leader rerace uncertainty. Milestone 8
-  coverage includes exact/sampled structural reference anchors, every selected
-  concrete 4p package combination, exact twenty-ID witnesses, production
-  scheduler adapters, typed infeasible-package reporting, cancellation, and
-  pre-GCSIM minimum-stat rejection over exact-five artifact stats plus proved
-  unconditional static 2p stats. This includes Emblem-like +20% ER
-  (`er=0.20`), same-
-  `ModKey` render-order overwrite, exclusion of conditional/parameterized
-  effects, and fail-closed feedback-enrichment rechecks. Milestone 9 coverage includes modeled
-  5-star all-set derivation, required rotational package coverage, randomized
-  reduced-frontier/exhaustive parity, an exceptional-real-artifact weak-set
-  winner, impossible-floor zero-GCSIM pruning, and deterministic exact-DPS
-  ties. Milestone 10 coverage includes canonical pair identity, exact
-  `2+2+1`/`3+2` reduced-oracle parity, production two-row response configs,
-  contested physical IDs, selected-pool twenty-ID proposals, all-set pair
-  coverage, and the low-conflict seed. Milestone 11 coverage includes mandatory
-  joint/mixed EM layouts, five-star product defaults, parameterized-set
-  defaults, percent-to-best, higher-fidelity close-leader reraces, typed
-  live `LAYOUT_SCAN`/`RESPONSE_SCAN`/`JOINT_SEARCH`/`RERACE` transitions before
-  their corresponding blocking runs,
-  fail-closed ER reference weights/manual response profiles, all-success rerace
-  selection independent of display `top_n`, distinct original/rerace provenance, patched
-  `optimize_er=0;fine_tune=0`, and persistent verified finalist cache hits after
-  transient run directories are removed. Milestone 12 coverage includes
-  pair-aware layout/response discovery, engine-derived conservative 2p
-  signatures, complete concrete-pair aliases, modifier-key collision proof,
-  `UNIQUE_SOURCE`/same-`ModKey` single-alias behavior, explicit two-row pair
-  configs, canonical `3+2` metadata, and a coordinated four-wearer reduced
-  oracle. Account coverage separately pins schema-v4 static-build minimum-stat
-  rejection before GCSIM and the no-auto-ER policy. Milestone 13 coverage pins
-  selected-pool parameter preservation, final-sheet ER conversion, mode/CPU
-  request freezing, ephemeral result invalidation, progress/current-best UI,
-  cancellation, and explicit single/team save semantics including atomic
-  rollback, idempotence, exact reused-preset validation, and no equipment
-  writes. Milestone 14 foundations cover strict oracle parity/recall/regret,
-  benchmark matrix completeness, independent-context scheduler semantics,
-  complete-reference/deep-layout response screening, and full selected-plan
-  identity. Current Go optimizer contracts and Python integration coverage live
-  in `test_optimizer_go_*.py`; native tests live under `native/gcsim_optimizer/`.
-  Current real-engine acceptance gates and evidence are owned by
-  `GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md`.
+- `tests/run_workspace/gcsim/` - engine lifecycle, compatibility, config/key
+  mapping, wave scenarios, cleanup, artifact runners and Python/Go integration.
+  Active Selected coverage is in `test_optimizer_go_*.py`; native contract,
+  formula, search and stochastic tests are under `native/gcsim_optimizer/`.
+  `set_packages_test.go` suites cover4p/2+2 request legality, disjoint slot
+  patterns, small exhaustive search controls and bounded frontier fairness;
+  finalist render tests preserve both set rows and initialization order.
+  `set_effect_preflight_test.go` retains real static set-replacement witnesses
+  and negative old/double-bonus/same-topology-resistance shortcuts. These are
+  bounded arithmetic controls, not universal effect-replacement proofs.
+  Native `internal/setcontext` tests cover isolated context/render/routing/cache
+  identities, synthetic scoped proofs, separate set bias and capture budgets.
+  The `all_sets_preflight/replay_context.py` overlay reuses seven retained real
+  transitions without new engine calls; its dated receipt is separate from
+  product integration. `capture_pilot.py` connects the real two-seed provider,
+  shared inventory views and bounded one-wearer FGBS for two fixture packages;
+  eight new compact calls are an explicit research budget, not a routine suite.
+  Its receipt separates formula response from product/search-quality acceptance.
+  Native domain tests exhaust small slot masks and preserve raw-stat reference;
+  provider/search tests guard seed, energy, ownership, legality and cancellation.
+  `measure_decode.py` checks the canonical-read optimization on saved bytes
+  without engine calls. No real-set static proof producer is enabled yet.
+  Native `internal/seteffects` tests cover source aliases/shadowing, mutable
+  count/recipient refusal, callback reachability, typed tag filters, empty
+  switch cases, source enum drift and exact-graph input binding. Channel and
+  intervention tests reuse existing arithmetic, retain cross-owner dependency
+  and reset offsets. `all_sets_effect_discovery_receipt_v1.json` scopes the
+  full-catalog scan and four isolated reaction-input control simulations.
+  `all_sets_effect_guide_receipt_v1.json` adds four resistance controls using
+  source-extracted curves, bound recipe/input features and an automatic queue
+  pilot (eight fresh members plus two winner-response members). No comparison
+  against optimized Selected or ordinary-DPS/UI claim follows. `internal/allsets`
+  tests preserve global queue limits, wearer breadth, physical reservations,
+  cancellation, deterministic hints and the correct raw formula anchor.
+  Observer consolidation receipt adds clean-source/typed-sidecar and standard
+  bundle gates. `test_optimizer_go_all_sources` uses project-venv unittest, not
+  pytest: byte-preserving source transport and binary/manifest/tree drift.
+  Guide regressions reject stale source/context/stat anchors and preserve unknown
+  lanes. Pair-seed DP is checked against a tiny synthetic exhaustive oracle;
+  joint proposal tests preserve20 IDs, deterministic ordering and shared budgets.
+  Coordinator regressions cover global context/expansion bounds, queue fairness,
+  cancellation/partial deadlines, baseline retention and deterministic output.
+  Finalist renderer tests enforce own-package output, common non-set frame and
+  engine identity. All Sets adapter tests prohibit Python compact-capture loops;
+  UI tests exercise the capability gate, signal and shared busy state, not real
+  AppShell acceptance. The joint/coordinator receipts separately record copied-
+  account comparison against optimized Selected and ordinary finalist panels.
+  The observer delta is now consolidated in the production patch; dated research
+  commands remain experimental and ordinary test suites do not run GCSIM.
+  `all_sets_product_receipt_v1.json` scopes the cold CLI, ordinary panels and
+  installed source/engine controls separately from the pending real UI gate.
+  Contract tests require exactly one Selected-IR or All-Sets-panel identity;
+  Python source tests accept post-build store metadata but reject arbitrary
+  added source files.34 focused Python tests, full Go tests/vet passed at this
+  installation; this is not universal mechanic coverage.
+  Trace/source-dependency tests under `trace_equation/` cover the retained
+  compiler/engine boundary, not a second Python Selected backend.
+  Older farming/Current/continuous-target coverage is reference or comparison
+  coverage; it does not establish released All Sets, Theory or energy-aware
+  Selected. New Selected2+2 backend evidence has its own acceptance receipt,
+  separate from actual AppShell/UI acceptance.
+  Current real-engine acceptance and limitations live in
+  `GCSIM_GOB11_GP3_CHECKPOINT.md`; old migration/stage receipts remain dated
+  evidence in the Go design and fixture directory.
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Decks UI preset
   persistence/conversion and root-resolved default path coverage
   (`test_deck_preset.py`), observed weapon-stack identity helper coverage
@@ -143,6 +148,20 @@ Mirror the primary project owner under `tests/`:
   mode/Reset/Save/command controls, blocked mutation and drag/drop, and
   bundle-local assets. Do not pin the provisional separate details QLabel or
   permanent PNG preview as target behavior.
+  `test_history_cards.py` covers coupled expansion/selection, collapse without
+  clearing selection, preserved row identity on preference/reload, persistent
+  icon choice, frozen PNG rendering, live-format badges/legacy-warning filtering,
+  missing-stat alignment and dismissal of popups/pending hover during scroll.
+  A scrolled-card regression places enemy and character popups near a visible
+  lower-edge hover while the card origin is offscreen; both must stay inside
+  the selected screen, and the enemy popup must remain near that hover point.
+  Expansion must retain exactly one character hit region per slot at narrow
+  and wide viewport widths, including sub-1 DPR startup downscale; hover
+  coordinates must match widget pixels. Two-set builds and wrapped enemy rows
+  must reserve enough height and keep their hit regions inside the card.
+  Compact density has a <=180px height guard for an ordinary two-team run at
+  864px rendered width and <=140px at 1220px for the wide results layout;
+  settle hidden-widget resize and convert through content scale, not DPR=1.
 - `tests/ui/right_panel/pvp/` - PvP right-panel host/pages/stage panels,
   including Decks, Play, Draft pick/ban zones, future scoped build-flow routing,
   Timers/results, and Completed result/export panels. Tests must not bless a
@@ -238,11 +257,14 @@ Mirror the primary project owner under `tests/`:
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.
-- `tests/ui/history_browser/` - History left-browser behavior: separate
-  right-header Abyss/DPS Dummy/PvP routing, default mode from live Run,
-  six-side enemy preview/tooltips, History-local period dropdown, cache-only
-  empty states, compact frozen visual rows, and newest-first ordering.
-- `tests/ui/utils/` - shared UI utility tests.
+- History left-browser integration currently lives in
+  `tests/ui/app_shell/test_app_shell.py`, with catalog tests under
+  `tests/run_workspace/history/` and card tests under
+  `tests/ui/right_panel/history/`. A separate `tests/ui/history_browser/`
+  package has not been created; do not use that path as a runnable suite.
+- `tests/ui/utils/` - shared UI utility tests. HiDPI coverage includes opt-in
+  alpha trimming, preservation of alpha=1 silhouette edges and source bytes,
+  and distinct cached results for trimmed versus full-canvas images.
 - `tests/ui/character_assets/` - `ui/character_assets.py` behavior.
 - `tests/tools/future/` - reusable future/admin tools.
 
@@ -282,6 +304,19 @@ Full-suite command:
 
 Run the full suite only for broad shared changes, test-infrastructure changes,
 or when explicitly requested.
+
+## Handoff maintenance tooling
+
+`tools/check_handoffs.py` is a read-only stdlib documentation check.
+Run it after affected handoff changes, together with the semantic closeout in
+[HANDOFF_MAINTENANCE.md](HANDOFF_MAINTENANCE.md).
+
+When changing the checker, run its isolated synthetic-file regressions:
+`.venv\Scripts\python.exe -m unittest tests.tools.test_check_handoffs`.
+These cover orphan/duplicate index entries, broken pointers, current projection
+drift, historical exclusions, budgets, current markers and read-only behavior.
+They do not import the app or inspect real account data; no product/UI acceptance
+can be inferred from their result.
 
 ## Rules
 

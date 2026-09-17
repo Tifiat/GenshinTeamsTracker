@@ -5,10 +5,11 @@ Last checked: 2026-06-11.
 Scope: backend/research handoff only. No UI, no importer product surface, no
 script execution, no saved raw public payloads.
 
-Current direction update (2026-06-12): active PvP work is the no-rules Free
-Draft v0 controller/projection path and the next minimal local hot-seat UI
-around it. Ruleset mapping/import work is paused until real usable tournament
-files are provided.
+Current direction pointer (2026-09-16): the no-rules Free Draft hot-seat UI
+and post-draft weapon/timer loop are implemented. Provider/package work is next
+under `PVP_PROFILE_PACKAGE.md`. Ruleset mapping/import remains paused until
+usable tournament files exist. Public source findings below were last checked
+in June 2026, not reverified during this documentation cleanup.
 
 ## Draft System vs Ruleset Data
 

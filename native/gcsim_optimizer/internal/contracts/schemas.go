@@ -43,8 +43,23 @@ type ArtifactAssignment struct {
 type Wearer struct {
 	WearerKey        string               `json:"wearer_key"`
 	WeaponKey        string               `json:"weapon_key"`
-	SelectedSetUID   string               `json:"selected_set_uid"`
+	SelectedSetUID   string               `json:"selected_set_uid,omitempty"`
+	SelectedSets     []SetRequirement     `json:"selected_sets,omitempty"`
 	CurrentArtifacts []ArtifactAssignment `json:"current_artifacts"`
+}
+
+type SetRequirement struct {
+	SetUID string `json:"set_uid"`
+	Count  int    `json:"count"`
+}
+
+// SetRequirements normalizes the original 4p wire spelling without changing
+// its canonical identity. New fixed packages use selected_sets exclusively.
+func (wearer Wearer) SetRequirements() []SetRequirement {
+	if wearer.SelectedSetUID != "" {
+		return []SetRequirement{{wearer.SelectedSetUID, 4}}
+	}
+	return wearer.SelectedSets
 }
 
 type StatValue struct {
@@ -64,6 +79,7 @@ type Artifact struct {
 
 type LegalityPolicy struct {
 	FixedFourPiece                   bool    `json:"fixed_four_piece"`
+	FixedSetPackages                 bool    `json:"fixed_set_packages,omitempty"`
 	MaxOffSetPiecesPerWearer         int     `json:"max_off_set_pieces_per_wearer"`
 	GloballyUniqueArtifactIDs        bool    `json:"globally_unique_artifact_ids"`
 	DefaultMinimumRarity             int     `json:"default_minimum_rarity"`
@@ -191,17 +207,18 @@ type RankedCandidateResult struct {
 }
 
 type OptimizerResult struct {
-	SchemaVersion    int                     `json:"schema_version"`
-	SchemaKind       string                  `json:"schema_kind"`
-	RequestSHA256    string                  `json:"request_sha256"`
-	CompactIRSHA256  string                  `json:"compact_ir_sha256,omitempty"`
-	Status           string                  `json:"status"`
-	Winner           []ArtifactAssignment    `json:"winner,omitempty"`
-	Candidates       []RankedCandidateResult `json:"candidates,omitempty"`
-	FormulaDPS       string                  `json:"formula_dps,omitempty"`
-	Measured         *MeasuredResult         `json:"measured,omitempty"`
-	FormulaResidual  string                  `json:"formula_residual,omitempty"`
-	Warnings         []string                `json:"warnings"`
-	DebugReceiptPath string                  `json:"debug_receipt_path,omitempty"`
-	Error            *ResultError            `json:"error,omitempty"`
+	SchemaVersion         int                     `json:"schema_version"`
+	SchemaKind            string                  `json:"schema_kind"`
+	RequestSHA256         string                  `json:"request_sha256"`
+	CompactIRSHA256       string                  `json:"compact_ir_sha256,omitempty"`
+	SetContextPanelSHA256 string                  `json:"set_context_panel_sha256,omitempty"`
+	Status                string                  `json:"status"`
+	Winner                []ArtifactAssignment    `json:"winner,omitempty"`
+	Candidates            []RankedCandidateResult `json:"candidates,omitempty"`
+	FormulaDPS            string                  `json:"formula_dps,omitempty"`
+	Measured              *MeasuredResult         `json:"measured,omitempty"`
+	FormulaResidual       string                  `json:"formula_residual,omitempty"`
+	Warnings              []string                `json:"warnings"`
+	DebugReceiptPath      string                  `json:"debug_receipt_path,omitempty"`
+	Error                 *ResultError            `json:"error,omitempty"`
 }

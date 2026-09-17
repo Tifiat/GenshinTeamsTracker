@@ -1,0 +1,91 @@
+--- a/model.go
++++ b/model.go
+@@ -49,6 +49,7 @@
+ // include it in a GOB-2 receipt, and tests use it to prove that compaction did
+ // not silently discard an executed path.
+ type Audit struct {
++	ResistanceInputs []ResistanceInput `json:"resistance_inputs,omitempty"`
+ 	EffectInputs           []EffectInput
+ 	SourceHitCount          int
+ 	AncestorStateEventCount int
+--- a/compile.go
++++ b/compile.go
+@@ -62,7 +62,9 @@
+ 		Seed: uint64(buffer.Seed), DurationMS: int64(math.Round(float64(buffer.DurationFrames) * 1000 / 60)),
+ 		TopologySHA256: topology, Nodes: builder.nodes, Channels: channels, OpaqueBoundaries: boundaries,
+ 	}
++	resistanceInputs := builder.usedResistanceInputs(channels)
+ 	audit := Audit{
++		ResistanceInputs: resistanceInputs,
+ 		EffectInputs: collectEffectInputs(buffer,characterKeys,support),
+ 		SourceHitCount: len(buffer.Hits), AncestorStateEventCount: len(support.ancestorIDs),
+ 		NodeCount: len(builder.nodes), ChannelCount: len(channels), OpaqueReasonCount: len(reasons),
+--- a/builder.go
++++ b/builder.go
+@@ -19,6 +19,7 @@
+ 
+ type nodeBuilder struct {
+ 	nodes []IRNode
++	resistanceInputs []ResistanceInput
+ }
+ 
+ func decimal(value float64) string {
+--- a/direct.go
++++ b/direct.go
+@@ -154,7 +154,7 @@
+ 	if hit.HitWeakPoint {
+ 		crit = c.b.add(c.b.constant(1), cd)
+ 	}
+-	root := c.b.multiply(base, bonus, c.b.constant(hit.DefMod), c.b.constant(hit.ResMod), crit)
++	root := c.b.multiply(base, bonus, c.b.constant(hit.DefMod), c.resistanceInput(hit), crit)
+ 	if hit.Amped {
+ 		em := stat("em")
+ 		curve := c.b.add(c.b.constant(1), c.reactionBonusNode(hit.ReactionBonus, hit.ReactionBonusRef), c.b.divide(c.b.multiply(c.b.constant(2.78), em), c.b.add(c.b.constant(1400), em)))
+@@ -220,13 +220,13 @@
+ 		crit = c.b.add(c.b.constant(1), cd)
+ 	}
+ 	if !hasFlatWriteReceipt(hit) {
+-		return c.b.multiply(c.b.constant(formula.Coefficient), core, c.b.constant(1+hit.DamageBonus), c.b.constant(hit.DefMod), c.b.constant(hit.ResMod), crit, c.b.constant(hit.DamageGroupMultiplier), c.b.constant(hit.ElevationMultiplier))
++		return c.b.multiply(c.b.constant(formula.Coefficient), core, c.b.constant(1+hit.DamageBonus), c.b.constant(hit.DefMod), c.resistanceInput(hit), crit, c.b.constant(hit.DamageGroupMultiplier), c.b.constant(hit.ElevationMultiplier))
+ 	}
+ 	flat := c.compileAttackField(hit, "FlatDmg", c.b.multiply(c.b.constant(formula.Coefficient), core), hit.FlatDmg)
+ 	return c.b.multiply(
+ 		flat,
+ 		c.b.constant(1+hit.DamageBonus),
+-		c.b.constant(hit.DefMod), c.b.constant(hit.ResMod), crit,
++		c.b.constant(hit.DefMod), c.resistanceInput(hit), crit,
+ 		c.b.constant(hit.DamageGroupMultiplier), c.b.constant(hit.ElevationMultiplier),
+ 	)
+ }
+--- a/numeric_recipe.go
++++ b/numeric_recipe.go
+@@ -51,6 +51,9 @@
+ 			return fail("operand_binding_kind")
+ 		}
+ 		switch p.Kind {
++		case "context_resistance_multiplier":
++			if operand || !closeEnough(p.Value, hit.ResMod) { return fail("context_resistance_binding") }
++			n = c.resistanceInput(hit)
+ 		case "fixed":
+ 			// Explicit fixed input: e.g. level data outside artifact coordinates.
+ 		case "reference":
+--- a/contributor_group.go
++++ b/contributor_group.go
+@@ -156,5 +156,5 @@
+ 		states = append(states, c.b.multiply(c.b.multiply(probs...), c.b.add(terms...)))
+ 	}
+ 	c.unknown["contributor_membership_schedule_frozen"] = struct{}{}
+-	return c.b.multiply(c.b.add(states...), c.b.constant(contributorTerminalFactor(hit)))
++	return c.b.multiply(c.b.add(states...), c.resistanceInput(hit), c.b.constant(hit.DefMod * hit.DamageGroupMultiplier * hit.ElevationMultiplier))
+ }
+--- a/damage.go
++++ b/damage.go
+@@ -332,7 +332,7 @@
+ 		gttTraceCalculationPath(atk, info.GTTTraceFormulaDirectReaction, false)
+ 		// Typed observer boundaries, not mathematical coefficients. Arithmetic
+ 		// between them is recovered from this function by the build overlay.
+-		info.GTTTraceAttachNumeric(trace, info.GTTNumericRecipe{Version:info.GTTNumericRecipeVersion, SourceSHA256:"6e9216f0d7159c0810bb2ac5ead4b1a34e4e752a499a8f2a6e4927d18f2fdc5c", Nodes:[]info.GTTNumericNode{{Op:"INPUT", Args:[]int{}, Value:0, Input:3},{Op:"INPUT", Args:[]int{}, Value:0, Input:0},{Op:"MUL", Args:[]int{0,1}, Value:0, Input:0},{Op:"CONST", Args:[]int{}, Value:1, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:4},{Op:"ADD", Args:[]int{3,4}, Value:0, Input:0},{Op:"MUL", Args:[]int{2,5}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:5},{Op:"MUL", Args:[]int{6,7}, Value:0, Input:0},{Op:"CONST", Args:[]int{}, Value:1, Input:0},{Op:"CONST", Args:[]int{}, Value:6, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:1},{Op:"MUL", Args:[]int{10,11}, Value:0, Input:0},{Op:"CONST", Args:[]int{}, Value:2000, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:1},{Op:"ADD", Args:[]int{13,14}, Value:0, Input:0},{Op:"DIV", Args:[]int{12,15}, Value:0, Input:0},{Op:"ADD", Args:[]int{9,16}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:6},{Op:"ADD", Args:[]int{17,18}, Value:0, Input:0},{Op:"MUL", Args:[]int{8,19}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:2},{Op:"ADD", Args:[]int{20,21}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:7},{Op:"MUL", Args:[]int{22,23}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:8},{Op:"MUL", Args:[]int{24,25}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:9},{Op:"MUL", Args:[]int{26,27}, Value:0, Input:0},{Op:"CONST", Args:[]int{}, Value:1, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:10},{Op:"ADD", Args:[]int{29,30}, Value:0, Input:0},{Op:"MUL", Args:[]int{28,31}, Value:0, Input:0}}, Root:32, Inputs:[]info.GTTNumericInput{{Kind: "scaling",Value: a,Source:"a"},{Kind: "snapshot_stat",StatKey: "em",Value: em,Source:"em"},{Kind: "flat_damage",Value: atk.Info.FlatDmg,Source:"atk.Info.FlatDmg"},{Kind: "frozen",Value: atk.Info.Mult,Source:"atk.Info.Mult"},{Kind: "attack_field",StatKey: "BaseDmgBonus",Value: atk.Info.BaseDmgBonus,Source:"atk.Info.BaseDmgBonus"},{Kind: "frozen",Value: mult,Source:"mult"},{Kind: "reference",Value: reactBonus,Reference: trace.ReactionBonusRef,Source:"reactBonus"},{Kind: "frozen",Value: defmod,Source:"defmod"},{Kind: "frozen",Value: resmod,Source:"resmod"},{Kind: "frozen",Value: grpMult,Source:"grpMult"},{Kind: "frozen",Value: elevation,Source:"elevation"}}, Observed:precritdmg})
++		info.GTTTraceAttachNumeric(trace, info.GTTNumericRecipe{Version:info.GTTNumericRecipeVersion, SourceSHA256:"6e9216f0d7159c0810bb2ac5ead4b1a34e4e752a499a8f2a6e4927d18f2fdc5c", Nodes:[]info.GTTNumericNode{{Op:"INPUT", Args:[]int{}, Value:0, Input:3},{Op:"INPUT", Args:[]int{}, Value:0, Input:0},{Op:"MUL", Args:[]int{0,1}, Value:0, Input:0},{Op:"CONST", Args:[]int{}, Value:1, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:4},{Op:"ADD", Args:[]int{3,4}, Value:0, Input:0},{Op:"MUL", Args:[]int{2,5}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:5},{Op:"MUL", Args:[]int{6,7}, Value:0, Input:0},{Op:"CONST", Args:[]int{}, Value:1, Input:0},{Op:"CONST", Args:[]int{}, Value:6, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:1},{Op:"MUL", Args:[]int{10,11}, Value:0, Input:0},{Op:"CONST", Args:[]int{}, Value:2000, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:1},{Op:"ADD", Args:[]int{13,14}, Value:0, Input:0},{Op:"DIV", Args:[]int{12,15}, Value:0, Input:0},{Op:"ADD", Args:[]int{9,16}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:6},{Op:"ADD", Args:[]int{17,18}, Value:0, Input:0},{Op:"MUL", Args:[]int{8,19}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:2},{Op:"ADD", Args:[]int{20,21}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:7},{Op:"MUL", Args:[]int{22,23}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:8},{Op:"MUL", Args:[]int{24,25}, Value:0, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:9},{Op:"MUL", Args:[]int{26,27}, Value:0, Input:0},{Op:"CONST", Args:[]int{}, Value:1, Input:0},{Op:"INPUT", Args:[]int{}, Value:0, Input:10},{Op:"ADD", Args:[]int{29,30}, Value:0, Input:0},{Op:"MUL", Args:[]int{28,31}, Value:0, Input:0}}, Root:32, Inputs:[]info.GTTNumericInput{{Kind: "scaling",Value: a,Source:"a"},{Kind: "snapshot_stat",StatKey: "em",Value: em,Source:"em"},{Kind: "flat_damage",Value: atk.Info.FlatDmg,Source:"atk.Info.FlatDmg"},{Kind: "frozen",Value: atk.Info.Mult,Source:"atk.Info.Mult"},{Kind: "attack_field",StatKey: "BaseDmgBonus",Value: atk.Info.BaseDmgBonus,Source:"atk.Info.BaseDmgBonus"},{Kind: "frozen",Value: mult,Source:"mult"},{Kind: "reference",Value: reactBonus,Reference: trace.ReactionBonusRef,Source:"reactBonus"},{Kind: "frozen",Value: defmod,Source:"defmod"},{Kind: "context_resistance_multiplier",Value: resmod,Source:"resmod"},{Kind: "frozen",Value: grpMult,Source:"grpMult"},{Kind: "frozen",Value: elevation,Source:"elevation"}}, Observed:precritdmg})
+ 		trace.ScalingStatKind = scalingKind
+ 		trace.ScalingStatValue = a
+ 		trace.TargetLevel = e.Level

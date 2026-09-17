@@ -1,8 +1,12 @@
 # App Shell / Workspace Plan
 
-Purpose: target architecture for replacing the legacy `ui/main_window.py` with
-a new app shell. This is a design handoff only; it records the intended layout,
-ownership boundaries, and staged migration path before implementation.
+Purpose: current AppShell architecture and remaining migration contract.
+Reconciled 2026-09-16 by documentation/source inspection, without rerunning UI.
+AppShell workspaces, typed Run session, immutable History, equipment integration
+and right-panel slot swaps are implemented. `main.py` still launches the legacy
+app; its switch remains explicitly user-approved work. Dated performance/probe
+notes below are historical evidence, not current benchmark or task priority.
+Open work is tracked in `TODO.md`; per-feature details remain in their handoffs.
 
 ## Target Shape
 
@@ -60,9 +64,9 @@ Terms:
 - The PvP Decks/Play/Draft pages and History snapshot presentation are
   workspace-driven right-dock policies. History uses a separate read-only
   instance of the same mode-specific Run presentation component tree, while the
-  live instance and session remain intact. Future empty-database startup should
-  auto-open Account / Data setup, and later onboarding may highlight the
-  Account action. A compact
+  live instance and session remain intact. Future empty-account onboarding
+  should guide users to Account/Data; design auto-open/highlight behavior within
+  that flow, not as an isolated startup workaround. A compact
   Support/Donate action near Account and a fuller support area inside Account
   remain optional future directions; do not add them until explicitly requested.
 - Custom overlay scrollbars remain relevant where native scrollbars would shift
@@ -333,7 +337,7 @@ right column patched in place.
   the frozen bundle into an isolated read-only instance of the shared Run
   presentation; the independent details widget and permanent PNG preview have
   been removed from normal browsing.
-- The accepted MVP adapts a selected immutable snapshot into the same current
+- The implemented snapshot adapter uses the same current
   right-panel view-model and presentation classes as live Abyss or DPS Dummy.
   This snapshot-bound instance is read-only: slot inspection, scrolling, and
   tooltips remain available; mutation, drag/drop, equipment, and commands do
@@ -344,8 +348,9 @@ right column patched in place.
   Account and use routing separate from live Run/PvP. The browser defaults to
   the current live mode, merges cached and saved Abyss periods, keeps period
   selection local, and orders new records first. PvP is currently a History
-  placeholder. Exact preview and compact row content are defined in
-  `docs/handoff/HISTORY_BROWSER.md`.
+  placeholder. Current compact/expanded cards, per-record team artwork,
+  tooltip and PNG behavior are owned by `docs/handoff/HISTORY_BROWSER.md`;
+  its linked original references and real app samples guide visual refinement.
 - Entering History must not reset, clear, or reinitialize live Abyss/DPS/PvP
   session state. Leaving History for a normal workspace restores the live Run
   panel and its previous state.
@@ -430,9 +435,8 @@ Future weapon move/swap rule:
 ## Timer / Run Logic
 
 - Timer remains visually in the right operations dock/build panel.
-- Durable timer/run/session logic should move toward typed `RunSessionState`,
-  `AbyssRunState`, `DpsDummyRunState`, and a `RunSessionController` or
-  equivalent model/controller layer.
+- Typed `RunSessionState`, `AbyssRunState`, `DpsDummyRunState` and
+  `RunSessionController` now own live run/session state in `run_workspace/session.py`.
 - The right panel should display and command timer state, not own persistence or
   durable run/session logic.
 - Current AppShell status: Abyss T1/T2 cells in the compact chamber table are
@@ -450,8 +454,8 @@ Future weapon move/swap rule:
   Fact DPS reads cached Abyss source-data and uses Account/Data's solo/multi HP
   mode setting. The RUN Reset command resets the active typed live mode only;
   the RUN Save command persists immutable snapshot bundles for the active run
-  type. History browsing/opening commands and durable saved-result GCSIM
-  integration remain future work.
+  type. History browsing uses immutable bundles and shared read-only Run UI.
+  Current Abyss sim results persist with Run Save; DPS Dummy attachment remains open.
 - Detailed next-stage contract lives in
   `docs/handoff/RUN_WORKSPACE_SNAPSHOT_CONTRACT.md`. Follow it before coding
   History or GCSIM.
@@ -465,8 +469,8 @@ Saved runs must be immutable structured snapshots for Abyss and DPS Dummy, not
 live references to account/build state and not image-only legacy records.
 Factual DPS belongs in pure run/session result code near `run_workspace.models`
 or a future `run_workspace.results` module. GCSIM sim DPS remains a separate
-result kind: Browser MVP runtime results may update current UI state, while
-durable saved results must later attach through explicit session/snapshot data.
+result kind: current Abyss Browser results already attach through typed session
+and snapshot data. DPS Dummy attachment remains a separate open task.
 
 ## Legacy Plan
 
@@ -628,11 +632,12 @@ Equipment-state note:
 - Artifact/preset/weapon side icons should come from persistent current
   equipment tables. `artifact_build_targets` remains intended/available target
   metadata, not current ownership.
-- HoYoLAB observation apply helpers exist for explicit artifact/weapon
-  observations, but live import does not call them yet. Missing HoYoLAB
-  equipment data must not clear local equipment.
-- Future drag/swap of right-panel character cards should swap characters within
-  one team and between teams, but quick-pick does not depend on drag/drop.
+- Live HoYoLAB import calls the equipment batch path only when the default-OFF
+  Change equipment setting is enabled and account sync succeeds. Missing
+  observations must not clear local equipment; presets stay separate.
+- Right-panel slot drag/swap is connected through `slot_dropped` to
+  `AppShell._on_slot_dropped` / controller `swap_slots`; it supports within-team
+  and cross-team moves independently of quick-pick.
 
 Performance audit note, 2026-05-26:
 
@@ -821,11 +826,10 @@ Performance fix status:
   caches, right-panel selected-details/bonus-strip pixmap prep if needed, and
   bulk persistent equipment/negative-cache prewarm for account characters. After
   that point, second and later openings should reuse baked/cache data where safe.
-- Future right-panel slot drag/drop is feasible because `TeamBuilderState`
-  already supports whole-slot swap/move across teams. The UI should drag a full
-  slot payload, not just a portrait, so weapon/artifact/details move together;
-  resonances and team bonuses must be recalculated from the post-drop team
-  composition rather than copied as slot data.
+- Implemented right-panel slot drag/drop uses the whole-slot `TeamBuilderState`
+  swap/move path. Preserve weapon/artifact/details with the slot and recompute
+  resonances/team bonuses from the resulting composition. History blocks this
+  mutation; PvP uses its scoped normal build path.
 
 Sizing note:
 

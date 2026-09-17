@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-17",
+  "owner": "docs/handoff/GCSIM_GOB11_ROTATION_VALIDATION.md",
+  "scope": "requested_rotation_syntax_and_Jahoda_skill_activation_only_not_optimizer_formula_or_account_DPS_acceptance",
+  "engine_sha256": "77a6bebd341eee23af5042754a5acb8db0e6663a657be7be2f54faa8061c2b5c",
+  "seed": "9721921111093266913",
+  "ordinary_debug_samples": 1,
+  "compact_calls": 0,
+  "optimizer_calls": 0,
+  "equipment": "original_three_from_user_public_config1_Jahoda_C0_Favonius_Warbow_R1_and_former_Sucrose_stats_test_only",
+  "ignore_burst_energy": true,
+  "rotation_loops": 6,
+  "jahoda_bursts": 0,
+  "damage_counts": {
+    "Filled Treasure Flask": 6,
+    "Unfilled Treasure Flask": 0,
+    "Meowball": 52
+  },
+  "skill_to_flins_swap_frames": [
+    202,
+    202,
+    202,
+    202,
+    202,
+    202
+  ],
+  "live_account_or_saved_rotation_changed": false
+}

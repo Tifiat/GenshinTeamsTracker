@@ -8,13 +8,41 @@ import unittest
 
 from run_workspace.gcsim.optimizer_go_selected_inputs import (
     enforce_gcsim_optimizer_mvp_energy_policy,
+    selected_set_requirements,
+    GcsimOptimizerGoSelectedInputError,
+    SelectedBoundWearerInput,
 )
+from run_workspace.gcsim.optimizer_go_selected import _request_wearers
 
 
 ROOT = Path(__file__).resolve().parents[3]
 
 
 class GoSelectedInputBoundaryTests(unittest.TestCase):
+    def test_selected_packages_keep_tiers_not_extra_piece(self) -> None:
+        for source, expected in (
+            ((("a", 4), ("x", 1)), (("a", 4),)),
+            ((("a", 5),), (("a", 4),)),
+            ((("a", 2), ("b", 2), ("x", 1)), (("a", 2), ("b", 2))),
+            ((("b", 3), ("a", 2)), (("a", 2), ("b", 2))),
+        ):
+            self.assertEqual(selected_set_requirements(source), expected)
+        for bad in ((("a", 3), ("b", 1), ("c", 1)), (("a", 2),),
+                    (("a", 2), ("a", 2)), (("a", 4), ("b", 2))):
+            with self.assertRaises(GcsimOptimizerGoSelectedInputError):
+                selected_set_requirements(bad)
+
+    def test_mixed_packages_transport_both_sets_and_preserve_four_piece_wire(self) -> None:
+        wearers = (
+            SelectedBoundWearerInput("actor_b", (), (), (("z", 3), ("a", 2))),
+            SelectedBoundWearerInput("actor_a", (), (), (("four", 5),)),
+        )
+        rows = _request_wearers('actor_b add weapon="weapon_b";\nactor_a add weapon="weapon_a";', wearers)
+        self.assertEqual(rows[0]["selected_set_uid"], "four")
+        self.assertNotIn("selected_sets", rows[0])
+        self.assertNotIn("selected_set_uid", rows[1])
+        self.assertEqual(rows[1]["selected_sets"], [{"set_uid": "a", "count": 2}, {"set_uid": "z", "count": 2}])
+
     def test_energy_policy_is_idempotent(self) -> None:
         source = "options iteration=1 ignore_burst_energy=false;\ntarget lvl=100;\n"
         once = enforce_gcsim_optimizer_mvp_energy_policy(source)

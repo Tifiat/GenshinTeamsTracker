@@ -24,7 +24,13 @@ func CanonicalJSON(value any) ([]byte, error) {
 	if err := decoder.Decode(&generic); err != nil {
 		return nil, fmt.Errorf("decode contract for canonicalization: %w", err)
 	}
+	return encodeCanonicalJSON(generic)
+}
 
+// Values here have already been decoded with UseNumber. Encoding them
+// directly preserves the exact canonical contract without a second full
+// marshal/decode round trip for large engine graphs.
+func encodeCanonicalJSON(generic any) ([]byte, error) {
 	var buffer bytes.Buffer
 	encoder := json.NewEncoder(&buffer)
 	encoder.SetEscapeHTML(false)
@@ -87,7 +93,7 @@ func canonicalizeRawJSON(data []byte) ([]byte, error) {
 	if err := decoder.Decode(&trailing); err != io.EOF {
 		return nil, fmt.Errorf("decode raw contract trailing data: %w", err)
 	}
-	return CanonicalJSON(generic)
+	return encodeCanonicalJSON(generic)
 }
 
 func DecodeRequest(data []byte) (OptimizerRequest, error) {

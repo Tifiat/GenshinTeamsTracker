@@ -1,0 +1,4888 @@
+{
+  "schema_version": 1,
+  "scope": "Ordered callback/producer ownership samples; not full dependency acceptance",
+  "samples": [
+    {
+      "case": "bloom_kukishinobu_buffed",
+      "member": {
+        "seed": 742031889,
+        "duration_ms": 93650,
+        "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41",
+        "nodes": [
+          {
+            "node_id": 1,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 2,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 3,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 4,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 5,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 6,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 7,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1410.712"
+          },
+          {
+            "node_id": 8,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.em"
+          },
+          {
+            "node_id": 9,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 7,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 8,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 10,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 11,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 12,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 10,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 11,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 13,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 1,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 12,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 14,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 9,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 13,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 15,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 16,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 17,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 15,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 16,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 18,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 2,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 17,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 19,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 14,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 18,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 20,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 21,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 22,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 20,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 21,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 23,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 3,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 22,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 24,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 19,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 23,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 25,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 26,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 27,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 25,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 26,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 28,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 4,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 27,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 29,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 24,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 28,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 30,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 31,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 32,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 30,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 31,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 33,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 5,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 32,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 34,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 29,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 33,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 35,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 36,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 37,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 35,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 36,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 38,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 6,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 37,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 39,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 34,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 38,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 40,
+            "operation": "constant",
+            "inputs": [],
+            "value": "4.99968"
+          },
+          {
+            "node_id": 41,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 39,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 40,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 42,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 43,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 39,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 42,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 44,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1350.5764"
+          },
+          {
+            "node_id": 45,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "kukishinobu.em"
+          },
+          {
+            "node_id": 46,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 44,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 45,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 47,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1446.8535"
+          },
+          {
+            "node_id": 48,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 49,
+            "operation": "constant",
+            "inputs": [],
+            "value": "16"
+          },
+          {
+            "node_id": 50,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 46,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 49,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 51,
+            "operation": "constant",
+            "inputs": [],
+            "value": "2000"
+          },
+          {
+            "node_id": 52,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 46,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 51,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 53,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 54,
+            "operation": "power",
+            "inputs": [
+              {
+                "node_id": 52,
+                "relation": "base"
+              },
+              {
+                "node_id": 53,
+                "relation": "exponent"
+              }
+            ]
+          },
+          {
+            "node_id": 55,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 50,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 54,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 56,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 48,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 55,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 57,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 47,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 56,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 58,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 59,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 60,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 61,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 62,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 63,
+            "operation": "max",
+            "inputs": [
+              {
+                "node_id": 58,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 62,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 64,
+            "operation": "min",
+            "inputs": [
+              {
+                "node_id": 61,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 63,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 65,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 59,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 64,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 66,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 60,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 65,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 67,
+            "operation": "constant",
+            "inputs": [],
+            "value": "3"
+          },
+          {
+            "node_id": 68,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 57,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 67,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 69,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 41,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 68,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 70,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 43,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 69,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 71,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 72,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 73,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.225"
+          },
+          {
+            "node_id": 74,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 75,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 76,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 66,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 70,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 71,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 72,
+                "relation": "input/000003"
+              },
+              {
+                "node_id": 73,
+                "relation": "input/000004"
+              },
+              {
+                "node_id": 74,
+                "relation": "input/000005"
+              },
+              {
+                "node_id": 75,
+                "relation": "input/000006"
+              }
+            ]
+          }
+        ],
+        "channels": [
+          {
+            "channel_id": "hit/000131",
+            "kind": "reaction",
+            "actor_key": "kukishinobu",
+            "attack_tag": "tag/23",
+            "damage_type": "dendro",
+            "root_node_id": 76,
+            "hit_count": 1,
+            "baseline_damage": "48249.93170204592",
+            "response_coordinates": [
+              "kukishinobu.em",
+              "lauma.em"
+            ]
+          }
+        ],
+        "opaque_boundaries": []
+      },
+      "checks": [
+        {
+          "deltas": {
+            "columbina.hp_percent": 0.2
+          },
+          "engine_expected_damage": "48249.93170204592"
+        },
+        {
+          "deltas": {
+            "lauma.em": 187
+          },
+          "engine_expected_damage": "49395.23339804592"
+        },
+        {
+          "deltas": {
+            "kukishinobu.em": 187
+          },
+          "engine_expected_damage": "50934.33729086159"
+        }
+      ]
+    },
+    {
+      "case": "bloom_kukishinobu_unbuffed",
+      "member": {
+        "seed": 742031889,
+        "duration_ms": 93650,
+        "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41",
+        "nodes": [
+          {
+            "node_id": 1,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1100.5764"
+          },
+          {
+            "node_id": 2,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "kukishinobu.em"
+          },
+          {
+            "node_id": 3,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 1,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 2,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 4,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1446.8535"
+          },
+          {
+            "node_id": 5,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 6,
+            "operation": "constant",
+            "inputs": [],
+            "value": "16"
+          },
+          {
+            "node_id": 7,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 3,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 6,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 8,
+            "operation": "constant",
+            "inputs": [],
+            "value": "2000"
+          },
+          {
+            "node_id": 9,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 3,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 8,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 10,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 11,
+            "operation": "power",
+            "inputs": [
+              {
+                "node_id": 9,
+                "relation": "base"
+              },
+              {
+                "node_id": 10,
+                "relation": "exponent"
+              }
+            ]
+          },
+          {
+            "node_id": 12,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 7,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 11,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 13,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 5,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 12,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 14,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 4,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 13,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 15,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 16,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 17,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 18,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 19,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 20,
+            "operation": "max",
+            "inputs": [
+              {
+                "node_id": 15,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 19,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 21,
+            "operation": "min",
+            "inputs": [
+              {
+                "node_id": 18,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 20,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 22,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 16,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 21,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 23,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 17,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 22,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 24,
+            "operation": "constant",
+            "inputs": [],
+            "value": "3"
+          },
+          {
+            "node_id": 25,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 26,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 27,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.225"
+          },
+          {
+            "node_id": 28,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 29,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 30,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 14,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 23,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 24,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 25,
+                "relation": "input/000003"
+              },
+              {
+                "node_id": 26,
+                "relation": "input/000004"
+              },
+              {
+                "node_id": 27,
+                "relation": "input/000005"
+              },
+              {
+                "node_id": 28,
+                "relation": "input/000006"
+              },
+              {
+                "node_id": 29,
+                "relation": "input/000007"
+              }
+            ]
+          }
+        ],
+        "channels": [
+          {
+            "channel_id": "hit/000084",
+            "kind": "reaction",
+            "actor_key": "kukishinobu",
+            "attack_tag": "tag/23",
+            "damage_type": "dendro",
+            "root_node_id": 30,
+            "hit_count": 1,
+            "baseline_damage": "35515.28835958648",
+            "response_coordinates": [
+              "kukishinobu.em"
+            ]
+          }
+        ],
+        "opaque_boundaries": []
+      },
+      "checks": [
+        {
+          "deltas": {
+            "columbina.hp_percent": 0.2
+          },
+          "engine_expected_damage": "35515.28835958648"
+        },
+        {
+          "deltas": {
+            "lauma.em": 187
+          },
+          "engine_expected_damage": "35515.28835958648"
+        },
+        {
+          "deltas": {
+            "kukishinobu.em": 187
+          },
+          "engine_expected_damage": "38636.729831758756"
+        }
+      ]
+    },
+    {
+      "case": "bloom_columbina_direct",
+      "member": {
+        "seed": 742031889,
+        "duration_ms": 93650,
+        "topology_sha256": "31e62f305e9f0a067062632365819112d14c4e340c4a872b473c738957dafe41",
+        "nodes": [
+          {
+            "node_id": 1,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.56"
+          },
+          {
+            "node_id": 2,
+            "operation": "constant",
+            "inputs": [],
+            "value": "70"
+          },
+          {
+            "node_id": 3,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 4,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 5,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 6,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 7,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 8,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.15000000000000002"
+          },
+          {
+            "node_id": 9,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.56"
+          },
+          {
+            "node_id": 10,
+            "operation": "constant",
+            "inputs": [],
+            "value": "14695.093175999998"
+          },
+          {
+            "node_id": 11,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.56"
+          },
+          {
+            "node_id": 12,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "columbina.hp_percent"
+          },
+          {
+            "node_id": 13,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 11,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 12,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 14,
+            "operation": "constant",
+            "inputs": [],
+            "value": "5646"
+          },
+          {
+            "node_id": 15,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "columbina.hp"
+          },
+          {
+            "node_id": 16,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 14,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 15,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 17,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.56"
+          },
+          {
+            "node_id": 18,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 19,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 17,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 18,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 20,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 9,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 19,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 21,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 13,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 20,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 22,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 23,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 21,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 22,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 24,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 10,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 23,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 25,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 16,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 24,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 26,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1000"
+          },
+          {
+            "node_id": 27,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 28,
+            "operation": "power",
+            "inputs": [
+              {
+                "node_id": 26,
+                "relation": "base"
+              },
+              {
+                "node_id": 27,
+                "relation": "exponent"
+              }
+            ]
+          },
+          {
+            "node_id": 29,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 25,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 28,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 30,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.002"
+          },
+          {
+            "node_id": 31,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 29,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 30,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 32,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.07"
+          },
+          {
+            "node_id": 33,
+            "operation": "min",
+            "inputs": [
+              {
+                "node_id": 31,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 32,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 34,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 35,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 36,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 37,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 38,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 39,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 40,
+            "operation": "constant",
+            "inputs": [],
+            "value": "250"
+          },
+          {
+            "node_id": 41,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1660.712"
+          },
+          {
+            "node_id": 42,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.em"
+          },
+          {
+            "node_id": 43,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 41,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 42,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 44,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 45,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 46,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 44,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 45,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 47,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 34,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 46,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 48,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 43,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 47,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 49,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 50,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 51,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 49,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 50,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 52,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 35,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 51,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 53,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 48,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 52,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 54,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 55,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 56,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 54,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 55,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 57,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 36,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 56,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 58,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 53,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 57,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 59,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 60,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 61,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 59,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 60,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 62,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 37,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 61,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 63,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 58,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 62,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 64,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 65,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 66,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 64,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 65,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 67,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 38,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 66,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 68,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 63,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 67,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 69,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 70,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 71,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 69,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 70,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 72,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 39,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 71,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 73,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 68,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 72,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 74,
+            "operation": "constant",
+            "inputs": [],
+            "value": "250"
+          },
+          {
+            "node_id": 75,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 76,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 74,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 75,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 77,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 40,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 76,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 78,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 73,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 77,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 79,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.000175"
+          },
+          {
+            "node_id": 80,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 78,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 79,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 81,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.14"
+          },
+          {
+            "node_id": 82,
+            "operation": "min",
+            "inputs": [
+              {
+                "node_id": 80,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 81,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 83,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 84,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 85,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 86,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 87,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 88,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 89,
+            "operation": "constant",
+            "inputs": [],
+            "value": "250"
+          },
+          {
+            "node_id": 90,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1660.712"
+          },
+          {
+            "node_id": 91,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "lauma.em"
+          },
+          {
+            "node_id": 92,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 90,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 91,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 93,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 94,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 95,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 93,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 94,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 96,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 83,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 95,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 97,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 92,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 96,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 98,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 99,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 100,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 98,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 99,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 101,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 84,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 100,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 102,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 97,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 101,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 103,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 104,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 105,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 103,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 104,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 106,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 85,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 105,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 107,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 102,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 106,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 108,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 109,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 110,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 108,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 109,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 111,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 86,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 110,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 112,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 107,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 111,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 113,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 114,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 115,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 113,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 114,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 116,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 87,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 115,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 117,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 112,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 116,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 118,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 119,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 120,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 118,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 119,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 121,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 88,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 120,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 122,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 117,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 121,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 123,
+            "operation": "constant",
+            "inputs": [],
+            "value": "250"
+          },
+          {
+            "node_id": 124,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 125,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 123,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 124,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 126,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 89,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 125,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 127,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 122,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 126,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 128,
+            "operation": "constant",
+            "inputs": [],
+            "value": "4.00032"
+          },
+          {
+            "node_id": 129,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 127,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 128,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 130,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 131,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 127,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 130,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 132,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.2"
+          },
+          {
+            "node_id": 133,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.1"
+          },
+          {
+            "node_id": 134,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.56"
+          },
+          {
+            "node_id": 135,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 136,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 134,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 135,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 137,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 1,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 136,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 138,
+            "operation": "constant",
+            "inputs": [],
+            "value": "70"
+          },
+          {
+            "node_id": 139,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 140,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 138,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 139,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 141,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 2,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 140,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 142,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 143,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 144,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 142,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 143,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 145,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 3,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 144,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 146,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 147,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 148,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 146,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 147,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 149,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 4,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 148,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 150,
+            "operation": "constant",
+            "inputs": [],
+            "value": "30"
+          },
+          {
+            "node_id": 151,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 152,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 150,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 151,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 153,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 5,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 152,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 154,
+            "operation": "constant",
+            "inputs": [],
+            "value": "20"
+          },
+          {
+            "node_id": 155,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 156,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 154,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 155,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 157,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 6,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 156,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 158,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 159,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 160,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 158,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 159,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 161,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 7,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 160,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 162,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.15000000000000002"
+          },
+          {
+            "node_id": 163,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 164,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 162,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 163,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 165,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 8,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 164,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 166,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.10000000000000009"
+          },
+          {
+            "node_id": 167,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 168,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 166,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 167,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 169,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 133,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 168,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 170,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.20000000000000018"
+          },
+          {
+            "node_id": 171,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 172,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 170,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 171,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 173,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 132,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 172,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 174,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 165,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 169,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 175,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 141,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 145,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 149,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 153,
+                "relation": "input/000003"
+              },
+              {
+                "node_id": 157,
+                "relation": "input/000004"
+              },
+              {
+                "node_id": 161,
+                "relation": "input/000005"
+              }
+            ]
+          },
+          {
+            "node_id": 176,
+            "operation": "constant",
+            "inputs": [],
+            "value": "28570.34535456"
+          },
+          {
+            "node_id": 177,
+            "operation": "constant",
+            "inputs": [],
+            "value": "14695.093175999998"
+          },
+          {
+            "node_id": 178,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "columbina.hp_percent"
+          },
+          {
+            "node_id": 179,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 177,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 178,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 180,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "columbina.hp"
+          },
+          {
+            "node_id": 181,
+            "operation": "constant",
+            "inputs": [],
+            "value": "14695.093175999998"
+          },
+          {
+            "node_id": 182,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 137,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 181,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 183,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 176,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 179,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 180,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 182,
+                "relation": "input/000003"
+              }
+            ]
+          },
+          {
+            "node_id": 184,
+            "operation": "constant",
+            "inputs": [],
+            "value": "690"
+          },
+          {
+            "node_id": 185,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "columbina.em"
+          },
+          {
+            "node_id": 186,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 184,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 185,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 187,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 175,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 186,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 188,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 189,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 129,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 188,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 190,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 131,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 189,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 191,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.025344"
+          },
+          {
+            "node_id": 192,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 193,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 33,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 192,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 194,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 82,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 193,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 195,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 196,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.7267064"
+          },
+          {
+            "node_id": 197,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 198,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.225"
+          },
+          {
+            "node_id": 199,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 200,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 201,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 183,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 191,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 202,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 203,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 194,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 202,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 204,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 201,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 203,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 205,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 195,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 204,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 206,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 207,
+            "operation": "constant",
+            "inputs": [],
+            "value": "6"
+          },
+          {
+            "node_id": 208,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 187,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 207,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 209,
+            "operation": "constant",
+            "inputs": [],
+            "value": "2000"
+          },
+          {
+            "node_id": 210,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 187,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 209,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 211,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 212,
+            "operation": "power",
+            "inputs": [
+              {
+                "node_id": 210,
+                "relation": "base"
+              },
+              {
+                "node_id": 211,
+                "relation": "exponent"
+              }
+            ]
+          },
+          {
+            "node_id": 213,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 208,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 212,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 214,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 206,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 213,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 215,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 196,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 214,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 216,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 205,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 215,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 217,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 190,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 216,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 218,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 197,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 217,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 219,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 198,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 218,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 220,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 199,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 219,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 221,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 222,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 200,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 221,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 223,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 220,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 222,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 224,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.15952"
+          },
+          {
+            "node_id": 225,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "columbina.crit_rate"
+          },
+          {
+            "node_id": 226,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 224,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 225,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 227,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 174,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 226,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 228,
+            "operation": "constant",
+            "inputs": [],
+            "value": "2.0220000000000002"
+          },
+          {
+            "node_id": 229,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "columbina.crit_damage"
+          },
+          {
+            "node_id": 230,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 228,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 229,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 231,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 173,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 230,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 232,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 233,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 234,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 235,
+            "operation": "max",
+            "inputs": [
+              {
+                "node_id": 227,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 234,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 236,
+            "operation": "min",
+            "inputs": [
+              {
+                "node_id": 233,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 235,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 237,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 231,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 236,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 238,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 232,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 237,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 239,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 223,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 238,
+                "relation": "input/000001"
+              }
+            ]
+          }
+        ],
+        "channels": [
+          {
+            "channel_id": "hit/000351",
+            "kind": "reaction",
+            "actor_key": "columbina",
+            "attack_tag": "tag/31",
+            "damage_type": "dendro",
+            "root_node_id": 239,
+            "hit_count": 1,
+            "baseline_damage": "35073.13742446806",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "lauma.em"
+            ]
+          }
+        ],
+        "opaque_boundaries": []
+      },
+      "checks": [
+        {
+          "deltas": {
+            "columbina.hp_percent": 0.2
+          },
+          "engine_expected_damage": "36207.92644412214"
+        },
+        {
+          "deltas": {
+            "lauma.em": 187
+          },
+          "engine_expected_damage": "37842.41754915607"
+        },
+        {
+          "deltas": {
+            "kukishinobu.em": 187
+          },
+          "engine_expected_damage": "35073.13742446806"
+        }
+      ]
+    },
+    {
+      "case": "flins_1_flins_direct",
+      "member": {
+        "seed": 742031889,
+        "duration_ms": 114983,
+        "topology_sha256": "33f2d3b0fa066452a31edd4719b174bd496ebf5943556e4a57bd43b8c54e18c5",
+        "nodes": [
+          {
+            "node_id": 1,
+            "operation": "constant",
+            "inputs": [],
+            "value": "160"
+          },
+          {
+            "node_id": 2,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 3,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 4,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 5,
+            "operation": "constant",
+            "inputs": [],
+            "value": "204.1024"
+          },
+          {
+            "node_id": 6,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.3"
+          },
+          {
+            "node_id": 7,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.28"
+          },
+          {
+            "node_id": 8,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.14"
+          },
+          {
+            "node_id": 9,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.14"
+          },
+          {
+            "node_id": 10,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.56"
+          },
+          {
+            "node_id": 11,
+            "operation": "constant",
+            "inputs": [],
+            "value": "14695.093175999998"
+          },
+          {
+            "node_id": 12,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.56"
+          },
+          {
+            "node_id": 13,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "columbina.hp_percent"
+          },
+          {
+            "node_id": 14,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 12,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 13,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 15,
+            "operation": "constant",
+            "inputs": [],
+            "value": "5497"
+          },
+          {
+            "node_id": 16,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "columbina.hp"
+          },
+          {
+            "node_id": 17,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 15,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 16,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 18,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.56"
+          },
+          {
+            "node_id": 19,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 20,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 18,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 19,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 21,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 10,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 20,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 22,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 14,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 21,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 23,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 24,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 22,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 23,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 25,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 11,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 24,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 26,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 17,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 25,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 27,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1000"
+          },
+          {
+            "node_id": 28,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 29,
+            "operation": "power",
+            "inputs": [
+              {
+                "node_id": 27,
+                "relation": "base"
+              },
+              {
+                "node_id": 28,
+                "relation": "exponent"
+              }
+            ]
+          },
+          {
+            "node_id": 30,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 26,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 29,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 31,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.002"
+          },
+          {
+            "node_id": 32,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 30,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 31,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 33,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.07"
+          },
+          {
+            "node_id": 34,
+            "operation": "min",
+            "inputs": [
+              {
+                "node_id": 32,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 33,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 35,
+            "operation": "constant",
+            "inputs": [],
+            "value": "160"
+          },
+          {
+            "node_id": 36,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 37,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 35,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 36,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 38,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 1,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 37,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 39,
+            "operation": "constant",
+            "inputs": [],
+            "value": "80"
+          },
+          {
+            "node_id": 40,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 41,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 39,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 40,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 42,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 2,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 41,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 43,
+            "operation": "constant",
+            "inputs": [],
+            "value": "120"
+          },
+          {
+            "node_id": 44,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 45,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 43,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 44,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 46,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 3,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 45,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 47,
+            "operation": "constant",
+            "inputs": [],
+            "value": "50"
+          },
+          {
+            "node_id": 48,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 49,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 47,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 48,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 50,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 4,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 49,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 51,
+            "operation": "constant",
+            "inputs": [],
+            "value": "204.1024"
+          },
+          {
+            "node_id": 52,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 53,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 51,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 52,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 54,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 5,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 53,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 55,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.3"
+          },
+          {
+            "node_id": 56,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 57,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 55,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 56,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 58,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 6,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 57,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 59,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.28"
+          },
+          {
+            "node_id": 60,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 61,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 59,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 60,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 62,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 7,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 61,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 63,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 38,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 42,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 46,
+                "relation": "input/000002"
+              },
+              {
+                "node_id": 50,
+                "relation": "input/000003"
+              },
+              {
+                "node_id": 54,
+                "relation": "input/000004"
+              }
+            ]
+          },
+          {
+            "node_id": 64,
+            "operation": "constant",
+            "inputs": [],
+            "value": "2036.6754561776"
+          },
+          {
+            "node_id": 65,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1025.9267656"
+          },
+          {
+            "node_id": 66,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "flins.atk_percent"
+          },
+          {
+            "node_id": 67,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 65,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 66,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 68,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "flins.atk"
+          },
+          {
+            "node_id": 69,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 64,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 67,
+                "relation": "input/000001"
+              },
+              {
+                "node_id": 68,
+                "relation": "input/000002"
+              }
+            ]
+          },
+          {
+            "node_id": 70,
+            "operation": "constant",
+            "inputs": [],
+            "value": "950.1024"
+          },
+          {
+            "node_id": 71,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "flins.em"
+          },
+          {
+            "node_id": 72,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 70,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 71,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 73,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 63,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 72,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 74,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 75,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.870848"
+          },
+          {
+            "node_id": 76,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 77,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 8,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 76,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 78,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 9,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 77,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 79,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 34,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 78,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 80,
+            "operation": "constant",
+            "inputs": [],
+            "value": "3"
+          },
+          {
+            "node_id": 81,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.7896152"
+          },
+          {
+            "node_id": 82,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 83,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1.15"
+          },
+          {
+            "node_id": 84,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 85,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 86,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 69,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 75,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 87,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 88,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 79,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 87,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 89,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 86,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 88,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 90,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 80,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 89,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 91,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 92,
+            "operation": "constant",
+            "inputs": [],
+            "value": "6"
+          },
+          {
+            "node_id": 93,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 73,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 92,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 94,
+            "operation": "constant",
+            "inputs": [],
+            "value": "2000"
+          },
+          {
+            "node_id": 95,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 73,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 94,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 96,
+            "operation": "constant",
+            "inputs": [],
+            "value": "-1"
+          },
+          {
+            "node_id": 97,
+            "operation": "power",
+            "inputs": [
+              {
+                "node_id": 95,
+                "relation": "base"
+              },
+              {
+                "node_id": 96,
+                "relation": "exponent"
+              }
+            ]
+          },
+          {
+            "node_id": 98,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 93,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 97,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 99,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 91,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 98,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 100,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 81,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 99,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 101,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 90,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 100,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 102,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 74,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 101,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 103,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 82,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 102,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 104,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 83,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 103,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 105,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 84,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 104,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 106,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 107,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 85,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 106,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 108,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 105,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 107,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 109,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0.9475119999999999"
+          },
+          {
+            "node_id": 110,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "flins.crit_rate"
+          },
+          {
+            "node_id": 111,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 109,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 110,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 112,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 58,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 111,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 113,
+            "operation": "constant",
+            "inputs": [],
+            "value": "2.4320000000000004"
+          },
+          {
+            "node_id": 114,
+            "operation": "artifact_stat",
+            "inputs": [],
+            "coordinate": "flins.crit_damage"
+          },
+          {
+            "node_id": 115,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 113,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 114,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 116,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 62,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 115,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 117,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 118,
+            "operation": "constant",
+            "inputs": [],
+            "value": "1"
+          },
+          {
+            "node_id": 119,
+            "operation": "constant",
+            "inputs": [],
+            "value": "0"
+          },
+          {
+            "node_id": 120,
+            "operation": "max",
+            "inputs": [
+              {
+                "node_id": 112,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 119,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 121,
+            "operation": "min",
+            "inputs": [
+              {
+                "node_id": 118,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 120,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 122,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 116,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 121,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 123,
+            "operation": "add",
+            "inputs": [
+              {
+                "node_id": 117,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 122,
+                "relation": "input/000001"
+              }
+            ]
+          },
+          {
+            "node_id": 124,
+            "operation": "multiply",
+            "inputs": [
+              {
+                "node_id": 108,
+                "relation": "input/000000"
+              },
+              {
+                "node_id": 123,
+                "relation": "input/000001"
+              }
+            ]
+          }
+        ],
+        "channels": [
+          {
+            "channel_id": "hit/000061",
+            "kind": "reaction",
+            "actor_key": "flins",
+            "attack_tag": "tag/30",
+            "damage_type": "electro",
+            "root_node_id": 124,
+            "hit_count": 1,
+            "baseline_damage": "274200.3176412116",
+            "response_coordinates": [
+              "columbina.hp",
+              "columbina.hp_percent",
+              "flins.atk",
+              "flins.atk_percent",
+              "flins.crit_damage",
+              "flins.crit_rate",
+              "flins.em"
+            ]
+          }
+        ],
+        "opaque_boundaries": []
+      },
+      "checks": [
+        {
+          "deltas": {
+            "columbina.hp_percent": 0.2
+          },
+          "engine_expected_damage": "275405.9641229197"
+        }
+      ]
+    }
+  ]
+}

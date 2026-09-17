@@ -45,6 +45,20 @@ class GcsimSelectedTeamConfigTest(unittest.TestCase):
         self.assertNotIn("prepared_fixture_adapter_boundary", report.warnings)
         self.assertNotIn("no_ui_or_storage_access", report.warnings)
 
+    def test_stale_selected_character_mapping_cannot_override_account_identity(self) -> None:
+        with seeded_account_config_db() as db_path:
+            for stale_key, stale_status in (("", "missing"), ("notfurina", "ready")):
+                with self.subTest(key=stale_key, status=stale_status):
+                    selected = _selected_team(10000089, "Furina")
+                    selected["slots"][0]["character"].update(
+                        gcsim_character_key=stale_key, gcsim_character_key_status=stale_status)
+                    result = build_selected_team_payload(
+                        db_path=db_path, selected_team=selected,
+                        artifact_set_registry_source=db_path.artifact_set_registry_source)
+                    self.assertTrue(result.ready)
+                    self.assertEqual(result.characters[0].account_character["gcsim_character_key"], "furina")
+                    self.assertEqual(result.characters[0].account_character["gcsim_character_key_status"], "ready")
+
     def test_selected_team_does_not_choose_dev_weapon_candidate(self) -> None:
         with seeded_account_config_db() as db_path:
             result = build_selected_team_payload(

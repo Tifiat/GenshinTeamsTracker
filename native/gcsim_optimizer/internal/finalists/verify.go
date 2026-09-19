@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"genshinteamstracker/native/gcsim_optimizer/internal/domain"
 	"genshinteamstracker/native/gcsim_optimizer/internal/engineclient"
 	"genshinteamstracker/native/gcsim_optimizer/internal/search"
+	"genshinteamstracker/native/gcsim_optimizer/internal/setcontext"
 )
 
 type MeasuredCandidate struct {
@@ -35,14 +37,25 @@ type MeasuredCandidate struct {
 }
 
 type VerificationResult struct {
-	Candidates     []MeasuredCandidate   `json:"candidates"`
-	Winner         MeasuredCandidate     `json:"winner"`
-	Iterations     int                   `json:"iterations"`
-	Workers        int                   `json:"workers,omitempty"`
-	Parallelism    int                   `json:"parallelism,omitempty"`
-	Waves          []VerificationWave    `json:"waves,omitempty"`
-	Adaptive       *AdaptiveVerification `json:"adaptive,omitempty"`
-	TotalElapsedMS float64               `json:"total_elapsed_ms"`
+	Candidates           []MeasuredCandidate   `json:"candidates"`
+	Winner               MeasuredCandidate     `json:"winner"`
+	Iterations           int                   `json:"iterations"`
+	Workers              int                   `json:"workers,omitempty"`
+	Parallelism          int                   `json:"parallelism,omitempty"`
+	Waves                []VerificationWave    `json:"waves,omitempty"`
+	Adaptive             *AdaptiveVerification `json:"adaptive,omitempty"`
+	EnergyRejectedSHA256 []string              `json:"energy_rejected_sha256,omitempty"`
+	TotalElapsedMS       float64               `json:"total_elapsed_ms"`
+}
+
+type NoEnergyFeasibleFinalistError struct {
+	AssignmentSHA256 []string
+	MaximumShortage  float64
+	ElapsedMS        float64
+}
+
+func (err *NoEnergyFeasibleFinalistError) Error() string {
+	return fmt.Sprintf("no finalist completed the intended rotation with finite energy (maximum shortage %.6f)", err.MaximumShortage)
 }
 
 type VerificationWave struct {
@@ -96,6 +109,10 @@ func VerifyWithRenderer(ctx context.Context, request contracts.OptimizerRequest,
 	if err != nil {
 		return output, err
 	}
+	ignoreBurstEnergy, err := setcontext.IgnoreBurstEnergy(request.Context.PreparedConfig.Text)
+	if err != nil {
+		return output, fmt.Errorf("finalist energy policy: %w", err)
+	}
 	started := time.Now()
 	prepared := make([]preparedCandidate, 0, len(candidates))
 	seen := make(map[domain.Assignment]struct{}, len(candidates))
@@ -123,6 +140,8 @@ func VerifyWithRenderer(ctx context.Context, request contracts.OptimizerRequest,
 	runContext, cancel := context.WithCancel(ctx)
 	defer cancel()
 	rows := make([]MeasuredCandidate, len(prepared))
+	valid := make([]bool, len(prepared))
+	energyShortages := make([]float64, len(prepared))
 	jobs := make(chan preparedCandidate)
 	errChannel := make(chan error, 1)
 	var workersGroup sync.WaitGroup
@@ -148,6 +167,10 @@ func VerifyWithRenderer(ctx context.Context, request contracts.OptimizerRequest,
 					}
 					continue
 				}
+				if !ignoreBurstEnergy && measured.InsufficientEnergyMax > 0 {
+					energyShortages[item.rank] = measured.InsufficientEnergyMax
+					continue
+				}
 				candidate := item.candidate
 				rows[item.rank] = MeasuredCandidate{
 					Rank: item.rank + 1, Source: candidate.Source, Assignment: candidate.Assignment,
@@ -157,6 +180,7 @@ func VerifyWithRenderer(ctx context.Context, request contracts.OptimizerRequest,
 					ElapsedMS: measured.ElapsedMS, ConfigSHA256: measured.ConfigSHA256,
 					EngineResultSHA256: measured.EngineResultSHA256,
 				}
+				valid[item.rank] = true
 			}
 		}()
 	}
@@ -183,7 +207,37 @@ func VerifyWithRenderer(ctx context.Context, request contracts.OptimizerRequest,
 	if err := runContext.Err(); err != nil {
 		return output, err
 	}
-	measuredOrder := append([]MeasuredCandidate(nil), rows...)
+	identities := make([]string, len(prepared))
+	for index, item := range prepared {
+		identities[index] = item.identity
+	}
+	return finalizeVerificationRows(rows, valid, energyShortages, identities, iterations, workers, parallelism, float64(time.Since(started))/float64(time.Millisecond))
+}
+
+func finalizeVerificationRows(rows []MeasuredCandidate, valid []bool, shortages []float64, identities []string, iterations, workers, parallelism int, elapsedMS float64) (VerificationResult, error) {
+	var output VerificationResult
+	if len(rows) != len(valid) || len(rows) != len(shortages) || len(rows) != len(identities) {
+		return output, fmt.Errorf("finalist verification vectors have different lengths")
+	}
+	accepted := make([]MeasuredCandidate, 0, len(rows))
+	rejected := make([]string, 0)
+	maximumShortage := 0.0
+	for index, row := range rows {
+		if valid[index] {
+			accepted = append(accepted, row)
+			continue
+		}
+		if shortages[index] > 0 {
+			rejected = append(rejected, identities[index])
+			if shortages[index] > maximumShortage {
+				maximumShortage = shortages[index]
+			}
+		}
+	}
+	if len(accepted) == 0 {
+		return output, &NoEnergyFeasibleFinalistError{AssignmentSHA256: rejected, MaximumShortage: maximumShortage, ElapsedMS: elapsedMS}
+	}
+	measuredOrder := append([]MeasuredCandidate(nil), accepted...)
 	sort.Slice(measuredOrder, func(i, j int) bool {
 		if measuredOrder[i].MeasuredDPS != measuredOrder[j].MeasuredDPS {
 			return measuredOrder[i].MeasuredDPS > measuredOrder[j].MeasuredDPS
@@ -191,8 +245,8 @@ func VerifyWithRenderer(ctx context.Context, request contracts.OptimizerRequest,
 		return measuredOrder[i].AssignmentSHA256 < measuredOrder[j].AssignmentSHA256
 	})
 	output = VerificationResult{
-		Candidates: rows, Winner: measuredOrder[0], Iterations: iterations, Workers: workers, Parallelism: parallelism,
-		TotalElapsedMS: float64(time.Since(started)) / float64(time.Millisecond),
+		Candidates: accepted, Winner: measuredOrder[0], Iterations: iterations, Workers: workers, Parallelism: parallelism,
+		EnergyRejectedSHA256: rejected, TotalElapsedMS: elapsedMS,
 	}
 	return output, nil
 }
@@ -249,6 +303,8 @@ func VerifyDynamicWavesWithRenderer(ctx context.Context, request contracts.Optim
 	}
 	started := time.Now()
 	rows := make([]MeasuredCandidate, 0, len(candidates))
+	rejected := make([]string, 0)
+	maximumShortage := 0.0
 	waves := make([]VerificationWave, 0, len(plan))
 	for _, wave := range plan {
 		start := wave.StartRank - 1
@@ -256,17 +312,31 @@ func VerifyDynamicWavesWithRenderer(ctx context.Context, request contracts.Optim
 		waveRoot := filepath.Join(runRoot, fmt.Sprintf("wave-%02d", wave.Index))
 		result, err := VerifyWithRenderer(ctx, request, candidates[start:end], render, waveRoot, iterations, wave.Workers, wave.Parallelism)
 		if err != nil {
-			return output, fmt.Errorf("verify dynamic wave %d: %w", wave.Index, err)
+			var noEnergy *NoEnergyFeasibleFinalistError
+			if !errors.As(err, &noEnergy) {
+				return output, fmt.Errorf("verify dynamic wave %d: %w", wave.Index, err)
+			}
+			rejected = append(rejected, noEnergy.AssignmentSHA256...)
+			if noEnergy.MaximumShortage > maximumShortage {
+				maximumShortage = noEnergy.MaximumShortage
+			}
+			wave.TotalElapsedMS = noEnergy.ElapsedMS
+			waves = append(waves, wave)
+			continue
 		}
 		for _, row := range result.Candidates {
 			row.Rank += start
 			rows = append(rows, row)
 		}
+		rejected = append(rejected, result.EnergyRejectedSHA256...)
 		wave.TotalElapsedMS = result.TotalElapsedMS
 		waves = append(waves, wave)
 	}
-	if len(rows) != len(candidates) {
-		return output, fmt.Errorf("dynamic finalist result count %d does not match input %d", len(rows), len(candidates))
+	if len(rows)+len(rejected) != len(candidates) {
+		return output, fmt.Errorf("dynamic finalist result coverage %d does not match input %d", len(rows)+len(rejected), len(candidates))
+	}
+	if len(rows) == 0 {
+		return output, &NoEnergyFeasibleFinalistError{AssignmentSHA256: rejected, MaximumShortage: maximumShortage, ElapsedMS: float64(time.Since(started)) / float64(time.Millisecond)}
 	}
 	measuredOrder := append([]MeasuredCandidate(nil), rows...)
 	sort.Slice(measuredOrder, func(i, j int) bool {
@@ -277,7 +347,8 @@ func VerifyDynamicWavesWithRenderer(ctx context.Context, request contracts.Optim
 	})
 	return VerificationResult{
 		Candidates: rows, Winner: measuredOrder[0], Iterations: iterations, Waves: waves,
-		TotalElapsedMS: float64(time.Since(started)) / float64(time.Millisecond),
+		EnergyRejectedSHA256: rejected,
+		TotalElapsedMS:       float64(time.Since(started)) / float64(time.Millisecond),
 	}, nil
 }
 

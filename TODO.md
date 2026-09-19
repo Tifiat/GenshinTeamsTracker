@@ -17,51 +17,36 @@ Cleanup ownership: `docs/handoff/GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST
 The checkpoint owns current acceptance and failure evidence; do not duplicate
 its changing metrics or infer UI acceptance from backend results.
 
-- [ ] **Next N1:** All Sets efficiency/quality after bounded N0 storage recovery;
-  **N2** shared handler-path regressions and gated cleanup; **N3** Theory;
-  **N4** energy; **N5** readable rotation editor; **N6** other feasible TODO,
-  excluding History Browser. Start from the saved Jahoda review. The optimizer
-  handoff's "Overnight execution contract" owns the temporary one-agent,
-  blocker-parking and handler-verification exceptions; user start only.
-  no subagent started. Cleanup and archive verification are recorded in the
-  checkpoint. Preserve the bounded evidence archive, expanded N1 inputs and
-  dirty worktree; do not recreate all retired scratch for the next benchmark.
-  This replaces UI-first work order, not actual UI acceptance requirements.
+- [ ] **Next: resolve the diagnosed ranking-quality boundaries.** Gaming's
+  two-seed Melt schedule overrepresents reacted plunges relative to ordinary
+  n=500, so identify a bounded, representative proposal gate without moving
+  n=500 simulation into every candidate. Compare one controlled alternative for
+  the dated inactive-set examples before excluding any physically strong pieces;
+  display why an inactive 4p was retained if raw stats win. Theory's 32-package
+  shortlist and 40-context/300s cap return labeled partial results and may
+  leave a wearer without a distinguished set. The finite-energy Theory button
+  now fails clearly rather than ignoring energy; design its actual ER-aware
+  farming guidance as a separate gate. Dated evidence:
+  `docs/handoff/GCSIM_OPTIMIZER_ARCHETYPE_AUDIT_20260919.md`.
 - [ ] **Remaining combined UI acceptance:** user-confirmed All Sets completion
-  and seven-page navigation do not accept Selected2+2/Save/cancel/preservation.
-  After restart check AppShell Selected with equipped2+2, preserved pairs,
-  finalist pages/save and unchanged live equipment. Milestone reminder delivered.
-  Do not repeat the accepted Jahoda full run as a startup check. Evidence and
-  backend/visible-UI limits belong to the checkpoint.
+  and the new real three-mode Chasca click do not accept Selected2+2/Save/
+  cancel/preservation. Check Selected with equipped2+2, preserved pairs,
+  finalist pages/save and unchanged live equipment. A physical All Sets click
+  with a virtual character lacking a saved build is still separate from its
+  passing button-routing test and 14 virtual backend runs. Do not repeat the
+  accepted Jahoda full run as a startup check. The rotation editor is deferred.
 - [ ] After this UI gate, complete mandatory All Sets area cleanup: remove
   consolidated research deltas and disposable capture/overlay copies, retaining
   permanent receipts, active/pinned rollback and the deployment backup until
   rollback is no longer needed. Do not leave a second production patch stack.
-- [ ] **N1: bounded All Sets efficiency and quality:**
-  Jahoda user run hit the search deadline after five contexts, with55 proposals
-  pending. Prioritize feasible, team-promising sets before deep artifact search;
-  allocate effort by promise, not equally. Distinguish exploratory representatives
-  from global Top-N. Measure speed versus incumbent quality on saved/reduced
-  controls. Revisit the n128 screen only with an
-  explicit quality/budget comparison; no speculative search-budget expansion.
 - [ ] Extend account-level acceptance alongside these stages by mechanism, one
-  bounded fixture at a time. Eight public-config archetypes have controlled
-  formula coverage, not account-equipment DPS/search acceptance. General alias/
-  branch/schedule coverage remains partial; repair demonstrated losses.
+  bounded fixture at a time. Fourteen virtual-roster archetypes now have
+  All Sets/Theory product-session outcomes, but not 28 visible UI clicks,
+  account-equipment acceptance or complete stochastic branch/schedule proof.
+  Stellar Conduct lacks a found activation producer in the installed engine;
+  revisit when a reachable source exists. General opaque boundaries remain.
 - [ ] Separate GCSIM database config import after team gates; source/API
   discovery and parser/cache/attribution remain a separate scope.
-- [ ] **N3:** Theory/farming guidance using the future Go port of continuous-
-  target math; clearer unknown/frozen mechanic diagnostics.
-- [ ] **N4: energy support after All Sets and Theory (updated2026-09-17).** GOB-12 remains a label,
-  not an instruction to implement before All Sets. Do not modify the current
-  finite-energy diagnostic mode until that stage. Keep the single
-  `gcsim_boosted_energy_enabled` setting and its two synchronized UI views.
-  Finite-energy execution is currently diagnostic, not accepted ER-aware search.
-  Add a generic energy ledger, cumulative burst-deadline constraints in Go,
-  typed stat/HP/probability dependencies, bounded ordinary-engine finalist
-  checks and per-character ER/margin/source/uncertainty explanations.
-  Do not run GCSIM per candidate, average away event timing, or copy upstream
-  character-specific ER heuristics. Detailed contract is in the optimizer handoff.
 - [ ] Before MVP, re-audit every engine patch/seam then present, remove obsolete
   code and repeat clean apply/build/capability/cross-team semantic/rollback
   gates. Include normal updater relocation of generated absolute overlay paths

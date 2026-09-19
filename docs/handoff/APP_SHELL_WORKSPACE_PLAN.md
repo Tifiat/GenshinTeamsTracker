@@ -542,6 +542,21 @@ Current interaction rules:
   slot without compacting the remaining slots; the next new character fills the
   first empty gap in slot order. Clicking a new character while all slots are
   full does nothing.
+- Each of the four GCSIM Browser team cards can become a compact virtual-GCSIM
+  editor; the removed right-panel form is not a second editor. Searchable
+  character/compatible-weapon lists come only from the active installed engine
+  catalog. The three-row card exposes C0-C6, R1-R5 and character/weapon levels;
+  talents and weapon ascension live in a small profile popup. Character level
+  derives the highest legal ascension phase (`80` means `80/90`) and default
+  talents follow that phase, while remaining editable. The build popup keeps a
+  saved five-artifact stat build separate from the theoretical one-4p or
+  two-distinct-2p package. Installing an override clears that account slot only,
+  leaves other slots in place and never writes account equipment. Slot swaps
+  move the entire virtual profile, including build inputs, rather than clearing
+  it. A normal roster click still targets the first empty account slot; when
+  that position displays an override the UI asks before removing it. Account
+  weapon clicks are blocked. Existing local icon paths are used where present;
+  missing catalog art is shown as `?` rather than downloaded/generated.
 - Abyss and DPS Dummy keep independent in-memory `TeamBuilderState` selections
   inside `AppShellController`; switching tabs preserves each mode's picks until
   that mode is reset or changed.
@@ -582,6 +597,10 @@ Current interaction rules:
   `artifact_builds`, `artifact_build_slots`, or `artifact_build_targets`.
 - The right panel is refreshed through `RunRightPanelWidget.set_model(...)`
   after controller state changes.
+- Virtual overrides are intentionally omitted from ordinary Run Save/history
+  account-team snapshots. They are overlaid only for the live panel and the
+  selected-team GCSIM adapter; this prevents an absent account character from
+  being serialized as account truth.
 
 Equipment-state note:
 

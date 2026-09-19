@@ -1,0 +1,4875 @@
+{
+  "date": "2026-09-19",
+  "generated_state_removed_on_exit": true,
+  "manifest": "optimizer_virtual_archetype_mode_matrix_v1",
+  "runs": [
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 6469.0,
+        "mode": "theory",
+        "optimizer_process_ms": 300953.0,
+        "prepare_inputs_ms": 5343.0,
+        "request_preflight_ms": 63.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 312828.0
+      },
+      "archetype": "lunar_crystallize_dual_scale",
+      "characters": [
+        "navia",
+        "xilonen",
+        "ineffa",
+        "columbina"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 312827,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [
+        "crystallize",
+        "lunar_crystallize",
+        "atk",
+        "def",
+        "hp",
+        "em",
+        "multi_owner"
+      ],
+      "formula_witness": {
+        "channel_groups": [
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 338777.932817,
+            "channels": 66,
+            "damage_type": "geo",
+            "hits": 66,
+            "kind": "direct",
+            "response_coordinates": [
+              "navia.atk",
+              "navia.atk_percent",
+              "navia.crit_damage",
+              "navia.crit_rate",
+              "navia.damage_bonus",
+              "navia.geo_damage_bonus",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.damage_bonus",
+              "xilonen.def",
+              "xilonen.def_percent",
+              "xilonen.geo_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 1764.699815,
+            "channels": 2,
+            "damage_type": "physical",
+            "hits": 2,
+            "kind": "direct",
+            "response_coordinates": [
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.damage_bonus",
+              "ineffa.physical_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/2",
+            "baseline_damage": 5080.080985,
+            "channels": 2,
+            "damage_type": "hydro",
+            "hits": 2,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.atk",
+              "columbina.atk_percent",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 111408.259074,
+            "channels": 46,
+            "damage_type": "electro",
+            "hits": 46,
+            "kind": "direct",
+            "response_coordinates": [
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.damage_bonus",
+              "ineffa.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 709334.527883,
+            "channels": 23,
+            "damage_type": "geo",
+            "hits": 23,
+            "kind": "direct",
+            "response_coordinates": [
+              "navia.atk",
+              "navia.atk_percent",
+              "navia.crit_damage",
+              "navia.crit_rate",
+              "navia.damage_bonus",
+              "navia.geo_damage_bonus",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.damage_bonus",
+              "xilonen.def",
+              "xilonen.def_percent",
+              "xilonen.geo_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 150553.856914,
+            "channels": 45,
+            "damage_type": "hydro",
+            "hits": 45,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 39303.921928,
+            "channels": 2,
+            "damage_type": "electro",
+            "hits": 2,
+            "kind": "direct",
+            "response_coordinates": [
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.damage_bonus",
+              "ineffa.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 181639.463943,
+            "channels": 75,
+            "damage_type": "geo",
+            "hits": 75,
+            "kind": "direct",
+            "response_coordinates": [
+              "navia.atk",
+              "navia.atk_percent",
+              "navia.crit_damage",
+              "navia.crit_rate",
+              "navia.damage_bonus",
+              "navia.geo_damage_bonus",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.damage_bonus",
+              "xilonen.def",
+              "xilonen.def_percent",
+              "xilonen.geo_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 20276.057274,
+            "channels": 2,
+            "damage_type": "hydro",
+            "hits": 2,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/26",
+            "baseline_damage": 596848.642956,
+            "channels": 39,
+            "damage_type": "electro",
+            "hits": 39,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.em",
+              "navia.def",
+              "navia.def_percent",
+              "xilonen.def",
+              "xilonen.def_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/27",
+            "baseline_damage": 446950.647346,
+            "channels": 56,
+            "damage_type": "geo",
+            "hits": 56,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "navia.crit_damage",
+              "navia.crit_rate",
+              "navia.def",
+              "navia.def_percent",
+              "navia.em",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.def",
+              "xilonen.def_percent",
+              "xilonen.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/30",
+            "baseline_damage": 896500.609396,
+            "channels": 55,
+            "damage_type": "electro",
+            "hits": 55,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.em",
+              "navia.def",
+              "navia.def_percent",
+              "xilonen.def",
+              "xilonen.def_percent"
+            ]
+          }
+        ],
+        "duration_ms": 83167,
+        "formula_coordinates": [
+          "columbina.atk",
+          "columbina.atk_percent",
+          "columbina.crit_damage",
+          "columbina.crit_rate",
+          "columbina.damage_bonus",
+          "columbina.em",
+          "columbina.hp",
+          "columbina.hp_percent",
+          "columbina.hydro_damage_bonus",
+          "ineffa.atk",
+          "ineffa.atk_percent",
+          "ineffa.crit_damage",
+          "ineffa.crit_rate",
+          "ineffa.damage_bonus",
+          "ineffa.electro_damage_bonus",
+          "ineffa.em",
+          "ineffa.physical_damage_bonus",
+          "navia.atk",
+          "navia.atk_percent",
+          "navia.crit_damage",
+          "navia.crit_rate",
+          "navia.damage_bonus",
+          "navia.def",
+          "navia.def_percent",
+          "navia.em",
+          "navia.geo_damage_bonus",
+          "xilonen.crit_damage",
+          "xilonen.crit_rate",
+          "xilonen.damage_bonus",
+          "xilonen.def",
+          "xilonen.def_percent",
+          "xilonen.em",
+          "xilonen.geo_damage_bonus"
+        ],
+        "member_path": "theory/contexts/context-02e2f31d10d0a9e70eed1a36bf2af8e077d13ad9cdb54011a2af4049a04dfdc3/seed-742031889/member.json",
+        "opaque_boundary_codes": [],
+        "topology_sha256": "60c2dcf535fb14ad4dae978a6d6c64826cef8f57ef1961098d07e3819275e26f"
+      },
+      "id": "lunar_crystallize_theory",
+      "infinite_energy": true,
+      "mode": "theory",
+      "product": {
+        "candidates": [
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 13.5,
+                    "stat_key": "em",
+                    "stat_value": 314.685
+                  },
+                  {
+                    "roll_units": 1.5,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.08745
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 6,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.3498
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 4.5,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.17504999999999998
+                  },
+                  {
+                    "roll_units": 4.5,
+                    "stat_key": "em",
+                    "stat_value": 104.895
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 6.5,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.37895
+                  },
+                  {
+                    "roll_units": 29.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.2727250000000003
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "navia"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "def_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.951825
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  },
+                  {
+                    "roll_units": 23.5,
+                    "stat_key": "def_percent",
+                    "stat_value": 1.7131500000000002
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": 153887.57446927385,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "tenacityofthemillelith"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": null,
+                "wearer_key": "navia"
+              },
+              {
+                "sets": null,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "rank": 1,
+            "source": "wearer_diversity+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "navia",
+              "xilonen"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "em",
+                    "stat_value": 238.92749999999998
+                  },
+                  {
+                    "roll_units": 4.75,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.276925
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 7,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.40809999999999996
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 4.5,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.17504999999999998
+                  },
+                  {
+                    "roll_units": 3.5,
+                    "stat_key": "em",
+                    "stat_value": 81.585
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 8.5,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.49555
+                  },
+                  {
+                    "roll_units": 27.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.117325
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "navia"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "def_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.951825
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  },
+                  {
+                    "roll_units": 23.5,
+                    "stat_key": "def_percent",
+                    "stat_value": 1.7131500000000002
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": 150871.75356906443,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": null,
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "goldentroupe"
+                  }
+                ],
+                "wearer_key": "navia"
+              },
+              {
+                "sets": null,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "rank": 2,
+            "source": "wearer_diversity+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "columbina",
+              "xilonen"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "em",
+                    "stat_value": 238.92749999999998
+                  },
+                  {
+                    "roll_units": 4.75,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.276925
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 6.5,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.37895
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 4.5,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.17504999999999998
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "em",
+                    "stat_value": 93.24
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 7,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.40809999999999996
+                  },
+                  {
+                    "roll_units": 28.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.2338750000000003
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "navia"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "def_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.951825
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  },
+                  {
+                    "roll_units": 23.5,
+                    "stat_key": "def_percent",
+                    "stat_value": 1.7131500000000002
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": 149700.80702313487,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": null,
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": null,
+                "wearer_key": "navia"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "noblesseoblige"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "rank": 3,
+            "source": "wearer_diversity+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "columbina",
+              "navia"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "em",
+                    "stat_value": 238.92749999999998
+                  },
+                  {
+                    "roll_units": 4.75,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.276925
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 6.75,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.39352499999999996
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 4.5,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.17504999999999998
+                  },
+                  {
+                    "roll_units": 3.75,
+                    "stat_key": "em",
+                    "stat_value": 87.4125
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 8,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.4664
+                  },
+                  {
+                    "roll_units": 27.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.156175
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "navia"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "def_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.951825
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  },
+                  {
+                    "roll_units": 23.5,
+                    "stat_key": "def_percent",
+                    "stat_value": 1.7131500000000002
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": 147675.68780560477,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "noblesseoblige"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": null,
+                "wearer_key": "navia"
+              },
+              {
+                "sets": null,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "rank": 4,
+            "source": "wearer_diversity+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "navia",
+              "xilonen"
+            ]
+          }
+        ],
+        "coverage": {
+          "catalog_sets": 42,
+          "contexts_evaluated": 25,
+          "contexts_limit": 40,
+          "marginal_contexts_evaluated": 17,
+          "packages_considered": 3612,
+          "packages_shortlisted": 32,
+          "unqueued_packages": 3580
+        },
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_theory_result_v1",
+        "status": "success",
+        "warnings": [
+          "theory_guidance_not_owned_artifacts",
+          "bounded_set_shortlist_not_global_optimum",
+          "theory_context_budget_exhausted_partial_result"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/lunar_crystallize_public.txt",
+      "source_url": "https://gcsim.app/db/wNHmwLJH6RKJ",
+      "status": "success",
+      "success": true,
+      "wall_seconds": 312.9529999999795
+    },
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 6828.0,
+        "mode": "theory",
+        "optimizer_process_ms": 302094.0,
+        "prepare_inputs_ms": 4609.0,
+        "request_preflight_ms": 63.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 313594.0
+      },
+      "archetype": "lunar_charged_multi_owner_jahoda",
+      "characters": [
+        "flins",
+        "ineffa",
+        "columbina",
+        "jahoda"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 313593,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [
+        "lunar_charged",
+        "electro_charged",
+        "atk",
+        "hp",
+        "em",
+        "multi_owner",
+        "cross_owner_em"
+      ],
+      "formula_witness": {
+        "channel_groups": [
+          {
+            "attack_tag": "tag/0",
+            "baseline_damage": 0.0,
+            "channels": 4,
+            "damage_type": "electro",
+            "hits": 4,
+            "kind": "direct",
+            "response_coordinates": [
+              "flins.atk",
+              "flins.atk_percent",
+              "flins.crit_damage",
+              "flins.crit_rate",
+              "flins.damage_bonus",
+              "flins.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 152227.174866,
+            "channels": 80,
+            "damage_type": "electro",
+            "hits": 80,
+            "kind": "direct",
+            "response_coordinates": [
+              "flins.atk",
+              "flins.atk_percent",
+              "flins.crit_damage",
+              "flins.crit_rate",
+              "flins.damage_bonus",
+              "flins.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 1437.323897,
+            "channels": 2,
+            "damage_type": "hydro",
+            "hits": 2,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.atk",
+              "columbina.atk_percent",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 6028.029618,
+            "channels": 6,
+            "damage_type": "physical",
+            "hits": 6,
+            "kind": "direct",
+            "response_coordinates": [
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.damage_bonus",
+              "ineffa.physical_damage_bonus",
+              "jahoda.atk",
+              "jahoda.atk_percent",
+              "jahoda.crit_damage",
+              "jahoda.crit_rate",
+              "jahoda.damage_bonus",
+              "jahoda.physical_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 18185.047813,
+            "channels": 4,
+            "damage_type": "anemo",
+            "hits": 4,
+            "kind": "direct",
+            "response_coordinates": [
+              "jahoda.anemo_damage_bonus",
+              "jahoda.atk",
+              "jahoda.atk_percent",
+              "jahoda.crit_damage",
+              "jahoda.crit_rate",
+              "jahoda.damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 161485.64816,
+            "channels": 49,
+            "damage_type": "electro",
+            "hits": 49,
+            "kind": "direct",
+            "response_coordinates": [
+              "flins.atk",
+              "flins.atk_percent",
+              "flins.crit_damage",
+              "flins.crit_rate",
+              "flins.damage_bonus",
+              "flins.electro_damage_bonus",
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.damage_bonus",
+              "ineffa.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 180591.536676,
+            "channels": 67,
+            "damage_type": "hydro",
+            "hits": 67,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus",
+              "jahoda.atk",
+              "jahoda.atk_percent",
+              "jahoda.crit_damage",
+              "jahoda.crit_rate",
+              "jahoda.damage_bonus",
+              "jahoda.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 38917.757982,
+            "channels": 2,
+            "damage_type": "electro",
+            "hits": 2,
+            "kind": "direct",
+            "response_coordinates": [
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.damage_bonus",
+              "ineffa.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 15549.384127,
+            "channels": 2,
+            "damage_type": "hydro",
+            "hits": 2,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/7",
+            "baseline_damage": 4730.433497,
+            "channels": 3,
+            "damage_type": "physical",
+            "hits": 3,
+            "kind": "direct",
+            "response_coordinates": [
+              "jahoda.atk",
+              "jahoda.atk_percent",
+              "jahoda.crit_damage",
+              "jahoda.crit_rate",
+              "jahoda.damage_bonus",
+              "jahoda.physical_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/18",
+            "baseline_damage": 6718.078833,
+            "channels": 4,
+            "damage_type": "electro",
+            "hits": 4,
+            "kind": "reaction",
+            "response_coordinates": [
+              "jahoda.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/26",
+            "baseline_damage": 976812.476787,
+            "channels": 40,
+            "damage_type": "electro",
+            "hits": 40,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "flins.atk",
+              "flins.atk_percent",
+              "flins.crit_damage",
+              "flins.crit_rate",
+              "flins.em",
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.em",
+              "jahoda.crit_damage",
+              "jahoda.crit_rate",
+              "jahoda.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/30",
+            "baseline_damage": 2319144.490182,
+            "channels": 64,
+            "damage_type": "electro",
+            "hits": 64,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "flins.atk",
+              "flins.atk_percent",
+              "flins.crit_damage",
+              "flins.crit_rate",
+              "flins.em",
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.em"
+            ]
+          }
+        ],
+        "duration_ms": 72467,
+        "formula_coordinates": [
+          "columbina.atk",
+          "columbina.atk_percent",
+          "columbina.crit_damage",
+          "columbina.crit_rate",
+          "columbina.damage_bonus",
+          "columbina.em",
+          "columbina.hp",
+          "columbina.hp_percent",
+          "columbina.hydro_damage_bonus",
+          "flins.atk",
+          "flins.atk_percent",
+          "flins.crit_damage",
+          "flins.crit_rate",
+          "flins.damage_bonus",
+          "flins.electro_damage_bonus",
+          "flins.em",
+          "ineffa.atk",
+          "ineffa.atk_percent",
+          "ineffa.crit_damage",
+          "ineffa.crit_rate",
+          "ineffa.damage_bonus",
+          "ineffa.electro_damage_bonus",
+          "ineffa.em",
+          "ineffa.physical_damage_bonus",
+          "jahoda.anemo_damage_bonus",
+          "jahoda.atk",
+          "jahoda.atk_percent",
+          "jahoda.crit_damage",
+          "jahoda.crit_rate",
+          "jahoda.damage_bonus",
+          "jahoda.em",
+          "jahoda.hydro_damage_bonus",
+          "jahoda.physical_damage_bonus"
+        ],
+        "member_path": "theory/contexts/context-0005b97aa4f8e942419590dabfb010ca72217f7b053148eb5063b02e9d436af7/seed-742031889/member.json",
+        "opaque_boundary_codes": [],
+        "topology_sha256": "9b970b239aa2f04fcd7f7e0010aec5318606875e2e80a4232ea0e8daa3f7fc71"
+      },
+      "id": "lunar_charged_theory",
+      "infinite_energy": true,
+      "mode": "theory",
+      "product": {
+        "candidates": [
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 0.75,
+                    "stat_key": "em",
+                    "stat_value": 17.482499999999998
+                  },
+                  {
+                    "roll_units": 14.25,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.8307749999999999
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.6996
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.1167
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "flins"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 28,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.1756
+                  },
+                  {
+                    "roll_units": 11.5,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.44734999999999997
+                  },
+                  {
+                    "roll_units": 5.5,
+                    "stat_key": "em",
+                    "stat_value": 128.20499999999998
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 10,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.583
+                  },
+                  {
+                    "roll_units": 24.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.884225
+                  },
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.41817499999999996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "jahoda"
+              }
+            ],
+            "formula_dps": 164338.41529688216,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "callback_provider_unattributed",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": null,
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "nightoftheskysunveiling"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": null,
+                "wearer_key": "jahoda"
+              }
+            ],
+            "rank": 1,
+            "source": "wearer_diversity+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "columbina",
+              "jahoda"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 1.75,
+                    "stat_key": "em",
+                    "stat_value": 40.7925
+                  },
+                  {
+                    "roll_units": 13.25,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.772475
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 4.25,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.247775
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.41817499999999996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "flins"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 28,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.1756
+                  },
+                  {
+                    "roll_units": 11.5,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.44734999999999997
+                  },
+                  {
+                    "roll_units": 5.5,
+                    "stat_key": "em",
+                    "stat_value": 128.20499999999998
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 6.25,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.364375
+                  },
+                  {
+                    "roll_units": 28,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.1756
+                  },
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.41817499999999996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "jahoda"
+              }
+            ],
+            "formula_dps": 157384.69952377776,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "callback_provider_unattributed",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "tenacityofthemillelith"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": null,
+                "wearer_key": "flins"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": null,
+                "wearer_key": "jahoda"
+              }
+            ],
+            "rank": 2,
+            "source": "wearer_diversity+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "flins",
+              "jahoda"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 1,
+                    "stat_key": "em",
+                    "stat_value": 23.31
+                  },
+                  {
+                    "roll_units": 14,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.8161999999999999
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 5.25,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.306075
+                  },
+                  {
+                    "roll_units": 29,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.2533000000000003
+                  },
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.41817499999999996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "flins"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 27.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.156175
+                  },
+                  {
+                    "roll_units": 11.5,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.44734999999999997
+                  },
+                  {
+                    "roll_units": 5.75,
+                    "stat_key": "em",
+                    "stat_value": 134.0325
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 10,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.583
+                  },
+                  {
+                    "roll_units": 24.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.884225
+                  },
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.41817499999999996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "jahoda"
+              }
+            ],
+            "formula_dps": 147875.07582821808,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "callback_provider_unattributed",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": null,
+                "wearer_key": "flins"
+              },
+              {
+                "sets": null,
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": null,
+                "wearer_key": "jahoda"
+              }
+            ],
+            "rank": 3,
+            "source": "wearer_diversity+marginal_minimized+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "flins",
+              "ineffa",
+              "jahoda"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 1,
+                    "stat_key": "em",
+                    "stat_value": 23.31
+                  },
+                  {
+                    "roll_units": 14,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.8161999999999999
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 5.25,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.306075
+                  },
+                  {
+                    "roll_units": 29,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.2533000000000003
+                  },
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.41817499999999996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "flins"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 27.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.156175
+                  },
+                  {
+                    "roll_units": 11.5,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.44734999999999997
+                  },
+                  {
+                    "roll_units": 5.75,
+                    "stat_key": "em",
+                    "stat_value": 134.0325
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 10,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.583
+                  },
+                  {
+                    "roll_units": 24.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.884225
+                  },
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.41817499999999996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "jahoda"
+              }
+            ],
+            "formula_dps": 147875.07582821808,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "callback_provider_unattributed",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": null,
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": null,
+                "wearer_key": "flins"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": null,
+                "wearer_key": "jahoda"
+              }
+            ],
+            "rank": 4,
+            "source": "new_output+marginal_minimized+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "columbina",
+              "flins",
+              "jahoda"
+            ]
+          }
+        ],
+        "coverage": {
+          "catalog_sets": 42,
+          "contexts_evaluated": 22,
+          "contexts_limit": 40,
+          "marginal_contexts_evaluated": 14,
+          "packages_considered": 3612,
+          "packages_shortlisted": 32,
+          "unqueued_packages": 3580
+        },
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_theory_result_v1",
+        "status": "success",
+        "warnings": [
+          "theory_guidance_not_owned_artifacts",
+          "bounded_set_shortlist_not_global_optimum",
+          "theory_context_budget_exhausted_partial_result"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/lunar_charged_jahoda.txt",
+      "source_url": "local_user_config_flins_columbina_ineffa_jahoda",
+      "status": "success",
+      "success": true,
+      "wall_seconds": 314.0470000000205
+    },
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 6860.0,
+        "mode": "theory",
+        "optimizer_process_ms": 301359.0,
+        "prepare_inputs_ms": 4641.0,
+        "request_preflight_ms": 62.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 312922.0
+      },
+      "archetype": "lunar_bloom_hyperbloom_team_max_em",
+      "characters": [
+        "columbina",
+        "kukishinobu",
+        "lauma",
+        "nahida"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 312922,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [
+        "bloom",
+        "lunar_bloom",
+        "hyperbloom",
+        "dendro",
+        "hp",
+        "em",
+        "team_max_em",
+        "multi_owner"
+      ],
+      "formula_witness": {
+        "channel_groups": [
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 28129.379422,
+            "channels": 16,
+            "damage_type": "dendro",
+            "hits": 16,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.em",
+              "lauma.atk",
+              "lauma.atk_percent",
+              "lauma.crit_damage",
+              "lauma.crit_rate",
+              "lauma.damage_bonus",
+              "lauma.dendro_damage_bonus",
+              "lauma.em",
+              "nahida.atk",
+              "nahida.atk_percent",
+              "nahida.crit_damage",
+              "nahida.crit_rate",
+              "nahida.damage_bonus",
+              "nahida.dendro_damage_bonus",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 20638.096545,
+            "channels": 17,
+            "damage_type": "hydro",
+            "hits": 17,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.atk",
+              "columbina.atk_percent",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 3955.157455,
+            "channels": 5,
+            "damage_type": "physical",
+            "hits": 5,
+            "kind": "direct",
+            "response_coordinates": [
+              "kukishinobu.atk",
+              "kukishinobu.atk_percent",
+              "kukishinobu.crit_damage",
+              "kukishinobu.crit_rate",
+              "kukishinobu.damage_bonus",
+              "kukishinobu.physical_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 229614.500985,
+            "channels": 38,
+            "damage_type": "dendro",
+            "hits": 38,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.em",
+              "lauma.em",
+              "nahida.atk",
+              "nahida.atk_percent",
+              "nahida.crit_damage",
+              "nahida.crit_rate",
+              "nahida.damage_bonus",
+              "nahida.dendro_damage_bonus",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 84640.643605,
+            "channels": 65,
+            "damage_type": "electro",
+            "hits": 65,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.atk",
+              "kukishinobu.atk_percent",
+              "kukishinobu.crit_damage",
+              "kukishinobu.crit_rate",
+              "kukishinobu.damage_bonus",
+              "kukishinobu.electro_damage_bonus",
+              "kukishinobu.em",
+              "kukishinobu.hp",
+              "kukishinobu.hp_percent",
+              "lauma.em",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 170355.661553,
+            "channels": 52,
+            "damage_type": "hydro",
+            "hits": 52,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/5",
+            "baseline_damage": 326399.344972,
+            "channels": 44,
+            "damage_type": "dendro",
+            "hits": 44,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.em",
+              "lauma.atk",
+              "lauma.atk_percent",
+              "lauma.crit_damage",
+              "lauma.crit_rate",
+              "lauma.damage_bonus",
+              "lauma.dendro_damage_bonus",
+              "lauma.em",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 63245.782021,
+            "channels": 48,
+            "damage_type": "electro",
+            "hits": 48,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.atk",
+              "kukishinobu.atk_percent",
+              "kukishinobu.crit_damage",
+              "kukishinobu.crit_rate",
+              "kukishinobu.damage_bonus",
+              "kukishinobu.electro_damage_bonus",
+              "kukishinobu.em",
+              "kukishinobu.hp",
+              "kukishinobu.hp_percent",
+              "lauma.em",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 45544.299495,
+            "channels": 5,
+            "damage_type": "hydro",
+            "hits": 5,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/20",
+            "baseline_damage": 31112.748957,
+            "channels": 2,
+            "damage_type": "dendro",
+            "hits": 2,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/23",
+            "baseline_damage": 1289207.19144,
+            "channels": 68,
+            "damage_type": "dendro",
+            "hits": 68,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.em",
+              "lauma.em",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/31",
+            "baseline_damage": 1518810.841507,
+            "channels": 177,
+            "damage_type": "dendro",
+            "hits": 177,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "kukishinobu.atk",
+              "kukishinobu.atk_percent",
+              "kukishinobu.em",
+              "lauma.crit_damage",
+              "lauma.crit_rate",
+              "lauma.em",
+              "nahida.em"
+            ]
+          }
+        ],
+        "duration_ms": 93650,
+        "formula_coordinates": [
+          "columbina.atk",
+          "columbina.atk_percent",
+          "columbina.crit_damage",
+          "columbina.crit_rate",
+          "columbina.damage_bonus",
+          "columbina.em",
+          "columbina.hp",
+          "columbina.hp_percent",
+          "columbina.hydro_damage_bonus",
+          "kukishinobu.atk",
+          "kukishinobu.atk_percent",
+          "kukishinobu.crit_damage",
+          "kukishinobu.crit_rate",
+          "kukishinobu.damage_bonus",
+          "kukishinobu.electro_damage_bonus",
+          "kukishinobu.em",
+          "kukishinobu.hp",
+          "kukishinobu.hp_percent",
+          "kukishinobu.physical_damage_bonus",
+          "lauma.atk",
+          "lauma.atk_percent",
+          "lauma.crit_damage",
+          "lauma.crit_rate",
+          "lauma.damage_bonus",
+          "lauma.dendro_damage_bonus",
+          "lauma.em",
+          "nahida.atk",
+          "nahida.atk_percent",
+          "nahida.crit_damage",
+          "nahida.crit_rate",
+          "nahida.damage_bonus",
+          "nahida.dendro_damage_bonus",
+          "nahida.em"
+        ],
+        "member_path": "theory/contexts/context-16b950d658152376a29863a2c009977beb1aebeceb618a3a4db49c0621f19ded/seed-742031889/member.json",
+        "opaque_boundary_codes": [],
+        "topology_sha256": "89c30d788b481ab7a3cabf40e0b55ab860c1cc8f28407ebe23c71e77a36a5c5d"
+      },
+      "id": "lunar_bloom_theory",
+      "infinite_energy": true,
+      "mode": "theory",
+      "product": {
+        "candidates": [
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 5.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.204225
+                  },
+                  {
+                    "roll_units": 9.75,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.568425
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "electro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.9324000000000001
+                  },
+                  {
+                    "roll_units": 9,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35009999999999997
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "em",
+                    "stat_value": 559.4399999999999
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.9324000000000001
+                  },
+                  {
+                    "roll_units": 9,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35009999999999997
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "em",
+                    "stat_value": 559.4399999999999
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "lauma"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 15.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.223775
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.398725
+                  },
+                  {
+                    "roll_units": 19,
+                    "stat_key": "em",
+                    "stat_value": 442.89
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": 161673.02639967386,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "attack_provider_unattributed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "flat_dmg_expression_collapsed",
+              "flat_source_parameter_dependencies_incomplete",
+              "gadget_wave_state_lineage_not_instrumented",
+              "helper_return_control_flow_frozen",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "pure_reduction_observed_membership",
+              "pure_scalar_observed_schedule",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "transformative_reaction_formula_mismatch",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": null,
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "sets": null,
+                "wearer_key": "lauma"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "rank": 1,
+            "source": "unresolved+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "kukishinobu",
+              "lauma"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 5.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.204225
+                  },
+                  {
+                    "roll_units": 9.75,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.568425
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "electro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.9324000000000001
+                  },
+                  {
+                    "roll_units": 9,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35009999999999997
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "em",
+                    "stat_value": 559.4399999999999
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.9324000000000001
+                  },
+                  {
+                    "roll_units": 9,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35009999999999997
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "em",
+                    "stat_value": 559.4399999999999
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "lauma"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 15.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.184925
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.398725
+                  },
+                  {
+                    "roll_units": 19.5,
+                    "stat_key": "em",
+                    "stat_value": 454.54499999999996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": 161360.20366363885,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "attack_provider_unattributed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "flat_dmg_expression_collapsed",
+              "flat_source_parameter_dependencies_incomplete",
+              "gadget_wave_state_lineage_not_instrumented",
+              "helper_return_control_flow_frozen",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "pure_reduction_observed_membership",
+              "pure_scalar_observed_schedule",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "transformative_reaction_formula_mismatch",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": null,
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": null,
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "lauma"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "rank": 2,
+            "source": "shared_effect+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "columbina",
+              "kukishinobu"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 5.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.204225
+                  },
+                  {
+                    "roll_units": 9.75,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.568425
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "electro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.9324000000000001
+                  },
+                  {
+                    "roll_units": 9,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35009999999999997
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "em",
+                    "stat_value": 559.4399999999999
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.9324000000000001
+                  },
+                  {
+                    "roll_units": 9,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35009999999999997
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "em",
+                    "stat_value": 559.4399999999999
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "lauma"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 15.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.184925
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.398725
+                  },
+                  {
+                    "roll_units": 19.5,
+                    "stat_key": "em",
+                    "stat_value": 454.54499999999996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": 160734.25045366972,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "attack_provider_unattributed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "flat_dmg_expression_collapsed",
+              "flat_source_parameter_dependencies_incomplete",
+              "gadget_wave_state_lineage_not_instrumented",
+              "helper_return_control_flow_frozen",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "pure_reduction_observed_membership",
+              "pure_scalar_observed_schedule",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "transformative_reaction_formula_mismatch",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": null,
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "sets": null,
+                "wearer_key": "lauma"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "rank": 3,
+            "source": "wearer_diversity+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "kukishinobu",
+              "lauma"
+            ]
+          }
+        ],
+        "coverage": {
+          "catalog_sets": 42,
+          "contexts_evaluated": 22,
+          "contexts_limit": 40,
+          "marginal_contexts_evaluated": 14,
+          "packages_considered": 3612,
+          "packages_shortlisted": 32,
+          "unqueued_packages": 3580
+        },
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_theory_result_v1",
+        "status": "success",
+        "warnings": [
+          "theory_guidance_not_owned_artifacts",
+          "bounded_set_shortlist_not_global_optimum",
+          "theory_context_budget_exhausted_partial_result"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/bloom.txt",
+      "source_url": "local_user_config_columbina_kuki_lauma_nahida",
+      "status": "success",
+      "success": true,
+      "wall_seconds": 313.35999999998603
+    },
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 6781.0,
+        "mode": "theory",
+        "optimizer_process_ms": 292422.0,
+        "prepare_inputs_ms": 4719.0,
+        "request_preflight_ms": 63.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 303985.0
+      },
+      "archetype": "nilou_bountiful_core_transformative",
+      "characters": [
+        "nilou",
+        "kaveh",
+        "nahida",
+        "xingqiu"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 303985,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [
+        "bloom",
+        "bountiful_core",
+        "hp",
+        "em",
+        "multi_owner",
+        "healing"
+      ],
+      "formula_witness": {
+        "channel_groups": [
+          {
+            "attack_tag": "tag/0",
+            "baseline_damage": 14749.084312,
+            "channels": 20,
+            "damage_type": "dendro",
+            "hits": 20,
+            "kind": "direct",
+            "response_coordinates": [
+              "kaveh.atk",
+              "kaveh.atk_percent",
+              "kaveh.crit_damage",
+              "kaveh.crit_rate",
+              "kaveh.damage_bonus",
+              "kaveh.dendro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/0",
+            "baseline_damage": 0.0,
+            "channels": 169,
+            "damage_type": "hydro",
+            "hits": 169,
+            "kind": "direct",
+            "response_coordinates": [
+              "nilou.atk",
+              "nilou.atk_percent",
+              "nilou.crit_damage",
+              "nilou.crit_rate",
+              "nilou.damage_bonus",
+              "nilou.hydro_damage_bonus",
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 152675.241809,
+            "channels": 90,
+            "damage_type": "dendro",
+            "hits": 90,
+            "kind": "direct",
+            "response_coordinates": [
+              "kaveh.atk",
+              "kaveh.atk_percent",
+              "kaveh.crit_damage",
+              "kaveh.crit_rate",
+              "kaveh.damage_bonus",
+              "kaveh.dendro_damage_bonus",
+              "nahida.atk",
+              "nahida.atk_percent",
+              "nahida.crit_damage",
+              "nahida.crit_rate",
+              "nahida.damage_bonus",
+              "nahida.dendro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 4113.68443,
+            "channels": 5,
+            "damage_type": "physical",
+            "hits": 5,
+            "kind": "direct",
+            "response_coordinates": [
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.physical_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/2",
+            "baseline_damage": 19256.337431,
+            "channels": 5,
+            "damage_type": "dendro",
+            "hits": 5,
+            "kind": "direct",
+            "response_coordinates": [
+              "nahida.atk",
+              "nahida.atk_percent",
+              "nahida.crit_damage",
+              "nahida.crit_rate",
+              "nahida.damage_bonus",
+              "nahida.dendro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 243773.37499,
+            "channels": 52,
+            "damage_type": "dendro",
+            "hits": 52,
+            "kind": "direct",
+            "response_coordinates": [
+              "kaveh.atk",
+              "kaveh.atk_percent",
+              "kaveh.crit_damage",
+              "kaveh.crit_rate",
+              "kaveh.damage_bonus",
+              "kaveh.dendro_damage_bonus",
+              "nahida.atk",
+              "nahida.atk_percent",
+              "nahida.crit_damage",
+              "nahida.crit_rate",
+              "nahida.damage_bonus",
+              "nahida.dendro_damage_bonus",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 76457.498116,
+            "channels": 30,
+            "damage_type": "hydro",
+            "hits": 30,
+            "kind": "direct",
+            "response_coordinates": [
+              "nilou.atk",
+              "nilou.atk_percent",
+              "nilou.crit_damage",
+              "nilou.crit_rate",
+              "nilou.damage_bonus",
+              "nilou.hp",
+              "nilou.hp_percent",
+              "nilou.hydro_damage_bonus",
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 19092.665776,
+            "channels": 5,
+            "damage_type": "dendro",
+            "hits": 5,
+            "kind": "direct",
+            "response_coordinates": [
+              "kaveh.atk",
+              "kaveh.atk_percent",
+              "kaveh.crit_damage",
+              "kaveh.crit_rate",
+              "kaveh.damage_bonus",
+              "kaveh.dendro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 347433.715447,
+            "channels": 245,
+            "damage_type": "hydro",
+            "hits": 245,
+            "kind": "direct",
+            "response_coordinates": [
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/20",
+            "baseline_damage": 2025695.617462,
+            "channels": 161,
+            "damage_type": "dendro",
+            "hits": 161,
+            "kind": "reaction",
+            "response_coordinates": [
+              "kaveh.em",
+              "nahida.em",
+              "nilou.em",
+              "nilou.hp",
+              "nilou.hp_percent",
+              "xingqiu.em"
+            ]
+          }
+        ],
+        "duration_ms": 105483,
+        "formula_coordinates": [
+          "kaveh.atk",
+          "kaveh.atk_percent",
+          "kaveh.crit_damage",
+          "kaveh.crit_rate",
+          "kaveh.damage_bonus",
+          "kaveh.dendro_damage_bonus",
+          "kaveh.em",
+          "nahida.atk",
+          "nahida.atk_percent",
+          "nahida.crit_damage",
+          "nahida.crit_rate",
+          "nahida.damage_bonus",
+          "nahida.dendro_damage_bonus",
+          "nahida.em",
+          "nilou.atk",
+          "nilou.atk_percent",
+          "nilou.crit_damage",
+          "nilou.crit_rate",
+          "nilou.damage_bonus",
+          "nilou.em",
+          "nilou.hp",
+          "nilou.hp_percent",
+          "nilou.hydro_damage_bonus",
+          "xingqiu.atk",
+          "xingqiu.atk_percent",
+          "xingqiu.crit_damage",
+          "xingqiu.crit_rate",
+          "xingqiu.damage_bonus",
+          "xingqiu.em",
+          "xingqiu.hydro_damage_bonus",
+          "xingqiu.physical_damage_bonus"
+        ],
+        "member_path": "theory/contexts/context-0477e9839d2abee269803a59b9f429b0cc484d6ae756ddd2af76da8c50e728df/seed-742031889/member.json",
+        "opaque_boundary_codes": [],
+        "topology_sha256": "ca0f9f113040203260880ed12ec27c84daab85e67f5ee37d0cbb3c54ad79ba6b"
+      },
+      "id": "bountiful_core_theory",
+      "infinite_energy": true,
+      "mode": "theory",
+      "product": {
+        "candidates": [
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.6996
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.23310000000000003
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "kaveh"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 13,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.0101
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.398725
+                  },
+                  {
+                    "roll_units": 21.75,
+                    "stat_key": "em",
+                    "stat_value": 506.99249999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nahida"
+              },
+              {
+                "main_stats": {
+                  "circlet": "hp_percent",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 9,
+                    "stat_key": "em",
+                    "stat_value": 209.79
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "hp",
+                    "stat_value": 7170
+                  },
+                  {
+                    "roll_units": 12,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.6996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nilou"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 4.25,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.247775
+                  },
+                  {
+                    "roll_units": 6.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.524475
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.1556
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": 67875.56276409383,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "attack_provider_unattributed",
+              "callback_provider_unattributed",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_state_read_candidate_dependency_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "pure_scalar_observed_schedule",
+              "reaction_bonus_schedule_frozen",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "state_write_candidate_dependency_incomplete",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "kaveh"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "nahida"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "nilou"
+              },
+              {
+                "sets": null,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "rank": 1,
+            "source": "joint_best_per_wearer+marginal_minimized",
+            "undistinguished_set_slots": [
+              "xingqiu"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.6996
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.23310000000000003
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "kaveh"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 13,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.0101
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.398725
+                  },
+                  {
+                    "roll_units": 21.75,
+                    "stat_key": "em",
+                    "stat_value": 506.99249999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nahida"
+              },
+              {
+                "main_stats": {
+                  "circlet": "hp_percent",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 9,
+                    "stat_key": "em",
+                    "stat_value": 209.79
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "hp",
+                    "stat_value": 7170
+                  },
+                  {
+                    "roll_units": 12,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.6996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nilou"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 4.25,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.247775
+                  },
+                  {
+                    "roll_units": 6.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.524475
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.1556
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": 67866.05754282589,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "attack_provider_unattributed",
+              "callback_provider_unattributed",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_state_read_candidate_dependency_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "pure_scalar_observed_schedule",
+              "reaction_bonus_schedule_frozen",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "state_write_candidate_dependency_incomplete",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "kaveh"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "nahida"
+              },
+              {
+                "sets": null,
+                "wearer_key": "nilou"
+              },
+              {
+                "sets": null,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "rank": 2,
+            "source": "wearer_diversity+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "nilou",
+              "xingqiu"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.6996
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.23310000000000003
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "kaveh"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 13,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.0101
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.398725
+                  },
+                  {
+                    "roll_units": 21.75,
+                    "stat_key": "em",
+                    "stat_value": 506.99249999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nahida"
+              },
+              {
+                "main_stats": {
+                  "circlet": "hp_percent",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 9,
+                    "stat_key": "em",
+                    "stat_value": 209.79
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "hp",
+                    "stat_value": 7170
+                  },
+                  {
+                    "roll_units": 12,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.6996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nilou"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 4.25,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.247775
+                  },
+                  {
+                    "roll_units": 6.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.524475
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.1556
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": 67660.9392786871,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "attack_provider_unattributed",
+              "callback_provider_unattributed",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_state_read_candidate_dependency_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "pure_scalar_observed_schedule",
+              "reaction_bonus_schedule_frozen",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "state_write_candidate_dependency_incomplete",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "finaleofthedeepgalleries"
+                  }
+                ],
+                "wearer_key": "kaveh"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "nahida"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "nilou"
+              },
+              {
+                "sets": null,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "rank": 3,
+            "source": "wearer_diversity+marginal_minimized",
+            "undistinguished_set_slots": [
+              "xingqiu"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.6996
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.23310000000000003
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "kaveh"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 8,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.6216
+                  },
+                  {
+                    "roll_units": 7,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.2723
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nahida"
+              },
+              {
+                "main_stats": {
+                  "circlet": "hp_percent",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 9,
+                    "stat_key": "em",
+                    "stat_value": 209.79
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "hp",
+                    "stat_value": 7170
+                  },
+                  {
+                    "roll_units": 12,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.6996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nilou"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 4,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.2332
+                  },
+                  {
+                    "roll_units": 7,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.5439
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.1556
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": 67607.19912096634,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "attack_provider_unattributed",
+              "callback_provider_unattributed",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_state_read_candidate_dependency_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "nonstat_formula_provenance_missing",
+              "numeric_expression_candidate_dependency_incomplete",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "pure_scalar_observed_schedule",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "state_write_candidate_dependency_incomplete",
+              "terminal_formula_not_instrumented",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "oceanhuedclam"
+                  }
+                ],
+                "wearer_key": "kaveh"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "nahida"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "nilou"
+              },
+              {
+                "sets": null,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "rank": 4,
+            "source": "new_output+marginal_minimized",
+            "undistinguished_set_slots": [
+              "xingqiu"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.6996
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.23310000000000003
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "kaveh"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "dendro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 13,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.0101
+                  },
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.398725
+                  },
+                  {
+                    "roll_units": 21.75,
+                    "stat_key": "em",
+                    "stat_value": 506.99249999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nahida"
+              },
+              {
+                "main_stats": {
+                  "circlet": "hp_percent",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 9,
+                    "stat_key": "em",
+                    "stat_value": 209.79
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "hp",
+                    "stat_value": 7170
+                  },
+                  {
+                    "roll_units": 12,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.6996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "nilou"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 4.25,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.247775
+                  },
+                  {
+                    "roll_units": 6.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.524475
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.1556
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": 67549.85872914473,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "attack_provider_unattributed",
+              "callback_provider_unattributed",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_state_read_candidate_dependency_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "pure_scalar_observed_schedule",
+              "reaction_bonus_schedule_frozen",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "state_write_candidate_dependency_incomplete",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": null,
+                "wearer_key": "kaveh"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "nahida"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "deepwoodmemories"
+                  }
+                ],
+                "wearer_key": "nilou"
+              },
+              {
+                "sets": null,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "rank": 5,
+            "source": "shared_effect+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "kaveh",
+              "xingqiu"
+            ]
+          }
+        ],
+        "coverage": {
+          "catalog_sets": 42,
+          "contexts_evaluated": 31,
+          "contexts_limit": 40,
+          "marginal_contexts_evaluated": 23,
+          "packages_considered": 3612,
+          "packages_shortlisted": 32,
+          "unqueued_packages": 3580
+        },
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_theory_result_v1",
+        "status": "success",
+        "warnings": [
+          "theory_guidance_not_owned_artifacts",
+          "bounded_set_shortlist_not_global_optimum"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/nilou_bountiful_core.txt",
+      "source_url": "https://gcsim.app/db/QFCTCPwcrH9g",
+      "status": "success",
+      "success": true,
+      "wall_seconds": 304.469000000041
+    },
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 6875.0,
+        "mode": "theory",
+        "optimizer_process_ms": 309391.0,
+        "prepare_inputs_ms": 4671.0,
+        "request_preflight_ms": 63.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 321000.0
+      },
+      "archetype": "chiori_atk_def_lunar_crystallize",
+      "characters": [
+        "furina",
+        "xilonen",
+        "chiori",
+        "columbina"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 321000,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [
+        "crystallize",
+        "lunar_crystallize",
+        "atk",
+        "def",
+        "hp",
+        "dual_scale",
+        "multi_owner"
+      ],
+      "formula_witness": {
+        "channel_groups": [
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 31119.050232,
+            "channels": 16,
+            "damage_type": "geo",
+            "hits": 16,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.damage_bonus",
+              "xilonen.def",
+              "xilonen.def_percent",
+              "xilonen.geo_damage_bonus",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 92363.465983,
+            "channels": 48,
+            "damage_type": "hydro",
+            "hits": 48,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.atk",
+              "columbina.atk_percent",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 458483.590533,
+            "channels": 55,
+            "damage_type": "geo",
+            "hits": 55,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.atk",
+              "chiori.atk_percent",
+              "chiori.crit_damage",
+              "chiori.crit_rate",
+              "chiori.damage_bonus",
+              "chiori.def",
+              "chiori.def_percent",
+              "chiori.geo_damage_bonus",
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.damage_bonus",
+              "xilonen.def",
+              "xilonen.def_percent",
+              "xilonen.geo_damage_bonus",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 1039863.674302,
+            "channels": 124,
+            "damage_type": "hydro",
+            "hits": 124,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus",
+              "furina.atk",
+              "furina.atk_percent",
+              "furina.crit_damage",
+              "furina.crit_rate",
+              "furina.damage_bonus",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "furina.hydro_damage_bonus",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 80482.824821,
+            "channels": 6,
+            "damage_type": "geo",
+            "hits": 6,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.atk",
+              "chiori.atk_percent",
+              "chiori.crit_damage",
+              "chiori.crit_rate",
+              "chiori.damage_bonus",
+              "chiori.def",
+              "chiori.def_percent",
+              "chiori.geo_damage_bonus",
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.damage_bonus",
+              "xilonen.def",
+              "xilonen.def_percent",
+              "xilonen.geo_damage_bonus",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 69466.51241,
+            "channels": 6,
+            "damage_type": "hydro",
+            "hits": 6,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus",
+              "furina.atk",
+              "furina.atk_percent",
+              "furina.crit_damage",
+              "furina.crit_rate",
+              "furina.damage_bonus",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "furina.hydro_damage_bonus",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/27",
+            "baseline_damage": 340560.733613,
+            "channels": 51,
+            "damage_type": "geo",
+            "hits": 51,
+            "kind": "reaction",
+            "response_coordinates": [
+              "chiori.crit_damage",
+              "chiori.crit_rate",
+              "chiori.em",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "furina.crit_damage",
+              "furina.crit_rate",
+              "furina.em",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/32",
+            "baseline_damage": 203105.275678,
+            "channels": 10,
+            "damage_type": "geo",
+            "hits": 10,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent"
+            ]
+          }
+        ],
+        "duration_ms": 76100,
+        "formula_coordinates": [
+          "chiori.atk",
+          "chiori.atk_percent",
+          "chiori.crit_damage",
+          "chiori.crit_rate",
+          "chiori.damage_bonus",
+          "chiori.def",
+          "chiori.def_percent",
+          "chiori.em",
+          "chiori.geo_damage_bonus",
+          "chiori.hp",
+          "chiori.hp_percent",
+          "columbina.atk",
+          "columbina.atk_percent",
+          "columbina.crit_damage",
+          "columbina.crit_rate",
+          "columbina.damage_bonus",
+          "columbina.em",
+          "columbina.hp",
+          "columbina.hp_percent",
+          "columbina.hydro_damage_bonus",
+          "furina.atk",
+          "furina.atk_percent",
+          "furina.crit_damage",
+          "furina.crit_rate",
+          "furina.damage_bonus",
+          "furina.em",
+          "furina.healing_bonus",
+          "furina.hp",
+          "furina.hp_percent",
+          "furina.hydro_damage_bonus",
+          "xilonen.crit_damage",
+          "xilonen.crit_rate",
+          "xilonen.damage_bonus",
+          "xilonen.def",
+          "xilonen.def_percent",
+          "xilonen.em",
+          "xilonen.geo_damage_bonus",
+          "xilonen.healing_bonus",
+          "xilonen.hp",
+          "xilonen.hp_percent"
+        ],
+        "member_path": "theory/contexts/context-04de1dc1d81c58c120569ee913ae7d4581ede6b3ef54f0e95cd4d1cc3ec1f65f/seed-742031889/member.json",
+        "opaque_boundary_codes": [],
+        "topology_sha256": "75c1caec1bfb2b585a7dba7f6030a9f71faa14ca6521329b4c5363aae0186ca1"
+      },
+      "id": "chiori_lunar_crystallize_theory",
+      "infinite_energy": true,
+      "mode": "theory",
+      "product": {
+        "candidates": [
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "def_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 27,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.0979
+                  },
+                  {
+                    "roll_units": 7.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.28202499999999997
+                  },
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "def_percent",
+                    "stat_value": 0.7836750000000001
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "chiori"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 0.25,
+                    "stat_key": "em",
+                    "stat_value": 5.8275
+                  },
+                  {
+                    "roll_units": 14.75,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.8599249999999999
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "hp_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 7.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.28202499999999997
+                  },
+                  {
+                    "roll_units": 7.75,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.451825
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "furina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "def_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 18.5,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.4374500000000001
+                  },
+                  {
+                    "roll_units": 15.75,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.612675
+                  },
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "def_percent",
+                    "stat_value": 0.7836750000000001
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": 129934.20586836888,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "contributor_membership_schedule_frozen",
+              "flat_dmg_expression_collapsed",
+              "flat_source_parameter_dependencies_incomplete",
+              "gadget_wave_state_lineage_not_instrumented",
+              "health_context_candidate_dependency_incomplete",
+              "health_field_candidate_dependency_incomplete",
+              "health_input_branch_schedule_frozen",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_state_read_candidate_dependency_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "numeric_source_identity_missing",
+              "ordinary_helper_argument_dependency_incomplete",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "source_template_identity_missing",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "state_read_candidate_dependency_incomplete",
+              "state_write_candidate_dependency_incomplete",
+              "stats_container_observed_schedule",
+              "task_numeric_transition_dependency_incomplete",
+              "task_payload_source_expression_unbound",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": null,
+                "wearer_key": "chiori"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "finaleofthedeepgalleries"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "goldentroupe"
+                  }
+                ],
+                "wearer_key": "furina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "rank": 1,
+            "source": "wearer_diversity+marginal_minimized",
+            "undistinguished_set_slots": [
+              "chiori"
+            ]
+          }
+        ],
+        "coverage": {
+          "catalog_sets": 42,
+          "contexts_evaluated": 12,
+          "contexts_limit": 40,
+          "marginal_contexts_evaluated": 4,
+          "packages_considered": 3612,
+          "packages_shortlisted": 32,
+          "unqueued_packages": 3580
+        },
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_theory_result_v1",
+        "status": "success",
+        "warnings": [
+          "theory_guidance_not_owned_artifacts",
+          "bounded_set_shortlist_not_global_optimum",
+          "theory_context_budget_exhausted_partial_result"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/chiori_lunar_crystallize.txt",
+      "source_url": "local_user_rotation_furina_xilonen_chiori_columbina",
+      "status": "success",
+      "success": true,
+      "wall_seconds": 321.5
+    }
+  ],
+  "schema_version": 1,
+  "scope": "same_request_and_session_classes_as_optimizer_Qt_buttons",
+  "status": "measurement_only_pending_user_review"
+}

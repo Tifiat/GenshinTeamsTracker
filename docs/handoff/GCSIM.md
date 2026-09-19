@@ -344,7 +344,10 @@ Stable upstream boundary:
 Current GTT direction:
 
 - Selected Sets, All Sets and Theory share one rotation-conditioned formula
-  model, but current implementation work is Selected only.
+  model and are implemented. Theory alone uses a validated neutral,
+  zero-inventory wire request and searches set packages itself; current
+  acceptance and remaining UI gates belong to
+  `GCSIM_GOB11_GP3_CHECKPOINT.md`.
 - The accepted product backend is `gtt_gcsim_optimizer_go_v1`: a standalone Go
   optimizer plus a minimal versioned GCSIM adapter. GOB-3 through GOB-7 pass:
   real stochastic parity, indexed formula evaluation, clean Go FGBS, migration

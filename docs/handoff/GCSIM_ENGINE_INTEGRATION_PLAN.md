@@ -2,7 +2,7 @@
 
 Planning date: 2026-06-04
 
-Status reviewed: 2026-09-16
+Status reviewed: 2026-09-18
 
 Scope: implementation-direction handoff for GTT-modified GCSIM engine integration. This is not a final Codex implementation task and not a rigid architecture freeze. It records the current product/engineering vector, open questions, and contracts that future Codex tasks must respect unless a later handoff explicitly supersedes them.
 
@@ -28,6 +28,10 @@ Typed AttackEvent numeric fields/getters are version-sensitive integration
 seams; arithmetic/conditions are read from source. New internal observations
 retain strict validation, and unsupported writes/operands retain diagnosed
 freezes. The earlier scalar/callback receipts are historical install checkpoints.
+The current source compiler also follows post-construction `AttackInfo.FlatDmg`
+assignments, compound updates, typed pointer helpers, saved stat aliases and
+persistent fields; snapshot HP/ATK/DEF inputs are bound where evaluated rather
+than reconstructed later. The current checkpoint owns its installed evidence.
 The additive pilot extends the existing core/reactable calculation seams with
 scalar observation markers and optional capture plumbing. It does not copy
 reaction formulas into the consumer: nested source recipes reuse its arithmetic
@@ -285,12 +289,13 @@ mode keeps Browser boosted-energy injection and makes Selected write/pass
 `ignore_burst_energy=true`; the other mode keeps normal Browser energy and makes
 Selected write/pass `ignore_burst_energy=false` instead of overriding it.
 
-The energy-requirements position is intentionally visible as a diagnostic
-boundary at the user's request, but its inline warning is authoritative: the
-current search does not yet optimize ER and the rotation may fail. Do not call
-that position energy-aware optimization until the ledger, search constraint and
-finalist schedule verification below pass. A later explicit `EnergyMode` type
-may wrap the stored boolean, but must not create a second optimizer-only value.
+The energy-requirements position is now a working optimizer mode. The engine
+identified by the current checkpoint exposes `gtt_energy_ledger_v1`; Selected
+and All Sets compile burst-deadline constraints, retain formula-invisible ER and
+verify finalists with ordinary real-energy simulations. No feasible inventory
+assignment is an explicit result, never a silent fallback to infinite energy.
+A later explicit `EnergyMode` type may wrap the stored boolean, but must not
+create a second optimizer-only value.
 
 CPU limits, cancellation, progress, cache retention, reduced exhaustive oracles,
 adversarial account-floor (including ER), theoretical no-auto-ER,
@@ -743,6 +748,46 @@ The account-backed CLI also supports a backend end-to-end compatibility smoke: `
 
 Production Browser config wiring now uses `run_workspace/gcsim/selected_team_config.py`. It consumes the current selected `TeamBuilderTeamState`/AppShell slot state and resolves account-owned data by stable ids such as `character_id` and selected/current weapon fingerprint. It must not infer GCSIM identity from localized names, and unlike the dev CLI bridge it must not choose deterministic fallback weapon candidates. Missing selected/current weapon, character/weapon/artifact-set GCSIM key, current artifact data/stats, talent/level/refinement data, unsupported Traveler, or rotation-shell issues produce structured not-ready reports. `run_workspace/gcsim/readiness_summary.py` turns those reports into grouped UI-independent text for Browser prepare/run failures. Normal Browser output is readiness-first and compact; the first compact UI pass shows a context bar, reserved rotation tabs, a run summary, and hidden-by-default Advanced/Debug raw details instead of a dominant issue/log wall. Browser `Check readiness` exposes the prepare/preflight path, while actual run attempts remain the product path for readiness blockers. `run_workspace/gcsim/settings.py` owns product energy mode: boosted energy is disabled by default and only injects/replaces `energy every interval=480,720 amount=100;` when `gcsim_boosted_energy_enabled` is true. The setting is exposed in the Account page under a compact GCSIM block and clears runtime Sim DPS results when changed. The dev CLI `--dev-energy-override` remains separate in `account_prepared_config.py`.
 
+The AppShell virtual roster is a separate selected-team input, not account
+truth. `run_workspace/gcsim/virtual_roster.py` parses characters, weapons and
+weapon classes from the active installed engine catalog and identifies them by
+stable GCSIM keys. Each GCSIM Browser team card can carry a compact override:
+character/compatible weapon, C0-C6, R1-R5, character/weapon levels, editable
+talents and weapon ascension. A single character-level input derives the
+highest legal phase (`80` -> `80/90`) and its max-legal default talents; no
+manual character-ascension field remains. The Build popup deliberately keeps
+owned five-piece stats separate from a legal theoretical package (one 4p or two
+different 2p). The profile goes through `gcsim_browser_selected_team()` into
+the ordinary production config path and never becomes an account character.
+Missing profile values, target mismatch or unmapped sets remain controlled
+not-ready results. Slot swaps move the complete typed override. It is live
+session state and is not serialized into ordinary Run History.
+
+Selected keeps the strict saved-five-piece artifact policy for virtual
+profiles. All Sets can instead use an optimizer-owned neutral stat baseline
+for a virtual profile without a saved build; it does not claim that the
+virtual character owns account artifacts. Real pieces in the account remain
+the only assignable inventory. Theory uses its separate mode-owned policy: a
+virtual profile needs a complete character and compatible weapon, but neither
+a saved build, owned artifact ids nor an initial set package. Python emits
+the same documented neutral main-stat anchor for all four wearers (flower HP,
+plume ATK, ATK% sands/goblet, CR circlet); Theory's wire request contains no
+fabricated inventory ids or selected sets.
+`DecodeTheoryRequest` expands that anchor into private process-only artifacts,
+then the bounded Theory coordinator chooses legal 4p/2p+2p packages. A separate
+installed-binary `validate-theory-request` preflight runs before formula capture,
+so a stale executable cannot consume minutes before revealing schema drift.
+This isolates Theory variables without weakening owned-inventory modes.
+
+Virtual artifact presets use the stable GCSIM character key as logical identity.
+If that character later appears in account storage, the Artifact Browser shows
+one account target, while preset lookup and config validation continue to accept
+both the stored virtual target and a subsequently saved account-target
+projection for the same ready GCSIM key. A selected saved build supplies only
+its artifact main/sub stats and set counts; it does not equip or reserve account
+artifacts. Account weapon clicks remain blocked for virtual slots: weapons are
+chosen from the active engine catalog in the virtual profile editor.
+
 ### First GCSIM Browser MVP UI contract
 
 The first GCSIM UI should be a browser tab/page near the existing character/weapon and artifact browser areas, not an isolated popup and not a small TeamCard-only panel. The right panel remains the compact Run Workspace summary that receives Sim DPS / clear-time results.
@@ -918,7 +963,7 @@ Current implementation state:
   manifest, and checks the executable version/marker. Activation additionally
   requires the full application compatibility gate described above; a build or
   development runtime probe alone is insufficient.
-- The active patch stack contains exactly one file:
+- At the 2026-08-31 consolidation checkpoint, the patch stack contained one file:
   `run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v245.patch`, SHA-256
   `22f097feee2514c03a441536175d7352c516bc3deadca9cc9de09f1533e2a04b`.
   It contains only the current engine-owned boundary: `-gtt-info`, trace and

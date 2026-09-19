@@ -1,0 +1,38 @@
+options swap_delay=12 iteration=1000;
+target lvl=100 resist=0.1 radius=2 pos=2.1,1.5 hp=999999999;
+energy every interval=480,720 amount=1;
+
+active beidou;
+for let i=0; i<4; i=i+1 {
+  let r = rand();
+  fischl attack:2, burst;
+  xingqiu skill, dash, burst, attack:1;
+  sucrose attack, burst;
+  beidou attack, burst;
+  sucrose
+    attack, skill, jump,
+    attack:2, dash,
+    attack:3, dash,
+    attack:2, dash,
+    attack:2;
+  if r > 0.7 {
+    beidou skill[counter=1];
+  } else {
+    beidou skill;
+  }
+  fischl attack, skill, attack;
+  sucrose
+    attack, skill, jump,
+    attack:2, dash,
+    attack:3, jump,
+    attack, charge,
+    attack:2, charge,
+    attack, charge;
+  r = rand();
+  if r > 0.7 {
+    beidou skill[counter=1], attack:2;
+  } else {
+    beidou skill, attack:2;
+  }
+  sucrose attack:1, charge;
+}

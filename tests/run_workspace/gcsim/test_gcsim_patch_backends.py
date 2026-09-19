@@ -82,7 +82,7 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
                 "001-first.patch\n002-second.patch",
             )
 
-    def test_default_gtt_patch_stack_is_one_consolidated_adapter(self) -> None:
+    def test_default_gtt_patch_stack_keeps_base_adapter_and_ordered_repairs(self) -> None:
         patch_stack = PROJECT_ROOT / "run_workspace" / "gcsim" / "patch_stack"
 
         patch_files = sorted(
@@ -91,7 +91,19 @@ class GcsimGitPatchBackendTest(unittest.TestCase):
             if path.is_file()
         )
 
-        self.assertEqual(patch_files, ["0001-gtt-engine-adapter-v245.patch"])
+        self.assertEqual(
+            patch_files,
+            [
+                "0001-gtt-engine-adapter-v245.patch",
+                "0002-gtt-snapshot-total-stat-provenance.patch",
+                "0003-gtt-trace-boundary-and-resistance-dedup.patch",
+                "0004-gtt-distinct-effect-ports.patch",
+                "0005-gtt-effect-port-after-simplification.patch",
+                "0006-gtt-contributor-seal-before-numeric.patch",
+                "0007-gtt-saved-state-candidate-stat-lineage.patch",
+                "0008-gtt-observed-modifier-state-lineage.patch",
+            ],
+        )
         patch_text = (patch_stack / patch_files[0]).read_text(
             encoding="utf-8", errors="strict"
         )

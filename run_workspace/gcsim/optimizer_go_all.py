@@ -17,6 +17,9 @@ from .optimizer_go_selected import (
     GcsimOptimizerGoSelectedSession,
     _write_canonical,
 )
+from .selected_team_config import (
+    VIRTUAL_ARTIFACT_POLICY_OPTIMIZER_INVENTORY_BASELINE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +41,7 @@ def all_sets_available() -> bool:
 
 class GcsimOptimizerGoAllSetsSession(GcsimOptimizerGoSelectedSession):
     run_mode = "all_sets"
+    virtual_artifact_policy = VIRTUAL_ARTIFACT_POLICY_OPTIMIZER_INVENTORY_BASELINE
 
     def _prepare_formula_inputs(self, *, prepared, run_dir, started):
         del started

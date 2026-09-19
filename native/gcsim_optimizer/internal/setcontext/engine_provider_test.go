@@ -12,13 +12,13 @@ import (
 
 func TestProviderPreservesExplicitEnergyAndRejectsAmbiguity(t *testing.T) {
 	for _, mode := range []string{"true", "false"} {
-		v, e := explicitEnergy("options iteration=100 ignore_burst_energy=" + mode + ";\n")
+		v, e := IgnoreBurstEnergy("options iteration=100 ignore_burst_energy=" + mode + ";\n")
 		if e != nil || v != (mode == "true") {
 			t.Fatal(v, e)
 		}
 	}
 	for _, s := range []string{"options iteration=100;", "options ignore_burst_energy=true ignore_burst_energy=false;", "options ignore_burst_energy=invalid;", "options ignore_burst_energy=true;\noptions iteration=1;"} {
-		if _, e := explicitEnergy(s); e == nil {
+		if _, e := IgnoreBurstEnergy(s); e == nil {
 			t.Fatal("ambiguous energy accepted")
 		}
 	}

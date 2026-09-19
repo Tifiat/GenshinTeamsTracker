@@ -5380,7 +5380,7 @@ diff --git a/pkg/gtt/info.go b/pkg/gtt/info.go
 new file mode 100644
 --- /dev/null
 +++ b/pkg/gtt/info.go
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,53 @@
 +package gtt
 +
 +import (
@@ -5402,6 +5402,7 @@ new file mode 100644
 +	EffectInputsV1Capability    = "gtt_effect_inputs_v1"
 +	SourceManifestV1Capability  = "gtt_source_manifest_v1"
 +	TraceProvenanceV1Capability = "gtt_trace_provenance_v1"
++	EnergyLedgerV1Capability    = "gtt_energy_ledger_v1"
 +)
 +
 +type EngineInfo struct {
@@ -5419,7 +5420,7 @@ new file mode 100644
 +	return EngineInfo{
 +		GTTEngine:                true,
 +		GTTPatchVersion:          PatchVersion,
-+		Capabilities:             []string{"gtt_engine_marker", WaveScenarioPayloadCapability, TraceEquationV2Capability, TraceEquationV3Capability, TraceEquationV4Capability, TraceEquationV5Capability, TraceEquationV6Capability, CompactEquationV1Capability, EffectInputsV1Capability, SourceManifestV1Capability, TraceProvenanceV1Capability},
++		Capabilities:             []string{"gtt_engine_marker", WaveScenarioPayloadCapability, TraceEquationV2Capability, TraceEquationV3Capability, TraceEquationV4Capability, TraceEquationV5Capability, TraceEquationV6Capability, CompactEquationV1Capability, EffectInputsV1Capability, SourceManifestV1Capability, TraceProvenanceV1Capability, EnergyLedgerV1Capability},
 +		SequentialWaves:          true,
 +		WaveSchedulerStage:       "scenario_payload_v1",
 +		UpstreamVersion:          upstreamVersion,
@@ -5437,7 +5438,7 @@ diff --git a/pkg/gtt/info_test.go b/pkg/gtt/info_test.go
 new file mode 100644
 --- /dev/null
 +++ b/pkg/gtt/info_test.go
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,44 @@
 +package gtt
 +
 +import (
@@ -5457,6 +5458,9 @@ new file mode 100644
 +	}
 +	if counts[CompactEquationV1Capability] != 1 {
 +		t.Fatalf("compact capability = %#v", capabilities)
++	}
++	if counts[EnergyLedgerV1Capability] != 1 {
++		t.Fatalf("energy capability = %#v", capabilities)
 +	}
 +}
 +
@@ -6181,7 +6185,7 @@ diff --git a/pkg/gttcompact/compile.go b/pkg/gttcompact/compile.go
 new file mode 100644
 --- /dev/null
 +++ b/pkg/gttcompact/compile.go
-@@ -0,0 +1,100 @@
+@@ -0,0 +1,136 @@
 +package gttcompact
 +
 +import (
@@ -6192,6 +6196,7 @@ new file mode 100644
 +	"strings"
 +	"time"
 +
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
 +	"github.com/genshinsim/gcsim/pkg/optimization/optstats"
 +)
 +
@@ -6245,6 +6250,7 @@ new file mode 100644
 +	member := IRSeedMember{
 +		Seed: uint64(buffer.Seed), DurationMS: int64(math.Round(float64(buffer.DurationFrames) * 1000 / 60)),
 +		TopologySHA256: topology, Nodes: builder.nodes, Channels: channels, OpaqueBoundaries: boundaries,
++		EnergyLedger: compileEnergyLedger(buffer.EnergyLedger),
 +	}
 +	resistanceInputs := builder.usedResistanceInputs(channels)
 +	audit := Audit{
@@ -6264,6 +6270,40 @@ new file mode 100644
 +	audit.HeapInuseEndBytes = endMemory.HeapInuse
 +	audit.TotalAllocDeltaBytes = endMemory.TotalAlloc - startMemory.TotalAlloc
 +	return member, audit, nil
++}
++
++func compileEnergyLedger(source gtttrace.EnergyLedger) IREnergyLedger {
++	out := IREnergyLedger{
++		InitialStates:    make([]IREnergyCharacterState, 0, len(source.InitialStates)),
++		Events:           make([]IREnergyEvent, 0, len(source.Events)),
++		UncertaintyCodes: append([]string(nil), source.UncertaintyCodes...),
++	}
++	for _, row := range source.InitialStates {
++		out.InitialStates = append(out.InitialStates, IREnergyCharacterState{
++			CharacterIndex: row.CharacterIndex, CharacterKey: row.CharacterKey,
++			Energy: decimal(row.Energy), EnergyMax: decimal(row.EnergyMax),
++		})
++	}
++	for _, row := range source.Events {
++		compiled := IREnergyEvent{
++			SequenceIndex: row.SequenceIndex, Frame: row.Frame,
++			CharacterIndex: row.CharacterIndex, CharacterKey: row.CharacterKey,
++			Kind: row.Kind, Source: row.Source,
++			EnergyBefore: decimal(row.EnergyBefore), EnergyAfter: decimal(row.EnergyAfter),
++			EnergyMax: decimal(row.EnergyMax), Amount: decimal(row.Amount), OnField: row.OnField,
++		}
++		if row.RawAtER100 != nil {
++			value := decimal(*row.RawAtER100)
++			compiled.RawAtER100 = &value
++		}
++		if row.ObservedER != nil {
++			value := decimal(*row.ObservedER)
++			compiled.ObservedER = &value
++		}
++		out.Events = append(out.Events, compiled)
++	}
++	sort.Strings(out.UncertaintyCodes)
++	return out
 +}
 +
 +func normalizeReason(value string) string {
@@ -7436,7 +7476,7 @@ diff --git a/pkg/gttcompact/model.go b/pkg/gttcompact/model.go
 new file mode 100644
 --- /dev/null
 +++ b/pkg/gttcompact/model.go
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,95 @@
 +// Package gttcompact compiles the opt-in equation trace into the stable,
 +// engine-neutral seed-member boundary consumed by GenshinTeamsTracker. It owns
 +// no artifact search or candidate ranking.
@@ -7475,6 +7515,35 @@ new file mode 100644
 +	BaselineDamageShare string `json:"baseline_damage_share"`
 +}
 +
++type IREnergyCharacterState struct {
++	CharacterIndex int    `json:"character_index"`
++	CharacterKey   string `json:"character_key"`
++	Energy         string `json:"energy"`
++	EnergyMax      string `json:"energy_max"`
++}
++
++type IREnergyEvent struct {
++	SequenceIndex  int     `json:"sequence_index"`
++	Frame          int     `json:"frame"`
++	CharacterIndex int     `json:"character_index"`
++	CharacterKey   string  `json:"character_key"`
++	Kind           string  `json:"kind"`
++	Source         string  `json:"source"`
++	EnergyBefore   string  `json:"energy_before"`
++	EnergyAfter    string  `json:"energy_after"`
++	EnergyMax      string  `json:"energy_max"`
++	Amount         string  `json:"amount"`
++	RawAtER100     *string `json:"raw_at_er_100,omitempty"`
++	ObservedER     *string `json:"observed_er,omitempty"`
++	OnField        *bool   `json:"on_field,omitempty"`
++}
++
++type IREnergyLedger struct {
++	InitialStates    []IREnergyCharacterState `json:"initial_states"`
++	Events           []IREnergyEvent          `json:"events"`
++	UncertaintyCodes []string                 `json:"uncertainty_codes"`
++}
++
 +type IRSeedMember struct {
 +	Seed             uint64             `json:"seed"`
 +	DurationMS       int64              `json:"duration_ms"`
@@ -7482,6 +7551,7 @@ new file mode 100644
 +	Nodes            []IRNode           `json:"nodes"`
 +	Channels         []IRChannel        `json:"channels"`
 +	OpaqueBoundaries []IROpaqueBoundary `json:"opaque_boundaries"`
++	EnergyLedger     IREnergyLedger     `json:"energy_ledger"`
 +}
 +
 +// Audit is not serialized into the optimizer contract. The engine command may
@@ -20884,6 +20954,47 @@ new file mode 100644
 +		}
 +	}
 +}
+diff --git a/pkg/gtttrace/energy.go b/pkg/gtttrace/energy.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/gtttrace/energy.go
+@@ -0,0 +1,36 @@
++package gtttrace
++
++// EnergyCharacterState is the exact energy state at the beginning of the
++// ignored-cost trace. It is evidence for a fixed rotation, not a character
++// heuristic.
++type EnergyCharacterState struct {
++	CharacterIndex int     `json:"character_index"`
++	CharacterKey   string  `json:"character_key"`
++	Energy         float64 `json:"energy"`
++	EnergyMax      float64 `json:"energy_max"`
++}
++
++// EnergyEvent is one ordered engine event. Particle energy is normalized by
++// RawAtER100; flat energy and burst costs do not scale with ER.
++type EnergyEvent struct {
++	SequenceIndex  int      `json:"sequence_index"`
++	Frame          int      `json:"frame"`
++	CharacterIndex int      `json:"character_index"`
++	CharacterKey   string   `json:"character_key"`
++	Kind           string   `json:"kind"`
++	Source         string   `json:"source"`
++	EnergyBefore   float64  `json:"energy_before"`
++	EnergyAfter    float64  `json:"energy_after"`
++	EnergyMax      float64  `json:"energy_max"`
++	Amount         float64  `json:"amount"`
++	RawAtER100     *float64 `json:"raw_at_er_100,omitempty"`
++	ObservedER     *float64 `json:"observed_er,omitempty"`
++	OnField        *bool    `json:"on_field,omitempty"`
++	Provider       Provider `json:"provider"`
++}
++
++type EnergyLedger struct {
++	InitialStates    []EnergyCharacterState `json:"initial_states"`
++	Events           []EnergyEvent          `json:"events"`
++	UncertaintyCodes []string               `json:"uncertainty_codes"`
++}
 diff --git a/pkg/gtttrace/health.go b/pkg/gtttrace/health.go
 new file mode 100644
 --- /dev/null
@@ -23541,7 +23652,7 @@ diff --git a/pkg/optimization/gtt_trace_equation.go b/pkg/optimization/gtt_trace
 new file mode 100644
 --- /dev/null
 +++ b/pkg/optimization/gtt_trace_equation.go
-@@ -0,0 +1,823 @@
+@@ -0,0 +1,876 @@
 +package optimization
 +
 +import (
@@ -23634,6 +23745,7 @@ new file mode 100644
 +	HealthOperations         []gtttrace.HealthOperation       `json:"health_operations"`
 +	StateSlots               []gtttrace.StateSlot             `json:"state_slots"`
 +	StateEvents              []gtttrace.StateEvent            `json:"state_events"`
++	EnergyLedger             gtttrace.EnergyLedger            `json:"energy_ledger"`
 +}
 +
 +func RunGTTTraceEquation(ctx context.Context, opts simulator.Options, requestPath string) error {
@@ -23787,6 +23899,7 @@ new file mode 100644
 +		HealthOperations:         buffer.HealthOperations,
 +		StateSlots:               buffer.StateSlots,
 +		StateEvents:              buffer.StateEvents,
++		EnergyLedger:             buffer.EnergyLedger,
 +	}
 +	payload, err := json.MarshalIndent(out, "", "  ")
 +	if err != nil {
@@ -23954,6 +24067,57 @@ new file mode 100644
 +	}
 +	if err := validateGTTStateRows(buffer, characterKeys); err != nil {
 +		return err
++	}
++	if err := validateGTTEnergyLedger(buffer.EnergyLedger, characterKeys); err != nil {
++		return err
++	}
++	return nil
++}
++
++func validateGTTEnergyLedger(ledger gtttrace.EnergyLedger, characterKeys []string) error {
++	if len(ledger.InitialStates) != len(characterKeys) || ledger.Events == nil || ledger.UncertaintyCodes == nil {
++		return errors.New("gtt trace equation: incomplete energy ledger")
++	}
++	seen := make(map[int]bool, len(characterKeys))
++	for _, state := range ledger.InitialStates {
++		if state.CharacterIndex < 0 || state.CharacterIndex >= len(characterKeys) || seen[state.CharacterIndex] ||
++			state.CharacterKey != characterKeys[state.CharacterIndex] || !gttTraceFinite(state.Energy) ||
++			!gttTraceFinite(state.EnergyMax) || state.Energy < 0 || state.EnergyMax <= 0 || state.Energy > state.EnergyMax {
++			return errors.New("gtt trace equation: invalid energy initial state")
++		}
++		seen[state.CharacterIndex] = true
++	}
++	previousFrame := -1
++	for index, row := range ledger.Events {
++		if row.SequenceIndex != index || row.Frame < previousFrame || row.CharacterIndex < 0 ||
++			row.CharacterIndex >= len(characterKeys) || row.CharacterKey != characterKeys[row.CharacterIndex] ||
++			strings.TrimSpace(row.Source) == "" || !gttTraceFinite(row.EnergyBefore) ||
++			!gttTraceFinite(row.EnergyAfter) || !gttTraceFinite(row.EnergyMax) ||
++			!gttTraceFinite(row.Amount) || row.EnergyMax <= 0 {
++			return fmt.Errorf("gtt trace equation: invalid energy event %d", index)
++		}
++		previousFrame = row.Frame
++		if err := validateGTTTraceProvider(row.Provider); err != nil {
++			return fmt.Errorf("gtt trace equation: energy event %d provider: %w", index, err)
++		}
++		switch row.Kind {
++		case "particle":
++			if row.RawAtER100 == nil || row.ObservedER == nil || row.OnField == nil ||
++				!gttTraceFinite(*row.RawAtER100) || !gttTraceFinite(*row.ObservedER) ||
++				*row.RawAtER100 < 0 || *row.ObservedER <= 0 || row.Amount < 0 {
++				return fmt.Errorf("gtt trace equation: invalid particle event %d", index)
++			}
++		case "flat":
++			if row.RawAtER100 != nil || row.ObservedER != nil || row.OnField != nil {
++				return fmt.Errorf("gtt trace equation: flat event %d has particle fields", index)
++			}
++		case "burst":
++			if row.Amount <= 0 || row.RawAtER100 != nil || row.ObservedER != nil || row.OnField != nil {
++				return fmt.Errorf("gtt trace equation: invalid burst event %d", index)
++			}
++		default:
++			return fmt.Errorf("gtt trace equation: unknown energy event kind %q", row.Kind)
++		}
 +	}
 +	return nil
 +}
@@ -25543,7 +25707,7 @@ diff --git a/pkg/optimization/optstats/trace_equation.go b/pkg/optimization/opts
 new file mode 100644
 --- /dev/null
 +++ b/pkg/optimization/optstats/trace_equation.go
-@@ -0,0 +1,296 @@
+@@ -0,0 +1,345 @@
 +package optstats
 +
 +import (
@@ -25558,6 +25722,7 @@ new file mode 100644
 +	"github.com/genshinsim/gcsim/pkg/core/attributes"
 +	"github.com/genshinsim/gcsim/pkg/core/event"
 +	"github.com/genshinsim/gcsim/pkg/core/info"
++	"github.com/genshinsim/gcsim/pkg/core/player/character"
 +	"github.com/genshinsim/gcsim/pkg/gtttrace"
 +)
 +
@@ -25597,6 +25762,7 @@ new file mode 100644
 +	HealthOperations    []gtttrace.HealthOperation    `json:"health_operations"`
 +	StateSlots          []gtttrace.StateSlot          `json:"state_slots"`
 +	StateEvents         []gtttrace.StateEvent         `json:"state_events"`
++	EnergyLedger        gtttrace.EnergyLedger         `json:"energy_ledger"`
 +	nextAttackID        uint64
 +	nextHitID           uint64
 +	nextEventID         uint64
@@ -25617,7 +25783,54 @@ new file mode 100644
 +		HealthOperations:    make([]gtttrace.HealthOperation, 0),
 +		StateSlots:          make([]gtttrace.StateSlot, 0),
 +		StateEvents:         make([]gtttrace.StateEvent, 0),
++		EnergyLedger: gtttrace.EnergyLedger{
++			InitialStates:    make([]gtttrace.EnergyCharacterState, 0, len(core.Player.Chars())),
++			Events:           make([]gtttrace.EnergyEvent, 0),
++			UncertaintyCodes: []string{"energy_source_schedule_observed_not_symbolic"},
++		},
 +	}
++	for _, char := range core.Player.Chars() {
++		out.EnergyLedger.InitialStates = append(out.EnergyLedger.InitialStates, gtttrace.EnergyCharacterState{
++			CharacterIndex: char.Index(), CharacterKey: char.Base.Key.String(),
++			Energy: char.Energy, EnergyMax: char.EnergyMax,
++		})
++	}
++	core.Events.Subscribe(event.OnEnergyChange, func(args ...any) {
++		char := args[0].(*character.CharWrapper)
++		before := args[1].(float64)
++		amount := args[2].(float64)
++		source := args[3].(string)
++		isParticle := args[4].(bool)
++		row := gtttrace.EnergyEvent{
++			SequenceIndex: len(out.EnergyLedger.Events), Frame: core.F,
++			CharacterIndex: char.Index(), CharacterKey: char.Base.Key.String(),
++			Kind: "flat", Source: source, EnergyBefore: before, EnergyAfter: char.Energy,
++			EnergyMax: char.EnergyMax, Amount: amount, Provider: core.GTTTrace.Current(),
++		}
++		if isParticle {
++			row.Kind = "particle"
++			er := char.Stat(attributes.ER)
++			raw := 0.0
++			if er > 0 {
++				raw = amount / er
++			}
++			onField := core.Player.Active() == char.Index()
++			row.RawAtER100, row.ObservedER, row.OnField = &raw, &er, &onField
++		}
++		out.EnergyLedger.Events = append(out.EnergyLedger.Events, row)
++	}, "gtt-trace-equation-energy-change")
++	core.Events.Subscribe(event.OnEnergyBurst, func(args ...any) {
++		char := args[0].(*character.CharWrapper)
++		before := args[1].(float64)
++		cost := args[2].(float64)
++		out.EnergyLedger.Events = append(out.EnergyLedger.Events, gtttrace.EnergyEvent{
++			SequenceIndex: len(out.EnergyLedger.Events), Frame: core.F,
++			CharacterIndex: char.Index(), CharacterKey: char.Base.Key.String(),
++			Kind: "burst", Source: char.Base.Key.String() + "-burst-energy-drain",
++			EnergyBefore: before, EnergyAfter: char.Energy, EnergyMax: char.EnergyMax,
++			Amount: cost, Provider: core.GTTTrace.Current(),
++		})
++	}, "gtt-trace-equation-energy-burst")
 +	core.Events.Subscribe(event.OnApplyAttack, func(args ...any) {
 +		attack := args[0].(*info.AttackEvent)
 +		if !attack.GTTTraceProvider.Complete() {

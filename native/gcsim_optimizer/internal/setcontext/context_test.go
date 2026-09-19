@@ -67,6 +67,35 @@ func TestContextReplacementPreservesFrameAndRestores(t *testing.T) {
 	}
 }
 
+func TestNeutralContextCanInsertWholeSetPackagesWithoutChangingFrame(t *testing.T) {
+	base := fixtureContext(t)
+	text := base.text
+	for _, actor := range base.actors {
+		text = strings.Replace(text, actor+" add set=\"old\" count=2;\n", "", 1)
+	}
+	neutral, err := New(base.binding, text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(neutral.Sets("actor_a")) != 0 {
+		t.Fatal("neutral context retained an active set")
+	}
+	next, err := neutral.Replace(map[string][]Set{
+		"actor_a": {{UID: "new", Count: 4}},
+		"actor_b": {{UID: "left", Count: 2}, {UID: "right", Count: 2}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !neutral.SameFrame(next) {
+		t.Fatal("inserting a Theory package changed the non-set frame")
+	}
+	if !strings.Contains(next.text, "actor_a add set=\"new\" count=4;\nactor_a add stats") ||
+		!strings.Contains(next.text, "actor_b add set=\"right\" count=2;\nactor_b add stats") {
+		t.Fatal("Theory package was not inserted immediately before artifact stats")
+	}
+}
+
 func TestContextIdentityCoversAllInputs(t *testing.T) {
 	base := fixtureContext(t)
 	cases := map[string]func(*Binding, *string){

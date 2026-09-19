@@ -82,7 +82,10 @@ intended behavior or visual changes:
   production `RightPanelSlotCardWidget` / `RightPanelTeamCardWidget` names.
 - `ui/right_panel/live_run/panel.py` owns the current Run/Abyss/DPS right panel
   as `RunRightPanelWidget`, including run actions, chamber/timer cells, selected
-  details, bonus strip/chips, and compact GCSIM/factual-DPS cells. The
+  details, bonus strip/chips and compact GCSIM/factual-DPS cells. Virtual-GCSIM
+  profile editing is intentionally not duplicated there: the compact editor is
+  owned by each team card in `ui/gcsim_browser/virtual_slot_editor.py` and
+  routed by AppShell while the right panel remains a live summary. The
   `run_workspace/right_panel_prototype_view_model.py` owner was intentionally
   left unchanged.
 - `ui/right_panel/dock.py` and `ui/right_panel/header.py` own

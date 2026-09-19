@@ -1,0 +1,28 @@
+diff --git a/pkg/gttcompact/support.go b/pkg/gttcompact/support.go
+index a8492e2..b288f81 100644
+--- a/pkg/gttcompact/support.go
++++ b/pkg/gttcompact/support.go
+@@ -251,6 +251,11 @@ func (c *supportCompiler) compileEvent(event gtttrace.StateEvent) {
+ 		} else {
+ 			node = c.compileNumericEvent(event)
+ 		}
++		if event.Channel != nil && strings.HasPrefix(*event.Channel, "effect_input:") {
++			// Every executed effect read is an independent intervention port,
++			// even when its arithmetic simplified to a shared upstream node.
++			node = c.b.add(node, c.b.constant(0))
++		}
+ 		c.eventNodes[event.EventID] = node
+ 		if event.Key != nil && len(event.Output) == 1 && event.Operation != nil && *event.Operation == "identity" {
+ 			if value, ok := event.Output[*event.Key]; ok && closeEnough(value, node.baseline) {
+@@ -337,11 +342,6 @@ func (c *supportCompiler) compileNumericEvent(event gtttrace.StateEvent) compile
+ 		return c.b.constant(observed)
+ 	case "identity", "task_payload", "health_input":
+ 		if len(inputs) == 1 {
+-			if event.Channel != nil && strings.HasPrefix(*event.Channel, "effect_input:") {
+-				// Effect reads are intervention ports. Preserve one graph node per
+-				// executed read even when several reads share one upstream value.
+-				return c.b.add(inputs[0], c.b.constant(0))
+-			}
+ 			return inputs[0]
+ 		}
+ 	case "negate":

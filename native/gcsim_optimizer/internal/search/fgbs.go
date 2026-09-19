@@ -11,6 +11,7 @@ import (
 	"sort"
 
 	"genshinteamstracker/native/gcsim_optimizer/internal/domain"
+	energyconstraint "genshinteamstracker/native/gcsim_optimizer/internal/energy"
 	"genshinteamstracker/native/gcsim_optimizer/internal/evaluator"
 )
 
@@ -65,15 +66,19 @@ type Result struct {
 	OpaqueReasons           []string                        `json:"opaque_reasons"`
 	SaturationFrozenWearers []string                        `json:"saturation_frozen_wearers"`
 	StopReason              string                          `json:"stop_reason"`
+	Energy                  *energyconstraint.Feasibility   `json:"energy,omitempty"`
 }
 
 type Engine struct {
-	domain *domain.Index
-	panel  *evaluator.Panel
-	config Config
+	domain      *domain.Index
+	panel       *evaluator.Panel
+	config      Config
+	energy      *energyconstraint.Model
+	energyCache map[domain.Assignment]energyconstraint.Feasibility
+	energyErr   error
 }
 
-func New(artifactDomain *domain.Index, panel *evaluator.Panel, config Config) (*Engine, error) {
+func New(artifactDomain *domain.Index, panel *evaluator.Panel, config Config, energyModels ...*energyconstraint.Model) (*Engine, error) {
 	if artifactDomain == nil || panel == nil {
 		return nil, fmt.Errorf("search domain and panel are required")
 	}
@@ -88,7 +93,14 @@ func New(artifactDomain *domain.Index, panel *evaluator.Panel, config Config) (*
 	if config.FirstFrontierWidth <= 0 || config.RecheckFrontierWidth <= 0 || config.MaxExpandedPerActor <= 0 || config.FinalistLimit < 2 || config.MaxCycles <= 0 || config.PairFinalistLimit < 2 {
 		return nil, fmt.Errorf("search config is invalid")
 	}
-	return &Engine{artifactDomain, panel, config}, nil
+	if len(energyModels) > 1 {
+		return nil, fmt.Errorf("search accepts at most one energy constraint")
+	}
+	var energyModel *energyconstraint.Model
+	if len(energyModels) == 1 {
+		energyModel = energyModels[0]
+	}
+	return &Engine{domain: artifactDomain, panel: panel, config: config, energy: energyModel, energyCache: make(map[domain.Assignment]energyconstraint.Feasibility)}, nil
 }
 
 // RefineWearer exposes one existing bounded FGBS step for All Sets orchestration.
@@ -141,7 +153,7 @@ func (engine *Engine) Run(ctx context.Context) (Result, error) {
 			proposal := step.Finalists[0]
 			step.AnchorDPS = before.DPS
 			step.ProposalDPS = proposal.DPS
-			if proposal.DPS > before.DPS+1e-9 {
+			if engine.betterScored(proposal, before) {
 				step.Accepted = true
 				anchor = proposal
 				result.AcceptedSteps++
@@ -165,14 +177,33 @@ func (engine *Engine) Run(ctx context.Context) (Result, error) {
 	result.PairGenerated, result.PairEvaluated, result.PairInvalid, result.PairDuplicates = generated, evaluated, invalid, duplicates
 	result.PairActorKeys = pairKeys
 	candidatePool = append(candidatePool, pairRows...)
-	if paired.DPS > anchor.DPS+1e-9 {
+	if engine.betterScored(paired, anchor) {
 		anchor = paired
 		result.StopReason += "+pair_improved"
 	}
 	result.Leader = anchor
 	candidatePool = append(candidatePool, anchor, paired)
-	result.Finalists = mergeFinalists(engine.config.PairFinalistLimit, candidatePool...)
+	result.Finalists = engine.mergeFinalists(engine.config.PairFinalistLimit, candidatePool...)
+	if engine.energyErr != nil {
+		return result, engine.energyErr
+	}
+	if engine.energy != nil {
+		assessment, energyErr := engine.energyAssessment(result.Leader.Assignment)
+		if energyErr != nil {
+			return result, energyErr
+		}
+		result.Energy = &assessment
+		if !assessment.Feasible {
+			result.StopReason += "+no_energy_feasible_assignment"
+		}
+	}
 	return result, nil
+}
+
+type objective struct {
+	feasible bool
+	shortage float64
+	dps      float64
 }
 
 type partial struct {
@@ -181,6 +212,7 @@ type partial struct {
 	proxy         domain.Assignment
 	deltas        []float64
 	score         float64
+	objective     objective
 	physicalCount int64
 }
 
@@ -266,7 +298,14 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 						return step, err
 					}
 					candidate.proxy, candidate.deltas, candidate.score = proxy, deltas, dps
+					candidate.objective, err = engine.objective(proxy, dps)
+					if err != nil {
+						return step, err
+					}
 					key := vectorKey(deltas)
+					if engine.energy != nil {
+						key += fmt.Sprintf("|energy:%t:%.12g", candidate.objective.feasible, candidate.objective.shortage)
+					}
 					old, exists := builders[key]
 					if !exists || idsLess(candidate.ids, old.ids) {
 						if exists {
@@ -292,8 +331,11 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 				next = append(next, row)
 			}
 			sort.Slice(next, func(i, j int) bool {
-				if next[i].score != next[j].score {
-					return next[i].score > next[j].score
+				if betterObjective(next[i].objective, next[j].objective) {
+					return true
+				}
+				if betterObjective(next[j].objective, next[i].objective) {
+					return false
 				}
 				return idsLess(next[i].ids, next[j].ids)
 			})
@@ -335,7 +377,7 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 	for _, row := range byAssignment {
 		ordered = append(ordered, row)
 	}
-	sortScored(ordered)
+	engine.sortScored(ordered)
 	if len(ordered) > engine.config.FinalistLimit {
 		ordered = ordered[:engine.config.FinalistLimit]
 	}
@@ -345,7 +387,7 @@ func (engine *Engine) searchActor(ctx context.Context, anchor domain.Assignment,
 		} else {
 			ordered = append(ordered, byAssignment[anchor])
 		}
-		sortScored(ordered)
+		engine.sortScored(ordered)
 	}
 	step.Finalists = ordered
 	return step, nil
@@ -417,7 +459,7 @@ func (engine *Engine) laneFallback(anchor domain.Assignment, wearerIndex int, cu
 	evaluations := 0
 	for slot, pool := range current.pools {
 		best := ids[slot]
-		bestDPS := -math.MaxFloat64
+		bestObjective := objective{feasible: false, shortage: math.Inf(1), dps: -math.MaxFloat64}
 		for _, id := range pool {
 			trial := anchor
 			trial[wearerIndex] = ids
@@ -427,8 +469,12 @@ func (engine *Engine) laneFallback(anchor domain.Assignment, wearerIndex int, cu
 				return ids, evaluations, err
 			}
 			evaluations++
-			if dps > bestDPS+1e-9 || (math.Abs(dps-bestDPS) <= 1e-9 && id < best) {
-				best, bestDPS = id, dps
+			candidateObjective, err := engine.objective(trial, dps)
+			if err != nil {
+				return ids, evaluations, err
+			}
+			if betterObjective(candidateObjective, bestObjective) || (!betterObjective(bestObjective, candidateObjective) && id < best) {
+				best, bestObjective = id, candidateObjective
 			}
 		}
 		ids[slot] = best
@@ -477,13 +523,13 @@ func (engine *Engine) refinePairs(ctx context.Context, anchor ScoredAssignment, 
 				evaluated++
 				scored := ScoredAssignment{trial, dps, "pair_refinement"}
 				rows = append(rows, scored)
-				if dps > best.DPS+1e-9 {
+				if engine.betterScored(scored, best) {
 					best = scored
 				}
 			}
 		}
 	}
-	rows = mergeFinalists(engine.config.PairFinalistLimit, rows...)
+	rows = engine.mergeFinalists(engine.config.PairFinalistLimit, rows...)
 	return best, rows, pairs, generated, evaluated, invalid, duplicates, nil
 }
 
@@ -569,6 +615,83 @@ func (engine *Engine) scoreActor(assignment domain.Assignment, wearerIndex int) 
 	return engine.panel.EvaluateDPSForActor(deltas, wearerIndex)
 }
 
+func (engine *Engine) energyAssessment(assignment domain.Assignment) (energyconstraint.Feasibility, error) {
+	if engine.energy == nil {
+		return energyconstraint.Feasibility{Feasible: true}, nil
+	}
+	if cached, ok := engine.energyCache[assignment]; ok {
+		return cached, nil
+	}
+	assessment, err := engine.energy.Feasibility(assignment)
+	if err != nil {
+		return energyconstraint.Feasibility{}, err
+	}
+	engine.energyCache[assignment] = assessment
+	return assessment, nil
+}
+
+func (engine *Engine) objective(assignment domain.Assignment, dps float64) (objective, error) {
+	assessment, err := engine.energyAssessment(assignment)
+	if err != nil {
+		return objective{}, err
+	}
+	return objective{feasible: assessment.Feasible, shortage: assessment.MaximumShortage, dps: dps}, nil
+}
+
+func betterObjective(left, right objective) bool {
+	if left.feasible != right.feasible {
+		return left.feasible
+	}
+	if !left.feasible && math.Abs(left.shortage-right.shortage) > 1e-9 {
+		return left.shortage < right.shortage
+	}
+	return left.dps > right.dps+1e-9
+}
+
+func (engine *Engine) betterScored(left, right ScoredAssignment) bool {
+	leftObjective, leftErr := engine.objective(left.Assignment, left.DPS)
+	rightObjective, rightErr := engine.objective(right.Assignment, right.DPS)
+	if leftErr != nil || rightErr != nil {
+		if leftErr != nil {
+			engine.energyErr = leftErr
+		} else {
+			engine.energyErr = rightErr
+		}
+		return false
+	}
+	return betterObjective(leftObjective, rightObjective)
+}
+
+func (engine *Engine) sortScored(rows []ScoredAssignment) {
+	sort.Slice(rows, func(i, j int) bool {
+		if engine.betterScored(rows[i], rows[j]) {
+			return true
+		}
+		if engine.betterScored(rows[j], rows[i]) {
+			return false
+		}
+		return assignmentLess(rows[i].Assignment, rows[j].Assignment)
+	})
+}
+
+func (engine *Engine) mergeFinalists(limit int, rows ...ScoredAssignment) []ScoredAssignment {
+	by := make(map[domain.Assignment]ScoredAssignment)
+	for _, row := range rows {
+		if old, ok := by[row.Assignment]; !ok || engine.betterScored(row, old) {
+			by[row.Assignment] = row
+		}
+	}
+	out := make([]ScoredAssignment, 0, len(by))
+	for _, row := range by {
+		out = append(out, row)
+	}
+	engine.sortScored(out)
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out
+}
+
 func diverse(rows []partial, width int) []partial {
 	if len(rows) <= width {
 		return rows
@@ -587,7 +710,7 @@ func diverse(rows []partial, width int) []partial {
 			if _, ok := used[row.ids]; ok {
 				continue
 			}
-			if best < 0 || row.deltas[coordinate] > rows[best].deltas[coordinate] || (row.deltas[coordinate] == rows[best].deltas[coordinate] && row.score > rows[best].score) {
+			if best < 0 || row.deltas[coordinate] > rows[best].deltas[coordinate] || (row.deltas[coordinate] == rows[best].deltas[coordinate] && betterObjective(row.objective, rows[best].objective)) {
 				best = index
 			}
 		}
@@ -606,8 +729,11 @@ func diverse(rows []partial, width int) []partial {
 		}
 	}
 	sort.Slice(keep, func(i, j int) bool {
-		if keep[i].score != keep[j].score {
-			return keep[i].score > keep[j].score
+		if betterObjective(keep[i].objective, keep[j].objective) {
+			return true
+		}
+		if betterObjective(keep[j].objective, keep[i].objective) {
+			return false
 		}
 		return idsLess(keep[i].ids, keep[j].ids)
 	})

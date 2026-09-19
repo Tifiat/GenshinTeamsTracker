@@ -1,0 +1,2461 @@
+{
+  "date": "2026-09-19",
+  "generated_state_removed_on_exit": true,
+  "manifest": "optimizer_account_mode_matrix_v1",
+  "runs": [
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 2500.0,
+        "mode": "selected",
+        "optimizer_process_ms": 88688.0,
+        "prepare_inputs_ms": 4813.0,
+        "request_preflight_ms": 109.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 96110.0
+      },
+      "archetype": null,
+      "characters": [
+        "Furina",
+        "Chasca",
+        "Ororon",
+        "Bennett"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 96110,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [],
+      "id": "chasca_selected_infinite_fresh",
+      "infinite_energy": true,
+      "mode": "selected",
+      "product": {
+        "candidates": [
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 36,
+                  "goblet": 140,
+                  "plume": 1414,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Пиро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Позолоченные сны"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "bennett"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1615,
+                  "flower": 1571,
+                  "goblet": 88,
+                  "plume": 81,
+                  "sands": 92
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "chasca"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1318,
+                  "flower": 1302,
+                  "goblet": 1309,
+                  "plume": 7,
+                  "sands": 1466
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Золотая труппа"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "furina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 119,
+                  "flower": 1616,
+                  "goblet": 1586,
+                  "plume": 91,
+                  "sands": 241
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Электро урона 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Свиток героя сожжённого города"
+                  }
+                ],
+                "wearer_key": "ororon"
+              }
+            ],
+            "formula_dps": "156310.537533471",
+            "formula_residual": "-629.4628526791057",
+            "measured": {
+              "dps": "155681.0746807919",
+              "engine_result_sha256": "8a879ba13b098ff626d0c3208a8a43f1c08a12ca16ddb73d4ad65d2293045228",
+              "iterations": 1000,
+              "standard_error": "65.14893165312543"
+            },
+            "rank": 1
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 36,
+                  "goblet": 140,
+                  "plume": 1413,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Пиро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Позолоченные сны"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "bennett"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1615,
+                  "flower": 1571,
+                  "goblet": 88,
+                  "plume": 81,
+                  "sands": 92
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "chasca"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1318,
+                  "flower": 1302,
+                  "goblet": 1309,
+                  "plume": 7,
+                  "sands": 1466
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Золотая труппа"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "furina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1541,
+                  "flower": 1616,
+                  "goblet": 1586,
+                  "plume": 91,
+                  "sands": 241
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Электро урона 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Свиток героя сожжённого города"
+                  }
+                ],
+                "wearer_key": "ororon"
+              }
+            ],
+            "formula_dps": "156307.5513522531",
+            "formula_residual": "-627.9086896073713",
+            "measured": {
+              "dps": "155679.64266264573",
+              "engine_result_sha256": "8e49c6403f3dfe31edbf807c73e809eab221e6ffa7cf133ebf3f1321ef7745da",
+              "iterations": 1000,
+              "standard_error": "70.56260923593526"
+            },
+            "rank": 2
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 36,
+                  "goblet": 140,
+                  "plume": 1413,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Пиро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Позолоченные сны"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "bennett"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1615,
+                  "flower": 1571,
+                  "goblet": 88,
+                  "plume": 81,
+                  "sands": 92
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "chasca"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1318,
+                  "flower": 1302,
+                  "goblet": 1309,
+                  "plume": 7,
+                  "sands": 1466
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Золотая труппа"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "furina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 119,
+                  "flower": 1616,
+                  "goblet": 1586,
+                  "plume": 91,
+                  "sands": 241
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Электро урона 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Свиток героя сожжённого города"
+                  }
+                ],
+                "wearer_key": "ororon"
+              }
+            ],
+            "formula_dps": "156335.04645355258",
+            "formula_residual": "-705.2832900642534",
+            "measured": {
+              "dps": "155629.76316348833",
+              "engine_result_sha256": "cceb157ae1ea276996e73666357d6f913dd5a89279da181c9ad70af7e435fa01",
+              "iterations": 1000,
+              "standard_error": "68.93826684477885"
+            },
+            "rank": 3
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1437,
+                  "flower": 36,
+                  "goblet": 140,
+                  "plume": 1413,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Пиро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Позолоченные сны"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "bennett"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1615,
+                  "flower": 1571,
+                  "goblet": 88,
+                  "plume": 81,
+                  "sands": 92
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "chasca"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1318,
+                  "flower": 1302,
+                  "goblet": 1309,
+                  "plume": 7,
+                  "sands": 1466
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Золотая труппа"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "furina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 119,
+                  "flower": 1616,
+                  "goblet": 1477,
+                  "plume": 91,
+                  "sands": 241
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Электро урона 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Изумрудная тень"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Свиток героя сожжённого города"
+                  }
+                ],
+                "wearer_key": "ororon"
+              }
+            ],
+            "formula_dps": "156267.52159318622",
+            "formula_residual": "-734.0553840296634",
+            "measured": {
+              "dps": "155533.46620915656",
+              "engine_result_sha256": "1ef789c3daa36b40cbfbbd66b50c560c294cad36da29d144bd2280f9640a1dad",
+              "iterations": 1000,
+              "standard_error": "65.0933601076892"
+            },
+            "rank": 4
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 36,
+                  "goblet": 1610,
+                  "plume": 1413,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Пиро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "bennett"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1615,
+                  "flower": 1571,
+                  "goblet": 88,
+                  "plume": 81,
+                  "sands": 92
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "chasca"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1318,
+                  "flower": 1302,
+                  "goblet": 1309,
+                  "plume": 7,
+                  "sands": 1466
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Золотая труппа"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "furina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1541,
+                  "flower": 1616,
+                  "goblet": 1586,
+                  "plume": 91,
+                  "sands": 241
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Электро урона 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Свиток героя сожжённого города"
+                  }
+                ],
+                "wearer_key": "ororon"
+              }
+            ],
+            "formula_dps": "156243.76457436394",
+            "formula_residual": "-1024.9742636753654",
+            "measured": {
+              "dps": "155218.79031068858",
+              "engine_result_sha256": "e17c9e922e4a72e0a2efde7feeed3be07ab2a183ec1875577d82bc03476df278",
+              "iterations": 500,
+              "standard_error": "99.81199836765988"
+            },
+            "rank": 5
+          }
+        ],
+        "coverage": {},
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_result_v1",
+        "status": "success",
+        "warnings": [
+          "formula_rank_not_measurement_authority",
+          "measured_top_confidence_overlap",
+          "opaque_formula_boundaries_present"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/chasca.txt",
+      "source_url": null,
+      "status": "success",
+      "success": true,
+      "wall_seconds": 96.18800000002375
+    },
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 3813.0,
+        "mode": "selected",
+        "optimizer_process_ms": 118719.0,
+        "prepare_inputs_ms": 4891.0,
+        "request_preflight_ms": 109.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 127532.0
+      },
+      "archetype": null,
+      "characters": [
+        "Flins",
+        "Ineffa",
+        "Columbina",
+        "Sucrose"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 127532,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [],
+      "id": "flins_sucrose_rotation_1_selected",
+      "infinite_energy": true,
+      "mode": "selected",
+      "product": {
+        "candidates": [
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1565,
+                  "flower": 1537,
+                  "goblet": 64,
+                  "plume": 1535,
+                  "sands": 63
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Ночь открытия неба"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1567,
+                  "flower": 71,
+                  "goblet": 1566,
+                  "plume": 72,
+                  "sands": 73
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1484,
+                  "flower": 66,
+                  "goblet": 1478,
+                  "plume": 153,
+                  "sands": 154
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Изумрудная тень"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "sucrose"
+              }
+            ],
+            "formula_dps": "181907.54826704925",
+            "formula_residual": "584.878114750667",
+            "measured": {
+              "dps": "182492.42638179992",
+              "engine_result_sha256": "53a3151c7fe847f8109d526c0da8163dfc3e5ffdda9674ffbc950461a6caabd9",
+              "iterations": 500,
+              "standard_error": "125.56896860943135"
+            },
+            "rank": 1
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1565,
+                  "flower": 1537,
+                  "goblet": 64,
+                  "plume": 1535,
+                  "sands": 63
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Ночь открытия неба"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1567,
+                  "flower": 71,
+                  "goblet": 1566,
+                  "plume": 72,
+                  "sands": 73
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1484,
+                  "flower": 181,
+                  "goblet": 1478,
+                  "plume": 153,
+                  "sands": 154
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Изумрудная тень"
+                  }
+                ],
+                "wearer_key": "sucrose"
+              }
+            ],
+            "formula_dps": "181876.78149970426",
+            "formula_residual": "526.193855985679",
+            "measured": {
+              "dps": "182402.97535568994",
+              "engine_result_sha256": "4955f2d2fa154e02122225f5983f4b529ad51328eb05ea78a0d15830d7ee2129",
+              "iterations": 500,
+              "standard_error": "124.10962631432663"
+            },
+            "rank": 2
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1565,
+                  "flower": 1537,
+                  "goblet": 64,
+                  "plume": 1535,
+                  "sands": 63
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Ночь открытия неба"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1567,
+                  "flower": 71,
+                  "goblet": 1566,
+                  "plume": 72,
+                  "sands": 73
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1484,
+                  "flower": 152,
+                  "goblet": 1478,
+                  "plume": 1329,
+                  "sands": 1481
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Изумрудная тень"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Цветок потерянного рая"
+                  }
+                ],
+                "wearer_key": "sucrose"
+              }
+            ],
+            "formula_dps": "181867.6481413007",
+            "formula_residual": "392.2219184971764",
+            "measured": {
+              "dps": "182259.8700597979",
+              "engine_result_sha256": "aa1cac0c705314bfb00d89bfa7f228513f1bbc87ef2612e93700b0fd87d6e5da",
+              "iterations": 500,
+              "standard_error": "123.58132755653574"
+            },
+            "rank": 3
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 51,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1565,
+                  "flower": 1537,
+                  "goblet": 64,
+                  "plume": 1535,
+                  "sands": 63
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Ночь открытия неба"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1567,
+                  "flower": 71,
+                  "goblet": 1566,
+                  "plume": 72,
+                  "sands": 73
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1484,
+                  "flower": 66,
+                  "goblet": 1478,
+                  "plume": 153,
+                  "sands": 154
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Изумрудная тень"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "sucrose"
+              }
+            ],
+            "formula_dps": "181893.84408670862",
+            "formula_residual": "329.5486140086432",
+            "measured": {
+              "dps": "182223.39270071726",
+              "engine_result_sha256": "ae0e79f2e92b85982417dfba3997f8382b5ac4d09a9e3768ad268c3e59ef9fe9",
+              "iterations": 500,
+              "standard_error": "125.35388661934225"
+            },
+            "rank": 4
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 51,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1565,
+                  "flower": 1537,
+                  "goblet": 64,
+                  "plume": 1535,
+                  "sands": 63
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Ночь открытия неба"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1567,
+                  "flower": 71,
+                  "goblet": 1566,
+                  "plume": 72,
+                  "sands": 73
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1484,
+                  "flower": 152,
+                  "goblet": 1478,
+                  "plume": 1329,
+                  "sands": 154
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Изумрудная тень"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Цветок потерянного рая"
+                  }
+                ],
+                "wearer_key": "sucrose"
+              }
+            ],
+            "formula_dps": "181881.72453858535",
+            "formula_residual": "305.32978240866214",
+            "measured": {
+              "dps": "182187.054320994",
+              "engine_result_sha256": "0a9cfb09cbb9e57e071f8486b8c49a1f36665b96c9a73df3aa6d824a23b1b82e",
+              "iterations": 500,
+              "standard_error": "120.46868144836812"
+            },
+            "rank": 5
+          }
+        ],
+        "coverage": {},
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_result_v1",
+        "status": "success",
+        "warnings": [
+          "adaptive_finalist_panel_too_wide",
+          "formula_rank_not_measurement_authority",
+          "measured_top_confidence_overlap",
+          "opaque_formula_boundaries_present"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/flins_sucrose_1.txt",
+      "source_url": null,
+      "status": "success",
+      "success": true,
+      "wall_seconds": 127.68800000002375
+    },
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 3485.0,
+        "mode": "selected",
+        "optimizer_process_ms": 104078.0,
+        "prepare_inputs_ms": 4735.0,
+        "request_preflight_ms": 109.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 112422.0
+      },
+      "archetype": null,
+      "characters": [
+        "Flins",
+        "Ineffa",
+        "Columbina",
+        "Sucrose"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 112421,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [],
+      "id": "flins_sucrose_rotation_2_selected",
+      "infinite_energy": true,
+      "mode": "selected",
+      "product": {
+        "candidates": [
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1565,
+                  "flower": 1537,
+                  "goblet": 88,
+                  "plume": 1533,
+                  "sands": 63
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Ночь открытия неба"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1567,
+                  "flower": 71,
+                  "goblet": 1566,
+                  "plume": 72,
+                  "sands": 73
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1484,
+                  "flower": 66,
+                  "goblet": 1478,
+                  "plume": 153,
+                  "sands": 154
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Изумрудная тень"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "sucrose"
+              }
+            ],
+            "formula_dps": "192429.09952003407",
+            "formula_residual": "209.38203725480707",
+            "measured": {
+              "dps": "192638.48155728888",
+              "engine_result_sha256": "92804f09801ceaa92d403962f8bbfd99bf38d9d5276f8742f20f3510331afc32",
+              "iterations": 500,
+              "standard_error": "143.61190772150283"
+            },
+            "rank": 1
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1565,
+                  "flower": 1537,
+                  "goblet": 64,
+                  "plume": 1535,
+                  "sands": 63
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Ночь открытия неба"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1567,
+                  "flower": 71,
+                  "goblet": 1566,
+                  "plume": 72,
+                  "sands": 73
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1484,
+                  "flower": 152,
+                  "goblet": 1478,
+                  "plume": 67,
+                  "sands": 154
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Изумрудная тень"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "sucrose"
+              }
+            ],
+            "formula_dps": "192397.26658156345",
+            "formula_residual": "114.27983089652844",
+            "measured": {
+              "dps": "192511.54641245998",
+              "engine_result_sha256": "b65a907b7edc07c5179ba629cd4d6b4d081ad5b37504c0aeb4c6d44effcc5ed0",
+              "iterations": 500,
+              "standard_error": "129.9259629552658"
+            },
+            "rank": 2
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1565,
+                  "flower": 1537,
+                  "goblet": 88,
+                  "plume": 1533,
+                  "sands": 63
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Ночь открытия неба"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1567,
+                  "flower": 71,
+                  "goblet": 1566,
+                  "plume": 72,
+                  "sands": 73
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1484,
+                  "flower": 66,
+                  "goblet": 1478,
+                  "plume": 153,
+                  "sands": 1481
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Изумрудная тень"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "sucrose"
+              }
+            ],
+            "formula_dps": "192389.3859810779",
+            "formula_residual": "71.54135207424406",
+            "measured": {
+              "dps": "192460.92733315215",
+              "engine_result_sha256": "865852504e27a2096502e60166c654ac8578e07c87743d7d17a93aa8fa5db839",
+              "iterations": 500,
+              "standard_error": "146.63831022598313"
+            },
+            "rank": 3
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1565,
+                  "flower": 1537,
+                  "goblet": 64,
+                  "plume": 1535,
+                  "sands": 63
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Ночь открытия неба"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1567,
+                  "flower": 71,
+                  "goblet": 1566,
+                  "plume": 72,
+                  "sands": 73
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1484,
+                  "flower": 66,
+                  "goblet": 1478,
+                  "plume": 153,
+                  "sands": 1481
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Изумрудная тень"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "sucrose"
+              }
+            ],
+            "formula_dps": "192375.7795012685",
+            "formula_residual": "20.000372325943317",
+            "measured": {
+              "dps": "192395.77987359444",
+              "engine_result_sha256": "f2d3cefd1cf393b837c67e2e14793727b8375348eed1f705ac27bc0344c71a3f",
+              "iterations": 500,
+              "standard_error": "128.94325287685555"
+            },
+            "rank": 4
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 51,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1565,
+                  "flower": 1537,
+                  "goblet": 88,
+                  "plume": 1533,
+                  "sands": 63
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Ночь открытия неба"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1567,
+                  "flower": 71,
+                  "goblet": 1566,
+                  "plume": 72,
+                  "sands": 73
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1484,
+                  "flower": 66,
+                  "goblet": 155,
+                  "plume": 153,
+                  "sands": 154
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Изумрудная тень"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "sucrose"
+              }
+            ],
+            "formula_dps": "192291.10946214566",
+            "formula_residual": "92.80758229014464",
+            "measured": {
+              "dps": "192383.9170444358",
+              "engine_result_sha256": "03f8a37784e141e9ebc30372c6621e7953cf50f872aaf4ef60b9248dd3b326a0",
+              "iterations": 500,
+              "standard_error": "145.87065030936517"
+            },
+            "rank": 5
+          }
+        ],
+        "coverage": {},
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_result_v1",
+        "status": "success",
+        "warnings": [
+          "adaptive_finalist_panel_too_wide",
+          "formula_rank_not_measurement_authority",
+          "measured_top_confidence_overlap",
+          "opaque_formula_boundaries_present"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/flins_sucrose_2.txt",
+      "source_url": null,
+      "status": "success",
+      "success": true,
+      "wall_seconds": 112.63999999995576
+    },
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 3859.0,
+        "mode": "selected",
+        "optimizer_process_ms": 68672.0,
+        "prepare_inputs_ms": 4922.0,
+        "request_preflight_ms": 125.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 77578.0
+      },
+      "archetype": null,
+      "characters": [
+        "Kuki Shinobu",
+        "Columbina",
+        "Nahida",
+        "Lauma"
+      ],
+      "database_variant": "kuki_dark_iron_test_copy",
+      "elapsed_ms": 77577,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [],
+      "id": "bloom_selected_infinite",
+      "infinite_energy": true,
+      "mode": "selected",
+      "product": {
+        "candidates": [
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1339,
+                  "flower": 147,
+                  "goblet": 34,
+                  "plume": 1329,
+                  "sands": 1337
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Цветок потерянного рая"
+                  }
+                ],
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 185,
+                  "flower": 181,
+                  "goblet": 220,
+                  "plume": 67,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "lauma"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 105,
+                  "goblet": 1573,
+                  "plume": 106,
+                  "sands": 1363
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": "124052.9812071677",
+            "formula_residual": "43.737372916628374",
+            "measured": {
+              "dps": "124096.71858008433",
+              "engine_result_sha256": "0ccd148fcc7cc49908609622b0c56ca391987a0fb27c0b8b780f398de2582fdb",
+              "iterations": 500,
+              "standard_error": "56.21479771506183"
+            },
+            "rank": 1
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1339,
+                  "flower": 147,
+                  "goblet": 34,
+                  "plume": 1329,
+                  "sands": 1337
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Цветок потерянного рая"
+                  }
+                ],
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 185,
+                  "flower": 181,
+                  "goblet": 220,
+                  "plume": 67,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "lauma"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 105,
+                  "goblet": 108,
+                  "plume": 106,
+                  "sands": 1363
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": "124120.72493908617",
+            "formula_residual": "-24.631409345311113",
+            "measured": {
+              "dps": "124096.09352974086",
+              "engine_result_sha256": "eaff20b85d765350cd563f40b5c69332008c89686572d9f774a40c4b994eca61",
+              "iterations": 500,
+              "standard_error": "58.79738586080341"
+            },
+            "rank": 2
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 151,
+                  "flower": 147,
+                  "goblet": 34,
+                  "plume": 1329,
+                  "sands": 1337
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Цветок потерянного рая"
+                  }
+                ],
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 185,
+                  "flower": 181,
+                  "goblet": 220,
+                  "plume": 67,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "lauma"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 105,
+                  "goblet": 108,
+                  "plume": 106,
+                  "sands": 1363
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": "124060.69976650295",
+            "formula_residual": "-72.05846198294603",
+            "measured": {
+              "dps": "123988.64130452",
+              "engine_result_sha256": "d9824b9c756806dae9d33b64ca615a2df61e16b429c5650285dd033a0a852fa2",
+              "iterations": 500,
+              "standard_error": "58.04266073037877"
+            },
+            "rank": 3
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1339,
+                  "flower": 147,
+                  "goblet": 1428,
+                  "plume": 1329,
+                  "sands": 1337
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Цветок потерянного рая"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 185,
+                  "flower": 181,
+                  "goblet": 220,
+                  "plume": 67,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "lauma"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 105,
+                  "goblet": 1573,
+                  "plume": 106,
+                  "sands": 1363
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": "124028.56789104528",
+            "formula_residual": "-55.24651366773469",
+            "measured": {
+              "dps": "123973.32137737755",
+              "engine_result_sha256": "c3407f9757aa715be0fe75ecff5fc6f9ff59145458ddcff2f7dbe14594ad386a",
+              "iterations": 500,
+              "standard_error": "56.025396789249115"
+            },
+            "rank": 4
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 75,
+                  "flower": 1560,
+                  "goblet": 1563,
+                  "plume": 1561,
+                  "sands": 1562
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Рассветная песнь звезды и луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1339,
+                  "flower": 147,
+                  "goblet": 213,
+                  "plume": 1329,
+                  "sands": 149
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Цветок потерянного рая"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 185,
+                  "flower": 181,
+                  "goblet": 220,
+                  "plume": 67,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "lauma"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 105,
+                  "goblet": 1573,
+                  "plume": 106,
+                  "sands": 1363
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": "124017.42042095463",
+            "formula_residual": "-48.9589705238468",
+            "measured": {
+              "dps": "123968.46145043078",
+              "engine_result_sha256": "32e450f2923c12aed2c9b13e7d107baeae7d1210a5b70774cbf8587fca87af53",
+              "iterations": 500,
+              "standard_error": "58.67364786116244"
+            },
+            "rank": 5
+          }
+        ],
+        "coverage": {},
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_result_v1",
+        "status": "success",
+        "warnings": [
+          "adaptive_finalist_panel_too_wide",
+          "formula_rank_not_measurement_authority",
+          "measured_top_confidence_overlap",
+          "opaque_formula_boundaries_present"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/bloom.txt",
+      "source_url": null,
+      "status": "success",
+      "success": true,
+      "wall_seconds": 77.82799999997951
+    }
+  ],
+  "schema_version": 1,
+  "scope": "same_request_and_session_classes_as_optimizer_Qt_buttons",
+  "status": "measurement_only_pending_user_review"
+}

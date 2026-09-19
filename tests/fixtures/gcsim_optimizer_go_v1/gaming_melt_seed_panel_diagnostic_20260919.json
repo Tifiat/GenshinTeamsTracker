@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "status": "controlled_same_seed_capture_pass_seed_panel_bias_identified",
+  "date": "2026-09-19",
+  "scope": "Gaming/Citlali/Diona/Bennett All Sets Top-1, infinite energy, fixed v2.45.0 lineage4 engine; no universal response or global-optimum claim",
+  "source_product_receipt": "optimizer_archetype_all_sets_provenance_recheck_v1.json",
+  "diagnostic_tool": "tools/experiments/gcsim/mode_matrix/check_seed_capture_bias.py",
+  "engine_artifact_sha256": "9d107ed713a171c64509ce35348c5d8f7bc08d81bea785db0f308b46d8869d50",
+  "formula_dps": 70035.57209918115,
+  "same_final_build_recap": [
+    {"seed": 742031889, "exact_capture_dps": 70920.68566527907, "gaming_plunges": 20, "gaming_melt_plunges": 10},
+    {"seed": 742031890, "exact_capture_dps": 69470.00432608358, "gaming_plunges": 20, "gaming_melt_plunges": 10}
+  ],
+  "ordinary_500_iteration_top1_dps": 58647.43783511804,
+  "ordinary_500_iteration_standard_error": 522.6662448631856,
+  "ordinary_500_iteration_gaming_melt_plunges_mean": 5.882,
+  "interpretation": "The same final build on the two formula seeds gives 70195.345 DPS on average, within 0.23% of the formula score; ordinary 500-iteration DPS is 16.26% below that score because both formula seeds happen to melt ten plunges while the broader run averages 5.882. This isolates seed-panel representativeness, not a demonstrated lost arithmetic dependency. It can nevertheless bias formula-guided discovery; final measurement is authoritative only among reached finalists.",
+  "generated_output_cleanup": "The probe wrote only to a TemporaryDirectory inside the managed matrix job and removed it on exit; the enclosing job removes all expanded product runs. This compact receipt retains no account config."
+}

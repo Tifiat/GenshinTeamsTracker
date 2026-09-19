@@ -1,0 +1,1060 @@
+{
+  "date": "2026-09-19",
+  "generated_state_removed_on_exit": true,
+  "manifest": "optimizer_virtual_archetype_mode_matrix_v1",
+  "runs": [
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 6578.0,
+        "mode": "theory",
+        "optimizer_process_ms": 301469.0,
+        "prepare_inputs_ms": 5157.0,
+        "request_preflight_ms": 62.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 313266.0
+      },
+      "archetype": "electro_charged_swirl",
+      "characters": [
+        "sucrose",
+        "beidou",
+        "fischl",
+        "xingqiu"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 313266,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [
+        "electro_charged",
+        "swirl",
+        "atk",
+        "em",
+        "snapshot"
+      ],
+      "formula_witness": {
+        "channel_groups": [
+          {
+            "attack_tag": "tag/0",
+            "baseline_damage": 0.0,
+            "channels": 36,
+            "damage_type": "hydro",
+            "hits": 36,
+            "kind": "direct",
+            "response_coordinates": [
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 71767.908905,
+            "channels": 88,
+            "damage_type": "anemo",
+            "hits": 88,
+            "kind": "direct",
+            "response_coordinates": [
+              "sucrose.anemo_damage_bonus",
+              "sucrose.atk",
+              "sucrose.atk_percent",
+              "sucrose.crit_damage",
+              "sucrose.crit_rate",
+              "sucrose.damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 45042.782855,
+            "channels": 37,
+            "damage_type": "physical",
+            "hits": 37,
+            "kind": "direct",
+            "response_coordinates": [
+              "beidou.atk",
+              "beidou.atk_percent",
+              "beidou.crit_damage",
+              "beidou.crit_rate",
+              "beidou.damage_bonus",
+              "beidou.physical_damage_bonus",
+              "fischl.atk",
+              "fischl.atk_percent",
+              "fischl.crit_damage",
+              "fischl.crit_rate",
+              "fischl.damage_bonus",
+              "fischl.physical_damage_bonus",
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.physical_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/2",
+            "baseline_damage": 45395.77531,
+            "channels": 16,
+            "damage_type": "anemo",
+            "hits": 16,
+            "kind": "direct",
+            "response_coordinates": [
+              "sucrose.anemo_damage_bonus",
+              "sucrose.atk",
+              "sucrose.atk_percent",
+              "sucrose.crit_damage",
+              "sucrose.crit_rate",
+              "sucrose.damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 51507.285692,
+            "channels": 8,
+            "damage_type": "anemo",
+            "hits": 8,
+            "kind": "direct",
+            "response_coordinates": [
+              "sucrose.anemo_damage_bonus",
+              "sucrose.atk",
+              "sucrose.atk_percent",
+              "sucrose.crit_damage",
+              "sucrose.crit_rate",
+              "sucrose.damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 645861.62581,
+            "channels": 317,
+            "damage_type": "electro",
+            "hits": 317,
+            "kind": "direct",
+            "response_coordinates": [
+              "beidou.atk",
+              "beidou.atk_percent",
+              "beidou.crit_damage",
+              "beidou.crit_rate",
+              "beidou.damage_bonus",
+              "beidou.electro_damage_bonus",
+              "fischl.atk",
+              "fischl.atk_percent",
+              "fischl.crit_damage",
+              "fischl.crit_rate",
+              "fischl.damage_bonus",
+              "fischl.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 43425.937267,
+            "channels": 8,
+            "damage_type": "hydro",
+            "hits": 8,
+            "kind": "direct",
+            "response_coordinates": [
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 80735.120055,
+            "channels": 16,
+            "damage_type": "anemo",
+            "hits": 16,
+            "kind": "direct",
+            "response_coordinates": [
+              "sucrose.anemo_damage_bonus",
+              "sucrose.atk",
+              "sucrose.atk_percent",
+              "sucrose.crit_damage",
+              "sucrose.crit_rate",
+              "sucrose.damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 184167.647042,
+            "channels": 48,
+            "damage_type": "electro",
+            "hits": 48,
+            "kind": "direct",
+            "response_coordinates": [
+              "beidou.atk",
+              "beidou.atk_percent",
+              "beidou.crit_damage",
+              "beidou.crit_rate",
+              "beidou.damage_bonus",
+              "beidou.electro_damage_bonus",
+              "fischl.atk",
+              "fischl.atk_percent",
+              "fischl.crit_damage",
+              "fischl.crit_rate",
+              "fischl.damage_bonus",
+              "fischl.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 463703.617559,
+            "channels": 224,
+            "damage_type": "hydro",
+            "hits": 224,
+            "kind": "direct",
+            "response_coordinates": [
+              "sucrose.atk",
+              "sucrose.atk_percent",
+              "sucrose.crit_damage",
+              "sucrose.crit_rate",
+              "sucrose.damage_bonus",
+              "sucrose.hydro_damage_bonus",
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/13",
+            "baseline_damage": 691224.965271,
+            "channels": 102,
+            "damage_type": "electro",
+            "hits": 102,
+            "kind": "reaction",
+            "response_coordinates": [
+              "beidou.em",
+              "fischl.em",
+              "sucrose.em",
+              "xingqiu.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/16",
+            "baseline_damage": 90303.967445,
+            "channels": 46,
+            "damage_type": "hydro",
+            "hits": 46,
+            "kind": "reaction",
+            "response_coordinates": [
+              "sucrose.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/18",
+            "baseline_damage": 160055.181813,
+            "channels": 84,
+            "damage_type": "electro",
+            "hits": 84,
+            "kind": "reaction",
+            "response_coordinates": [
+              "sucrose.em"
+            ]
+          }
+        ],
+        "duration_ms": 101817,
+        "formula_coordinates": [
+          "beidou.atk",
+          "beidou.atk_percent",
+          "beidou.crit_damage",
+          "beidou.crit_rate",
+          "beidou.damage_bonus",
+          "beidou.electro_damage_bonus",
+          "beidou.em",
+          "beidou.physical_damage_bonus",
+          "fischl.atk",
+          "fischl.atk_percent",
+          "fischl.crit_damage",
+          "fischl.crit_rate",
+          "fischl.damage_bonus",
+          "fischl.electro_damage_bonus",
+          "fischl.em",
+          "fischl.physical_damage_bonus",
+          "sucrose.anemo_damage_bonus",
+          "sucrose.atk",
+          "sucrose.atk_percent",
+          "sucrose.crit_damage",
+          "sucrose.crit_rate",
+          "sucrose.damage_bonus",
+          "sucrose.em",
+          "sucrose.hydro_damage_bonus",
+          "xingqiu.atk",
+          "xingqiu.atk_percent",
+          "xingqiu.crit_damage",
+          "xingqiu.crit_rate",
+          "xingqiu.damage_bonus",
+          "xingqiu.em",
+          "xingqiu.hydro_damage_bonus",
+          "xingqiu.physical_damage_bonus"
+        ],
+        "member_path": "theory/contexts/context-07d049ad6896c4593a3d66d5b23bf0713c24ae2b65f261d63d39b010da6f7b1a/seed-742031889/member.json",
+        "opaque_boundary_codes": [],
+        "topology_sha256": "22cb8982bec3b8a915f54561d65755c4c4c21aad5674c6cecae0320f219f3866"
+      },
+      "id": "taser_theory",
+      "infinite_energy": true,
+      "mode": "theory",
+      "product": {
+        "candidates": [
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "electro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.6996
+                  },
+                  {
+                    "roll_units": 24,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.8648000000000002
+                  },
+                  {
+                    "roll_units": 9,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35009999999999997
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "beidou"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "electro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 4,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.2332
+                  },
+                  {
+                    "roll_units": 23.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.8453750000000002
+                  },
+                  {
+                    "roll_units": 16.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.6321249999999999
+                  },
+                  {
+                    "roll_units": 1,
+                    "stat_key": "em",
+                    "stat_value": 23.31
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "fischl"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "anemo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.6996
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.23310000000000003
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "sucrose"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 9,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.5246999999999999
+                  },
+                  {
+                    "roll_units": 27,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.0979
+                  },
+                  {
+                    "roll_units": 9,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35009999999999997
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": 70117.94924971665,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "modifier_candidate_dependency_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_schedule_frozen",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": null,
+                "wearer_key": "beidou"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "goldentroupe"
+                  }
+                ],
+                "wearer_key": "fischl"
+              },
+              {
+                "sets": null,
+                "wearer_key": "sucrose"
+              },
+              {
+                "sets": null,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "rank": 1,
+            "source": "wearer_diversity+marginal_minimized+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "beidou",
+              "sucrose",
+              "xingqiu"
+            ]
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "electro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 10,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.583
+                  },
+                  {
+                    "roll_units": 26,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.0202
+                  },
+                  {
+                    "roll_units": 9,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35009999999999997
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "beidou"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "electro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 2,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.1166
+                  },
+                  {
+                    "roll_units": 16.5,
+                    "stat_key": "crit_damage",
+                    "stat_value": 1.2820500000000001
+                  },
+                  {
+                    "roll_units": 13.5,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.52515
+                  },
+                  {
+                    "roll_units": 13,
+                    "stat_key": "em",
+                    "stat_value": 303.03
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "fischl"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "anemo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 10,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.583
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.3108
+                  },
+                  {
+                    "roll_units": 1,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.0389
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "em",
+                    "stat_value": 699.3
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "sucrose"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hydro_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 8,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.4664
+                  },
+                  {
+                    "roll_units": 28,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.1756
+                  },
+                  {
+                    "roll_units": 9,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35009999999999997
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": 62695.060456205116,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "modifier_candidate_dependency_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "numeric_expression_candidate_dependency_incomplete",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_schedule_frozen",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": null,
+                "wearer_key": "beidou"
+              },
+              {
+                "sets": null,
+                "wearer_key": "fischl"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "noblesseoblige"
+                  }
+                ],
+                "wearer_key": "sucrose"
+              },
+              {
+                "sets": null,
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "rank": 2,
+            "source": "wearer_diversity+marginal_minimized+marginal_minimized+marginal_minimized",
+            "undistinguished_set_slots": [
+              "beidou",
+              "fischl",
+              "xingqiu"
+            ]
+          }
+        ],
+        "coverage": {
+          "catalog_sets": 42,
+          "contexts_evaluated": 27,
+          "contexts_limit": 40,
+          "marginal_contexts_evaluated": 11,
+          "packages_considered": 3612,
+          "packages_shortlisted": 32,
+          "unqueued_packages": 3580
+        },
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_theory_result_v1",
+        "status": "success",
+        "warnings": [
+          "theory_guidance_not_owned_artifacts",
+          "bounded_set_shortlist_not_global_optimum",
+          "theory_context_budget_exhausted_partial_result"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/taser_public.txt",
+      "source_url": "https://gcsim.app/db/GhDzJLWrGccr",
+      "status": "success",
+      "success": true,
+      "theory_proposal_witness": {
+        "packages_considered": 3612,
+        "queue": [
+          {
+            "lane": "wearer",
+            "priority_not_candidate_dps": 3421.8483052851825,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "silkenmoonsserenade"
+              }
+            ],
+            "wearer_index": 0
+          },
+          {
+            "lane": "wearer",
+            "priority_not_candidate_dps": 3421.8483052851825,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "silkenmoonsserenade"
+              }
+            ],
+            "wearer_index": 1
+          },
+          {
+            "lane": "wearer",
+            "priority_not_candidate_dps": 3421.8483052851825,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "silkenmoonsserenade"
+              }
+            ],
+            "wearer_index": 2
+          },
+          {
+            "lane": "wearer",
+            "priority_not_candidate_dps": 3421.8483052851825,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "silkenmoonsserenade"
+              }
+            ],
+            "wearer_index": 3
+          },
+          {
+            "lane": "shared_effect",
+            "priority_not_candidate_dps": 1156.5928559190595,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "noblesseoblige"
+              }
+            ],
+            "wearer_index": 0
+          },
+          {
+            "lane": "new_output",
+            "priority_not_candidate_dps": 0,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "oceanhuedclam"
+              }
+            ],
+            "wearer_index": 0
+          },
+          {
+            "lane": "unresolved",
+            "priority_not_candidate_dps": 2406.461362475283,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "finaleofthedeepgalleries"
+              }
+            ],
+            "wearer_index": 1
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1156.5928559190595,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "tenacityofthemillelith"
+              }
+            ],
+            "wearer_index": 0
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 2005.3844687294113,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "bloodstainedchivalry"
+              }
+            ],
+            "wearer_index": 1
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1156.5928559190595,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "noblesseoblige"
+              }
+            ],
+            "wearer_index": 2
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1828.7917649372578,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "finaleofthedeepgalleries"
+              }
+            ],
+            "wearer_index": 3
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 828.249614982185,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "finaleofthedeepgalleries"
+              }
+            ],
+            "wearer_index": 0
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 2005.3844687294113,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "goldentroupe"
+              }
+            ],
+            "wearer_index": 1
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1156.5928559190595,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "tenacityofthemillelith"
+              }
+            ],
+            "wearer_index": 2
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1523.9931374477212,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "bloodstainedchivalry"
+              }
+            ],
+            "wearer_index": 3
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 690.2080124851539,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "bloodstainedchivalry"
+              }
+            ],
+            "wearer_index": 0
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 2005.3844687294113,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "shimenawasreminiscence"
+              }
+            ],
+            "wearer_index": 1
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 946.1457607885908,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "finaleofthedeepgalleries"
+              }
+            ],
+            "wearer_index": 2
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1523.9931374477212,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "goldentroupe"
+              }
+            ],
+            "wearer_index": 3
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 690.2080124851539,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "goldentroupe"
+              }
+            ],
+            "wearer_index": 0
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1604.307574983516,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "desertpavilionchronicle"
+              }
+            ],
+            "wearer_index": 1
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 843.4330310948534,
+            "sets": [
+              {
+                "count": 2,
+                "set_uid": "adaycarvedfromrisingwinds"
+              },
+              {
+                "count": 2,
+                "set_uid": "aubadeofmorningstarandmoon"
+              }
+            ],
+            "wearer_index": 2
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1523.9931374477212,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "shimenawasreminiscence"
+              }
+            ],
+            "wearer_index": 3
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 690.2080124851539,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "shimenawasreminiscence"
+              }
+            ],
+            "wearer_index": 0
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1604.307574983516,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "retracingbolide"
+              }
+            ],
+            "wearer_index": 1
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 843.4330310948534,
+            "sets": [
+              {
+                "count": 2,
+                "set_uid": "adaycarvedfromrisingwinds"
+              },
+              {
+                "count": 2,
+                "set_uid": "flowerofparadiselost"
+              }
+            ],
+            "wearer_index": 2
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1219.194509958175,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "desertpavilionchronicle"
+              }
+            ],
+            "wearer_index": 3
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 552.1664099881223,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "desertpavilionchronicle"
+              }
+            ],
+            "wearer_index": 0
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1403.769128110579,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "gladiatorsfinale"
+              }
+            ],
+            "wearer_index": 1
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 843.4330310948534,
+            "sets": [
+              {
+                "count": 2,
+                "set_uid": "adaycarvedfromrisingwinds"
+              },
+              {
+                "count": 2,
+                "set_uid": "gildeddreams"
+              }
+            ],
+            "wearer_index": 2
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 1219.194509958175,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "retracingbolide"
+              }
+            ],
+            "wearer_index": 3
+          },
+          {
+            "lane": "wearer_diversity",
+            "priority_not_candidate_dps": 552.1664099881223,
+            "sets": [
+              {
+                "count": 4,
+                "set_uid": "retracingbolide"
+              }
+            ],
+            "wearer_index": 0
+          }
+        ],
+        "unqueued": 3580
+      },
+      "wall_seconds": 313.4070000000065
+    }
+  ],
+  "schema_version": 1,
+  "scope": "same_request_and_session_classes_as_optimizer_Qt_buttons",
+  "status": "measurement_only_pending_user_review"
+}

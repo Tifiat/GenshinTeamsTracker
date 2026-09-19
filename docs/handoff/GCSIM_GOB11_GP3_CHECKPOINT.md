@@ -3,53 +3,149 @@
 ## Status and authority
 
 <!-- handoff-current: gcsim-optimizer -->
-Reviewed 2026-09-17 after verified bounded disk recovery; N1 is next.
-All Sets result/paging is user-observed; Selected2+2 and remaining Save/cancel/
-preservation gates stay pending. Backend checks are not agent-side UI clicks.
+Reviewed 2026-09-19. N1 All Sets, Selected/All finite-energy implementation,
+neutral Theory and shared formula regressions remain installed. A clean
+v2.45.0 apply/build/runtime check activated the eight-patch observed-modifier
+lineage; its predecessor is byte-identical and retained for rollback.
 
-- Active engine: `gcsim-v2.45.0-allsets-20260917`
-- Rollback engine: `gcsim-v2.45.0-dependency-audit5-20260916`
-- Active patch: `run_workspace/gcsim/patch_stack/0001-gtt-engine-adapter-v245.patch`
-- Patch SHA256: `7a6b8013d30bd168fdd98209bdfd0e673e4d330a38398f19369b0f8a36e367d0`
-- Acceptance status: `all_sets_installed_backend_pass_ui_pending`
-- Next block: `N1_all_sets_saved_context_efficiency`
+- Active engine: `gcsim-v2.45.0-observed-modifier-lineage5-20260919`
+- Rollback engine: `gcsim-v2.45.0-observed-modifier-lineage4-20260919`
+- Active patch: `run_workspace/gcsim/patch_stack`
+- Patch SHA256: `680ec766adb897e423f933d9ae49e3ddef565d26edc8a70ee0b25b3dcfdb3275`
+- Active artifact SHA256: `9d107ed713a171c64509ce35348c5d8f7bc08d81bea785db0f308b46d8869d50`
+- Acceptance status: `lineage5_archetype_matrix_and_account_ui_pass_quality_limits_open`
+- Next block: `optimizer_archetype_quality_followup`
 
-All Sets now shares the source-bound guide, context provider, FGBS, finalist
-verifier, UI worker/cards/save path. It selects feasible4p/2+2 packages without
-an exhaustive capture sweep. Source alternatives are hints, never replacement
-proofs or reported DPS. Changed packages get fresh two-seed contexts; no real-set
-static reuse certificate producer exists. Unknowns retain discovery lanes.
+Computer Use followed the user's PyCharm AppShell launch and clicked all three
+real buttons on the account Chasca team: Theory 5:14 (172467 formula DPS),
+Selected 1:13 (155658 measured), All Sets 2:55 (155688 measured), all with
+visible result pages. A fourth physical click completed Theory with virtual
+Chasca and **no saved artifact build** in 5:12. The account team was restored.
+The byte-identical lineage4 exe served those clicks; the freshly installed
+lineage5 serves the subsequent product-session matrix. A Qt-button unit test
+also forwards an unsaved virtual profile to the All Sets session, but no
+physical virtual All Sets click is claimed.
 
-Cold copied-bloom CLI:396.06s,8 contexts/16 n1,7 n128 and7 n500, no n1000 extension.
-Winner measured140089.90 versus optimized Selected128770.23 DPS; formula140130.59.
-Search363.08s includes captures93.47s, artifact search251.40s, guide14.97s,
-proposals3.21s. Screen8.16s; final22.62s. Python source preparation is excluded;
-this is not a real button timing or all-team speed/quality guarantee.
-The shared limit is8 contexts,3 guides,420s search inside600s total.
+The managed 14-roster × (All Sets, Theory) matrix uses the same request/session
+classes as the UI, owner-preserving virtual profiles, ordinary 500-iteration
+All Sets finalists and explicitly infinite energy. See the dated
+[archetype audit](GCSIM_OPTIMIZER_ARCHETYPE_AUDIT_20260919.md) and its compact
+receipt for per-team ranks, timing, formula channels and engine hashes. All
+completed rows succeeded; this is not 28 UI clicks or a global optimum proof.
+Gaming's two-seed reacted-plunge schedule overpredicts its ordinary DPS;
+several physically retained 4p sets have inactive bonuses on their wearer.
+Theory may return a labeled partial shortlist or an undistinguished set. Its
+finite-energy request now fails clearly rather than silently ignoring ER.
 
-Clean patch applies/builds on pristine2.45. Installation first rejected byte
-identity:155 source files differ only by CRLF/LF; generated semantics match.
-Installed ordinary/compact/waves and two saved-winner controls pass; exact
-source/binary hashes remain distinct. Root installation metadata is excluded
-from module-input hashing, while arbitrary source changes remain rejected.
-Combined stage54 compact n1; ordinary panels are separately counted in receipt.
-Full Go tests/vet and34 focused Python tests pass.
-
-User All Sets:8:24,191518.59 DPS at n1000; seven pages reviewed. Saved IDs/stats/
-sets match all seven simulations. Search exhausted420s after five contexts;
-55 proposals remain. Top1/2 overlap statistically. Bounded six-swap formula
-review found no improving tested replacement; it is not an optimality proof.
-Next: N1 on expanded saved inputs; five obsolete binaries are confirmed removed
-by the user-run exact helper. The user permits handler-path
-harnesses for that session; these do not establish visible UI acceptance.
-Selected2+2/Save/cancel/preservation checks and gated cleanup remain open.
-
-Live DB/equipment, source note, Chasca rotation and energy settings unchanged.
-Energy support remains last. Health-schedule boundaries from the
-[dependency audit](GCSIM_OPTIMIZER_DEPENDENCY_AUDIT_20260916.md) still apply.
-Zero frozen hits is not complete dependency coverage or an optimality proof.
-Go design owns algorithms; [TODO](../../TODO.md) owns remaining order.
+Next: bounded Gaming schedule/recall diagnosis and controlled inactive-set
+alternatives; preserve the Selected2+2/Save/cancel/equipment visible UI gate.
+Opaque branch/schedule boundaries, account-specific acceptance and a true
+finite-energy Theory solver remain open. [TODO](../../TODO.md) owns their order.
 <!-- /handoff-current -->
+
+### Multi-scale provenance audit (2026-09-18)
+
+The source-tree comparison found real previously missed secondary producers in
+Albedo, Itto, Baizhu, Yelan, Mualani, Lan Yan, Sethos, Hu Tao, Razor, Emilie,
+Ayato and Neuvillette paths, in addition to the reported Chiori case. Kokomi,
+Hydro Traveler and Nahida provide adjacent regression shapes. This is a generic
+source-expression repair, not a character-name allowlist.
+
+The installed source passes its focused source/compiler/core Go tests; the
+standalone optimizer passes `go test ./...`.
+The Python Selected/All/Theory/UI integration set passes 35 `unittest` cases.
+The managed Theory replay used the exact saved request from
+`theory-20260918-173249-46acfa82`, completed in 69.234 s and self-cleaned
+61,986,153 generated bytes. The run was a backend/session replay, not a physical
+button click. Restart AppShell before the next visible check so it resolves the
+new active engine.
+
+The native-access diagnosis was corrected later the same day. Browser-oriented
+`cua_repl` returned `Trusted RPC service is not configured`, but direct trusted
+`node_repl + @oai/sky` enumerated Windows apps normally. Through that route the
+real PyCharm run configuration launched `Genshin Teams Tracker - прототип App
+Shell`; a physical click opened the Artifact Browser and the exact AppShell
+window then closed cleanly. This validates the UI-control route only, not the
+still-pending optimizer/multi-scale button path. The durable routing rule lives
+in `CODEX.md`.
+
+### N4 finite-energy result
+
+The active engine now advertises `gtt_energy_ledger_v1`. Formula capture always
+observes the complete intended burst schedule with burst costs ignored; this is
+capture behavior only. In finite mode, Go compiles each fresh context into
+cumulative burst-deadline constraints, keeps formula-invisible artifact ER in
+the frontier, and ranks feasible assignments ahead of infeasible ones. Required
+artifact ER is precomputed once per wearer/context, so the hot candidate path is
+four comparisons rather than repeated timeline simulation.
+
+Selected fails before finalist simulations when the inventory has no feasible
+assignment. All Sets may continue to other contexts, but if any feasible
+candidate exists, infeasible candidates cannot enter final verification.
+Ordinary finalists run with real burst costs and reject any reported
+`insufficient_energy` action. Successful product results carry per-wearer
+artifact ER, required artifact ER, margin, sources and uncertainty codes.
+If one finalist misses a burst, only that candidate is removed and the remaining
+measured panel continues; the product fails only when no finalist remains.
+Rejected identities are retained in the debug receipt and successful products
+carry `final_energy_infeasible_candidates_rejected` when this fallback occurs.
+
+Saved Chasca/Furina/Ororon/Bennett evidence has 207 ledger events across the
+fixed panel and correctly reports no feasible Selected-set assignment: Bennett,
+Furina and Ororon remain short. The rejected first implementation recalculated
+requirements per candidate and timed out at 300 seconds; the accepted compiled
+constraint searches the same control in about 10 seconds. Full native Go tests,
+focused Python adapter formatting, engine clean apply/build/capability and
+application compatibility pass. Live window inspection confirmed that the
+Settings and optimizer energy switches update each other in both directions;
+the running pre-restart window still contained old explanatory wording, which
+was corrected in all locale sources and covered by source/UI tests.
+
+Limit: the ledger is an observed two-seed schedule, not a symbolic proof of all
+random energy branches. The final ordinary real-energy check remains mandatory.
+No heavy live All Sets energy run was added as a documentation check.
+
+### Common optimizer regression result
+
+Selected, All Sets and Theory inherit the persisted energy value and common
+engine/formula identities. Selected/All Sets reject empty inventories,
+incomplete five-slot builds and unknown equipped IDs. Theory instead has a
+separate validated zero-inventory wire form which expands only inside its Go
+process. Search/domain controls retain small exhaustive-oracle equality and
+deterministic ordering. Full native Go tests pass.
+
+The broad Python suite exposed an unrelated native Qt lifecycle crash after
+hundreds of windows: every History card eagerly created two tooltip windows and
+a timer even when never hovered. Tooltip resources are now created on first
+hover. The directly affected History suite passes 13 tests and the accumulated
+AppShell/GCSIM/PvP/History sequence passes 268 tests without access violation.
+This UI fix was necessary because the crash prevented the common suite; it does
+not change optimizer output. The compact `adapter-timings.json` is retained as
+bounded product evidence, not temporary verbose logging.
+
+### Account product-mode matrix (2026-09-17)
+
+The managed probe used the production request/session classes behind the three
+optimizer buttons. Expanded runs and the read-only Bloom database copy were
+removed on exit; the compact receipt retains only timings, DPS/formula fields,
+set/main-stat summaries and artifact IDs. Kuki used the previously approved
+Dark Iron Sword 90 R2 only inside that copy because her live weapon has no
+GCSIM mapping.
+
+| Team / mode | Result | Backend wall time | Scope note |
+| --- | ---: | ---: | --- |
+| Chasca Selected / All Sets / Theory | 155741 / 155828 / 207860 formula | saved / 181s / 101s | All Sets differs from Selected by one Ororon circlet; measured difference is within combined error. |
+| Flins-Jahoda Selected / All Sets / Theory | 190369 / 191519 / 273431 formula | 150s / saved / 190s | All Sets reassigns Columbina and Ineffa packages; measured +0.60% is well outside noise. |
+| Flins-Sucrose Selected, rotations 1 / 2 | 182411 / 192604 | 115s / 110s | Same role-level mains, but different Flins/Sucrose artifact IDs; rotation affects the search. |
+| Bloom Selected / All Sets / Theory | 124194 / 138956 / 187445 formula | 83s / 246s / 116s | All Sets separates Flower Kuki, Silken Lauma and Deepwood Nahida; measured +11.89%. |
+
+The strange low-ranked All Sets carriers are preserved context representatives,
+not recommendations over the leader. Bloom Top-1 Columbina's 2p HP plus 2p
+Obsidian is a legal inventory-quality result; Obsidian's inactive effect is not
+claimed useful. Theory Kuki first reaches the legal EM ceiling for triple-EM
+mains, then spends remaining theoretical rolls on formula-visible personal
+damage; the display needs interpretation but the allocation is not evidence
+that ATK outranks EM. No new formula-recognition failure appeared.
 
 ### N0 disk recovery and automatic output lifecycle
 
@@ -132,7 +228,7 @@ Actual UI checklist (NOT executed in this session): PyCharm's project-venv
 DPS,20 unique IDs, valid packages, stable top-N navigation and explicit preset
 save; live equipment must remain unchanged. Check cancellation in a separate run
 only when needed, not a repeated full search. Infinite energy stays as selected;
-finite-energy diagnostics are outside this acceptance.
+finite-energy acceptance is the separate N4 section above.
 
 Separate user-requested Jahoda no-burst rotation smoke passed one ordinary debug
 sample; see [rotation validation](GCSIM_GOB11_ROTATION_VALIDATION.md).

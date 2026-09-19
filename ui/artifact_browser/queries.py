@@ -18,6 +18,7 @@ from hoyolab_export.artifact_db import (
     init_db,
     list_artifact_set_bonus_descriptions as db_list_artifact_set_bonus_descriptions,
     list_build_presets as db_list_build_presets,
+    list_build_presets_for_gcsim_character as db_list_build_presets_for_gcsim_character,
     normalize_artifact_set_lang,
     replace_artifact_build_slots,
     replace_artifact_build_targets,
@@ -589,6 +590,22 @@ def list_build_presets(
     with closing(connect_db(db_path)) as conn:
         init_db(conn)
         return db_list_build_presets(conn)
+
+
+def list_build_presets_for_gcsim_character(
+    gcsim_character_key: str,
+    *,
+    db_path: str | Path = ARTIFACT_DB_PATH,
+) -> list[dict[str, Any]]:
+    if not artifact_db_exists(db_path):
+        return []
+
+    with closing(connect_db(db_path)) as conn:
+        init_db(conn)
+        return db_list_build_presets_for_gcsim_character(
+            conn,
+            gcsim_character_key,
+        )
 
 
 def get_build_preset(

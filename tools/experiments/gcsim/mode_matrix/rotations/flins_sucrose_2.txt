@@ -1,0 +1,37 @@
+options swap_delay=12 iteration=1000;
+target lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;
+
+active ineffa;
+for let i=0; i<6; i=i+1 {
+  if !is_even(i) {
+    ineffa skill, burst;
+    columbina skill, attack;
+  } else {
+    ineffa skill;
+    if i {
+      ineffa attack;
+      sucrose swap;
+      sucrose attack:2, charge;
+      columbina attack;
+    }
+    columbina skill, burst;
+  }
+  if !is_even(i) && .sucrose.burst.ready {
+    sucrose attack, burst;
+  } else if .sucrose.skill.ready {
+    sucrose swap; wait(8);
+    sucrose attack, skill, dash;
+  } else {
+    sucrose attack, charge;
+  }
+  flins skill, attack,
+        skill, attack, burst,
+        attack:4, dash, attack:4, dash, attack:2,
+        skill, attack, burst,
+        attack:4;
+  if .sucrose.skill.ready {
+    sucrose attack, skill, dash;
+  } else {
+    sucrose attack, charge;
+  }
+}

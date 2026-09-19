@@ -95,8 +95,20 @@ def prune_go_optimizer_runs(
         if _is_link(path) or path.resolve().parent != resolved:
             report["skipped_paths"].append(str(path))
             continue
-        recognized = path.name.startswith(("selected-", "all_sets-")) and (
-            (path / "selected-result.json").is_file() or (path / RUN_LEASE).is_file()
+        result_name = next(
+            (
+                marker
+                for prefix, marker in (
+                    ("selected-", "selected-result.json"),
+                    ("all_sets-", "selected-result.json"),
+                    ("theory-", "theory-result.json"),
+                )
+                if path.name.startswith(prefix)
+            ),
+            "",
+        )
+        recognized = bool(result_name) and (
+            (path / result_name).is_file() or (path / RUN_LEASE).is_file()
         )
         if not recognized:
             report["skipped_paths"].append(str(path))

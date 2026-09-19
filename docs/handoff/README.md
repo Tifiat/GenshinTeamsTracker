@@ -73,6 +73,7 @@ in every file.
 | [GCSIM_BLOOM_WINNER_DIAGNOSTIC_20260916.md](GCSIM_BLOOM_WINNER_DIAGNOSTIC_20260916.md) | Dated failed winner-response diagnosis; proposed repairs, not accepted implementation |
 | [GCSIM_OPTIMIZER_DEPENDENCY_AUDIT_20260916.md](GCSIM_OPTIMIZER_DEPENDENCY_AUDIT_20260916.md) | Active dependency repair/archetype audit plan and work notes; release acceptance remains in GP-3 |
 | [GCSIM_GOB11_GP3_CHECKPOINT.md](GCSIM_GOB11_GP3_CHECKPOINT.md) | Current GP-3 installation, bounded formula/search evidence, limits and resume |
+| [GCSIM_OPTIMIZER_ARCHETYPE_AUDIT_20260919.md](GCSIM_OPTIMIZER_ARCHETYPE_AUDIT_20260919.md) | Dated visible-button checks, 14-archetype mode matrix and candidate-quality observations; acceptance remains in GP-3 |
 | [GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST.json](GCSIM_OPTIMIZER_TRACE_EQUATION_CLEANUP_MANIFEST.json) | Current disposition and explicitly historical migration/pilot records |
 | [GCSIM_GOB11_ROTATION_VALIDATION.md](GCSIM_GOB11_ROTATION_VALIDATION.md) | Supplied-fixture provenance and validation chronology; resume through GP-3 |
 | [GCSIM_GOB11_GENERIC_FORMULA_PATH_AUDIT.md](GCSIM_GOB11_GENERIC_FORMULA_PATH_AUDIT.md) | Source/compiler design audit and dated implementation checkpoints |

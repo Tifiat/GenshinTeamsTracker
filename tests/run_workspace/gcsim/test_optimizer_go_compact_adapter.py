@@ -49,9 +49,12 @@ class GoCompactAdapterReceiptTests(unittest.TestCase):
 
     def test_consolidated_adapter_preserves_the_compact_seam(self) -> None:
         patch_dir = ROOT / "run_workspace" / "gcsim" / "patch_stack"
-        patches = tuple(patch_dir.glob("*.patch"))
-        self.assertEqual(len(patches), 1)
-        text = patches[0].read_text(encoding="utf-8")
+        patches = tuple(sorted(patch_dir.glob("*.patch")))
+        self.assertTrue(patches)
+        patch_texts = [patch.read_text(encoding="utf-8") for patch in patches]
+        adapters = [text for text in patch_texts if "gtt_compact_equation_v1" in text]
+        self.assertEqual(len(adapters), 1)
+        text = adapters[0]
         self.assertIn("gtt_compact_equation_v1", text)
         self.assertIn("diff --git a/pkg/gttcompact/", text)
 

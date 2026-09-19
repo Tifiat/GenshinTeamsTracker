@@ -59,15 +59,51 @@ func decodeEffectInputs(payload, memberBytes []byte, member contracts.IRSeedMemb
 		return e == nil && !math.IsNaN(v) && !math.IsInf(v, 0)
 	}
 	for _, in := range out.EffectInputs {
-		if !nodes[in.NodeID] || seenNodes[in.NodeID] || events[in.EventID] || in.EventID == "" || !owners[in.Owner] || in.Kind == "" || in.AttackTag == "" || !finite(in.Observed) {
-			return nil, fmt.Errorf("effect sidecar input identity invalid")
+		reason := ""
+		switch {
+		case !nodes[in.NodeID]:
+			reason = "node_missing"
+		case seenNodes[in.NodeID]:
+			reason = "node_duplicate"
+		case in.EventID == "":
+			reason = "event_missing"
+		case events[in.EventID]:
+			reason = "event_duplicate"
+		case !owners[in.Owner]:
+			reason = "owner_unknown"
+		case in.Kind == "":
+			reason = "kind_missing"
+		case in.AttackTag == "":
+			reason = "attack_tag_missing"
+		case !finite(in.Observed):
+			reason = "observed_non_finite"
+		}
+		if reason != "" {
+			return nil, fmt.Errorf("effect sidecar input identity invalid: %s", reason)
 		}
 		seenNodes[in.NodeID] = true
 		events[in.EventID] = true
 	}
 	for _, in := range out.ResistanceInputs {
-		if !nodes[in.NodeID] || seenNodes[in.NodeID] || in.HitID == 0 || hits[in.HitID] || in.Element == "" || !finite(in.Resistance) || !finite(in.Observed) {
-			return nil, fmt.Errorf("effect sidecar resistance identity invalid")
+		reason := ""
+		switch {
+		case !nodes[in.NodeID]:
+			reason = "node_missing"
+		case seenNodes[in.NodeID]:
+			reason = "node_duplicate"
+		case in.HitID == 0:
+			reason = "hit_missing"
+		case hits[in.HitID]:
+			reason = "hit_duplicate"
+		case in.Element == "":
+			reason = "element_missing"
+		case !finite(in.Resistance):
+			reason = "resistance_non_finite"
+		case !finite(in.Observed):
+			reason = "observed_non_finite"
+		}
+		if reason != "" {
+			return nil, fmt.Errorf("effect sidecar resistance identity invalid: %s", reason)
 		}
 		seenNodes[in.NodeID] = true
 		hits[in.HitID] = true

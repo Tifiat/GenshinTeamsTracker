@@ -1,0 +1,633 @@
+{
+  "candidates": [
+    {
+      "allocations": [
+        {
+          "main_stats": {
+            "circlet": "crit_damage",
+            "flower": "hp",
+            "goblet": "hp_percent",
+            "plume": "atk",
+            "sands": "hp_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 24,
+              "stat_key": "crit_damage",
+              "stat_value": 1.8648000000000002
+            },
+            {
+              "roll_units": 3.75,
+              "stat_key": "crit_rate",
+              "stat_value": 0.14587499999999998
+            },
+            {
+              "roll_units": 7.75,
+              "stat_key": "em",
+              "stat_value": 180.6525
+            },
+            {
+              "roll_units": 9.5,
+              "stat_key": "hp_percent",
+              "stat_value": 0.55385
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "columbina"
+        },
+        {
+          "main_stats": {
+            "circlet": "crit_damage",
+            "flower": "hp",
+            "goblet": "atk_percent",
+            "plume": "atk",
+            "sands": "atk_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 18,
+              "stat_key": "atk_percent",
+              "stat_value": 1.0493999999999999
+            },
+            {
+              "roll_units": 18.5,
+              "stat_key": "crit_damage",
+              "stat_value": 1.4374500000000001
+            },
+            {
+              "roll_units": 8.5,
+              "stat_key": "crit_rate",
+              "stat_value": 0.33065
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "flins"
+        },
+        {
+          "main_stats": {
+            "circlet": "crit_damage",
+            "flower": "hp",
+            "goblet": "atk_percent",
+            "plume": "atk",
+            "sands": "atk_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 2.75,
+              "stat_key": "atk_percent",
+              "stat_value": 0.160325
+            },
+            {
+              "roll_units": 22.5,
+              "stat_key": "crit_damage",
+              "stat_value": 1.74825
+            },
+            {
+              "roll_units": 17,
+              "stat_key": "crit_rate",
+              "stat_value": 0.6613
+            },
+            {
+              "roll_units": 2.75,
+              "stat_key": "em",
+              "stat_value": 64.10249999999999
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "ineffa"
+        },
+        {
+          "main_stats": {
+            "circlet": "crit_rate",
+            "flower": "hp",
+            "goblet": "hydro_damage_bonus",
+            "plume": "atk",
+            "sands": "atk_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 16.75,
+              "stat_key": "atk_percent",
+              "stat_value": 0.976525
+            },
+            {
+              "roll_units": 20,
+              "stat_key": "crit_damage",
+              "stat_value": 1.554
+            },
+            {
+              "roll_units": 8.25,
+              "stat_key": "crit_rate",
+              "stat_value": 0.32092499999999996
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "jahoda"
+        }
+      ],
+      "formula_dps": 265235.341652248,
+      "opaque_reasons": [
+        "attack_field_operand_dependency_frozen",
+        "callback_provider_unattributed",
+        "contributor_membership_schedule_frozen",
+        "flat_dmg_expression_collapsed",
+        "gadget_wave_state_lineage_not_instrumented",
+        "max_hp_candidate_dependency_incomplete",
+        "modifier_candidate_dependency_incomplete",
+        "modifier_source_parameter_binding_incomplete",
+        "multiplier_source_expression_not_instrumented",
+        "numeric_expression_candidate_dependency_incomplete",
+        "numeric_marker_replay_not_recomputed",
+        "numeric_recipe_input_frozen_atk_elevation",
+        "numeric_recipe_input_frozen_atk_info_mult",
+        "numeric_recipe_input_frozen_defmod",
+        "numeric_recipe_input_frozen_elevation",
+        "numeric_recipe_input_frozen_grpmult",
+        "numeric_recipe_input_frozen_mult",
+        "post_damage_callback_state_effects_unmodeled",
+        "provider_transition_timeline_incomplete",
+        "reaction_bonus_provider_paths_incomplete",
+        "reaction_bonus_schedule_frozen",
+        "reaction_parent_lineage_not_instrumented",
+        "reaction_topology_aggregate_only",
+        "saved_stat_vector_schedule_frozen",
+        "stat_mod_dependency_expression_collapsed",
+        "stat_read_external_dependencies_incomplete",
+        "unknown_reaction_operator",
+        "untyped_callback_state_effects_unmodeled"
+      ],
+      "packages": [
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "silkenmoonsserenade"
+            }
+          ],
+          "wearer_key": "columbina"
+        },
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "nightoftheskysunveiling"
+            }
+          ],
+          "wearer_key": "flins"
+        },
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "aubadeofmorningstarandmoon"
+            }
+          ],
+          "wearer_key": "ineffa"
+        },
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "viridescentvenerer"
+            }
+          ],
+          "wearer_key": "jahoda"
+        }
+      ],
+      "rank": 1,
+      "source": "wearer"
+    },
+    {
+      "allocations": [
+        {
+          "main_stats": {
+            "circlet": "crit_damage",
+            "flower": "hp",
+            "goblet": "hp_percent",
+            "plume": "atk",
+            "sands": "hp_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 24,
+              "stat_key": "crit_damage",
+              "stat_value": 1.8648000000000002
+            },
+            {
+              "roll_units": 3.75,
+              "stat_key": "crit_rate",
+              "stat_value": 0.14587499999999998
+            },
+            {
+              "roll_units": 10,
+              "stat_key": "em",
+              "stat_value": 233.1
+            },
+            {
+              "roll_units": 7.25,
+              "stat_key": "hp_percent",
+              "stat_value": 0.42267499999999997
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "columbina"
+        },
+        {
+          "main_stats": {
+            "circlet": "crit_damage",
+            "flower": "hp",
+            "goblet": "atk_percent",
+            "plume": "atk",
+            "sands": "atk_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 17.25,
+              "stat_key": "atk_percent",
+              "stat_value": 1.0056749999999999
+            },
+            {
+              "roll_units": 19.25,
+              "stat_key": "crit_damage",
+              "stat_value": 1.4957250000000002
+            },
+            {
+              "roll_units": 8.5,
+              "stat_key": "crit_rate",
+              "stat_value": 0.33065
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "flins"
+        },
+        {
+          "main_stats": {
+            "circlet": "crit_damage",
+            "flower": "hp",
+            "goblet": "atk_percent",
+            "plume": "atk",
+            "sands": "atk_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 7,
+              "stat_key": "atk_percent",
+              "stat_value": 0.40809999999999996
+            },
+            {
+              "roll_units": 14.25,
+              "stat_key": "crit_damage",
+              "stat_value": 1.1072250000000001
+            },
+            {
+              "roll_units": 17,
+              "stat_key": "crit_rate",
+              "stat_value": 0.6613
+            },
+            {
+              "roll_units": 6.75,
+              "stat_key": "em",
+              "stat_value": 157.3425
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "ineffa"
+        },
+        {
+          "main_stats": {
+            "circlet": "crit_rate",
+            "flower": "hp",
+            "goblet": "hydro_damage_bonus",
+            "plume": "atk",
+            "sands": "atk_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 17,
+              "stat_key": "atk_percent",
+              "stat_value": 0.9911
+            },
+            {
+              "roll_units": 20,
+              "stat_key": "crit_damage",
+              "stat_value": 1.554
+            },
+            {
+              "roll_units": 8,
+              "stat_key": "crit_rate",
+              "stat_value": 0.3112
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "jahoda"
+        }
+      ],
+      "formula_dps": 259435.12826014392,
+      "opaque_reasons": [
+        "attack_field_operand_dependency_frozen",
+        "callback_provider_unattributed",
+        "contributor_membership_schedule_frozen",
+        "flat_dmg_expression_collapsed",
+        "gadget_wave_state_lineage_not_instrumented",
+        "max_hp_candidate_dependency_incomplete",
+        "modifier_candidate_dependency_incomplete",
+        "modifier_source_parameter_binding_incomplete",
+        "multiplier_source_expression_not_instrumented",
+        "numeric_expression_candidate_dependency_incomplete",
+        "numeric_marker_replay_not_recomputed",
+        "numeric_recipe_input_frozen_atk_elevation",
+        "numeric_recipe_input_frozen_atk_info_mult",
+        "numeric_recipe_input_frozen_defmod",
+        "numeric_recipe_input_frozen_elevation",
+        "numeric_recipe_input_frozen_grpmult",
+        "numeric_recipe_input_frozen_mult",
+        "post_damage_callback_state_effects_unmodeled",
+        "provider_transition_timeline_incomplete",
+        "reaction_bonus_provider_paths_incomplete",
+        "reaction_bonus_schedule_frozen",
+        "reaction_parent_lineage_not_instrumented",
+        "reaction_topology_aggregate_only",
+        "saved_stat_vector_schedule_frozen",
+        "stat_mod_dependency_expression_collapsed",
+        "stat_read_external_dependencies_incomplete",
+        "unknown_reaction_operator",
+        "untyped_callback_state_effects_unmodeled"
+      ],
+      "packages": [
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "aubadeofmorningstarandmoon"
+            }
+          ],
+          "wearer_key": "columbina"
+        },
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "nightoftheskysunveiling"
+            }
+          ],
+          "wearer_key": "flins"
+        },
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "silkenmoonsserenade"
+            }
+          ],
+          "wearer_key": "ineffa"
+        },
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "viridescentvenerer"
+            }
+          ],
+          "wearer_key": "jahoda"
+        }
+      ],
+      "rank": 2,
+      "source": "wearer"
+    },
+    {
+      "allocations": [
+        {
+          "main_stats": {
+            "circlet": "crit_damage",
+            "flower": "hp",
+            "goblet": "hp_percent",
+            "plume": "atk",
+            "sands": "hp_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 24,
+              "stat_key": "crit_damage",
+              "stat_value": 1.8648000000000002
+            },
+            {
+              "roll_units": 3.75,
+              "stat_key": "crit_rate",
+              "stat_value": 0.14587499999999998
+            },
+            {
+              "roll_units": 5,
+              "stat_key": "em",
+              "stat_value": 116.55
+            },
+            {
+              "roll_units": 12.25,
+              "stat_key": "hp_percent",
+              "stat_value": 0.714175
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "columbina"
+        },
+        {
+          "main_stats": {
+            "circlet": "crit_damage",
+            "flower": "hp",
+            "goblet": "atk_percent",
+            "plume": "atk",
+            "sands": "atk_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 16.5,
+              "stat_key": "atk_percent",
+              "stat_value": 0.96195
+            },
+            {
+              "roll_units": 12.25,
+              "stat_key": "crit_damage",
+              "stat_value": 0.951825
+            },
+            {
+              "roll_units": 16.25,
+              "stat_key": "crit_rate",
+              "stat_value": 0.6321249999999999
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "flins"
+        },
+        {
+          "main_stats": {
+            "circlet": "crit_damage",
+            "flower": "hp",
+            "goblet": "atk_percent",
+            "plume": "atk",
+            "sands": "atk_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 2,
+              "stat_key": "atk_percent",
+              "stat_value": 0.1166
+            },
+            {
+              "roll_units": 22,
+              "stat_key": "crit_damage",
+              "stat_value": 1.7094
+            },
+            {
+              "roll_units": 17,
+              "stat_key": "crit_rate",
+              "stat_value": 0.6613
+            },
+            {
+              "roll_units": 4,
+              "stat_key": "em",
+              "stat_value": 93.24
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "ineffa"
+        },
+        {
+          "main_stats": {
+            "circlet": "crit_rate",
+            "flower": "hp",
+            "goblet": "hydro_damage_bonus",
+            "plume": "atk",
+            "sands": "atk_percent"
+          },
+          "spent_roll_units": 45,
+          "substats": [
+            {
+              "roll_units": 17,
+              "stat_key": "atk_percent",
+              "stat_value": 0.9911
+            },
+            {
+              "roll_units": 20,
+              "stat_key": "crit_damage",
+              "stat_value": 1.554
+            },
+            {
+              "roll_units": 8,
+              "stat_key": "crit_rate",
+              "stat_value": 0.3112
+            }
+          ],
+          "unspent_roll_units": 0,
+          "wearer_key": "jahoda"
+        }
+      ],
+      "formula_dps": 256242.5833107187,
+      "opaque_reasons": [
+        "attack_field_operand_dependency_frozen",
+        "callback_provider_unattributed",
+        "contributor_membership_schedule_frozen",
+        "flat_dmg_expression_collapsed",
+        "gadget_wave_state_lineage_not_instrumented",
+        "max_hp_candidate_dependency_incomplete",
+        "modifier_candidate_dependency_incomplete",
+        "modifier_source_parameter_binding_incomplete",
+        "multiplier_source_expression_not_instrumented",
+        "numeric_expression_candidate_dependency_incomplete",
+        "numeric_marker_replay_not_recomputed",
+        "numeric_recipe_input_frozen_atk_elevation",
+        "numeric_recipe_input_frozen_atk_info_mult",
+        "numeric_recipe_input_frozen_defmod",
+        "numeric_recipe_input_frozen_elevation",
+        "numeric_recipe_input_frozen_grpmult",
+        "numeric_recipe_input_frozen_mult",
+        "post_damage_callback_state_effects_unmodeled",
+        "provider_transition_timeline_incomplete",
+        "reaction_bonus_provider_paths_incomplete",
+        "reaction_bonus_schedule_frozen",
+        "reaction_parent_lineage_not_instrumented",
+        "reaction_topology_aggregate_only",
+        "saved_stat_vector_schedule_frozen",
+        "stat_mod_dependency_expression_collapsed",
+        "stat_read_external_dependencies_incomplete",
+        "unknown_reaction_operator",
+        "untyped_callback_state_effects_unmodeled"
+      ],
+      "packages": [
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "aubadeofmorningstarandmoon"
+            }
+          ],
+          "wearer_key": "columbina"
+        },
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "silkenmoonsserenade"
+            }
+          ],
+          "wearer_key": "flins"
+        },
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "aubadeofmorningstarandmoon"
+            }
+          ],
+          "wearer_key": "ineffa"
+        },
+        {
+          "sets": [
+            {
+              "count": 4,
+              "set_uid": "viridescentvenerer"
+            }
+          ],
+          "wearer_key": "jahoda"
+        }
+      ],
+      "rank": 3,
+      "source": "wearer"
+    }
+  ],
+  "coverage": {
+    "catalog_sets": 42,
+    "contexts_evaluated": 8,
+    "contexts_limit": 8,
+    "packages_considered": 3608,
+    "packages_shortlisted": 12,
+    "unqueued_packages": 3596
+  },
+  "date": "2026-09-17",
+  "generated_state_removed_on_exit": true,
+  "native_elapsed_ms": 175182.2934,
+  "progress_tail": [
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":0,\"stage\":\"validating_request\",\"completed_work\":0,\"total_work\":4,\"elapsed_ms\":0,\"cancellation_requested\":false}",
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":1,\"stage\":\"compiling_formula\",\"completed_work\":1,\"total_work\":4,\"elapsed_ms\":609,\"cancellation_requested\":false}",
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":2,\"stage\":\"searching\",\"completed_work\":2,\"total_work\":4,\"elapsed_ms\":22103,\"cancellation_requested\":false}",
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":3,\"stage\":\"completed\",\"completed_work\":4,\"total_work\":4,\"elapsed_ms\":175185,\"cancellation_requested\":false}"
+  ],
+  "schema_version": 1,
+  "scope": "saved_request_theory_backend_smoke",
+  "source_run": "all_sets-20260917-030320-7048d16f",
+  "status": "accepted_non_authoritative_theory_smoke",
+  "wall_seconds": 175.42199999999139,
+  "warnings": [
+    "theory_guidance_not_owned_artifacts",
+    "bounded_set_shortlist_not_global_optimum"
+  ]
+}

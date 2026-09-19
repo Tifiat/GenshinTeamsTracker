@@ -141,7 +141,16 @@ func mergeExtendedRows(base, extension VerificationResult) (VerificationResult, 
 	for _, row := range extension.Candidates {
 		extended[row.AssignmentSHA256] = row
 	}
-	rows := append([]MeasuredCandidate(nil), base.Candidates...)
+	rejected := make(map[string]struct{}, len(extension.EnergyRejectedSHA256))
+	for _, identity := range extension.EnergyRejectedSHA256 {
+		rejected[identity] = struct{}{}
+	}
+	rows := make([]MeasuredCandidate, 0, len(base.Candidates))
+	for _, row := range base.Candidates {
+		if _, removed := rejected[row.AssignmentSHA256]; !removed {
+			rows = append(rows, row)
+		}
+	}
 	replaced := 0
 	for index, row := range rows {
 		if replacement, ok := extended[row.AssignmentSHA256]; ok {
@@ -153,12 +162,16 @@ func mergeExtendedRows(base, extension VerificationResult) (VerificationResult, 
 	if replaced != len(extension.Candidates) {
 		return VerificationResult{}, fmt.Errorf("adaptive extension contains a row absent from the base panel")
 	}
+	if len(rows) == 0 {
+		return VerificationResult{}, &NoEnergyFeasibleFinalistError{AssignmentSHA256: extension.EnergyRejectedSHA256}
+	}
 	ordered := measuredOrder(rows)
 	return VerificationResult{
-		Candidates:     rows,
-		Winner:         ordered[0],
-		Iterations:     base.Iterations,
-		TotalElapsedMS: base.TotalElapsedMS + extension.TotalElapsedMS,
+		Candidates:           rows,
+		Winner:               ordered[0],
+		Iterations:           base.Iterations,
+		EnergyRejectedSHA256: append(append([]string(nil), base.EnergyRejectedSHA256...), extension.EnergyRejectedSHA256...),
+		TotalElapsedMS:       base.TotalElapsedMS + extension.TotalElapsedMS,
 	}, nil
 }
 

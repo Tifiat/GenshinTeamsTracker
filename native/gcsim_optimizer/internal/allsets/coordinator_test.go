@@ -154,6 +154,34 @@ func TestCoordinatorGlobalBudgetAndDeterminism(t *testing.T) {
 	}
 }
 
+func TestCoordinatorScoutsAllContextsBeforeBoundedDeepening(t *testing.T) {
+	index, base, sources, provider, cfg := coordinatorFixture(t)
+	cfg.DeepContextLimit = 2
+	cfg.Scout = cfg.Search
+	cfg.Scout.MaxExpandedPerActor = 5
+	cfg.MaxSearchExpansions = 2000
+
+	r, e := Run(context.Background(), index, base, sources, provider, cfg)
+	if e != nil {
+		t.Fatal(e)
+	}
+	scouts, deep := 0, 0
+	for _, work := range r.Work {
+		if strings.HasPrefix(work.Lane, "scout_") {
+			scouts++
+		}
+		if strings.HasPrefix(work.Lane, "deep_") {
+			deep++
+		}
+	}
+	if scouts != cfg.MaxContexts-1 || deep != cfg.DeepContextLimit {
+		t.Fatalf("unexpected two-stage work: scouts=%d deep=%d work=%#v", scouts, deep, r.Work)
+	}
+	if r.Leader.Score.DPS < r.Selected.Score.DPS || r.SearchExpansions > cfg.MaxSearchExpansions {
+		t.Fatalf("two-stage search lost its safe baseline or budget: %#v", r)
+	}
+}
+
 func TestCoordinatorPartialDeadlineDoesNotEraseSelected(t *testing.T) {
 	index, base, sources, provider, cfg := coordinatorFixture(t)
 	for _, failure := range []error{context.DeadlineExceeded, errors.New("corrupt engine evidence")} {

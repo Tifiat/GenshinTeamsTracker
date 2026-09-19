@@ -174,6 +174,29 @@ func TestRequestRejectsNonCanonicalOrderingAndIdentityDrift(t *testing.T) {
 	}
 }
 
+func TestRequestRejectsEmptyOrIncompleteArtifactInventory(t *testing.T) {
+	request, err := DecodeRequest(readFixture(t, "request_v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Artifacts = nil
+	if err := request.Validate(); err == nil || !strings.Contains(err.Error(), "artifacts must not be empty") {
+		t.Fatalf("empty artifact inventory should fail explicitly, got %v", err)
+	}
+
+	request, _ = DecodeRequest(readFixture(t, "request_v1.json"))
+	request.Wearers[0].CurrentArtifacts = request.Wearers[0].CurrentArtifacts[:4]
+	if err := request.Validate(); err == nil || !strings.Contains(err.Error(), "must contain five slots") {
+		t.Fatalf("incomplete equipped build should fail explicitly, got %v", err)
+	}
+
+	request, _ = DecodeRequest(readFixture(t, "request_v1.json"))
+	request.Wearers[0].CurrentArtifacts[0].ArtifactID = 999999999
+	if err := request.Validate(); err == nil || !strings.Contains(err.Error(), "unknown artifact_id") {
+		t.Fatalf("missing equipped artifact should fail explicitly, got %v", err)
+	}
+}
+
 func TestOneTraceRequiresTopologyProof(t *testing.T) {
 	request, err := DecodeRequest(readFixture(t, "request_v1.json"))
 	if err != nil {
@@ -254,6 +277,57 @@ func TestResultRejectsDuplicatePhysicalArtifact(t *testing.T) {
 	result.Winner[1].ArtifactID = result.Winner[0].ArtifactID
 	if err := result.Validate(); err == nil || !strings.Contains(err.Error(), "repeats artifact_id") {
 		t.Fatalf("duplicate artifact should fail, got %v", err)
+	}
+}
+
+func TestResultValidatesFiniteEnergyReport(t *testing.T) {
+	result, err := DecodeResult(readFixture(t, "result_v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wearers := make([]EnergyWearerResult, 0, 4)
+	for _, key := range []string{"bennett", "chasca", "furina", "ororon"} {
+		wearers = append(wearers, EnergyWearerResult{
+			WearerKey:          key,
+			ArtifactER:         "0.5",
+			RequiredArtifactER: "0.4",
+			Margin:             "0.1",
+			Feasible:           true,
+			MaximumShortage:    "0",
+			BurstDeadlines:     2,
+			Sources: []EnergySourceResult{{
+				Source: "skill-particles", ParticleRaw: "3", FlatObserved: "0",
+			}},
+			UncertaintyCodes: []string{},
+		})
+	}
+	result.Energy = &EnergyResult{Feasible: true, MaximumShortage: "0", Wearers: wearers}
+	if err := result.Validate(); err != nil {
+		t.Fatalf("valid energy report rejected: %v", err)
+	}
+
+	result.Energy.Wearers[3].WearerKey = "furina"
+	if err := result.Validate(); err == nil || !strings.Contains(err.Error(), "repeats wearer") {
+		t.Fatalf("duplicate energy wearer should fail, got %v", err)
+	}
+}
+
+func TestFailedResultCannotCarryEnergyReport(t *testing.T) {
+	result, err := DecodeResult(readFixture(t, "result_v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result.Status = "failed"
+	result.Winner = nil
+	result.Candidates = nil
+	result.FormulaDPS = ""
+	result.FormulaResidual = ""
+	result.Measured = nil
+	result.DebugReceiptPath = ""
+	result.Error = &ResultError{Code: "test_failure", Message: "failed"}
+	result.Energy = &EnergyResult{}
+	if err := result.Validate(); err == nil || !strings.Contains(err.Error(), "invalid payload") {
+		t.Fatalf("failed result with energy report should fail, got %v", err)
 	}
 }
 

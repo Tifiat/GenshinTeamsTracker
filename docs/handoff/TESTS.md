@@ -13,7 +13,8 @@ Mirror the primary project owner under `tests/`:
 - `tests/hoyolab_export/account/` - account storage, equipment, import pipeline,
   offline profile, account stat sheet.
 - `tests/hoyolab_export/artifacts/` - artifact DB/catalog integration, build
-  snapshots, stat normalization, display stat effects.
+  snapshots, stat normalization, display stat effects, and virtual GCSIM build
+  target persistence/merge-by-stable-key coverage.
 - `tests/hoyolab_export/catalog/` - HoYoWiki/static catalogs, mapping reports,
   character/weapon stat snapshots, trait catalogs.
 - `tests/hoyolab_export/abyss/` - HoYoLAB/export-side Abyss helpers and refresh
@@ -23,6 +24,13 @@ Mirror the primary project owner under `tests/`:
   runtime fixture/cache behavior.
 - `tests/run_workspace/gcsim/` - engine lifecycle, compatibility, config/key
   mapping, wave scenarios, cleanup, artifact runners and Python/Go integration.
+  `test_gcsim_virtual_roster.py` covers installed-catalog parsing, weapon-class
+  compatibility, C/R ranges, complete-profile moves and character
+  level-to-max-legal-ascension boundaries (`80` -> `80/90`).
+  `test_gcsim_selected_team_config.py` covers strict owned-build input plus the
+  separate mixed account/virtual Theory baseline with no saved build, initial
+  set package or owned ids. Native contract tests prove the raw Theory request
+  keeps that non-owned identity and expands private artifacts only in process.
   Active Selected coverage is in `test_optimizer_go_*.py`; native contract,
   formula, search and stochastic tests are under `native/gcsim_optimizer/`.
   `set_packages_test.go` suites cover4p/2+2 request legality, disjoint slot
@@ -70,18 +78,31 @@ Mirror the primary project owner under `tests/`:
   account comparison against optimized Selected and ordinary finalist panels.
   The observer delta is now consolidated in the production patch; dated research
   commands remain experimental and ordinary test suites do not run GCSIM.
-  `all_sets_product_receipt_v1.json` scopes the cold CLI, ordinary panels and
-  installed source/engine controls separately from the pending real UI gate.
+  `all_sets_product_receipt_v1.json` scopes the dated cold CLI, ordinary panels
+  and installed source/engine controls separately from later UI evidence.
   Contract tests require exactly one Selected-IR or All-Sets-panel identity;
   Python source tests accept post-build store metadata but reject arbitrary
-  added source files.34 focused Python tests, full Go tests/vet passed at this
-  installation; this is not universal mechanic coverage.
+  added source files. Native finite-energy coverage includes deadline
+  feasibility, formula-invisible ER, ordinary-result insufficient-energy
+  decoding and rejection of only the failing finalist while preserving later
+  valid finalists. Request regressions reject empty inventories, incomplete
+  builds and missing equipped IDs. Full Go tests pass at this installation;
+  this is not universal mechanic coverage.
   Trace/source-dependency tests under `trace_equation/` cover the retained
   compiler/engine boundary, not a second Python Selected backend.
   Older farming/Current/continuous-target coverage is reference or comparison
-  coverage; it does not establish released All Sets, Theory or energy-aware
-  Selected. New Selected2+2 backend evidence has its own acceptance receipt,
+  coverage. Released All Sets, Theory and energy-aware Selected acceptance and
+  current limits live in the checkpoint. New Selected2+2 backend evidence has its own acceptance receipt,
   separate from actual AppShell/UI acceptance.
+  `optimizer_mode_matrix_account_v1.json` adds bounded account evidence for
+  Selected, All Sets and Theory on Chasca, Lunar-Charged and Bloom teams plus
+  two Flins/Sucrose rotations. Its runner uses the production request/session
+  classes and managed scratch; Qt tests click the actual mode buttons, verify
+  their emitted team/rotation and map each request type to its production
+  session. The dated `GCSIM_OPTIMIZER_ARCHETYPE_AUDIT_20260919.md` additionally
+  records real AppShell clicks of all three account buttons and virtual Theory,
+  plus 14 virtual All Sets/Theory session pairs. Selected2+2/Save/cancel and a
+  virtual All Sets physical click remain distinct UI gates.
   Current real-engine acceptance and limitations live in
   `GCSIM_GOB11_GP3_CHECKPOINT.md`; old migration/stage receipts remain dated
   evidence in the Go design and fixture directory.
@@ -132,7 +153,11 @@ Mirror the primary project owner under `tests/`:
   `Decks`/`Play`/`Draft` header routing, preservation of normal Run state while
   switching PvP pages, root deck path coverage that prevents `ui/data`
   recreation, and active in-memory Draft board preservation after leaving and
-  returning to PvP.
+  returning to PvP. `test_virtual_gcsim_slots.py` covers account-state
+  isolation, selected-team override transport, compact searchable compatible
+  weapon/profile/build controls, legal 4p/2p+2p selection, C/R signals, account
+  replacement confirmation, blocked account weapon mutation, full-profile
+  account/empty/virtual swaps and right-panel drag/drop forwarding.
 - `tests/ui/right_panel/common/` - shared right-panel visual primitives such as
   reusable slot/team/card primitives, `slot_parts.py` portrait/weapon/artifact
   mini-zones, shared metrics/styles/helpers, and non-domain-specific card UI.

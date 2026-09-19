@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"genshinteamstracker/native/gcsim_optimizer/internal/domain"
+	energyconstraint "genshinteamstracker/native/gcsim_optimizer/internal/energy"
 	"genshinteamstracker/native/gcsim_optimizer/internal/search"
 	"genshinteamstracker/native/gcsim_optimizer/internal/setcontext"
 	"genshinteamstracker/native/gcsim_optimizer/internal/seteffects"
@@ -18,19 +19,23 @@ import (
 // defaults remain gated by the combined account benchmark and finalist budget.
 type CoordinatorConfig struct {
 	MaxContexts, MaxGuides, SingleQueue, TransferQueue, FinalistLimit int
+	DeepContextLimit                                                  int
 	MaxSearchExpansions                                               int
 	SearchTime                                                        time.Duration
 	Search                                                            search.Config
+	Scout                                                             search.Config
 }
 
 // Candidate retains its OWN complete context/domain. Its graph's raw-stat
 // reference is unchanged; a different set package cannot inherit this DPS.
 type Candidate struct {
-	Score    search.ScoredAssignment
-	Context  *setcontext.Context
-	Handle   *setcontext.Handle
-	Index    *domain.Index
-	Packages [4]domain.Package
+	Score       search.ScoredAssignment
+	Context     *setcontext.Context
+	Handle      *setcontext.Handle
+	Index       *domain.Index
+	Packages    [4]domain.Package
+	Energy      *energyconstraint.Feasibility
+	EnergyModel *energyconstraint.Model
 }
 
 type ContextWork struct {
@@ -61,12 +66,18 @@ type contextProposal struct {
 	consumed bool
 }
 
+type scoutedCandidate struct {
+	Candidate Candidate
+	Lane      string
+	Hint      Hint
+}
+
 // Run captures at most MaxContexts complete panels, preserves the initial and
 // Selected candidates, and applies the same FGBS arithmetic inside each panel.
 // A deadline/budget ends discovery visibly with completed results intact.
 // Provenance/engine errors remain errors, not successful unknown mechanics.
 func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sources *seteffects.SourceCatalog, provider setcontext.CaptureProvider, cfg CoordinatorConfig) (out CoordinatorResult, err error) {
-	if index == nil || base == nil || sources == nil || provider == nil || cfg.MaxContexts < 1 || cfg.MaxContexts > 32 || cfg.MaxGuides < 1 || cfg.MaxGuides > cfg.MaxContexts || cfg.SingleQueue < 1 || cfg.SingleQueue > 64 || cfg.TransferQueue < 1 || cfg.TransferQueue > 16 || cfg.FinalistLimit < 3 || cfg.FinalistLimit > 32 || cfg.MaxSearchExpansions < 1 || cfg.SearchTime <= 0 {
+	if index == nil || base == nil || sources == nil || provider == nil || cfg.MaxContexts < 1 || cfg.MaxContexts > 32 || cfg.MaxGuides < 1 || cfg.MaxGuides > cfg.MaxContexts || cfg.SingleQueue < 1 || cfg.SingleQueue > 64 || cfg.TransferQueue < 1 || cfg.TransferQueue > 16 || cfg.FinalistLimit < 3 || cfg.FinalistLimit > 32 || cfg.DeepContextLimit < 0 || cfg.DeepContextLimit > cfg.MaxContexts || cfg.MaxSearchExpansions < 1 || cfg.SearchTime <= 0 {
 		return out, fmt.Errorf("invalid bounded All Sets coordinator configuration")
 	}
 	started := time.Now()
@@ -76,7 +87,13 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 	if e != nil {
 		return out, e
 	}
+	ignoreBurstEnergy, e := setcontext.IgnoreBurstEnergy(base.Config())
+	if e != nil {
+		return out, e
+	}
+	finiteEnergy := !ignoreBurstEnergy
 	pool := []Candidate{}
+	scouted := []scoutedCandidate{}
 	pending := []contextProposal{}
 	seen := map[string]bool{}
 	defer func() {
@@ -128,7 +145,23 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 	if e != nil {
 		return out, e
 	}
-	initial := Candidate{search.ScoredAssignment{Assignment: index.Incumbent, DPS: initialDPS, Source: "all_initial"}, base, handle, index, packages}
+	initial := Candidate{Score: search.ScoredAssignment{Assignment: index.Incumbent, DPS: initialDPS, Source: "all_initial"}, Context: base, Handle: handle, Index: index, Packages: packages}
+	if finiteEnergy {
+		members, memberErr := handle.EnergyMembers()
+		if memberErr != nil {
+			return out, memberErr
+		}
+		model, modelErr := energyconstraint.Compile(index, members)
+		if modelErr != nil {
+			return out, modelErr
+		}
+		assessment, assessmentErr := model.Feasibility(index.Incumbent)
+		if assessmentErr != nil {
+			return out, assessmentErr
+		}
+		initial.Energy = &assessment
+		initial.EnergyModel = model
+	}
 	out.Initial, out.Selected, out.Leader = initial, initial, initial
 	pool = append(pool, initial)
 	seen[base.Key()] = true
@@ -136,9 +169,9 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 	for _, s := range sources.Sets {
 		catalog = append(catalog, domain.SetCapability{UID: s.Key, TwoPiece: true, FourPiece: s.FourPieceModeled})
 	}
-	refine := func(seed Candidate, lane string, captureSeconds float64) (Candidate, error) {
+	refine := func(seed Candidate, lane string, captureSeconds float64, searchConfig search.Config) (Candidate, error) {
 		remaining := cfg.MaxSearchExpansions - out.SearchExpansions
-		sc := cfg.Search
+		sc := searchConfig
 		if sc.MaxCycles <= 0 {
 			return seed, fmt.Errorf("invalid search cycles")
 		}
@@ -153,7 +186,18 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 		if e != nil {
 			return seed, e
 		}
-		solver, e := search.New(seed.Index, p, sc)
+		var energyModel *energyconstraint.Model
+		if finiteEnergy {
+			members, memberErr := seed.Handle.EnergyMembers()
+			if memberErr != nil {
+				return seed, memberErr
+			}
+			energyModel, e = energyconstraint.Compile(seed.Index, members)
+			if e != nil {
+				return seed, e
+			}
+		}
+		solver, e := search.New(seed.Index, p, sc, energyModel)
 		if e != nil {
 			return seed, e
 		}
@@ -175,6 +219,8 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 		out.SearchExpansions -= reserved - actual
 		best := seed
 		best.Score = result.Leader
+		best.Energy = result.Energy
+		best.EnergyModel = energyModel
 		best.Index, e = seed.Index.ForPackages(seed.Packages, result.Leader.Assignment, p.Coordinates())
 		if e != nil {
 			return seed, e
@@ -182,13 +228,21 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 		for _, score := range result.Finalists {
 			candidate := best
 			candidate.Score = score
+			if energyModel != nil {
+				assessment, assessmentErr := energyModel.Feasibility(score.Assignment)
+				if assessmentErr != nil {
+					return seed, assessmentErr
+				}
+				candidate.Energy = &assessment
+				candidate.EnergyModel = energyModel
+			}
 			pool = append(pool, candidate)
 		}
 		pool = append(pool, best)
 		out.Work = append(out.Work, ContextWork{seed.Context.Key(), lane, best.Score.DPS, captureSeconds, elapsed, actual})
 		return best, nil
 	}
-	selected, e := refine(initial, "selected", captureSeconds)
+	selected, e := refine(initial, "selected", captureSeconds, cfg.Search)
 	if e != nil {
 		return out, stop(e)
 	}
@@ -232,6 +286,7 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 	if e = queue(selected); e != nil {
 		return out, stop(e)
 	}
+	twoStage := cfg.DeepContextLimit > 0 && cfg.Scout.MaxCycles > 0
 	cursor, wearer := 0, 0
 	for {
 		if e = runCtx.Err(); e != nil {
@@ -239,16 +294,16 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 		}
 		if len(seen) >= cfg.MaxContexts {
 			out.StopReason = "context_budget"
-			return out, nil
+			break
 		}
 		if out.SearchExpansions >= cfg.MaxSearchExpansions {
 			out.StopReason = "search_expansion_budget"
-			return out, nil
+			break
 		}
 		n := pickProposal(pending, &cursor, &wearer)
 		if n < 0 {
 			out.StopReason = "proposal_queue_exhausted"
-			return out, nil
+			break
 		}
 		pending[n].consumed = true
 		p := pending[n]
@@ -300,13 +355,36 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 		if e != nil {
 			return out, e
 		}
-		seed := Candidate{search.ScoredAssignment{Assignment: p.seed, DPS: dps, Source: "all_" + p.lane}, target, h, view, p.packages}
+		seed := Candidate{Score: search.ScoredAssignment{Assignment: p.seed, DPS: dps, Source: "all_" + p.lane}, Context: target, Handle: h, Index: view, Packages: p.packages}
+		if finiteEnergy {
+			members, memberErr := h.EnergyMembers()
+			if memberErr != nil {
+				return out, memberErr
+			}
+			model, modelErr := energyconstraint.Compile(view, members)
+			if modelErr != nil {
+				return out, modelErr
+			}
+			assessment, assessmentErr := model.Feasibility(p.seed)
+			if assessmentErr != nil {
+				return out, assessmentErr
+			}
+			seed.Energy = &assessment
+			seed.EnergyModel = model
+		}
 		pool = append(pool, seed)
-		candidate, e := refine(seed, p.lane, captureSeconds)
+		refineConfig, workLane := cfg.Search, p.lane
+		if twoStage {
+			refineConfig, workLane = cfg.Scout, "scout_"+p.lane
+		}
+		candidate, e := refine(seed, workLane, captureSeconds, refineConfig)
 		if e != nil {
 			return out, stop(e)
 		}
-		if candidate.Score.DPS > out.Leader.Score.DPS {
+		if twoStage {
+			scouted = append(scouted, scoutedCandidate{Candidate: candidate, Lane: p.lane, Hint: p.hint})
+		}
+		if betterCandidate(candidate, out.Leader) {
 			out.Leader = candidate
 			if out.Guides < cfg.MaxGuides && len(seen) < cfg.MaxContexts && out.StopReason == "" {
 				if e = queue(candidate); e != nil {
@@ -318,6 +396,55 @@ func Run(ctx context.Context, index *domain.Index, base *setcontext.Context, sou
 			return out, nil
 		}
 	}
+	if !twoStage || len(scouted) == 0 || out.StopReason == "search_expansion_budget" {
+		return out, nil
+	}
+	discoveryStop := out.StopReason
+	out.StopReason = ""
+	for _, row := range chooseDeepCandidates(scouted, cfg.DeepContextLimit) {
+		candidate, refineError := refine(row.Candidate, "deep_"+row.Lane, 0, cfg.Search)
+		if refineError != nil {
+			return out, stop(refineError)
+		}
+		if betterCandidate(candidate, out.Leader) {
+			out.Leader = candidate
+		}
+		if out.StopReason != "" {
+			return out, nil
+		}
+	}
+	out.StopReason = discoveryStop
+	return out, nil
+}
+
+func chooseDeepCandidates(rows []scoutedCandidate, limit int) []scoutedCandidate {
+	if limit <= 0 || len(rows) == 0 {
+		return nil
+	}
+	ordered := append([]scoutedCandidate(nil), rows...)
+	sort.SliceStable(ordered, func(i, j int) bool { return betterCandidate(ordered[i].Candidate, ordered[j].Candidate) })
+	out := []scoutedCandidate{ordered[0]}
+	used := map[string]bool{ordered[0].Candidate.Context.Key(): true}
+	if len(out) < limit {
+		for _, row := range ordered {
+			exploratory := row.Lane == "joint" || row.Hint.Shared || row.Hint.NewOutput || row.Hint.Unresolved
+			if exploratory && !used[row.Candidate.Context.Key()] {
+				out = append(out, row)
+				used[row.Candidate.Context.Key()] = true
+				break
+			}
+		}
+	}
+	for _, row := range ordered {
+		if len(out) >= limit {
+			break
+		}
+		if !used[row.Candidate.Context.Key()] {
+			out = append(out, row)
+			used[row.Candidate.Context.Key()] = true
+		}
+	}
+	return out
 }
 
 // Fairness is shared across refreshes. Unknown/new-output opportunities are
@@ -347,13 +474,20 @@ func pickProposal(pending []contextProposal, cursor, wearer *int) int {
 }
 
 func chooseFinalists(pool []Candidate, initial, selected Candidate, limit int) []Candidate {
+	hasFeasibleEnergy := false
+	for _, candidate := range pool {
+		hasFeasibleEnergy = hasFeasibleEnergy || candidate.Energy != nil && candidate.Energy.Feasible
+	}
 	unique := map[domain.Assignment]Candidate{}
 	for _, c := range pool {
 		if c.Context == nil || math.IsNaN(c.Score.DPS) || math.IsInf(c.Score.DPS, 0) {
 			continue
 		}
+		if hasFeasibleEnergy && c.Energy != nil && !c.Energy.Feasible {
+			continue
+		}
 		old, ok := unique[c.Score.Assignment]
-		if !ok || c.Score.DPS > old.Score.DPS {
+		if !ok || betterCandidate(c, old) {
 			unique[c.Score.Assignment] = c
 		}
 	}
@@ -362,15 +496,18 @@ func chooseFinalists(pool []Candidate, initial, selected Candidate, limit int) [
 		ordered = append(ordered, c)
 	}
 	sort.Slice(ordered, func(i, j int) bool {
-		if ordered[i].Score.DPS != ordered[j].Score.DPS {
-			return ordered[i].Score.DPS > ordered[j].Score.DPS
+		if betterCandidate(ordered[i], ordered[j]) {
+			return true
+		}
+		if betterCandidate(ordered[j], ordered[i]) {
+			return false
 		}
 		return fmt.Sprint(ordered[i].Score.Assignment) < fmt.Sprint(ordered[j].Score.Assignment)
 	})
 	result := []Candidate{}
 	used := map[domain.Assignment]bool{}
 	take := func(c Candidate) {
-		if c.Context != nil && !used[c.Score.Assignment] && len(result) < limit {
+		if c.Context != nil && (!hasFeasibleEnergy || c.Energy == nil || c.Energy.Feasible) && !used[c.Score.Assignment] && len(result) < limit {
 			used[c.Score.Assignment] = true
 			result = append(result, c)
 		}
@@ -395,6 +532,22 @@ func chooseFinalists(pool []Candidate, initial, selected Candidate, limit int) [
 	for _, c := range ordered {
 		take(c)
 	}
-	sort.SliceStable(result, func(i, j int) bool { return result[i].Score.DPS > result[j].Score.DPS })
+	sort.SliceStable(result, func(i, j int) bool { return betterCandidate(result[i], result[j]) })
 	return result
+}
+
+func betterCandidate(left, right Candidate) bool {
+	if left.Energy != nil && right.Energy != nil {
+		if left.Energy.Feasible != right.Energy.Feasible {
+			return left.Energy.Feasible
+		}
+		if !left.Energy.Feasible && math.Abs(left.Energy.MaximumShortage-right.Energy.MaximumShortage) > 1e-9 {
+			return left.Energy.MaximumShortage < right.Energy.MaximumShortage
+		}
+	} else if left.Energy != nil || right.Energy != nil {
+		// A run must not mix constrained and unconstrained candidates. Keep the
+		// constrained row first so an accidental mismatch cannot bypass energy.
+		return left.Energy != nil
+	}
+	return left.Score.DPS > right.Score.DPS+1e-9
 }

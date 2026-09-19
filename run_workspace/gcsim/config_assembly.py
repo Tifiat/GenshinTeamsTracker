@@ -18,6 +18,10 @@ from run_workspace.gcsim.config_blocks import (
     GcsimCharacterConfigBlock,
     GcsimConfigBlockIssue,
 )
+from run_workspace.gcsim.config_structure import (
+    GCSIM_FARMING_STATIC_TARGET_HP,
+    has_unbounded_gcsim_loop,
+)
 
 
 ASSEMBLY_READY = "ready"
@@ -25,6 +29,9 @@ ASSEMBLY_BLOCK_NOT_READY = "character_block_not_ready"
 ASSEMBLY_SHELL_MISSING = "shell_missing"
 ASSEMBLY_SHELL_CONTAINS_MANUAL_CHARACTER_BLOCKS = (
     "shell_contains_manual_character_blocks"
+)
+ASSEMBLY_SHELL_UNBOUNDED_DUMMY_ROTATION = (
+    "shell_unbounded_high_hp_dummy_rotation"
 )
 
 WARNING_SHELL_TARGET_PLACEHOLDER_NOT_ENEMY_TRUTH = (
@@ -44,6 +51,10 @@ _ADD_BLOCK_RE = re.compile(
     re.IGNORECASE,
 )
 _CHARACTER_KEY_RE = re.compile(r"^\s*([A-Za-z0-9_]+)\s+char\b", re.IGNORECASE)
+_PINNED_DUMMY_HP_RE = re.compile(
+    rf"(?<![A-Za-z0-9_])hp\s*=\s*{GCSIM_FARMING_STATIC_TARGET_HP}(?:\.0+)?\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -263,6 +274,20 @@ def audit_rotation_shell(
                 ),
             )
         )
+    if (
+        any(_PINNED_DUMMY_HP_RE.search(line) for line in target_lines)
+        and has_unbounded_gcsim_loop(shell_text)
+    ):
+        issues.append(
+            GcsimConfigAssemblyIssue(
+                ASSEMBLY_SHELL_UNBOUNDED_DUMMY_ROTATION,
+                "shell_text",
+                (
+                    "A literal infinite loop cannot be combined with the pinned "
+                    "high-HP optimizer target; use a finite loop/action list."
+                ),
+            )
+        )
 
     status = _status_from_issues(issues)
     return GcsimRotationShellAudit(
@@ -309,6 +334,7 @@ def _status_from_issues(issues: Iterable[GcsimConfigAssemblyIssue]) -> str:
     for status in (
         ASSEMBLY_SHELL_MISSING,
         ASSEMBLY_SHELL_CONTAINS_MANUAL_CHARACTER_BLOCKS,
+        ASSEMBLY_SHELL_UNBOUNDED_DUMMY_ROTATION,
         ASSEMBLY_BLOCK_NOT_READY,
     ):
         if any(issue.status == status for issue in issues):

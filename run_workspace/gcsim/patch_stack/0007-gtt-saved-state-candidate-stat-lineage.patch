@@ -1,0 +1,150 @@
+diff --git a/pkg/gttsourcegen/v6_overlay.go b/pkg/gttsourcegen/v6_overlay.go
+index 50116f3..e65c0db 100644
+--- a/pkg/gttsourcegen/v6_overlay.go
++++ b/pkg/gttsourcegen/v6_overlay.go
+@@ -144,7 +144,7 @@ func v6InstrumentationEdits(
+ 			writeEdits, writeErr := numericStateWriteEdits(
+ 				fset, tokenFile, data, assignment, receiver, traceExpr,
+ 				entry.stateOperation.ScopeKey, strconv.Quote(entry.SourceID), entry.SourceID[:10], bindings,
+-				entry.stateOperation.NumericFields, nil,
++				entry.stateOperation.NumericFields, nil, vectorInfoAlias(file),
+ 			)
+ 			if writeErr != nil {
+ 				return true
+@@ -170,6 +170,7 @@ func v6InstrumentationEdits(
+ 					fset, tokenFile, data, closure.Body, receiver, traceExpr,
+ 					entry.callback.ScopeKey, dynamicSource, entry.SourceID[:10], collectBindings(closure.Body),
+ 					entry.callback.StateFields, numericFormalParameterNames(fn, entry.callback.NumericPayloads),
++					vectorInfoAlias(file),
+ 				)
+ 				edits = append(edits, callbackEdits...)
+ 				needsImport = needsImport || callbackImport
+@@ -209,7 +210,7 @@ func v6InstrumentationEdits(
+ 					callbackEdits, callbackImport := callbackBodyEdits(
+ 						fset, tokenFile, data, callback.Body, receiver, traceExpr,
+ 						entry.callback.ScopeKey, strconv.Quote(entry.SourceID), entry.SourceID[:10], collectBindings(callback.Body),
+-						entry.callback.StateFields, nil,
++						entry.callback.StateFields, nil, vectorInfoAlias(file),
+ 					)
+ 					edits = append(edits, callbackEdits...)
+ 					needsImport = needsImport || callbackImport
+@@ -490,6 +491,7 @@ func callbackBodyEdits(
+ 	bindings bindingSet,
+ 	numericFields []string,
+ 	taskParameters map[string]int,
++	infoAlias string,
+ ) ([]textEdit, bool) {
+ 	edits := guardEvidenceEdits(fset, tokenFile, data, body, traceExpr, sourceExpr, prefix)
+ 	needsImport := len(edits) > 0
+@@ -526,7 +528,7 @@ func callbackBodyEdits(
+ 		writeEdits, err := numericStateWriteEdits(
+ 			fset, tokenFile, data, assignment, receiver, traceExpr, scope,
+ 			sourceExpr, prefix+"_"+strconv.Itoa(fset.Position(assignment.Pos()).Line), bindings,
+-			numericFields, taskParameters,
++			numericFields, taskParameters, infoAlias,
+ 		)
+ 		if err == nil {
+ 			edits = append(edits, writeEdits...)
+@@ -733,6 +735,7 @@ func numericStateWriteEdits(
+ 	bindings bindingSet,
+ 	allowedFields []string,
+ 	taskParameters map[string]int,
++	infoAlias string,
+ ) ([]textEdit, error) {
+ 	selector, ok := assignment.Lhs[0].(*ast.SelectorExpr)
+ 	if !ok || assignment.Tok != token.ASSIGN {
+@@ -799,6 +802,40 @@ func numericStateWriteEdits(
+ 		}
+ 	}
+ 	compiled := compileNumericTemplate(fset, assignment.Rhs[0], bindings)
++	// Receiver state and task payloads are not the only possible leaves of a
++	// saved-state expression.  A callback can cache a live character stat in a
++	// field and expose that field later from a modifier (for example MaxHP -> a
++	// reaction bonus).  Bind those typed stat reads at the original write seam
++	// instead of freezing the resulting field value.
++	for index, parameter := range compiled.parameters {
++		if parameter.Kind != "candidate_stat" {
++			continue
++		}
++		if _, exists := leaves[parameter.SourceExpression]; exists {
++			continue
++		}
++		if infoAlias == "" {
++			return nil, fmt.Errorf("numeric state candidate stat requires core info import")
++		}
++		expression, parseErr := parser.ParseExpr(parameter.SourceExpression)
++		if parseErr != nil {
++			return nil, fmt.Errorf("numeric state candidate stat parse: %w", parseErr)
++		}
++		reader := fieldExpression{
++			fset: fset, rt: traceExpr, source: sourceExpr,
++			prefix: "gttV6_" + prefix + "_candidate_" + strconv.Itoa(index), info: infoAlias,
++			refs: map[string]string{}, constants: map[string]bool{},
++		}
++		leaf, readErr := reader.emit(expression, 0)
++		if readErr != nil {
++			return nil, fmt.Errorf("numeric state candidate stat read: %w", readErr)
++		}
++		out.WriteString(reader.code.String())
++		fmt.Fprintf(&out, "_ = %s\n%s", leaf.value, indent)
++		leaves[parameter.SourceExpression] = numericTraceLeaf{
++			valueExpr: leaf.value, referenceExpr: leaf.ref,
++		}
++	}
+ 	traceCode, root, err := numericTraceTemplateEvents(
+ 		compiled, leaves, traceExpr, sourceExpr, prefix+"_state", indent,
+ 	)
+diff --git a/pkg/gttsourcegen/v6_test.go b/pkg/gttsourcegen/v6_test.go
+index f9307d9..aeb0b85 100644
+--- a/pkg/gttsourcegen/v6_test.go
++++ b/pkg/gttsourcegen/v6_test.go
+@@ -842,6 +842,49 @@ func TestV6RealStateChainOverlayParsesAndBridgesHelper(t *testing.T) {
+ 	}
+ }
+ 
++func TestV6RealSavedStateRetainsCandidateStatInput(t *testing.T) {
++	root, _ := filepath.Abs(filepath.Join("..", ".."))
++	manifest, err := Generate(Options{
++		ModuleRoot: root,
++		Includes: []string{
++			"internal/characters/nilou/asc.go",
++			"internal/characters/nilou/nilou.go",
++			"internal/template/character/character.go",
++			"pkg/core/core.go",
++			"pkg/gtttrace/runtime.go",
++		},
++		Binding: testBinding(),
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++	overlay, err := BuildOverlay(
++		OverlayOptions{ModuleRoot: root, OverlayDir: filepath.Join(t.TempDir(), "overlay")},
++		manifest,
++	)
++	if err != nil {
++		t.Fatal(err)
++	}
++	var nilouASC []byte
++	for _, file := range overlay.Files {
++		if _, err := parser.ParseFile(token.NewFileSet(), file.RelativeFile, file.Contents, parser.AllErrors); err != nil {
++			t.Fatalf("real overlay %s does not parse: %v", file.RelativeFile, err)
++		}
++		if file.RelativeFile == "internal/characters/nilou/asc.go" {
++			nilouASC = file.Contents
++		}
++	}
++	for _, marker := range [][]byte{
++		[]byte("GTTReadMaxHP"),
++		[]byte("RecordNumericStateWriteWithInputs"),
++		[]byte("a4Bonus"),
++	} {
++		if !bytes.Contains(nilouASC, marker) {
++			t.Fatalf("saved state overlay lacks candidate-stat lineage marker %s", marker)
++		}
++	}
++}
++
+ func writeMultiFileModule(t *testing.T, files map[string]string) string {
+ 	t.Helper()
+ 	root := t.TempDir()

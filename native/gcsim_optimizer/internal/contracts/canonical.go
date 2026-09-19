@@ -104,6 +104,17 @@ func DecodeRequest(data []byte) (OptimizerRequest, error) {
 	return value, value.Validate()
 }
 
+// DecodeTheoryRequest preserves the raw request identity while returning a
+// second strict request expanded with private in-memory baseline artifacts.
+func DecodeTheoryRequest(data []byte) (OptimizerRequest, OptimizerRequest, error) {
+	raw, err := decodeStrict[OptimizerRequest](data)
+	if err != nil {
+		return raw, OptimizerRequest{}, err
+	}
+	expanded, err := raw.ExpandTheoryBaselines()
+	return raw, expanded, err
+}
+
 func DecodeCompactIR(data []byte) (CompactIR, error) {
 	value, err := decodeStrict[CompactIR](data)
 	if err != nil {

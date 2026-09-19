@@ -1,0 +1,29 @@
+options swap_delay=12 iteration=100;
+target lvl=100 resist=0.1 radius=1 pos=0,1.5 hp=999999999;
+energy every interval=480,720 amount=1;
+
+active nahida;
+nahida attack;
+for let i=0; i<5; i=i+1 {
+  if i == 0 {
+    columbina attack, skill, burst;
+  } else {
+    columbina skill, charge;
+    if .columbina.burst.ready {
+      columbina burst;
+    }
+  }
+  nahida attack, skill, attack;
+  if !is_even(i) {
+    nahida burst;
+  }
+  lauma attack, skill[hold=1], burst;
+  kukishinobu skill, attack;
+  if i > 0 && .kukishinobu.burst.ready {
+    kukishinobu burst;
+  }
+  columbina attack, charge, dash, charge, dash,
+            attack, charge, dash, charge, dash,
+            charge, dash, attack, charge;
+}
+columbina dash, attack;

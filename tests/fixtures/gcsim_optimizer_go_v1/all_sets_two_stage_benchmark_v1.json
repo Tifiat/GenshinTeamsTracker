@@ -1,0 +1,155 @@
+{
+  "candidate_assignment_sha256": [
+    "d156afce1e64a4f621b735dd2a98bf1b1b77e06e121069b377709fad9d7a5e93",
+    "5b086e06b145f2104633a1a0bf3361c78e8d681a1467245540a58ef0dae3c0a0",
+    "085d0ea08d5a90b501f457c34544580777ef095d15ea6ed4e1f918a573a41915",
+    "ba7012c5c4608841a1f9312ca12f1a72c177c3210026e875a2184c6ed5ef78e7",
+    "528faa9c734daa63d002a39fe364d84f1528235a6f98d89f853ab81d325fe5c3",
+    "c1576ba1901216eef071ced6e4984398360de703e59bba4d4cc074a73031d5f8",
+    "76581c472a4ecc38479fbbf39b4ffcb4abc209e0994e4505627b7b51bbbb502c"
+  ],
+  "candidate_count": 7,
+  "capture_members": 16,
+  "date": "2026-09-17",
+  "status": "rejected_priority_scheduler_lost_accepted_winner",
+  "formula_dps": "186603.7213156794",
+  "formula_residual": "-129.38312522607157",
+  "generated_state_removed_on_exit": true,
+  "guides": 2,
+  "measured_dps": "186474.33819045333",
+  "native_elapsed_ms": 450791.3981,
+  "pending": 31,
+  "progress_tail": [
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":0,\"stage\":\"validating_request\",\"completed_work\":0,\"total_work\":5,\"elapsed_ms\":0,\"cancellation_requested\":false}",
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":1,\"stage\":\"searching\",\"completed_work\":1,\"total_work\":5,\"elapsed_ms\":636,\"cancellation_requested\":false}",
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":2,\"stage\":\"simulating_finalists\",\"completed_work\":2,\"total_work\":5,\"elapsed_ms\":406057,\"cancellation_requested\":false}",
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":3,\"stage\":\"validating_finalists\",\"completed_work\":3,\"total_work\":5,\"elapsed_ms\":416973,\"cancellation_requested\":false}",
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":4,\"stage\":\"simulating_finalists\",\"completed_work\":5,\"total_work\":5,\"elapsed_ms\":450795,\"cancellation_requested\":false}"
+  ],
+  "queued": 38,
+  "schema_version": 1,
+  "scope": "saved_request_two_stage_all_sets_backend_benchmark",
+  "screening_elapsed_ms": 10914.6479,
+  "search_config": {
+    "DeepContextLimit": 2,
+    "FinalistLimit": 7,
+    "MaxContexts": 8,
+    "MaxGuides": 3,
+    "MaxSearchExpansions": 1280000,
+    "Scout": {
+      "FinalistLimit": 6,
+      "FirstFrontierWidth": 16,
+      "MaxCycles": 1,
+      "MaxExpandedPerActor": 4000,
+      "PairFinalistLimit": 12,
+      "RecheckFrontierWidth": 4
+    },
+    "Search": {
+      "FinalistLimit": 8,
+      "FirstFrontierWidth": 32,
+      "MaxCycles": 2,
+      "MaxExpandedPerActor": 20000,
+      "PairFinalistLimit": 24,
+      "RecheckFrontierWidth": 8
+    },
+    "SearchTime": 420000000000,
+    "SingleQueue": 16,
+    "TransferQueue": 6
+  },
+  "search_expansions": 403424,
+  "search_seconds": 405.4217998,
+  "search_stop_reason": "context_budget",
+  "search_work": [
+    {
+      "CaptureSeconds": 14.2816298,
+      "Expansions": 96276,
+      "SearchSeconds": 61.7277958,
+      "context_sha256": "07286d7255d07feae90ae3b73ed58179ee91c6f4d91c082c815bba5cc1caad2d",
+      "formula_dps": 183143.83534403157,
+      "lane": "selected"
+    },
+    {
+      "CaptureSeconds": 14.2663695,
+      "Expansions": 16000,
+      "SearchSeconds": 11.3005643,
+      "context_sha256": "060b4d3fea7bd0ff0ddb615ed6091f904b3d5d46038146fcc98fc89c22789511",
+      "formula_dps": 178158.85116182844,
+      "lane": "scout_wearer"
+    },
+    {
+      "CaptureSeconds": 13.8951686,
+      "Expansions": 16000,
+      "SearchSeconds": 13.2995269,
+      "context_sha256": "80a21a667b691fd051fd6f570d6ebefd0860a2c1d07aed4963d1fc10177da090",
+      "formula_dps": 162692.57080306316,
+      "lane": "scout_unresolved"
+    },
+    {
+      "CaptureSeconds": 14.7009595,
+      "Expansions": 16000,
+      "SearchSeconds": 13.4676375,
+      "context_sha256": "c5b58752f83bd46c8c62bc209e88df86ce00849ad1d910d81f427ade0fe56424",
+      "formula_dps": 168586.59247810423,
+      "lane": "scout_wearer_diversity"
+    },
+    {
+      "CaptureSeconds": 14.5581077,
+      "Expansions": 16000,
+      "SearchSeconds": 11.0001026,
+      "context_sha256": "ebdd39e4aa53dcc8cd0abb95e46f84d5fc9603a7a4329e8588b0878b14a1d9ba",
+      "formula_dps": 185696.38236659073,
+      "lane": "scout_wearer"
+    },
+    {
+      "CaptureSeconds": 15.3798186,
+      "Expansions": 16000,
+      "SearchSeconds": 11.2126161,
+      "context_sha256": "c8c94887616168b2bfbf7513dd54c1cc7f977d642038a7d289bbdd5b3a963b19",
+      "formula_dps": 178505.73541489022,
+      "lane": "scout_wearer"
+    },
+    {
+      "CaptureSeconds": 14.6260865,
+      "Expansions": 16000,
+      "SearchSeconds": 10.9634561,
+      "context_sha256": "a90a2baa8d268534045228474be3851ac1dd51f1356b5ec1dfac7c3ca2c9ac46",
+      "formula_dps": 156599.8507566825,
+      "lane": "scout_joint"
+    },
+    {
+      "CaptureSeconds": 14.4137729,
+      "Expansions": 16000,
+      "SearchSeconds": 12.822398100000001,
+      "context_sha256": "968801926af4198f4d2cb58e9d25501653e56d30ece72b27dc7fac3b20fb450f",
+      "formula_dps": 163541.6873793218,
+      "lane": "scout_unresolved"
+    },
+    {
+      "CaptureSeconds": 0,
+      "Expansions": 97048,
+      "SearchSeconds": 61.9014515,
+      "context_sha256": "ebdd39e4aa53dcc8cd0abb95e46f84d5fc9603a7a4329e8588b0878b14a1d9ba",
+      "formula_dps": 186603.7213156794,
+      "lane": "deep_wearer"
+    },
+    {
+      "CaptureSeconds": 0,
+      "Expansions": 98100,
+      "SearchSeconds": 64.4889978,
+      "context_sha256": "c8c94887616168b2bfbf7513dd54c1cc7f977d642038a7d289bbdd5b3a963b19",
+      "formula_dps": 179972.26259532117,
+      "lane": "deep_wearer"
+    }
+  ],
+  "source_run": "all_sets-20260917-030320-7048d16f",
+  "standard_error": "134.75087502201993",
+  "verification_elapsed_ms": 33192.6903,
+  "wall_seconds": 465.14100000000326,
+  "warnings": [
+    "all_sets_bounded_search",
+    "all_sets_search_budget_limited",
+    "formula_rank_not_measurement_authority",
+    "opaque_formula_boundaries_present"
+  ],
+  "winner_assignment_sha256": "d156afce1e64a4f621b735dd2a98bf1b1b77e06e121069b377709fad9d7a5e93"
+}

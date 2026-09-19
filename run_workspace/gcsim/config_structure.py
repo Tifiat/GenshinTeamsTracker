@@ -47,6 +47,10 @@ _TARGET_TYPE_RE = re.compile(
 _GTT_WAVE_DIRECTIVE_RE = re.compile(
     r"(?im)^\s*(?:#|//)\s*gtt_wave(?:_[A-Za-z0-9_]+)?\b"
 )
+_UNBOUNDED_LOOP_RE = re.compile(
+    r"(?<![A-Za-z0-9_])while\s+(?:1|true)\s*\{",
+    re.IGNORECASE,
+)
 
 
 def has_noncanonical_gcsim_line_separator(config_text: str) -> bool:
@@ -129,6 +133,12 @@ def build_gcsim_comment_free_view(config_text: str) -> str:
             continue
         index += 1
     return "".join(chars)
+
+
+def has_unbounded_gcsim_loop(config_text: str) -> bool:
+    """Detect a literal infinite GCSIM loop outside comments and strings."""
+
+    return bool(_UNBOUNDED_LOOP_RE.search(build_gcsim_structural_view(config_text)))
 
 
 def find_gcsim_statement_terminator(
@@ -247,6 +257,7 @@ __all__ = [
     "build_gcsim_structural_view",
     "find_gcsim_statement_terminator",
     "has_noncanonical_gcsim_line_separator",
+    "has_unbounded_gcsim_loop",
     "is_canonical_gcsim_statement_row",
     "validate_gcsim_farming_static_config",
 ]

@@ -1,0 +1,139 @@
+{
+  "candidate_assignment_sha256": [
+    "012196522596b717593f3bf80a1dc07b814e223284902dfb1862521f191f7af6",
+    "d156afce1e64a4f621b735dd2a98bf1b1b77e06e121069b377709fad9d7a5e93",
+    "5b086e06b145f2104633a1a0bf3361c78e8d681a1467245540a58ef0dae3c0a0",
+    "085d0ea08d5a90b501f457c34544580777ef095d15ea6ed4e1f918a573a41915",
+    "9215bdf3169c5423c9dda79e8304e3446a69079f6e0be302054cb5a1863a24b2",
+    "f6e4ab7ec004be2e76e8e04adc7e273092b614d35260dc12dfeb8bee1cb5a74f",
+    "0441190e8eda8c4599ef592c96197651b8930910ef8b2d03913e7666c6087538"
+  ],
+  "candidate_count": 7,
+  "capture_members": 12,
+  "date": "2026-09-17",
+  "status": "accepted_backend_efficiency_control_same_winner",
+  "formula_dps": "192064.23514225899",
+  "formula_residual": "-815.6896379393584",
+  "generated_state_removed_on_exit": true,
+  "guides": 3,
+  "measured_dps": "191248.54550431963",
+  "native_elapsed_ms": 403041.9505,
+  "pending": 55,
+  "progress_tail": [
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":0,\"stage\":\"validating_request\",\"completed_work\":0,\"total_work\":5,\"elapsed_ms\":0,\"cancellation_requested\":false}",
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":1,\"stage\":\"searching\",\"completed_work\":1,\"total_work\":5,\"elapsed_ms\":630,\"cancellation_requested\":false}",
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":2,\"stage\":\"simulating_finalists\",\"completed_work\":2,\"total_work\":5,\"elapsed_ms\":357913,\"cancellation_requested\":false}",
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":3,\"stage\":\"validating_finalists\",\"completed_work\":3,\"total_work\":5,\"elapsed_ms\":368259,\"cancellation_requested\":false}",
+    "{\"schema_version\":1,\"schema_kind\":\"gtt_gcsim_optimizer_progress_v1\",\"request_sha256\":\"a4543af70e7ac97198f8aa49750f4425d4bd95211572ff2a41b92327e4a0a010\",\"sequence\":4,\"stage\":\"simulating_finalists\",\"completed_work\":5,\"total_work\":5,\"elapsed_ms\":403043,\"cancellation_requested\":false}"
+  ],
+  "queued": 60,
+  "schema_version": 1,
+  "scope": "saved_request_two_stage_all_sets_backend_benchmark",
+  "screening_elapsed_ms": 10345.9972,
+  "search_config": {
+    "DeepContextLimit": 2,
+    "FinalistLimit": 7,
+    "MaxContexts": 6,
+    "MaxGuides": 3,
+    "MaxSearchExpansions": 1280000,
+    "Scout": {
+      "FinalistLimit": 6,
+      "FirstFrontierWidth": 16,
+      "MaxCycles": 1,
+      "MaxExpandedPerActor": 4000,
+      "PairFinalistLimit": 12,
+      "RecheckFrontierWidth": 4
+    },
+    "Search": {
+      "FinalistLimit": 8,
+      "FirstFrontierWidth": 32,
+      "MaxCycles": 2,
+      "MaxExpandedPerActor": 20000,
+      "PairFinalistLimit": 24,
+      "RecheckFrontierWidth": 8
+    },
+    "SearchTime": 420000000000,
+    "SingleQueue": 16,
+    "TransferQueue": 6
+  },
+  "search_expansions": 370336,
+  "search_seconds": 357.2813466,
+  "search_stop_reason": "context_budget",
+  "search_work": [
+    {
+      "CaptureSeconds": 14.0656609,
+      "Expansions": 96276,
+      "SearchSeconds": 61.1549548,
+      "context_sha256": "07286d7255d07feae90ae3b73ed58179ee91c6f4d91c082c815bba5cc1caad2d",
+      "formula_dps": 183143.83534403157,
+      "lane": "selected"
+    },
+    {
+      "CaptureSeconds": 14.8259364,
+      "Expansions": 16000,
+      "SearchSeconds": 11.1757078,
+      "context_sha256": "ebdd39e4aa53dcc8cd0abb95e46f84d5fc9603a7a4329e8588b0878b14a1d9ba",
+      "formula_dps": 185696.38236659073,
+      "lane": "scout_wearer"
+    },
+    {
+      "CaptureSeconds": 15.2313869,
+      "Expansions": 16000,
+      "SearchSeconds": 10.9289186,
+      "context_sha256": "c8c94887616168b2bfbf7513dd54c1cc7f977d642038a7d289bbdd5b3a963b19",
+      "formula_dps": 178505.73541489022,
+      "lane": "scout_wearer"
+    },
+    {
+      "CaptureSeconds": 14.4535588,
+      "Expansions": 16000,
+      "SearchSeconds": 11.2140129,
+      "context_sha256": "a90a2baa8d268534045228474be3851ac1dd51f1356b5ec1dfac7c3ca2c9ac46",
+      "formula_dps": 156599.8507566825,
+      "lane": "scout_joint"
+    },
+    {
+      "CaptureSeconds": 15.3608941,
+      "Expansions": 16000,
+      "SearchSeconds": 11.2686647,
+      "context_sha256": "b9afcfcd470b6516779b5bf43c905e79c972c15d30fe45ec1077247e79b43ff0",
+      "formula_dps": 188834.6687607629,
+      "lane": "scout_wearer"
+    },
+    {
+      "CaptureSeconds": 15.0846772,
+      "Expansions": 16000,
+      "SearchSeconds": 11.6055891,
+      "context_sha256": "88ca24a7f025e975e9977bff750e1277a7cb458fe14be5eddaa907b450f372e5",
+      "formula_dps": 161819.27918553312,
+      "lane": "scout_wearer"
+    },
+    {
+      "CaptureSeconds": 0,
+      "Expansions": 97012,
+      "SearchSeconds": 62.787837,
+      "context_sha256": "b9afcfcd470b6516779b5bf43c905e79c972c15d30fe45ec1077247e79b43ff0",
+      "formula_dps": 192064.23514225899,
+      "lane": "deep_wearer"
+    },
+    {
+      "CaptureSeconds": 0,
+      "Expansions": 97048,
+      "SearchSeconds": 61.700393,
+      "context_sha256": "ebdd39e4aa53dcc8cd0abb95e46f84d5fc9603a7a4329e8588b0878b14a1d9ba",
+      "formula_dps": 186603.7213156794,
+      "lane": "deep_wearer"
+    }
+  ],
+  "source_run": "all_sets-20260917-030320-7048d16f",
+  "standard_error": "100.06985345701261",
+  "verification_elapsed_ms": 34151.7932,
+  "wall_seconds": 417.23399999999674,
+  "warnings": [
+    "all_sets_bounded_search",
+    "all_sets_search_budget_limited",
+    "formula_rank_not_measurement_authority",
+    "opaque_formula_boundaries_present"
+  ],
+  "winner_assignment_sha256": "012196522596b717593f3bf80a1dc07b814e223284902dfb1862521f191f7af6"
+}

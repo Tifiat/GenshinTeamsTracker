@@ -129,7 +129,91 @@ func (member IRSeedMember) validate(memberIndex int) error {
 	if len(opaqueNodes) != len(member.OpaqueBoundaries) {
 		return fmt.Errorf("%s must describe every opaque_frozen node exactly once", field)
 	}
+	if member.EnergyLedger != nil {
+		if err := member.EnergyLedger.validate(field + ".energy_ledger"); err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func (ledger IREnergyLedger) validate(field string) error {
+	if len(ledger.InitialStates) < 1 || len(ledger.InitialStates) > 4 || ledger.Events == nil || ledger.UncertaintyCodes == nil {
+		return fmt.Errorf("%s must contain one to four initial states and array fields", field)
+	}
+	keys := make([]string, len(ledger.InitialStates))
+	for index, state := range ledger.InitialStates {
+		row := fmt.Sprintf("%s.initial_states[%d]", field, index)
+		if state.CharacterIndex != index {
+			return fmt.Errorf("%s.character_index must match array order", row)
+		}
+		if err := validateToken(row+".character_key", state.CharacterKey); err != nil {
+			return err
+		}
+		if err := validateNonNegativeDecimal(row+".energy", state.Energy); err != nil {
+			return err
+		}
+		if err := validateNonNegativeDecimal(row+".energy_max", state.EnergyMax); err != nil {
+			return err
+		}
+		current, _ := new(big.Rat).SetString(state.Energy)
+		maximum, _ := new(big.Rat).SetString(state.EnergyMax)
+		if maximum.Sign() <= 0 || current.Cmp(maximum) > 0 {
+			return fmt.Errorf("%s energy bounds are invalid", row)
+		}
+		keys[index] = state.CharacterKey
+	}
+	lastFrame := -1
+	for index, event := range ledger.Events {
+		row := fmt.Sprintf("%s.events[%d]", field, index)
+		if event.SequenceIndex != index || event.Frame < lastFrame || event.Frame < 0 ||
+			event.CharacterIndex < 0 || event.CharacterIndex >= len(keys) ||
+			event.CharacterKey != keys[event.CharacterIndex] {
+			return fmt.Errorf("%s identity or order is invalid", row)
+		}
+		if err := validateToken(row+".source", event.Source); err != nil {
+			return err
+		}
+		for name, value := range map[string]string{
+			"energy_before": event.EnergyBefore, "energy_after": event.EnergyAfter,
+			"energy_max": event.EnergyMax,
+		} {
+			if err := validateNonNegativeDecimal(row+"."+name, value); err != nil {
+				return err
+			}
+		}
+		if err := validateDecimal(row+".amount", event.Amount); err != nil {
+			return err
+		}
+		switch event.Kind {
+		case "particle":
+			if event.RawAtER100 == nil || event.ObservedER == nil || event.OnField == nil {
+				return fmt.Errorf("%s particle scaling fields are required", row)
+			}
+			if err := validateNonNegativeDecimal(row+".raw_at_er_100", *event.RawAtER100); err != nil {
+				return err
+			}
+			if err := validateNonNegativeDecimal(row+".observed_er", *event.ObservedER); err != nil {
+				return err
+			}
+		case "flat":
+			if event.RawAtER100 != nil || event.ObservedER != nil || event.OnField != nil {
+				return fmt.Errorf("%s flat event carries particle fields", row)
+			}
+		case "burst":
+			if event.RawAtER100 != nil || event.ObservedER != nil || event.OnField != nil {
+				return fmt.Errorf("%s burst event carries particle fields", row)
+			}
+			amount, _ := new(big.Rat).SetString(event.Amount)
+			if amount.Sign() <= 0 {
+				return fmt.Errorf("%s burst cost must be positive", row)
+			}
+		default:
+			return fmt.Errorf("%s.kind is unsupported", row)
+		}
+		lastFrame = event.Frame
+	}
+	return validateSortedUniqueStrings(field+".uncertainty_codes", ledger.UncertaintyCodes)
 }
 
 func (node IRNode) validate(memberField string, prior map[uint32]struct{}) error {
@@ -226,7 +310,7 @@ func (result OptimizerResult) Validate() error {
 	case "success":
 		return result.validateSuccess()
 	case "cancelled":
-		if len(result.Winner) != 0 || len(result.Candidates) != 0 || result.Measured != nil || result.Error != nil || result.FormulaDPS != "" || result.FormulaResidual != "" {
+		if len(result.Winner) != 0 || len(result.Candidates) != 0 || result.Measured != nil || result.Energy != nil || result.Error != nil || result.FormulaDPS != "" || result.FormulaResidual != "" {
 			return fmt.Errorf("cancelled result must not contain winner, measured result, error, or formula result")
 		}
 	case "failed":
@@ -236,7 +320,7 @@ func (result OptimizerResult) Validate() error {
 		if err := validateToken("error.code", result.Error.Code); err != nil {
 			return err
 		}
-		if result.Error.Message == "" || len(result.Winner) != 0 || len(result.Candidates) != 0 || result.Measured != nil || result.FormulaDPS != "" || result.FormulaResidual != "" {
+		if result.Error.Message == "" || len(result.Winner) != 0 || len(result.Candidates) != 0 || result.Measured != nil || result.Energy != nil || result.FormulaDPS != "" || result.FormulaResidual != "" {
 			return fmt.Errorf("failed result has invalid payload")
 		}
 	default:
@@ -330,8 +414,63 @@ func (result OptimizerResult) validateSuccess() error {
 	if err := validateSHA256("measured.engine_result_sha256", result.Measured.EngineResultSHA256, false); err != nil {
 		return err
 	}
+	if result.Energy != nil {
+		if err := result.Energy.validate("energy"); err != nil {
+			return err
+		}
+	}
 	if result.DebugReceiptPath == "" || result.Error != nil {
 		return fmt.Errorf("successful result requires debug receipt and no error")
+	}
+	return nil
+}
+
+func (result EnergyResult) validate(field string) error {
+	if err := validateNonNegativeDecimal(field+".maximum_shortage", result.MaximumShortage); err != nil {
+		return err
+	}
+	if len(result.Wearers) != 4 {
+		return fmt.Errorf("%s must contain four wearers", field)
+	}
+	seen := map[string]bool{}
+	for index, wearer := range result.Wearers {
+		row := fmt.Sprintf("%s.wearers[%d]", field, index)
+		if err := validateToken(row+".wearer_key", wearer.WearerKey); err != nil {
+			return err
+		}
+		if seen[wearer.WearerKey] {
+			return fmt.Errorf("%s repeats wearer", row)
+		}
+		seen[wearer.WearerKey] = true
+		for name, value := range map[string]string{
+			"artifact_er": wearer.ArtifactER, "required_artifact_er": wearer.RequiredArtifactER,
+			"maximum_shortage": wearer.MaximumShortage,
+		} {
+			if err := validateNonNegativeDecimal(row+"."+name, value); err != nil {
+				return err
+			}
+		}
+		if err := validateDecimal(row+".artifact_er_margin", wearer.Margin); err != nil {
+			return err
+		}
+		if wearer.BurstDeadlines < 0 || wearer.Sources == nil || wearer.UncertaintyCodes == nil {
+			return fmt.Errorf("%s has invalid energy detail arrays or counters", row)
+		}
+		if err := validateSortedUniqueStrings(row+".uncertainty_codes", wearer.UncertaintyCodes); err != nil {
+			return err
+		}
+		for sourceIndex, source := range wearer.Sources {
+			sourceField := fmt.Sprintf("%s.sources[%d]", row, sourceIndex)
+			if err := validateToken(sourceField+".source", source.Source); err != nil {
+				return err
+			}
+			if err := validateNonNegativeDecimal(sourceField+".particle_raw_at_er_100", source.ParticleRaw); err != nil {
+				return err
+			}
+			if err := validateDecimal(sourceField+".flat_observed", source.FlatObserved); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

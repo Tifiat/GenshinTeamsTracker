@@ -19,6 +19,11 @@ from typing import Any
 
 from hoyolab_export.account_storage import DEFAULT_ACCOUNT_DB_PATH
 from hoyolab_export.artifact_build_snapshot import ARTIFACT_POSITIONS
+from hoyolab_export.artifact_db import (
+    artifact_build_targets_gcsim_character,
+    calculate_raw_build_summary,
+    get_build_preset,
+)
 from run_workspace.gcsim.account_prepared_config import (
     ACCOUNT_PREPARED_CONFIG_SMOKE_SKIPPED,
     ARTIFACT_SOURCE_CURRENT_EQUIPPED,
@@ -82,6 +87,30 @@ WARNING_SLOT_DETAILS_SNAPSHOT_USED = "slot_details_snapshot_used"
 WARNING_SLOT_DB_CURRENT_EQUIPMENT_USED = "slot_db_current_equipment_used"
 WARNING_GCSIM_DUMMY_TARGET_FROM_ROTATION_SHELL = (
     "gcsim_dummy_target_from_rotation_shell"
+)
+
+VIRTUAL_ARTIFACT_POLICY_OWNED_BUILD = "owned_build"
+VIRTUAL_ARTIFACT_POLICY_THEORY_BASELINE = "theory_baseline"
+VIRTUAL_ARTIFACT_POLICY_OPTIMIZER_INVENTORY_BASELINE = (
+    "optimizer_inventory_baseline"
+)
+
+# Deterministic five-main anchor used only to capture a Theory formula.
+# The native Theory solver subtracts this exact anchor before trying legal main
+# stats and roll allocations; these values never claim owned artifact IDs.
+_THEORY_BASELINE_STATS = (
+    {
+        "stat_key": "hp_flat",
+        "value": 4780,
+        "source_kind": "theory_neutral_baseline",
+    },
+    {
+        "stat_key": "atk_flat",
+        "value": 311,
+        "source_kind": "theory_neutral_baseline",
+    },
+    {"stat_key": "atk_percent", "value": 93.2, "source_kind": "theory_neutral_baseline"},
+    {"stat_key": "crit_rate", "value": 31.1, "source_kind": "theory_neutral_baseline"},
 )
 
 _TARGET_HP_RE = re.compile(r"\bhp\s*=\s*([0-9.]+)", re.IGNORECASE)
@@ -231,7 +260,15 @@ def build_selected_team_payload(
     selected_team: TeamBuilderTeamState | Mapping[str, Any] | Iterable[Any],
     team_index: int = 0,
     artifact_set_registry_source: str | Path | None = None,
+    virtual_artifact_policy: str = VIRTUAL_ARTIFACT_POLICY_OWNED_BUILD,
+    virtual_artifact_baselines: Mapping[int, Mapping[str, Any]] | None = None,
 ) -> SelectedTeamBuild:
+    if virtual_artifact_policy not in {
+        VIRTUAL_ARTIFACT_POLICY_OWNED_BUILD,
+        VIRTUAL_ARTIFACT_POLICY_THEORY_BASELINE,
+        VIRTUAL_ARTIFACT_POLICY_OPTIMIZER_INVENTORY_BASELINE,
+    }:
+        raise ValueError("unknown virtual artifact policy")
     slots = _selected_slots(selected_team)
     if not slots:
         issue = SelectedTeamConfigIssue(
@@ -260,9 +297,13 @@ def build_selected_team_payload(
                 conn,
                 slot,
                 artifact_set_resolver=artifact_set_resolver,
+                virtual_artifact_policy=virtual_artifact_policy,
+                virtual_artifact_baseline=(virtual_artifact_baselines or {}).get(
+                    int(slot.get("slot_index", -1))
+                ),
             )
             details.append(built)
-            if built.account_character:
+            if built.payload_character:
                 payload_character = _payload_character_from_detail(built)
                 if payload_character:
                     payload_characters.append(payload_character)
@@ -300,6 +341,8 @@ def build_selected_team_full_config_report(
     write_config: bool = True,
     artifact_set_registry_source: str | Path | None = None,
     run_settings: GcsimRunSettings | None = None,
+    virtual_artifact_policy: str = VIRTUAL_ARTIFACT_POLICY_OWNED_BUILD,
+    virtual_artifact_baselines: Mapping[int, Mapping[str, Any]] | None = None,
 ) -> SelectedTeamFullConfigReport:
     effective_run_dir = (
         Path(run_dir)
@@ -317,6 +360,8 @@ def build_selected_team_full_config_report(
         selected_team=selected_team,
         team_index=team_index,
         artifact_set_registry_source=artifact_set_registry_source,
+        virtual_artifact_policy=virtual_artifact_policy,
+        virtual_artifact_baselines=virtual_artifact_baselines,
     )
     prepared_team = _build_selected_team_config_result(team.payload)
     blocks = tuple(
@@ -717,9 +762,21 @@ def _build_slot_payload(
     slot: Mapping[str, Any],
     *,
     artifact_set_resolver: Any,
+    virtual_artifact_policy: str,
+    virtual_artifact_baseline: Mapping[str, Any] | None,
 ) -> SelectedTeamCharacterDetail:
     slot_index = _optional_int(slot.get("slot_index"))
     slot_index = int(slot_index) if slot_index is not None else -1
+    virtual = _mapping(slot.get("gcsim_virtual_override"))
+    if virtual:
+        return _build_virtual_slot_payload(
+            conn,
+            slot_index=slot_index,
+            virtual=virtual,
+            artifact_set_resolver=artifact_set_resolver,
+            virtual_artifact_policy=virtual_artifact_policy,
+            virtual_artifact_baseline=virtual_artifact_baseline,
+        )
     character = _selected_character(slot)
     display_name = _text(character.get("catalog_english_name")) or _text(
         character.get("name")
@@ -818,14 +875,19 @@ def _build_slot_payload(
             )
         )
 
-    artifact_payload, artifact_report, artifact_issues, artifact_warnings = (
-        _selected_artifact_payload(
-            conn,
-            slot,
-            character_id=character_id,
-            artifact_set_resolver=artifact_set_resolver,
+    if virtual_artifact_policy == VIRTUAL_ARTIFACT_POLICY_THEORY_BASELINE:
+        artifact_payload, artifact_report, artifact_issues, artifact_warnings = (
+            _theory_artifact_payload(character_key=_text(character.get("gcsim_character_key")))
         )
-    )
+    else:
+        artifact_payload, artifact_report, artifact_issues, artifact_warnings = (
+            _selected_artifact_payload(
+                conn,
+                slot,
+                character_id=character_id,
+                artifact_set_resolver=artifact_set_resolver,
+            )
+        )
     warnings.extend(artifact_warnings)
     issues.extend(artifact_issues)
     payload_character = {
@@ -876,6 +938,380 @@ def _build_slot_payload(
         issues=tuple(issues),
     )
     return detail
+
+
+def _build_virtual_slot_payload(
+    conn: sqlite3.Connection,
+    *,
+    slot_index: int,
+    virtual: Mapping[str, Any],
+    artifact_set_resolver: Any,
+    virtual_artifact_policy: str,
+    virtual_artifact_baseline: Mapping[str, Any] | None,
+) -> SelectedTeamCharacterDetail:
+    character = _mapping(virtual.get("character"))
+    weapon = _mapping(virtual.get("weapon"))
+    character_key = _text(character.get("gcsim_key"))
+    character_name = _text(character.get("name")) or character_key
+    weapon_key = _text(weapon.get("gcsim_key"))
+    weapon_name = _text(weapon.get("name")) or weapon_key
+    issues: list[SelectedTeamConfigIssue] = []
+    warnings: list[str] = [
+        WARNING_SELECTED_TEAM_ADAPTER_BOUNDARY,
+        "virtual_gcsim_slot_override",
+    ]
+    if not character_key:
+        issues.append(
+            _issue(
+                "virtual_character_gcsim_key_missing",
+                "gcsim_virtual_override.character.gcsim_key",
+                "Virtual character must carry a stable GCSIM key.",
+                entity_type="character",
+                display_name=character_name,
+                slot_index=slot_index,
+            )
+        )
+    if not weapon_key:
+        issues.append(
+            _issue(
+                "virtual_weapon_missing",
+                "gcsim_virtual_override.weapon",
+                "Select a compatible GCSIM weapon for the virtual character.",
+                entity_type="weapon",
+                display_name=weapon_name,
+                slot_index=slot_index,
+            )
+        )
+    character_level = _optional_int(character.get("level"))
+    character_promote_level = _optional_int(character.get("promote_level"))
+    talents = _mapping(character.get("talents"))
+    weapon_level = _optional_int(weapon.get("level"))
+    weapon_promote_level = _optional_int(weapon.get("promote_level"))
+    required_values = {
+        "character_level": (
+            character_level is not None and character_promote_level is not None
+        ),
+        "character_talents": all(
+            _optional_int(talents.get(name)) is not None
+            for name in ("normal", "skill", "burst")
+        ),
+        "weapon_level": (
+            weapon_level is not None and weapon_promote_level is not None
+        ),
+    }
+    for field_name, present in required_values.items():
+        # Readiness is derived from the explicit profile values above.  The
+        # serialized missing-fields list is presentation metadata and may be
+        # stale when a caller reconstructs or migrates the payload.
+        if present:
+            continue
+        issues.append(
+            _issue(
+                "virtual_gcsim_profile_incomplete",
+                f"gcsim_virtual_override.{field_name}",
+                "Virtual GCSIM profile field is not configured yet.",
+                entity_type="character",
+                project_id=character_key,
+                display_name=character_name,
+                slot_index=slot_index,
+            )
+        )
+
+    artifact_payload, artifact_report, artifact_issues, artifact_warnings = (
+        _virtual_artifact_payload(
+            conn,
+            virtual=virtual,
+            character_key=character_key,
+            slot_index=slot_index,
+            artifact_set_resolver=artifact_set_resolver,
+            virtual_artifact_policy=virtual_artifact_policy,
+            virtual_artifact_baseline=virtual_artifact_baseline,
+        )
+    )
+    issues.extend(artifact_issues)
+    warnings.extend(artifact_warnings)
+    payload_character = {
+        "project_character_id": f"gcsim:{character_key}" if character_key else "",
+        "display_name": character_name,
+        "level": character_level,
+        "promote_level": character_promote_level,
+        "constellation": _optional_int(character.get("constellation")),
+        "mapping": {
+            "gcsim_key": character_key,
+            "source": "virtual_gcsim_slot_override",
+        },
+        "talents": talents or None,
+        "weapon": (
+            {
+                "project_weapon_id": f"gcsim:{weapon_key}",
+                "display_name": weapon_name,
+                "level": weapon_level,
+                "promote_level": weapon_promote_level,
+                "refinement": _optional_int(weapon.get("refinement")),
+                "mapping": {
+                    "gcsim_key": weapon_key,
+                    "source": "virtual_gcsim_slot_override",
+                },
+            }
+            if weapon_key
+            else None
+        ),
+        "artifact_build": artifact_payload,
+        "virtual_gcsim_override": dict(virtual),
+    }
+    ready = not issues
+    return SelectedTeamCharacterDetail(
+        slot_index=slot_index,
+        status=SELECTED_TEAM_CONFIG_READY if ready else SELECTED_TEAM_CONFIG_NOT_READY,
+        ready=ready,
+        account_character={},
+        character_found=False,
+        character_key_ready=bool(character_key),
+        weapon={
+            "gcsim_weapon_key": weapon_key,
+            "name": weapon_name,
+            "refinement": _optional_int(weapon.get("refinement")),
+            "source": "virtual_gcsim_slot_override",
+        }
+        if weapon_key
+        else {},
+        weapon_found=bool(weapon_key),
+        weapon_key_ready=bool(weapon_key),
+        weapon_selection_method="virtual_gcsim_catalog",
+        artifact_source=_text(artifact_report.get("artifact_source")),
+        artifact_account_truth=False,
+        artifact_stats_source=_text(artifact_report.get("artifact_stats_source")),
+        artifact_set_counts=tuple(
+            dict(item)
+            for item in artifact_report.get("set_counts", ())
+            if isinstance(item, Mapping)
+        ),
+        current_equipped_artifact_count=_optional_int(
+            artifact_report.get("artifact_count")
+        )
+        or 0,
+        talents={
+            "normal": _optional_int(talents.get("normal")),
+            "skill": _optional_int(talents.get("skill")),
+            "burst": _optional_int(talents.get("burst")),
+            "source_order_confirmed": bool(talents.get("source_order_confirmed")),
+            "source": _text(talents.get("source")),
+        }
+        if talents
+        else {},
+        payload_character=payload_character,
+        warnings=_dedupe_tuple(warnings),
+        issues=tuple(issues),
+    )
+
+
+def _theory_artifact_payload(
+    *,
+    character_key: str,
+) -> tuple[
+    dict[str, Any] | None,
+    dict[str, Any],
+    tuple[SelectedTeamConfigIssue, ...],
+    tuple[str, ...],
+]:
+    # The config renderer requires a non-empty set-count collection. A private
+    # one-piece marker satisfies that structural boundary but is ignored before
+    # GCSIM text is rendered, so the captured context contains no active set.
+    set_counts = [
+        {
+            "set_uid": f"gtt_theory_neutral_{character_key}",
+            "display_name": "",
+            "set_name": "",
+            "count": 1,
+            "mapping": {"gcsim_key": "", "source": "theory_neutral_baseline"},
+        }
+    ]
+    report = {
+        "artifact_source": "theory_neutral_baseline",
+        "artifact_stats_source": "theory_neutral_baseline",
+        "account_truth": False,
+        "artifact_count": 0,
+        "artifact_ids_by_pos": {},
+        "missing_positions": [],
+        "set_counts": set_counts,
+        "stat_total_count": len(_THEORY_BASELINE_STATS),
+    }
+    payload = {
+        "artifact_ids_by_pos": {},
+        "missing_positions": [],
+        "set_counts": set_counts,
+        "stat_totals": [dict(item) for item in _THEORY_BASELINE_STATS],
+        "source": "theory_neutral_baseline",
+        "source_kind": "theory_neutral_baseline",
+        "artifact_stats_source": "theory_neutral_baseline",
+        "right_panel_final_stats_used": False,
+        "artifact_set_bonuses_manually_applied": False,
+        "owned_artifact_ids_claimed": False,
+        "baseline_main_stats": {
+            "flower": "hp",
+            "plume": "atk",
+            "sands": "atk_percent",
+            "goblet": "atk_percent",
+            "circlet": "crit_rate",
+        },
+    }
+    return payload, report, (), ("theory_neutral_baseline_used",)
+
+
+def _virtual_artifact_payload(
+    conn: sqlite3.Connection,
+    *,
+    virtual: Mapping[str, Any],
+    character_key: str,
+    slot_index: int,
+    artifact_set_resolver: Any,
+    virtual_artifact_policy: str,
+    virtual_artifact_baseline: Mapping[str, Any] | None,
+) -> tuple[
+    dict[str, Any] | None,
+    dict[str, Any],
+    tuple[SelectedTeamConfigIssue, ...],
+    tuple[str, ...],
+]:
+    if virtual_artifact_policy == VIRTUAL_ARTIFACT_POLICY_THEORY_BASELINE:
+        return _theory_artifact_payload(character_key=character_key)
+    if virtual_artifact_policy == VIRTUAL_ARTIFACT_POLICY_OPTIMIZER_INVENTORY_BASELINE:
+        if not virtual_artifact_baseline:
+            payload, report, issues, warnings = _theory_artifact_payload(
+                character_key=character_key
+            )
+            return (
+                payload,
+                report,
+                issues,
+                (*warnings, "optimizer_virtual_inventory_baseline_pending"),
+            )
+        payload, report, issues, warnings = _artifact_payload_from_snapshot(
+            virtual_artifact_baseline,
+            artifact_set_resolver=artifact_set_resolver,
+            slot_index=slot_index,
+        )
+        if payload is not None:
+            payload.update(
+                {
+                    "source": "optimizer_virtual_inventory_baseline",
+                    "source_kind": "optimizer_virtual_inventory_baseline",
+                    "owned_artifact_ids_claimed": False,
+                    "service_only": True,
+                }
+            )
+        return (
+            payload,
+            {
+                **report,
+                "artifact_source": "optimizer_virtual_inventory_baseline",
+                "account_truth": False,
+                "service_only": True,
+            },
+            issues,
+            (*warnings, "optimizer_virtual_inventory_baseline_used"),
+        )
+    build_id = _optional_int(virtual.get("artifact_build_id"))
+    if build_id is None:
+        return (
+            None,
+            {
+                "artifact_source": ARTIFACT_SOURCE_MISSING,
+                "artifact_stats_source": "",
+                "account_truth": False,
+                "artifact_count": 0,
+                "set_counts": [],
+            },
+            (
+                _issue(
+                    "virtual_gcsim_profile_incomplete",
+                    "gcsim_virtual_override.artifact_build",
+                    "Select a complete saved artifact build for the virtual character.",
+                    entity_type="artifact",
+                    project_id=character_key,
+                    slot_index=slot_index,
+                ),
+            ),
+            (),
+        )
+    try:
+        preset = get_build_preset(conn, build_id)
+    except sqlite3.Error:
+        preset = None
+    if not preset:
+        return (
+            None,
+            {
+                "artifact_source": ARTIFACT_SOURCE_MISSING,
+                "artifact_stats_source": "",
+                "account_truth": False,
+                "artifact_count": 0,
+                "set_counts": [],
+            },
+            (
+                _issue(
+                    "virtual_artifact_build_missing",
+                    "gcsim_virtual_override.artifact_build_id",
+                    "Selected virtual artifact build no longer exists.",
+                    entity_type="artifact",
+                    project_id=str(build_id),
+                    slot_index=slot_index,
+                ),
+            ),
+            (),
+        )
+    try:
+        target_matches = artifact_build_targets_gcsim_character(
+            conn,
+            build_id,
+            character_key,
+        )
+    except sqlite3.Error:
+        target_matches = False
+    if not target_matches:
+        return (
+            None,
+            {
+                "artifact_source": ARTIFACT_SOURCE_MISSING,
+                "artifact_stats_source": "",
+                "account_truth": False,
+                "artifact_count": 0,
+                "set_counts": [],
+            },
+            (
+                _issue(
+                    "virtual_artifact_build_target_mismatch",
+                    "gcsim_virtual_override.artifact_build_id",
+                    "Selected build is not assigned to this virtual GCSIM character.",
+                    entity_type="artifact",
+                    project_id=str(build_id),
+                    display_name=_text(preset.get("name")),
+                    slot_index=slot_index,
+                ),
+            ),
+            (),
+        )
+    try:
+        summary = calculate_raw_build_summary(conn, build_id=build_id)
+    except sqlite3.Error:
+        summary = {}
+    payload, report, issues, warnings = _artifact_payload_from_snapshot(
+        summary,
+        artifact_set_resolver=artifact_set_resolver,
+        slot_index=slot_index,
+    )
+    if payload is not None:
+        payload["source"] = "virtual_saved_artifact_build"
+        payload["source_kind"] = "virtual_saved_artifact_build"
+        payload["build_id"] = build_id
+        payload["build_name"] = _text(preset.get("name"))
+    report = {
+        **report,
+        "account_truth": False,
+        "build_id": build_id,
+        "build_name": _text(preset.get("name")),
+    }
+    return payload, report, issues, warnings
 
 
 def _selected_weapon_payload(
@@ -1072,7 +1508,7 @@ def _selected_slots(
     for index, item in enumerate(raw_slots or ()):
         slot = _slot_to_dict(item)
         slot.setdefault("slot_index", index)
-        if _selected_character(slot):
+        if _selected_character(slot) or _mapping(slot.get("gcsim_virtual_override")):
             slots.append(slot)
     return tuple(slots)
 

@@ -255,6 +255,18 @@ def init_db(conn: sqlite3.Connection) -> None:
         CREATE UNIQUE INDEX IF NOT EXISTS idx_artifact_build_targets_universal
             ON artifact_build_targets(build_id, target_type)
             WHERE target_type = 'universal';
+
+        CREATE TABLE IF NOT EXISTS artifact_build_gcsim_targets (
+            build_id INTEGER NOT NULL,
+            gcsim_character_key TEXT NOT NULL,
+            character_name TEXT,
+
+            PRIMARY KEY (build_id, gcsim_character_key),
+            FOREIGN KEY (build_id) REFERENCES artifact_builds(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_artifact_build_gcsim_targets_key
+            ON artifact_build_gcsim_targets(gcsim_character_key);
         """
     )
     init_account_storage(conn)
@@ -1268,7 +1280,7 @@ def _target_display_name(target_type: str, character_name: str | None) -> str:
 
 def _normalize_build_target(target: dict[str, Any]) -> dict[str, Any]:
     target_type = str(target.get("target_type") or "").strip().lower()
-    if target_type not in {"universal", "character"}:
+    if target_type not in {"universal", "character", "gcsim_character"}:
         raise ValueError(f"Invalid build target type: {target_type!r}")
 
     if target_type == "universal":
@@ -1279,6 +1291,17 @@ def _normalize_build_target(target: dict[str, Any]) -> dict[str, Any]:
                 "universal",
                 target.get("character_name"),
             ),
+        }
+
+    if target_type == "gcsim_character":
+        gcsim_key = str(target.get("gcsim_character_key") or "").strip()
+        if not gcsim_key:
+            raise ValueError("GCSIM character build target requires gcsim_character_key")
+        return {
+            "target_type": "gcsim_character",
+            "character_id": None,
+            "character_name": str(target.get("character_name") or gcsim_key),
+            "gcsim_character_key": gcsim_key,
         }
 
     character_id = target.get("character_id")
@@ -1307,8 +1330,29 @@ def replace_artifact_build_targets(
         "DELETE FROM artifact_build_targets WHERE build_id = ?",
         (build_id,),
     )
+    conn.execute(
+        "DELETE FROM artifact_build_gcsim_targets WHERE build_id = ?",
+        (build_id,),
+    )
 
     for target in normalized_targets:
+        if target["target_type"] == "gcsim_character":
+            conn.execute(
+                """
+                INSERT INTO artifact_build_gcsim_targets (
+                    build_id,
+                    gcsim_character_key,
+                    character_name
+                )
+                VALUES (?, ?, ?)
+                """,
+                (
+                    build_id,
+                    target["gcsim_character_key"],
+                    target["character_name"],
+                ),
+            )
+            continue
         conn.execute(
             """
             INSERT INTO artifact_build_targets (
@@ -1360,7 +1404,7 @@ def get_artifact_build_targets(
         (int(build_id),),
     ).fetchall()
 
-    return [
+    targets = [
         {
             "target_type": row["target_type"],
             "character_id": (
@@ -1372,6 +1416,137 @@ def get_artifact_build_targets(
                 row["target_type"],
                 row["character_name"],
             ),
+        }
+        for row in rows
+    ]
+    virtual_rows = conn.execute(
+        """
+        SELECT
+            virtual.gcsim_character_key,
+            virtual.character_name,
+            account.character_id AS account_character_id,
+            account.name AS account_character_name
+        FROM artifact_build_gcsim_targets AS virtual
+        LEFT JOIN account_characters AS account
+          ON account.gcsim_character_key = virtual.gcsim_character_key
+         AND account.gcsim_character_key_status = 'ready'
+        WHERE virtual.build_id = ?
+        ORDER BY virtual.character_name COLLATE NOCASE, virtual.gcsim_character_key
+        """,
+        (int(build_id),),
+    ).fetchall()
+    existing_character_ids = {
+        target.get("character_id")
+        for target in targets
+        if target.get("target_type") == "character"
+    }
+    for row in virtual_rows:
+        if row["account_character_id"] is not None:
+            character_id = int(row["account_character_id"])
+            if character_id in existing_character_ids:
+                continue
+            targets.append(
+                {
+                    "target_type": "character",
+                    "character_id": character_id,
+                    "character_name": row["account_character_name"] or row["character_name"] or "",
+                }
+            )
+            existing_character_ids.add(character_id)
+        else:
+            targets.append(
+                {
+                    "target_type": "gcsim_character",
+                    "gcsim_character_key": row["gcsim_character_key"],
+                    "character_id": None,
+                    "character_name": row["character_name"] or row["gcsim_character_key"],
+                }
+            )
+    return targets
+
+
+def artifact_build_targets_gcsim_character(
+    conn: sqlite3.Connection,
+    build_id: int,
+    gcsim_character_key: str,
+) -> bool:
+    """Return whether a build targets the logical GCSIM character identity.
+
+    A target may still be stored as a virtual key or may already have merged
+    into the ordinary account-character projection for the same stable key.
+    """
+
+    key = str(gcsim_character_key or "").strip()
+    if not key:
+        return False
+    row = conn.execute(
+        """
+        SELECT 1
+        WHERE EXISTS (
+            SELECT 1
+            FROM artifact_build_gcsim_targets AS virtual
+            WHERE virtual.build_id = ?
+              AND virtual.gcsim_character_key = ?
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM artifact_build_targets AS target
+            JOIN account_characters AS account
+              ON account.character_id = target.character_id
+             AND account.gcsim_character_key_status = 'ready'
+            WHERE target.build_id = ?
+              AND target.target_type = 'character'
+              AND account.gcsim_character_key = ?
+        )
+        LIMIT 1
+        """,
+        (int(build_id), key, int(build_id), key),
+    ).fetchone()
+    return row is not None
+
+
+def list_build_presets_for_gcsim_character(
+    conn: sqlite3.Connection,
+    gcsim_character_key: str,
+) -> list[dict[str, Any]]:
+    key = str(gcsim_character_key or "").strip()
+    if not key:
+        return []
+    rows = conn.execute(
+        """
+        SELECT
+            builds.id,
+            builds.name,
+            COUNT(DISTINCT slots.pos) AS slot_count
+        FROM artifact_builds AS builds
+        LEFT JOIN artifact_build_slots AS slots
+          ON slots.build_id = builds.id
+        WHERE EXISTS (
+            SELECT 1
+            FROM artifact_build_gcsim_targets AS virtual
+            WHERE virtual.build_id = builds.id
+              AND virtual.gcsim_character_key = ?
+        )
+        OR EXISTS (
+            SELECT 1
+            FROM artifact_build_targets AS target
+            JOIN account_characters AS account
+              ON account.character_id = target.character_id
+             AND account.gcsim_character_key_status = 'ready'
+            WHERE target.build_id = builds.id
+              AND target.target_type = 'character'
+              AND account.gcsim_character_key = ?
+        )
+        GROUP BY builds.id, builds.name, builds.created_at
+        ORDER BY builds.created_at DESC, builds.id DESC, builds.name COLLATE NOCASE
+        """,
+        (key, key),
+    ).fetchall()
+    return [
+        {
+            "id": int(row["id"]),
+            "name": row["name"],
+            "slot_count": int(row["slot_count"] or 0),
         }
         for row in rows
     ]
@@ -1867,6 +2042,7 @@ def count_rows(conn: sqlite3.Connection) -> dict[str, int]:
         "artifact_builds",
         "artifact_build_slots",
         "artifact_build_targets",
+        "artifact_build_gcsim_targets",
         "artifact_sets",
         "artifact_set_piece_icons",
         "artifact_set_names",

@@ -7,6 +7,7 @@ from run_workspace.gcsim.config_assembly import (
     ASSEMBLY_BLOCK_NOT_READY,
     ASSEMBLY_READY,
     ASSEMBLY_SHELL_CONTAINS_MANUAL_CHARACTER_BLOCKS,
+    ASSEMBLY_SHELL_UNBOUNDED_DUMMY_ROTATION,
     CHASCA_ORORON_FURINA_BENNETT_ROTATION_SHELL_PATH,
     WARNING_SHELL_TARGET_PLACEHOLDER_NOT_ENEMY_TRUTH,
     assemble_gcsim_full_config,
@@ -149,6 +150,34 @@ bennett add stats hp=4780;
         )
         self.assertEqual(result.config_text, "")
         self.assertEqual(len(result.shell_audit.manual_block_lines), 2)
+
+    def test_assembler_rejects_endless_loop_with_optimizer_dummy(self) -> None:
+        shell = """
+options iteration=1000;
+target lvl=100 hp=999999999;
+active bennett;
+while 1 { bennett skill; }
+"""
+
+        result = assemble_gcsim_full_config((character_block("bennett"),), shell)
+
+        self.assertFalse(result.ready)
+        self.assertEqual(result.status, ASSEMBLY_SHELL_UNBOUNDED_DUMMY_ROTATION)
+        self.assertEqual(result.config_text, "")
+
+    def test_endless_loop_text_in_comments_or_strings_does_not_block(self) -> None:
+        shell = '''
+options iteration=1;
+target lvl=100 hp=999999999;
+active bennett;
+# while 1 { bennett skill; }
+let note string = "while 1 {";
+for let i=0; i<2; i=i+1 { bennett skill; }
+'''
+
+        result = assemble_gcsim_full_config((character_block("bennett"),), shell)
+
+        self.assertTrue(result.ready)
 
 
 if __name__ == "__main__":

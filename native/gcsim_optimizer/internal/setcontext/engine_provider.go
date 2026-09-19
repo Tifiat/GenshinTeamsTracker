@@ -84,7 +84,7 @@ func NewEffectEngineProvider(binding Binding, runRoot string) (*EngineProvider, 
 	return p, nil
 }
 
-func explicitEnergy(text string) (bool, error) {
+func IgnoreBurstEnergy(text string) (bool, error) {
 	rows := captureOptions.FindAllStringSubmatch(text, -1)
 	if len(rows) != 1 {
 		return false, fmt.Errorf("capture requires one prepared options row")
@@ -122,7 +122,7 @@ func (p *EngineProvider) Capture(ctx context.Context, c *Context) (Capture, erro
 	if !reflect.DeepEqual(p.binding, c.binding) {
 		return out, fmt.Errorf("capture provider binding changed")
 	}
-	energy, err := explicitEnergy(c.text)
+	_, err := IgnoreBurstEnergy(c.text)
 	if err != nil {
 		return out, err
 	}
@@ -136,7 +136,10 @@ func (p *EngineProvider) Capture(ctx context.Context, c *Context) (Capture, erro
 		if p.includeEffects {
 			capture = p.bound.RunCompactWithEffects
 		}
-		result, err := capture(ctx, c.text, filepath.Join(dir, "seed-"+strconv.FormatUint(seed, 10)), seed, energy)
+		// A formula capture observes the complete intended rotation even when
+		// the product config enables real burst costs. Ordinary finalist runs
+		// retain c.text unchanged and remain the feasibility authority.
+		result, err := capture(ctx, c.text, filepath.Join(dir, "seed-"+strconv.FormatUint(seed, 10)), seed, true)
 		p.timings = append(p.timings, CaptureTiming{c.key, seed, result.ProcessMS, result.DecodeMS, result.ResultSHA256})
 		if err != nil {
 			return Capture{}, err

@@ -1,0 +1,202 @@
+{
+  "date": "2026-09-19",
+  "generated_state_removed_on_exit": true,
+  "manifest": "optimizer_virtual_archetype_mode_matrix_v1",
+  "runs": [
+    {
+      "archetype": "lunar_charged_multi_owner_jahoda",
+      "database_variant": "live_read_only",
+      "expected_mechanics": [
+        "lunar_charged",
+        "electro_charged",
+        "atk",
+        "hp",
+        "em",
+        "multi_owner",
+        "cross_owner_em"
+      ],
+      "id": "lunar_charged_all_sets",
+      "infinite_energy": true,
+      "mode": "all_sets",
+      "source_url": "local_user_config_flins_columbina_ineffa_jahoda",
+      "success": true,
+      "wearers": [
+        "columbina",
+        "flins",
+        "ineffa",
+        "jahoda"
+      ]
+    },
+    {
+      "archetype": "lunar_charged_multi_owner_jahoda",
+      "database_variant": "live_read_only",
+      "expected_mechanics": [
+        "lunar_charged",
+        "electro_charged",
+        "atk",
+        "hp",
+        "em",
+        "multi_owner",
+        "cross_owner_em"
+      ],
+      "id": "lunar_charged_theory",
+      "infinite_energy": true,
+      "mode": "theory",
+      "source_url": "local_user_config_flins_columbina_ineffa_jahoda",
+      "success": true,
+      "wearers": [
+        "columbina",
+        "flins",
+        "ineffa",
+        "jahoda"
+      ]
+    },
+    {
+      "archetype": "lunar_bloom_hyperbloom_team_max_em",
+      "database_variant": "live_read_only",
+      "expected_mechanics": [
+        "bloom",
+        "lunar_bloom",
+        "hyperbloom",
+        "dendro",
+        "hp",
+        "em",
+        "team_max_em",
+        "multi_owner"
+      ],
+      "id": "lunar_bloom_all_sets",
+      "infinite_energy": true,
+      "mode": "all_sets",
+      "source_url": "local_user_config_columbina_kuki_lauma_nahida",
+      "success": true,
+      "wearers": [
+        "columbina",
+        "kukishinobu",
+        "lauma",
+        "nahida"
+      ]
+    },
+    {
+      "archetype": "lunar_bloom_hyperbloom_team_max_em",
+      "database_variant": "live_read_only",
+      "expected_mechanics": [
+        "bloom",
+        "lunar_bloom",
+        "hyperbloom",
+        "dendro",
+        "hp",
+        "em",
+        "team_max_em",
+        "multi_owner"
+      ],
+      "id": "lunar_bloom_theory",
+      "infinite_energy": true,
+      "mode": "theory",
+      "source_url": "local_user_config_columbina_kuki_lauma_nahida",
+      "success": true,
+      "wearers": [
+        "columbina",
+        "kukishinobu",
+        "lauma",
+        "nahida"
+      ]
+    },
+    {
+      "archetype": "nilou_bountiful_core_transformative",
+      "database_variant": "live_read_only",
+      "expected_mechanics": [
+        "bloom",
+        "bountiful_core",
+        "hp",
+        "em",
+        "multi_owner",
+        "healing"
+      ],
+      "id": "bountiful_core_all_sets",
+      "infinite_energy": true,
+      "mode": "all_sets",
+      "source_url": "https://gcsim.app/db/QFCTCPwcrH9g",
+      "success": true,
+      "wearers": [
+        "kaveh",
+        "nahida",
+        "nilou",
+        "xingqiu"
+      ]
+    },
+    {
+      "archetype": "nilou_bountiful_core_transformative",
+      "database_variant": "live_read_only",
+      "expected_mechanics": [
+        "bloom",
+        "bountiful_core",
+        "hp",
+        "em",
+        "multi_owner",
+        "healing"
+      ],
+      "id": "bountiful_core_theory",
+      "infinite_energy": true,
+      "mode": "theory",
+      "source_url": "https://gcsim.app/db/QFCTCPwcrH9g",
+      "success": true,
+      "wearers": [
+        "kaveh",
+        "nahida",
+        "nilou",
+        "xingqiu"
+      ]
+    },
+    {
+      "archetype": "chiori_atk_def_lunar_crystallize",
+      "database_variant": "live_read_only",
+      "expected_mechanics": [
+        "crystallize",
+        "lunar_crystallize",
+        "atk",
+        "def",
+        "hp",
+        "dual_scale",
+        "multi_owner"
+      ],
+      "id": "chiori_lunar_crystallize_all_sets",
+      "infinite_energy": true,
+      "mode": "all_sets",
+      "source_url": "local_user_rotation_furina_xilonen_chiori_columbina",
+      "success": true,
+      "wearers": [
+        "chiori",
+        "columbina",
+        "furina",
+        "xilonen"
+      ]
+    },
+    {
+      "archetype": "chiori_atk_def_lunar_crystallize",
+      "database_variant": "live_read_only",
+      "expected_mechanics": [
+        "crystallize",
+        "lunar_crystallize",
+        "atk",
+        "def",
+        "hp",
+        "dual_scale",
+        "multi_owner"
+      ],
+      "id": "chiori_lunar_crystallize_theory",
+      "infinite_energy": true,
+      "mode": "theory",
+      "source_url": "local_user_rotation_furina_xilonen_chiori_columbina",
+      "success": true,
+      "wearers": [
+        "chiori",
+        "columbina",
+        "furina",
+        "xilonen"
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "scope": "same_request_and_session_classes_as_optimizer_Qt_buttons",
+  "status": "measurement_only_pending_user_review"
+}

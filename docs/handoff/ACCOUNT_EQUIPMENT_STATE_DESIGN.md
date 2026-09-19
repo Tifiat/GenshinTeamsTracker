@@ -529,6 +529,13 @@ Stage B: AppShell equipment persistence
 - weapon assignment uses `equip_weapon(...)` and respects type/`known_count`;
 - character add restores persistent current weapon;
 - character remove does not delete equipment;
+- virtual GCSIM slot overrides are not account characters or equipment owners.
+  Selecting/clearing one does not equip, reserve, move or unequip account
+  weapons/artifacts; account weapon clicks are blocked while such a slot is
+  selected. Its explicit saved artifact build is read as simulation input only.
+  Theory ignores both that saved build and any manually displayed set package:
+  it starts every wearer from a private neutral baseline, claims no account
+  artifact ids, and searches legal 4p/2+2 packages itself;
 - current artifact ids are restored read-only into details metadata;
 - artifact-derived stats/display were deferred at Stage B and implemented in
   Stage B2 below.

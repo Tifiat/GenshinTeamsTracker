@@ -31,6 +31,7 @@ type compiledContext struct {
 	panel         *evaluator.Panel
 	hits          int
 	effectCapture *Capture
+	capture       *Capture
 }
 
 type Handle struct {
@@ -86,6 +87,15 @@ func (h *Handle) SearchPanel() (*evaluator.Panel, error) {
 		return nil, fmt.Errorf("search requires an exact captured context")
 	}
 	return h.compiled.panel, nil
+}
+
+// EnergyMembers exposes the immutable seed panel for an exact captured
+// context. The energy compiler reads it without retaining or mutating slices.
+func (h *Handle) EnergyMembers() ([]contracts.IRSeedMember, error) {
+	if h == nil || h.compiled == nil || h.context.key != h.compiled.origin.key || h.compiled.capture == nil {
+		return nil, fmt.Errorf("energy constraint requires an exact captured context")
+	}
+	return append([]contracts.IRSeedMember(nil), h.compiled.capture.Members...), nil
 }
 
 // VisitEffectSnapshots borrows read-only graph/evidence slices for one guide
@@ -170,7 +180,7 @@ func compileCapture(target *Context, capture Capture) (*compiledContext, error) 
 	if len(capture.Members) != len(target.binding.Seeds) {
 		return nil, fmt.Errorf("capture seed panel incomplete")
 	}
-	compiled := &compiledContext{origin: target, coordinates: graphCoordinates(capture.Members)}
+	compiled := &compiledContext{origin: target, coordinates: graphCoordinates(capture.Members), capture: &capture}
 	if capture.Effects != nil {
 		if len(capture.Effects) != len(capture.Members) {
 			return nil, fmt.Errorf("effect input panel incomplete")

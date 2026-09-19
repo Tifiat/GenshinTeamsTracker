@@ -1,0 +1,1331 @@
+diff --git a/pkg/core/info/gtt_attack_fields.go b/pkg/core/info/gtt_attack_fields.go
+index a6c9f00..04984ba 100644
+--- a/pkg/core/info/gtt_attack_fields.go
++++ b/pkg/core/info/gtt_attack_fields.go
+@@ -1,6 +1,8 @@
+ package info
+ 
+ import (
++	"math"
++
+ 	"github.com/genshinsim/gcsim/pkg/core/attributes"
+ 	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ )
+@@ -22,6 +24,47 @@ type GTTFlatProducer struct {
+ 	Reference gtttrace.NumericRef
+ }
+ 
++// GTTFlatProducerRef returns the dependency that produced the current flat
++// damage value before a compound write. Missing or stale metadata stays an
++// explicit incomplete numeric boundary instead of silently turning the old
++// value into a candidate-independent literal.
++func GTTFlatProducerRef(rt *gtttrace.Runtime, source string, attack any) gtttrace.NumericRef {
++	var value float64
++	var producer *GTTFlatProducer
++	switch typed := attack.(type) {
++	case AttackInfo:
++		value, producer = typed.FlatDmg, typed.GTTFlatProducer
++	case *AttackInfo:
++		if typed == nil {
++			return gtttrace.NumericRef{}
++		}
++		value, producer = typed.FlatDmg, typed.GTTFlatProducer
++	default:
++		return gtttrace.NumericRef{}
++	}
++	if producer != nil && producer.Reference.Kind != "" {
++		scale := math.Max(1, math.Max(math.Abs(value), math.Abs(producer.Value)))
++		if math.Abs(value-producer.Value) <= 1e-12*scale {
++			return producer.Reference
++		}
++	}
++	if rt == nil || !rt.Enabled() {
++		return gtttrace.LiteralRef(value)
++	}
++	reason := "flat_damage_previous_producer_missing"
++	if producer != nil {
++		reason = "flat_damage_previous_producer_mismatch"
++	}
++	eventID := rt.RecordNumericEval(
++		source, "frozen_attack_flat_damage", nil, value,
++		gtttrace.IncompleteEvidence(reason),
++	)
++	if eventID == "" {
++		return gtttrace.LiteralRef(value)
++	}
++	return gtttrace.EventRef(eventID)
++}
++
+ // NonExtraStat is a distinct central getter, not an alias for Stat. Its
+ // original evaluation filters Extra modifiers before collecting ancestry.
+ func GTTReadNonExtraStat(owner any, stat attributes.Stat, fallback func() float64) (float64, gtttrace.NumericRef) {
+@@ -82,6 +125,27 @@ func GTTReadTotalAtk(owner any, fallback func() float64) (float64, gtttrace.Nume
+ 	return fallback(), gtttrace.NumericRef{}
+ }
+ 
++func GTTReadTotalDef(owner any, nonExtra bool, fallback func() float64) (float64, gtttrace.NumericRef) {
++	if c, ok := owner.(interface {
++		GTTTotalDef(bool) (float64, gtttrace.NumericRef)
++	}); ok {
++		return c.GTTTotalDef(nonExtra)
++	}
++	return fallback(), gtttrace.NumericRef{}
++}
++
++// GTTStatOwnerRuntime accepts only the explicit engine tracing interface.
++// Source generation can therefore follow a typed getter owner in helper
++// methods without relying on a static Core selector path.
++func GTTStatOwnerRuntime(owner any) *gtttrace.Runtime {
++	if c, ok := owner.(interface {
++		GTTTraceRuntime() *gtttrace.Runtime
++	}); ok {
++		return c.GTTTraceRuntime()
++	}
++	return nil
++}
++
+ func GTTReadMaxHP(owner any, fallback func() float64) (float64, gtttrace.NumericRef) {
+ 	if c, ok := owner.(interface{ GTTMaxHP() (float64, string) }); ok {
+ 		v, id := c.GTTMaxHP()
+diff --git a/pkg/core/info/gtt_numeric_capture_test.go b/pkg/core/info/gtt_numeric_capture_test.go
+index 63cb9db..ffb6459 100644
+--- a/pkg/core/info/gtt_numeric_capture_test.go
++++ b/pkg/core/info/gtt_numeric_capture_test.go
+@@ -1,10 +1,28 @@
+ package info
+ 
+ import (
+-	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ 	"testing"
++
++	"github.com/genshinsim/gcsim/pkg/gtttrace"
+ )
+ 
++func TestFlatProducerRefValidatesPreviousValue(t *testing.T) {
++	r := gtttrace.NewRuntime()
++	r.Enable()
++	wanted := gtttrace.LiteralRef(2)
++	attack := AttackInfo{FlatDmg: 2, GTTFlatProducer: &GTTFlatProducer{Value: 2, Reference: wanted}}
++	if got := GTTFlatProducerRef(r, "source", attack); got.Kind != wanted.Kind || got.LiteralValue == nil || *got.LiteralValue != 2 {
++		t.Fatalf("matching producer=%#v", got)
++	}
++	attack.FlatDmg = 3
++	if got := GTTFlatProducerRef(r, "source", &attack); got.Kind != "event" || got.EventID == nil {
++		t.Fatalf("stale producer did not become an explicit boundary: %#v", got)
++	}
++	if got := GTTFlatProducerRef(nil, "source", AttackInfo{FlatDmg: 4}); got.Kind != "literal" || got.LiteralValue == nil || *got.LiteralValue != 4 {
++		t.Fatalf("disabled fallback=%#v", got)
++	}
++}
++
+ func TestNumericWriteBeforeAndAfterHitCreation(t *testing.T) {
+ 	var disabled *gtttrace.Runtime
+ 	if GTTNewNumericCapture(disabled, gtttrace.NumericRef{}) != nil {
+diff --git a/pkg/core/info/gtt_snapshot_stats.go b/pkg/core/info/gtt_snapshot_stats.go
+index ed5ebc6..f2956e1 100644
+--- a/pkg/core/info/gtt_snapshot_stats.go
++++ b/pkg/core/info/gtt_snapshot_stats.go
+@@ -94,3 +94,61 @@ func GTTSnapshotStatRef(rt *gtttrace.Runtime, snapshot Snapshot, key attributes.
+ 	}
+ 	return gtttrace.EventRef(rt.RecordArtifactStatRead(origin.Owner, key.String(), observed, origin.ModifierIDs))
+ }
++
++// GTTSnapshotTotalRef preserves the three artifact-stat leaves behind the
++// central Stats MaxHP/TotalATK/TotalDEF helpers.  The gameplay method has
++// already produced observed; this helper only proves and records its ancestry.
++func GTTSnapshotTotalRef(rt *gtttrace.Runtime, snapshot Snapshot, base, percent, flat attributes.Stat, observed float64) gtttrace.NumericRef {
++	return GTTStatsTotalRef(rt, snapshot.GTTStatsOrigin, snapshot.Stats, base, percent, flat, observed)
++}
++
++// GTTSnapshotPointerTotalRef is the typed helper-method counterpart used when
++// upstream passes a Snapshot pointer alongside an AttackInfo pointer.
++func GTTSnapshotPointerTotalRef(rt *gtttrace.Runtime, snapshot *Snapshot, base, percent, flat attributes.Stat, observed float64) gtttrace.NumericRef {
++	if snapshot == nil {
++		return gtttrace.NumericRef{}
++	}
++	return GTTStatsTotalRef(rt, snapshot.GTTStatsOrigin, snapshot.Stats, base, percent, flat, observed)
++}
++
++func GTTSnapshotTotalRefMaxHP(rt *gtttrace.Runtime, snapshot Snapshot, observed float64) gtttrace.NumericRef {
++	return GTTSnapshotTotalRef(rt, snapshot, attributes.BaseHP, attributes.HPP, attributes.HP, observed)
++}
++
++func GTTSnapshotTotalRefATK(rt *gtttrace.Runtime, snapshot Snapshot, observed float64) gtttrace.NumericRef {
++	return GTTSnapshotTotalRef(rt, snapshot, attributes.BaseATK, attributes.ATKP, attributes.ATK, observed)
++}
++
++func GTTSnapshotTotalRefDEF(rt *gtttrace.Runtime, snapshot Snapshot, observed float64) gtttrace.NumericRef {
++	return GTTSnapshotTotalRef(rt, snapshot, attributes.BaseDEF, attributes.DEFP, attributes.DEF, observed)
++}
++
++func GTTSnapshotPointerTotalRefMaxHP(rt *gtttrace.Runtime, snapshot *Snapshot, observed float64) gtttrace.NumericRef {
++	return GTTSnapshotPointerTotalRef(rt, snapshot, attributes.BaseHP, attributes.HPP, attributes.HP, observed)
++}
++
++func GTTSnapshotPointerTotalRefATK(rt *gtttrace.Runtime, snapshot *Snapshot, observed float64) gtttrace.NumericRef {
++	return GTTSnapshotPointerTotalRef(rt, snapshot, attributes.BaseATK, attributes.ATKP, attributes.ATK, observed)
++}
++
++func GTTSnapshotPointerTotalRefDEF(rt *gtttrace.Runtime, snapshot *Snapshot, observed float64) gtttrace.NumericRef {
++	return GTTSnapshotPointerTotalRef(rt, snapshot, attributes.BaseDEF, attributes.DEFP, attributes.DEF, observed)
++}
++
++// GTTSnapshotRuntime is a typed fallback for source locations whose receiver
++// embeds more than one static route to Core.  It returns only the runtime that
++// created this exact snapshot provenance; it never guesses from an actor name.
++func GTTSnapshotRuntime(snapshot Snapshot) *gtttrace.Runtime {
++	if snapshot.GTTStatsOrigin == nil {
++		return nil
++	}
++	return snapshot.GTTStatsOrigin.runtime
++}
++
++// GTTSnapshotPointerRuntime preserves the same proof for typed helper methods.
++func GTTSnapshotPointerRuntime(snapshot *Snapshot) *gtttrace.Runtime {
++	if snapshot == nil || snapshot.GTTStatsOrigin == nil {
++		return nil
++	}
++	return snapshot.GTTStatsOrigin.runtime
++}
+diff --git a/pkg/core/player/character/stats.go b/pkg/core/player/character/stats.go
+index 17a924f..3953725 100644
+--- a/pkg/core/player/character/stats.go
++++ b/pkg/core/player/character/stats.go
+@@ -273,6 +273,27 @@ func (c *CharWrapper) GTTTotalAtk() (float64, gtttrace.NumericRef) {
+ 	return value, info.GTTStatsTotalRef(c.gttTrace, origin, stats, attributes.BaseATK, attributes.ATKP, attributes.ATK, value)
+ }
+ 
++// GTTTotalDef preserves the original Extra-filter choice and the exact
++// modifier ancestry used by TotalDef.  It is the typed counterpart of
++// GTTTotalAtk for source-generated secondary DEF scaling.
++func (c *CharWrapper) GTTTotalDef(nonExtra bool) (float64, gtttrace.NumericRef) {
++	stats, ids := c.GTTSelectStat(nonExtra, attributes.BaseDEF, attributes.DEFP, attributes.DEF)
++	value := stats.TotalDEF()
++	if !c.gttTrace.Enabled() {
++		return value, gtttrace.NumericRef{}
++	}
++	origin := info.GTTStatsOriginFromModifiers(c.gttTrace, c.Index(), stats, ids)
++	return value, info.GTTStatsTotalRef(c.gttTrace, origin, stats, attributes.BaseDEF, attributes.DEFP, attributes.DEF, value)
++}
++
++// GTTTraceRuntime is intentionally exposed only through a typed sourcegen
++// interface.  It lets a helper that receives a character and AttackInfo bind
++// arithmetic to that character's real trace runtime without guessing from a
++// variable name or gameplay identifier.
++func (c *CharWrapper) GTTTraceRuntime() *gtttrace.Runtime {
++	return c.gttTrace
++}
++
+ func (c *CharWrapper) TotalDef(nonExtra bool) float64 {
+ 	stats := c.SelectStat(nonExtra, attributes.BaseDEF, attributes.DEFP, attributes.DEF)
+ 	return stats.TotalDEF()
+diff --git a/pkg/gttsourcegen/attack_fields.go b/pkg/gttsourcegen/attack_fields.go
+index 916089c..f3d26a7 100644
+--- a/pkg/gttsourcegen/attack_fields.go
++++ b/pkg/gttsourcegen/attack_fields.go
+@@ -68,6 +68,11 @@ func (c *fieldExpression) emit(e ast.Expr, depth int) (fieldValue, error) {
+ 				fmt.Fprintf(&c.code, "%s,%s := %s.GTTRead%s(%s,func()float64{return %s});\n", name, ref, c.info, s.Sel.Name, rootText(c.fset, s.X), text)
+ 				return fieldValue{name, ref}, nil
+ 			}
++			if s.Sel.Name == "TotalDef" && len(v.Args) == 1 {
++				fmt.Fprintf(&c.code, "%s_nonExtra := %s;\n", name, rootText(c.fset, v.Args[0]))
++				fmt.Fprintf(&c.code, "%s,%s := %s.GTTReadTotalDef(%s,%s_nonExtra,func()float64{return %s.TotalDef(%s_nonExtra)});\n", name, ref, c.info, rootText(c.fset, s.X), name, rootText(c.fset, s.X), name)
++				return fieldValue{name, ref}, nil
++			}
+ 			if (s.Sel.Name == "Stat" || s.Sel.Name == "NonExtraStat") && len(v.Args) == 1 {
+ 				// The attribute enum is evaluated once too.
+ 				fmt.Fprintf(&c.code, "%s_key := %s;\n", name, rootText(c.fset, v.Args[0]))
+@@ -116,7 +121,9 @@ func hasFieldStatInput(expr ast.Expr, refs map[string]string, fset *token.FileSe
+ 			}
+ 		}
+ 		if call, ok := n.(*ast.CallExpr); ok {
+-			if s, ok := call.Fun.(*ast.SelectorExpr); ok && ((s.Sel.Name == "MaxHP" && len(call.Args) == 0) || (s.Sel.Name == "Stat" && len(call.Args) == 1)) {
++			if s, ok := call.Fun.(*ast.SelectorExpr); ok && (((s.Sel.Name == "MaxHP" || s.Sel.Name == "TotalAtk") && len(call.Args) == 0) ||
++				(s.Sel.Name == "TotalDef" && len(call.Args) == 1) ||
++				((s.Sel.Name == "Stat" || s.Sel.Name == "NonExtraStat") && len(call.Args) == 1)) {
+ 				found = true
+ 			}
+ 		}
+diff --git a/pkg/gttsourcegen/ir.go b/pkg/gttsourcegen/ir.go
+index aef51d3..109e706 100644
+--- a/pkg/gttsourcegen/ir.go
++++ b/pkg/gttsourcegen/ir.go
+@@ -420,16 +420,30 @@ func (compiler *expressionCompiler) compile(expr ast.Expr) (int, bool) {
+ 			return compiler.addNode("ABS", []int{input}, nil, nil), true
+ 		}
+ 		selector, ok := value.Fun.(*ast.SelectorExpr)
+-		if !ok || len(value.Args) != 0 {
++		if !ok {
+ 			return compiler.fail("unsupported_call")
+ 		}
+ 		actor := rootText(compiler.fset, selector.X)
+ 		switch selector.Sel.Name {
+ 		case "MaxHP":
++			if len(value.Args) != 0 {
++				return compiler.fail("unsupported_call")
++			}
+ 			return compiler.parameter(value, "candidate_stat", actor, "max_hp", true), true
+-		case "TotalATK":
++		case "TotalATK", "TotalAtk":
++			if len(value.Args) != 0 {
++				return compiler.fail("unsupported_call")
++			}
+ 			return compiler.parameter(value, "candidate_stat", actor, "total_atk", true), true
+ 		case "TotalDEF":
++			if len(value.Args) != 0 {
++				return compiler.fail("unsupported_call")
++			}
++			return compiler.parameter(value, "candidate_stat", actor, "total_def", true), true
++		case "TotalDef":
++			if len(value.Args) != 1 || !booleanLiteral(value.Args[0]) {
++				return compiler.fail("unsupported_call")
++			}
+ 			return compiler.parameter(value, "candidate_stat", actor, "total_def", true), true
+ 		case "CurrentHP":
+ 			return compiler.parameter(value, "frozen_runtime_state", actor, "current_hp", false), true
+@@ -441,6 +455,11 @@ func (compiler *expressionCompiler) compile(expr ast.Expr) (int, bool) {
+ 	}
+ }
+ 
++func booleanLiteral(value ast.Expr) bool {
++	id, ok := value.(*ast.Ident)
++	return ok && (id.Name == "true" || id.Name == "false")
++}
++
+ // compileNumericConversion first preserves a stat-aware arithmetic child. If
+ // the child crosses an unsupported runtime seam, the conversion's observed
+ // numeric value remains usable as one frozen runtime parameter instead of
+diff --git a/pkg/gttsourcegen/overlay.go b/pkg/gttsourcegen/overlay.go
+index 1b98180..0d7d35a 100644
+--- a/pkg/gttsourcegen/overlay.go
++++ b/pkg/gttsourcegen/overlay.go
+@@ -131,6 +131,20 @@ func BuildOverlay(opts OverlayOptions, manifest Manifest) (OverlayResult, error)
+ 			}
+ 		}
+ 	}
++	// Secondary stat scaling can live after the AttackInfo composite, in a
++	// queued callback or a typed helper where a static Core path is legitimately
++	// ambiguous. Discover the syntax across gameplay Go sources; the rewriter
++	// still proves exact AttackInfo/getter shapes and leaves unsupported files
++	// byte-identical.
++	snapshotFiles, err := discoverSnapshotFlatFiles(root)
++	if err != nil {
++		return OverlayResult{}, err
++	}
++	for _, rel := range snapshotFiles {
++		if _, ok := byFile[rel]; !ok {
++			byFile[rel] = nil
++		}
++	}
+ 	rels := make([]string, 0, len(byFile))
+ 	for rel := range byFile {
+ 		rels = append(rels, rel)
+@@ -149,6 +163,9 @@ func BuildOverlay(opts OverlayOptions, manifest Manifest) (OverlayResult, error)
+ 		if err != nil {
+ 			return OverlayResult{}, fmt.Errorf("rewrite %s: %w", rel, err)
+ 		}
++		if bytes.Equal(rewritten, data) && len(byFile[rel]) == 0 {
++			continue
++		}
+ 		rewritten, err = rewriteNumericRecipes(rel, rewritten)
+ 		if err != nil {
+ 			return OverlayResult{}, fmt.Errorf("numeric recipe %s: %w", rel, err)
+@@ -157,6 +174,12 @@ func BuildOverlay(opts OverlayOptions, manifest Manifest) (OverlayResult, error)
+ 		if err != nil {
+ 			return OverlayResult{}, fmt.Errorf("contributor group %s: %w", rel, err)
+ 		}
++		// Structural discovery may admit a file only so the snapshot rewriter can
++		// inspect an ambiguous runtime path.  Do not create a no-op overlay when
++		// the file proves to contain no supported rewrite.
++		if bytes.Equal(rewritten, data) {
++			continue
++		}
+ 		replacement := filepath.Join(overlayDir, filepath.FromSlash(rel))
+ 		replacements[filepath.Clean(original)] = filepath.Clean(replacement)
+ 		result.Files = append(result.Files, OverlayFile{
+@@ -171,6 +194,82 @@ func BuildOverlay(opts OverlayOptions, manifest Manifest) (OverlayResult, error)
+ 	return result, nil
+ }
+ 
++func discoverSnapshotFlatFiles(root string) ([]string, error) {
++	seen := map[string]bool{}
++	for _, top := range []string{"cmd", "internal", "pkg"} {
++		base := filepath.Join(root, top)
++		if _, err := os.Stat(base); err != nil {
++			if os.IsNotExist(err) {
++				continue
++			}
++			return nil, fmt.Errorf("stat snapshot source root %s: %w", top, err)
++		}
++		err := filepath.WalkDir(base, func(path string, entry os.DirEntry, walkErr error) error {
++			if walkErr != nil {
++				return walkErr
++			}
++			if entry.IsDir() || filepath.Ext(path) != ".go" || strings.HasSuffix(path, "_test.go") {
++				return nil
++			}
++			contents, err := os.ReadFile(path)
++			if err != nil {
++				return err
++			}
++			fset := token.NewFileSet()
++			file, err := parser.ParseFile(fset, path, contents, parser.SkipObjectResolution)
++			if err != nil {
++				return err
++			}
++			if !hasSnapshotFlatSyntax(file) {
++				return nil
++			}
++			rel, err := filepath.Rel(root, path)
++			if err != nil {
++				return err
++			}
++			seen[filepath.ToSlash(rel)] = true
++			return nil
++		})
++		if err != nil {
++			return nil, fmt.Errorf("scan snapshot flat sources: %w", err)
++		}
++	}
++	files := make([]string, 0, len(seen))
++	for rel := range seen {
++		files = append(files, rel)
++	}
++	sort.Strings(files)
++	return files, nil
++}
++
++func hasSnapshotFlatSyntax(file *ast.File) bool {
++	flatAssignment := false
++	statRead := false
++	ast.Inspect(file, func(node ast.Node) bool {
++		switch value := node.(type) {
++		case *ast.AssignStmt:
++			for _, lhs := range value.Lhs {
++				selector, ok := lhs.(*ast.SelectorExpr)
++				flatAssignment = flatAssignment || (ok && selector.Sel.Name == "FlatDmg")
++			}
++		case *ast.IndexExpr:
++			selector, ok := value.X.(*ast.SelectorExpr)
++			statRead = statRead || (ok && selector.Sel.Name == "Stats")
++		case *ast.CallExpr:
++			method, ok := value.Fun.(*ast.SelectorExpr)
++			if !ok {
++				break
++			}
++			switch method.Sel.Name {
++			case "MaxHP", "TotalATK", "TotalDEF", "TotalAtk", "TotalDef", "Stat", "NonExtraStat":
++				statRead = true
++			}
++		}
++		return !(flatAssignment && statRead)
++	})
++	return flatAssignment && statRead
++}
++
+ func rewriteOverlayFile(rel string, data []byte, wanted []SourceEntry) ([]byte, error) {
+ 	return rewriteOverlayFileWithSnapshots(rel, data, wanted, nil)
+ }
+diff --git a/pkg/gttsourcegen/snapshot_flat.go b/pkg/gttsourcegen/snapshot_flat.go
+index 5063d45..333bdb4 100644
+--- a/pkg/gttsourcegen/snapshot_flat.go
++++ b/pkg/gttsourcegen/snapshot_flat.go
+@@ -20,7 +20,7 @@ func snapshotFlatEdits(fs *token.FileSet, tf *token.File, file *ast.File, entrie
+ 			attrAlias = alias
+ 		}
+ 	}
+-	if infoAlias == "" || attrAlias == "" {
++	if infoAlias == "" {
+ 		return nil
+ 	}
+ 	edits := []textEdit{}
+@@ -30,24 +30,90 @@ func snapshotFlatEdits(fs *token.FileSet, tf *token.File, file *ast.File, entrie
+ 			continue
+ 		}
+ 		rt := ""
+-		source := ""
++		source := strconv.Quote("")
+ 		for _, e := range entries {
+ 			if e.Line < fs.Position(fn.Pos()).Line || e.Line > fs.Position(fn.End()).Line {
+ 				continue
+ 			}
++			source = strconv.Quote(e.SourceID)
+ 			if r, ok := entryTraceExpression(receiverName(fn), e); ok {
+ 				rt = r
+-				source = strconv.Quote(e.SourceID)
+-				break
+ 			}
++			break
+ 		}
+-		if rt == "" {
+-			continue
++		functionAttackDeclarations := map[string]int{}
++		functionQueuedAttacks := map[string]bool{}
++		functionAliasValues := map[string]ast.Expr{}
++		functionAliasAssignments := map[string]*ast.AssignStmt{}
++		functionAliasDefinitions := map[string]int{}
++		functionWrites := map[string]int{}
++		functionEscaped := map[string]bool{}
++		parameterAttacks := map[string]bool{}
++		parameterSnapshots := map[string]bool{}
++		if fn.Type.Params != nil {
++			for _, field := range fn.Type.Params.List {
++				typeName := rootText(fs, field.Type)
++				for _, name := range field.Names {
++					switch typeName {
++					case "*" + infoAlias + ".AttackInfo":
++						parameterAttacks[name.Name] = true
++					case "*" + infoAlias + ".Snapshot":
++						parameterSnapshots[name.Name] = true
++					}
++				}
++			}
+ 		}
+ 		ast.Inspect(fn.Body, func(n ast.Node) bool {
+-			if _, ok := n.(*ast.FuncLit); ok {
+-				return false
++			if unary, ok := n.(*ast.UnaryExpr); ok && unary.Op == token.AND {
++				if id, ok := unary.X.(*ast.Ident); ok {
++					functionEscaped[id.Name] = true
++				}
++			}
++			a, ok := n.(*ast.AssignStmt)
++			if !ok || len(a.Lhs) != 1 || len(a.Rhs) != 1 {
++				return true
+ 			}
++			if id, ok := a.Lhs[0].(*ast.Ident); ok {
++				functionWrites[id.Name]++
++				if a.Tok == token.DEFINE {
++					functionAliasDefinitions[id.Name]++
++					functionAliasValues[id.Name] = a.Rhs[0]
++					functionAliasAssignments[id.Name] = a
++				}
++			}
++			if a.Tok != token.DEFINE {
++				return true
++			}
++			id, ok := a.Lhs[0].(*ast.Ident)
++			lit, literal := a.Rhs[0].(*ast.CompositeLit)
++			if ok && literal && rootText(fs, lit.Type) == infoAlias+".AttackInfo" {
++				functionAttackDeclarations[id.Name]++
++			}
++			return true
++		})
++		for name := range functionAliasValues {
++			if functionAliasDefinitions[name] != 1 || functionWrites[name] != 1 || functionEscaped[name] {
++				delete(functionAliasValues, name)
++				delete(functionAliasAssignments, name)
++			}
++		}
++		capturedAliasRefs := map[string]string{}
++		ast.Inspect(fn.Body, func(n ast.Node) bool {
++			call, ok := n.(*ast.CallExpr)
++			if !ok || len(call.Args) == 0 {
++				return true
++			}
++			method, ok := call.Fun.(*ast.SelectorExpr)
++			if !ok || (method.Sel.Name != "QueueAttack" && method.Sel.Name != "QueueAttackWithSnap") {
++				return true
++			}
++			owner := rootText(fs, call.Args[0])
++			if safeSelectorChain(owner) {
++				functionQueuedAttacks[owner] = true
++			}
++			return true
++		})
++		ast.Inspect(fn.Body, func(n ast.Node) bool {
+ 			block, ok := n.(*ast.BlockStmt)
+ 			if !ok {
+ 				return true
+@@ -83,11 +149,37 @@ func snapshotFlatEdits(fs *token.FileSet, tf *token.File, file *ast.File, entrie
+ 				return true
+ 			})
+ 			attacks := map[string]bool{}
++			for name, count := range functionAttackDeclarations {
++				if count == 1 {
++					attacks[name] = true
++				}
++			}
++			for name := range parameterAttacks {
++				attacks[name] = true
++			}
++			for name := range functionQueuedAttacks {
++				attacks[name] = true
++			}
+ 			snapshots := map[string]bool{}
++			snapshotPointers := map[string]bool{}
++			for name := range parameterSnapshots {
++				snapshots[name] = true
++				snapshotPointers[name] = true
++			}
++			runtimeExpr := rt
++			runtimeSnapshot := ""
++			if runtimeExpr == "" && len(parameterSnapshots) == 1 {
++				for name := range parameterSnapshots {
++					runtimeSnapshot = name
++					runtimeExpr = fmt.Sprintf("%s.GTTSnapshotPointerRuntime(%s)", infoAlias, name)
++				}
++			}
+ 			refs := map[string]string{}
+ 			aliases := map[string]ast.Expr{}
++			aliasAssignments := map[string]*ast.AssignStmt{}
+ 			constants := sourceNamedConstants(file)
+-			for _, stmt := range block.List {
++			for stmtIndex := 0; stmtIndex < len(block.List); stmtIndex++ {
++				stmt := block.List[stmtIndex]
+ 				a, ok := stmt.(*ast.AssignStmt)
+ 				if !ok || len(a.Lhs) != 1 || len(a.Rhs) != 1 {
+ 					continue
+@@ -102,6 +194,13 @@ func snapshotFlatEdits(fs *token.FileSet, tf *token.File, file *ast.File, entrie
+ 					if call, ok := a.Rhs[0].(*ast.CallExpr); ok {
+ 						if method, ok := call.Fun.(*ast.SelectorExpr); ok && method.Sel.Name == "Snapshot" && rootText(fs, method.X) == receiverName(fn) && len(call.Args) == 1 {
+ 							snapshots[id.Name] = true
++							snapshotPointers[id.Name] = false
++							if runtimeExpr == "" && runtimeSnapshot == "" {
++								runtimeSnapshot = id.Name
++								runtimeExpr = fmt.Sprintf("%s.GTTSnapshotRuntime(%s)", infoAlias, id.Name)
++							} else if rt == "" && runtimeSnapshot != "" && runtimeSnapshot != id.Name {
++								runtimeExpr = ""
++							}
+ 						}
+ 					}
+ 					if ix, ok := a.Rhs[0].(*ast.IndexExpr); ok {
+@@ -110,35 +209,130 @@ func snapshotFlatEdits(fs *token.FileSet, tf *token.File, file *ast.File, entrie
+ 						if yes && typed && sel.Sel.Name == "Stats" && rootText(fs, key.X) == attrAlias && snapshots[rootText(fs, sel.X)] {
+ 							// Type-checking the generated helper proves this really is info.Snapshot;
+ 							// the helper independently verifies recorded owner/value at runtime.
+-							refs[id.Name] = fmt.Sprintf("%s.GTTSnapshotStatRef(%s,%s,%s,%s)", infoAlias, rt, rootText(fs, sel.X), rootText(fs, ix.Index), id.Name)
++							if runtimeExpr != "" {
++								refs[id.Name] = fmt.Sprintf("%s.GTTSnapshotStatRef(%s,%s,%s,%s)", infoAlias, runtimeExpr, rootText(fs, sel.X), rootText(fs, ix.Index), id.Name)
++							}
+ 						}
+ 					}
+ 					aliases[id.Name] = a.Rhs[0]
++					aliasAssignments[id.Name] = a
+ 					continue
+ 				}
+ 				lhs, ok := a.Lhs[0].(*ast.SelectorExpr)
+-				if !ok || lhs.Sel.Name != "FlatDmg" || a.Tok != token.ASSIGN {
++				initialOperator := flatAssignmentOperator(a.Tok)
++				if !ok || lhs.Sel.Name != "FlatDmg" || initialOperator == "" {
+ 					continue
+ 				}
+-				id, ok := lhs.X.(*ast.Ident)
+-				if !ok || !attacks[id.Name] {
++				attackOwner := rootText(fs, lhs.X)
++				if !attacks[attackOwner] {
++					continue
++				}
++				end := a.End()
++				lastStatementIndex := stmtIndex
++				originalStatements := []string{rootText(fs, a)}
++				type compoundPart struct {
++					rhs      ast.Expr
++					operator string
++				}
++				compoundParts := []compoundPart{}
++				for nextIndex := stmtIndex + 1; nextIndex < len(block.List); nextIndex++ {
++					next, operator, ok := snapshotFlatCompoundAssignment(
++						fs, block.List[nextIndex], attackOwner,
++					)
++					if !ok {
++						break
++					}
++					compoundParts = append(compoundParts, compoundPart{rhs: next.Rhs[0], operator: operator})
++					originalStatements = append(originalStatements, rootText(fs, next))
++					end = next.End()
++					lastStatementIndex = nextIndex
++				}
++				visibleAliases := map[string]ast.Expr{}
++				visibleAliasAssignments := map[string]*ast.AssignStmt{}
++				for name, value := range functionAliasValues {
++					definition := functionAliasAssignments[name]
++					if definition != nil && definition.Pos() < a.Pos() {
++						visibleAliases[name] = value
++						visibleAliasAssignments[name] = definition
++					}
++				}
++				for name, value := range aliases {
++					visibleAliases[name] = value
++					visibleAliasAssignments[name] = aliasAssignments[name]
++				}
++				localRuntimeExpr := runtimeExpr
++				if localRuntimeExpr == "" {
++					owners := statGetterOwners(fs, a.Rhs[0], visibleAliases)
++					for _, part := range compoundParts {
++						mergeStringSet(owners, statGetterOwners(fs, part.rhs, visibleAliases))
++					}
++					if len(owners) == 1 {
++						for owner := range owners {
++							localRuntimeExpr = fmt.Sprintf("%s.GTTStatOwnerRuntime(%s)", infoAlias, owner)
++						}
++					}
++				}
++				if localRuntimeExpr == "" {
+ 					continue
+ 				}
+ 				// Expand only side-effect-free local arithmetic. Calls/indexes used as
+ 				// coefficients stay at the original RHS position, never replayed getters.
+ 				used := false
++				if a.Tok != token.ASSIGN {
++					field := attackOwner + ".FlatDmg"
++					refs[field] = fmt.Sprintf("%s.GTTFlatProducerRef(%s,%s,%s)", infoAlias, localRuntimeExpr, source, attackOwner)
++					used = true
++				}
+ 				var expand func(ast.Expr, int) string
+ 				expand = func(e ast.Expr, depth int) string {
+ 					if depth > 12 {
+ 						return rootText(fs, e)
+ 					}
++					text := rootText(fs, e)
++					if _, ok := refs[text]; !ok {
++						if ref, ok := snapshotTotalReference(fs, e, snapshots, snapshotPointers, infoAlias, localRuntimeExpr); ok {
++							refs[text] = ref
++						}
++					}
++					if _, ok := refs[text]; ok {
++						used = true
++						return text
++					}
++					if _, ok := directStatGetter(fs, e); ok {
++						used = true
++						return text
++					}
+ 					if v, ok := e.(*ast.Ident); ok {
+ 						if _, ok := refs[v.Name]; ok {
+ 							used = true
+ 							return v.Name
+ 						}
+-						if value, ok := aliases[v.Name]; ok && snapshotImmutableArithmetic(value, aliases, refs, constants, 0) {
+-							return "(" + expand(value, depth+1) + ")"
++						if value, ok := visibleAliases[v.Name]; ok {
++							if len(statGetterOwners(fs, value, visibleAliases)) > 0 {
++								if ref, captured := capturedAliasRefs[v.Name]; captured {
++									refs[v.Name] = ref
++									used = true
++									return v.Name
++								}
++								definition := visibleAliasAssignments[v.Name]
++								if definition != nil {
++									prefix := fmt.Sprintf("gttSnapshotBinding_%d", tf.Offset(definition.Pos()))
++									compiler := fieldExpression{fset: fs, rt: localRuntimeExpr, source: source, prefix: prefix, info: infoAlias, refs: refs, constants: constants}
++									captured, err := compiler.emit(value, 0)
++									if err == nil {
++										ref := prefix + "_ref"
++										replacement := fmt.Sprintf("%s,%s:=func()(float64,%s.NumericRef){if %s==nil || !%s.Enabled(){return %s,%s.NumericRef{}};%s return float64(%s),%s}()", v.Name, ref, traceImportAlias, localRuntimeExpr, localRuntimeExpr, rootText(fs, value), traceImportAlias, compiler.code.String(), captured.value, captured.ref)
++										edits = append(edits, textEdit{start: tf.Offset(definition.Pos()), end: tf.Offset(definition.End()), replacement: replacement})
++										capturedAliasRefs[v.Name] = ref
++										refs[v.Name] = ref
++										used = true
++										return v.Name
++									}
++								}
++							}
++							if snapshotImmutableArithmetic(value, visibleAliases, refs, constants, 0) {
++								return "(" + expand(value, depth+1) + ")"
++							}
+ 						}
+ 					}
+ 					switch v := e.(type) {
+@@ -150,6 +344,12 @@ func snapshotFlatEdits(fs *token.FileSet, tf *token.File, file *ast.File, entrie
+ 					return rootText(fs, e)
+ 				}
+ 				expression := expand(a.Rhs[0], 0)
++				if a.Tok != token.ASSIGN {
++					expression = "(" + attackOwner + ".FlatDmg)" + initialOperator + "(" + expression + ")"
++				}
++				for _, part := range compoundParts {
++					expression = "(" + expression + ")" + part.operator + "(" + expand(part.rhs, 0) + ")"
++				}
+ 				if !used {
+ 					continue
+ 				}
+@@ -161,13 +361,14 @@ func snapshotFlatEdits(fs *token.FileSet, tf *token.File, file *ast.File, entrie
+ 					continue
+ 				}
+ 				prefix := fmt.Sprintf("gttSnapshotFlat_%d", tf.Offset(a.Pos()))
+-				emitter := fieldExpression{fset: exprFS, rt: rt, source: source, prefix: prefix, info: infoAlias, refs: refs, constants: sourceNamedConstants(file)}
++				emitter := fieldExpression{fset: exprFS, rt: localRuntimeExpr, source: source, prefix: prefix, info: infoAlias, refs: refs, constants: sourceNamedConstants(file)}
+ 				value, err := emitter.emit(tree, 0)
+ 				if err != nil {
+ 					continue
+ 				}
+-				code := fmt.Sprintf("if !%s.Enabled(){%s}else{\n%s\n%s.FlatDmg=float64(%s)\n%s.GTTFlatProducer=&%s.GTTFlatProducer{Value:%s.FlatDmg,Reference:%s}\n}", rt, rootText(fs, a), emitter.code.String(), id.Name, value.value, id.Name, infoAlias, id.Name, value.ref)
+-				edits = append(edits, textEdit{start: tf.Offset(a.Pos()), end: tf.Offset(a.End()), replacement: code})
++				code := fmt.Sprintf("if %s==nil || !%s.Enabled(){%s}else{\n%s\n%s.FlatDmg=float64(%s)\n%s.GTTFlatProducer=&%s.GTTFlatProducer{Value:%s.FlatDmg,Reference:%s}\n}", localRuntimeExpr, localRuntimeExpr, strings.Join(originalStatements, "\n"), emitter.code.String(), attackOwner, value.value, attackOwner, infoAlias, attackOwner, value.ref)
++				edits = append(edits, textEdit{start: tf.Offset(a.Pos()), end: tf.Offset(end), replacement: code})
++				stmtIndex = lastStatementIndex
+ 			}
+ 			return true
+ 		})
+@@ -175,6 +376,168 @@ func snapshotFlatEdits(fs *token.FileSet, tf *token.File, file *ast.File, entrie
+ 	return edits
+ }
+ 
++func directStatGetter(fs *token.FileSet, e ast.Expr) (string, bool) {
++	call, ok := e.(*ast.CallExpr)
++	if !ok {
++		return "", false
++	}
++	method, ok := call.Fun.(*ast.SelectorExpr)
++	if !ok || !safeSelectorChain(rootText(fs, method.X)) {
++		return "", false
++	}
++	if stats, ok := method.X.(*ast.SelectorExpr); ok && stats.Sel.Name == "Stats" {
++		return "", false
++	}
++	switch method.Sel.Name {
++	case "MaxHP", "TotalAtk":
++		if len(call.Args) != 0 {
++			return "", false
++		}
++	case "TotalDef":
++		if len(call.Args) != 1 || !booleanLiteral(call.Args[0]) {
++			return "", false
++		}
++	case "Stat", "NonExtraStat":
++		if len(call.Args) != 1 {
++			return "", false
++		}
++	default:
++		return "", false
++	}
++	return rootText(fs, method.X), true
++}
++
++func directStatGetterOwners(fs *token.FileSet, e ast.Expr) map[string]bool {
++	owners := map[string]bool{}
++	ast.Inspect(e, func(node ast.Node) bool {
++		expr, ok := node.(ast.Expr)
++		if !ok {
++			return true
++		}
++		if owner, ok := directStatGetter(fs, expr); ok {
++			owners[owner] = true
++			return false
++		}
++		return true
++	})
++	return owners
++}
++
++func statGetterOwners(fs *token.FileSet, e ast.Expr, aliases map[string]ast.Expr) map[string]bool {
++	owners := map[string]bool{}
++	visiting := map[string]bool{}
++	var inspect func(ast.Expr, int)
++	inspect = func(expr ast.Expr, depth int) {
++		if expr == nil || depth > 12 {
++			return
++		}
++		if owner, ok := directStatGetter(fs, expr); ok {
++			owners[owner] = true
++			return
++		}
++		if id, ok := expr.(*ast.Ident); ok {
++			if value, exists := aliases[id.Name]; exists && !visiting[id.Name] {
++				visiting[id.Name] = true
++				inspect(value, depth+1)
++				delete(visiting, id.Name)
++			}
++			return
++		}
++		ast.Inspect(expr, func(node ast.Node) bool {
++			child, ok := node.(ast.Expr)
++			if !ok {
++				return true
++			}
++			if child == expr {
++				return true
++			}
++			inspect(child, depth+1)
++			return false
++		})
++	}
++	inspect(e, 0)
++	return owners
++}
++
++func mergeStringSet(dst, src map[string]bool) {
++	for value := range src {
++		dst[value] = true
++	}
++}
++
++func snapshotTotalReference(fs *token.FileSet, e ast.Expr, snapshots, snapshotPointers map[string]bool, infoAlias, rt string) (string, bool) {
++	call, ok := e.(*ast.CallExpr)
++	if !ok || len(call.Args) != 0 {
++		return "", false
++	}
++	method, ok := call.Fun.(*ast.SelectorExpr)
++	if !ok {
++		return "", false
++	}
++	stats, ok := method.X.(*ast.SelectorExpr)
++	if !ok || stats.Sel.Name != "Stats" || !snapshots[rootText(fs, stats.X)] {
++		return "", false
++	}
++	suffix := map[string]string{
++		"MaxHP":    "MaxHP",
++		"TotalATK": "ATK",
++		"TotalDEF": "DEF",
++	}[method.Sel.Name]
++	if suffix == "" {
++		return "", false
++	}
++	helper := "GTTSnapshotTotalRef" + suffix
++	if snapshotPointers[rootText(fs, stats.X)] {
++		helper = "GTTSnapshotPointerTotalRef" + suffix
++	}
++	return fmt.Sprintf(
++		"%s.%s(%s,%s,%s)",
++		infoAlias, helper, rt, rootText(fs, stats.X),
++		rootText(fs, call),
++	), true
++}
++
++func flatAssignmentOperator(operator token.Token) string {
++	return map[token.Token]string{
++		token.ASSIGN:     "=",
++		token.ADD_ASSIGN: "+",
++		token.SUB_ASSIGN: "-",
++		token.MUL_ASSIGN: "*",
++		token.QUO_ASSIGN: "/",
++	}[operator]
++}
++
++func snapshotFlatCompoundAssignment(fs *token.FileSet, stmt ast.Stmt, attack string) (*ast.AssignStmt, string, bool) {
++	a, ok := stmt.(*ast.AssignStmt)
++	if !ok || len(a.Lhs) != 1 || len(a.Rhs) != 1 {
++		return nil, "", false
++	}
++	lhs, ok := a.Lhs[0].(*ast.SelectorExpr)
++	if !ok || lhs.Sel.Name != "FlatDmg" {
++		return nil, "", false
++	}
++	if rootText(fs, lhs.X) != attack || !safeSelectorChain(attack) {
++		return nil, "", false
++	}
++	operator := flatAssignmentOperator(a.Tok)
++	if a.Tok == token.ASSIGN {
++		operator = ""
++	}
++	if operator == "" {
++		return nil, "", false
++	}
++	referencesFlat := false
++	ast.Inspect(a.Rhs[0], func(n ast.Node) bool {
++		selector, ok := n.(*ast.SelectorExpr)
++		if !ok || selector.Sel.Name != "FlatDmg" {
++			return true
++		}
++		referencesFlat = referencesFlat || rootText(fs, selector.X) == attack
++		return !referencesFlat
++	})
++	return a, operator, !referencesFlat
++}
++
+ // Expanding a saved expression is safe only when all its leaves are immutable
+ // in this block. Pure syntax alone is not enough: a local used to initialize
+ // the alias may have changed between initialization and damage construction.
+diff --git a/pkg/gttsourcegen/snapshot_flat_test.go b/pkg/gttsourcegen/snapshot_flat_test.go
+index c861e14..a8690ec 100644
+--- a/pkg/gttsourcegen/snapshot_flat_test.go
++++ b/pkg/gttsourcegen/snapshot_flat_test.go
+@@ -3,7 +3,9 @@ package gttsourcegen
+ import (
+ 	"go/parser"
+ 	"go/token"
++	"os"
+ 	"path/filepath"
++	"regexp"
+ 	"strings"
+ 	"testing"
+ )
+@@ -82,23 +84,351 @@ func TestSnapshotAliasDoesNotRecomputeChangedLocal(t *testing.T) {
+ 	}
+ }
+ 
++func TestSnapshotTotalDEFAndCompoundScaleStayOneProducer(t *testing.T) {
++	src := `package x
++ import("github.com/genshinsim/gcsim/pkg/core/info"; a "github.com/genshinsim/gcsim/pkg/core/attributes")
++ func (c *provider) run(){
++ ai:=info.AttackInfo{}
++ snap:=c.Snapshot(&ai)
++ scale:=2.35
++ ai.FlatDmg=snap.Stats.TotalDEF()
++ ai.FlatDmg*=scale
++ _=a.DEF
++ }`
++	fs := token.NewFileSet()
++	f, err := parser.ParseFile(fs, "x.go", src, 0)
++	if err != nil {
++		t.Fatal(err)
++	}
++	edits := snapshotFlatEdits(fs, fs.File(f.Pos()), f, []SourceEntry{{Line: 8, SourceID: strings.Repeat("a", 64), traceRuntimePath: "Core.GTTTrace"}})
++	if len(edits) != 1 {
++		t.Fatalf("edits = %d; want one combined producer", len(edits))
++	}
++	out, err := applyTextEdits([]byte(src), edits)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if _, err = parser.ParseFile(token.NewFileSet(), "out.go", out, 0); err != nil {
++		t.Fatal(err)
++	}
++	text := string(out)
++	if !strings.Contains(text, "GTTSnapshotTotalRef") || !strings.Contains(text, "GTTFlatProducer") {
++		t.Fatal(text)
++	}
++	if strings.Count(text, "ai.FlatDmg=float64") != 1 {
++		t.Fatalf("compound write was not collapsed into one traced producer: %s", text)
++	}
++}
++
++func TestSnapshotTotalStatsAndMixedScalingAreGeneric(t *testing.T) {
++	for _, method := range []string{"MaxHP", "TotalATK", "TotalDEF"} {
++		t.Run(method, func(t *testing.T) {
++			src := `package x
++ import("github.com/genshinsim/gcsim/pkg/core/info"; a "github.com/genshinsim/gcsim/pkg/core/attributes")
++ func (c *provider) run(){
++ ai:=info.AttackInfo{}
++ snap:=c.Snapshot(&ai)
++ ai.FlatDmg=snap.Stats.` + method + `()*2+snap.Stats.TotalDEF()*3
++ _=a.DEF
++ }`
++			fs := token.NewFileSet()
++			f, err := parser.ParseFile(fs, "x.go", src, 0)
++			if err != nil {
++				t.Fatal(err)
++			}
++			edits := snapshotFlatEdits(fs, fs.File(f.Pos()), f, []SourceEntry{{Line: 6, SourceID: strings.Repeat("a", 64), traceRuntimePath: "Core.GTTTrace"}})
++			if len(edits) != 1 {
++				t.Fatalf("edits = %d; want one mixed producer", len(edits))
++			}
++			out, err := applyTextEdits([]byte(src), edits)
++			if err != nil {
++				t.Fatal(err)
++			}
++			text := string(out)
++			if strings.Count(text, "GTTSnapshotTotalRef") != 2 || !strings.Contains(text, "GTTFlatProducer") {
++				t.Fatal(text)
++			}
++		})
++	}
++}
++
++func TestSnapshotAndAttackInfoParametersStayTyped(t *testing.T) {
++	src := `package x
++ import("github.com/genshinsim/gcsim/pkg/core/info"; a "github.com/genshinsim/gcsim/pkg/core/attributes")
++ func (c *provider) add(ai *info.AttackInfo, snap *info.Snapshot){
++ ai.FlatDmg=snap.Stats.TotalDEF()
++ ai.FlatDmg*=2.35
++ _=a.DEF
++ }`
++	fs := token.NewFileSet()
++	f, err := parser.ParseFile(fs, "x.go", src, 0)
++	if err != nil {
++		t.Fatal(err)
++	}
++	edits := snapshotFlatEdits(fs, fs.File(f.Pos()), f, []SourceEntry{{Line: 4, SourceID: strings.Repeat("a", 64)}})
++	if len(edits) != 1 {
++		t.Fatalf("edits = %d; want typed parameter producer", len(edits))
++	}
++	out, err := applyTextEdits([]byte(src), edits)
++	if err != nil {
++		t.Fatal(err)
++	}
++	text := string(out)
++	if !strings.Contains(text, "GTTSnapshotPointerRuntime(snap)") || !strings.Contains(text, "GTTSnapshotPointerTotalRefDEF") || !strings.Contains(text, "GTTFlatProducer") {
++		t.Fatal(text)
++	}
++}
++
++func TestDirectCharacterSecondaryScalingIsGeneric(t *testing.T) {
++	for _, tc := range []struct {
++		name, expression, helper string
++	}{
++		{"max hp", "c.MaxHP()*2", "GTTReadMaxHP"},
++		{"total attack", "c.TotalAtk()*2", "GTTReadTotalAtk"},
++		{"total defense", "c.TotalDef(false)*2", "GTTReadTotalDef"},
++		{"elemental mastery", "c.Stat(a.EM)*2", "GTTReadStat"},
++		{"non-extra elemental mastery", "c.NonExtraStat(a.EM)*2", "GTTReadNonExtraStat"},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			src := `package arbitrary
++import ("github.com/genshinsim/gcsim/pkg/core/info"; a "github.com/genshinsim/gcsim/pkg/core/attributes")
++func (c *provider) run(){
++ ai:=info.AttackInfo{}
++ ai.FlatDmg=` + tc.expression + `
++ c.Core.QueueAttack(ai)
++}`
++			fs := token.NewFileSet()
++			file, err := parser.ParseFile(fs, "x.go", src, 0)
++			if err != nil {
++				t.Fatal(err)
++			}
++			edits := snapshotFlatEdits(fs, fs.File(file.Pos()), file, nil)
++			if len(edits) != 1 {
++				t.Fatalf("edits=%d, want 1", len(edits))
++			}
++			out, err := applyTextEdits([]byte(src), edits)
++			if err != nil {
++				t.Fatal(err)
++			}
++			text := string(out)
++			for _, want := range []string{"GTTStatOwnerRuntime(c)", tc.helper, "GTTFlatProducer"} {
++				if !strings.Contains(text, want) {
++					t.Fatalf("missing %q:\n%s", want, text)
++				}
++			}
++			if _, err := parser.ParseFile(token.NewFileSet(), "rewritten.go", out, 0); err != nil {
++				t.Fatal(err)
++			}
++		})
++	}
++}
++
++func TestDirectCharacterCompoundAndPersistentScalingAreGeneric(t *testing.T) {
++	for _, tc := range []struct {
++		name, signature, setup, assignment, queued, helper string
++	}{
++		{"compound local", "func (c *provider) run()", "ai:=info.AttackInfo{}", "ai.FlatDmg+=c.MaxHP()*2", "ai", "GTTReadMaxHP"},
++		{"compound parameter", "func (c *provider) run(ai *info.AttackInfo)", "", "ai.FlatDmg+=c.TotalAtk()*2", "*ai", "GTTReadTotalAtk"},
++		{"persistent field", "func (c *provider) run()", "c.saved=info.AttackInfo{}", "c.saved.FlatDmg=c.TotalDef(false)*2", "c.saved", "GTTReadTotalDef"},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			src := `package arbitrary
++import "github.com/genshinsim/gcsim/pkg/core/info"
++` + tc.signature + `{
++ ` + tc.setup + `
++ ` + tc.assignment + `
++ c.Core.QueueAttack(` + tc.queued + `)
++}`
++			fs := token.NewFileSet()
++			file, err := parser.ParseFile(fs, "x.go", src, 0)
++			if err != nil {
++				t.Fatal(err)
++			}
++			edits := snapshotFlatEdits(fs, fs.File(file.Pos()), file, nil)
++			if len(edits) != 1 {
++				t.Fatalf("edits=%d, want 1\n%s", len(edits), src)
++			}
++			out, err := applyTextEdits([]byte(src), edits)
++			if err != nil {
++				t.Fatal(err)
++			}
++			text := string(out)
++			for _, want := range []string{tc.helper, "GTTFlatProducer"} {
++				if !strings.Contains(text, want) {
++					t.Fatalf("missing %q:\n%s", want, text)
++				}
++			}
++			if tc.name != "persistent field" && !strings.Contains(text, "GTTFlatProducerRef") {
++				t.Fatalf("compound write lost the previous producer:\n%s", text)
++			}
++			if _, err := parser.ParseFile(token.NewFileSet(), "rewritten.go", out, 0); err != nil {
++				t.Fatal(err)
++			}
++		})
++	}
++}
++
++func TestDirectCharacterSavedGetterIsCapturedOnce(t *testing.T) {
++	src := `package arbitrary
++import "github.com/genshinsim/gcsim/pkg/core/info"
++func (c *provider) run(ai *info.AttackInfo){
++ hp:=c.MaxHP()
++ ai.FlatDmg+=hp*2
++}`
++	fs := token.NewFileSet()
++	file, err := parser.ParseFile(fs, "x.go", src, 0)
++	if err != nil {
++		t.Fatal(err)
++	}
++	edits := snapshotFlatEdits(fs, fs.File(file.Pos()), file, nil)
++	if len(edits) != 2 {
++		t.Fatalf("edits=%d, want saved binding plus flat write", len(edits))
++	}
++	out, err := applyTextEdits([]byte(src), edits)
++	if err != nil {
++		t.Fatal(err)
++	}
++	text := string(out)
++	if strings.Count(text, "c.MaxHP()") != 2 || !strings.Contains(text, "gttSnapshotBinding_") || !strings.Contains(text, "GTTFlatProducerRef") {
++		t.Fatalf("saved getter was not captured at its original read:\n%s", text)
++	}
++	if _, err := parser.ParseFile(token.NewFileSet(), "rewritten.go", out, 0); err != nil {
++		t.Fatal(err)
++	}
++}
++
+ func TestSnapshotFlatFullTree(t *testing.T) {
+ 	root, _ := filepath.Abs(filepath.Join("..", ".."))
++	discovered, err := discoverSnapshotFlatFiles(root)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if !containsSnapshotFile(discovered, "internal/characters/chiori/cons.go") {
++		t.Fatalf("typed snapshot helper was not discovered: %v", discovered)
++	}
++	helperPath := filepath.Join(root, "internal", "characters", "chiori", "cons.go")
++	helperSource, err := os.ReadFile(helperPath)
++	if err != nil {
++		t.Fatal(err)
++	}
++	helperFS := token.NewFileSet()
++	helperFile, err := parser.ParseFile(helperFS, helperPath, helperSource, parser.SkipObjectResolution)
++	if err != nil {
++		t.Fatal(err)
++	}
++	if edits := snapshotFlatEdits(helperFS, helperFS.File(helperFile.Pos()), helperFile, nil); len(edits) == 0 {
++		t.Fatal("typed snapshot helper produced no direct edits")
++	}
+ 	m, err := Generate(Options{ModuleRoot: root, Binding: testBinding()})
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
++	chioriRuntimeEntries := []string{}
++	for _, entry := range m.Entries {
++		if entry.RelativeFile == "internal/characters/chiori/skill.go" && entry.Locator.Seam == KindQueuedAttack {
++			chioriRuntimeEntries = append(chioriRuntimeEntries, entry.traceRuntimePath+"|"+entry.traceRuntimeReason)
++		}
++	}
+ 	overlay, err := BuildOverlay(OverlayOptions{ModuleRoot: root, OverlayDir: filepath.Join(t.TempDir(), "overlay")}, m)
+ 	if err != nil {
+ 		t.Fatal(err)
+ 	}
++	foundNahida := false
++	foundChiori := false
++	foundDirect := map[string]string{
++		"internal/characters/albedo/burst.go":                "GTTReadTotalDef",
++		"internal/characters/itto/asc.go":                    "GTTReadTotalDef",
++		"internal/characters/baizhu/burst.go":                "GTTReadMaxHP",
++		"internal/characters/lanyan/attack.go":               "GTTReadStat",
++		"internal/characters/neuvillette/charge.go":          "GTTReadMaxHP",
++		"internal/characters/hutao/skill.go":                 "GTTReadMaxHP",
++		"internal/characters/razor/burst.go":                 "GTTReadTotalAtk",
++		"internal/characters/emilie/cons.go":                 "GTTReadTotalAtk",
++		"internal/characters/ayato/ayato.go":                 "GTTReadMaxHP",
++		"internal/characters/mualani/burst.go":               "GTTReadMaxHP",
++		"internal/characters/yelan/attack.go":                "GTTReadMaxHP",
++		"internal/characters/kokomi/cons.go":                 "GTTReadMaxHP",
++		"internal/characters/kokomi/burst.go":                "GTTReadMaxHP",
++		"internal/characters/mualani/attack.go":              "GTTReadMaxHP",
++		"internal/characters/sethos/attack.go":               "GTTReadStat",
++		"internal/characters/sethos/aimed.go":                "GTTReadStat",
++		"internal/characters/lanyan/burst.go":                "GTTReadStat",
++		"internal/characters/traveler/common/hydro/skill.go": "GTTReadMaxHP",
++	}
+ 	for _, f := range overlay.Files {
+ 		if f.RelativeFile == "internal/characters/nahida/skill.go" {
+ 			if !strings.Contains(string(f.Contents), "GTTSnapshotStatRef") || !strings.Contains(string(f.Contents), "GTTFlatProducer") {
+ 				t.Fatal("missing original snapshot flat producer")
+ 			}
+-			return
++			foundNahida = true
++		}
++		if f.RelativeFile == "internal/characters/chiori/skill.go" {
++			if !strings.Contains(string(f.Contents), "GTTSnapshotTotalRef") || !strings.Contains(string(f.Contents), "GTTFlatProducer") {
++				lines := []string{}
++				for _, line := range strings.Split(string(f.Contents), "\n") {
++					if strings.Contains(line, "FlatDmg") || strings.Contains(line, "Snapshot") {
++						lines = append(lines, line)
++					}
++				}
++				t.Fatalf("missing TotalDEF snapshot flat producer (entries=%v):\n%s", chioriRuntimeEntries, strings.Join(lines, "\n"))
++			}
++			foundChiori = true
++		}
++		if helper, wanted := foundDirect[f.RelativeFile]; wanted {
++			contents := string(f.Contents)
++			if !strings.Contains(contents, helper) || !strings.Contains(contents, "GTTFlatProducer") {
++				t.Fatalf("missing direct secondary scaling in %s", f.RelativeFile)
++			}
++			delete(foundDirect, f.RelativeFile)
++		}
++	}
++	if !foundNahida || !foundChiori {
++		t.Fatalf("missing overlay: nahida=%t chiori=%t", foundNahida, foundChiori)
++	}
++	if len(foundDirect) != 0 {
++		t.Fatalf("missing direct secondary-scaling overlays: %v", foundDirect)
++	}
++
++	overlayByFile := map[string]string{}
++	for _, f := range overlay.Files {
++		overlayByFile[f.RelativeFile] = string(f.Contents)
++	}
++	snapshotTotalFlat := regexp.MustCompile(`(?s)\.FlatDmg\s*=\s*[A-Za-z_][A-Za-z0-9_]*\.Stats\.(?:MaxHP|TotalATK|TotalDEF)\(\)`)
++	err = filepath.WalkDir(filepath.Join(root, "internal", "characters"), func(path string, entry os.DirEntry, walkErr error) error {
++		if walkErr != nil {
++			return walkErr
++		}
++		if entry.IsDir() || filepath.Ext(path) != ".go" || strings.HasSuffix(path, "_test.go") {
++			return nil
++		}
++		contents, readErr := os.ReadFile(path)
++		if readErr != nil {
++			return readErr
++		}
++		if !snapshotTotalFlat.Match(contents) {
++			return nil
++		}
++		relative, relErr := filepath.Rel(root, path)
++		if relErr != nil {
++			return relErr
++		}
++		relative = filepath.ToSlash(relative)
++		rewritten, exists := overlayByFile[relative]
++		if !strings.Contains(rewritten, "GTTSnapshotTotalRef") && !strings.Contains(rewritten, "GTTSnapshotPointerTotalRef") {
++			t.Errorf("snapshot total FlatDmg source was not instrumented: %s (overlay=%t)", relative, exists)
++		}
++		return nil
++	})
++	if err != nil {
++		t.Fatal(err)
++	}
++}
++
++func containsSnapshotFile(values []string, wanted string) bool {
++	for _, value := range values {
++		if value == wanted {
++			return true
+ 		}
+ 	}
+-	t.Fatal("missing overlay")
++	return false
+ }
+diff --git a/pkg/gttsourcegen/v6_test.go b/pkg/gttsourcegen/v6_test.go
+index 1e8a828..f9307d9 100644
+--- a/pkg/gttsourcegen/v6_test.go
++++ b/pkg/gttsourcegen/v6_test.go
+@@ -42,6 +42,29 @@ func TestV2IRIdentityAndNumericOperators(t *testing.T) {
+ 	}
+ }
+ 
++func TestNumericTemplateRecognizesAllTotalStatGetterSpellings(t *testing.T) {
++	fset := token.NewFileSet()
++	expr, err := parser.ParseExprFrom(fset, "formula.go", `c.MaxHP()+c.TotalAtk()+c.TotalDef(false)+snap.Stats.TotalATK()+snap.Stats.TotalDEF()`, 0)
++	if err != nil {
++		t.Fatal(err)
++	}
++	compiled := compileNumericTemplate(fset, expr, bindingSet{})
++	if compiled.template.Status != TemplateSupported {
++		t.Fatalf("total-stat formula opaque: %#v", compiled.template)
++	}
++	counts := map[string]int{}
++	for _, parameter := range compiled.parameters {
++		if parameter.Kind == "candidate_stat" {
++			counts[parameter.StatKey]++
++		}
++	}
++	for stat, want := range map[string]int{"max_hp": 1, "total_atk": 2, "total_def": 2} {
++		if counts[stat] != want {
++			t.Fatalf("%s parameters=%d, want %d (%#v)", stat, counts[stat], want, compiled.parameters)
++		}
++	}
++}
++
+ func TestV6TraceRuntimePathResolutionIsStructuralAndFailClosed(t *testing.T) {
+ 	root := writeMultiFileModule(t, map[string]string{
+ 		"trace_root.go": `package fixture

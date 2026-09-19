@@ -29,6 +29,16 @@ func contextIdentity(context RunContext) (string, error) {
 }
 
 func (request OptimizerRequest) Validate() error {
+	return request.validate(false)
+}
+
+// ValidateTheory keeps the ordinary optimizer contract strict while allowing
+// the inventory-independent Theory request expanded by DecodeTheoryRequest.
+func (request OptimizerRequest) ValidateTheory() error {
+	return request.validate(true)
+}
+
+func (request OptimizerRequest) validate(theory bool) error {
 	if err := validateHeader(request.SchemaVersion, request.SchemaKind, RequestSchemaKind); err != nil {
 		return err
 	}
@@ -81,10 +91,10 @@ func (request OptimizerRequest) Validate() error {
 	if err != nil {
 		return err
 	}
-	if err := request.validateWearers(artifacts); err != nil {
+	if err := request.validateWearers(artifacts, theory); err != nil {
 		return err
 	}
-	if err := request.validatePolicies(artifacts); err != nil {
+	if err := request.validatePolicies(artifacts, theory); err != nil {
 		return err
 	}
 	return nil
@@ -146,7 +156,7 @@ func validateStat(field string, stat StatValue) error {
 	return validateDecimal(field+".value", stat.Value)
 }
 
-func (request OptimizerRequest) validateWearers(artifacts map[int64]Artifact) error {
+func (request OptimizerRequest) validateWearers(artifacts map[int64]Artifact, theory bool) error {
 	if len(request.Wearers) != 4 {
 		return fmt.Errorf("wearers must contain exactly four characters")
 	}
@@ -162,8 +172,17 @@ func (request OptimizerRequest) validateWearers(artifacts map[int64]Artifact) er
 		if err := validateToken(field+".weapon_key", wearer.WeaponKey); err != nil {
 			return err
 		}
-		if err := validateSetRequirements(field, wearer); err != nil {
-			return err
+		if theory {
+			if wearer.SelectedSetUID != "" || len(wearer.SelectedSets) != 0 {
+				return fmt.Errorf("%s theory baseline must not select an initial set package", field)
+			}
+		} else {
+			if err := validateSetRequirements(field, wearer); err != nil {
+				return err
+			}
+		}
+		if wearer.TheoryBaseline != nil {
+			return fmt.Errorf("%s contains an unexpanded theory baseline", field)
 		}
 		if len(wearer.CurrentArtifacts) != len(canonicalSlots) {
 			return fmt.Errorf("%s.current_artifacts must contain five slots", field)
@@ -192,14 +211,20 @@ func (request OptimizerRequest) validateWearers(artifacts map[int64]Artifact) er
 	return nil
 }
 
-func (request OptimizerRequest) validatePolicies(artifacts map[int64]Artifact) error {
+func (request OptimizerRequest) validatePolicies(artifacts map[int64]Artifact, theory bool) error {
 	policy := request.Legality
-	if policy.FixedFourPiece == policy.FixedSetPackages || policy.MaxOffSetPiecesPerWearer != 1 || !policy.GloballyUniqueArtifactIDs || policy.DefaultMinimumRarity != 5 {
-		return fmt.Errorf("legality policy does not match Selected v1")
-	}
-	for _, wearer := range request.Wearers {
-		if policy.FixedFourPiece && len(wearer.SetRequirements()) != 1 {
-			return fmt.Errorf("fixed_four_piece policy cannot contain a 2+2 package")
+	if theory {
+		if !policy.TheorySearch || policy.FixedFourPiece || policy.FixedSetPackages || policy.MaxOffSetPiecesPerWearer != 0 || !policy.GloballyUniqueArtifactIDs || policy.DefaultMinimumRarity != 5 {
+			return fmt.Errorf("legality policy does not match Theory v1")
+		}
+	} else {
+		if policy.TheorySearch || policy.FixedFourPiece == policy.FixedSetPackages || policy.MaxOffSetPiecesPerWearer != 1 || !policy.GloballyUniqueArtifactIDs || policy.DefaultMinimumRarity != 5 {
+			return fmt.Errorf("legality policy does not match Selected v1")
+		}
+		for _, wearer := range request.Wearers {
+			if policy.FixedFourPiece && len(wearer.SetRequirements()) != 1 {
+				return fmt.Errorf("fixed_four_piece policy cannot contain a 2+2 package")
+			}
 		}
 	}
 	if policy.AuthorizedLowerRarityArtifactIDs == nil {

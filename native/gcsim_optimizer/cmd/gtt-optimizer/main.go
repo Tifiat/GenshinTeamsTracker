@@ -20,11 +20,16 @@ import (
 
 	"genshinteamstracker/native/gcsim_optimizer/internal/contracts"
 	"genshinteamstracker/native/gcsim_optimizer/internal/domain"
+	"genshinteamstracker/native/gcsim_optimizer/internal/energy"
 	"genshinteamstracker/native/gcsim_optimizer/internal/evaluator"
 	"genshinteamstracker/native/gcsim_optimizer/internal/finalists"
 	"genshinteamstracker/native/gcsim_optimizer/internal/search"
+	"genshinteamstracker/native/gcsim_optimizer/internal/setcontext"
 	"genshinteamstracker/native/gcsim_optimizer/internal/stochastic"
+	"genshinteamstracker/native/gcsim_optimizer/internal/theory"
 )
+
+const maxProductCandidates = 5
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -54,8 +59,20 @@ func run(ctx context.Context, arguments []string) error {
 	if len(arguments) == 4 && arguments[0] == "optimize-all-sets" {
 		return optimizeAllSets(ctx, arguments[1], arguments[2], arguments[3])
 	}
-	if len(arguments) != 2 || (arguments[0] != "validate-request" && arguments[0] != "validate-seed-member") {
-		return fmt.Errorf("usage: gtt-optimizer (validate-request|validate-seed-member) INPUT.json | (aggregate-fixed-panel|benchmark-fixed-panel) REQUEST.json COMPACT.json DELTAS.json [REPEATS] | search-fgbs REQUEST.json COMPACT.json | verify-fgbs REQUEST.json COMPACT.json RUN_ROOT (controls|all)")
+	if len(arguments) == 4 && arguments[0] == "optimize-theory" {
+		return optimizeTheory(ctx, arguments[1], arguments[2], arguments[3])
+	}
+	if len(arguments) == 3 && arguments[0] == "audit-set-sources" {
+		return auditSetSources(arguments[1], arguments[2])
+	}
+	if len(arguments) >= 4 && arguments[0] == "audit-theory-panel" {
+		return auditTheoryPanel(arguments[1], arguments[2:])
+	}
+	if len(arguments) >= 4 && arguments[0] == "audit-energy-ledger" {
+		return auditEnergyLedger(arguments[1], arguments[2:])
+	}
+	if len(arguments) != 2 || (arguments[0] != "validate-request" && arguments[0] != "validate-theory-request" && arguments[0] != "validate-seed-member") {
+		return fmt.Errorf("usage: gtt-optimizer (validate-request|validate-theory-request|validate-seed-member) INPUT.json | audit-set-sources REQUEST.json SOURCES.json | (aggregate-fixed-panel|benchmark-fixed-panel) REQUEST.json COMPACT.json DELTAS.json [REPEATS] | search-fgbs REQUEST.json COMPACT.json | verify-fgbs REQUEST.json COMPACT.json RUN_ROOT (controls|all) | (optimize-all-sets|optimize-theory) REQUEST.json SOURCES.json RUN_ROOT")
 	}
 	select {
 	case <-ctx.Done():
@@ -75,6 +92,12 @@ func run(ctx context.Context, arguments []string) error {
 			return fmt.Errorf("validate request: %w", err)
 		}
 		validated = request
+	case "validate-theory-request":
+		raw, request, err := contracts.DecodeTheoryRequest(payload)
+		if err != nil {
+			return fmt.Errorf("validate theory request: %w", err)
+		}
+		validated = map[string]any{"raw": raw, "expanded": request}
 	case "validate-seed-member":
 		member, err := contracts.DecodeSeedMember(payload)
 		if err != nil {
@@ -97,6 +120,88 @@ func run(ctx context.Context, arguments []string) error {
 	}
 	fmt.Fprintln(os.Stdout, identity)
 	return nil
+}
+
+func auditEnergyLedger(requestPath string, memberPaths []string) error {
+	payload, err := os.ReadFile(requestPath)
+	if err != nil {
+		return err
+	}
+	request, err := contracts.DecodeRequest(payload)
+	if err != nil {
+		return err
+	}
+	if len(memberPaths) != len(request.Stochastic.Seeds) {
+		return fmt.Errorf("one member path required per request seed")
+	}
+	members := make([]contracts.IRSeedMember, len(memberPaths))
+	for index, path := range memberPaths {
+		memberPayload, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		members[index], readErr = contracts.DecodeSeedMember(memberPayload)
+		if readErr != nil {
+			return readErr
+		}
+	}
+	artifactIndex, err := domain.Build(request, nil)
+	if err != nil {
+		return err
+	}
+	model, err := energy.Compile(artifactIndex, members)
+	if err != nil {
+		return err
+	}
+	assessment, err := model.Assess(artifactIndex.Incumbent)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(assessment)
+}
+
+func auditTheoryPanel(requestPath string, memberPaths []string) error {
+	payload, err := os.ReadFile(requestPath)
+	if err != nil {
+		return err
+	}
+	request, err := contracts.DecodeRequest(payload)
+	if err != nil {
+		return err
+	}
+	if len(memberPaths) != len(request.Stochastic.Seeds) {
+		return fmt.Errorf("one member path required per request seed")
+	}
+	members := make([]contracts.IRSeedMember, len(memberPaths))
+	for i, path := range memberPaths {
+		memberPayload, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		members[i], readErr = contracts.DecodeSeedMember(memberPayload)
+		if readErr != nil {
+			return readErr
+		}
+	}
+	actors := make([]string, len(request.Wearers))
+	for i, wearer := range request.Wearers {
+		actors[i] = wearer.WearerKey
+	}
+	panel, err := evaluator.CompileMembers(actors, request.Stochastic.Seeds, members)
+	if err != nil {
+		return err
+	}
+	started := time.Now()
+	result, err := theory.Solve(panel, request, theory.DefaultConfig())
+	if err != nil {
+		return err
+	}
+	output, err := json.MarshalIndent(map[string]any{"elapsed_ms": float64(time.Since(started)) / float64(time.Millisecond), "coordinates": len(panel.Coordinates()), "result": result}, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(os.Stdout, string(output))
+	return err
 }
 
 func verifyFGBS(ctx context.Context, requestPath, compactPath, runRoot, mode string) error {
@@ -141,7 +246,11 @@ func verifyFGBS(ctx context.Context, requestPath, compactPath, runRoot, mode str
 	if err != nil {
 		return fmt.Errorf("build artifact index: %w", err)
 	}
-	engine, err := search.New(artifactIndex, panel, search.DefaultConfig())
+	energyModel, err := compileEnergyConstraint(request, artifactIndex, compact.Members)
+	if err != nil {
+		return fmt.Errorf("compile energy constraint: %w", err)
+	}
+	engine, err := search.New(artifactIndex, panel, search.DefaultConfig(), energyModel)
 	if err != nil {
 		return err
 	}
@@ -150,6 +259,13 @@ func verifyFGBS(ctx context.Context, requestPath, compactPath, runRoot, mode str
 	searchResult, err := engine.Run(overall)
 	if err != nil {
 		return fmt.Errorf("FGBS search: %w", err)
+	}
+	if energyModel != nil && (searchResult.Energy == nil || !searchResult.Energy.Feasible) {
+		shortage := 0.0
+		if searchResult.Energy != nil {
+			shortage = searchResult.Energy.MaximumShortage
+		}
+		return fmt.Errorf("FGBS found no energy-feasible inventory assignment; remaining artifact ER deficit %.6f", shortage)
 	}
 	searchElapsed := time.Since(searchStarted)
 	if err := progress.emit("searching", 1, 5, false); err != nil {
@@ -204,7 +320,7 @@ func verifyFGBS(ctx context.Context, requestPath, compactPath, runRoot, mode str
 	if err != nil {
 		return fmt.Errorf("resolve debug receipt path: %w", err)
 	}
-	productResult, err := buildProductResult(request, compact, searchResult, verification, debugReceiptPath)
+	productResult, err := buildProductResult(request, compact, searchResult, verification, debugReceiptPath, energyModel)
 	if err != nil {
 		return err
 	}
@@ -269,12 +385,24 @@ func (emitter *progressEmitter) emit(stage string, completed, total int64, cance
 	return nil
 }
 
-func buildProductResult(request contracts.OptimizerRequest, compact contracts.CompactIR, searchResult search.Result, verification finalists.VerificationResult, debugReceiptPath string) (contracts.OptimizerResult, error) {
+func buildProductResult(request contracts.OptimizerRequest, compact contracts.CompactIR, searchResult search.Result, verification finalists.VerificationResult, debugReceiptPath string, energyModels ...*energy.Model) (contracts.OptimizerResult, error) {
 	compactSHA256, err := contracts.CanonicalSHA256(compact)
 	if err != nil {
 		return contracts.OptimizerResult{}, fmt.Errorf("identify product compact IR: %w", err)
 	}
-	return buildMeasuredProductResult(request, compactSHA256, "", searchResult.OpaqueReasons, nil, verification, debugReceiptPath)
+	result, err := buildMeasuredProductResult(request, compactSHA256, "", searchResult.OpaqueReasons, nil, verification, debugReceiptPath)
+	if err != nil || len(energyModels) == 0 || energyModels[0] == nil {
+		return result, err
+	}
+	assessment, err := energyModels[0].Assess(verification.Winner.Assignment)
+	if err != nil {
+		return contracts.OptimizerResult{}, fmt.Errorf("assess winner energy: %w", err)
+	}
+	result.Energy = energyProductResult(assessment)
+	if err = result.Validate(); err != nil {
+		return contracts.OptimizerResult{}, fmt.Errorf("validate energy product result: %w", err)
+	}
+	return result, nil
 }
 
 func buildMeasuredProductResult(request contracts.OptimizerRequest, compactSHA256, setPanelSHA256 string, opaqueReasons, extraWarnings []string, verification finalists.VerificationResult, debugReceiptPath string) (contracts.OptimizerResult, error) {
@@ -292,6 +420,9 @@ func buildMeasuredProductResult(request contracts.OptimizerRequest, compactSHA25
 	if verification.Adaptive != nil && verification.Adaptive.Status == finalists.AdaptiveUnresolvedPanelWide {
 		warnings = append(warnings, "adaptive_finalist_panel_too_wide")
 	}
+	if len(verification.EnergyRejectedSHA256) > 0 {
+		warnings = append(warnings, "final_energy_infeasible_candidates_rejected")
+	}
 	measuredOrder := append([]finalists.MeasuredCandidate(nil), verification.Candidates...)
 	sort.Slice(measuredOrder, func(i, j int) bool {
 		if measuredOrder[i].MeasuredDPS != measuredOrder[j].MeasuredDPS {
@@ -304,6 +435,12 @@ func buildMeasuredProductResult(request contracts.OptimizerRequest, compactSHA25
 		if measuredOrder[0].MeasuredDPS-measuredOrder[1].MeasuredDPS <= 1.96*combinedSE {
 			warnings = append(warnings, "measured_top_confidence_overlap")
 		}
+	}
+	// Search and verification deliberately keep a wider panel.  The product/UI
+	// surface only exposes the five strongest measured alternatives so lower
+	// diagnostic finalists are not presented as useful builds.
+	if len(measuredOrder) > maxProductCandidates {
+		measuredOrder = measuredOrder[:maxProductCandidates]
 	}
 	sort.Strings(warnings)
 	rankedCandidates := make([]contracts.RankedCandidateResult, 0, len(measuredOrder))
@@ -357,6 +494,48 @@ func productAssignments(request contracts.OptimizerRequest, assignment domain.As
 				ArtifactID: assignment[wearerIndex][slotIndex],
 			})
 		}
+	}
+	return result
+}
+
+func compileEnergyConstraint(request contracts.OptimizerRequest, index *domain.Index, members []contracts.IRSeedMember) (*energy.Model, error) {
+	ignore, err := setcontext.IgnoreBurstEnergy(request.Context.PreparedConfig.Text)
+	if err != nil {
+		return nil, err
+	}
+	if ignore {
+		return nil, nil
+	}
+	found := false
+	for _, capability := range request.Engine.Capabilities {
+		found = found || capability == "gtt_energy_ledger_v1"
+	}
+	if !found {
+		return nil, fmt.Errorf("finite energy requires gtt_energy_ledger_v1")
+	}
+	return energy.Compile(index, members)
+}
+
+func energyProductResult(assessment energy.Assessment) *contracts.EnergyResult {
+	result := &contracts.EnergyResult{
+		Feasible: assessment.Feasible, MaximumShortage: decimalText(assessment.MaximumShortage),
+		Wearers: make([]contracts.EnergyWearerResult, 0, len(assessment.Wearers)),
+	}
+	for _, wearer := range assessment.Wearers {
+		row := contracts.EnergyWearerResult{
+			WearerKey: wearer.WearerKey, ArtifactER: decimalText(wearer.ArtifactER),
+			RequiredArtifactER: decimalText(wearer.RequiredArtifactER), Margin: decimalText(wearer.Margin),
+			Feasible: wearer.Feasible, MaximumShortage: decimalText(wearer.MaximumShortage),
+			BurstDeadlines:   wearer.BurstDeadlines,
+			UncertaintyCodes: append([]string(nil), wearer.UncertaintyCodes...),
+			Sources:          make([]contracts.EnergySourceResult, 0, len(wearer.Sources)),
+		}
+		for _, source := range wearer.Sources {
+			row.Sources = append(row.Sources, contracts.EnergySourceResult{
+				Source: source.Source, ParticleRaw: decimalText(source.ParticleRaw), FlatObserved: decimalText(source.FlatObserved),
+			})
+		}
+		result.Wearers = append(result.Wearers, row)
 	}
 	return result
 }
@@ -466,7 +645,11 @@ func searchFGBS(ctx context.Context, requestPath, compactPath string) error {
 	if err != nil {
 		return fmt.Errorf("build artifact index: %w", err)
 	}
-	engine, err := search.New(artifactIndex, panel, search.DefaultConfig())
+	energyModel, err := compileEnergyConstraint(request, artifactIndex, compact.Members)
+	if err != nil {
+		return fmt.Errorf("compile energy constraint: %w", err)
+	}
+	engine, err := search.New(artifactIndex, panel, search.DefaultConfig(), energyModel)
 	if err != nil {
 		return err
 	}

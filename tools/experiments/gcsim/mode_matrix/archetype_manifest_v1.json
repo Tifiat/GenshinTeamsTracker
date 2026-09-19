@@ -1,0 +1,206 @@
+{
+  "schema_version": 1,
+  "name": "optimizer_virtual_archetype_mode_matrix_v1",
+  "db_path": "data/artifacts.db",
+  "scope": "infinite_energy_all_sets_and_theory_through_product_sessions",
+  "teams": {
+    "gaming_melt": {
+      "archetype": "melt_plunge",
+      "source_url": "https://gcsim.app/db/gtNnJTkcfcDg",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/gaming_melt_public.txt",
+      "expected_mechanics": ["melt", "hp_schedule", "atk", "em", "crit"],
+      "virtual_profiles": [
+        {"character_key": "gaming", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "serpentspine", "refinement": 1},
+        {"character_key": "citlali", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "thrillingtalesofdragonslayers", "refinement": 5},
+        {"character_key": "diona", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "favoniuswarbow", "refinement": 5},
+        {"character_key": "bennett", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "thealleyflash", "refinement": 1}
+      ]
+    },
+    "lunar_crystallize": {
+      "archetype": "lunar_crystallize_dual_scale",
+      "source_url": "https://gcsim.app/db/wNHmwLJH6RKJ",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/lunar_crystallize_public.txt",
+      "expected_mechanics": ["crystallize", "lunar_crystallize", "atk", "def", "hp", "em", "multi_owner"],
+      "virtual_profiles": [
+        {"character_key": "navia", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "serpentspine", "refinement": 1},
+        {"character_key": "xilonen", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "favoniussword", "refinement": 3},
+        {"character_key": "ineffa", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "balladofthefjords", "refinement": 1},
+        {"character_key": "columbina", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "sacrificialjade", "refinement": 1}
+      ]
+    },
+    "lunar_charged": {
+      "archetype": "lunar_charged_multi_owner_jahoda",
+      "source_url": "local_user_config_flins_columbina_ineffa_jahoda",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/lunar_charged_jahoda.txt",
+      "expected_mechanics": ["lunar_charged", "electro_charged", "atk", "hp", "em", "multi_owner", "cross_owner_em"],
+      "virtual_profiles": [
+        {"character_key": "flins", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "bloodsoakedruins", "refinement": 1},
+        {"character_key": "ineffa", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "fracturedhalo", "refinement": 1},
+        {"character_key": "columbina", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "sacrificialjade", "refinement": 1},
+        {"character_key": "jahoda", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "skywardharp", "refinement": 1}
+      ]
+    },
+    "lunar_bloom": {
+      "archetype": "lunar_bloom_hyperbloom_team_max_em",
+      "source_url": "local_user_config_columbina_kuki_lauma_nahida",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/bloom.txt",
+      "expected_mechanics": ["bloom", "lunar_bloom", "hyperbloom", "dendro", "hp", "em", "team_max_em", "multi_owner"],
+      "virtual_profiles": [
+        {"character_key": "columbina", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "thewidsith", "refinement": 5},
+        {"character_key": "kukishinobu", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "xiphosmoonlight", "refinement": 1},
+        {"character_key": "lauma", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "etherlightspindlelute", "refinement": 5},
+        {"character_key": "nahida", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "thewidsith", "refinement": 5}
+      ]
+    },
+    "bountiful_core": {
+      "archetype": "nilou_bountiful_core_transformative",
+      "source_url": "https://gcsim.app/db/QFCTCPwcrH9g",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/nilou_bountiful_core.txt",
+      "expected_mechanics": ["bloom", "bountiful_core", "hp", "em", "multi_owner", "healing"],
+      "virtual_profiles": [
+        {"character_key": "nilou", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "thedockhandsassistant", "refinement": 1},
+        {"character_key": "kaveh", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "favoniusgreatsword", "refinement": 3},
+        {"character_key": "nahida", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "thewidsith", "refinement": 3},
+        {"character_key": "xingqiu", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "xiphosmoonlight", "refinement": 1}
+      ]
+    },
+    "chiori_lunar_crystallize": {
+      "archetype": "chiori_atk_def_lunar_crystallize",
+      "source_url": "local_user_rotation_furina_xilonen_chiori_columbina",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/chiori_lunar_crystallize.txt",
+      "expected_mechanics": ["crystallize", "lunar_crystallize", "atk", "def", "hp", "dual_scale", "multi_owner"],
+      "virtual_profiles": [
+        {"character_key": "furina", "constellation": 2, "talents": [9, 10, 10], "weapon_key": "fleuvecendreferryman", "refinement": 5},
+        {"character_key": "xilonen", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "favoniussword", "refinement": 3},
+        {"character_key": "chiori", "constellation": 0, "talents": [9, 10, 9], "weapon_key": "fleuvecendreferryman", "refinement": 5},
+        {"character_key": "columbina", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "sacrificialjade", "refinement": 1}
+      ]
+    },
+    "spread": {
+      "archetype": "spread_team_max_em",
+      "source_url": "https://gcsim.app/db/qGdPFjmGbnGm",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/spread_public.txt",
+      "expected_mechanics": ["spread", "aggravate", "team_max_em", "em", "dendro"],
+      "virtual_profiles": [
+        {"character_key": "kukishinobu", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "xiphosmoonlight", "refinement": 1},
+        {"character_key": "fischl", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "thestringless", "refinement": 3},
+        {"character_key": "nahida", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "thewidsith", "refinement": 3},
+        {"character_key": "tighnari", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "slingshot", "refinement": 5}
+      ]
+    },
+    "aggravate": {
+      "archetype": "aggravate_swirl_cross_owner_em",
+      "source_url": "https://gcsim.app/db/LCHPRD6m7TtT",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/aggravate_public.txt",
+      "expected_mechanics": ["aggravate", "spread", "swirl", "cross_owner_em"],
+      "virtual_profiles": [
+        {"character_key": "keqing", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "wolffang", "refinement": 1},
+        {"character_key": "nahida", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "wanderingevenstar", "refinement": 1},
+        {"character_key": "fischl", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "thestringless", "refinement": 3},
+        {"character_key": "lanyan", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "hakushinring", "refinement": 5}
+      ]
+    },
+    "vaporize": {
+      "archetype": "vaporize_snapshot",
+      "source_url": "https://gcsim.app/db/hrwTfHDRG9z8",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/vaporize_public.txt",
+      "expected_mechanics": ["vaporize", "snapshot", "atk", "hp", "em"],
+      "virtual_profiles": [
+        {"character_key": "bennett", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "thealleyflash", "refinement": 1},
+        {"character_key": "xiangling", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "favoniuslance", "refinement": 5},
+        {"character_key": "furina", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "festeringdesire", "refinement": 5},
+        {"character_key": "xingqiu", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "wolffang", "refinement": 1}
+      ]
+    },
+    "burgeon": {
+      "archetype": "burgeon_bloom_freeze_shatter",
+      "source_url": "https://gcsim.app/db/cWBjFFQPJfFf",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/burgeon_public_solo_target.txt",
+      "expected_mechanics": ["bloom", "burgeon", "burning", "freeze", "shatter", "transformative_em"],
+      "virtual_profiles": [
+        {"character_key": "freminet", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "serpentspine", "refinement": 1},
+        {"character_key": "nahida", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "wanderingevenstar", "refinement": 1},
+        {"character_key": "xingqiu", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "favoniussword", "refinement": 3},
+        {"character_key": "thoma", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "kitaincrossspear", "refinement": 5}
+      ]
+    },
+    "burning": {
+      "archetype": "burning_direct_dendro",
+      "source_url": "https://gcsim.app/db/pm7j7grtQ6tc",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/burning_public.txt",
+      "expected_mechanics": ["burning", "total_atk", "dendro", "hp_schedule"],
+      "virtual_profiles": [
+        {"character_key": "kinich", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "serpentspine", "refinement": 1},
+        {"character_key": "emilie", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "deathmatch", "refinement": 1},
+        {"character_key": "dehya", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "sacrificialgreatsword", "refinement": 3},
+        {"character_key": "bennett", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "thealleyflash", "refinement": 1}
+      ]
+    },
+    "physical": {
+      "archetype": "physical_superconduct_freeze_shatter",
+      "source_url": "https://gcsim.app/db/mCzhk7WnqcrG",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/physical_public.txt",
+      "expected_mechanics": ["physical", "superconduct", "freeze", "shatter", "electro_charged"],
+      "virtual_profiles": [
+        {"character_key": "freminet", "constellation": 6, "talents": [10, 10, 10], "weapon_key": "songofbrokenpines", "refinement": 1},
+        {"character_key": "xingqiu", "constellation": 6, "talents": [1, 8, 10], "weapon_key": "favoniussword", "refinement": 5},
+        {"character_key": "fischl", "constellation": 6, "talents": [1, 10, 8], "weapon_key": "thestringless", "refinement": 5},
+        {"character_key": "mika", "constellation": 6, "talents": [1, 10, 8], "weapon_key": "rightfulreward", "refinement": 5}
+      ]
+    },
+    "overload": {
+      "archetype": "overload_chevreuse",
+      "source_url": "https://gcsim.app/db/cMK9BRcRJ7gF",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/overload_public.txt",
+      "expected_mechanics": ["overload", "atk", "hp", "em", "snapshot"],
+      "virtual_profiles": [
+        {"character_key": "keqing", "constellation": 0, "talents": [9, 9, 9], "weapon_key": "finaleofthedeep", "refinement": 5},
+        {"character_key": "chevreuse", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "favoniuslance", "refinement": 3},
+        {"character_key": "fischl", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "songofstillness", "refinement": 5},
+        {"character_key": "thoma", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "favoniuslance", "refinement": 3}
+      ]
+    },
+    "taser": {
+      "archetype": "electro_charged_swirl",
+      "source_url": "https://gcsim.app/db/GhDzJLWrGccr",
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/taser_public.txt",
+      "expected_mechanics": ["electro_charged", "swirl", "atk", "em", "snapshot"],
+      "virtual_profiles": [
+        {"character_key": "sucrose", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "hakushinring", "refinement": 5},
+        {"character_key": "beidou", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "serpentspine", "refinement": 1},
+        {"character_key": "fischl", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "alleyhunter", "refinement": 1},
+        {"character_key": "xingqiu", "constellation": 6, "talents": [9, 9, 9], "weapon_key": "wolffang", "refinement": 1}
+      ]
+    }
+  },
+  "runs": [
+    {"id": "gaming_melt_all_sets", "team": "gaming_melt", "mode": "all_sets", "infinite_energy": true},
+    {"id": "gaming_melt_theory", "team": "gaming_melt", "mode": "theory", "infinite_energy": true},
+    {"id": "lunar_crystallize_all_sets", "team": "lunar_crystallize", "mode": "all_sets", "infinite_energy": true},
+    {"id": "lunar_crystallize_theory", "team": "lunar_crystallize", "mode": "theory", "infinite_energy": true},
+    {"id": "lunar_charged_all_sets", "team": "lunar_charged", "mode": "all_sets", "infinite_energy": true},
+    {"id": "lunar_charged_theory", "team": "lunar_charged", "mode": "theory", "infinite_energy": true},
+    {"id": "lunar_bloom_all_sets", "team": "lunar_bloom", "mode": "all_sets", "infinite_energy": true},
+    {"id": "lunar_bloom_theory", "team": "lunar_bloom", "mode": "theory", "infinite_energy": true},
+    {"id": "bountiful_core_all_sets", "team": "bountiful_core", "mode": "all_sets", "infinite_energy": true},
+    {"id": "bountiful_core_theory", "team": "bountiful_core", "mode": "theory", "infinite_energy": true},
+    {"id": "chiori_lunar_crystallize_all_sets", "team": "chiori_lunar_crystallize", "mode": "all_sets", "infinite_energy": true},
+    {"id": "chiori_lunar_crystallize_theory", "team": "chiori_lunar_crystallize", "mode": "theory", "infinite_energy": true},
+    {"id": "spread_all_sets", "team": "spread", "mode": "all_sets", "infinite_energy": true},
+    {"id": "spread_theory", "team": "spread", "mode": "theory", "infinite_energy": true},
+    {"id": "aggravate_all_sets", "team": "aggravate", "mode": "all_sets", "infinite_energy": true},
+    {"id": "aggravate_theory", "team": "aggravate", "mode": "theory", "infinite_energy": true},
+    {"id": "vaporize_all_sets", "team": "vaporize", "mode": "all_sets", "infinite_energy": true},
+    {"id": "vaporize_theory", "team": "vaporize", "mode": "theory", "infinite_energy": true},
+    {"id": "burgeon_all_sets", "team": "burgeon", "mode": "all_sets", "infinite_energy": true},
+    {"id": "burgeon_theory", "team": "burgeon", "mode": "theory", "infinite_energy": true},
+    {"id": "burning_all_sets", "team": "burning", "mode": "all_sets", "infinite_energy": true},
+    {"id": "burning_theory", "team": "burning", "mode": "theory", "infinite_energy": true},
+    {"id": "physical_all_sets", "team": "physical", "mode": "all_sets", "infinite_energy": true},
+    {"id": "physical_theory", "team": "physical", "mode": "theory", "infinite_energy": true},
+    {"id": "overload_all_sets", "team": "overload", "mode": "all_sets", "infinite_energy": true},
+    {"id": "overload_theory", "team": "overload", "mode": "theory", "infinite_energy": true},
+    {"id": "taser_all_sets", "team": "taser", "mode": "all_sets", "infinite_energy": true},
+    {"id": "taser_theory", "team": "taser", "mode": "theory", "infinite_energy": true}
+  ]
+}

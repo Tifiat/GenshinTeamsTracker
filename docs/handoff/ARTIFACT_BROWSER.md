@@ -27,6 +27,7 @@ Key tables:
 - `artifact_builds`
 - `artifact_build_slots`
 - `artifact_build_targets`
+- `artifact_build_gcsim_targets`
 - `artifact_import_batches`
 
 Current artifact identity model:
@@ -42,7 +43,10 @@ Current artifact identity model:
 - Artiscan/GOOD set-key mapping lives in `artifact_sets.artiscan_set_key`;
 - browser icons come from `artifact_set_piece_icons.local_path` by `(set_uid, pos)`;
 - custom sets are `artifact_tags` + `artifact_tag_links`;
-- build presets use `artifact_builds`, `artifact_build_slots`, and `artifact_build_targets`.
+- account-backed build targets use `artifact_build_targets`; virtual catalog
+  targets use `artifact_build_gcsim_targets` keyed by stable GCSIM character
+  key. Reads project a virtual target as the single ordinary account target as
+  soon as a ready `account_characters.gcsim_character_key` match exists.
 - `artifacts.fingerprint` is kept for legacy/current HoYoLAB identity behavior.
 - `artifacts.content_fingerprint` is source-independent and is based on normalized artifact content:
   set_uid, position, rarity, level, main stat type/value, and sorted substat type/value pairs.
@@ -55,6 +59,15 @@ Build preset target model:
 - targets are ownership/category filters, not equipment/apply state;
 - selecting multiple targets in the UI means intersection: show presets whose target set contains all selected targets;
 - Universal is only included when Universal itself is selected.
+- a virtual GCSIM character may own a browse/preset target but is never an
+  equipment operation target; no artifact click can equip an absent account
+  character;
+- target identity is the stable GCSIM key, never the localized/display name.
+  When the matching account character later exists, the browser suppresses the
+  virtual row and exposes one account-backed target/tab rather than duplicates.
+  Dedicated lookup/validation by stable GCSIM key accepts either the original
+  virtual target row or an ordinary account-character target saved after this
+  logical merge, so the virtual run-profile picker does not lose the build.
 
 
 Old per-artifact icon cache code is removed. Do not restore `artifact_icons`,

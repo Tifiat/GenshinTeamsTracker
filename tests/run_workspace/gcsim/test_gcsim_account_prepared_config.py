@@ -4,6 +4,8 @@ import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from run_workspace.gcsim.account_prepared_config import (
     ARTIFACT_SOURCE_CURRENT_EQUIPPED,
@@ -13,6 +15,7 @@ from run_workspace.gcsim.account_prepared_config import (
     WARNING_DEV_WEAPON_CANDIDATE_NOT_ACCOUNT_TRUTH,
     build_account_prepared_full_config_report,
     build_account_prepared_team_payload,
+    _active_artifact_set_shortcut_source,
     override_rotation_shell_energy_line,
 )
 from run_workspace.gcsim.config_talents import (
@@ -21,6 +24,25 @@ from run_workspace.gcsim.config_talents import (
 
 
 class GcsimAccountPreparedConfigTest(unittest.TestCase):
+    def test_default_artifact_registry_tracks_active_engine_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            engine_root = Path(temp_dir) / "engine"
+            source = engine_root / "pkg" / "shortcut" / "artifact.dm.go"
+            source.parent.mkdir(parents=True)
+            source.write_text(
+                'var SetNameToKey = map[string]keys.Set{"newset": keys.NewSet}\n',
+                encoding="utf-8",
+            )
+            with patch(
+                "run_workspace.gcsim.engine_store.GcsimEngineStore"
+            ) as store_type:
+                store_type.return_value.get_active_engine.return_value = SimpleNamespace(
+                    path=engine_root
+                )
+                resolved = _active_artifact_set_shortcut_source()
+
+        self.assertEqual(resolved, source)
+
     def test_dev_energy_override_replaces_shell_energy_line(self) -> None:
         text, replaced = override_rotation_shell_energy_line(
             "options swap_delay=12;\nenergy every interval=480,720 amount=1;\nactive furina;\n"

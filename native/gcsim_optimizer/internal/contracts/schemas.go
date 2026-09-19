@@ -41,11 +41,25 @@ type ArtifactAssignment struct {
 }
 
 type Wearer struct {
-	WearerKey        string               `json:"wearer_key"`
-	WeaponKey        string               `json:"weapon_key"`
-	SelectedSetUID   string               `json:"selected_set_uid,omitempty"`
-	SelectedSets     []SetRequirement     `json:"selected_sets,omitempty"`
-	CurrentArtifacts []ArtifactAssignment `json:"current_artifacts"`
+	WearerKey        string                  `json:"wearer_key"`
+	WeaponKey        string                  `json:"weapon_key"`
+	SelectedSetUID   string                  `json:"selected_set_uid,omitempty"`
+	SelectedSets     []SetRequirement        `json:"selected_sets,omitempty"`
+	CurrentArtifacts []ArtifactAssignment    `json:"current_artifacts"`
+	TheoryBaseline   *TheoryArtifactBaseline `json:"theory_baseline,omitempty"`
+}
+
+// TheoryArtifactBaseline is a non-owned five-main anchor used only while
+// capturing and solving a theoretical profile. It is expanded to private
+// in-memory artifacts by DecodeTheoryRequest and never claims account IDs.
+type TheoryArtifactBaseline struct {
+	MainStats []TheoryMainStat `json:"main_stats"`
+}
+
+type TheoryMainStat struct {
+	Slot  string `json:"slot"`
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 type SetRequirement struct {
@@ -80,6 +94,7 @@ type Artifact struct {
 type LegalityPolicy struct {
 	FixedFourPiece                   bool    `json:"fixed_four_piece"`
 	FixedSetPackages                 bool    `json:"fixed_set_packages,omitempty"`
+	TheorySearch                     bool    `json:"theory_search,omitempty"`
 	MaxOffSetPiecesPerWearer         int     `json:"max_off_set_pieces_per_wearer"`
 	GloballyUniqueArtifactIDs        bool    `json:"globally_unique_artifact_ids"`
 	DefaultMinimumRarity             int     `json:"default_minimum_rarity"`
@@ -155,6 +170,35 @@ type IROpaqueBoundary struct {
 	BaselineDamageShare string `json:"baseline_damage_share"`
 }
 
+type IREnergyCharacterState struct {
+	CharacterIndex int    `json:"character_index"`
+	CharacterKey   string `json:"character_key"`
+	Energy         string `json:"energy"`
+	EnergyMax      string `json:"energy_max"`
+}
+
+type IREnergyEvent struct {
+	SequenceIndex  int     `json:"sequence_index"`
+	Frame          int     `json:"frame"`
+	CharacterIndex int     `json:"character_index"`
+	CharacterKey   string  `json:"character_key"`
+	Kind           string  `json:"kind"`
+	Source         string  `json:"source"`
+	EnergyBefore   string  `json:"energy_before"`
+	EnergyAfter    string  `json:"energy_after"`
+	EnergyMax      string  `json:"energy_max"`
+	Amount         string  `json:"amount"`
+	RawAtER100     *string `json:"raw_at_er_100,omitempty"`
+	ObservedER     *string `json:"observed_er,omitempty"`
+	OnField        *bool   `json:"on_field,omitempty"`
+}
+
+type IREnergyLedger struct {
+	InitialStates    []IREnergyCharacterState `json:"initial_states"`
+	Events           []IREnergyEvent          `json:"events"`
+	UncertaintyCodes []string                 `json:"uncertainty_codes"`
+}
+
 type IRSeedMember struct {
 	Seed             uint64             `json:"seed"`
 	DurationMS       int64              `json:"duration_ms"`
@@ -162,6 +206,7 @@ type IRSeedMember struct {
 	Nodes            []IRNode           `json:"nodes"`
 	Channels         []IRChannel        `json:"channels"`
 	OpaqueBoundaries []IROpaqueBoundary `json:"opaque_boundaries"`
+	EnergyLedger     *IREnergyLedger    `json:"energy_ledger,omitempty"`
 }
 
 type CompactIR struct {
@@ -206,6 +251,30 @@ type RankedCandidateResult struct {
 	FormulaResidual string               `json:"formula_residual"`
 }
 
+type EnergySourceResult struct {
+	Source       string `json:"source"`
+	ParticleRaw  string `json:"particle_raw_at_er_100"`
+	FlatObserved string `json:"flat_observed"`
+}
+
+type EnergyWearerResult struct {
+	WearerKey          string               `json:"wearer_key"`
+	ArtifactER         string               `json:"artifact_er"`
+	RequiredArtifactER string               `json:"required_artifact_er"`
+	Margin             string               `json:"artifact_er_margin"`
+	Feasible           bool                 `json:"feasible"`
+	MaximumShortage    string               `json:"maximum_shortage"`
+	BurstDeadlines     int                  `json:"burst_deadlines"`
+	Sources            []EnergySourceResult `json:"sources"`
+	UncertaintyCodes   []string             `json:"uncertainty_codes"`
+}
+
+type EnergyResult struct {
+	Feasible        bool                 `json:"feasible"`
+	MaximumShortage string               `json:"maximum_shortage"`
+	Wearers         []EnergyWearerResult `json:"wearers"`
+}
+
 type OptimizerResult struct {
 	SchemaVersion         int                     `json:"schema_version"`
 	SchemaKind            string                  `json:"schema_kind"`
@@ -219,6 +288,7 @@ type OptimizerResult struct {
 	Measured              *MeasuredResult         `json:"measured,omitempty"`
 	FormulaResidual       string                  `json:"formula_residual,omitempty"`
 	Warnings              []string                `json:"warnings"`
+	Energy                *EnergyResult           `json:"energy,omitempty"`
 	DebugReceiptPath      string                  `json:"debug_receipt_path,omitempty"`
 	Error                 *ResultError            `json:"error,omitempty"`
 }

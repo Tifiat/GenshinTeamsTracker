@@ -16,6 +16,8 @@ import re
 import sqlite3
 from typing import Any
 
+from hoyolab_export.artifact_db import calculate_raw_build_summary
+
 from .optimizer_artifact_database import GcsimOptimizerArtifactDatabaseInput
 from .optimizer_artifact_materializer import (
     materialize_gcsim_optimizer_artifact_stat_vector,
@@ -210,6 +212,7 @@ def load_selected_equipped_team_snapshot(
     *,
     artifact_database: GcsimOptimizerArtifactDatabaseInput,
     character_keys: tuple[str, ...],
+    virtual_character_keys: tuple[str, ...] = (),
 ) -> SelectedEquippedTeamSnapshot:
     """Read the exact four current-equipment rows in one read-only transaction."""
 
@@ -218,6 +221,15 @@ def load_selected_equipped_team_snapshot(
     if len(character_keys) != 4 or len(set(character_keys)) != 4:
         raise GcsimOptimizerGoSelectedInputError(
             "snapshot requires four character keys"
+        )
+    normalized_virtual_keys = tuple(
+        sorted({str(key).strip().casefold() for key in virtual_character_keys})
+    )
+    if any(not key for key in normalized_virtual_keys) or not set(
+        normalized_virtual_keys
+    ).issubset({key.casefold() for key in character_keys}):
+        raise GcsimOptimizerGoSelectedInputError(
+            "virtual snapshot keys must belong to the selected team"
         )
     path = Path(database_path).expanduser().resolve()
     if not path.is_file():
@@ -245,6 +257,7 @@ def load_selected_equipped_team_snapshot(
             f"selected equipment read failed: {exc}"
         ) from exc
 
+    virtual_key_set = set(normalized_virtual_keys)
     frozen_rows = tuple(
         (
             int(row["character_id"]),
@@ -253,34 +266,59 @@ def load_selected_equipped_team_snapshot(
             int(row["artifact_id"]),
         )
         for row in rows
-    )
-    equipment_rows_sha256 = canonical_sha256(
-        {
-            "kind": "gtt.optimizer.selected_equipment_rows.v1",
-            "rows": [list(row) for row in frozen_rows],
-        }
+        if str(row["gcsim_character_key"]).casefold() not in virtual_key_set
     )
     by_key: dict[str, list[tuple[int, str, int]]] = {}
     for character_id, key, slot, artifact_id in frozen_rows:
         by_key.setdefault(key, []).append((character_id, slot, artifact_id))
 
+    unavailable_artifact_ids = {
+        artifact_id for _character_id, _key, _slot, artifact_id in frozen_rows
+    }
+    virtual_assignments: dict[str, dict[str, int]] = {}
+    for key in normalized_virtual_keys:
+        slots = _select_virtual_inventory_anchor(
+            artifact_database,
+            unavailable_artifact_ids=unavailable_artifact_ids,
+        )
+        virtual_assignments[key] = slots
+        unavailable_artifact_ids.update(slots.values())
+    equipment_rows_sha256 = canonical_sha256(
+        {
+            "kind": "gtt.optimizer.selected_equipment_rows.v1",
+            "rows": [list(row) for row in frozen_rows],
+            "service_only_virtual_rows": [
+                [key, slot, artifact_id]
+                for key in normalized_virtual_keys
+                for slot, artifact_id in sorted(virtual_assignments[key].items())
+            ],
+        }
+    )
+
     wearers: list[SelectedEquippedWearer] = []
     for team_slot, character_key in enumerate(character_keys, start=1):
-        actor_rows = by_key.get(character_key.casefold(), [])
-        character_ids = {row[0] for row in actor_rows}
-        if len(character_ids) != 1:
-            raise GcsimOptimizerGoSelectedInputError(
-                f"selected actor {character_key!r} equipment owner is ambiguous"
-            )
-        slots = {slot: artifact_id for _id, slot, artifact_id in actor_rows}
+        normalized_key = character_key.casefold()
+        if normalized_key in virtual_key_set:
+            character_ids: set[int] = set()
+            slots = virtual_assignments[normalized_key]
+            account_character_id = None
+        else:
+            actor_rows = by_key.get(normalized_key, [])
+            character_ids = {row[0] for row in actor_rows}
+            if len(character_ids) != 1:
+                raise GcsimOptimizerGoSelectedInputError(
+                    f"selected actor {character_key!r} equipment owner is ambiguous"
+                )
+            slots = {slot: artifact_id for _id, slot, artifact_id in actor_rows}
+            account_character_id = next(iter(character_ids))
         if set(slots) != set(GCSIM_OPTIMIZER_ARTIFACT_SLOTS):
             raise GcsimOptimizerGoSelectedInputError(
                 f"selected actor {character_key!r} needs all five equipped slots"
             )
         wearer = GcsimOptimizerWearerIdentity(
             team_slot=team_slot,
-            account_character_id=next(iter(character_ids)),
-            gcsim_character_key=character_key.casefold(),
+            account_character_id=account_character_id,
+            gcsim_character_key=normalized_key,
         )
         assignment = GcsimOptimizerWearerArtifactAssignment(
             wearer=wearer,
@@ -319,6 +357,117 @@ def load_selected_equipped_team_snapshot(
         character_keys=tuple(key.casefold() for key in character_keys),
         wearers=tuple(wearers),
     )
+
+
+def load_virtual_inventory_baseline_summaries(
+    database_path: str | Path,
+    *,
+    snapshot: SelectedEquippedTeamSnapshot,
+) -> dict[str, dict[str, Any]]:
+    """Materialize exact service-only virtual anchors for config rendering."""
+
+    path = Path(database_path).expanduser().resolve()
+    if not path.is_file():
+        raise GcsimOptimizerGoSelectedInputError(
+            "virtual baseline database does not exist"
+        )
+    result: dict[str, dict[str, Any]] = {}
+    try:
+        with sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True) as conn:
+            conn.row_factory = sqlite3.Row
+            conn.execute("BEGIN")
+            for row in snapshot.wearers:
+                if row.wearer.account_character_id is not None:
+                    continue
+                slots = {
+                    index: row.assignment.artifact_ids_by_slot[slot]
+                    for index, slot in enumerate(
+                        GCSIM_OPTIMIZER_ARTIFACT_SLOTS, start=1
+                    )
+                }
+                result[row.wearer.gcsim_character_key] = calculate_raw_build_summary(
+                    conn,
+                    slots=slots,
+                )
+            conn.rollback()
+    except (sqlite3.Error, ValueError) as exc:
+        raise GcsimOptimizerGoSelectedInputError(
+            f"virtual inventory baseline materialization failed: {exc}"
+        ) from exc
+    return result
+
+
+def _select_virtual_inventory_anchor(
+    artifact_database: GcsimOptimizerArtifactDatabaseInput,
+    *,
+    unavailable_artifact_ids: set[int],
+) -> dict[str, int]:
+    """Choose a deterministic weak 4p anchor without persisting equipment."""
+
+    eligible = tuple(
+        artifact
+        for artifact in artifact_database.artifacts
+        if artifact.default_eligible
+        and artifact.artifact_id not in unavailable_artifact_ids
+    )
+    by_set_and_slot: dict[str, dict[str, list[Any]]] = {}
+    for artifact in eligible:
+        if not artifact.gcsim_set_key:
+            continue
+        by_set_and_slot.setdefault(artifact.set_uid, {}).setdefault(
+            artifact.position_key, []
+        ).append(artifact)
+    for slots in by_set_and_slot.values():
+        for rows in slots.values():
+            rows.sort(key=_virtual_anchor_artifact_order)
+
+    proposals: list[tuple[tuple[Any, ...], dict[str, int]]] = []
+    for set_uid, set_slots in sorted(by_set_and_slot.items()):
+        if len(set_slots) < 4:
+            continue
+        for off_slot in GCSIM_OPTIMIZER_ARTIFACT_SLOTS:
+            required = tuple(
+                slot for slot in GCSIM_OPTIMIZER_ARTIFACT_SLOTS if slot != off_slot
+            )
+            if any(slot not in set_slots for slot in required):
+                continue
+            chosen = {slot: set_slots[slot][0] for slot in required}
+            used = {row.artifact_id for row in chosen.values()}
+            off_candidates = sorted(
+                (
+                    artifact
+                    for artifact in eligible
+                    if artifact.position_key == off_slot
+                    and artifact.artifact_id not in used
+                ),
+                key=lambda artifact: (
+                    artifact.set_uid == set_uid,
+                    *_virtual_anchor_artifact_order(artifact),
+                ),
+            )
+            if not off_candidates:
+                continue
+            chosen[off_slot] = off_candidates[0]
+            assignment = {
+                slot: chosen[slot].artifact_id
+                for slot in GCSIM_OPTIMIZER_ARTIFACT_SLOTS
+            }
+            score = (
+                sum(max(0, int(row.level or 0)) for row in chosen.values()),
+                set_uid,
+                tuple(assignment[slot] for slot in GCSIM_OPTIMIZER_ARTIFACT_SLOTS),
+            )
+            proposals.append((score, assignment))
+    if not proposals:
+        raise GcsimOptimizerGoSelectedInputError(
+            "no complete 4p inventory anchor is available for the virtual character"
+        )
+    proposals.sort(key=lambda row: row[0])
+    return proposals[0][1]
+
+
+def _virtual_anchor_artifact_order(artifact: Any) -> tuple[int, int]:
+    return max(0, int(artifact.level or 0)), int(artifact.artifact_id)
 
 
 def bind_selected_report_config_and_snapshot(
@@ -459,4 +608,5 @@ __all__ = [
     "bind_selected_report_config_and_snapshot",
     "enforce_gcsim_optimizer_mvp_energy_policy",
     "load_selected_equipped_team_snapshot",
+    "load_virtual_inventory_baseline_summaries",
 ]

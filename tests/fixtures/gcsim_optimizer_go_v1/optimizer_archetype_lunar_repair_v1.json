@@ -1,0 +1,1076 @@
+{
+  "date": "2026-09-19",
+  "generated_state_removed_on_exit": true,
+  "manifest": "optimizer_virtual_archetype_mode_matrix_v1",
+  "runs": [
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 6406.0,
+        "mode": "theory",
+        "optimizer_process_ms": 94047.0,
+        "prepare_inputs_ms": 5219.0,
+        "request_preflight_ms": 78.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 105750.0
+      },
+      "archetype": "lunar_crystallize_dual_scale",
+      "characters": [
+        "navia",
+        "xilonen",
+        "ineffa",
+        "columbina"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 105750,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [
+        "crystallize",
+        "lunar_crystallize",
+        "atk",
+        "def",
+        "hp",
+        "em",
+        "multi_owner"
+      ],
+      "id": "lunar_crystallize_theory",
+      "infinite_energy": true,
+      "mode": "theory",
+      "product": {
+        "candidates": [
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 4,
+                    "stat_key": "em",
+                    "stat_value": 93.24
+                  },
+                  {
+                    "roll_units": 11,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.6413
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 10.25,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.597575
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 4.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.165325
+                  },
+                  {
+                    "roll_units": 0.5,
+                    "stat_key": "em",
+                    "stat_value": 11.655
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 6.5,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.37895
+                  },
+                  {
+                    "roll_units": 29.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.2727250000000003
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "navia"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "def_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.951825
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  },
+                  {
+                    "roll_units": 23.5,
+                    "stat_key": "def_percent",
+                    "stat_value": 1.7131500000000002
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": 137312.89074331726,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "contributor_group_unproven",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "nonstat_formula_provenance_missing",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "terminal_observation_incomplete",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "tenacityofthemillelith"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "finaleofthedeepgalleries"
+                  }
+                ],
+                "wearer_key": "navia"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "rank": 1,
+            "source": "wearer_diversity"
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "em",
+                    "stat_value": 69.92999999999999
+                  },
+                  {
+                    "roll_units": 12,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.6996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.626725
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 4.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.165325
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 8.5,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.49555
+                  },
+                  {
+                    "roll_units": 27.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.117325
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "navia"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "def_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.951825
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  },
+                  {
+                    "roll_units": 23.5,
+                    "stat_key": "def_percent",
+                    "stat_value": 1.7131500000000002
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": 134742.43549562217,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "contributor_group_unproven",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "nonstat_formula_provenance_missing",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "terminal_observation_incomplete",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "goldentroupe"
+                  }
+                ],
+                "wearer_key": "navia"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "rank": 2,
+            "source": "wearer_diversity"
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "em",
+                    "stat_value": 69.92999999999999
+                  },
+                  {
+                    "roll_units": 12,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.6996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 10.5,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.61215
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 4.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.165325
+                  },
+                  {
+                    "roll_units": 0.25,
+                    "stat_key": "em",
+                    "stat_value": 5.8275
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 7,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.40809999999999996
+                  },
+                  {
+                    "roll_units": 28.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.2338750000000003
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "navia"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "def_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.951825
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  },
+                  {
+                    "roll_units": 23.5,
+                    "stat_key": "def_percent",
+                    "stat_value": 1.7131500000000002
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": 133495.8513751762,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "contributor_group_unproven",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "nonstat_formula_provenance_missing",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "terminal_observation_incomplete",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "finaleofthedeepgalleries"
+                  }
+                ],
+                "wearer_key": "navia"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "noblesseoblige"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "rank": 3,
+            "source": "wearer_diversity"
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "em",
+                    "stat_value": 69.92999999999999
+                  },
+                  {
+                    "roll_units": 12,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.6996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.626725
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 4.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.165325
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 8,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.4664
+                  },
+                  {
+                    "roll_units": 27.75,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.156175
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "navia"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "def_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.951825
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  },
+                  {
+                    "roll_units": 23.5,
+                    "stat_key": "def_percent",
+                    "stat_value": 1.7131500000000002
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": 131526.7546933362,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "contributor_group_unproven",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "nonstat_formula_provenance_missing",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "terminal_observation_incomplete",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "noblesseoblige"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "finaleofthedeepgalleries"
+                  }
+                ],
+                "wearer_key": "navia"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "rank": 4,
+            "source": "wearer_diversity"
+          },
+          {
+            "allocations": [
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "hp_percent",
+                  "plume": "atk",
+                  "sands": "em"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 3,
+                    "stat_key": "em",
+                    "stat_value": 69.92999999999999
+                  },
+                  {
+                    "roll_units": 12,
+                    "stat_key": "hp_percent",
+                    "stat_value": 0.6996
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "columbina"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "atk_percent",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 10.75,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.626725
+                  },
+                  {
+                    "roll_units": 30,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.331
+                  },
+                  {
+                    "roll_units": 4.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.165325
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "ineffa"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "atk_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 8.25,
+                    "stat_key": "atk_percent",
+                    "stat_value": 0.480975
+                  },
+                  {
+                    "roll_units": 27.5,
+                    "stat_key": "crit_damage",
+                    "stat_value": 2.13675
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "navia"
+              },
+              {
+                "main_stats": {
+                  "circlet": "crit_rate",
+                  "flower": "hp",
+                  "goblet": "geo_damage_bonus",
+                  "plume": "atk",
+                  "sands": "def_percent"
+                },
+                "spent_roll_units": 45,
+                "substats": [
+                  {
+                    "roll_units": 12.25,
+                    "stat_key": "crit_damage",
+                    "stat_value": 0.951825
+                  },
+                  {
+                    "roll_units": 9.25,
+                    "stat_key": "crit_rate",
+                    "stat_value": 0.35982499999999995
+                  },
+                  {
+                    "roll_units": 23.5,
+                    "stat_key": "def_percent",
+                    "stat_value": 1.7131500000000002
+                  }
+                ],
+                "unspent_roll_units": 0,
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": 129724.55229146688,
+            "opaque_reasons": [
+              "attack_field_operand_dependency_frozen",
+              "attack_mod_closure_expression_collapsed",
+              "callback_provider_unattributed",
+              "captured_scalar_schedule_frozen",
+              "contributor_group_unproven",
+              "contributor_membership_schedule_frozen",
+              "flat_damage_previous_producer_missing",
+              "flat_dmg_expression_collapsed",
+              "gadget_wave_state_lineage_not_instrumented",
+              "max_hp_candidate_dependency_incomplete",
+              "modifier_candidate_dependency_incomplete",
+              "modifier_source_parameter_binding_incomplete",
+              "multiplier_source_expression_not_instrumented",
+              "nonstat_formula_provenance_missing",
+              "numeric_expression_candidate_dependency_incomplete",
+              "numeric_marker_replay_not_recomputed",
+              "numeric_recipe_input_frozen_atk_elevation",
+              "numeric_recipe_input_frozen_atk_info_mult",
+              "numeric_recipe_input_frozen_defmod",
+              "numeric_recipe_input_frozen_elevation",
+              "numeric_recipe_input_frozen_grpmult",
+              "numeric_recipe_input_frozen_mult",
+              "post_damage_callback_state_effects_unmodeled",
+              "provider_transition_timeline_incomplete",
+              "reaction_bonus_provider_paths_incomplete",
+              "reaction_bonus_provider_unattributed",
+              "reaction_bonus_schedule_frozen",
+              "reaction_parent_lineage_not_instrumented",
+              "reaction_topology_aggregate_only",
+              "saved_stat_vector_schedule_frozen",
+              "stat_mod_dependency_expression_collapsed",
+              "stat_read_external_dependencies_incomplete",
+              "stats_container_observed_schedule",
+              "terminal_observation_incomplete",
+              "unknown_reaction_operator",
+              "untyped_callback_state_effects_unmodeled"
+            ],
+            "packages": [
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "bloodstainedchivalry"
+                  }
+                ],
+                "wearer_key": "navia"
+              },
+              {
+                "sets": [
+                  {
+                    "count": 4,
+                    "set_uid": "silkenmoonsserenade"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "rank": 5,
+            "source": "unresolved"
+          }
+        ],
+        "coverage": {
+          "catalog_sets": 42,
+          "contexts_evaluated": 8,
+          "contexts_limit": 8,
+          "packages_considered": 3612,
+          "packages_shortlisted": 12,
+          "unqueued_packages": 3600
+        },
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_theory_result_v1",
+        "status": "success",
+        "warnings": [
+          "theory_guidance_not_owned_artifacts",
+          "bounded_set_shortlist_not_global_optimum"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/lunar_crystallize_public.txt",
+      "source_url": "https://gcsim.app/db/wNHmwLJH6RKJ",
+      "status": "success",
+      "success": true,
+      "wall_seconds": 105.79699999996228
+    }
+  ],
+  "schema_version": 1,
+  "scope": "same_request_and_session_classes_as_optimizer_Qt_buttons",
+  "status": "measurement_only_pending_user_review"
+}

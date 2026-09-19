@@ -212,6 +212,12 @@ inside the immutable bundle during Save. Bundle-local paths are conveniences,
 not identity. History must remain complete after account data, DBs, caches, and
 original asset paths are removed.
 
+Live virtual GCSIM slot overrides are not occupied account slots and are not
+serialized by ordinary Run Save. `AppShellController` renders them only in the
+live panel and sends them through the selected-team GCSIM payload. Snapshot
+construction requests the base account `TeamBuilderState` projection so an
+absent catalog character cannot become immutable account/history truth.
+
 ## Snapshot Presentation Adapter
 
 - Snapshot JSON remains frozen domain/display truth. Do not serialize QWidget

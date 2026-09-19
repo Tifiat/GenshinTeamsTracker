@@ -1,0 +1,259 @@
+diff --git a/pkg/gttsourcegen/model.go b/pkg/gttsourcegen/model.go
+index 046c4f0..724c0cd 100644
+--- a/pkg/gttsourcegen/model.go
++++ b/pkg/gttsourcegen/model.go
+@@ -233,21 +233,22 @@ type SourceEntry struct {
+ 	SourceNodeSHA256 string        `json:"source_node_sha256"`
+ 	Template         SliceTemplate `json:"template"`
+ 
+-	LookupKey          string               `json:"-"`
+-	RelativeFile       string               `json:"-"`
+-	Line               int                  `json:"-"`
+-	Column             int                  `json:"-"`
+-	parameterPlans     []parameterPlan      `json:"-"`
+-	modifierOutput     *modifierOutputPlan  `json:"-"`
+-	savedVector        *savedVectorPlan     `json:"-"`
+-	capturedScalar     *capturedScalarPlan  `json:"-"`
+-	healthInput        *healthInputPlan     `json:"-"`
+-	callback           *callbackPlan        `json:"-"`
+-	stateOperation     *stateOperationPlan  `json:"-"`
+-	forwardedAttack    *forwardedAttackPlan `json:"-"`
+-	flatHelper         *flatHelperPlan      `json:"-"`
+-	traceRuntimePath   string               `json:"-"`
+-	traceRuntimeReason string               `json:"-"`
++	LookupKey              string               `json:"-"`
++	RelativeFile           string               `json:"-"`
++	Line                   int                  `json:"-"`
++	Column                 int                  `json:"-"`
++	parameterPlans         []parameterPlan      `json:"-"`
++	modifierOutput         *modifierOutputPlan  `json:"-"`
++	savedVector            *savedVectorPlan     `json:"-"`
++	capturedScalar         *capturedScalarPlan  `json:"-"`
++	observedModifierFields []string             `json:"-"`
++	healthInput            *healthInputPlan     `json:"-"`
++	callback               *callbackPlan        `json:"-"`
++	stateOperation         *stateOperationPlan  `json:"-"`
++	forwardedAttack        *forwardedAttackPlan `json:"-"`
++	flatHelper             *flatHelperPlan      `json:"-"`
++	traceRuntimePath       string               `json:"-"`
++	traceRuntimeReason     string               `json:"-"`
+ }
+ 
+ type Manifest struct {
+diff --git a/pkg/gttsourcegen/overlay.go b/pkg/gttsourcegen/overlay.go
+index f11b291..b2ae3a0 100644
+--- a/pkg/gttsourcegen/overlay.go
++++ b/pkg/gttsourcegen/overlay.go
+@@ -95,7 +95,7 @@ func BuildOverlay(opts OverlayOptions, manifest Manifest) (OverlayResult, error)
+ 				continue
+ 			}
+ 		case KindModifierAmount:
+-			if entry.savedVector == nil && entry.capturedScalar == nil && (entry.Template.Status != TemplateSupported || entry.modifierOutput == nil) {
++			if entry.savedVector == nil && entry.capturedScalar == nil && entry.modifierOutput == nil && len(entry.observedModifierFields) == 0 {
+ 				continue
+ 			}
+ 		case KindEventCallback, KindTaskCallback:
+diff --git a/pkg/gttsourcegen/scan.go b/pkg/gttsourcegen/scan.go
+index 01de3c8..68b8ce0 100644
+--- a/pkg/gttsourcegen/scan.go
++++ b/pkg/gttsourcegen/scan.go
+@@ -34,21 +34,22 @@ type parsedSourceFile struct {
+ }
+ 
+ type sourceCandidate struct {
+-	kind               string
+-	relativeFile       string
+-	line               int
+-	column             int
+-	enclosingSymbol    string
+-	root               ast.Node
+-	astSHA256          string
+-	template           templateCompilation
+-	rootBindingName    string
+-	traceRuntimePath   string
+-	traceRuntimeReason string
+-	forwardedAttack    *forwardedAttackPlan
+-	flatHelper         *flatHelperPlan
+-	savedVector        *savedVectorPlan
+-	capturedScalar     *capturedScalarPlan
++	kind                   string
++	relativeFile           string
++	line                   int
++	column                 int
++	enclosingSymbol        string
++	root                   ast.Node
++	astSHA256              string
++	template               templateCompilation
++	rootBindingName        string
++	traceRuntimePath       string
++	traceRuntimeReason     string
++	forwardedAttack        *forwardedAttackPlan
++	flatHelper             *flatHelperPlan
++	savedVector            *savedVectorPlan
++	capturedScalar         *capturedScalarPlan
++	observedModifierFields []string
+ }
+ 
+ // Generate scans the requested module-relative Go source and returns a fully
+@@ -749,17 +750,18 @@ func finalizeCandidates(candidates []sourceCandidate) ([]SourceEntry, error) {
+ 			Template:     candidate.template.template,
+ 			LookupKey:    lookupKey,
+ 			RelativeFile: candidate.relativeFile, Line: candidate.line, Column: candidate.column,
+-			parameterPlans:     candidate.template.parameters,
+-			modifierOutput:     candidate.template.modifierOutput,
+-			healthInput:        candidate.template.healthInput,
+-			callback:           candidate.template.callback,
+-			stateOperation:     candidate.template.stateOperation,
+-			forwardedAttack:    candidate.forwardedAttack,
+-			flatHelper:         candidate.flatHelper,
+-			savedVector:        candidate.savedVector,
+-			capturedScalar:     candidate.capturedScalar,
+-			traceRuntimePath:   candidate.traceRuntimePath,
+-			traceRuntimeReason: candidate.traceRuntimeReason,
++			parameterPlans:         candidate.template.parameters,
++			modifierOutput:         candidate.template.modifierOutput,
++			healthInput:            candidate.template.healthInput,
++			callback:               candidate.template.callback,
++			stateOperation:         candidate.template.stateOperation,
++			forwardedAttack:        candidate.forwardedAttack,
++			flatHelper:             candidate.flatHelper,
++			savedVector:            candidate.savedVector,
++			capturedScalar:         candidate.capturedScalar,
++			observedModifierFields: candidate.observedModifierFields,
++			traceRuntimePath:       candidate.traceRuntimePath,
++			traceRuntimeReason:     candidate.traceRuntimeReason,
+ 		})
+ 	}
+ 	sort.Slice(entries, func(i, j int) bool { return entries[i].SourceID < entries[j].SourceID })
+diff --git a/pkg/gttsourcegen/v6_discovery.go b/pkg/gttsourcegen/v6_discovery.go
+index a2e399f..155619c 100644
+--- a/pkg/gttsourcegen/v6_discovery.go
++++ b/pkg/gttsourcegen/v6_discovery.go
+@@ -98,6 +98,9 @@ func augmentV6Candidates(
+ 			}
+ 			numericFields := numericTypes.filterReceiverFields(owner.packageDir, owner.receiverType, fields)
+ 			mergeFieldSet(derivedFields, scope, numericFields)
++			if candidate.kind == KindModifierAmount && candidate.template.template.Status != TemplateSupported {
++				candidate.observedModifierFields = sortedFieldSet(numericFields)
++			}
+ 			if candidate.kind == KindModifierAmount && candidate.template.template.Status == TemplateSupported {
+ 				if reason := numericTypes.validateReceiverFields(owner.packageDir, owner.receiverType, fields); reason != "" {
+ 					candidate.template = opaqueTemplate(reason)
+diff --git a/pkg/gttsourcegen/v6_overlay.go b/pkg/gttsourcegen/v6_overlay.go
+index faa1e9d..70f71ec 100644
+--- a/pkg/gttsourcegen/v6_overlay.go
++++ b/pkg/gttsourcegen/v6_overlay.go
+@@ -219,9 +219,18 @@ func v6InstrumentationEdits(
+ 				if entry.savedVector != nil || entry.capturedScalar != nil {
+ 					break
+ 				}
+-				modifierEdits, modifierImport, modifierErr := modifierAmountEdits(
+-					fset, tokenFile, data, root, entry, receiver, traceExpr, scope,
+-				)
++				var modifierEdits []textEdit
++				var modifierImport bool
++				var modifierErr error
++				if entry.modifierOutput != nil {
++					modifierEdits, modifierImport, modifierErr = modifierAmountEdits(
++						fset, tokenFile, data, root, entry, receiver, traceExpr, scope,
++					)
++				} else {
++					modifierEdits, modifierImport, modifierErr = observedModifierStateReadEdits(
++						fset, tokenFile, data, root, entry, receiver, traceExpr, scope,
++					)
++				}
+ 				if modifierErr == nil {
+ 					edits = append(edits, modifierEdits...)
+ 					needsImport = needsImport || modifierImport
+@@ -1010,6 +1019,79 @@ func modifierAmountEdits(
+ 	return edits, true, nil
+ }
+ 
++// observedModifierStateReadEdits preserves candidate lineage through opaque
++// modifier callbacks without pretending to compile their control flow.  It
++// instruments only executed return expressions that read proven numeric state
++// fields; the surrounding modifier dependency capture then binds those reads
++// to the observed modifier result.
++func observedModifierStateReadEdits(
++	fset *token.FileSet,
++	tokenFile *token.File,
++	data []byte,
++	root ast.Node,
++	entry SourceEntry,
++	receiver, traceExpr, scope string,
++) ([]textEdit, bool, error) {
++	fn, ok := root.(*ast.FuncLit)
++	if !ok {
++		return nil, false, fmt.Errorf("modifier %s root is not a function", entry.LookupKey)
++	}
++	allowlist := make(map[string]struct{}, len(entry.observedModifierFields))
++	for _, field := range entry.observedModifierFields {
++		allowlist[field] = struct{}{}
++	}
++	edits := make([]textEdit, 0)
++	matched := 0
++	ast.Inspect(fn.Body, func(node ast.Node) bool {
++		ret, ok := node.(*ast.ReturnStmt)
++		if !ok || len(ret.Results) != 1 {
++			return true
++		}
++		fields := sortedFieldSet(receiverFields(ret.Results[0], receiver))
++		if len(fields) == 0 {
++			return true
++		}
++		for _, field := range fields {
++			if _, proven := allowlist[field]; !proven {
++				return true
++			}
++		}
++		indent := indentationBefore(data, tokenFile.Offset(ret.Pos()))
++		prefix := "gttV6_" + entry.SourceID[:10] + "_observed_" + strconv.Itoa(matched)
++		matched++
++		valueByField := make(map[string]string, len(fields))
++		var declarations strings.Builder
++		for index, field := range fields {
++			valueName := prefix + "_read_" + strconv.Itoa(index)
++			slotName := prefix + "_slot_" + strconv.Itoa(index)
++			valueByField[field] = valueName
++			fmt.Fprintf(&declarations, "%s := %s.%s\n%s", valueName, receiver, field, indent)
++			fmt.Fprintf(&declarations, "%s := %s.RegisterNumericStateSlot(%s,%s.Current(),%s,float64(%s),%s.IncompleteEvidence(%s))\n%s",
++				slotName, traceExpr, strconv.Quote(scope), traceExpr, strconv.Quote(field), valueName,
++				traceImportAlias, strconv.Quote("modifier_state_slot_candidate_dependency_incomplete"), indent)
++			fmt.Fprintf(&declarations, "_ = %s.RecordNumericStateRead(%s,%s,float64(%s),%s.IncompleteEvidence(%s))\n%s",
++				traceExpr, slotName, strconv.Quote(entry.SourceID), valueName,
++				traceImportAlias, strconv.Quote("modifier_state_read_candidate_dependency_incomplete"), indent)
++		}
++		expression := rootText(fset, ret.Results[0])
++		expression, err := replaceReceiverFieldSelectors(expression, receiver, valueByField)
++		if err != nil {
++			return true
++		}
++		outputName := prefix + "_output"
++		fmt.Fprintf(&declarations, "%s := %s\n%s", outputName, expression, indent)
++		edits = append(edits,
++			textEdit{start: tokenFile.Offset(ret.Pos()), end: tokenFile.Offset(ret.Pos()), replacement: declarations.String()},
++			textEdit{start: tokenFile.Offset(ret.Results[0].Pos()), end: tokenFile.Offset(ret.Results[0].End()), replacement: outputName},
++		)
++		return true
++	})
++	if matched == 0 {
++		return nil, false, fmt.Errorf("modifier %s has no observed numeric state return", entry.LookupKey)
++	}
++	return edits, true, nil
++}
++
+ func validateNumericFieldAllowlist(fields, allowed []string) error {
+ 	allowlist := make(map[string]struct{}, len(allowed))
+ 	for _, field := range allowed {
+diff --git a/pkg/gttsourcegen/v6_test.go b/pkg/gttsourcegen/v6_test.go
+index aeb0b85..63bb807 100644
+--- a/pkg/gttsourcegen/v6_test.go
++++ b/pkg/gttsourcegen/v6_test.go
+@@ -877,6 +877,7 @@ func TestV6RealSavedStateRetainsCandidateStatInput(t *testing.T) {
+ 	for _, marker := range [][]byte{
+ 		[]byte("GTTReadMaxHP"),
+ 		[]byte("RecordNumericStateWriteWithInputs"),
++		[]byte("modifier_state_read_candidate_dependency_incomplete"),
+ 		[]byte("a4Bonus"),
+ 	} {
+ 		if !bytes.Contains(nilouASC, marker) {

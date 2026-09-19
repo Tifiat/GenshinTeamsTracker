@@ -66,7 +66,8 @@ func TestBuildProductResultMatchesStrictContract(t *testing.T) {
 	alternate := assignment
 	alternate[0][0], alternate[0][1] = alternate[0][1], alternate[0][0]
 	verification := finalists.VerificationResult{
-		Winner: winner,
+		Winner:               winner,
+		EnergyRejectedSHA256: []string{strings.Repeat("b", 64)},
 		Candidates: []finalists.MeasuredCandidate{
 			winner,
 			{
@@ -98,6 +99,9 @@ func TestBuildProductResultMatchesStrictContract(t *testing.T) {
 	}
 	if !containsString(result.Warnings, "measured_top_confidence_overlap") {
 		t.Fatalf("missing confidence-overlap warning: %v", result.Warnings)
+	}
+	if !containsString(result.Warnings, "final_energy_infeasible_candidates_rejected") {
+		t.Fatalf("missing final energy-rejection warning: %v", result.Warnings)
 	}
 }
 

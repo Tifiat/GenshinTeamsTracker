@@ -651,11 +651,9 @@ It may be ported only after Selected Go acceptance and must stay isolated from
 normal FGBS unless a later measured design explicitly changes that rule.
 
 Energy/ER optimization, broad All Sets semantics, Theory UI and automatic equip
-were outside the initial Go rewrite. The initial Go Selected path and cleanup
-are complete; current core acceptance continues through the GP-3 checkpoint.
-The Selected2+2 extension below is implemented; installed/UI acceptance belongs
-to the checkpoint. All Sets is now a separate bounded extension; Theory remains later;
-TODO owns their order and explicitly leaves energy until last.
+were outside the initial Go rewrite. Selected, Selected2+2, All Sets, Theory and
+finite-energy extensions now exist; current acceptance and remaining visible-UI
+gates belong to the GP-3 checkpoint and TODO rather than this historical stage.
 
 ### Selected 2+2 extension (2026-09-16)
 
@@ -1110,7 +1108,7 @@ not secretly refunded. Finalists retain context diversity plus original and
 Selected baselines, all with20 unique physical items.
 
 The coarse `optimize-all-sets REQUEST SOURCES RUN_ROOT` command is implemented;
-installation/UI acceptance is a separate gate. Initial limits: at most8 complete
+installation/UI acceptance is a separate gate. Current N1 limits: at most6 complete
 two-seed contexts,3 guides,16 single and6 joint queued proposals per guide,
 1,280,000 artifact expansions and420s search inside the600s outer budget. Reserve
 150s for one shared finalist stage. Limits are explicit engineering bounds,
@@ -1163,7 +1161,11 @@ entrypoint, formula arithmetic or FGBS. The current prototype operates as follow
   Missing/unselected effects stay visible; no claim that every useful package
   is retained. Incumbent is preserved independently, without recapture.
 - `Refine` resolves each shortlisted package through the shared context session
-  before handing its own panel and legal artifact domain to `RefineWearer`.
+  before handing its own panel and legal artifact domain to FGBS. Changed
+  contexts first use a one-cycle/4,000-expansion-per-actor scout. After breadth
+  discovery, the best scout plus one source/unknown/joint exploratory scout use
+  the full two-cycle/20,000-expansion configuration without recapture. The
+  Selected anchor is always fully searched first and remains the lower bound.
   It cannot create another capture budget, retry or simulate artifacts itself.
   Single-wearer results preserve the other15 physical IDs. They are formula
   candidates, not ordinary-engine measured finalists.
@@ -1175,12 +1177,47 @@ observer, refreshed guide, joint pilot, shared coordinator and ordinary finalist
 adapter exist. Remaining release/installation/UI gates are owned by that current
 checkpoint, not this design history. No real-set reuse certificate producer exists.
 
+### Implemented neutral Theory extension
+
+Theory shares the prepared rotation, source-backed set catalog, formula capture
+and set-context provider, but it has a distinct wire boundary. Python sends no
+owned artifacts, current assignments or selected set package. Each wearer has
+only the canonical five-main `theory_baseline`; `DecodeTheoryRequest` validates
+that representation and creates twenty private process-only pieces. Ordinary
+Selected/All Sets validation never accepts this Theory-only wire form. All Sets
+separately supports a virtual profile with a private neutral baseline while
+searching the real account artifact inventory.
+
+The neutral prepared config has no active set rows. `setcontext.Context` can
+insert a complete candidate package immediately before each actor's stat row;
+the bounded Theory guide considers source-supported 4p and distinct 2p+2p
+packages and preserves wearer/shared/new-output/unresolved breadth. The current
+coordinator shortlists 32 single-wearer changes, evaluates at most 40 contexts
+(16 primary plus 24 marginal/minimization), and labels the result partial if
+the 300-second deadline stops it sooner. Its capture budget includes the separate
+neutral base panel, so the final candidate cannot exhaust
+the session merely because the base was captured first. Each context uses the dedicated
+equal-investment main-stat/roll allocator. Its output is farming guidance, not
+owned artifact IDs, physical feasibility or proof of a global optimum.
+The current Theory solver has no burst-deadline/ER constraint. When the shared
+energy toggle requests finite energy, its Python product boundary fails with
+`theory_finite_energy_unsupported` before formula capture rather than silently
+returning an infeasible farming target. Selected and All Sets keep their
+separate implemented finite-energy search. An actual ER-aware theoretical
+allocation is open in TODO.
+
+`validate-theory-request` is invoked against the exact installed optimizer
+executable before formula work. This is a compatibility gate, not a Python
+shadow decoder: schema drift or a stale binary fails before expensive captures.
+The current behavior and visible-UI validation limit are owned by GP-3.
+
 ## 10. Performance and execution rules
 
 - Selected cold product failure: >190 s total including compact evidence,
   search, adaptive finalist n500/n1000 and result production.
 - Development audit ceiling: 360 s unless the user explicitly changes it.
-- No subagents or parallel agents for this project.
+- Follow the repository's `CODEX.md` delegation rule: no unsolicited parallel
+  agents; a direct user request may authorize one concrete bounded delegation.
 - Work sequentially; no parameter sweeps or brute-force retries.
 - Stop after three substantive failed approaches to one blocker; ordinary code
   errors are fixed without pretending they are conceptual failures.
@@ -1260,13 +1297,13 @@ change. Search architecture is unchanged and finalist quality was not re-run.
 Official activation now includes actual consumer/catalog/ordinary/wave smokes;
 see GCSIM_ENGINE_UPDATE_COMPATIBILITY_AUDIT.md for receipt and remaining limits.
 
-## 12. Planned energy-aware Go extension
+## 12. Implemented energy-aware Go extension
 
-Keep the existing request/formula/search/finalist ownership. Add a versioned
-energy-ledger section to compact evidence rather than a Python callback or a
-GCSIM run per candidate. The ledger records burst deadlines, normalized
-particle energy, flat energy, active/off-field distribution and typed
-target/stat/probability dependencies.
+The existing request/formula/search/finalist ownership is retained. The
+versioned `gtt_energy_ledger_v1` section is compact evidence rather than a
+Python callback or a GCSIM run per candidate. It records burst deadlines,
+normalized particle energy, flat energy, active/off-field distribution and
+source identity without character-specific rules.
 
 The Go evaluator compiles each character's ledger into cumulative feasibility
 constraints. Required ER is the largest prefix shortage before any intended
@@ -1275,15 +1312,30 @@ HP-threshold particle timing without rerunning the engine. Unknown or stochastic
 energy sources widen the margin/retained lane and are verified at the bounded
 finalist stage.
 
-Finalists are rendered with `ignore_burst_energy=false` and no boosted-energy
-injection. Besides DPS, verification compares the intended versus executed
-burst/action schedule. A failure cannot silently fall back to infinite energy.
-The current infinite-energy path remains an explicit user-selectable mode.
+Finite-energy finalists are rendered with `ignore_burst_energy=false` and no
+boosted-energy injection. Ordinary-result `failed_actions.insufficient_energy`
+is the final authority; a miss rejects the finalist and cannot silently fall
+back to infinite energy. Infinite energy remains the explicit other mode.
 
 The two UI controls are synchronized projections of the existing settings-owned
-`gcsim_boosted_energy_enabled` value; they are not independent booleans. The
-inline control is already visible at the user's request. Its finite-energy
-position passes `ignore_burst_energy=false` but is labelled diagnostic and may
-fail because ER-aware search is not implemented. Promote that position to a
-working energy-aware mode only after the ledger, constrained search and
-real-energy finalist acceptance all pass.
+`gcsim_boosted_energy_enabled` value; they are not independent booleans. Live
+window inspection on 2026-09-17 confirmed synchronization in both directions.
+The finite position is a working energy-aware mode: Selected fails before
+ordinary simulations when the inventory has no feasible assignment; All Sets
+continues across set contexts and verifies only feasible finalists when any
+exist. Successful results report artifact ER, required artifact ER and margin
+per wearer.
+
+The requirement is deadline-based and precomputed once per fresh formula/set
+context. Search then compares candidate artifact ER against four thresholds;
+it does not binary-search requirements per candidate. On the saved
+Chasca/Furina/Ororon/Bennett control this reduced the search from a 300-second
+timeout (the rejected per-candidate calculation) to roughly 10 seconds. That
+inventory has no feasible Selected-set assignment: Bennett, Furina and Ororon
+remain short, so the correct product result is an explicit no-feasible-build
+failure rather than a misleading DPS winner.
+
+Current limit: schedules are observations from the fixed two-seed panel, not a
+symbolic proof of every random energy branch. Enemy-drop timing and other
+observed stochastic sources therefore retain uncertainty codes, and the final
+ordinary real-energy simulation is mandatory.

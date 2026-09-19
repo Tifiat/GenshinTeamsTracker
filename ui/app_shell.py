@@ -5,7 +5,7 @@ import json
 import os
 import sys
 from contextlib import closing
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from collections.abc import Callable, Iterable, Mapping
@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -51,7 +52,11 @@ from hoyolab_export.team_card_data import (
     build_current_equipment_artifact_snapshot,
 )
 from localization import get_language, tr
-from ui.artifact_browser.queries import list_all_artifacts, save_build_preset
+from ui.artifact_browser.queries import (
+    list_all_artifacts,
+    list_build_presets_for_gcsim_character,
+    save_build_preset,
+)
 from ui.character_browser.icon_grid_adapter import build_asset_grid_items
 from ui.character_browser.filter_bar import CharacterFilterBar
 from run_workspace.right_panel_prototype_view_model import (
@@ -131,6 +136,16 @@ from ui.gcsim_browser.run_worker import (
 )
 from run_workspace.gcsim.optimizer_go_selected import (
     GcsimOptimizerGoSelectedRequest,
+)
+from run_workspace.gcsim.virtual_roster import (
+    GcsimCatalogCharacter,
+    GcsimCatalogWeapon,
+    GcsimVirtualSetBonus,
+    GcsimVirtualRosterCatalog,
+    GcsimVirtualSlotOverride,
+    load_active_virtual_artifact_set_choices,
+    load_active_virtual_roster_catalog,
+    max_virtual_talent_level,
 )
 from ui.right_panel.constants import (
     RIGHT_DOCK_PAGE_ACCOUNT,
@@ -353,6 +368,9 @@ class AppShellController:
     )
     _cached_abyss_source_data_loaded: bool = False
     _cached_abyss_source_data: AbyssFloorSourceData | None = None
+    _virtual_gcsim_overrides_by_mode: dict[
+        str, dict[tuple[int, int], GcsimVirtualSlotOverride]
+    ] = field(default_factory=dict)
 
     @classmethod
     def empty(
@@ -442,6 +460,7 @@ class AppShellController:
         self,
         *,
         load_abyss_source_data: bool = True,
+        include_virtual_gcsim_overrides: bool = True,
     ) -> RightPanelPrototypeViewModel:
         chamber_rows = (
             build_abyss_chamber_rows(
@@ -457,7 +476,7 @@ class AppShellController:
             if self.mode == MODE_ABYSS
             else None
         )
-        return build_right_panel_prototype_view_model(
+        model = build_right_panel_prototype_view_model(
             self.state,
             mode=self.mode,
             selected_team_index=self.selected_team_index,
@@ -466,6 +485,57 @@ class AppShellController:
             chamber_rows=chamber_rows,
             gcsim_status=self._gcsim_status_view_model(),
         )
+        overrides = (
+            self._virtual_gcsim_overrides_by_mode.get(self.mode, {})
+            if include_virtual_gcsim_overrides
+            else {}
+        )
+        if not overrides:
+            return model
+        teams = []
+        for team in model.teams:
+            slots = []
+            for slot in team.slots:
+                override = overrides.get((team.team_index, slot.slot_index))
+                if override is None:
+                    slots.append(slot)
+                    continue
+                weapon_label = override.weapon_name or tr(
+                    "right_panel.virtual_gcsim.weapon_missing"
+                )
+                profile_ready = not override.missing_profile_fields
+                slots.append(
+                    replace(
+                        slot,
+                        is_empty=False,
+                        character_title=override.character_name,
+                        character_meta=(
+                            f"GCSIM · C{override.constellation} · "
+                            f"{override.character_key}"
+                        ),
+                        portrait_label="?",
+                        portrait_path=override.character_icon_path,
+                        weapon_label=weapon_label,
+                        weapon_square_label="?",
+                        weapon_image_path=override.weapon_icon_path,
+                        weapon_tooltip=weapon_label,
+                        build_label=(
+                            override.artifact_build_name
+                            or tr("right_panel.virtual_gcsim.artifacts_pending")
+                        ),
+                        artifact_square_label="+",
+                        artifact_image_path="",
+                        stat_badge=f"R{override.refinement}",
+                        warning_count=0 if profile_ready else 1,
+                        warning_tooltip=(
+                            ""
+                            if profile_ready
+                            else tr("right_panel.virtual_gcsim.profile_incomplete")
+                        ),
+                    )
+                )
+            teams.append(replace(team, slots=tuple(slots)))
+        return replace(model, teams=tuple(teams))
 
     def _right_panel_abyss_source_data(
         self,
@@ -508,7 +578,10 @@ class AppShellController:
                     ),
                 },
             )
-            model = self.right_panel_model(load_abyss_source_data=False)
+            model = self.right_panel_model(
+                load_abyss_source_data=False,
+                include_virtual_gcsim_overrides=False,
+            )
             bundle = build_history_snapshot_bundle(
                 self.session.state,
                 model,
@@ -575,6 +648,47 @@ class AppShellController:
 
     def set_mode(self, mode: str) -> None:
         self.session.set_mode(mode)
+
+    def virtual_gcsim_override(
+        self,
+        team_index: int,
+        slot_index: int,
+    ) -> GcsimVirtualSlotOverride | None:
+        return self._virtual_gcsim_overrides_by_mode.get(self.mode, {}).get(
+            (int(team_index), int(slot_index))
+        )
+
+    def virtual_gcsim_overrides(self) -> tuple[GcsimVirtualSlotOverride, ...]:
+        values = self._virtual_gcsim_overrides_by_mode.get(self.mode, {}).values()
+        return tuple(sorted(values, key=lambda item: (item.team_index, item.slot_index)))
+
+    def set_virtual_gcsim_override(
+        self,
+        override: GcsimVirtualSlotOverride,
+    ) -> bool:
+        try:
+            self.state.team(override.team_index).slot(override.slot_index)
+        except IndexError:
+            return False
+        self.state = self.state.clear_slot(override.team_index, override.slot_index)
+        mode_overrides = self._virtual_gcsim_overrides_by_mode.setdefault(self.mode, {})
+        mode_overrides[(override.team_index, override.slot_index)] = override
+        self.selected_team_index = override.team_index
+        self.selected_slot_index = override.slot_index
+        self.clear_gcsim_results()
+        self._store_current_mode_state()
+        return True
+
+    def clear_virtual_gcsim_override(self, team_index: int, slot_index: int) -> bool:
+        mode_overrides = self._virtual_gcsim_overrides_by_mode.get(self.mode, {})
+        removed = mode_overrides.pop((int(team_index), int(slot_index)), None)
+        if removed is None:
+            return False
+        self.clear_gcsim_results()
+        return True
+
+    def first_empty_account_slot(self) -> tuple[int, int] | None:
+        return self._first_empty_slot()
 
     def gcsim_target_mode(self) -> str:
         return (
@@ -663,6 +777,7 @@ class AppShellController:
 
     def reset_active_run(self) -> None:
         self.session.reset_active_run()
+        self._virtual_gcsim_overrides_by_mode.pop(self.mode, None)
 
     def set_abyss_timer_seconds(
         self,
@@ -697,7 +812,15 @@ class AppShellController:
             self.state.team(target_team_index).slot(target_slot_index)
         except IndexError:
             return False
-        if source_slot.is_empty:
+        mode_overrides = self._virtual_gcsim_overrides_by_mode.setdefault(
+            self.mode,
+            {},
+        )
+        source_key = (source_team_index, source_slot_index)
+        target_key = (target_team_index, target_slot_index)
+        source_virtual = mode_overrides.get(source_key)
+        target_virtual = mode_overrides.get(target_key)
+        if source_slot.is_empty and source_virtual is None:
             return False
         self.state = self.state.swap_slots(
             source_team_index,
@@ -705,6 +828,12 @@ class AppShellController:
             target_team_index,
             target_slot_index,
         )
+        mode_overrides.pop(source_key, None)
+        mode_overrides.pop(target_key, None)
+        if source_virtual is not None:
+            mode_overrides[target_key] = source_virtual.moved_to(*target_key)
+        if target_virtual is not None:
+            mode_overrides[source_key] = target_virtual.moved_to(*source_key)
         self.clear_gcsim_results()
         self.selected_team_index = target_team_index
         self.selected_slot_index = target_slot_index
@@ -743,6 +872,7 @@ class AppShellController:
         if target_slot is None:
             return CharacterPlacementResult()
         team_index, slot_index = target_slot
+        self.clear_virtual_gcsim_override(team_index, slot_index)
 
         self._set_character_minimal(
             team_index,
@@ -923,9 +1053,26 @@ class AppShellController:
         self,
     ) -> tuple[tuple[GcsimBrowserTeamSlotPreview, ...], ...]:
         previews: list[tuple[GcsimBrowserTeamSlotPreview, ...]] = []
-        for team in self.state.teams:
+        for team_index, team in enumerate(self.state.teams):
             team_slots: list[GcsimBrowserTeamSlotPreview] = []
             for slot in team.slots:
+                virtual = self.virtual_gcsim_override(
+                    team_index, slot.slot_index
+                )
+                if virtual is not None:
+                    team_slots.append(
+                        GcsimBrowserTeamSlotPreview(
+                            name=virtual.character_name,
+                            weapon=(
+                                f"Weapon: {virtual.weapon_name} R{virtual.refinement}"
+                                if virtual.weapon_name
+                                else "Weapon: pending"
+                            ),
+                            sets="Build: virtual target pending",
+                            status="GCSIM virtual profile · incomplete",
+                        )
+                    )
+                    continue
                 if slot.character is None:
                     team_slots.append(GcsimBrowserTeamSlotPreview())
                     continue
@@ -962,7 +1109,15 @@ class AppShellController:
             team = self.state.team(int(team_index))
         except IndexError:
             return {"slot_count": 0, "slots": []}
-        return team.to_dict()
+        payload = team.to_dict()
+        for slot_payload in payload.get("slots", []):
+            slot_index = int(slot_payload.get("slot_index", 0))
+            override = self.virtual_gcsim_override(int(team_index), slot_index)
+            if override is None:
+                continue
+            slot_payload["gcsim_virtual_override"] = override.to_dict()
+            slot_payload["is_empty"] = False
+        return payload
 
     def gcsim_browser_abyss_targets_preview(
         self,
@@ -1548,6 +1703,12 @@ class AppShell(QWidget):
         )
         root.addWidget(self.left_host, 1)
 
+        self._virtual_gcsim_catalog = load_active_virtual_roster_catalog()
+        self._virtual_gcsim_set_choices = load_active_virtual_artifact_set_choices(
+            self.controller.equipment_db_path,
+            language=get_language(),
+        )
+
         self.right_panel = RunRightPanelWidget(
             self.controller.right_panel_model(),
             show_mode_tabs=False,
@@ -1588,8 +1749,13 @@ class AppShell(QWidget):
         self.left_host.gcsim_browser_workspace.optimizer_all_sets_requested.connect(
             self._on_gcsim_optimizer_all_sets_requested
         )
+        self.left_host.gcsim_browser_workspace.optimizer_theory_requested.connect(
+            self._on_gcsim_optimizer_theory_requested
+        )
         from run_workspace.gcsim.optimizer_go_all import all_sets_available
+        from run_workspace.gcsim.optimizer_go_theory import theory_available
         self.left_host.gcsim_browser_workspace.set_optimizer_all_sets_available(all_sets_available())
+        self.left_host.gcsim_browser_workspace.set_optimizer_theory_available(theory_available())
         self.left_host.gcsim_browser_workspace.optimizer_infinite_energy_changed.connect(
             self._on_gcsim_optimizer_infinite_energy_changed
         )
@@ -1650,6 +1816,27 @@ class AppShell(QWidget):
             self._on_external_bonuses_toggled
         )
         self.right_panel.abyss_timer_changed.connect(self._on_abyss_timer_changed)
+        self.left_host.gcsim_browser_workspace.virtual_character_requested.connect(
+            self._on_virtual_gcsim_character_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_weapon_requested.connect(
+            self._on_virtual_gcsim_weapon_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_constellation_requested.connect(
+            self._on_virtual_gcsim_constellation_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_refinement_requested.connect(
+            self._on_virtual_gcsim_refinement_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_profile_requested.connect(
+            self._on_virtual_gcsim_profile_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_set_bonuses_requested.connect(
+            self._on_virtual_gcsim_set_bonuses_requested
+        )
+        self.left_host.gcsim_browser_workspace.virtual_clear_requested.connect(
+            self._on_virtual_gcsim_clear_requested
+        )
         self.left_host.character_weapon_workspace.character_clicked.connect(
             self._on_character_clicked
         )
@@ -1662,11 +1849,16 @@ class AppShell(QWidget):
         self._refresh_character_selection_markers()
         self._sync_artifact_browser_operation_target()
         self._sync_gcsim_browser_context()
+        self._sync_virtual_gcsim_controls()
 
     def retranslate_ui(self) -> None:
         self.setWindowTitle(tr("app_shell.title"))
         self.left_host.retranslate_ui()
         self.right_dock.retranslate_ui()
+        self._virtual_gcsim_set_choices = load_active_virtual_artifact_set_choices(
+            self.controller.equipment_db_path,
+            language=get_language(),
+        )
         self._refresh_right_panel()
 
     def resizeEvent(self, event) -> None:
@@ -2150,12 +2342,15 @@ class AppShell(QWidget):
         team_index: int,
         rotation_shell_text: str,
     ) -> None:
-        self._on_gcsim_optimizer_requested(team_index, rotation_shell_text, all_sets=False)
+        self._on_gcsim_optimizer_requested(team_index, rotation_shell_text, mode="selected")
 
     def _on_gcsim_optimizer_all_sets_requested(self, team_index: int, rotation_shell_text: str) -> None:
-        self._on_gcsim_optimizer_requested(team_index, rotation_shell_text, all_sets=True)
+        self._on_gcsim_optimizer_requested(team_index, rotation_shell_text, mode="all_sets")
 
-    def _on_gcsim_optimizer_requested(self, team_index: int, rotation_shell_text: str, *, all_sets: bool) -> None:
+    def _on_gcsim_optimizer_theory_requested(self, team_index: int, rotation_shell_text: str) -> None:
+        self._on_gcsim_optimizer_requested(team_index, rotation_shell_text, mode="theory")
+
+    def _on_gcsim_optimizer_requested(self, team_index: int, rotation_shell_text: str, *, mode: str) -> None:
         if self._gcsim_browser_run_thread is not None:
             self.left_host.gcsim_browser_workspace.set_optimizer_result_text(
                 tr("gcsim.optimizer.launch_busy")
@@ -2177,7 +2372,14 @@ class AppShell(QWidget):
             )
             return
         from run_workspace.gcsim.optimizer_go_all import GcsimOptimizerGoAllSetsRequest
-        request_type = GcsimOptimizerGoAllSetsRequest if all_sets else GcsimOptimizerGoSelectedRequest
+        from run_workspace.gcsim.optimizer_go_theory import GcsimOptimizerGoTheoryRequest
+        request_type = (
+            GcsimOptimizerGoAllSetsRequest
+            if mode == "all_sets"
+            else GcsimOptimizerGoTheoryRequest
+            if mode == "theory"
+            else GcsimOptimizerGoSelectedRequest
+        )
         request = request_type(
             db_path=str(self.controller.equipment_db_path),
             selected_team=selected_team,
@@ -2212,6 +2414,8 @@ class AppShell(QWidget):
             self.left_host.gcsim_browser_workspace.optimizer_progress_label.setText(
                 tr("gcsim.optimizer.cancelling_all")
                 if self.left_host.gcsim_browser_workspace._optimizer_mode == "all_sets"
+                else "Cancelling Theory..."
+                if self.left_host.gcsim_browser_workspace._optimizer_mode == "theory"
                 else "Cancelling Selected Sets..."
             )
             worker.cancel()
@@ -2219,11 +2423,21 @@ class AppShell(QWidget):
     def _on_gcsim_optimizer_selected_finished(self, payload: dict) -> None:
         payload_dict = dict(payload)
         workspace = self.left_host.gcsim_browser_workspace
+        if payload_dict.get("mode") == "theory":
+            from run_workspace.gcsim.optimizer_go_theory import (
+                format_gcsim_optimizer_go_theory_result,
+            )
+            formatted = format_gcsim_optimizer_go_theory_result(payload_dict)
+        else:
+            formatted = format_gcsim_optimizer_go_selected_result(payload_dict)
         workspace.set_optimizer_result_text(
-            format_gcsim_optimizer_go_selected_result(payload_dict)
+            formatted
         )
         pages = ()
-        if str(payload_dict.get("status") or "") == "success":
+        if (
+            str(payload_dict.get("status") or "") == "success"
+            and payload_dict.get("mode") != "theory"
+        ):
             try:
                 pages = build_optimizer_result_pages(
                     payload_dict,
@@ -2408,6 +2622,7 @@ class AppShell(QWidget):
         vm_ms = perf_ms(vm_start)
         set_model_start = perf_now()
         self.right_panel.set_model(model)
+        self._sync_virtual_gcsim_controls()
         set_model_ms = perf_ms(set_model_start)
         self._sync_gcsim_browser_context()
         total_ms = perf_ms(total_start)
@@ -2422,6 +2637,57 @@ class AppShell(QWidget):
             "vm": vm_ms,
             "set_model": set_model_ms,
         }
+
+    def _sync_virtual_gcsim_controls(self) -> None:
+        workspace = self.left_host.gcsim_browser_workspace
+        workspace.set_virtual_gcsim_catalogs(
+            self._virtual_gcsim_catalog,
+            self._virtual_gcsim_set_choices,
+        )
+        for team_index in range(2):
+            for slot_index in range(4):
+                override = self.controller.virtual_gcsim_override(
+                    team_index,
+                    slot_index,
+                )
+                workspace.set_virtual_gcsim_slot_context(
+                    team_index,
+                    slot_index,
+                    override=override,
+                    artifact_builds=self._virtual_artifact_build_choices(
+                        override.character_key if override is not None else ""
+                    ),
+                )
+        self.left_host.set_virtual_gcsim_artifact_targets(
+            [
+                {
+                    "target_type": "gcsim_character",
+                    "gcsim_character_key": item.character_key,
+                    "character_name": item.character_name,
+                    "icon_path": item.character_icon_path,
+                }
+                for item in self.controller.virtual_gcsim_overrides()
+            ]
+        )
+
+    def _virtual_artifact_build_choices(
+        self,
+        character_key: str,
+    ) -> tuple[dict[str, object], ...]:
+        key = str(character_key or "").strip()
+        if not key:
+            return ()
+        return tuple(
+            {
+                "id": int(build.get("id") or 0),
+                "name": _text(build.get("name")),
+                "slot_count": int(build.get("slot_count") or 0),
+            }
+            for build in list_build_presets_for_gcsim_character(
+                key,
+                db_path=self.controller.equipment_db_path,
+            )
+        )
 
     def _refresh_character_selection_markers(
         self,
@@ -2580,6 +2846,11 @@ class AppShell(QWidget):
             self.right_dock.show_history_page(history_mode)
         elif previous_workspace_id in (LEFT_WORKSPACE_PVP, LEFT_WORKSPACE_HISTORY):
             self.right_dock.show_run_page(self.controller.mode)
+        if workspace_id not in (LEFT_WORKSPACE_PVP, LEFT_WORKSPACE_HISTORY):
+            # A virtual artifact build can be created or edited in the Artifact
+            # Browser. Refresh the small picker when the user changes workspace
+            # instead of polling SQLite during ordinary panel paints.
+            self._sync_virtual_gcsim_controls()
         log_perf(
             "left_workspace_activate",
             workspace=workspace_id,
@@ -2671,6 +2942,225 @@ class AppShell(QWidget):
             changed=changed,
         )
 
+    def _on_virtual_gcsim_character_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        character_key: str,
+    ) -> None:
+        character = next(
+            (
+                item
+                for item in self._virtual_gcsim_catalog.characters
+                if item.gcsim_key == str(character_key)
+            ),
+            None,
+        )
+        if character is None:
+            return
+        team_index = int(team_index)
+        slot_index = int(slot_index)
+        if team_index < 0 or slot_index < 0:
+            return
+        previous = self.controller.virtual_gcsim_override(team_index, slot_index)
+        same_character = (
+            previous is not None and previous.character_key == character.gcsim_key
+        )
+        weapon = None
+        if same_character and previous.weapon_type == character.weapon_type:
+            weapon = next(
+                (
+                    item
+                    for item in self._virtual_gcsim_catalog.weapons
+                    if item.gcsim_key == previous.weapon_key
+                ),
+                None,
+            )
+        override = GcsimVirtualSlotOverride(
+            team_index=team_index,
+            slot_index=slot_index,
+            character_key=character.gcsim_key,
+            character_name=character.display_name,
+            character_weapon_type=character.weapon_type,
+            character_icon_path=character.icon_path,
+            constellation=previous.constellation if same_character else 0,
+            refinement=previous.refinement if same_character else 1,
+            character_level=previous.character_level if same_character else 90,
+            character_promote_level=None,
+            talent_normal=previous.talent_normal if same_character else 10,
+            talent_skill=previous.talent_skill if same_character else 10,
+            talent_burst=previous.talent_burst if same_character else 10,
+            weapon_level=previous.weapon_level if same_character else None,
+            weapon_promote_level=(
+                previous.weapon_promote_level if same_character else None
+            ),
+            artifact_build_id=(
+                previous.artifact_build_id
+                if same_character
+                else None
+            ),
+            artifact_build_name=(
+                previous.artifact_build_name
+                if same_character
+                else ""
+            ),
+            artifact_set_bonuses=(
+                previous.artifact_set_bonuses if same_character else ()
+            ),
+        ).with_weapon(weapon)
+        if self.controller.set_virtual_gcsim_override(override):
+            self.cancel_pending_equipment_hydration()
+            self._refresh_character_selection_markers(affected_character_ids=None)
+            self._sync_artifact_browser_operation_target()
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_weapon_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        weapon_key: str,
+    ) -> None:
+        override = self.controller.virtual_gcsim_override(team_index, slot_index)
+        if override is None:
+            return
+        weapon = next(
+            (
+                item
+                for item in self._virtual_gcsim_catalog.weapons
+                if item.gcsim_key == str(weapon_key)
+            ),
+            None,
+        )
+        if weapon is not None and weapon.weapon_type != override.character_weapon_type:
+            return
+        try:
+            updated = override.with_weapon(weapon)
+            if weapon is not None and not override.weapon_key:
+                updated = replace(
+                    updated,
+                    weapon_level=90,
+                    weapon_promote_level=6,
+                    refinement=1,
+                )
+        except ValueError:
+            return
+        if self.controller.set_virtual_gcsim_override(updated):
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_constellation_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        constellation: int,
+    ) -> None:
+        override = self.controller.virtual_gcsim_override(team_index, slot_index)
+        if override is None:
+            return
+        try:
+            updated = replace(override, constellation=int(constellation))
+        except ValueError:
+            return
+        if self.controller.set_virtual_gcsim_override(updated):
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_refinement_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        refinement: int,
+    ) -> None:
+        override = self.controller.virtual_gcsim_override(team_index, slot_index)
+        if override is None or not override.weapon_key:
+            return
+        try:
+            updated = replace(override, refinement=int(refinement))
+        except ValueError:
+            return
+        if self.controller.set_virtual_gcsim_override(updated):
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_profile_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        profile: dict[str, Any],
+    ) -> None:
+        override = self.controller.virtual_gcsim_override(team_index, slot_index)
+        if override is None:
+            return
+        values: dict[str, Any] = {}
+        for field_name in (
+            "character_level",
+            "talent_normal",
+            "talent_skill",
+            "talent_burst",
+            "weapon_level",
+            "weapon_promote_level",
+            "artifact_build_id",
+        ):
+            if field_name in profile:
+                values[field_name] = _optional_int(profile.get(field_name))
+        if "artifact_build_name" in profile:
+            values["artifact_build_name"] = _text(profile.get("artifact_build_name"))
+        level = values.get("character_level", override.character_level)
+        if "character_level" in values and level is not None:
+            maximum_talent = max_virtual_talent_level(level)
+            values.update(
+                talent_normal=maximum_talent,
+                talent_skill=maximum_talent,
+                talent_burst=maximum_talent,
+            )
+        try:
+            updated = replace(override, **values)
+        except ValueError:
+            return
+        if self.controller.set_virtual_gcsim_override(updated):
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_set_bonuses_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+        payload: list[dict[str, Any]],
+    ) -> None:
+        override = self.controller.virtual_gcsim_override(team_index, slot_index)
+        if override is None:
+            return
+        try:
+            bonuses = tuple(
+                GcsimVirtualSetBonus(
+                    set_uid=_text(item.get("set_uid")),
+                    display_name=_text(item.get("display_name")),
+                    gcsim_key=_text(
+                        (item.get("mapping") or {}).get("gcsim_key")
+                        if isinstance(item.get("mapping"), Mapping)
+                        else ""
+                    ),
+                    piece_count=int(item.get("count") or 0),
+                )
+                for item in payload
+            )
+            updated = replace(override, artifact_set_bonuses=bonuses)
+        except (TypeError, ValueError):
+            return
+        if self.controller.set_virtual_gcsim_override(updated):
+            self._refresh_right_panel()
+
+    def _on_virtual_gcsim_clear_requested(
+        self,
+        team_index: int,
+        slot_index: int,
+    ) -> None:
+        if self.controller.clear_virtual_gcsim_override(team_index, slot_index):
+            self._sync_artifact_browser_operation_target()
+            self._refresh_right_panel()
+
+    def _selected_virtual_gcsim_override(self) -> GcsimVirtualSlotOverride | None:
+        return self.controller.virtual_gcsim_override(
+            self.controller.selected_team_index,
+            self.controller.selected_slot_index,
+        )
+
     def _on_character_clicked(self, asset: dict) -> None:
         total_start = perf_now()
         if self.right_dock.current_page() != RIGHT_DOCK_PAGE_RUN:
@@ -2682,6 +3172,29 @@ class AppShell(QWidget):
                 ignored_page=self.right_dock.current_page(),
             )
             return
+        character_id = _text(_asset_metadata_mapping(asset, "character").get("id"))
+        if character_id and self.controller._find_character_slot(character_id) is None:
+            target = self.controller.first_empty_account_slot()
+            virtual = (
+                self.controller.virtual_gcsim_override(*target)
+                if target is not None
+                else None
+            )
+            if virtual is not None:
+                answer = QMessageBox.question(
+                    self,
+                    tr("right_panel.virtual_gcsim.remove_title"),
+                    tr(
+                        "right_panel.virtual_gcsim.remove_confirm",
+                        name=virtual.character_name,
+                        slot=virtual.slot_index + 1,
+                    ),
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No,
+                )
+                if answer != QMessageBox.StandardButton.Yes:
+                    return
+                self.controller.clear_virtual_gcsim_override(*target)
         before_markers = self.controller.roster_selection_markers()
         state_start = perf_now()
         result = self.controller.add_or_replace_character_fast(asset)
@@ -2728,6 +3241,14 @@ class AppShell(QWidget):
                 changed=False,
                 scheduled=False,
                 ignored_page=self.right_dock.current_page(),
+            )
+            return
+        virtual = self._selected_virtual_gcsim_override()
+        if virtual is not None:
+            QMessageBox.information(
+                self,
+                tr("right_panel.virtual_gcsim.account_weapon_blocked_title"),
+                tr("right_panel.virtual_gcsim.account_weapon_blocked"),
             )
             return
         state_start = perf_now()
@@ -2794,6 +3315,7 @@ class LeftWorkspaceHost(QWidget):
         )
         self.artifact_browser_workspace = None
         self._pending_artifact_right_panel_target: dict[str, Any] | None = None
+        self._pending_virtual_gcsim_artifact_targets: list[dict[str, Any]] = []
         self.artifact_browser_placeholder = self._make_artifact_browser_placeholder()
         self.artifact_browser_index = self.stack.addWidget(
             self.artifact_browser_placeholder
@@ -2931,6 +3453,9 @@ class LeftWorkspaceHost(QWidget):
         browser.set_right_panel_operation_target(
             self._pending_artifact_right_panel_target
         )
+        browser.set_virtual_gcsim_targets(
+            self._pending_virtual_gcsim_artifact_targets
+        )
         log_perf(
             "artifact_workspace_lazy_create",
             total=perf_ms(create_start),
@@ -2947,6 +3472,17 @@ class LeftWorkspaceHost(QWidget):
         self._pending_artifact_right_panel_target = target
         if self.artifact_browser_workspace is not None:
             self.artifact_browser_workspace.set_right_panel_operation_target(target)
+
+    def set_virtual_gcsim_artifact_targets(
+        self,
+        targets: list[dict[str, Any]],
+    ) -> None:
+        normalized = [dict(item) for item in targets]
+        if normalized == self._pending_virtual_gcsim_artifact_targets:
+            return
+        self._pending_virtual_gcsim_artifact_targets = normalized
+        if self.artifact_browser_workspace is not None:
+            self.artifact_browser_workspace.set_virtual_gcsim_targets(targets)
 
     def refresh_account_data(self) -> None:
         workspace = self.character_weapon_workspace
@@ -3106,7 +3642,11 @@ def _selected_team_has_characters(selected_team: dict[str, Any]) -> bool:
         if not isinstance(slot, dict):
             continue
         details = _mapping(slot.get("character_details_data"))
-        if slot.get("character") or _mapping(details.get("account_character")):
+        if (
+            slot.get("character")
+            or _mapping(details.get("account_character"))
+            or _mapping(slot.get("gcsim_virtual_override"))
+        ):
             return True
     return False
 

@@ -55,6 +55,7 @@ from ui.character_assets import (
     STANDARD_FILTER_ONLY,
     WEAPON_TYPE_FILTERS,
     character_id,
+    character_metadata,
     character_matches_filters,
     character_name,
     character_sort_key,
@@ -946,6 +947,7 @@ class ArtifactBrowserWindow(QWidget):
         self.selected_build_targets: list[dict] = []
         self.selected_build_target_keys: set[str] = set()
         self.build_target_items_by_key: dict[str, dict] = {}
+        self._virtual_gcsim_targets: list[dict] = []
         self.build_target_buttons_by_key: dict[str, QPushButton] = {}
         self._build_target_buttons_initialized = False
         self._build_target_button_order: list[str] = []
@@ -2959,6 +2961,75 @@ class ArtifactBrowserWindow(QWidget):
                 "region_key": (region_entry or {}).get("region_key") or "",
                 "region_name": (region_entry or {}).get("region_name") or "",
             }
+        account_target_key_by_gcsim_key = {
+            str(character_metadata(asset).get("gcsim_character_key") or "").strip():
+                self._character_target_key(character_id(asset))
+            for asset in assets
+            if character_id(asset) is not None
+            and str(character_metadata(asset).get("gcsim_character_key_status") or "") == "ready"
+            and str(character_metadata(asset).get("gcsim_character_key") or "").strip()
+        }
+        try:
+            with closing(connect_db(self.db_path)) as conn:
+                account_rows = conn.execute(
+                    """
+                    SELECT character_id, name, gcsim_character_key
+                    FROM account_characters
+                    WHERE gcsim_character_key_status = 'ready'
+                      AND gcsim_character_key != ''
+                    """
+                ).fetchall()
+        except Exception:
+            account_rows = ()
+        for row in account_rows:
+            account_key = self._character_target_key(int(row["character_id"]))
+            account_target_key_by_gcsim_key[str(row["gcsim_character_key"])] = account_key
+            if account_key not in self.build_target_items_by_key:
+                self.build_target_items_by_key[account_key] = {
+                    "key": account_key,
+                    "target_type": "character",
+                    "character_id": int(row["character_id"]),
+                    "character_name": str(row["name"] or row["gcsim_character_key"]),
+                    "asset": None,
+                    "path": None,
+                }
+        for target in self._virtual_gcsim_targets:
+            account_key = account_target_key_by_gcsim_key.get(
+                str(target.get("gcsim_character_key") or "").strip()
+            )
+            if account_key:
+                continue
+            key = self.target_key_from_target(target)
+            if not key or key in self.build_target_items_by_key:
+                continue
+            self.build_target_items_by_key[key] = {
+                "key": key,
+                "target_type": "gcsim_character",
+                "gcsim_character_key": target.get("gcsim_character_key") or "",
+                "character_id": None,
+                "character_name": target.get("character_name") or "",
+                "asset": None,
+                "path": target.get("icon_path") or None,
+            }
+
+    def set_virtual_gcsim_targets(self, targets: list[dict]) -> None:
+        normalized: dict[str, dict] = {}
+        for target in targets:
+            gcsim_key = str(target.get("gcsim_character_key") or "").strip()
+            if not gcsim_key:
+                continue
+            normalized[gcsim_key] = {
+                "target_type": "gcsim_character",
+                "gcsim_character_key": gcsim_key,
+                "character_name": str(target.get("character_name") or gcsim_key),
+                "icon_path": str(target.get("icon_path") or ""),
+            }
+        self._virtual_gcsim_targets = list(normalized.values())
+        self.load_build_target_items()
+        self.selected_build_target_keys.intersection_update(self.build_target_items_by_key)
+        self.refresh_build_target_list()
+        self.refresh_build_preset_list()
+        self.update_build_panel()
 
     def _region_icon_path(self, region_key: str) -> Path | None:
         icon_name = REGION_ICON_FILES.get(region_key)
@@ -3358,12 +3429,17 @@ class ArtifactBrowserWindow(QWidget):
     def _character_target_key(self, character_id_value: int) -> str:
         return f"character:{int(character_id_value)}"
 
+    def _gcsim_character_target_key(self, gcsim_character_key: str) -> str:
+        return f"gcsim_character:{str(gcsim_character_key).strip()}"
+
     def target_key_from_target(self, target: dict) -> str | None:
         target_type = target.get("target_type")
         if target_type == "universal":
             return BUILD_TARGET_UNIVERSAL_KEY
         if target_type == "character" and target.get("character_id") is not None:
             return self._character_target_key(int(target["character_id"]))
+        if target_type == "gcsim_character" and target.get("gcsim_character_key"):
+            return self._gcsim_character_target_key(target["gcsim_character_key"])
         return None
 
     def target_keys_from_targets(self, targets: list[dict]) -> set[str]:
@@ -3382,6 +3458,14 @@ class ArtifactBrowserWindow(QWidget):
                 continue
             if key == BUILD_TARGET_UNIVERSAL_KEY:
                 targets.append({"target_type": "universal"})
+            elif item.get("target_type") == "gcsim_character":
+                targets.append(
+                    {
+                        "target_type": "gcsim_character",
+                        "gcsim_character_key": item.get("gcsim_character_key") or "",
+                        "character_name": item.get("character_name") or "",
+                    }
+                )
             else:
                 targets.append(
                     {
@@ -3397,12 +3481,13 @@ class ArtifactBrowserWindow(QWidget):
             key = self.target_key_from_target(target)
             if not key or key in self.build_target_items_by_key:
                 continue
-            if target.get("target_type") != "character":
+            if target.get("target_type") not in {"character", "gcsim_character"}:
                 continue
             self.build_target_items_by_key[key] = {
                 "key": key,
-                "target_type": "character",
+                "target_type": target.get("target_type"),
                 "character_id": target.get("character_id"),
+                "gcsim_character_key": target.get("gcsim_character_key") or "",
                 "character_name": target.get("character_name") or "",
                 "asset": None,
                 "path": None,

@@ -1,0 +1,3559 @@
+{
+  "date": "2026-09-19",
+  "generated_state_removed_on_exit": true,
+  "manifest": "optimizer_virtual_archetype_mode_matrix_v1",
+  "runs": [
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 6859.0,
+        "mode": "all_sets",
+        "optimizer_process_ms": 127391.0,
+        "prepare_inputs_ms": 4922.0,
+        "request_preflight_ms": 125.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 139297.0
+      },
+      "archetype": "lunar_charged_multi_owner_jahoda",
+      "characters": [
+        "flins",
+        "ineffa",
+        "columbina",
+        "jahoda"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 139297,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [
+        "lunar_charged",
+        "electro_charged",
+        "atk",
+        "hp",
+        "em",
+        "multi_owner",
+        "cross_owner_em"
+      ],
+      "formula_witness": {
+        "channel_groups": [
+          {
+            "attack_tag": "tag/0",
+            "baseline_damage": 0.0,
+            "channels": 4,
+            "damage_type": "electro",
+            "hits": 4,
+            "kind": "direct",
+            "response_coordinates": [
+              "flins.atk",
+              "flins.atk_percent",
+              "flins.crit_damage",
+              "flins.crit_rate",
+              "flins.damage_bonus",
+              "flins.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 103011.90058,
+            "channels": 80,
+            "damage_type": "electro",
+            "hits": 80,
+            "kind": "direct",
+            "response_coordinates": [
+              "flins.atk",
+              "flins.atk_percent",
+              "flins.crit_damage",
+              "flins.crit_rate",
+              "flins.damage_bonus",
+              "flins.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 893.346874,
+            "channels": 2,
+            "damage_type": "hydro",
+            "hits": 2,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.atk",
+              "columbina.atk_percent",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 9816.922782,
+            "channels": 6,
+            "damage_type": "physical",
+            "hits": 6,
+            "kind": "direct",
+            "response_coordinates": [
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.damage_bonus",
+              "ineffa.physical_damage_bonus",
+              "jahoda.atk",
+              "jahoda.atk_percent",
+              "jahoda.crit_damage",
+              "jahoda.crit_rate",
+              "jahoda.damage_bonus",
+              "jahoda.physical_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 38533.602172,
+            "channels": 4,
+            "damage_type": "anemo",
+            "hits": 4,
+            "kind": "direct",
+            "response_coordinates": [
+              "jahoda.anemo_damage_bonus",
+              "jahoda.atk",
+              "jahoda.atk_percent",
+              "jahoda.crit_damage",
+              "jahoda.crit_rate",
+              "jahoda.damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 132088.88849,
+            "channels": 49,
+            "damage_type": "electro",
+            "hits": 49,
+            "kind": "direct",
+            "response_coordinates": [
+              "flins.atk",
+              "flins.atk_percent",
+              "flins.crit_damage",
+              "flins.crit_rate",
+              "flins.damage_bonus",
+              "flins.electro_damage_bonus",
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.damage_bonus",
+              "ineffa.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 246156.054299,
+            "channels": 67,
+            "damage_type": "hydro",
+            "hits": 67,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus",
+              "jahoda.atk",
+              "jahoda.atk_percent",
+              "jahoda.crit_damage",
+              "jahoda.crit_rate",
+              "jahoda.damage_bonus",
+              "jahoda.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 43102.624929,
+            "channels": 2,
+            "damage_type": "electro",
+            "hits": 2,
+            "kind": "direct",
+            "response_coordinates": [
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.damage_bonus",
+              "ineffa.electro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 16025.888343,
+            "channels": 2,
+            "damage_type": "hydro",
+            "hits": 2,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/7",
+            "baseline_damage": 10023.654838,
+            "channels": 3,
+            "damage_type": "physical",
+            "hits": 3,
+            "kind": "direct",
+            "response_coordinates": [
+              "jahoda.atk",
+              "jahoda.atk_percent",
+              "jahoda.crit_damage",
+              "jahoda.crit_rate",
+              "jahoda.damage_bonus",
+              "jahoda.physical_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/18",
+            "baseline_damage": 8097.722296,
+            "channels": 4,
+            "damage_type": "electro",
+            "hits": 4,
+            "kind": "reaction",
+            "response_coordinates": [
+              "jahoda.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/26",
+            "baseline_damage": 1042469.938995,
+            "channels": 40,
+            "damage_type": "electro",
+            "hits": 40,
+            "kind": "reaction",
+            "response_coordinates": []
+          },
+          {
+            "attack_tag": "tag/30",
+            "baseline_damage": 1733611.235021,
+            "channels": 64,
+            "damage_type": "electro",
+            "hits": 64,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "flins.atk",
+              "flins.atk_percent",
+              "flins.crit_damage",
+              "flins.crit_rate",
+              "flins.em",
+              "ineffa.atk",
+              "ineffa.atk_percent",
+              "ineffa.crit_damage",
+              "ineffa.crit_rate",
+              "ineffa.em"
+            ]
+          }
+        ],
+        "duration_ms": 72467,
+        "formula_coordinates": [
+          "columbina.atk",
+          "columbina.atk_percent",
+          "columbina.crit_damage",
+          "columbina.crit_rate",
+          "columbina.damage_bonus",
+          "columbina.em",
+          "columbina.hp",
+          "columbina.hp_percent",
+          "columbina.hydro_damage_bonus",
+          "flins.atk",
+          "flins.atk_percent",
+          "flins.crit_damage",
+          "flins.crit_rate",
+          "flins.damage_bonus",
+          "flins.electro_damage_bonus",
+          "flins.em",
+          "ineffa.atk",
+          "ineffa.atk_percent",
+          "ineffa.crit_damage",
+          "ineffa.crit_rate",
+          "ineffa.damage_bonus",
+          "ineffa.electro_damage_bonus",
+          "ineffa.em",
+          "ineffa.physical_damage_bonus",
+          "jahoda.anemo_damage_bonus",
+          "jahoda.atk",
+          "jahoda.atk_percent",
+          "jahoda.crit_damage",
+          "jahoda.crit_rate",
+          "jahoda.damage_bonus",
+          "jahoda.em",
+          "jahoda.hydro_damage_bonus",
+          "jahoda.physical_damage_bonus"
+        ],
+        "member_path": "verification/contexts/context-07fac2e7adecdfe265f2c4761f09dfac96e303bd0290912de7b03d1f33665fb2/seed-742031889/member.json",
+        "opaque_boundary_codes": [],
+        "topology_sha256": "b89d59dfd198c6a53d1ba6fa4cdba3c6a246166c34d7ca5850464beec6eab958"
+      },
+      "id": "lunar_charged_all_sets",
+      "infinite_energy": true,
+      "mode": "all_sets",
+      "product": {
+        "candidates": [
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1614,
+                  "flower": 1395,
+                  "goblet": 1563,
+                  "plume": 1598,
+                  "sands": 1466
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Стойкость Миллелита"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 124,
+                  "flower": 120,
+                  "goblet": 1566,
+                  "plume": 219,
+                  "sands": 68
+                },
+                "main_stats": {
+                  "circlet": "Сила атаки % 46.6%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1578,
+                  "flower": 80,
+                  "goblet": 88,
+                  "plume": 81,
+                  "sands": 1576
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Ночной шёпот в Лесу откликающегося эха"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 165,
+                  "flower": 1588,
+                  "goblet": 1545,
+                  "plume": 57,
+                  "sands": 58
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Изумрудная тень"
+                  }
+                ],
+                "wearer_key": "jahoda"
+              }
+            ],
+            "formula_dps": "99570.35482683135",
+            "formula_residual": "8292.556936946334",
+            "measured": {
+              "dps": "107862.91176377768",
+              "engine_result_sha256": "9be9abe71942f3c2d3eab6fb14bc1b73383eec307aac026a19c7eb939df2c9c2",
+              "iterations": 500,
+              "standard_error": "141.38814154650336"
+            },
+            "rank": 1
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1614,
+                  "flower": 1395,
+                  "goblet": 1563,
+                  "plume": 1598,
+                  "sands": 1466
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Стойкость Миллелита"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 124,
+                  "flower": 120,
+                  "goblet": 1566,
+                  "plume": 219,
+                  "sands": 68
+                },
+                "main_stats": {
+                  "circlet": "Сила атаки % 46.6%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1437,
+                  "flower": 36,
+                  "goblet": 64,
+                  "plume": 1413,
+                  "sands": 1434
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 165,
+                  "flower": 1588,
+                  "goblet": 1545,
+                  "plume": 57,
+                  "sands": 58
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Изумрудная тень"
+                  }
+                ],
+                "wearer_key": "jahoda"
+              }
+            ],
+            "formula_dps": "99094.8237155274",
+            "formula_residual": "8134.627763133642",
+            "measured": {
+              "dps": "107229.45147866104",
+              "engine_result_sha256": "0c2e8cb8aa3105149557622b43de0385418b4e7f26c6cb7b54a4b3d2db051ef6",
+              "iterations": 500,
+              "standard_error": "138.35803883810985"
+            },
+            "rank": 2
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1614,
+                  "flower": 1395,
+                  "goblet": 1563,
+                  "plume": 1598,
+                  "sands": 8
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 124,
+                  "flower": 120,
+                  "goblet": 1566,
+                  "plume": 219,
+                  "sands": 68
+                },
+                "main_stats": {
+                  "circlet": "Сила атаки % 46.6%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1578,
+                  "flower": 80,
+                  "goblet": 88,
+                  "plume": 81,
+                  "sands": 1576
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Ночной шёпот в Лесу откликающегося эха"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1580,
+                  "flower": 218,
+                  "goblet": 1590,
+                  "plume": 121,
+                  "sands": 1544
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "Восстановление энергии 51.8%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "jahoda"
+              }
+            ],
+            "formula_dps": "98008.7960885395",
+            "formula_residual": "8391.579705900687",
+            "measured": {
+              "dps": "106400.37579444019",
+              "engine_result_sha256": "693663a12ed1c1a39364fe5a7a52f774a57bf933ff820d26b001086d57330065",
+              "iterations": 500,
+              "standard_error": "144.53019523890657"
+            },
+            "rank": 3
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 31,
+                  "goblet": 29,
+                  "plume": 1608,
+                  "sands": 236
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Позолоченные сны"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 124,
+                  "flower": 120,
+                  "goblet": 1566,
+                  "plume": 219,
+                  "sands": 68
+                },
+                "main_stats": {
+                  "circlet": "Сила атаки % 46.6%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Сердце горна"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1437,
+                  "flower": 36,
+                  "goblet": 64,
+                  "plume": 1413,
+                  "sands": 1434
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1614,
+                  "flower": 171,
+                  "goblet": 1590,
+                  "plume": 1598,
+                  "sands": 1574
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "Восстановление энергии 51.8%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "jahoda"
+              }
+            ],
+            "formula_dps": "96831.85177754266",
+            "formula_residual": "7950.539745164642",
+            "measured": {
+              "dps": "104782.3915227073",
+              "engine_result_sha256": "bd9935c08ca592754bc6544204d581e06e87c1db503f12cff3740f6c97a559f6",
+              "iterations": 500,
+              "standard_error": "148.2928514557964"
+            },
+            "rank": 4
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1614,
+                  "flower": 1395,
+                  "goblet": 1563,
+                  "plume": 1598,
+                  "sands": 8
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1578,
+                  "flower": 80,
+                  "goblet": 88,
+                  "plume": 81,
+                  "sands": 43
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 5,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "flins"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1437,
+                  "flower": 36,
+                  "goblet": 64,
+                  "plume": 1413,
+                  "sands": 1434
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Сила атаки % 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "ineffa"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 165,
+                  "flower": 1588,
+                  "goblet": 1545,
+                  "plume": 57,
+                  "sands": 58
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "Сила атаки % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Изумрудная тень"
+                  }
+                ],
+                "wearer_key": "jahoda"
+              }
+            ],
+            "formula_dps": "95305.05924773676",
+            "formula_residual": "8996.273186997525",
+            "measured": {
+              "dps": "104301.33243473429",
+              "engine_result_sha256": "1daa8788036acf8b95c4328ea281e01d595a78c1e0181f725108e8086057d396",
+              "iterations": 500,
+              "standard_error": "78.00945651628487"
+            },
+            "rank": 5
+          }
+        ],
+        "coverage": {},
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_result_v1",
+        "status": "success",
+        "warnings": [
+          "all_sets_bounded_search",
+          "all_sets_search_budget_limited",
+          "formula_rank_not_measurement_authority",
+          "opaque_formula_boundaries_present"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/lunar_charged_jahoda.txt",
+      "source_url": "local_user_config_flins_columbina_ineffa_jahoda",
+      "status": "success",
+      "success": true,
+      "wall_seconds": 139.35899999999674
+    },
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 6516.0,
+        "mode": "all_sets",
+        "optimizer_process_ms": 231859.0,
+        "prepare_inputs_ms": 4860.0,
+        "request_preflight_ms": 109.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 243344.0
+      },
+      "archetype": "lunar_bloom_hyperbloom_team_max_em",
+      "characters": [
+        "columbina",
+        "kukishinobu",
+        "lauma",
+        "nahida"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 243343,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [
+        "bloom",
+        "lunar_bloom",
+        "hyperbloom",
+        "dendro",
+        "hp",
+        "em",
+        "team_max_em",
+        "multi_owner"
+      ],
+      "formula_witness": {
+        "channel_groups": [
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 42389.584175,
+            "channels": 16,
+            "damage_type": "dendro",
+            "hits": 16,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.em",
+              "lauma.atk",
+              "lauma.atk_percent",
+              "lauma.crit_damage",
+              "lauma.crit_rate",
+              "lauma.damage_bonus",
+              "lauma.dendro_damage_bonus",
+              "lauma.em",
+              "nahida.atk",
+              "nahida.atk_percent",
+              "nahida.crit_damage",
+              "nahida.crit_rate",
+              "nahida.damage_bonus",
+              "nahida.dendro_damage_bonus",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 11125.182121,
+            "channels": 17,
+            "damage_type": "hydro",
+            "hits": 17,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.atk",
+              "columbina.atk_percent",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 3473.18453,
+            "channels": 5,
+            "damage_type": "physical",
+            "hits": 5,
+            "kind": "direct",
+            "response_coordinates": [
+              "kukishinobu.atk",
+              "kukishinobu.atk_percent",
+              "kukishinobu.crit_damage",
+              "kukishinobu.crit_rate",
+              "kukishinobu.damage_bonus",
+              "kukishinobu.physical_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 476600.965,
+            "channels": 38,
+            "damage_type": "dendro",
+            "hits": 38,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.em",
+              "lauma.em",
+              "nahida.atk",
+              "nahida.atk_percent",
+              "nahida.crit_damage",
+              "nahida.crit_rate",
+              "nahida.damage_bonus",
+              "nahida.dendro_damage_bonus",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 88294.94229,
+            "channels": 65,
+            "damage_type": "electro",
+            "hits": 65,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.atk",
+              "kukishinobu.atk_percent",
+              "kukishinobu.crit_damage",
+              "kukishinobu.crit_rate",
+              "kukishinobu.damage_bonus",
+              "kukishinobu.electro_damage_bonus",
+              "kukishinobu.em",
+              "kukishinobu.hp",
+              "kukishinobu.hp_percent",
+              "lauma.em",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 126805.084008,
+            "channels": 52,
+            "damage_type": "hydro",
+            "hits": 52,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/5",
+            "baseline_damage": 396078.441324,
+            "channels": 44,
+            "damage_type": "dendro",
+            "hits": 44,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.em",
+              "lauma.atk",
+              "lauma.atk_percent",
+              "lauma.crit_damage",
+              "lauma.crit_rate",
+              "lauma.damage_bonus",
+              "lauma.dendro_damage_bonus",
+              "lauma.em",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 68207.511663,
+            "channels": 48,
+            "damage_type": "electro",
+            "hits": 48,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.atk",
+              "kukishinobu.atk_percent",
+              "kukishinobu.crit_damage",
+              "kukishinobu.crit_rate",
+              "kukishinobu.damage_bonus",
+              "kukishinobu.electro_damage_bonus",
+              "kukishinobu.em",
+              "kukishinobu.hp",
+              "kukishinobu.hp_percent",
+              "lauma.em",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 33811.586018,
+            "channels": 5,
+            "damage_type": "hydro",
+            "hits": 5,
+            "kind": "direct",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/20",
+            "baseline_damage": 33059.713471,
+            "channels": 2,
+            "damage_type": "dendro",
+            "hits": 2,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/23",
+            "baseline_damage": 1842400.471808,
+            "channels": 68,
+            "damage_type": "dendro",
+            "hits": 68,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.em",
+              "kukishinobu.em",
+              "lauma.em",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/31",
+            "baseline_damage": 1532119.175897,
+            "channels": 177,
+            "damage_type": "dendro",
+            "hits": 177,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "kukishinobu.atk",
+              "kukishinobu.atk_percent",
+              "kukishinobu.em",
+              "lauma.crit_damage",
+              "lauma.crit_rate",
+              "lauma.em",
+              "nahida.em"
+            ]
+          }
+        ],
+        "duration_ms": 93650,
+        "formula_coordinates": [
+          "columbina.atk",
+          "columbina.atk_percent",
+          "columbina.crit_damage",
+          "columbina.crit_rate",
+          "columbina.damage_bonus",
+          "columbina.em",
+          "columbina.hp",
+          "columbina.hp_percent",
+          "columbina.hydro_damage_bonus",
+          "kukishinobu.atk",
+          "kukishinobu.atk_percent",
+          "kukishinobu.crit_damage",
+          "kukishinobu.crit_rate",
+          "kukishinobu.damage_bonus",
+          "kukishinobu.electro_damage_bonus",
+          "kukishinobu.em",
+          "kukishinobu.hp",
+          "kukishinobu.hp_percent",
+          "kukishinobu.physical_damage_bonus",
+          "lauma.atk",
+          "lauma.atk_percent",
+          "lauma.crit_damage",
+          "lauma.crit_rate",
+          "lauma.damage_bonus",
+          "lauma.dendro_damage_bonus",
+          "lauma.em",
+          "nahida.atk",
+          "nahida.atk_percent",
+          "nahida.crit_damage",
+          "nahida.crit_rate",
+          "nahida.damage_bonus",
+          "nahida.dendro_damage_bonus",
+          "nahida.em"
+        ],
+        "member_path": "verification/contexts/context-0bd89cd2bade7cfb1b29047dff4f834c4aa693610303b3345c3d8c7041a14ec0/seed-742031889/member.json",
+        "opaque_boundary_codes": [],
+        "topology_sha256": "89c30d788b481ab7a3cabf40e0b55ab860c1cc8f28407ebe23c71e77a36a5c5d"
+      },
+      "id": "lunar_bloom_all_sets",
+      "infinite_energy": true,
+      "mode": "all_sets",
+      "product": {
+        "candidates": [
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1617,
+                  "flower": 1454,
+                  "goblet": 1563,
+                  "plume": 116,
+                  "sands": 1466
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 2,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 129,
+                  "flower": 66,
+                  "goblet": 69,
+                  "plume": 67,
+                  "sands": 68
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 195,
+                  "flower": 36,
+                  "goblet": 1428,
+                  "plume": 211,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "lauma"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 109,
+                  "flower": 105,
+                  "goblet": 108,
+                  "plume": 81,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": "126284.89824393492",
+            "formula_residual": "-490.15595055955055",
+            "measured": {
+              "dps": "125794.74229337537",
+              "engine_result_sha256": "fd4d52a7ff338128608faaf0d800745638195ea752c9b17389e68d9e1cd6949a",
+              "iterations": 500,
+              "standard_error": "70.0820892227507"
+            },
+            "rank": 1
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1617,
+                  "flower": 1454,
+                  "goblet": 1563,
+                  "plume": 116,
+                  "sands": 1466
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 2,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 129,
+                  "flower": 66,
+                  "goblet": 69,
+                  "plume": 67,
+                  "sands": 68
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 70,
+                  "flower": 250,
+                  "goblet": 34,
+                  "plume": 251,
+                  "sands": 1582
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "lauma"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 109,
+                  "flower": 105,
+                  "goblet": 108,
+                  "plume": 81,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": "120665.25173014762",
+            "formula_residual": "-581.6540181177115",
+            "measured": {
+              "dps": "120083.5977120299",
+              "engine_result_sha256": "077e3075665c81b6dea8a608d03a13103c0c3d72a777e3a0eb149f846d216108",
+              "iterations": 500,
+              "standard_error": "53.58685246466685"
+            },
+            "rank": 2
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 94,
+                  "flower": 90,
+                  "goblet": 4,
+                  "plume": 116,
+                  "sands": 1355
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Защита % 58.3%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 129,
+                  "flower": 66,
+                  "goblet": 69,
+                  "plume": 67,
+                  "sands": 68
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 195,
+                  "flower": 36,
+                  "goblet": 1428,
+                  "plume": 211,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "lauma"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 160,
+                  "flower": 1564,
+                  "goblet": 1298,
+                  "plume": 1527,
+                  "sands": 107
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Ночной шёпот в Лесу откликающегося эха"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": "116844.8365692641",
+            "formula_residual": "-586.6912285953294",
+            "measured": {
+              "dps": "116258.14534066877",
+              "engine_result_sha256": "411a275eac28fc0ddaf0cf3dc66d7798a90fa8393e4f3650bf01af506dd329b7",
+              "iterations": 500,
+              "standard_error": "74.86644298535309"
+            },
+            "rank": 3
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 94,
+                  "flower": 90,
+                  "goblet": 4,
+                  "plume": 116,
+                  "sands": 1355
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Защита % 58.3%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1339,
+                  "flower": 147,
+                  "goblet": 34,
+                  "plume": 1329,
+                  "sands": 1337
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Цветок потерянного рая"
+                  }
+                ],
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 195,
+                  "flower": 36,
+                  "goblet": 1428,
+                  "plume": 211,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "lauma"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 160,
+                  "flower": 1564,
+                  "goblet": 1298,
+                  "plume": 1527,
+                  "sands": 107
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Ночной шёпот в Лесу откликающегося эха"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": "110904.35065636763",
+            "formula_residual": "-674.1870699668798",
+            "measured": {
+              "dps": "110230.16358640075",
+              "engine_result_sha256": "a78d57f2f47fc01852ef1e07cb6fcb5228ce29c8c67a9a8b686690c2dceae18b",
+              "iterations": 500,
+              "standard_error": "69.19461761849361"
+            },
+            "rank": 4
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1436,
+                  "flower": 1417,
+                  "goblet": 1563,
+                  "plume": 1422,
+                  "sands": 236
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Стойкость Миллелита"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 129,
+                  "flower": 66,
+                  "goblet": 69,
+                  "plume": 67,
+                  "sands": 68
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "kukishinobu"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 195,
+                  "flower": 36,
+                  "goblet": 1428,
+                  "plume": 211,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "lauma"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 160,
+                  "flower": 1564,
+                  "goblet": 1298,
+                  "plume": 1527,
+                  "sands": 107
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Ночной шёпот в Лесу откликающегося эха"
+                  }
+                ],
+                "wearer_key": "nahida"
+              }
+            ],
+            "formula_dps": "110024.88875639395",
+            "formula_residual": "-495.48851337893575",
+            "measured": {
+              "dps": "109529.40024301501",
+              "engine_result_sha256": "ebd8e6244aa8fbe597dd77aa814f8df1a33ef8a2244314881cfb199eb29bdf23",
+              "iterations": 500,
+              "standard_error": "66.32601278327223"
+            },
+            "rank": 5
+          }
+        ],
+        "coverage": {},
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_result_v1",
+        "status": "success",
+        "warnings": [
+          "all_sets_bounded_search",
+          "all_sets_search_budget_limited",
+          "formula_rank_not_measurement_authority",
+          "opaque_formula_boundaries_present"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/bloom.txt",
+      "source_url": "local_user_config_columbina_kuki_lauma_nahida",
+      "status": "success",
+      "success": true,
+      "wall_seconds": 243.4529999999795
+    },
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 6594.0,
+        "mode": "all_sets",
+        "optimizer_process_ms": 139891.0,
+        "prepare_inputs_ms": 4781.0,
+        "request_preflight_ms": 125.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 151391.0
+      },
+      "archetype": "nilou_bountiful_core_transformative",
+      "characters": [
+        "nilou",
+        "kaveh",
+        "nahida",
+        "xingqiu"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 151391,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [
+        "bloom",
+        "bountiful_core",
+        "hp",
+        "em",
+        "multi_owner",
+        "healing"
+      ],
+      "formula_witness": {
+        "channel_groups": [
+          {
+            "attack_tag": "tag/0",
+            "baseline_damage": 7333.994626,
+            "channels": 20,
+            "damage_type": "dendro",
+            "hits": 20,
+            "kind": "direct",
+            "response_coordinates": [
+              "kaveh.atk",
+              "kaveh.atk_percent",
+              "kaveh.crit_damage",
+              "kaveh.crit_rate",
+              "kaveh.damage_bonus",
+              "kaveh.dendro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/0",
+            "baseline_damage": 0.0,
+            "channels": 169,
+            "damage_type": "hydro",
+            "hits": 169,
+            "kind": "direct",
+            "response_coordinates": [
+              "nilou.atk",
+              "nilou.atk_percent",
+              "nilou.crit_damage",
+              "nilou.crit_rate",
+              "nilou.damage_bonus",
+              "nilou.hydro_damage_bonus",
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 78143.513636,
+            "channels": 90,
+            "damage_type": "dendro",
+            "hits": 90,
+            "kind": "direct",
+            "response_coordinates": [
+              "kaveh.atk",
+              "kaveh.atk_percent",
+              "kaveh.crit_damage",
+              "kaveh.crit_rate",
+              "kaveh.damage_bonus",
+              "kaveh.dendro_damage_bonus",
+              "nahida.atk",
+              "nahida.atk_percent",
+              "nahida.crit_damage",
+              "nahida.crit_rate",
+              "nahida.damage_bonus",
+              "nahida.dendro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 6219.731574,
+            "channels": 5,
+            "damage_type": "physical",
+            "hits": 5,
+            "kind": "direct",
+            "response_coordinates": [
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.physical_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/2",
+            "baseline_damage": 13376.793782,
+            "channels": 5,
+            "damage_type": "dendro",
+            "hits": 5,
+            "kind": "direct",
+            "response_coordinates": [
+              "nahida.atk",
+              "nahida.atk_percent",
+              "nahida.crit_damage",
+              "nahida.crit_rate",
+              "nahida.damage_bonus",
+              "nahida.dendro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 212981.379272,
+            "channels": 52,
+            "damage_type": "dendro",
+            "hits": 52,
+            "kind": "direct",
+            "response_coordinates": [
+              "kaveh.atk",
+              "kaveh.atk_percent",
+              "kaveh.crit_damage",
+              "kaveh.crit_rate",
+              "kaveh.damage_bonus",
+              "kaveh.dendro_damage_bonus",
+              "nahida.atk",
+              "nahida.atk_percent",
+              "nahida.crit_damage",
+              "nahida.crit_rate",
+              "nahida.damage_bonus",
+              "nahida.dendro_damage_bonus",
+              "nahida.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 112929.49177,
+            "channels": 30,
+            "damage_type": "hydro",
+            "hits": 30,
+            "kind": "direct",
+            "response_coordinates": [
+              "nilou.atk",
+              "nilou.atk_percent",
+              "nilou.crit_damage",
+              "nilou.crit_rate",
+              "nilou.damage_bonus",
+              "nilou.hp",
+              "nilou.hp_percent",
+              "nilou.hydro_damage_bonus",
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 7767.69069,
+            "channels": 5,
+            "damage_type": "dendro",
+            "hits": 5,
+            "kind": "direct",
+            "response_coordinates": [
+              "kaveh.atk",
+              "kaveh.atk_percent",
+              "kaveh.crit_damage",
+              "kaveh.crit_rate",
+              "kaveh.damage_bonus",
+              "kaveh.dendro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 525306.324984,
+            "channels": 245,
+            "damage_type": "hydro",
+            "hits": 245,
+            "kind": "direct",
+            "response_coordinates": [
+              "xingqiu.atk",
+              "xingqiu.atk_percent",
+              "xingqiu.crit_damage",
+              "xingqiu.crit_rate",
+              "xingqiu.damage_bonus",
+              "xingqiu.hydro_damage_bonus"
+            ]
+          },
+          {
+            "attack_tag": "tag/20",
+            "baseline_damage": 2573325.645918,
+            "channels": 161,
+            "damage_type": "dendro",
+            "hits": 161,
+            "kind": "reaction",
+            "response_coordinates": [
+              "kaveh.em",
+              "nahida.em",
+              "nilou.em",
+              "xingqiu.em"
+            ]
+          }
+        ],
+        "duration_ms": 105483,
+        "formula_coordinates": [
+          "kaveh.atk",
+          "kaveh.atk_percent",
+          "kaveh.crit_damage",
+          "kaveh.crit_rate",
+          "kaveh.damage_bonus",
+          "kaveh.dendro_damage_bonus",
+          "kaveh.em",
+          "nahida.atk",
+          "nahida.atk_percent",
+          "nahida.crit_damage",
+          "nahida.crit_rate",
+          "nahida.damage_bonus",
+          "nahida.dendro_damage_bonus",
+          "nahida.em",
+          "nilou.atk",
+          "nilou.atk_percent",
+          "nilou.crit_damage",
+          "nilou.crit_rate",
+          "nilou.damage_bonus",
+          "nilou.em",
+          "nilou.hp",
+          "nilou.hp_percent",
+          "nilou.hydro_damage_bonus",
+          "xingqiu.atk",
+          "xingqiu.atk_percent",
+          "xingqiu.crit_damage",
+          "xingqiu.crit_rate",
+          "xingqiu.damage_bonus",
+          "xingqiu.em",
+          "xingqiu.hydro_damage_bonus",
+          "xingqiu.physical_damage_bonus"
+        ],
+        "member_path": "verification/contexts/context-0b809035c10e0f315aa076557796c555a586b038c67bcf1bc61ae1cbafeb82c3/seed-742031889/member.json",
+        "opaque_boundary_codes": [],
+        "topology_sha256": "ca0f9f113040203260880ed12ec27c84daab85e67f5ee37d0cbb3c54ad79ba6b"
+      },
+      "id": "bountiful_core_all_sets",
+      "infinite_energy": true,
+      "mode": "all_sets",
+      "product": {
+        "candidates": [
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 129,
+                  "flower": 181,
+                  "goblet": 108,
+                  "plume": 200,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "kaveh"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 36,
+                  "goblet": 213,
+                  "plume": 81,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nahida"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 70,
+                  "flower": 66,
+                  "goblet": 69,
+                  "plume": 67,
+                  "sands": 1577
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "nilou"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 195,
+                  "flower": 56,
+                  "goblet": 1545,
+                  "plume": 1527,
+                  "sands": 107
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  }
+                ],
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": "48350.808777416445",
+            "formula_residual": "-1071.3854025567634",
+            "measured": {
+              "dps": "47279.42337485968",
+              "engine_result_sha256": "1852eeda34d86a7ec33bd8a16cd66f384802bb20d86d7fb6f6888b10700c9507",
+              "iterations": 500,
+              "standard_error": "14.097505074627405"
+            },
+            "rank": 1
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 124,
+                  "flower": 66,
+                  "goblet": 113,
+                  "plume": 67,
+                  "sands": 68
+                },
+                "main_stats": {
+                  "circlet": "Сила атаки % 46.6%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "kaveh"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 129,
+                  "flower": 105,
+                  "goblet": 108,
+                  "plume": 106,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "nahida"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 195,
+                  "flower": 36,
+                  "goblet": 1428,
+                  "plume": 211,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nilou"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1578,
+                  "flower": 1588,
+                  "goblet": 1545,
+                  "plume": 1527,
+                  "sands": 107
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": "48569.29577925446",
+            "formula_residual": "-2551.1808385153563",
+            "measured": {
+              "dps": "46018.114940739106",
+              "engine_result_sha256": "a785bc5817bd310e72c8b384d8633999899b7c3f7f109b3f7c9ee532d7e61d55",
+              "iterations": 500,
+              "standard_error": "18.106541146395397"
+            },
+            "rank": 2
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1578,
+                  "flower": 105,
+                  "goblet": 1573,
+                  "plume": 200,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "kaveh"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 36,
+                  "goblet": 1428,
+                  "plume": 81,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nahida"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 195,
+                  "flower": 1416,
+                  "goblet": 213,
+                  "plume": 211,
+                  "sands": 1435
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nilou"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 165,
+                  "flower": 1588,
+                  "goblet": 1545,
+                  "plume": 1527,
+                  "sands": 107
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Изумрудная тень"
+                  }
+                ],
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": "47848.73425536843",
+            "formula_residual": "-2311.6369386121733",
+            "measured": {
+              "dps": "45537.097316756255",
+              "engine_result_sha256": "7b33326c6070550a13ad3a5d7da371c6931385bce1cdaae1fad6cec974ae72a2",
+              "iterations": 500,
+              "standard_error": "17.741646056674238"
+            },
+            "rank": 3
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1578,
+                  "flower": 105,
+                  "goblet": 1573,
+                  "plume": 200,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "kaveh"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 203,
+                  "flower": 36,
+                  "goblet": 1428,
+                  "plume": 81,
+                  "sands": 1426
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nahida"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 195,
+                  "flower": 1416,
+                  "goblet": 213,
+                  "plume": 211,
+                  "sands": 1435
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nilou"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 124,
+                  "flower": 66,
+                  "goblet": 34,
+                  "plume": 67,
+                  "sands": 68
+                },
+                "main_stats": {
+                  "circlet": "Сила атаки % 46.6%",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": "47561.133372237215",
+            "formula_residual": "-2322.4793431036524",
+            "measured": {
+              "dps": "45238.65402913356",
+              "engine_result_sha256": "783eeaccc3413b3442f0a74647e9e00be3d4ae297795fbe0136a455ae974b173",
+              "iterations": 500,
+              "standard_error": "14.866623818582747"
+            },
+            "rank": 4
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1578,
+                  "flower": 105,
+                  "goblet": 1573,
+                  "plume": 200,
+                  "sands": 112
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  }
+                ],
+                "wearer_key": "kaveh"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 129,
+                  "flower": 66,
+                  "goblet": 1601,
+                  "plume": 67,
+                  "sands": 68
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Бонус Дендро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "nahida"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 195,
+                  "flower": 1416,
+                  "goblet": 213,
+                  "plume": 211,
+                  "sands": 1435
+                },
+                "main_stats": {
+                  "circlet": "Мастерство стихий 187",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Свиток героя сожжённого города"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "nilou"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 165,
+                  "flower": 1588,
+                  "goblet": 1545,
+                  "plume": 1527,
+                  "sands": 107
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Изумрудная тень"
+                  }
+                ],
+                "wearer_key": "xingqiu"
+              }
+            ],
+            "formula_dps": "47303.66103389127",
+            "formula_residual": "-2299.825353906883",
+            "measured": {
+              "dps": "45003.83567998439",
+              "engine_result_sha256": "e9d2ab036dfaa0beb792de19dad169c0c0fa62dd619dd1678b4184cae0581d8f",
+              "iterations": 500,
+              "standard_error": "18.59036734071905"
+            },
+            "rank": 5
+          }
+        ],
+        "coverage": {},
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_result_v1",
+        "status": "success",
+        "warnings": [
+          "all_sets_bounded_search",
+          "all_sets_search_budget_limited",
+          "formula_rank_not_measurement_authority",
+          "opaque_formula_boundaries_present"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/nilou_bountiful_core.txt",
+      "source_url": "https://gcsim.app/db/QFCTCPwcrH9g",
+      "status": "success",
+      "success": true,
+      "wall_seconds": 151.56199999997625
+    },
+    {
+      "adapter_timings": {
+        "formula_inputs_ms": 6890.0,
+        "mode": "all_sets",
+        "optimizer_process_ms": 467172.0,
+        "prepare_inputs_ms": 5250.0,
+        "request_preflight_ms": 110.0,
+        "schema_kind": "gtt_gcsim_optimizer_adapter_timings_v1",
+        "schema_version": 1,
+        "terminal_status": "success",
+        "total_elapsed_ms": 479422.0
+      },
+      "archetype": "chiori_atk_def_lunar_crystallize",
+      "characters": [
+        "furina",
+        "xilonen",
+        "chiori",
+        "columbina"
+      ],
+      "database_variant": "live_read_only",
+      "elapsed_ms": 479422,
+      "error": null,
+      "error_code": null,
+      "execution": "live_product_session",
+      "expected_mechanics": [
+        "crystallize",
+        "lunar_crystallize",
+        "atk",
+        "def",
+        "hp",
+        "dual_scale",
+        "multi_owner"
+      ],
+      "formula_witness": {
+        "channel_groups": [
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 51151.805145,
+            "channels": 16,
+            "damage_type": "geo",
+            "hits": 16,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.damage_bonus",
+              "xilonen.def",
+              "xilonen.def_percent",
+              "xilonen.geo_damage_bonus",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/1",
+            "baseline_damage": 100135.81742,
+            "channels": 48,
+            "damage_type": "hydro",
+            "hits": 48,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.atk",
+              "columbina.atk_percent",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 421983.034301,
+            "channels": 56,
+            "damage_type": "geo",
+            "hits": 56,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.atk",
+              "chiori.atk_percent",
+              "chiori.crit_damage",
+              "chiori.crit_rate",
+              "chiori.damage_bonus",
+              "chiori.def",
+              "chiori.def_percent",
+              "chiori.geo_damage_bonus",
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.damage_bonus",
+              "xilonen.def",
+              "xilonen.def_percent",
+              "xilonen.geo_damage_bonus",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/4",
+            "baseline_damage": 1284439.612984,
+            "channels": 129,
+            "damage_type": "hydro",
+            "hits": 129,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus",
+              "furina.atk",
+              "furina.atk_percent",
+              "furina.crit_damage",
+              "furina.crit_rate",
+              "furina.damage_bonus",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "furina.hydro_damage_bonus",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 136442.842772,
+            "channels": 8,
+            "damage_type": "geo",
+            "hits": 8,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.atk",
+              "chiori.atk_percent",
+              "chiori.crit_damage",
+              "chiori.crit_rate",
+              "chiori.damage_bonus",
+              "chiori.def",
+              "chiori.def_percent",
+              "chiori.geo_damage_bonus",
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.damage_bonus",
+              "xilonen.def",
+              "xilonen.def_percent",
+              "xilonen.geo_damage_bonus",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/6",
+            "baseline_damage": 162585.157038,
+            "channels": 8,
+            "damage_type": "hydro",
+            "hits": 8,
+            "kind": "direct",
+            "response_coordinates": [
+              "chiori.hp",
+              "chiori.hp_percent",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.damage_bonus",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "columbina.hydro_damage_bonus",
+              "furina.atk",
+              "furina.atk_percent",
+              "furina.crit_damage",
+              "furina.crit_rate",
+              "furina.damage_bonus",
+              "furina.healing_bonus",
+              "furina.hp",
+              "furina.hp_percent",
+              "furina.hydro_damage_bonus",
+              "xilonen.healing_bonus",
+              "xilonen.hp",
+              "xilonen.hp_percent"
+            ]
+          },
+          {
+            "attack_tag": "tag/27",
+            "baseline_damage": 603005.349916,
+            "channels": 54,
+            "damage_type": "geo",
+            "hits": 54,
+            "kind": "reaction",
+            "response_coordinates": [
+              "chiori.crit_damage",
+              "chiori.crit_rate",
+              "chiori.em",
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent",
+              "furina.crit_damage",
+              "furina.crit_rate",
+              "furina.em",
+              "xilonen.crit_damage",
+              "xilonen.crit_rate",
+              "xilonen.em"
+            ]
+          },
+          {
+            "attack_tag": "tag/32",
+            "baseline_damage": 324901.888512,
+            "channels": 9,
+            "damage_type": "geo",
+            "hits": 9,
+            "kind": "reaction",
+            "response_coordinates": [
+              "columbina.crit_damage",
+              "columbina.crit_rate",
+              "columbina.em",
+              "columbina.hp",
+              "columbina.hp_percent"
+            ]
+          }
+        ],
+        "duration_ms": 79267,
+        "formula_coordinates": [
+          "chiori.atk",
+          "chiori.atk_percent",
+          "chiori.crit_damage",
+          "chiori.crit_rate",
+          "chiori.damage_bonus",
+          "chiori.def",
+          "chiori.def_percent",
+          "chiori.em",
+          "chiori.geo_damage_bonus",
+          "chiori.hp",
+          "chiori.hp_percent",
+          "columbina.atk",
+          "columbina.atk_percent",
+          "columbina.crit_damage",
+          "columbina.crit_rate",
+          "columbina.damage_bonus",
+          "columbina.em",
+          "columbina.hp",
+          "columbina.hp_percent",
+          "columbina.hydro_damage_bonus",
+          "furina.atk",
+          "furina.atk_percent",
+          "furina.crit_damage",
+          "furina.crit_rate",
+          "furina.damage_bonus",
+          "furina.em",
+          "furina.healing_bonus",
+          "furina.hp",
+          "furina.hp_percent",
+          "furina.hydro_damage_bonus",
+          "xilonen.crit_damage",
+          "xilonen.crit_rate",
+          "xilonen.damage_bonus",
+          "xilonen.def",
+          "xilonen.def_percent",
+          "xilonen.em",
+          "xilonen.geo_damage_bonus",
+          "xilonen.healing_bonus",
+          "xilonen.hp",
+          "xilonen.hp_percent"
+        ],
+        "member_path": "verification/contexts/context-541e60c11332e4aa64bf5bea432c8e349d4a010cdb66a8426c7a86aea632d609/seed-742031889/member.json",
+        "opaque_boundary_codes": [],
+        "topology_sha256": "4ce4ba6d21e5edce9c4d735baf9e81ad9966346cb978ef3c9e26854fe9190081"
+      },
+      "id": "chiori_lunar_crystallize_all_sets",
+      "infinite_energy": true,
+      "mode": "all_sets",
+      "product": {
+        "candidates": [
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1437,
+                  "flower": 90,
+                  "goblet": 19,
+                  "plume": 1412,
+                  "sands": 1604
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Гео урона 46.6%",
+                  "sands": "Защита % 58.3%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "chiori"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 84,
+                  "flower": 31,
+                  "goblet": 1563,
+                  "plume": 1598,
+                  "sands": 8
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 2,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Позолоченные сны"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1436,
+                  "flower": 1417,
+                  "goblet": 1545,
+                  "plume": 1422,
+                  "sands": 236
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "furina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1580,
+                  "flower": 218,
+                  "goblet": 54,
+                  "plume": 219,
+                  "sands": 1459
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Защита % 58.3%",
+                  "sands": "Защита % 58.3%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": "90967.09076882793",
+            "formula_residual": "-647.59127044653",
+            "measured": {
+              "dps": "90319.4994983814",
+              "engine_result_sha256": "2872e21c8a51a93ffb4baf8a604b1a90c80607fa099bbae8aabd5d4d113caa8d",
+              "iterations": 500,
+              "standard_error": "64.90402216288129"
+            },
+            "rank": 1
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1437,
+                  "flower": 90,
+                  "goblet": 19,
+                  "plume": 1412,
+                  "sands": 1604
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Гео урона 46.6%",
+                  "sands": "Защита % 58.3%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "chiori"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 84,
+                  "flower": 31,
+                  "goblet": 1563,
+                  "plume": 1598,
+                  "sands": 8
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 2,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Позолоченные сны"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1436,
+                  "flower": 1417,
+                  "goblet": 1545,
+                  "plume": 1589,
+                  "sands": 1466
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 2,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "furina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 160,
+                  "flower": 1564,
+                  "goblet": 54,
+                  "plume": 57,
+                  "sands": 107
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Защита % 58.3%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": "89235.09277716986",
+            "formula_residual": "-728.7851421380765",
+            "measured": {
+              "dps": "88506.30763503179",
+              "engine_result_sha256": "6003862c7508b6a1518830067a94580498b157df13515589d5a8d8263c846ed2",
+              "iterations": 500,
+              "standard_error": "55.63115094276176"
+            },
+            "rank": 2
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1437,
+                  "flower": 90,
+                  "goblet": 19,
+                  "plume": 1412,
+                  "sands": 1604
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Гео урона 46.6%",
+                  "sands": "Защита % 58.3%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "chiori"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 84,
+                  "flower": 31,
+                  "goblet": 1563,
+                  "plume": 1598,
+                  "sands": 8
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 2,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Позолоченные сны"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Стойкость Миллелита"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1436,
+                  "flower": 1417,
+                  "goblet": 1545,
+                  "plume": 1422,
+                  "sands": 236
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "furina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 160,
+                  "flower": 1564,
+                  "goblet": 54,
+                  "plume": 57,
+                  "sands": 107
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Защита % 58.3%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": "88649.89762236207",
+            "formula_residual": "-659.3153468210658",
+            "measured": {
+              "dps": "87990.582275541",
+              "engine_result_sha256": "c61ffdbb3b7c4a792ded68f0217ca7be54819f72fc94342ebb96c567525c0542",
+              "iterations": 500,
+              "standard_error": "63.43810559539517"
+            },
+            "rank": 3
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1437,
+                  "flower": 90,
+                  "goblet": 19,
+                  "plume": 1412,
+                  "sands": 1604
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Гео урона 46.6%",
+                  "sands": "Защита % 58.3%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "chiori"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1614,
+                  "flower": 1395,
+                  "goblet": 1563,
+                  "plume": 1598,
+                  "sands": 1466
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "HP % 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "Стойкость Миллелита"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Странствующий ансамбль"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1436,
+                  "flower": 1417,
+                  "goblet": 1545,
+                  "plume": 1422,
+                  "sands": 236
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "furina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 160,
+                  "flower": 1564,
+                  "goblet": 54,
+                  "plume": 57,
+                  "sands": 107
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Защита % 58.3%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": "85247.19378086395",
+            "formula_residual": "-63.169608763215365",
+            "measured": {
+              "dps": "85184.02417210073",
+              "engine_result_sha256": "6116e5dff2892ea990596edd40ac92eefbc75652b5425f44b7408417ace94906",
+              "iterations": 500,
+              "standard_error": "65.76737746726633"
+            },
+            "rank": 4
+          },
+          {
+            "builds": [
+              {
+                "artifact_ids": {
+                  "circlet": 1437,
+                  "flower": 90,
+                  "goblet": 19,
+                  "plume": 1412,
+                  "sands": 1604
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Бонус Гео урона 46.6%",
+                  "sands": "Защита % 58.3%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Воспоминания дремучего леса"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 2,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "chiori"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1580,
+                  "flower": 66,
+                  "goblet": 69,
+                  "plume": 219,
+                  "sands": 8
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Мастерство стихий 187",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "Обсидиановый фолиант"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "columbina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 1436,
+                  "flower": 1417,
+                  "goblet": 1545,
+                  "plume": 1422,
+                  "sands": 236
+                },
+                "main_stats": {
+                  "circlet": "Крит. урон 62.2%",
+                  "goblet": "Бонус Гидро урона 46.6%",
+                  "sands": "HP % 46.6%"
+                },
+                "sets": [
+                  {
+                    "count": 1,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 4,
+                    "name": "Церемония древней знати"
+                  }
+                ],
+                "wearer_key": "furina"
+              },
+              {
+                "artifact_ids": {
+                  "circlet": 160,
+                  "flower": 1564,
+                  "goblet": 54,
+                  "plume": 57,
+                  "sands": 107
+                },
+                "main_stats": {
+                  "circlet": "Шанс крит. попадания 31.1%",
+                  "goblet": "Защита % 58.3%",
+                  "sands": "Мастерство стихий 187"
+                },
+                "sets": [
+                  {
+                    "count": 4,
+                    "name": "День восходящих ветров"
+                  },
+                  {
+                    "count": 1,
+                    "name": "Серенада шёлковой луны"
+                  }
+                ],
+                "wearer_key": "xilonen"
+              }
+            ],
+            "formula_dps": "84701.14396336183",
+            "formula_residual": "-2445.079154617575",
+            "measured": {
+              "dps": "82256.06480874425",
+              "engine_result_sha256": "338c7da4d538128ed40cd026d1305956acd1781765b22bf9dfad0b977f4fff3d",
+              "iterations": 500,
+              "standard_error": "66.75569840063729"
+            },
+            "rank": 5
+          }
+        ],
+        "coverage": {},
+        "energy": null,
+        "schema_kind": "gtt_gcsim_optimizer_result_v1",
+        "status": "success",
+        "warnings": [
+          "all_sets_bounded_search",
+          "all_sets_search_budget_limited",
+          "formula_rank_not_measurement_authority",
+          "opaque_formula_boundaries_present"
+        ]
+      },
+      "rotation_file": "tools/experiments/gcsim/mode_matrix/rotations/chiori_lunar_crystallize.txt",
+      "source_url": "local_user_rotation_furina_xilonen_chiori_columbina",
+      "status": "success",
+      "success": true,
+      "wall_seconds": 479.7970000000205
+    }
+  ],
+  "schema_version": 1,
+  "scope": "same_request_and_session_classes_as_optimizer_Qt_buttons",
+  "status": "measurement_only_pending_user_review"
+}

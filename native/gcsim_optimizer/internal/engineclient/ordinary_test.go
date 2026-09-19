@@ -54,6 +54,45 @@ func TestParseOrdinaryExplicitZeroAndAdditionalFields(t *testing.T) {
 	}
 }
 
+func TestParseOrdinaryResultExtractsMaximumInsufficientEnergy(t *testing.T) {
+	payload := []byte(`{
+		"character_details":[{"name":"a"},{"name":"b"}],
+		"statistics":{
+			"iterations":1000,
+			"dps":{"mean":148135.25,"sd":3162.2776601683795},
+			"failed_actions":[
+				{"insufficient_energy":{"max":2.75}},
+				{"insufficient_energy":{"max":12.5}}
+			]
+		}
+	}`)
+	result, err := ParseOrdinaryResult(payload, 1000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.InsufficientEnergyMax != 12.5 {
+		t.Fatalf("insufficient-energy maximum %v; expected 12.5", result.InsufficientEnergyMax)
+	}
+}
+
+func TestParseOrdinaryResultRejectsInvalidInsufficientEnergy(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload string
+	}{
+		{"null", `{"character_details":[{"name":"a"}],"statistics":{"iterations":1,"dps":{"mean":1,"sd":0},"failed_actions":[{"insufficient_energy":{"max":null}}]}}`},
+		{"negative", `{"character_details":[{"name":"a"}],"statistics":{"iterations":1,"dps":{"mean":1,"sd":0},"failed_actions":[{"insufficient_energy":{"max":-1}}]}}`},
+		{"count", `{"character_details":[{"name":"a"},{"name":"b"}],"statistics":{"iterations":1,"dps":{"mean":1,"sd":0},"failed_actions":[{"insufficient_energy":{"max":0}}]}}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := ParseOrdinaryResult([]byte(test.payload), 1); err == nil {
+				t.Fatal("invalid insufficient-energy metric was accepted")
+			}
+		})
+	}
+}
+
 func TestBoundEngineDetectsStageMutation(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "engine.exe")
 	original := []byte("bound-engine-v1")

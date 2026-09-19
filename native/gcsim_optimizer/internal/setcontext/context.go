@@ -18,6 +18,7 @@ var (
 	digest        = regexp.MustCompile(`^[0-9a-f]{64}$`)
 	characterLine = regexp.MustCompile(`^([a-z][a-z0-9_]*)[ \t]+char\b[^;]*;[ \t]*$`)
 	setLine       = regexp.MustCompile(`^([a-z][a-z0-9_]*)[ \t]+add[ \t]+set="([a-z][a-z0-9_]*)"[ \t]+count=([1-5])([^;]*);[ \t]*$`)
+	statsLine     = regexp.MustCompile(`^([a-z][a-z0-9_]*)[ \t]+add[ \t]+stats\b[^;]*;[ \t]*$`)
 	setMention    = regexp.MustCompile(`\badd\s+set\s*=`)
 	// GCSIM parseCharAddSet accepts optional +params=[...] after count. Keep
 	// the body opaque, but never allow a second count or another statement.
@@ -46,6 +47,7 @@ type Set struct {
 type wearerPackage struct {
 	actor      string
 	start, end int
+	insert     int
 	sets       []Set
 }
 
@@ -99,7 +101,18 @@ func New(binding Binding, prepared string) (*Context, error) {
 			}
 			actorIndex[m[1]] = len(c.packages)
 			c.actors = append(c.actors, m[1])
-			c.packages = append(c.packages, wearerPackage{actor: m[1], start: -1, end: -1})
+			c.packages = append(c.packages, wearerPackage{actor: m[1], start: -1, end: -1, insert: -1})
+		}
+		if m := statsLine.FindStringSubmatch(line); m != nil {
+			owner, found := actorIndex[m[1]]
+			if !found {
+				return nil, fmt.Errorf("stats precede character declaration: %s", m[1])
+			}
+			p := &c.packages[owner]
+			if p.insert >= 0 {
+				return nil, fmt.Errorf("duplicate prepared stats row: %s", p.actor)
+			}
+			p.insert = i
 		}
 		if !setMention.MatchString(line) {
 			continue
@@ -126,32 +139,40 @@ func New(binding Binding, prepared string) (*Context, error) {
 	if len(c.actors) != 4 {
 		return nil, fmt.Errorf("context requires four explicit character declarations")
 	}
-	frame := append([]string(nil), c.lines...)
 	for _, p := range c.packages {
-		if p.start < 0 {
-			return nil, fmt.Errorf("missing prepared set block: %s", p.actor)
+		if p.start < 0 && p.insert < 0 {
+			return nil, fmt.Errorf("missing prepared stats row: %s", p.actor)
 		}
-		if err := validateSets(p.sets); err != nil {
-			return nil, fmt.Errorf("%s: %w", p.actor, err)
+		if p.start >= 0 && p.insert >= 0 && p.end != p.insert {
+			return nil, fmt.Errorf("prepared set rows must immediately precede stats: %s", p.actor)
 		}
-		frame[p.start] = "<gtt-set-context:" + p.actor + ">"
-		for i := p.start + 1; i < p.end; i++ {
-			frame[i] = ""
-		}
-	}
-	// Remove only replaced set rows, not unrelated blank lines. This makes a
-	// 4p -> 2+2 substitution share the same non-set frame without moving actors.
-	var fixed []string
-	for i, line := range frame {
-		removed := false
-		for _, p := range c.packages {
-			if i > p.start && i < p.end {
-				removed = true
+		if len(p.sets) > 0 {
+			if err := validateSets(p.sets); err != nil {
+				return nil, fmt.Errorf("%s: %w", p.actor, err)
 			}
 		}
-		if !removed {
-			fixed = append(fixed, line)
+	}
+	// Normalize both a populated set block and the neutral no-set baseline to
+	// one marker immediately before the actor's stats row.
+	var fixed []string
+	for i := 0; i < len(c.lines); i++ {
+		handled := false
+		for _, p := range c.packages {
+			if p.start >= 0 && i == p.start {
+				fixed = append(fixed, "<gtt-set-context:"+p.actor+">")
+				i = p.end - 1
+				handled = true
+				break
+			}
+			if p.start < 0 && i == p.insert {
+				fixed = append(fixed, "<gtt-set-context:"+p.actor+">")
+				break
+			}
 		}
+		if handled {
+			continue
+		}
+		fixed = append(fixed, c.lines[i])
 	}
 	payload := struct {
 		Kind    string
@@ -214,16 +235,29 @@ func (c *Context) Replace(changes map[string][]Set) (*Context, error) {
 		replaced := false
 		for _, p := range c.packages {
 			sets, changed := changes[p.actor]
-			if !changed || i != p.start {
+			atReplacement := (p.start >= 0 && i == p.start) || (p.start < 0 && i == p.insert)
+			if !changed || !atReplacement {
 				continue
 			}
 			for _, set := range sets {
 				lines = append(lines, fmt.Sprintf(`%s add set="%s" count=%d%s;`, p.actor, set.UID, set.Count, set.Parameters))
 			}
-			i, replaced = p.end-1, true
+			if p.start >= 0 {
+				i = p.end - 1
+			}
+			replaced = true
 			break
 		}
-		if !replaced {
+		if !replaced || func() bool {
+			for _, p := range c.packages {
+				if p.start < 0 && i == p.insert {
+					if _, changed := changes[p.actor]; changed {
+						return true
+					}
+				}
+			}
+			return false
+		}() {
 			lines = append(lines, c.lines[i])
 		}
 	}

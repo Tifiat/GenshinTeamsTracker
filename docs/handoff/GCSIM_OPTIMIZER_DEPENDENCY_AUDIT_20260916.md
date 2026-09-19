@@ -3,7 +3,9 @@
 Authorized 2026-09-16: inspect and fix optimizer bugs, including the diagnosed
 bloom winner residual; validate major archetypes with existing rotations and
 public GCSIM database rotations restricted to account-owned characters.
-No subagents. Preserve the live account, equipment and saved rotations.
+That dated audit used no subagents. Current delegation authority is `CODEX.md`:
+a direct user request may authorize one concrete subtask. Preserve the live
+account, equipment and saved rotations.
 This document owns repair work notes and the archetype audit plan. Production
 acceptance/engine identity remains owned by
 [GCSIM_GOB11_GP3_CHECKPOINT.md](GCSIM_GOB11_GP3_CHECKPOINT.md).

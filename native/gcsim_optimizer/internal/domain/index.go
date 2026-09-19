@@ -68,6 +68,34 @@ func (index *Index) AssignmentStats(assignment Assignment) ([wearerCount]map[str
 	return output, nil
 }
 
+// AssignmentStat returns one complete artifact stat total for a wearer. It is
+// used by constraints such as energy feasibility which may depend on a stat
+// even when that stat is absent from the damage formula.
+func (index *Index) AssignmentStat(assignment Assignment, wearerIndex int, key string) (float64, error) {
+	if wearerIndex < 0 || wearerIndex >= wearerCount || key == "" {
+		return 0, fmt.Errorf("invalid wearer or stat key")
+	}
+	if err := index.ValidateAssignment(assignment); err != nil {
+		return 0, err
+	}
+	total := 0.0
+	for _, artifactID := range assignment[wearerIndex] {
+		for _, stat := range index.artifact(artifactID).stats {
+			if stat.key == key {
+				total += stat.value
+			}
+		}
+	}
+	return total, nil
+}
+
+func (index *Index) IncumbentStat(wearerIndex int, key string) (float64, error) {
+	if wearerIndex < 0 || wearerIndex >= wearerCount || key == "" {
+		return 0, fmt.Errorf("invalid wearer or stat key")
+	}
+	return index.Wearers[wearerIndex].incumbentStats[key], nil
+}
+
 // SelectedSetCounts returns actual counts for each selected bonus package.
 // Singleton off-set pieces have no active bonus and are not emitted.
 func (index *Index) SelectedSetCounts(assignment Assignment) ([wearerCount][]contracts.SetRequirement, error) {
@@ -93,6 +121,19 @@ func Build(request contracts.OptimizerRequest, coordinates []string) (*Index, er
 	if err := request.Validate(); err != nil {
 		return nil, err
 	}
+	return buildValidated(request, coordinates)
+}
+
+// BuildTheory indexes the private neutral artifacts expanded from a Theory
+// wire request. Ordinary Selected/All Sets callers remain on Build.
+func BuildTheory(request contracts.OptimizerRequest, coordinates []string) (*Index, error) {
+	if err := request.ValidateTheory(); err != nil {
+		return nil, err
+	}
+	return buildValidated(request, coordinates)
+}
+
+func buildValidated(request contracts.OptimizerRequest, coordinates []string) (*Index, error) {
 	coordinateIndex := make(map[string]int, len(coordinates))
 	for index, coordinate := range coordinates {
 		if coordinate == "" || (index > 0 && coordinates[index-1] >= coordinate) {

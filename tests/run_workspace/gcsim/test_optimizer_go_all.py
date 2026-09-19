@@ -9,9 +9,18 @@ from run_workspace.gcsim.optimizer_go_all import (
     GcsimOptimizerGoAllSetsRequest, GcsimOptimizerGoAllSetsSession,
 )
 from run_workspace.gcsim.optimizer_go_selected import GcsimOptimizerGoSelectedError
+from run_workspace.gcsim.selected_team_config import (
+    VIRTUAL_ARTIFACT_POLICY_OPTIMIZER_INVENTORY_BASELINE,
+)
 
 
 class AllSetsAdapterTests(unittest.TestCase):
+    def test_virtual_slots_use_read_only_inventory_baseline_policy(self):
+        self.assertEqual(
+            GcsimOptimizerGoAllSetsSession.virtual_artifact_policy,
+            VIRTUAL_ARTIFACT_POLICY_OPTIMIZER_INVENTORY_BASELINE,
+        )
+
     def test_source_transport_is_one_go_call_not_python_capture_loop(self):
         request = GcsimOptimizerGoAllSetsRequest("unused", {}, 0, "rotation")
         self.assertEqual(request.product_timeout_ms, 600_000)

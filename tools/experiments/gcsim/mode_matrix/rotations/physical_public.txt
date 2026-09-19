@@ -1,0 +1,19 @@
+options swap_delay=4 iteration=1000 mode=sl;
+target lvl=100 resist=0.1 radius=2 pos=0,2.4 hp=999999999;
+energy every interval=480,720 amount=1;
+
+active xingqiu;
+for let i=0; i<4; i=i+1 {
+  xingqiu skill, dash, burst, attack;
+  mika skill, attack, burst;
+  if .fischl.skill.ready {
+    fischl skill, attack;
+  } else {
+    fischl attack:2, burst;
+  }
+  freminet skill, burst,
+           attack:2, skill, skill,
+           attack:2, skill, attack:2, skill,
+           attack:2, skill, attack:2, skill,
+           attack:3, skill, attack;
+}

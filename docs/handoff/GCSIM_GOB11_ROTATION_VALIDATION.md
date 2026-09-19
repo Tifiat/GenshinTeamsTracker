@@ -221,7 +221,9 @@ and saved Chasca rotation were not written.
 
 ## Execution rules
 
-Project venv, sequential work, no subagents, no brute force. Start with at most
+For that dated validation: project venv, sequential work, no delegation and no
+brute force. Current subagent exceptions follow the direct-user-request rule in
+`CODEX.md`. Start with at most
 two compact seeds and one reduced ordinary sample per fixture; add narrow
 stat probes only for a declared question. Reuse saved captures. After three
 substantive failed approaches to one blocker, discuss. Preserve unrelated

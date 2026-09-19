@@ -19,23 +19,34 @@ import (
 )
 
 type OrdinaryResult struct {
-	Iterations         int
-	DPS                float64
-	StandardDeviation  float64
-	StandardError      float64
-	ElapsedMS          float64
-	ConfigSHA256       string
-	EngineResultSHA256 string
-	ResultPath         string
+	Iterations            int
+	DPS                   float64
+	StandardDeviation     float64
+	StandardError         float64
+	ElapsedMS             float64
+	ConfigSHA256          string
+	EngineResultSHA256    string
+	InsufficientEnergyMax float64
+	ResultPath            string
+}
+
+type summaryMetric struct {
+	Max *float64 `json:"max"`
 }
 
 type ordinaryPayload struct {
+	CharacterDetails []struct {
+		Name string `json:"name"`
+	} `json:"character_details"`
 	Statistics struct {
 		Iterations int `json:"iterations"`
 		DPS        struct {
 			Mean *float64 `json:"mean"`
 			SD   *float64 `json:"sd"`
 		} `json:"dps"`
+		FailedActions []struct {
+			InsufficientEnergy summaryMetric `json:"insufficient_energy"`
+		} `json:"failed_actions"`
 	} `json:"statistics"`
 }
 
@@ -152,6 +163,15 @@ func ParseOrdinaryResult(payload []byte, expectedIterations int) (OrdinaryResult
 	output.DPS = mean
 	output.StandardDeviation = sd
 	output.StandardError = sd / math.Sqrt(float64(expectedIterations))
+	if len(decoded.Statistics.FailedActions) != 0 && len(decoded.Statistics.FailedActions) != len(decoded.CharacterDetails) {
+		return OrdinaryResult{}, fmt.Errorf("ordinary result failed-action character count mismatch")
+	}
+	for index, row := range decoded.Statistics.FailedActions {
+		if row.InsufficientEnergy.Max == nil || math.IsNaN(*row.InsufficientEnergy.Max) || math.IsInf(*row.InsufficientEnergy.Max, 0) || *row.InsufficientEnergy.Max < 0 {
+			return OrdinaryResult{}, fmt.Errorf("ordinary result character %d has invalid insufficient-energy metric", index)
+		}
+		output.InsufficientEnergyMax = math.Max(output.InsufficientEnergyMax, *row.InsufficientEnergy.Max)
+	}
 	return output, nil
 }
 

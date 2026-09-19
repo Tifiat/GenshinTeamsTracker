@@ -11,8 +11,73 @@ import (
 
 	"genshinteamstracker/native/gcsim_optimizer/internal/contracts"
 	"genshinteamstracker/native/gcsim_optimizer/internal/domain"
+	energyconstraint "genshinteamstracker/native/gcsim_optimizer/internal/energy"
 	"genshinteamstracker/native/gcsim_optimizer/internal/evaluator"
 )
+
+func TestEnergyConstraintRetainsFormulaInvisibleERAndFindsFeasibleBuild(t *testing.T) {
+	request, compact := searchFixtures(t)
+	alternative := request.Artifacts[0]
+	alternative.ArtifactID = 99001
+	alternative.Substats = []contracts.StatValue{{Key: "energy_recharge", Value: "0.8"}}
+	request.Artifacts = append(request.Artifacts, alternative)
+	requestSHA, err := contracts.CanonicalSHA256(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	compact.RequestSHA256 = requestSHA
+	panel, err := evaluator.Compile(request, compact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	indexed, err := domain.Build(request, panel.Coordinates())
+	if err != nil {
+		t.Fatal(err)
+	}
+	incumbentER, err := indexed.IncumbentStat(0, "energy_recharge")
+	if err != nil {
+		t.Fatal(err)
+	}
+	states := make([]contracts.IREnergyCharacterState, 4)
+	for actor, wearer := range indexed.Wearers {
+		states[actor] = contracts.IREnergyCharacterState{CharacterIndex: actor, CharacterKey: wearer.WearerKey, Energy: "60", EnergyMax: "60"}
+	}
+	key := indexed.Wearers[0].WearerKey
+	raw := "40"
+	observed := strconv.FormatFloat(1+incumbentER, 'f', -1, 64)
+	onField := true
+	ledger := &contracts.IREnergyLedger{
+		InitialStates: states,
+		Events: []contracts.IREnergyEvent{
+			{SequenceIndex: 0, Frame: 1, CharacterIndex: 0, CharacterKey: key, Kind: "burst", Source: key + "-burst", EnergyBefore: "60", EnergyAfter: "0", EnergyMax: "60", Amount: "60"},
+			{SequenceIndex: 1, Frame: 2, CharacterIndex: 0, CharacterKey: key, Kind: "particle", Source: "skill", EnergyBefore: "0", EnergyAfter: raw, EnergyMax: "60", Amount: raw, RawAtER100: &raw, ObservedER: &observed, OnField: &onField},
+			{SequenceIndex: 2, Frame: 3, CharacterIndex: 0, CharacterKey: key, Kind: "burst", Source: key + "-burst", EnergyBefore: raw, EnergyAfter: "0", EnergyMax: "60", Amount: "60"},
+		},
+		UncertaintyCodes: []string{"energy_source_schedule_observed_not_symbolic"},
+	}
+	for memberIndex := range compact.Members {
+		compact.Members[memberIndex].EnergyLedger = ledger
+	}
+	energyModel, err := energyconstraint.Compile(indexed, compact.Members)
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine, err := New(indexed, panel, Config{64, 64, 10000, 16, 1, 16}, energyModel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	step, err := engine.searchActor(context.Background(), indexed.Incumbent, 0, 1, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if step.Finalists[0].Assignment[0][0] != alternative.ArtifactID {
+		t.Fatalf("energy-feasible formula-invisible artifact was lost: %#v", step.Finalists[0].Assignment[0])
+	}
+	assessment, err := energyModel.Assess(step.Finalists[0].Assignment)
+	if err != nil || !assessment.Feasible {
+		t.Fatalf("leader energy assessment = %#v, %v", assessment, err)
+	}
+}
 
 func TestReducedActorSearchMatchesExhaustiveAndPreservesLegality(t *testing.T) {
 	request, compact := searchFixtures(t)

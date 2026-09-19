@@ -11,19 +11,13 @@ This file is written for future coding agents. Keep it compact, English, and mos
   because they multiply model usage. Work sequentially in the current
   user-visible task. If a separate persistent context would materially help,
   stop and ask the user to create or assign a visible worker task; never spawn
-  a subagent or delegate automatically. This rule remains active until the user
-  explicitly rescinds it.
-- Scoped exception requested2026-09-17: the proposed overnight session may use
-  at most one subagent at a time for an isolated task, especially the readable
-  rotation editor. The user STARTED the session; bounded N0 cleanup is now
-  verified after renewed permission for agent-run scripts. The user ran the
-  exact `tools/cleanup_optimizer_binaries.ps1` helper; all five reviewed legacy
-  binaries are absent. Do not broaden its allowlist or revive those outputs.
-  The overnight heartbeat was deleted at the user's request; do not recreate
-  it. Continue only the explicitly selected stage. Checkpoint/TODO own scope.
-  This is not a permanent repeal. Its scope, safe blocker handling and
-  handler-path verification exception are in the optimizer handoff's
-  "Overnight execution contract"; TODO owns its queue. History Browser is excluded.
+  a subagent or delegate automatically. A direct user request for a concrete
+  subagent task temporarily authorizes only that delegation; it does not enable
+  unsolicited or continuing parallel work.
+- The dated 2026-09-17 overnight exception was not a permanent repeal. Its N0
+  cleanup is complete and its heartbeat was deleted; do not recreate either
+  workflow. Continue only the explicitly selected stage. The optimizer handoff
+  and TODO own remaining scope; History Browser stays excluded.
 - Any new persistent generated/temp output needs an owner, finite retention
   policy, actually wired cleaner and focused deletion/preservation tests in the
   same change. An ignored folder or a cleanup TODO is not a lifecycle. Research
@@ -53,13 +47,15 @@ This file is written for future coding agents. Keep it compact, English, and mos
   degraded best-effort result; do not stop the offline equation scorer and do
   not launch an unbounded verification loop.
 - GCSIM energy mode has one persisted source,
-  `gcsim_boosted_energy_enabled`, shown both in Account/Settings and beside the
-  optimizer. Infinite mode maps Selected to `ignore_burst_energy=true`; the
-  other position passes `false` but ER-aware artifact search is not implemented
-  yet and is visibly diagnostic/possibly failing. Never add a second optimizer
-  energy setting. Energy support is explicitly deferred until last; do not
-  change finite-energy behavior during Selected2+2 or All Sets work. TODO owns
-  the current user-decided stage order.
+  `gcsim_boosted_energy_enabled`, shown in Account/Settings and the optimizer.
+  Infinite Selected maps to `ignore_burst_energy=true`; finite mode uses engine
+  `gtt_energy_ledger_v1`, Go artifact-ER deadline constraints and ordinary
+  real-energy finalist verification for Selected/All Sets. Theory currently
+  fails closed in finite mode pending an ER-aware farming solver. Formula
+  capture ignores burst costs to observe the full schedule; only final
+  verification executes real costs. Never
+  add a second setting or infer particles from action/character names. Fail
+  explicitly when no feasible inventory assignment exists. TODO owns stage order.
 - GCSIM owns gameplay formulas. GTT observes source arithmetic, runtime paths
   and input ownership; never duplicate Lunar/Stellar coefficients or hardcode
   character/region rules in the consumer. Unknown operands, ancestry and
@@ -227,6 +223,11 @@ team/equipment building, Abyss/DPS runs, immutable History, and offline PvP.
   the recorded user launcher is PyCharm Run Current File on that file with
   the project `.venv/Scripts/python.exe`. Reconfirm the actual running path
   for a user-path check. Do not switch `main.py` without the user's approval.
+- Native Windows Computer Use must use trusted `mcp__node_repl__js` with
+  `@oai/sky`. Browser-oriented `cua_repl` can report `Trusted RPC service is not
+  configured: sky` while the direct route works. If hidden, search deferred
+  tools for `node_repl` before declaring it unavailable; then use unique-window
+  selection and the real visible path. A shell launch is not a UI click.
 - `ui/app_shell.py` coordinates workspaces; feature UI belongs in
   `ui/<area>_browser/`. Right-dock ownership is
   `ui/right_panel/{common,live_run,history,pvp,settings}`.
@@ -301,8 +302,10 @@ evidence; their old next-step labels do not override the current owner document.
 - The Go optimizer is the sole Selected/All Sets backend. Selected preserves
   currently equipped4p or2+2 packages with one flexible piece; All Sets has a
   separate source-aware bounded package coordinator over the same search,
-  capture and final measurement modules. Removed Python strategies
-  must not return as fallbacks. Current is comparison-only; continuous-target
+  capture and final measurement modules. Accepted N1 scouts six contexts, then
+  deepens the best and one exploratory context; keep fair discovery lanes.
+  Removed Python strategies must not return as fallbacks. Current is
+  comparison-only; continuous-target
   Python math is retained only for a future Go port for Theory/All Sets.
   Current acceptance, active engine and user-approved fixture substitutions
   live in `GCSIM_GOB11_GP3_CHECKPOINT.md`; do not duplicate their logs here.

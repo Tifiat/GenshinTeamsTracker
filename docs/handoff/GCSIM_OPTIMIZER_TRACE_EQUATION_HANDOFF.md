@@ -134,6 +134,11 @@ Required rules:
 - damage types or attack categories with different modifiers remain separate;
 - reaction ownership and EM dependencies come from engine evidence;
 - support dependencies are followed recursively to artifact stat leaves when representable;
+- an `AttackInfo` flat-damage producer remains traceable whether it is written
+  in the literal, assigned later, updated with a compound assignment, passed
+  through a typed pointer helper, stored in a persistent field or fed from a
+  saved stat alias. Snapshot HP/ATK/DEF reads are captured once at their real
+  evaluation point; later reconstruction from mutable stats is forbidden;
 - opaque behavior freezes at the last known boundary;
 - frozen share remains visible and cannot prove dominance or saturation;
 - a material unknown widens retained finalists and produces diagnostics;

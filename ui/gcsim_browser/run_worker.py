@@ -146,9 +146,15 @@ class GcsimBrowserSelectedOptimizerWorker(QObject):
         from run_workspace.gcsim.optimizer_go_all import (
             GcsimOptimizerGoAllSetsRequest, GcsimOptimizerGoAllSetsSession,
         )
-        session_type = (GcsimOptimizerGoAllSetsSession
-                        if isinstance(request, GcsimOptimizerGoAllSetsRequest)
-                        else GcsimOptimizerGoSelectedSession)
+        from run_workspace.gcsim.optimizer_go_theory import (
+            GcsimOptimizerGoTheoryRequest, GcsimOptimizerGoTheorySession,
+        )
+        if isinstance(request, GcsimOptimizerGoTheoryRequest):
+            session_type = GcsimOptimizerGoTheorySession
+        elif isinstance(request, GcsimOptimizerGoAllSetsRequest):
+            session_type = GcsimOptimizerGoAllSetsSession
+        else:
+            session_type = GcsimOptimizerGoSelectedSession
         self._session = session_type(
             request,
             progress_callback=self.progress.emit,
@@ -993,7 +999,11 @@ def _selected_slot_count(selected_team: Any) -> int:
     for slot in slots:
         if not isinstance(slot, dict):
             continue
-        if slot.get("character") or _nested_character(slot):
+        if (
+            slot.get("character")
+            or _nested_character(slot)
+            or _virtual_gcsim_character(slot)
+        ):
             count += 1
     return count
 
@@ -1003,6 +1013,14 @@ def _nested_character(slot: dict[str, Any]) -> dict[str, Any]:
     if isinstance(details, dict) and isinstance(details.get("account_character"), dict):
         return details["account_character"]
     return {}
+
+
+def _virtual_gcsim_character(slot: dict[str, Any]) -> dict[str, Any]:
+    override = slot.get("gcsim_virtual_override")
+    if not isinstance(override, dict):
+        return {}
+    character = override.get("character")
+    return character if isinstance(character, dict) else {}
 
 
 def _dedupe(values: Any) -> list[str]:

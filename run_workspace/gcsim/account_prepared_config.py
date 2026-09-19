@@ -992,10 +992,42 @@ class _ArtifactSetKeyResolver:
 def _artifact_set_key_resolver(
     source_path: str | Path | None,
 ) -> _ArtifactSetKeyResolver:
-    path = Path(source_path) if source_path else DEFAULT_ARTIFACT_SET_SHORTCUT_SOURCE
+    path = (
+        Path(source_path)
+        if source_path
+        else _active_artifact_set_shortcut_source()
+    )
     if not path.is_file():
         return _ArtifactSetKeyResolver(())
     return _ArtifactSetKeyResolver(load_gcsim_shortcut_keys(path))
+
+
+def _active_artifact_set_shortcut_source() -> Path:
+    """Resolve set aliases from the engine that will execute the config.
+
+    The historical v2.42 source remains a last-resort compatibility fallback,
+    but normal AppShell preparation must not reject sets added by a newer active
+    engine merely because that old expanded source tree is stale.
+    """
+
+    try:
+        from run_workspace.gcsim.engine_store import (
+            GcsimEngineStore,
+            GcsimEngineStoreError,
+        )
+
+        installed = GcsimEngineStore().get_active_engine()
+    except (GcsimEngineStoreError, OSError, ValueError):
+        installed = None
+    if installed is not None:
+        for relative in (
+            Path("pkg") / "shortcut" / "artifact.dm.go",
+            Path("pkg") / "shortcut" / "artifacts.go",
+        ):
+            candidate = installed.path / relative
+            if candidate.is_file():
+                return candidate
+    return DEFAULT_ARTIFACT_SET_SHORTCUT_SOURCE
 
 
 def _weapon_payload(weapon: Mapping[str, Any]) -> dict[str, Any]:

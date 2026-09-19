@@ -17,12 +17,16 @@ from run_workspace.gcsim.optimizer_go_selected import (
 from run_workspace.gcsim.optimizer_go_all import (
     GcsimOptimizerGoAllSetsRequest, GcsimOptimizerGoAllSetsSession,
 )
+from run_workspace.gcsim.optimizer_go_theory import (
+    GcsimOptimizerGoTheoryRequest, GcsimOptimizerGoTheorySession,
+)
 
 
 def completed(root: Path, name: str, timestamp: int) -> Path:
     path = root / name
     path.mkdir()
-    (path / "selected-result.json").write_text("{}", encoding="utf-8")
+    result_name = "theory-result.json" if name.startswith("theory-") else "selected-result.json"
+    (path / result_name).write_text("{}", encoding="utf-8")
     (path / "large.bin").write_bytes(b"x" * 128)
     os.utime(path, (timestamp, timestamp))
     return path
@@ -71,6 +75,16 @@ class OptimizerRunRetentionTest(unittest.TestCase):
             self.assertTrue(new.exists())
             self.assertEqual(result["kept_paths"], [])
 
+    def test_completed_theory_runs_use_the_shared_retention_boundary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            theory = completed(root, "theory-old", 100)
+            result = prune_go_optimizer_runs(
+                root, keep_count=0, max_bytes=0, dry_run=False
+            )
+            self.assertEqual(result["deleted_paths"], [str(theory)])
+            self.assertFalse(theory.exists())
+
     def test_live_unknown_and_outside_links_are_not_deleted(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "runs"
@@ -104,6 +118,7 @@ class OptimizerRunRetentionTest(unittest.TestCase):
         for request_type, session_type in (
             (GcsimOptimizerGoSelectedRequest, GcsimOptimizerGoSelectedSession),
             (GcsimOptimizerGoAllSetsRequest, GcsimOptimizerGoAllSetsSession),
+            (GcsimOptimizerGoTheoryRequest, GcsimOptimizerGoTheorySession),
         ):
             for outcome in ("success", "failed", "cancelled"):
                 with self.subTest(mode=session_type.run_mode, outcome=outcome), tempfile.TemporaryDirectory() as tmp:
@@ -119,6 +134,7 @@ class OptimizerRunRetentionTest(unittest.TestCase):
 
                     failure = None if outcome == "success" else GcsimOptimizerGoSelectedError(outcome, "expected")
                     with patch("run_workspace.gcsim.optimizer_go_selected._prepare_inputs", return_value={"request_sha256": "hash"}, side_effect=failure), \
+                         patch.object(session, "_validate_optimizer_request"), \
                          patch.object(session, "_prepare_formula_inputs", return_value={}), \
                          patch.object(session, "_run_go_optimizer", return_value={"measured": {}}), \
                          patch("run_workspace.gcsim.optimizer_go_selected.prune_go_optimizer_runs_best_effort", side_effect=bounded_cleanup):

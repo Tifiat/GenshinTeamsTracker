@@ -26,6 +26,7 @@ from uuid import uuid4
 from hoyolab_export.paths import PROJECT_ROOT
 
 from .engine_store import DEFAULT_GCSIM_ENGINE_STORE_DIR, load_engine_manifest
+from .config_assembly import ASSEMBLY_SHELL_UNBOUNDED_DUMMY_ROTATION
 from .optimizer_artifact_database import load_gcsim_optimizer_artifact_database_input
 from .optimizer_artifact_materializer import materialize_gcsim_optimizer_artifact_stat_vector
 from .optimizer_engine_context import (
@@ -44,12 +45,27 @@ from .optimizer_go_contracts import (
     text_sha256,
 )
 from .optimizer_go_selected_inputs import (
+    GcsimOptimizerGoSelectedInputError,
     bind_selected_report_config_and_snapshot,
     enforce_gcsim_optimizer_mvp_energy_policy,
     load_selected_equipped_team_snapshot,
+    load_virtual_inventory_baseline_summaries,
     selected_set_requirements,
 )
 from .selected_team_config import build_selected_team_full_config_report
+from .selected_team_config import (
+    VIRTUAL_ARTIFACT_POLICY_OPTIMIZER_INVENTORY_BASELINE,
+    VIRTUAL_ARTIFACT_POLICY_OWNED_BUILD,
+    VIRTUAL_ARTIFACT_POLICY_THEORY_BASELINE,
+)
+from .optimizer_product_contracts import (
+    GCSIM_OPTIMIZER_ARTIFACT_SLOTS,
+    GcsimOptimizerWearerIdentity,
+)
+from .optimizer_rotation_policy import (
+    ROTATION_AUTO_BOUNDED_WARNING,
+    normalize_optimizer_rotation_shell,
+)
 from .settings import GcsimRunSettings
 from .source_manifest_build import canonical_json as canonical_source_manifest_json
 from .optimizer_run_retention import (
@@ -69,15 +85,33 @@ DEFAULT_OPTIMIZER_BINARY = (
     PROJECT_ROOT / "native" / "gcsim_optimizer" / "gtt-optimizer.exe"
 )
 DEFAULT_SELECTED_RUN_ROOT = DEFAULT_GO_RUN_ROOT
+GCSIM_OPTIMIZER_ADAPTER_TIMINGS_KIND = "gtt_gcsim_optimizer_adapter_timings_v1"
 REQUIRED_ENGINE_CAPABILITIES = frozenset(
     {"gtt_compact_equation_v1", "gtt_trace_equation_v6"}
 )
+FINITE_ENERGY_ENGINE_CAPABILITY = "gtt_energy_ledger_v1"
 
 _CHARACTER_RE = re.compile(r"(?im)^\s*([a-z0-9_]+)\s+char\b")
 _WEAPON_RE = re.compile(
     r'(?im)^\s*(?P<actor>[a-z0-9_]+)\s+add\s+weapon="(?P<weapon>[^"]+)"'
 )
 _TARGET_RE = re.compile(r"(?im)^\s*target\b[^;]*;")
+
+
+def _report_issue_statuses(issues: Any) -> set[str]:
+    """Read serialized full-config issues without assuming dataclass instances."""
+
+    statuses: set[str] = set()
+    for issue in issues or ():
+        if isinstance(issue, Mapping):
+            status = issue.get("status")
+        else:
+            status = getattr(issue, "status", None)
+        if status:
+            statuses.add(str(status))
+    return statuses
+
+
 _STAT_KEY = {
     "hp": "hp",
     "atk": "atk",
@@ -127,6 +161,11 @@ class GcsimOptimizerGoSelectedSession:
     """One cancellable Selected request; instances are single-use."""
 
     run_mode = "selected"
+    result_schema_kind = GCSIM_OPTIMIZER_GO_RESULT_KIND
+    result_filename = "selected-result.json"
+    mode_label = "Selected"
+    virtual_artifact_policy = VIRTUAL_ARTIFACT_POLICY_OWNED_BUILD
+    request_validation_mode = "validate-request"
 
     def __init__(
         self,
@@ -151,26 +190,53 @@ class GcsimOptimizerGoSelectedSession:
     def run(self) -> dict[str, Any]:
         run_dir = _new_run_dir(self.request.run_root, mode=self.run_mode)
         started = time.monotonic()
+        phase_started = started
+        timings: dict[str, Any] = {
+            "schema_version": 1,
+            "schema_kind": GCSIM_OPTIMIZER_ADAPTER_TIMINGS_KIND,
+            "mode": self.run_mode,
+            "prepare_inputs_ms": None,
+            "request_preflight_ms": None,
+            "formula_inputs_ms": None,
+            "optimizer_process_ms": None,
+            "total_elapsed_ms": None,
+            "terminal_status": "running",
+        }
         leases = ExitStack()
         lease_started = False
         try:
             run_dir.mkdir(parents=True, exist_ok=False)
             leases.enter_context(run_directory_lease(run_dir))
             lease_started = True
-            prepared = _prepare_inputs(self.request, run_dir)
+            phase_started = time.monotonic()
+            prepared = _prepare_inputs(
+                self.request,
+                run_dir,
+                virtual_artifact_policy=self.virtual_artifact_policy,
+            )
+            timings["prepare_inputs_ms"] = _elapsed_ms(phase_started)
             self._require_not_cancelled()
+            phase_started = time.monotonic()
+            self._validate_optimizer_request(run_dir=run_dir, started=started)
+            timings["request_preflight_ms"] = _elapsed_ms(phase_started)
+            self._require_not_cancelled()
+            phase_started = time.monotonic()
             compact = self._prepare_formula_inputs(
                 prepared=prepared,
                 run_dir=run_dir,
                 started=started,
             )
+            timings["formula_inputs_ms"] = _elapsed_ms(phase_started)
             self._require_not_cancelled()
+            phase_started = time.monotonic()
             result = self._run_go_optimizer(
                 prepared=prepared,
                 compact=compact,
                 run_dir=run_dir,
                 started=started,
             )
+            timings["optimizer_process_ms"] = _elapsed_ms(phase_started)
+            timings["terminal_status"] = "success"
             return {
                 "success": True,
                 "status": "success",
@@ -178,10 +244,13 @@ class GcsimOptimizerGoSelectedSession:
                 "request_sha256": prepared["request_sha256"],
                 "run_dir": str(run_dir),
                 "elapsed_ms": int((time.monotonic() - started) * 1000),
+                "adapter_timings": timings,
                 "mode": self.run_mode,
+                "adapter_warnings": list(prepared.get("adapter_warnings") or ()),
             }
         except GcsimOptimizerGoSelectedError as exc:
             status = "cancelled" if exc.code == "cancelled" else "failed"
+            timings["terminal_status"] = status
             payload = {
                 "success": False,
                 "status": status,
@@ -189,10 +258,12 @@ class GcsimOptimizerGoSelectedSession:
                 "error": str(exc),
                 "run_dir": str(run_dir),
                 "elapsed_ms": int((time.monotonic() - started) * 1000),
+                "adapter_timings": timings,
             }
-            _write_json(run_dir / "selected-result.json", payload)
+            _write_json(run_dir / self.result_filename, payload)
             return payload
         except Exception as exc:  # noqa: BLE001 - process/UI failure boundary.
+            timings["terminal_status"] = "failed"
             payload = {
                 "success": False,
                 "status": "failed",
@@ -200,11 +271,18 @@ class GcsimOptimizerGoSelectedSession:
                 "error": str(exc),
                 "run_dir": str(run_dir),
                 "elapsed_ms": int((time.monotonic() - started) * 1000),
+                "adapter_timings": timings,
             }
-            _write_json(run_dir / "selected-result.json", payload)
+            _write_json(run_dir / self.result_filename, payload)
             return payload
 
         finally:
+            timings["total_elapsed_ms"] = _elapsed_ms(started)
+            if run_dir.is_dir():
+                try:
+                    _write_json(run_dir / "adapter-timings.json", timings)
+                except OSError:
+                    pass  # Timing diagnostics must not hide the product result.
             try:
                 if lease_started:
                     retention = prune_go_optimizer_runs_best_effort(self.request.run_root, run_dir)
@@ -243,7 +321,10 @@ class GcsimOptimizerGoSelectedSession:
                 "seed": str(seed),
                 "iterations": 1,
                 "workers": 1,
-                "ignore_burst_energy": bool(self.request.infinite_energy_enabled),
+                # Formula/energy capture must observe the complete intended
+                # rotation. Ordinary finalist verification still uses the
+                # prepared config's real energy policy.
+                "ignore_burst_energy": True,
                 "output_mode": "compact_ir_v1",
             }
             _write_json(trace_request_path, trace_request)
@@ -324,7 +405,7 @@ class GcsimOptimizerGoSelectedSession:
         if not binary.is_file():
             raise GcsimOptimizerGoSelectedError(
                 "optimizer_binary_missing",
-                "Selected optimizer binary is missing. Reinstall/update the application.",
+                f"{self.mode_label} optimizer binary is missing. Reinstall/update the application.",
             )
         output_path = run_dir / "optimizer-output.json"
         stderr_path = run_dir / "optimizer-progress.jsonl"
@@ -366,12 +447,12 @@ class GcsimOptimizerGoSelectedSession:
                 reader.join(timeout=2)
                 self._unregister_process(process)
         if self._cancelled.is_set():
-            raise GcsimOptimizerGoSelectedError("cancelled", "Selected optimization cancelled.")
+            raise GcsimOptimizerGoSelectedError("cancelled", f"{self.mode_label} optimization cancelled.")
         if process.returncode != 0:
             details = "\n".join(stderr_lines[-8:]).strip()
             raise GcsimOptimizerGoSelectedError(
                 "optimizer_process_failed",
-                f"Selected optimizer failed with code {process.returncode}: {details}",
+                f"{self.mode_label} optimizer failed with code {process.returncode}: {details}",
             )
         try:
             wrapper = json.loads(output_path.read_text(encoding="utf-8"))
@@ -379,29 +460,78 @@ class GcsimOptimizerGoSelectedSession:
         except (OSError, json.JSONDecodeError, KeyError, TypeError) as exc:
             raise GcsimOptimizerGoSelectedError(
                 "optimizer_result_invalid",
-                f"Selected optimizer returned an invalid result: {exc}",
+                f"{self.mode_label} optimizer returned an invalid result: {exc}",
             ) from exc
-        if result.get("schema_kind") != GCSIM_OPTIMIZER_GO_RESULT_KIND:
+        if result.get("schema_kind") != self.result_schema_kind:
             raise GcsimOptimizerGoSelectedError(
                 "optimizer_result_schema_mismatch",
-                "Selected optimizer result schema does not match the application.",
+                f"{self.mode_label} optimizer result schema does not match the application.",
             )
         if result.get("request_sha256") != prepared["request_sha256"]:
             raise GcsimOptimizerGoSelectedError(
                 "optimizer_result_identity_mismatch",
-                "Selected optimizer result belongs to another request.",
+                f"{self.mode_label} optimizer result belongs to another request.",
             )
         if result.get("status") != "success":
             raise GcsimOptimizerGoSelectedError(
                 "optimizer_result_failed",
-                str((result.get("error") or {}).get("message") or "Selected failed."),
+                str((result.get("error") or {}).get("message") or f"{self.mode_label} failed."),
             )
-        _write_json(run_dir / "selected-result.json", result)
+        _write_json(run_dir / self.result_filename, result)
         return result
 
     def _optimizer_command(self, binary: Path, run_dir: Path) -> tuple[str, ...]:
         return (str(binary), "verify-fgbs", str(run_dir / "request.json"),
                 str(run_dir / "compact.json"), str(run_dir / "verification"), "all")
+
+    def _validate_optimizer_request(self, *, run_dir: Path, started: float) -> None:
+        """Fail before formula capture when the installed executable is stale."""
+
+        binary = Path(self.request.optimizer_binary_path).expanduser().resolve()
+        if not binary.is_file():
+            raise GcsimOptimizerGoSelectedError(
+                "optimizer_binary_missing",
+                f"{self.mode_label} optimizer binary is missing. Reinstall/update the application.",
+            )
+        stdout_path = run_dir / "optimizer-request-preflight.stdout.json"
+        stderr_path = run_dir / "optimizer-request-preflight.stderr.txt"
+        command = (
+            str(binary),
+            self.request_validation_mode,
+            str(run_dir / "request.json"),
+        )
+        with stdout_path.open("w", encoding="utf-8", newline="\n") as stdout, stderr_path.open(
+            "w", encoding="utf-8", newline="\n"
+        ) as stderr:
+            process = subprocess.Popen(
+                command,
+                cwd=str(PROJECT_ROOT),
+                stdout=stdout,
+                stderr=stderr,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                creationflags=_process_group_flags(),
+            )
+            self._register_process(process)
+            try:
+                _wait_process(
+                    process,
+                    cancel_event=self._cancelled,
+                    timeout_ms=min(15_000, _remaining_ms(started, self.request.product_timeout_ms)),
+                )
+            finally:
+                self._unregister_process(process)
+        if self._cancelled.is_set():
+            raise GcsimOptimizerGoSelectedError(
+                "cancelled", f"{self.mode_label} optimization cancelled."
+            )
+        if process.returncode != 0:
+            details = stderr_path.read_text(encoding="utf-8", errors="replace")[-2000:].strip()
+            raise GcsimOptimizerGoSelectedError(
+                "optimizer_binary_contract_mismatch",
+                f"Installed {self.mode_label} optimizer is incompatible with this application: {details}",
+            )
 
     def _run_process(
         self,
@@ -481,7 +611,16 @@ class GcsimOptimizerGoSelectedSession:
 def _prepare_inputs(
     request: GcsimOptimizerGoSelectedRequest,
     run_dir: Path,
+    *,
+    virtual_artifact_policy: str = VIRTUAL_ARTIFACT_POLICY_OWNED_BUILD,
 ) -> dict[str, Any]:
+    theory_mode = (
+        virtual_artifact_policy == VIRTUAL_ARTIFACT_POLICY_THEORY_BASELINE
+    )
+    inventory_baseline_mode = (
+        virtual_artifact_policy
+        == VIRTUAL_ARTIFACT_POLICY_OPTIMIZER_INVENTORY_BASELINE
+    )
     if len(request.seeds) < 2 or len(set(request.seeds)) != len(request.seeds):
         raise GcsimOptimizerGoSelectedError(
             "seed_panel_invalid", "Selected requires at least two unique seeds."
@@ -498,28 +637,48 @@ def _prepare_inputs(
             f"Active GCSIM engine cannot run Selected: {exc}",
         ) from exc
     capabilities = frozenset(engine_context.capabilities)
-    missing = sorted(REQUIRED_ENGINE_CAPABILITIES - capabilities)
+    required_capabilities = set(REQUIRED_ENGINE_CAPABILITIES)
+    if not request.infinite_energy_enabled:
+        required_capabilities.add(FINITE_ENERGY_ENGINE_CAPABILITY)
+    missing = sorted(required_capabilities - capabilities)
     if missing:
         raise GcsimOptimizerGoSelectedError(
             "optimizer_engine_capability_missing",
             "Active GCSIM engine cannot run Selected; missing: " + ", ".join(missing),
         )
+    rotation_policy = normalize_optimizer_rotation_shell(request.rotation_shell_text)
     rotation_path = run_dir / "rotation.from-ui.txt"
-    rotation_path.write_text(request.rotation_shell_text, encoding="utf-8")
+    rotation_path.write_text(rotation_policy.source_text, encoding="utf-8")
+    effective_rotation_path = rotation_path
+    if rotation_policy.changed:
+        effective_rotation_path = run_dir / "rotation.optimizer-normalized.txt"
+        effective_rotation_path.write_text(
+            rotation_policy.optimizer_text,
+            encoding="utf-8",
+        )
+        _write_json(
+            run_dir / "rotation-normalization.json",
+            {
+                "schema_version": 1,
+                "schema_kind": "gtt_optimizer_rotation_normalization_v1",
+                "reason": rotation_policy.warning_code,
+                "duration_seconds": rotation_policy.duration_seconds,
+                "source_sha256": text_sha256(rotation_policy.source_text),
+                "optimizer_sha256": text_sha256(rotation_policy.optimizer_text),
+                "editor_text_changed": False,
+            },
+        )
     report = build_selected_team_full_config_report(
         db_path=request.db_path,
         selected_team=request.selected_team,
         team_index=max(0, int(request.team_index)),
-        rotation_shell_path=rotation_path,
+        rotation_shell_path=effective_rotation_path,
         run_dir=run_dir,
         write_config=False,
         run_settings=GcsimRunSettings(boosted_energy_enabled=False),
+        virtual_artifact_policy=virtual_artifact_policy,
     )
-    if not report.ready or report.issues:
-        raise GcsimOptimizerGoSelectedError(
-            "selected_config_not_ready",
-            f"Current team cannot be prepared for Selected: {report.issues!r}",
-        )
+    _require_prepared_report(report, theory_mode=theory_mode)
     config_text = enforce_gcsim_optimizer_mvp_energy_policy(
         report.full_config.assembly.config_text,
         ignore_burst_energy=bool(request.infinite_energy_enabled),
@@ -530,26 +689,127 @@ def _prepare_inputs(
             "selected_team_requires_four_characters",
             "Selected requires exactly four distinct prepared characters.",
         )
-    loaded = load_gcsim_optimizer_artifact_database_input(
-        request.db_path, engine_context=engine_context
-    )
-    if not loaded.ready or loaded.database_input is None:
-        raise GcsimOptimizerGoSelectedError(
-            "artifact_database_not_ready",
-            f"Artifact database cannot be used by Selected: {loaded.issues!r}",
+    if theory_mode:
+        request_wearers = _request_theory_wearers(
+            report.team.payload,
+            config_text=config_text,
         )
-    database = loaded.database_input
-    snapshot = load_selected_equipped_team_snapshot(
-        request.db_path,
-        artifact_database=database,
-        character_keys=character_keys,
-    )
-    wearers = bind_selected_report_config_and_snapshot(
-        report.team.payload,
-        config_text=config_text,
-        artifact_database=database,
-        snapshot=snapshot,
-    )
+        theory_anchor_sha256 = canonical_sha256(
+            {
+                "kind": "gtt.optimizer.theory_neutral_anchor.v2",
+                "wearers": request_wearers,
+            }
+        )
+        snapshot = None
+        request_artifacts: list[dict[str, Any]] = []
+        artifact_input_sha256 = theory_anchor_sha256
+        snapshot_equipment_sha256 = theory_anchor_sha256
+        snapshot_sha256 = theory_anchor_sha256
+    else:
+        loaded = load_gcsim_optimizer_artifact_database_input(
+            request.db_path, engine_context=engine_context
+        )
+        if not loaded.ready or loaded.database_input is None:
+            raise GcsimOptimizerGoSelectedError(
+                "artifact_database_not_ready",
+                f"Artifact database cannot be used by Selected: {loaded.issues!r}",
+            )
+        database = loaded.database_input
+        virtual_row_list: list[tuple[int, str]] = []
+        for detail, character in zip(
+            getattr(report.team, "characters", ()),
+            report.team.payload.get("characters", ()),
+            strict=True,
+        ):
+            if not isinstance(character, Mapping):
+                continue
+            mapping = character.get("mapping")
+            if not isinstance(mapping, Mapping):
+                continue
+            if mapping.get("source") != "virtual_gcsim_slot_override":
+                continue
+            virtual_row_list.append(
+                (
+                    detail.slot_index,
+                    str(mapping.get("gcsim_key") or "").casefold(),
+                )
+            )
+        virtual_rows = tuple(virtual_row_list)
+        virtual_keys = tuple(key for _slot, key in virtual_rows if key)
+        try:
+            snapshot = load_selected_equipped_team_snapshot(
+                request.db_path,
+                artifact_database=database,
+                character_keys=character_keys,
+                virtual_character_keys=virtual_keys if inventory_baseline_mode else (),
+            )
+        except GcsimOptimizerGoSelectedInputError as exc:
+            code = (
+                "virtual_inventory_baseline_unavailable"
+                if inventory_baseline_mode and virtual_keys
+                else "selected_equipment_not_ready"
+            )
+            raise GcsimOptimizerGoSelectedError(code, str(exc)) from exc
+        if inventory_baseline_mode and virtual_rows:
+            try:
+                summaries_by_key = load_virtual_inventory_baseline_summaries(
+                    request.db_path,
+                    snapshot=snapshot,
+                )
+            except GcsimOptimizerGoSelectedInputError as exc:
+                raise GcsimOptimizerGoSelectedError(
+                    "virtual_inventory_baseline_unavailable", str(exc)
+                ) from exc
+            baselines_by_slot = {
+                slot_index: summaries_by_key[key]
+                for slot_index, key in virtual_rows
+                if key in summaries_by_key
+            }
+            if len(baselines_by_slot) != len(virtual_rows):
+                raise GcsimOptimizerGoSelectedError(
+                    "virtual_inventory_baseline_unavailable",
+                    "Could not materialize every virtual character baseline.",
+                )
+            report = build_selected_team_full_config_report(
+                db_path=request.db_path,
+                selected_team=request.selected_team,
+                team_index=max(0, int(request.team_index)),
+                rotation_shell_path=effective_rotation_path,
+                run_dir=run_dir,
+                write_config=False,
+                run_settings=GcsimRunSettings(boosted_energy_enabled=False),
+                virtual_artifact_policy=virtual_artifact_policy,
+                virtual_artifact_baselines=baselines_by_slot,
+            )
+            _require_prepared_report(report, theory_mode=False)
+            config_text = enforce_gcsim_optimizer_mvp_energy_policy(
+                report.full_config.assembly.config_text,
+                ignore_burst_energy=bool(request.infinite_energy_enabled),
+            )
+            rebuilt_character_keys = tuple(
+                match.group(1).casefold()
+                for match in _CHARACTER_RE.finditer(config_text)
+            )
+            if rebuilt_character_keys != character_keys:
+                raise GcsimOptimizerGoSelectedError(
+                    "virtual_inventory_baseline_identity_changed",
+                    "Virtual inventory baseline changed the prepared team identity.",
+                )
+        wearers = bind_selected_report_config_and_snapshot(
+            report.team.payload,
+            config_text=config_text,
+            artifact_database=database,
+            snapshot=snapshot,
+        )
+        request_wearers = _request_wearers(config_text, wearers)
+        request_artifacts = _request_artifacts(
+            database,
+            character_keys[0],
+            snapshot,
+        )
+        artifact_input_sha256 = database.artifact_database_input_sha256
+        snapshot_equipment_sha256 = snapshot.equipment_rows_sha256
+        snapshot_sha256 = snapshot.snapshot_sha256
     target_matches = tuple(match.group(0).strip() for match in _TARGET_RE.finditer(config_text))
     if len(target_matches) != 1:
         raise GcsimOptimizerGoSelectedError(
@@ -592,11 +852,11 @@ def _prepare_inputs(
         {
             "kind": "gtt.optimizer.selected.trace_context.v1",
             "engine_binding_sha256": engine_binding_sha256,
-            "artifact_database_input_sha256": database.artifact_database_input_sha256,
-            "equipment_rows_sha256": snapshot.equipment_rows_sha256,
-            "snapshot_sha256": snapshot.snapshot_sha256,
+            "artifact_database_input_sha256": artifact_input_sha256,
+            "equipment_rows_sha256": snapshot_equipment_sha256,
+            "snapshot_sha256": snapshot_sha256,
             "prepared_config_sha256": text_sha256(config_text),
-            "rotation_sha256": text_sha256(request.rotation_shell_text),
+            "rotation_sha256": text_sha256(rotation_policy.optimizer_text),
             "target_sha256": text_sha256(target_text),
             "seeds": list(request.seeds),
             "ignore_burst_energy": bool(request.infinite_energy_enabled),
@@ -604,7 +864,7 @@ def _prepare_inputs(
     )
     context = {
         "prepared_config": _source_text(config_text),
-        "rotation": _source_text(request.rotation_shell_text),
+        "rotation": _source_text(rotation_policy.optimizer_text),
         "target": _source_text(target_text),
     }
     context["context_sha256"] = canonical_sha256(
@@ -628,8 +888,8 @@ def _prepare_inputs(
             "capabilities": sorted(capabilities),
         },
         "context": context,
-        "wearers": _request_wearers(config_text, wearers),
-        "artifacts": _request_artifacts(database, wearers[0].actor_key, snapshot),
+        "wearers": request_wearers,
+        "artifacts": request_artifacts,
         "legality": {
             "fixed_four_piece": True,
             "max_off_set_pieces_per_wearer": 1,
@@ -649,7 +909,11 @@ def _prepare_inputs(
         },
         "cancellation": {"mode": "process_interrupt_v1"},
     }
-    if any("selected_sets" in row for row in request_payload["wearers"]):
+    if theory_mode:
+        request_payload["legality"]["fixed_four_piece"] = False
+        request_payload["legality"]["max_off_set_pieces_per_wearer"] = 0
+        request_payload["legality"]["theory_search"] = True
+    elif any("selected_sets" in row for row in request_payload["wearers"]):
         request_payload["legality"]["fixed_four_piece"] = False
         request_payload["legality"]["fixed_set_packages"] = True
     request_sha256 = canonical_sha256(request_payload)
@@ -658,7 +922,42 @@ def _prepare_inputs(
         "request": request_payload,
         "request_sha256": request_sha256,
         "snapshot": snapshot,
+        "adapter_warnings": (
+            (
+                {
+                    "code": rotation_policy.warning_code,
+                    "duration_seconds": rotation_policy.duration_seconds,
+                },
+            )
+            if rotation_policy.changed
+            else ()
+        ),
     }
+
+
+def _require_prepared_report(report: Any, *, theory_mode: bool) -> None:
+    if report.ready and not report.issues:
+        return
+    issue_statuses = _report_issue_statuses(report.issues)
+    if ASSEMBLY_SHELL_UNBOUNDED_DUMMY_ROTATION in issue_statuses:
+        raise GcsimOptimizerGoSelectedError(
+            "rotation_unbounded_dummy_target",
+            (
+                "The rotation uses while 1 with the pinned high-HP dummy. "
+                "Use a finite loop/action list so the optimizer can capture "
+                "one complete rotation schedule."
+            ),
+        )
+    if theory_mode and "virtual_gcsim_profile_incomplete" in issue_statuses:
+        raise GcsimOptimizerGoSelectedError(
+            "theory_profile_incomplete",
+            "Complete the virtual character and weapon profile before running Theory.",
+        )
+    raise GcsimOptimizerGoSelectedError(
+        "selected_config_not_ready",
+        "Current team cannot be prepared for "
+        f"{'Theory' if theory_mode else 'Selected'}: {report.issues!r}",
+    )
 
 
 def _request_wearers(config_text: str, wearers: tuple[Any, ...]) -> list[dict[str, Any]]:
@@ -689,10 +988,93 @@ def _request_wearers(config_text: str, wearers: tuple[Any, ...]) -> list[dict[st
     return output
 
 
-def _request_artifacts(database: Any, reference_actor: str, snapshot: Any) -> list[dict[str, Any]]:
-    reference = next(
-        row.wearer for row in snapshot.wearers if row.wearer.gcsim_character_key == reference_actor
+def _request_theory_wearers(
+    payload: Mapping[str, Any],
+    *,
+    config_text: str,
+) -> list[dict[str, Any]]:
+    """Build one inventory-independent neutral Theory anchor for every wearer."""
+
+    weapons = {
+        match.group("actor").casefold(): match.group("weapon").casefold()
+        for match in _WEAPON_RE.finditer(config_text)
+    }
+    characters = tuple(
+        item for item in payload.get("characters") or () if isinstance(item, Mapping)
     )
+    if len(characters) != 4:
+        raise GcsimOptimizerGoSelectedError(
+            "theory_team_requires_four_characters",
+            "Theory requires exactly four prepared character profiles.",
+        )
+    output: list[dict[str, Any]] = []
+    for character in characters:
+        mapping = character.get("mapping") if isinstance(character.get("mapping"), Mapping) else {}
+        actor = str(mapping.get("gcsim_key") or "").strip().casefold()
+        build = character.get("artifact_build") if isinstance(character.get("artifact_build"), Mapping) else {}
+        if not actor or actor not in weapons or not build:
+            raise GcsimOptimizerGoSelectedError(
+                "theory_profile_incomplete",
+                "Theory requires a complete character profile and a compatible weapon.",
+            )
+        wearer: dict[str, Any] = {
+            "wearer_key": actor,
+            "weapon_key": weapons[actor],
+        }
+        source_kind = str(build.get("source_kind") or "")
+        if source_kind != "theory_neutral_baseline":
+            raise GcsimOptimizerGoSelectedError(
+                "theory_baseline_invalid",
+                f"Theory did not prepare a neutral artifact baseline for {actor}.",
+            )
+        mains = build.get("baseline_main_stats")
+        if not isinstance(mains, Mapping):
+            raise GcsimOptimizerGoSelectedError(
+                "theory_baseline_invalid",
+                "The Theory stat baseline is incomplete.",
+            )
+        normalized_mains = []
+        normalized_values = {
+            "flower": ("hp", "4780"),
+            "plume": ("atk", "311"),
+            "sands": ("atk_percent", "0.466"),
+            "goblet": ("atk_percent", "0.466"),
+            "circlet": ("crit_rate", "0.311"),
+        }
+        for slot in GCSIM_OPTIMIZER_ARTIFACT_SLOTS:
+            expected_key, value = normalized_values[slot]
+            if str(mains.get(slot) or "") != expected_key:
+                raise GcsimOptimizerGoSelectedError(
+                    "theory_baseline_invalid",
+                    "The Theory stat baseline does not match its prepared config.",
+                )
+            normalized_mains.append({"slot": slot, "key": expected_key, "value": value})
+        wearer["current_artifacts"] = []
+        wearer["theory_baseline"] = {"main_stats": normalized_mains}
+        output.append(wearer)
+    sorted_output = sorted(output, key=lambda row: row["wearer_key"])
+    if len({row["wearer_key"] for row in sorted_output}) != 4:
+        raise GcsimOptimizerGoSelectedError(
+            "theory_team_requires_four_characters",
+            "Theory requires four distinct GCSIM character keys.",
+        )
+    return sorted_output
+
+
+def _request_artifacts(
+    database: Any,
+    reference_actor: str,
+    snapshot: Any,
+    *,
+    reference_wearer: GcsimOptimizerWearerIdentity | None = None,
+) -> list[dict[str, Any]]:
+    reference = reference_wearer
+    if reference is None:
+        reference = next(
+            row.wearer
+            for row in snapshot.wearers
+            if row.wearer.gcsim_character_key == reference_actor
+        )
     artifacts: list[dict[str, Any]] = []
     for artifact in database.artifacts:
         if not artifact.default_eligible:
@@ -749,10 +1131,16 @@ def format_gcsim_optimizer_go_selected_result(payload: Mapping[str, Any]) -> str
         title = "Selected Sets cancelled" if payload.get("status") == "cancelled" else "Selected Sets failed"
         if all_sets:
             title = tr("gcsim.optimizer.all_cancelled" if payload.get("status") == "cancelled" else "gcsim.optimizer.all_failed")
+        error_key = {
+            "rotation_unbounded_dummy_target": (
+                "gcsim.optimizer.rotation_unbounded_dummy_target"
+            ),
+        }.get(str(payload.get("error_code") or ""))
+        reason = tr(error_key) if error_key else str(payload.get("error") or "-")
         return "\n".join(
             (
                 title,
-                f"Reason: {payload.get('error') or '-'}",
+                tr("gcsim.optimizer.reason").format(reason=reason),
                 f"Debug: {payload.get('run_dir') or '-'}",
             )
         )
@@ -772,15 +1160,50 @@ def format_gcsim_optimizer_go_selected_result(payload: Mapping[str, Any]) -> str
     ]
     for wearer in sorted(assignments):
         lines.append(f"{wearer}: " + ", ".join(assignments[wearer]))
-    warnings = tuple(result.get("warnings") or ())
+    energy = result.get("energy") if isinstance(result.get("energy"), Mapping) else None
+    if energy is not None:
+        lines.append(tr("gcsim.optimizer.energy_result_title"))
+        for wearer in energy.get("wearers") or ():
+            actual = float(wearer.get("artifact_er") or 0) * 100
+            required = float(wearer.get("required_artifact_er") or 0) * 100
+            margin = float(wearer.get("artifact_er_margin") or 0) * 100
+            lines.append(
+                tr("gcsim.optimizer.energy_result_row").format(
+                    wearer=wearer.get("wearer_key") or "?",
+                    actual=f"{actual:.1f}",
+                    required=f"{required:.1f}",
+                    margin=f"{margin:+.1f}",
+                )
+            )
+    warnings = tuple(result.get("warnings") or ()) + tuple(
+        payload.get("adapter_warnings") or ()
+    )
     if warnings:
-        lines.append("Warnings: " + ", ".join(str(value) for value in warnings))
+        lines.append(
+            "Warnings: " + ", ".join(_format_optimizer_warning(value) for value in warnings)
+        )
     lines.append(f"Debug: {result.get('debug_receipt_path') or payload.get('run_dir') or '-'}")
     return "\n".join(lines)
 
 
 def _source_text(text: str) -> dict[str, str]:
     return {"text": text, "sha256": text_sha256(text)}
+
+
+def _format_optimizer_warning(value: Any) -> str:
+    from localization import tr
+
+    code = str(value.get("code") or "") if isinstance(value, Mapping) else str(value)
+    if code == ROTATION_AUTO_BOUNDED_WARNING:
+        raw_duration = value.get("duration_seconds") if isinstance(value, Mapping) else 90
+        try:
+            duration = f"{float(raw_duration):g}"
+        except (TypeError, ValueError):
+            duration = "90"
+        return tr("gcsim.optimizer.rotation_auto_bounded").format(
+            duration=duration
+        )
+    return str(value)
 
 
 def _go_stat_key(value: str) -> str:
@@ -850,6 +1273,10 @@ def _remaining_ms(started: float, total_ms: int) -> int:
             "product_timeout", "Selected exceeded its configured product timeout."
         )
     return remaining
+
+
+def _elapsed_ms(started: float) -> float:
+    return round((time.monotonic() - started) * 1000, 3)
 
 
 def _new_run_dir(root: str | Path, *, mode: str = "selected") -> Path:

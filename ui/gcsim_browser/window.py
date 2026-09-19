@@ -19,12 +19,21 @@ from PySide6.QtWidgets import (
 )
 
 from localization import tr
+from run_workspace.gcsim.optimizer_rotation_policy import (
+    normalize_optimizer_rotation_shell,
+)
 from run_workspace.right_panel_prototype_view_model import MODE_ABYSS, MODE_DPS_DUMMY
+from run_workspace.gcsim.virtual_roster import (
+    GcsimVirtualArtifactSetChoice,
+    GcsimVirtualRosterCatalog,
+    GcsimVirtualSlotOverride,
+)
 from ui.gcsim_browser.optimizer_result import (
     OptimizerResultBuildRow,
     OptimizerResultPage,
     OptimizerResultBuildsWidget,
 )
+from ui.gcsim_browser.virtual_slot_editor import VirtualGcsimCardEditor
 from ui.utils.toggle_switch import ToggleSwitch
 from ui.utils.ui_palette import UI_TEXT_MUTED
 
@@ -67,9 +76,17 @@ class GcsimBrowserWorkspace(QWidget):
     rotation_text_changed = Signal()
     optimizer_selected_requested = Signal(int, str)
     optimizer_all_sets_requested = Signal(int, str)
+    optimizer_theory_requested = Signal(int, str)
     optimizer_infinite_energy_changed = Signal(bool)
     optimizer_cancel_requested = Signal()
     optimizer_build_save_requested = Signal(dict)
+    virtual_character_requested = Signal(int, int, str)
+    virtual_weapon_requested = Signal(int, int, str)
+    virtual_constellation_requested = Signal(int, int, int)
+    virtual_refinement_requested = Signal(int, int, int)
+    virtual_profile_requested = Signal(int, int, dict)
+    virtual_set_bonuses_requested = Signal(int, int, list)
+    virtual_clear_requested = Signal(int, int)
 
     """First visual shell for the future GCSIM Browser.
 
@@ -88,6 +105,7 @@ class GcsimBrowserWorkspace(QWidget):
         self._selected_chamber_index = 0
         self._optimizer_mode = "selected"
         self._optimizer_all_sets_available = False
+        self._optimizer_theory_available = False
         self._target_mode_preview = ""
         self._energy_mode_preview = ""
         self._targets_preview_by_team: tuple[tuple[str, ...], ...] = ((), ())
@@ -97,6 +115,8 @@ class GcsimBrowserWorkspace(QWidget):
             [GcsimBrowserTeamSlotPreview() for _ in range(4)],
         ]
         self._team_cards: list[list[_TeamCard]] = []
+        self._virtual_catalog = GcsimVirtualRosterCatalog.empty()
+        self._virtual_set_choices: tuple[GcsimVirtualArtifactSetChoice, ...] = ()
         self._team_notes: list[QLabel] = []
         self._optimizer_elapsed_clock = QElapsedTimer()
         self._optimizer_elapsed_last_ms = 0
@@ -331,6 +351,7 @@ class GcsimBrowserWorkspace(QWidget):
         self.optimizer_all_sets_button.clicked.connect(self._request_optimizer_all_sets)
         self.optimizer_theory_button = QPushButton()
         self.optimizer_theory_button.setEnabled(False)
+        self.optimizer_theory_button.clicked.connect(self._request_optimizer_theory)
         mode_row.addWidget(self.optimizer_selected_button)
         mode_row.addWidget(self.optimizer_all_sets_button)
         mode_row.addWidget(self.optimizer_theory_button)
@@ -406,6 +427,35 @@ class GcsimBrowserWorkspace(QWidget):
         for slot_index, card in enumerate(self._team_cards[team_index]):
             card.set_preview(normalized_slots[slot_index])
 
+    def set_virtual_gcsim_catalogs(
+        self,
+        catalog: GcsimVirtualRosterCatalog,
+        set_choices: tuple[GcsimVirtualArtifactSetChoice, ...],
+    ) -> None:
+        self._virtual_catalog = catalog
+        self._virtual_set_choices = tuple(set_choices)
+        for cards in self._team_cards:
+            for card in cards:
+                card.set_virtual_catalogs(catalog, self._virtual_set_choices)
+
+    def set_virtual_gcsim_slot_context(
+        self,
+        team_index: int,
+        slot_index: int,
+        *,
+        override: GcsimVirtualSlotOverride | None,
+        artifact_builds: tuple[dict[str, object], ...] = (),
+    ) -> None:
+        if not (0 <= int(team_index) < len(self._team_cards)):
+            return
+        cards = self._team_cards[int(team_index)]
+        if not (0 <= int(slot_index) < len(cards)):
+            return
+        cards[int(slot_index)].set_virtual_context(
+            override=override,
+            artifact_builds=artifact_builds,
+        )
+
     def set_abyss_targets_preview(
         self,
         *,
@@ -440,6 +490,7 @@ class GcsimBrowserWorkspace(QWidget):
             )
         for team_index, cards in enumerate(self._team_cards):
             for slot_index, card in enumerate(cards):
+                card.retranslate_ui()
                 card.set_preview(self._team_previews[team_index][slot_index])
 
         self.targets_title.setText(
@@ -538,8 +589,7 @@ class GcsimBrowserWorkspace(QWidget):
             _fallback("gcsim.optimizer.infinite_energy", "Infinite energy")
         )
         self.optimizer_future_note.setText(
-            "All Sets and Theory are visible product modes but remain unavailable "
-            "until their separate backend gates are complete."
+            "Theory shows formula-guided farming targets rather than owned artifact IDs."
         )
         self._refresh_optimizer_energy_note()
         if not self.optimizer_progress_label.text():
@@ -562,8 +612,43 @@ class GcsimBrowserWorkspace(QWidget):
 
         cards: list[_TeamCard] = []
         for slot_index in range(4):
-            card = _TeamCard()
+            card = _TeamCard(team_index=team_index, slot_index=slot_index)
             card.setObjectName(f"gcsimTeamCard{team_index}_{slot_index}")
+            card.virtual_character_requested.connect(
+                lambda key, team=team_index, slot=slot_index: (
+                    self.virtual_character_requested.emit(team, slot, key)
+                )
+            )
+            card.virtual_weapon_requested.connect(
+                lambda key, team=team_index, slot=slot_index: (
+                    self.virtual_weapon_requested.emit(team, slot, key)
+                )
+            )
+            card.virtual_constellation_requested.connect(
+                lambda value, team=team_index, slot=slot_index: (
+                    self.virtual_constellation_requested.emit(team, slot, value)
+                )
+            )
+            card.virtual_refinement_requested.connect(
+                lambda value, team=team_index, slot=slot_index: (
+                    self.virtual_refinement_requested.emit(team, slot, value)
+                )
+            )
+            card.virtual_profile_requested.connect(
+                lambda value, team=team_index, slot=slot_index: (
+                    self.virtual_profile_requested.emit(team, slot, value)
+                )
+            )
+            card.virtual_set_bonuses_requested.connect(
+                lambda value, team=team_index, slot=slot_index: (
+                    self.virtual_set_bonuses_requested.emit(team, slot, value)
+                )
+            )
+            card.virtual_clear_requested.connect(
+                lambda team=team_index, slot=slot_index: (
+                    self.virtual_clear_requested.emit(team, slot)
+                )
+            )
             grid.addWidget(card, 0, slot_index)
             cards.append(card)
         self._team_cards.append(cards)
@@ -654,10 +739,19 @@ class GcsimBrowserWorkspace(QWidget):
     def _request_optimizer_all_sets(self) -> None:
         self._request_optimizer_mode("all_sets")
 
+    def _request_optimizer_theory(self) -> None:
+        self._request_optimizer_mode("theory")
+
     def set_optimizer_all_sets_available(self, available: bool) -> None:
         self._optimizer_all_sets_available = bool(available)
         self.optimizer_all_sets_button.setEnabled(
             self._optimizer_all_sets_available and self.optimizer_selected_button.isEnabled()
+        )
+
+    def set_optimizer_theory_available(self, available: bool) -> None:
+        self._optimizer_theory_available = bool(available)
+        self.optimizer_theory_button.setEnabled(
+            self._optimizer_theory_available and self.optimizer_selected_button.isEnabled()
         )
 
     def _request_optimizer_mode(self, mode: str) -> None:
@@ -665,19 +759,37 @@ class GcsimBrowserWorkspace(QWidget):
         team_index = max(0, int(self.team_tabs.currentIndex()))
         if self._mode == MODE_DPS_DUMMY:
             team_index = 0
+        rotation_text = self.rotation_editor.toPlainText()
+        rotation_policy = normalize_optimizer_rotation_shell(rotation_text)
         self.optimizer_result.setPlainText("")
         self.optimizer_result_builds.clear()
         self._start_optimizer_elapsed()
-        self.optimizer_progress_label.setText(
-            tr("gcsim.optimizer.preparing_all") if mode == "all_sets"
-            else "Preparing Selected Sets input..."
-        )
+        if rotation_policy.changed:
+            duration = f"{float(rotation_policy.duration_seconds or 0):g}"
+            notice = tr("gcsim.optimizer.rotation_auto_bounded").format(
+                duration=duration
+            )
+            self.optimizer_result.setPlainText(notice)
+            self.optimizer_progress_label.setText(notice)
+        else:
+            self.optimizer_progress_label.setText(
+                tr("gcsim.optimizer.preparing_all")
+                if mode == "all_sets"
+                else "Preparing Theory input..."
+                if mode == "theory"
+                else "Preparing Selected Sets input..."
+            )
         self.optimizer_progress_bar.setRange(0, 0)
-        signal = (self.optimizer_all_sets_requested if mode == "all_sets"
-                  else self.optimizer_selected_requested)
+        signal = (
+            self.optimizer_all_sets_requested
+            if mode == "all_sets"
+            else self.optimizer_theory_requested
+            if mode == "theory"
+            else self.optimizer_selected_requested
+        )
         signal.emit(
             team_index,
-            self.rotation_editor.toPlainText(),
+            rotation_text,
         )
 
     def set_optimizer_infinite_energy_enabled(self, enabled: bool) -> None:
@@ -704,8 +816,8 @@ class GcsimBrowserWorkspace(QWidget):
         else:
             text = _fallback(
                 "gcsim.optimizer.energy_requirements_note",
-                "Energy mode: requirements enabled. The current search does not yet "
-                "optimize Energy Recharge, so a rotation may fail from insufficient energy.",
+                "Energy requirements enabled. The optimizer selects enough Energy "
+                "Recharge for bursts and verifies the final build in an ordinary simulation.",
             )
         self.optimizer_energy_note.setText(text)
 
@@ -715,6 +827,7 @@ class GcsimBrowserWorkspace(QWidget):
         self.run_all_button.setEnabled(not busy and self._mode == MODE_ABYSS)
         self.optimizer_selected_button.setEnabled(not busy)
         self.optimizer_all_sets_button.setEnabled(not busy and self._optimizer_all_sets_available)
+        self.optimizer_theory_button.setEnabled(not busy and self._optimizer_theory_available)
         self.optimizer_infinite_energy_switch.setEnabled(not busy)
         self.optimizer_cancel_button.setEnabled(busy)
         if busy and not self._optimizer_elapsed_clock.isValid():
@@ -742,6 +855,15 @@ class GcsimBrowserWorkspace(QWidget):
         if self._optimizer_mode == "all_sets":
             for terminal in ("completed", "cancelled", "failed"):
                 labels[terminal] = tr("gcsim.optimizer.all_" + terminal)
+        elif self._optimizer_mode == "theory":
+            labels.update(
+                {
+                    "searching": "Finding theoretical farming targets",
+                    "completed": "Theory complete",
+                    "cancelled": "Theory cancelled",
+                    "failed": "Theory failed",
+                }
+            )
         self.optimizer_progress_label.setText(labels.get(stage, stage))
         if stage in {"completed", "cancelled", "failed"}:
             self._stop_optimizer_elapsed(stage)
@@ -801,8 +923,13 @@ class GcsimBrowserWorkspace(QWidget):
         if self._optimizer_elapsed_clock.isValid() and not self._optimizer_elapsed_terminal_stage:
             elapsed_ms = max(elapsed_ms, int(self._optimizer_elapsed_clock.elapsed()))
         elapsed = _format_optimizer_elapsed(elapsed_ms)
-        estimate = (tr("gcsim.optimizer.all_estimate") if self._optimizer_mode == "all_sets"
-                    else _fallback("gcsim.optimizer.estimate", "1–3 min"))
+        estimate = (
+            tr("gcsim.optimizer.all_estimate")
+            if self._optimizer_mode == "all_sets"
+            else "1–5 min"
+            if self._optimizer_mode == "theory"
+            else _fallback("gcsim.optimizer.estimate", "1–3 min")
+        )
         if not self._optimizer_elapsed_clock.isValid():
             template = _fallback(
                 "gcsim.optimizer.estimate_ready",
@@ -833,6 +960,7 @@ class GcsimBrowserWorkspace(QWidget):
         self.run_all_button.setEnabled(not busy and self._mode == MODE_ABYSS)
         self.optimizer_selected_button.setEnabled(not busy)
         self.optimizer_all_sets_button.setEnabled(not busy and self._optimizer_all_sets_available)
+        self.optimizer_theory_button.setEnabled(not busy and self._optimizer_theory_available)
         if message:
             self._set_result_text(message)
 
@@ -959,8 +1087,27 @@ class GcsimBrowserWorkspace(QWidget):
 
 
 class _TeamCard(QFrame):
-    def __init__(self, parent: QWidget | None = None) -> None:
+    virtual_character_requested = Signal(str)
+    virtual_weapon_requested = Signal(str)
+    virtual_constellation_requested = Signal(int)
+    virtual_refinement_requested = Signal(int)
+    virtual_profile_requested = Signal(dict)
+    virtual_set_bonuses_requested = Signal(list)
+    virtual_clear_requested = Signal()
+
+    def __init__(
+        self,
+        *,
+        team_index: int,
+        slot_index: int,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
+        self.team_index = int(team_index)
+        self.slot_index = int(slot_index)
+        self._preview = GcsimBrowserTeamSlotPreview()
+        self._override: GcsimVirtualSlotOverride | None = None
+        self._draft = False
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
@@ -968,6 +1115,10 @@ class _TeamCard(QFrame):
         layout.setContentsMargins(8, 8, 8, 8)
         layout.setSpacing(4)
 
+        self.preview_widget = QWidget()
+        preview_layout = QVBoxLayout(self.preview_widget)
+        preview_layout.setContentsMargins(0, 0, 0, 0)
+        preview_layout.setSpacing(3)
         self.name_label = QLabel()
         self.name_label.setObjectName("GcsimBrowserTeamName")
         self.weapon_label = QLabel()
@@ -981,11 +1132,59 @@ class _TeamCard(QFrame):
             self.status_label,
         ):
             label.setWordWrap(True)
-            layout.addWidget(label)
+            preview_layout.addWidget(label)
+
+        self.activate_virtual_button = QPushButton()
+        self.activate_virtual_button.setProperty("compact", True)
+        self.activate_virtual_button.clicked.connect(self._begin_virtual_edit)
+        preview_layout.addWidget(self.activate_virtual_button)
+        layout.addWidget(self.preview_widget)
+
+        self.virtual_editor = VirtualGcsimCardEditor()
+        self.virtual_editor.character_requested.connect(
+            self.virtual_character_requested.emit
+        )
+        self.virtual_editor.weapon_requested.connect(self.virtual_weapon_requested.emit)
+        self.virtual_editor.constellation_requested.connect(
+            self.virtual_constellation_requested.emit
+        )
+        self.virtual_editor.refinement_requested.connect(
+            self.virtual_refinement_requested.emit
+        )
+        self.virtual_editor.profile_requested.connect(self.virtual_profile_requested.emit)
+        self.virtual_editor.set_bonuses_requested.connect(
+            self.virtual_set_bonuses_requested.emit
+        )
+        self.virtual_editor.clear_requested.connect(self.virtual_clear_requested.emit)
+        self.virtual_editor.editing_cancelled.connect(self._cancel_virtual_edit)
+        layout.addWidget(self.virtual_editor)
 
         self.set_preview(GcsimBrowserTeamSlotPreview())
 
+    def set_virtual_catalogs(
+        self,
+        catalog: GcsimVirtualRosterCatalog,
+        set_choices: tuple[GcsimVirtualArtifactSetChoice, ...],
+    ) -> None:
+        self.virtual_editor.set_catalogs(catalog, set_choices)
+
+    def set_virtual_context(
+        self,
+        *,
+        override: GcsimVirtualSlotOverride | None,
+        artifact_builds: tuple[dict[str, object], ...] = (),
+    ) -> None:
+        self._override = override
+        if override is not None:
+            self._draft = False
+        self.virtual_editor.set_context(
+            override=override,
+            artifact_builds=artifact_builds,
+        )
+        self._refresh_mode()
+
     def set_preview(self, preview: GcsimBrowserTeamSlotPreview) -> None:
+        self._preview = preview
         self.name_label.setText(
             preview.name or _fallback("gcsim.browser.empty_slot", "Empty slot")
         )
@@ -1000,6 +1199,27 @@ class _TeamCard(QFrame):
             preview.status
             or _fallback("gcsim.browser.status_placeholder", "Not checked")
         )
+        self._refresh_mode()
+
+    def retranslate_ui(self) -> None:
+        self.activate_virtual_button.setText(
+            tr("gcsim.virtual_editor.activate")
+        )
+        self.virtual_editor.retranslate_ui()
+
+    def _begin_virtual_edit(self) -> None:
+        self._draft = True
+        self._refresh_mode()
+        QTimer.singleShot(0, self.virtual_editor.begin_editing)
+
+    def _cancel_virtual_edit(self) -> None:
+        self._draft = False
+        self._refresh_mode()
+
+    def _refresh_mode(self) -> None:
+        editing = self._draft or self._override is not None
+        self.preview_widget.setVisible(not editing)
+        self.virtual_editor.setVisible(editing)
 
 
 def _make_section() -> tuple[QFrame, QVBoxLayout]:

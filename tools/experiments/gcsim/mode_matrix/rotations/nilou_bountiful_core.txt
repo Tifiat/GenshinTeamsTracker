@@ -1,0 +1,12 @@
+options swap_delay=12 iteration=1000;
+energy every interval=480,720 amount=1;
+target lvl=100 resist=0.1 radius=1 pos=0,1.5 hp=999999999;
+
+active nilou;
+
+for let i=0; i<5; i=i+1 {
+  nilou skill, attack:2, skill;
+  nahida skill, attack:2, charge;
+  xingqiu skill, dash, burst, attack;
+  kaveh burst, skill, attack:4, walk, attack:4, attack:2, walk, attack:2, skill, attack:4;
+}

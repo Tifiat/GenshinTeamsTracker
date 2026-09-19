@@ -93,7 +93,8 @@ that the corresponding character never contributed damage or buffs.
 ## Team-by-team results
 
 All 28 rows completed successfully on the same lineage5 identity. `All` is
-ordinary measured n=500 DPS, not its formula score; `Theory` is *formula-only*
+ordinary measured DPS, not its formula score: 11 winners used n=500 and
+Gaming, Navia and Spread used n=1000 finalist iterations. `Theory` is *formula-only*
 idealized DPS and must not be compared as a claimed equipped/ordinary result.
 Times are complete product-session wall time in seconds. A dagger means the
 300-second Theory context deadline returned a labeled partial shortlist.
@@ -161,7 +162,7 @@ the sign/denominator here is `(formula / measured) - 1`.
   these rotations. Freminet received Night of the Sky's Unveiling 4p in the
   Physical team, but its 4p hooks only lunar reactions; none occur. Burning
   Dehya received Noblesse 4p yet never uses Burst in that rotation. These are
-  poor *set-bonus explanations*, not proof that the final n=500 search
+  poor *set-bonus explanations*, not proof that the bounded finalist search
   miscomputed an item's raw stats. The owned pieces may simply be strong, and
   this bounded search did not prove a controlled no-worse alternative.
 - Burning Top-1 gave Noblesse to Bennett, Dehya and Emilie. Installed source

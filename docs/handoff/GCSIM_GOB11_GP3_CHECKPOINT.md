@@ -30,7 +30,7 @@ optimizer buttons and the shared energy switch. Its team was empty, so no
 lineage5 physical search completion is claimed from that later UI check.
 
 The managed 14-roster × (All Sets, Theory) matrix uses the same request/session
-classes as the UI, owner-preserving virtual profiles, ordinary 500-iteration
+classes as the UI, owner-preserving virtual profiles, ordinary n=500/n=1000
 All Sets finalists and explicitly infinite energy. See the dated
 [archetype audit](GCSIM_OPTIMIZER_ARCHETYPE_AUDIT_20260919.md) and its compact
 receipt for per-team ranks, timing, formula channels and engine hashes. All

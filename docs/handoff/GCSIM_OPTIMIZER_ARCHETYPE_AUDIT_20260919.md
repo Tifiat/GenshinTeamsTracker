@@ -36,6 +36,13 @@ The compact fixture is separate backend/session evidence, not 28 physical UI
 clicks. The smoke subagent independently launched the shell and opened the
 optimizer on an empty team but did not claim a search completed there.
 
+After the lineage5 activation and commit, a further native Computer Use check
+used PyCharm's current-file Run control to launch the same AppShell entrypoint.
+The fresh window showed GCSIM > Artifact optimizer, all three mode buttons and
+the shared infinite-energy switch; it had four empty active-team slots. This
+confirms that the current UI still opens, but **does not** establish a completed
+lineage5 button search. The check's window was closed afterward.
+
 The code route is `GcsimBrowserWorkspace._request_optimizer_mode` -> AppShell
 `_on_gcsim_optimizer_requested` -> `GcsimBrowserSelectedOptimizerWorker` ->
 `GcsimOptimizerGoSelectedSession` / `GcsimOptimizerGoAllSetsSession` /

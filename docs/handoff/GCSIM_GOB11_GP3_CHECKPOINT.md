@@ -25,6 +25,9 @@ The byte-identical lineage4 exe served those clicks; the freshly installed
 lineage5 serves the subsequent product-session matrix. A Qt-button unit test
 also forwards an unsaved virtual profile to the All Sets session, but no
 physical virtual All Sets click is claimed.
+After activating lineage5, a fresh PyCharm AppShell launch displayed all three
+optimizer buttons and the shared energy switch. Its team was empty, so no
+lineage5 physical search completion is claimed from that later UI check.
 
 The managed 14-roster × (All Sets, Theory) matrix uses the same request/session
 classes as the UI, owner-preserving virtual profiles, ordinary 500-iteration

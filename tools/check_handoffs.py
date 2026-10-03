@@ -8,6 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
+if __package__:
+    from .check_coordination import LINK_SCHEMA, check_coordination
+else:
+    from check_coordination import LINK_SCHEMA, check_coordination
+
 ROOT_BUDGETS = {
     "AGENTS.md": 2000,
     "CODEX.md": 8000,
@@ -64,18 +69,42 @@ def prose(text: str) -> str:
     return "\n".join(lines)
 
 
-def resolve_local(root: Path, owner: Path, target: str) -> Path | None:
+def resolve_local(root: Path, owner: Path, target: str,
+                  coordination_root: Path | None = None) -> Path | None:
     parts = urlsplit(target.strip("<>"))
     if parts.scheme or parts.netloc:
         return None
     candidate = (owner.parent / unquote(parts.path)).resolve() if parts.path else owner
     if not candidate.is_relative_to(root):
-        raise ValueError("local link escapes repository")
+        routers = {root / "TODO.md", root / "docs/handoff/WORK_BACKLOG.md",
+                   root / "docs/handoff/COORDINATION.md"}
+        if (coordination_root is None or owner not in routers
+                or not candidate.is_relative_to(coordination_root)):
+            raise ValueError("local link escapes repository")
     return candidate
+
+
+def linked_coordination_root(root: Path) -> Path | None:
+    """Resolve only the declared hub; its structure is checked independently."""
+    path = root / "coordination.json"
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+        value = data.get("hub") if isinstance(data, dict) else None
+        if (data.get("schema") != LINK_SCHEMA or not isinstance(value, str)
+                or not value.strip() or "\x00" in value or Path(value).is_absolute()
+                or re.match(r"^[A-Za-z]:", value)):
+            return None
+        candidate = (root / value).resolve()
+        return None if candidate.is_relative_to(root) else candidate
+    except (OSError, ValueError, AttributeError, RuntimeError):
+        return None
 
 
 def check_repository(root: Path) -> list[Issue]:
     root = root.resolve()
+    coordination_root = linked_coordination_root(root)
     handoff = root / "docs/handoff"
     issues: list[Issue] = []
     documents: dict[Path, str] = {}
@@ -132,7 +161,7 @@ def check_repository(root: Path) -> list[Issue]:
             issue("completed-todo", path, "remove completed tasks; retain durable outcomes in their owner")
         for match in LINK.finditer(text):
             try:
-                target = resolve_local(root, path, match[1])
+                target = resolve_local(root, path, match[1], coordination_root)
             except ValueError as exc:
                 issue("invalid-link", path, f"{match[1]}: {exc}")
                 continue
@@ -215,6 +244,10 @@ def check_repository(root: Path) -> list[Issue]:
                     issue("current-projection", path, "next block differs from current owner")
                 if next_block.get("resume") != state["handoff"]:
                     issue("current-projection", path, "resume must point to the declared current owner")
+    for item in check_coordination(root):
+        relative = (item.path.relative_to(root).as_posix()
+                    if item.path.is_relative_to(root) else str(item.path))
+        issues.append(Issue("coordination-" + item.code, relative, item.detail))
     return sorted(set(issues), key=lambda item: (item.path, item.code, item.detail))
 
 

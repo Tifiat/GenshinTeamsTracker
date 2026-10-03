@@ -11,7 +11,8 @@ only turns require no file edits or checker.
 | Fact | One owner |
 | --- | --- |
 | Cross-project execution rule | `CODEX.md` or the linked scoped work-rule file |
-| Active order | `TODO.md`; deferred scopes in `WORK_BACKLOG.md` |
+| Active order | Shared hub TODO/BACKLOG via local `TODO.md` and `WORK_BACKLOG.md` routers |
+| Worker progress | Own shared status file; acceptance evidence stays in that checkout |
 | Stable subsystem behavior | Area contract linked from `README.md` |
 | Current implementation, acceptance, immediate next action | One current checkpoint per scope |
 | A particular run, failure or measurement | Dated receipt/fixture |
@@ -52,7 +53,10 @@ proof that product tests or external research were rerun.
 3. Search narrow identifiers/old status/owner names in `CODEX.md`,
    `TODO.md` and `docs/handoff/`. Read and reconcile matching live claims;
    historical receipts keep their original results. Remove completed tasks and
-   obsolete pending decisions, preserving unfinished subitems.
+   obsolete pending decisions, preserving unfinished subitems. Update your own
+   shared worker status and propose queue changes there. Only the queue owner
+   edits the shared TODO/BACKLOG; do not duplicate tasks in local routers or
+   mark a branch result accepted on master without recorded integration.
 4. Add new direct handoff documents once to `CATALOG.md`; route a new active
    area from `README.md`. Update machine projections when their owner changes.
    New generated outputs require the lifecycle in `DATA_WORK_RULES.md`.

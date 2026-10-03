@@ -27,6 +27,7 @@ in every file.
 | --- | --- |
 | [README.md](README.md) | Short area router and reading policy |
 | [HANDOFF_MAINTENANCE.md](HANDOFF_MAINTENANCE.md) | Durable-fact closeout, compaction and consistency checks |
+| [COORDINATION.md](COORDINATION.md) | Shared queue, per-worker ownership and checkout-local technical evidence |
 | [OPTIMIZER_WORK_RULES.md](OPTIMIZER_WORK_RULES.md) | Optimizer-only execution and response invariants |
 | [UI_WORK_RULES.md](UI_WORK_RULES.md) | UI-only implementation and real-path verification rules |
 | [DATA_WORK_RULES.md](DATA_WORK_RULES.md) | Data, generated-output and cleanup rules |

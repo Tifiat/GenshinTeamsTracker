@@ -40,12 +40,22 @@ conversation is usually Russian.
   tokens, request headers, browser profiles or private debug/network output.
   Generated files require an owner, finite retention and connected cleanup:
   see `docs/handoff/DATA_WORK_RULES.md`.
-- Do not commit or push task changes unless the user requests it.
+- The user authorized automatic local commits of own verified completed stages.
+  Cross-branch transfers, push and other Git mutations require explicit
+  confirmation. Follow the Git policy/journal through
+  `docs/handoff/COORDINATION.md`; never stage unrelated changes.
 - Parallel workers use separate Git worktrees. Resolve imports, databases,
   settings, engines, caches and outputs inside the calling worker's checkout;
   never edit another worker's files or share its live database. Git objects and
   refs are shared, so coordinate merges/branch moves. Dependency environments
   may be reused read-only; dependency changes require a separate environment.
+- Shared task coordination is linked by `coordination.json` and
+  `docs/handoff/COORDINATION.md`. Read the common queue and your own status at
+  task selection, scope changes and closeout. Worker1 owns shared queue files;
+  each worker writes only its own status. Keep technical docs/evidence with code.
+  No shared docs junction or automatic cross-worker acceptance. A missing hub
+  is reported, not replaced by another live queue. Other workers' checkouts
+  remain write-protected by policy; migrations are applied by their own chat.
 - A scheduled continuation exists only after the automation tool returns a
   persisted active ID. A suggested card is not an active schedule.
 - `tools/future/` is for explicitly requested or genuinely reusable manual
@@ -56,9 +66,9 @@ conversation is usually Russian.
 
 The short router is `docs/handoff/README.md`. Read only the current status
 and the relevant contract section for the selected area. Deep design and dated
-evidence are consulted for the specific mechanism or failure. `TODO.md` owns
-the active order; read it when choosing or changing stages. Deferred scopes
-are in `docs/handoff/WORK_BACKLOG.md`.
+evidence are consulted for the specific mechanism or failure. `TODO.md` routes
+to the one shared active order; read it when choosing or changing stages.
+`docs/handoff/WORK_BACKLOG.md` routes to the shared deferred scopes.
 
 | Task | Scoped guardrails |
 | --- | --- |

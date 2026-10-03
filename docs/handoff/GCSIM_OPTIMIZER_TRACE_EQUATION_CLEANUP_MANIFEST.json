@@ -194,12 +194,12 @@
     "all_sets_preflight_cleanup_gate": "retain_raw_capture_oracles_through_capture_provider_integration_then_keep_durable_receipts_samples_and_reproducer_remove_disposable_overlay_outputs"
   },
   "current_next_block": {
-    "name": "optimizer_split_baseline",
-    "status": "full_master_baseline_and_linked_worker_authorized_lifecycle_gates_pass_fresh_checkout_pending",
+    "name": "optimizer_polish_gated_retirement",
+    "status": "full_master_baseline_committed_linked_worker_engine_db_bound_fresh_structural_gate_pass_numerical_and_UI_gates_open",
     "design_path": "docs/handoff/GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md",
     "strategy_id": "gtt_gcsim_optimizer_go_v1",
     "resume": "docs/handoff/GCSIM_GOB11_GP3_CHECKPOINT.md",
-    "next_stage": "commit_user_authorized_full_nonignored_master_baseline_create_optimizer_polish_and_theory_worktrees_verify_independent_runtime_and_clean_checkout_then_gated_retirement_preserve_both_AllSets_energy_routes",
+    "next_stage": "polish_Selected_AllSets_on_dedicated_branch_retain_both_energy_routes_retire_legacy_only_after_compatibility_and_Theory_reference_gates_separate_Theory_chat_owns_other_worktree",
     "refactor_audit": "docs/handoff/GCSIM_OPTIMIZER_REFACTOR_AUDIT_20261003.md",
     "research_cleanup_allowlist": "tools/optimizer_research_cleanup.json",
     "research_cleanup_disposition": "all97 paths absent after user cleanup; deep plan supersedes older expanded-path notes; archived witnesses are lossless but need restoration for historical reproducer paths",

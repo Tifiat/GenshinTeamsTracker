@@ -23,18 +23,9 @@ owns comparisons and failed attempts. No new UI acceptance or global-optimum
 claim; historical overlays are not product callers, but redundant sources and
 old mutation-capable installer entrypoints still need gated cleanup.
 
-- [ ] **Optimizer baseline and parallel split (authorized, in progress).** The
+- [ ] **Optimizer polish and compatibility-gated cleanup.** The
   [2026-10-03 audit](docs/handoff/GCSIM_OPTIMIZER_REFACTOR_AUDIT_20261003.md)
-  owns the completed safe slice: dead Go result/n1000/ordinary wrappers removed,
-  useful grouped-result checks preserved, common mode-explicit Python transport/
-  inputs and strict source codecs separated, cache-warming intent isolated.
-  Rechecked live helpers and both All Sets energy routes remain. Unit/offscreen
-  passes are not new numerical/UI or installed post-refactor acceptance.
-  User now explicitly approved saving the complete mixed working state on
-  `master`; preserve reviewed source/test/patch/fixture/receipt dependencies and
-  exclude credentials/runtime data. Create `codex/optimizer-polish` here and
-  `codex/optimizer-theory` at Desktop `worker2 GTT`, with independent runtime
-  copies and a fresh-checkout gate. No automatic new chat or push.
+  records the saved master baseline, worker split and structural checks.
   Retire old adaptive/probe/static-proof
   research, disconnected farming exports/mixed contract adapters, legacy wire/UI
   readers and mutation-capable research installers only under their reproducible

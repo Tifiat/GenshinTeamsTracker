@@ -17,7 +17,7 @@ owns measurements and rejected alternatives; the
 - Patch SHA256: `154ba582eb6af53f1a2e96f8eb4e808e268a047308b0198a30cbcd88b6b56198`
 - Active artifact SHA256: `7df37b5224f655d271d9389686bf22445717e02e896df5e3aa22d1d698042f8c`
 - Acceptance status: `exact_reuse_installed_backend_pass`
-- Next block: `optimizer_split_baseline`
+- Next block: `optimizer_polish_gated_retirement`
 
 Pages group bonus combinations with independent single-item DPS deltas.
 Recommended caps normal5/10, fast10/40; defaults3/2 and5/20; opt-in50/100.
@@ -42,18 +42,21 @@ cache warming skips legacy discovery. Both All Sets energy routes and Theory
 full discovery remain. No search arithmetic changed.
 
 Cleanup gates: vet/15 native packages and119 Python/offscreen tests PASS in the
-structural slice. New worker/storage gates:61 tests,58 PASS/3 platform-link
-skips. Failed SQLite-handle attempt and repairs remain in audit section9.
-Native34 disabled/platform gates do not certify engine response. Active engine
-binding rechecked trusted; no binary promotion, capture/search/matrix or actual UI.
+structural slice. New storage/worker gates:61 tests (58 PASS/3 platform skips),
+then82 tests from the linked checkout (79 PASS/3 platform skips). Failed
+SQLite-handle attempt and repair stay in audit section9. Native34 disabled/
+platform gates do not certify response. Active engine binding rechecked trusted;
+no binary promotion, capture/search/matrix or physical UI.
 
-User approved whole mixed-state `master` baseline and separate polish/Theory
-branches; `worker2 GTT` gets independent DB/engine copies. Source retention and
-old-pin budget fixed; four unpinned old runs reclaimed, evidence preserved.
-Next: commit, seed/verify linked worker, then gated polish/retirement and
-separate Theory chat. Fresh-checkout proof pending; no new chat created.
-Neither mode is fully clean; installed post-refactor parity, Theory and
-changed-item response remain outside acceptance.
+The mixed-state baseline is committed on `master`; `codex/optimizer-polish`
+owns Selected/All Sets here and `codex/optimizer-theory` uses Desktop
+`worker2 GTT`. The latter has independent DB/engine copies and local defaults;
+four old unpinned runs reclaimed, protected evidence kept. Source retention
+and old-pin budget are fixed. Next: gated polish/legacy retirement here and
+Theory in its separate chat; no new chat was created by this checkpoint.
+Fresh checkout plus runtime passed structural tests, not numerical/button
+acceptance. Installed post-refactor parity, Theory and changed-item response
+remain outside acceptance; neither mode is declared fully clean.
 <!-- /handoff-current -->
 
 ### Multi-scale provenance audit (2026-09-18)

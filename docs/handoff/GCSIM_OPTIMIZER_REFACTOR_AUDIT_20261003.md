@@ -361,3 +361,27 @@ were confined to literal unified-diff context inside `.patch` files; all other
 staged files passed. The narrow `.gitattributes` rule keeps patch payloads LF on
 Windows and excludes context-space false positives, without changing production
 patch bytes or normalizing other source files.
+
+The whole mixed working state, 637 reviewed staged files, was committed as
+`dc08ce343ffc38922c0cec5b2a7c29f7e06de7c8` on `master` with a clean index.
+A linked checkout at `C:/Users/user/Desktop/worker2 GTT` starts at that commit
+on `codex/optimizer-theory`; the production patch0009 bytes match the primary
+checkout. The managed seeder copied406,176,639 bytes of runtime input and
+removed its job `job-3w32p_4t`. The resulting checkout is520,157,845 bytes
+(13,552 files), versus5,721,652,536 bytes in the primary pre-cleanup walk;
+that comparison excludes the primary's later95,992,687-byte run cleanup.
+No primary `.venv`, browser profile, old run logs, build/source caches, exports
+or research scratch was copied. Worker imports, settings, run root, optimizer
+binary and engine store resolve inside the worker checkout. The active engine
+context is trusted, with the same engine ID and binding hash as primary; the
+copied consumer hash matches the seed receipt. The worker database is a separate
+file, matches the seed receipt and passes SQLite `quick_check`. This is backend
+path/identity validation, not a button or numerical optimizer acceptance run.
+
+Fresh linked-checkout gate used the primary Python dependencies read-only, with
+the worker as current directory and its own managed scratch. All four inspected
+module origins resolved inside `worker2 GTT`. Selected, All Sets, Theory,
+transport/codec, engine, retention, bootstrap and offscreen result UI tests:
+82 total,79 PASS,3 Windows link skips,0 errors/failures. Its job was removed.
+No simulator search, account mutation or physical button was run. Branch
+separation is source/runtime readiness; numerical and user-path gates stay open.

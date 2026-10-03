@@ -225,8 +225,9 @@ Mirror the primary project owner under `tests/`:
 - `tests/run_workspace/pvp/` - backend PvP deck validation, Decks UI preset
   persistence/conversion and root-resolved default path coverage
   (`test_deck_preset.py`), observed weapon-stack identity helper coverage
-  (`test_weapon_identity.py`), current development PvP `.gttpvp` envelope/temp
-  provider coverage (`test_profile_package.py`), Free Draft
+  (`test_weapon_identity.py`), portable PvP v2 schema/privacy/inventory/reference
+  coverage (`test_profile_schema.py`) and ZIP/hash/bitmap/cleanup gates
+  (`test_profile_package.py`, `test_profile_package_validation.py`), Free Draft
   schedule/reducer/action log, team/weapon assignment validation, and
   timer/result behavior, local-account deck export provider/report behavior,
   draft-system registry behavior, deterministic Free Draft planner/account
@@ -398,12 +399,17 @@ Mirror the primary project owner under `tests/`:
   transition test installs an application event filter and rejects every newly
   shown top-level QWidget; this covers parentless `setVisible(true)` regressions
   that a `setParent(None)`-only assertion misses.
-  Future finalized profile-package coverage must additionally prove two
-  providers can expose the same character id with different constellation/image
-  data, deterministic player-scope/shared Pick/shared Ban image selection,
-  allowlisted SQLite/privacy contents, asset portability after source deletion,
-  deck/DB/asset/hash validation, managed cleanup, and zero mutation of the main
-  DB/local deck directory. See `PVP_PROFILE_PACKAGE.md`.
+  `test_pvp_profile_integration.py` uses temporary synthetic sources to check
+  same-ID per-seat stats and inventories, a shared neutral portrait across pool
+  scopes/Pick/Ban/results, all-shared local priority, missing-id/file archive
+  fallback, preserved portrait alpha, isolated controllers/equipment,
+  failed replacement preservation and managed cleanup without changing the
+  fixture's main DB/decks. `tests/ui/character_assets/test_character_assets.py`
+  also checks that a foreign profile may reuse a neutral common variant by game
+  id while preserving its constellation and account-specific History boundary,
+  without falling back to baked browser/side icons when the source layer is absent.
+  These headless checks are not real-user smoke acceptance. That pending gate
+  and the user's no-Computer-Use restriction are in `PVP_PROFILE_PACKAGE.md`.
 - `tests/ui/artifact_browser/` - Artifact Browser UI-side models/actions/stat
   localization.
 - `tests/ui/gcsim_browser/` - GCSIM Browser UI worker behavior.

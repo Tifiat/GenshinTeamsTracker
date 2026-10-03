@@ -8,6 +8,7 @@ from typing import Any
 from PySide6.QtCore import QEvent, QObject, QSize, QTimer, Qt, Signal
 from PySide6.QtGui import QColor, QIcon, QKeySequence, QPainter, QPen, QPixmap, QShortcut
 from PySide6.QtWidgets import (
+    QApplication,
     QButtonGroup,
     QFrame,
     QGridLayout,
@@ -699,6 +700,15 @@ class PvpDecksWorkspace(QWidget):
                 output_path,
                 deck_dir=self.deck_dir,
                 db_path=self.db_path,
+                character_asset_paths={
+                    character_id_from_asset(asset): _asset_image_path(asset)
+                    for asset in self.character_assets
+                    if Path(_asset_image_path(asset)).is_file()
+                    and (
+                        _mapping(asset.get("metadata")).get("source") != "account_sqlite"
+                        or _mapping(asset.get("metadata")).get("portrait_pvp_path")
+                    )
+                },
             )
         except Exception as exc:
             self._last_status = str(exc) or exc.__class__.__name__
@@ -1889,6 +1899,10 @@ class PvpWorkspace(QWidget):
         self._sync_play_workspace()
         self._sync_draft_workspace()
 
+        application = QApplication.instance()
+        if application is not None:
+            application.aboutToQuit.connect(self.close_profile_providers)
+
     @property
     def character_assets(self) -> list[dict[str, Any]]:
         return self.decks_workspace.character_assets
@@ -2038,12 +2052,54 @@ class PvpWorkspace(QWidget):
             )
         cached = self._profile_assets_by_seat.get(seat)
         if cached is None:
+            packaged_paths = (
+                provider.profile.character_asset_paths
+                if isinstance(provider, ImportedPvpProfileProvider) else {}
+            )
+            characters = []
+            for asset in load_account_character_asset_items(db_path=provider.db_path):
+                metadata = dict(asset.get("metadata") or {})
+                packaged = packaged_paths.get(character_id_from_asset(asset))
+                if packaged is not None:
+                    metadata.setdefault("portrait_pvp_path", str(packaged))
+                characters.append(pvp_character_asset_item({**asset, "metadata": metadata}))
             cached = (
-                [pvp_character_asset_item(asset) for asset in load_account_character_asset_items(db_path=provider.db_path)],
+                characters,
                 list(load_account_weapon_stack_asset_items(db_path=provider.db_path)),
             )
             self._profile_assets_by_seat[seat] = cached
         return (list(cached[0]), list(cached[1]))
+
+    def _shared_character_assets(self) -> list[dict[str, Any]]:
+        """One bitmap per game id; each seat keeps its own account metadata."""
+        shared = _character_assets_by_id(self.character_assets)
+        for seat in PVP_SEATS:
+            for asset in self._profile_assets(seat)[0]:
+                character_id = character_id_from_asset(asset)
+                previous = shared.get(character_id)
+                if previous is None or (
+                    not Path(_asset_image_path(previous)).is_file()
+                    and Path(_asset_image_path(asset)).is_file()
+                ):
+                    shared[character_id] = asset
+        return list(shared.values())
+
+    def _build_character_assets_for_seat(self, seat: str) -> list[dict[str, Any]]:
+        portraits = {
+            character_id_from_asset(asset): _asset_image_path(asset)
+            for asset in self._shared_character_assets()
+        }
+        result = []
+        for source in self._profile_assets(seat)[0]:
+            path = portraits.get(character_id_from_asset(source), _asset_image_path(source))
+            metadata = dict(source.get("metadata") or {})
+            character = dict(metadata.get("character") or {})
+            character["portrait_path"] = path
+            character["local_portrait_path"] = path
+            metadata["portrait_pvp_path"] = path
+            metadata["character"] = character
+            result.append({**source, "path": Path(path), "metadata": metadata})
+        return result
 
     def _seat_preset_by_id(self, seat: str, deck_id: str) -> PvpDeckPreset | None:
         for preset in self.play_deck_options(seat):
@@ -2295,7 +2351,7 @@ class PvpWorkspace(QWidget):
                 for seat in PVP_SEATS
             },
             character_assets_by_seat={
-                seat: self._profile_assets(seat)[0]
+                seat: self._build_character_assets_for_seat(seat)
                 for seat in PVP_SEATS
             },
             weapon_assets_by_seat={
@@ -2544,6 +2600,10 @@ class PvpWorkspace(QWidget):
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt override
         self._dispose_build_flow_context()
+        self.close_profile_providers()
+        super().closeEvent(event)
+
+    def close_profile_providers(self) -> None:
         closed: set[int] = set()
         for provider in self._profile_providers_by_seat.values():
             if provider is self._local_profile_provider or id(provider) in closed:
@@ -2552,7 +2612,6 @@ class PvpWorkspace(QWidget):
             close = getattr(provider, "close", None)
             if callable(close):
                 close()
-        super().closeEvent(event)
 
     def _draft_view_state(self) -> dict[str, Any]:
         assignment_slots = {
@@ -2611,7 +2670,7 @@ class PvpWorkspace(QWidget):
             self.active_draft_session,
             status_text=self._last_draft_status,
             view_state=self._draft_view_state(),
-            character_assets=self.character_assets,
+            character_assets=self._shared_character_assets(),
             weapon_assets=self.weapon_assets,
             build_flow_context=self.build_flow_context,
             abyss_source_data=(

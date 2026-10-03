@@ -1,0 +1,227 @@
+from __future__ import annotations
+
+import hashlib
+import io
+import json
+import sqlite3
+import tempfile
+import unittest
+import warnings
+import zipfile
+from contextlib import closing
+from pathlib import Path
+from unittest.mock import patch
+
+from PIL import Image, PngImagePlugin
+
+from run_workspace.pvp.profile_package import (
+    PVP_PROFILE_ASSETS_NAME, PVP_PROFILE_DB_NAME, PVP_PROFILE_DECKS_NAME,
+    PVP_PROFILE_MANIFEST_NAME, ImportedPvpProfileProvider,
+    PvpProfilePackageError, export_pvp_profile_package, import_pvp_profile_package,
+)
+from tests.run_workspace.pvp.test_profile_package import _create_account_db, _write_deck_presets
+
+
+class PortableProfileValidationTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        self.db = self.root / "source.sqlite"
+        self.decks = self.root / "decks"
+        _create_account_db(self.db)
+        _write_deck_presets(self.decks)
+        self.image = self.root / "neutral.png"
+        info = PngImagePlugin.PngInfo()
+        info.add_text("private_provenance", "cookie-secret-do-not-export")
+        Image.new("RGBA", (72, 72), (30, 90, 170, 255)).save(self.image, pnginfo=info)
+        self.package = self.root / "profile.gttpvp"
+        self.managed = self.root / "managed"
+        self.managed.mkdir()
+        self.source_hash = hashlib.sha256(self.db.read_bytes()).hexdigest()
+        export_pvp_profile_package(self.package, db_path=self.db, deck_dir=self.decks,
+            character_asset_paths={str(i): self.image for i in range(1001, 1025)})
+        with zipfile.ZipFile(self.package) as archive:
+            self.members = {name: archive.read(name) for name in archive.namelist()}
+
+    def test_package_is_autonomous_and_strips_bitmap_metadata(self) -> None:
+        self.assertEqual(hashlib.sha256(self.db.read_bytes()).hexdigest(), self.source_hash)
+        self.db.unlink()
+        self.image.unlink()
+        with import_pvp_profile_package(self.package, temp_root=self.managed) as profile:
+            self.assertNotEqual(profile.source_db_path, profile.db_path)
+            paths = set(profile.character_asset_paths.values())
+            self.assertEqual(len(paths), 1)
+            with Image.open(next(iter(paths))) as image:
+                self.assertEqual(image.info, {})
+                self.assertEqual(image.getpixel((0, 0)), (30, 90, 170, 255))
+            with closing(sqlite3.connect(profile.source_db_path)) as conn:
+                columns = {row[1] for row in conn.execute("PRAGMA table_info(account_characters)")}
+                self.assertNotIn("portrait_path", columns)
+                self.assertNotIn("source_metadata_json", columns)
+            provider = ImportedPvpProfileProvider(profile)
+            runtime = provider.db_path
+        self.assertFalse(runtime.exists())
+        self.assertEqual(list(self.managed.iterdir()), [])
+        with self.assertRaises(PvpProfilePackageError):
+            provider.load_deck_presets()
+
+    def test_import_rejects_content_hash_mismatch_and_cleans_temp(self) -> None:
+        self._reject({PVP_PROFILE_DB_NAME: b"corrupt"}, update_hashes=False)
+
+    def test_default_export_uses_transparent_source_portrait(self) -> None:
+        portrait = self.root / "source-portrait.png"
+        bitmap = Image.new("RGBA", (72, 72), (0, 0, 0, 0))
+        bitmap.paste((40, 170, 90, 255), (8, 8, 64, 64))
+        bitmap.save(portrait)
+        with patch("run_workspace.pvp.profile_assets.character_variant_path",
+                   side_effect=lambda _id, variant: portrait if variant == "portrait" else self.image) as lookup:
+            export_pvp_profile_package(self.package, db_path=self.db, deck_dir=self.decks)
+        lookup.assert_any_call("1001", "portrait")
+        portrait.unlink()
+        with import_pvp_profile_package(self.package, temp_root=self.managed) as profile:
+            with Image.open(profile.character_asset_paths["1001"]) as exported:
+                self.assertEqual(exported.getpixel((0, 0)), (0, 0, 0, 0))
+                self.assertEqual(exported.getpixel((30, 30)), (40, 170, 90, 255))
+
+    def test_rejects_bad_database_even_with_recomputed_hash(self) -> None:
+        self._reject({PVP_PROFILE_DB_NAME: b"not a sqlite database"})
+
+    def test_rejects_extra_schema_objects_and_dangling_references(self) -> None:
+        for sql in (
+            "CREATE TABLE cookie_dump (secret TEXT)",
+            "CREATE VIEW fake_profile AS SELECT * FROM account_characters",
+            "CREATE TRIGGER bad AFTER INSERT ON account_characters BEGIN DELETE FROM account_characters; END",
+            "UPDATE account_character_talents SET character_id = 9999 WHERE character_id = 1001",
+        ):
+            with self.subTest(sql=sql):
+                database = self.root / "tampered.sqlite"
+                database.write_bytes(self.members[PVP_PROFILE_DB_NAME])
+                with closing(sqlite3.connect(database)) as conn:
+                    conn.execute(sql)
+                    conn.commit()
+                self._reject({PVP_PROFILE_DB_NAME: database.read_bytes()})
+
+    def test_rejects_unknown_duplicate_illegal_decks_and_private_fields(self) -> None:
+        for change in (
+            lambda deck: deck["character_ids"].__setitem__(0, "9999"),
+            lambda deck: deck["character_ids"].append(deck["character_ids"][0]),
+            lambda deck: deck.__setitem__("character_ids", ["1001"]),
+            lambda deck: deck.__setitem__("ruleset_id", "unknown_ruleset"),
+            lambda deck: deck.__setitem__("cookie", "private"),
+            lambda deck: deck["weapon_refs"][0].__setitem__("weapon_fingerprint", "unknown-stack"),
+            lambda deck: deck["weapon_refs"].append(dict(deck["weapon_refs"][0])),
+        ):
+            payload = json.loads(self.members[PVP_PROFILE_DECKS_NAME])
+            change(payload["decks"][0])
+            with self.subTest(payload=payload["decks"][0]):
+                self._reject({PVP_PROFILE_DECKS_NAME: _bytes(payload)})
+
+    def test_rejects_missing_unknown_and_invalid_assets(self) -> None:
+        payload = json.loads(self.members[PVP_PROFILE_ASSETS_NAME])
+        bitmap = payload["characters"]["1001"]
+        invalid = dict(payload)
+        invalid["characters"] = {**payload["characters"], "1001": "assets/" + "0" * 64 + ".png"}
+        self._reject({PVP_PROFILE_ASSETS_NAME: _bytes(invalid)})
+        invalid["characters"] = {**payload["characters"], "9999": bitmap}
+        self._reject({PVP_PROFILE_ASSETS_NAME: _bytes(invalid)})
+        self._reject({bitmap: b"not a bitmap"})
+        self._reject({}, omit={bitmap})
+
+    def test_rejects_noncanonical_bitmaps_even_with_matching_hashes(self) -> None:
+        for mode, size, comment in (
+            ("RGB", (72, 72), False),
+            ("RGBA", (2049, 1), False),
+            ("RGBA", (72, 72), True),
+            ("RGBA", (72, 72), "after_pixels"),
+        ):
+            buffer = io.BytesIO()
+            info = PngImagePlugin.PngInfo()
+            if comment == "after_pixels":
+                info.add(b"tEXt", b"private\x00cookie-secret-do-not-export", after_idat=True)
+            elif comment:
+                info.add_text("private", "cookie-secret-do-not-export")
+            Image.new(mode, size).save(buffer, format="PNG", pnginfo=info)
+            data = buffer.getvalue()
+            new_member = "assets/" + hashlib.sha256(data).hexdigest() + ".png"
+            payload = json.loads(self.members[PVP_PROFILE_ASSETS_NAME])
+            old_member = payload["characters"]["1001"]
+            payload["characters"] = {key: new_member for key in payload["characters"]}
+            with self.subTest(mode=mode, size=size, comment=comment):
+                self._reject({new_member: data, PVP_PROFILE_ASSETS_NAME: _bytes(payload)}, omit={old_member})
+
+    def test_rejects_duplicate_members_traversal_and_unsupported_compression(self) -> None:
+        bad = self.root / "bad.gttpvp"
+        for name in ("../escape.txt", "assets\\escape.png", "assets/", "unexpected.json"):
+            with self.subTest(name=name):
+                with zipfile.ZipFile(bad, "w") as archive:
+                    for member, data in self.members.items():
+                        archive.writestr(member, data)
+                    archive.writestr(name, b"x")
+                self._assert_rejected(bad)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            with zipfile.ZipFile(bad, "w") as archive:
+                for member, data in self.members.items():
+                    archive.writestr(member, data)
+                archive.writestr(PVP_PROFILE_MANIFEST_NAME, self.members[PVP_PROFILE_MANIFEST_NAME])
+        self._assert_rejected(bad)
+        with zipfile.ZipFile(bad, "w", compression=zipfile.ZIP_BZIP2) as archive:
+            for member, data in self.members.items():
+                archive.writestr(member, data)
+        self._assert_rejected(bad)
+
+    def test_rejects_total_member_and_compression_limits(self) -> None:
+        for name, limit in (("MAX_PROFILE_BYTES", 10), ("MAX_PROFILE_MEMBER_BYTES", 10), ("MAX_PROFILE_MEMBERS", 1), ("MAX_PROFILE_COMPRESSION_RATIO", 1)):
+            with self.subTest(limit=name), patch("run_workspace.pvp.profile_package." + name, limit):
+                self._assert_rejected(self.package)
+
+    def test_export_failure_preserves_output_and_no_temp_directories(self) -> None:
+        before = self.package.read_bytes()
+        contents = set(self.root.iterdir())
+        with self.assertRaises(PvpProfilePackageError):
+            export_pvp_profile_package(self.package, db_path=self.db, deck_dir=self.decks,
+                character_asset_paths={"1001": self.root / "missing.png"})
+        self.assertEqual(self.package.read_bytes(), before)
+        self.assertEqual(set(self.root.iterdir()), contents)
+
+    def test_rejects_unknown_manifest_fields_counts_and_duplicate_json(self) -> None:
+        for change in (
+            lambda data: data.__setitem__("cookies", "private"),
+            lambda data: data["counts"].__setitem__("character_count", 1),
+            lambda data: data.__setitem__("version", 1),
+        ):
+            manifest = json.loads(self.members[PVP_PROFILE_MANIFEST_NAME])
+            change(manifest)
+            self._reject({PVP_PROFILE_MANIFEST_NAME: _bytes(manifest)}, update_hashes=False)
+        self._reject({PVP_PROFILE_MANIFEST_NAME: b'{"format":"first","format":"second"}'}, update_hashes=False)
+
+    def _reject(self, changes: dict[str, bytes], *, update_hashes: bool = True, omit: set[str] = frozenset()) -> None:
+        members = {**self.members, **changes}
+        for member in omit:
+            members.pop(member)
+        if update_hashes:
+            manifest = json.loads(members[PVP_PROFILE_MANIFEST_NAME])
+            manifest["files"] = {
+                name: {"size": len(data), "sha256": hashlib.sha256(data).hexdigest()}
+                for name, data in members.items() if name != PVP_PROFILE_MANIFEST_NAME
+            }
+            members[PVP_PROFILE_MANIFEST_NAME] = _bytes(manifest)
+        bad = self.root / "bad.gttpvp"
+        with zipfile.ZipFile(bad, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for member, data in members.items():
+                archive.writestr(member, data)
+        self._assert_rejected(bad)
+
+    def _assert_rejected(self, path: Path) -> None:
+        with self.assertRaises(PvpProfilePackageError):
+            import_pvp_profile_package(path, temp_root=self.managed)
+        self.assertEqual(list(self.managed.iterdir()), [])
+
+
+def _bytes(payload: dict) -> bytes:
+    return json.dumps(payload).encode("utf-8")
+
+
+if __name__ == "__main__":
+    unittest.main()

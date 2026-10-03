@@ -11,6 +11,7 @@ from pathlib import Path
 from hoyolab_export.artifact_db import connect_db, init_db
 from run_workspace.pvp import (
     PVP_PROFILE_DB_NAME,
+    PVP_PROFILE_ASSETS_NAME,
     PVP_PROFILE_DECKS_NAME,
     PVP_PROFILE_EXTENSION,
     PVP_PROFILE_MANIFEST_NAME,
@@ -48,19 +49,20 @@ class PvpProfilePackageTest(unittest.TestCase):
 
             self.assertEqual(report.path.suffix, PVP_PROFILE_EXTENSION)
             self.assertEqual(report.counts["deck_count"], 2)
-            self.assertEqual(report.counts["character_count"], 2)
+            self.assertEqual(report.counts["character_count"], 24)
             self.assertEqual(report.counts["weapon_stack_count"], 2)
 
             with zipfile.ZipFile(report.path, "r") as archive:
                 names = set(archive.namelist())
-                self.assertEqual(
-                    names,
+                self.assertTrue(
                     {
                         PVP_PROFILE_MANIFEST_NAME,
                         PVP_PROFILE_DECKS_NAME,
                         PVP_PROFILE_DB_NAME,
-                    },
+                        PVP_PROFILE_ASSETS_NAME,
+                    } <= names,
                 )
+                self.assertTrue(any(name.startswith("assets/") for name in names))
                 self.assertNotIn("cookies", " ".join(names).casefold())
                 manifest = json.loads(
                     archive.read(PVP_PROFILE_MANIFEST_NAME).decode("utf-8")
@@ -90,7 +92,7 @@ class PvpProfilePackageTest(unittest.TestCase):
                 finally:
                     conn.close()
 
-                self.assertEqual(character_ids, {"1001", "1002"})
+                self.assertEqual(character_ids, {str(value) for value in range(1001, 1025)})
                 self.assertEqual(weapon_fingerprints, {"fp-a", "fp-b"})
 
             self.assertFalse(profile.db_path.exists())
@@ -177,7 +179,7 @@ def _write_deck_presets(deck_dir: Path) -> None:
         PvpDeckPreset(
             deck_id="deck-a",
             name="Deck A",
-            character_ids=("1001", "1002"),
+            character_ids=tuple(str(value) for value in range(1001, 1025)),
             weapon_refs=(
                 WeaponObservedStackRef(weapon_fingerprint="fp-a"),
                 WeaponObservedStackRef(weapon_fingerprint="fp-b"),
@@ -189,7 +191,7 @@ def _write_deck_presets(deck_dir: Path) -> None:
         PvpDeckPreset(
             deck_id="deck-b",
             name="Deck B",
-            character_ids=("1001",),
+            character_ids=tuple(str(value) for value in range(1001, 1025)),
             weapon_refs=(WeaponObservedStackRef(weapon_fingerprint="fp-a"),),
         ),
         deck_dir,
@@ -199,10 +201,10 @@ def _write_deck_presets(deck_dir: Path) -> None:
 def _create_account_db(db_path: Path) -> None:
     with closing(connect_db(db_path)) as conn:
         init_db(conn)
+        # Synthetic source rows exercise storage; real account acceptance is separate.
         for character_id, name in (
-            (1001, "Keqing"),
-            (1002, "Mona"),
-            (1003, "Diluc"),
+            *((value, f"Fixture character {value}") for value in range(1001, 1025)),
+            (9999, "Unselected character"),
         ):
             conn.execute(
                 """

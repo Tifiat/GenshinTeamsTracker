@@ -4,7 +4,7 @@ import tempfile
 import unittest
 import os
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 from PIL import Image
 from PySide6.QtWidgets import QApplication, QPushButton, QWidget
@@ -114,29 +114,49 @@ class CharacterAssetRuntimeItemsTest(unittest.TestCase):
             self.assertEqual(converted["metadata"]["owner_badges"], [{"label": "C6"}])
             self.assertEqual(item["path"], browser)
 
-    def test_foreign_profile_does_not_borrow_current_account_variants(self) -> None:
+    def test_foreign_profile_keeps_packaged_portrait_when_no_neutral_variant_exists(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             portrait = Path(tmp) / "guest.png"
             portrait.write_bytes(b"png")
             record = AccountCharacterRuntimeRecord(character_id="1001", name="Guest", portrait_path=str(portrait))
             with patch("ui.character_assets.character_variant_path", return_value=None) as lookup:
                 item = account_character_asset_item(record)
-            lookup.assert_called_once_with("1001", "crop")
+            self.assertEqual(lookup.call_args_list, [call("1001", "crop"), call("1001", "portrait")])
             self.assertNotIn("portrait_pvp_path", item["metadata"])
 
-    def test_packaged_profile_reuses_variant_only_for_matching_bitmap(self) -> None:
+    def test_foreign_profile_reuses_neutral_variant_by_game_id(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
             browser = folder / "browser.png"
+            guest = folder / "guest.png"
             pvp = folder / "pvp.png"
             browser.write_bytes(b"browser")
+            guest.write_bytes(b"guest")
             pvp.write_bytes(b"pvp")
-            record = AccountCharacterRuntimeRecord(character_id="1001", name="Guest", portrait_path=str(browser))
+            record = AccountCharacterRuntimeRecord(character_id="1001", name="Guest", constellation=6, portrait_path=str(guest))
             with patch("ui.character_assets.character_variant_path", side_effect=lambda _id, variant: {
-                "crop": browser, "pvp": pvp,
+                "crop": browser, "portrait": pvp,
             }.get(variant)):
                 item = account_character_asset_item(record)
             self.assertEqual(item["metadata"]["portrait_pvp_path"], str(pvp))
+            self.assertNotIn("portrait_history_path", item["metadata"])
+            converted = pvp_character_asset_item(item)
+            self.assertEqual(converted["path"], pvp)
+            self.assertEqual(converted["metadata"]["character"]["constellation"], 6)
+
+    def test_pvp_does_not_reuse_baked_browser_when_transparent_layer_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            browser = Path(tmp) / "baked.png"
+            browser.write_bytes(b"browser-with-background-and-constellation")
+            item = {"path": browser, "metadata": {"source": "account_sqlite",
+                "character": {"id": "1001", "constellation": 6,
+                    "portrait_path": str(browser), "side_icon_path": str(browser), "icon_path": str(browser)}}}
+            converted = pvp_character_asset_item(item)
+            self.assertFalse(converted["path"].is_file())
+            self.assertEqual(converted["metadata"]["character"]["portrait_path"], "")
+            self.assertEqual(converted["metadata"]["character"]["side_icon_path"], "")
+            self.assertEqual(converted["metadata"]["character"]["icon_path"], "")
+            self.assertEqual(converted["metadata"]["character"]["constellation"], 6)
 
     def test_existing_filter_button_updates_to_imported_element(self) -> None:
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")

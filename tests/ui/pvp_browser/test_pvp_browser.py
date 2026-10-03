@@ -2114,7 +2114,7 @@ class PvpBrowserTest(unittest.TestCase):
             [preset.name for preset in workspace.play_deck_options("player_2")],
             ["Local"],
         )
-        self.assertTrue(
+        self.assertFalse(
             any(
                 asset.get("metadata", {}).get("owner_badges")
                 for asset in workspace._profile_assets("player_2")[1]

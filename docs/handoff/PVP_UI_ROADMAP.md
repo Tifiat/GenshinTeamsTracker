@@ -113,18 +113,11 @@ scoped instance of the normal live-run build pipeline:
   never mutates normal account equipment. Imported/future remote players read
   source data from their `.gttpvp` package while still receiving a fresh PvP
   runtime equipment state for the current match.
-- `.gttpvp` is the intended versioned ZIP container. The current internal v1
-  prototype contains `manifest.json`, `decks.json`, and
-  `account_slice.sqlite`; its buttons and version number do not make it the
-  finalized public schema. It is not `.npz`: NumPy adds no useful contract
-  here. Import must validate archive entries and materialize only validated
-  provider data/assets to a managed temp path, not unpack an arbitrary folder
-  tree.
-- Target `.gttpvp` packages contain deck presets, a deduplicated account slice
-  for characters/weapons/artifacts/presets used by those decks, and the bitmap
-  assets needed for autonomous display on another machine. Current package
-  implementation still has an asset-portability gap and must not fall back to
-  image paths as identity.
+- `.gttpvp` v2 contains selected decks, an allowlisted SQLite slice and neutral
+  bitmap assets with a content-hash manifest. Import validates the complete
+  boundary before populating a managed provider; old v1 packages require
+  re-export. Inventory scope and current fixture/user acceptance belong to
+  `PVP_PROFILE_PACKAGE.md`. Paths never become backend identity.
 - The left Characters/Weapons view for Assignment/Weapon stages must use the
   same normal quick-pick and marker machinery as AppShell. Selected characters
   show team-colored team-local slot markers `1-4` for team 1 and `1-4` for team
@@ -253,19 +246,18 @@ Card identity and presentation note:
 
 - Draft identity is the stable `character_id`; images/icons are optional
   presentation assets and must never be identity.
-- The earlier risk with one shared visual card was ambiguity, not a rule that
-  opponent images are forbidden. A shared card is acceptable when it has
-  explicit ownership markers and per-seat metadata.
+- One shared neutral portrait per character id is sufficient. Ownership and
+  per-seat constellation data are shown through frames and separate badges.
 - Ownership styling never follows the active turn. A Player-1-only card has a
   full Player 1 frame and left constellation badge; a Player-2-only card has a
   full Player 2 frame and right badge; a shared card has a frame split Player 1
   on the left / Player 2 on the right and both badges on their corresponding
   sides.
-- Per-seat images are presentation data resolved by the seat provider. Player
-  scope tabs show that player's image. In the unified pool, a single-owner card
-  uses its owner's image; a shared Pick uses the acting player's image and a
-  shared Ban uses the opponent's image. The full fallback/result-zone rules and
-  package boundary live in `PVP_PROFILE_PACKAGE.md`.
+- All Player scopes, unified-pool Pick/Ban actions and result zones reuse that
+  neutral portrait. Seat/action-dependent bitmap selection is not required;
+  transparent source portraits from the archive may fill missing ids or local
+  files. Shared characters keep the local portrait when available. The full
+  fallback rules and package boundary live in `PVP_PROFILE_PACKAGE.md`.
 - Draft/session logic must work without image paths. Prefer package/local cache,
   bundled/common fallback icons, or client-side asset resolution; do not assume
   a future server hosts images.
@@ -390,7 +382,8 @@ Current v0 scope:
   architecture must prepare right-panel slots/stages for them.
 - Online mode, ruleset cost rendering, immune picks, session files, PvP History
   writes, and result export are not implemented in current v0. The separate
-  profile-package prototype exists but is not a finalized portable export.
+  portable profile implementation is still awaiting real-account/user-path
+  acceptance; see `PVP_PROFILE_PACKAGE.md`.
 
 ## Team Assignment
 
@@ -703,7 +696,8 @@ Right-panel architecture status before more PvP growth:
 
 Current v0 limitations / later work:
 
-- finalized two-seat provider and portable/privacy-safe profile package;
+- real-account/user-path acceptance of portable profile exchange and isolated
+  second-account decks under `PVP_PROFILE_PACKAGE.md`;
 - online;
 - History;
 - PNG/export result card;

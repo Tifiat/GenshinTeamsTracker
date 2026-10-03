@@ -18,8 +18,10 @@ investigation. Within one chat, reread only changed sections or diffs.
 | Testing / performance | [tests](TESTS.md) or [preloader backlog](PRELOADER_BACKLOG.md) | relevant UI/data rules |
 
 The [full catalog](CATALOG.md) is for finding a document not shown here; it is
-not mandatory reading. `../../TODO.md` owns active order; [deferred work](WORK_BACKLOG.md)
-is read only when that area becomes active. A contract owns behavior, a current
+not mandatory reading. [Coordination](COORDINATION.md) routes to the shared
+queue and Worker5 status at task selection, scope changes and closeout.
+`../../TODO.md` and [deferred work](WORK_BACKLOG.md) are local routers; read only
+the selected shared backlog area. A contract owns behavior, a current
 checkpoint owns acceptance/next action, and dated evidence owns one observation.
 Historical instructions never override the current owner.
 

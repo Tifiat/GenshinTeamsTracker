@@ -172,7 +172,7 @@ async def prepare_layered_assets(
             weapon_backgrounds[weapon_rarity] = card["weaponBackground"]
 
     wanted_chars = [c for c in characters if c.get("id") not in IGNORED_CHARACTER_IDS and c.get("icon")]
-    wanted_weapons = [w for w in weapons if w.get("rarity") not in IGNORED_WEAPON_RARITIES and w.get("icon")]
+    wanted_weapons = [w for w in weapons if int(w.get("rarity") or 0) not in IGNORED_WEAPON_RARITIES and w.get("icon")]
     missing = []
     for character in wanted_chars:
         if str(character.get("element") or "").lower() not in elements or int(character.get("rarity") or 0) not in character_backgrounds:

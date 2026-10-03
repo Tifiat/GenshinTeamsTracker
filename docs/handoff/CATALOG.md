@@ -30,7 +30,8 @@ in every file.
 | [OPTIMIZER_WORK_RULES.md](OPTIMIZER_WORK_RULES.md) | Optimizer-only execution and response invariants |
 | [UI_WORK_RULES.md](UI_WORK_RULES.md) | UI-only implementation and real-path verification rules |
 | [DATA_WORK_RULES.md](DATA_WORK_RULES.md) | Data, generated-output and cleanup rules |
-| [WORK_BACKLOG.md](WORK_BACKLOG.md) | Deferred open work by area; current priority stays in TODO |
+| [COORDINATION.md](COORDINATION.md) | Shared queue routing, Worker5 ownership, validation and missing-hub behavior |
+| [WORK_BACKLOG.md](WORK_BACKLOG.md) | Router to the shared deferred backlog; active priority routes through TODO |
 
 ## Account, Data And Artifacts
 

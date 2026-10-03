@@ -413,7 +413,8 @@ def _build_weapon_snapshot(
         or _text(getattr(selected_details, "weapon_name", ""))
     )
     icon_ref = (
-        _text(getattr(right_slot, "weapon_image_path", ""))
+        _text(data.get("icon_transparent_path"))
+        or _text(getattr(right_slot, "weapon_image_path", ""))
         or _text(getattr(selected_details, "weapon_icon_path", ""))
         or _text(_first_present(data, "icon_path", "local_icon_path", "weapon_icon_path"))
     )

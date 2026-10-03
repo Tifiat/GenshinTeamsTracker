@@ -560,8 +560,12 @@ The adapter returns `AccountCharacterRuntimeRecord` and
 TeamBuilder ref helpers. UI asset helpers in `ui/character_assets.py` convert
 these runtime records into the legacy grid asset-item shape. The principal
 portrait/weapon paths still come from SQLite; a cached, narrow lookup in the
-version-2 image manifest supplies optional PvP/expanded-History variants and
-the downloaded mini element icons. Version-1 profiles keep their baked paths.
+version-2 image manifest supplies optional PvP/transparent expanded-History
+portraits and downloaded mini element icons. Weapon TeamBuilder refs may carry
+`icon_transparent_path` from the same manifest, only when the stored display
+bitmap matches its weapon entry exactly. History Save freezes this source;
+History browsing does not read the manifest. Version-1 profiles keep their
+baked paths.
 
 PvP account deck export also uses this read-adapter boundary. The production
 provider in `run_workspace/pvp/account_deck_export.py` reads

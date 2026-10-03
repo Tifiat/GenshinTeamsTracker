@@ -53,6 +53,21 @@ def character_variant_path(character_id: object, variant: str) -> Path | None:
     return None
 
 
+def weapon_transparent_icon_path(weapon_id: object, display_path: str | Path) -> Path | None:
+    """Reuse a raw layer only for the exact locally imported weapon bitmap."""
+    wanted = str(weapon_id or "")
+    displayed = Path(display_path)
+    if not displayed.is_absolute():
+        displayed = PROJECT_ROOT / displayed
+    for asset in current_manifest().get("weaponAssets", []):
+        if not isinstance(asset, dict) or str((asset.get("weapon") or {}).get("id") or "") != wanted:
+            continue
+        crop = existing_manifest_asset(asset.get("crop"))
+        if crop is not None and crop.resolve() == displayed.resolve():
+            return existing_manifest_asset(asset.get("icon"))
+    return None
+
+
 def element_icon_path(element: str) -> Path | None:
     shared = current_manifest().get("sharedAssets") or {}
     elements = shared.get("elements") or {}

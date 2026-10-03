@@ -9,6 +9,9 @@ element/rarity URLs; a live comparison found the same 78 portraits and shared
 layers as the browser card path. Missing portrait/weapon/layer files are
 downloaded once; browser, PvP and expanded-History variants render locally.
 `--images-only` remains the forced refresh of image columns and manifest.
+2026-10-03 focused fix: numeric and string rarities 1/2 are both excluded before
+weapon download jobs are built. A mocked-downloader regression verifies that
+their URLs are never requested; no new live import is claimed.
 HoYoWiki artifact lists are reused per language and for six hours on disk;
 an unknown set mapping forces one network refresh and retry. Trait membership
 also uses its recent cache. The same Abyss period reuses source composition

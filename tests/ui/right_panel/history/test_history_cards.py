@@ -22,6 +22,7 @@ from run_workspace.history_browser_catalog import (
     HistoryEnemyVisual,
     HistoryPeriodVisual,
     HistoryRunVisual,
+    HistorySlotVisual,
     HistorySideVisual,
 )
 from run_workspace.history_snapshot_right_panel import build_history_snapshot_right_panel_view_model
@@ -34,6 +35,7 @@ from ui.right_panel.common.history_card import (
     compact_seconds,
     render_history_card_png,
     stat_columns,
+    prepare_images,
     team_seconds,
 )
 
@@ -42,6 +44,71 @@ class HistoryCardsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
+
+    def test_default_team_art_uses_frozen_unbadged_layer_and_custom_art_still_wins(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            legacy, raw, custom = (root / name for name in ("badged.png", "raw.png", "custom.png"))
+            for path, color in ((legacy, Qt.GlobalColor.red), (raw, Qt.GlobalColor.blue), (custom, Qt.GlobalColor.green)):
+                picture = QImage(24, 24, QImage.Format.Format_ARGB32)
+                picture.fill(color)
+                picture.save(str(path))
+            visual = _run_visual(_bundle(), root / "snapshot.json")
+            team = visual.teams[0]
+            slot = replace(team.slots[1], portrait_path=str(legacy), expanded_portrait_path=str(raw))
+            visual = replace(visual, teams=(replace(team, slots=(slot,)),))
+            self.assertEqual(prepare_images(visual, 1)[("artwork", team.team_index)].toImage().pixelColor(0, 0).name(), "#0000ff")
+            self.assertEqual(prepare_images(visual, 1, {team.team_index: custom})[("artwork", team.team_index)].toImage().pixelColor(0, 0).name(), "#00ff00")
+
+    def test_larger_expanded_weapon_and_two_sets_fit_each_character_header(self):
+        visual = _run_visual(_bundle(), Path("unavailable/snapshot.json"))
+        team = replace(visual.teams[0], slots=(HistorySlotVisual(slot_index=0, character_name="Hero",
+                      weapon_icon_path="weapon", set_icon_paths=("set-a", "set-b")),))
+        for width in (520, 704, 960, 1600):
+            layout = CardLayout(width)
+            tiles = layout.equipment_tiles(2)
+            self.assertGreater(tiles[0][2], tiles[1][2])
+            for dx, dy, size in tiles:
+                self.assertGreaterEqual(dx, 0)
+                self.assertLessEqual(layout.portrait_size+14+dx+size, layout.column_width-8)
+                self.assertLessEqual(28+dy+size, layout.character_header(team)-24)
+            for left, right in zip(tiles, tiles[1:]):
+                self.assertTrue(right[1] >= left[1]+left[2] or right[0] >= left[0]+left[2])
+
+    def test_visible_portrait_and_weapon_bottoms_align_in_both_views(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            portrait, weapon = root / "wide-portrait.png", root / "tall-weapon.png"
+            for path, width, height, color in ((portrait, 30, 15, Qt.GlobalColor.red),
+                                              (weapon, 12, 30, Qt.GlobalColor.green)):
+                picture = QImage(width, height, QImage.Format.Format_ARGB32)
+                picture.fill(color)
+                picture.save(str(path))
+            visual = _run_visual(_bundle(), root / "snapshot.json")
+            slot = HistorySlotVisual(slot_index=0, character_name="Hero", portrait_path=str(portrait),
+                                     expanded_portrait_path=str(portrait), weapon_icon_path=str(weapon))
+            visual = replace(visual, teams=(replace(visual.teams[0], slots=(slot,)),))
+            for expanded in (False, True):
+                card = HistoryCardWidget(visual)
+                card.resize(960, 1)
+                card.set_expanded(expanded)
+                picture = card.grab().toImage()
+                region = next(rect for rect, value in card._hits if value is slot).toAlignedRect()
+                if expanded:
+                    region.setHeight(CardLayout(960).character_header(visual.teams[0]))
+                pixels = {color: [] for color in ("#ff0000", "#00ff00")}
+                for y in range(region.top(), region.bottom()+1):
+                    for x in range(region.left(), region.right()+1):
+                        color = picture.pixelColor(x, y).name()
+                        if color in pixels:
+                            pixels[color].append(y)
+                self.assertTrue(all(pixels.values()))
+                self.assertLessEqual(abs(max(pixels["#ff0000"])-max(pixels["#00ff00"])), 1)
+                if not expanded:
+                    self.assertGreaterEqual(max(pixels["#00ff00"])-min(pixels["#00ff00"]), 30)
+                card.close()
+                card.deleteLater()
+            self.app.processEvents()
 
     def test_saved_badges_use_live_property_ids_and_only_obsolete_warnings_are_hidden(self):
         bundle = _bundle()

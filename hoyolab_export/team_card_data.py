@@ -306,6 +306,7 @@ def _runtime_account_character_dict(
         "icon_url",
         "side_icon_url",
         "portrait_path",
+        "portrait_history_path",
         "side_icon_path",
         "base_hp",
         "base_atk",
@@ -343,6 +344,7 @@ def _runtime_account_weapon_dict(
         "description",
         "icon_url",
         "icon_path",
+        "icon_transparent_path",
     ):
         value = source.get(key)
         if value is not None and value != "":

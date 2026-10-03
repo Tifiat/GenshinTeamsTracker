@@ -1,6 +1,6 @@
 # History visual design workspace
 
-Updated 2026-09-18. The user approved Concept A as the basis for the first
+Updated 2026-10-03. The user approved Concept A as the basis for the first
 implementation and asked to see it in the app before further refinement.
 The first implementation was subsequently rejected for unreadable small text,
 empty space, weak styling and appending a separate expanded report. The second
@@ -153,6 +153,62 @@ visual specification; do not use it to overrule these concrete references.
   background as a Genshin profile namecard and permits a cheap existing asset
   or simple element-based graphics. No new character-art parsing/download
   dependency is requested. No namecard asset is required by this iteration.
+
+## Transparent layer follow-up
+
+2026-10-03. The user requested background-free character/weapon icons, a large
+team portrait without a constellation baked into it, and larger readable
+weapons. New saves use the existing transparent HoYoLAB front portrait as their
+optional expanded image and the transparent weapon source as the frozen icon.
+The team art prefers that expanded image; its painter retains the dark, soft
+element gradient. Slot names still show the saved C value. Weapons are alpha
+trimmed before painting and have a larger expanded allocation; set tiles wrap
+inside their character header. Compact side canvases and 84px height remain.
+Old saved bundles retain their assets and never borrow live account layers.
+
+The first transparent preview below was subsequently rejected for floating
+slot portraits and insufficiently readable compact weapons. The revised
+2026-10-03 painter bottom-aligns expanded portraits with the first weapon row,
+including wide/short images, without the former portrait edge zoom. Compact
+weapons now have their own 22-34px allocation; set icons adapt separately.
+All compact icons share the row's bottom baseline and the run stays 84 logical
+pixels tall. Eighteen focused History-card tests pass, including pixel-level
+visible-bottom alignment in expanded/compact mode and the retained 4p/2+2
+responsive bounds. This is production-painter evidence, not real UI acceptance.
+
+| Revised evidence | Scope |
+| --- | --- |
+| [Aligned expanded PNG](implementation-transparent-aligned/export.png) | Same frozen-fact fixture and transparent inputs, 1600x962; slot portraits and weapons share the bottom line |
+| [1004px compact at 150%](implementation-transparent-aligned/compact-1004-150pct.png) | 1506x126 physical pixels; larger weapons, inline saved timers and v10 row height |
+| [704px compact at 150%](implementation-transparent-aligned/compact-704-150pct.png) | 1056x126 physical pixels; four columns and the overall-timer fallback |
+
+The revised previews use the same temporary fixture/source described below;
+its copied bundle is automatically removed after rendering. Revised PNGs are
+retained here as design evidence. No new native-window interaction is claimed.
+
+| Evidence | Scope |
+| --- | --- |
+| [Expanded PNG](implementation-transparent-layers/export.png) | Direct production painter, 1600x962; all eight character and weapon layers transparent; no native Save dialog |
+| [Compact](implementation-transparent-layers/compact.png) | Direct production widget, 1600x84; weapon content uses alpha-trimmed raw icons |
+| [704px compact](implementation-transparent-layers/compact-704.png) | Direct production widget, 704x84; four columns, overall timer and no secondary timer rows |
+
+These are provisional visual fixtures: frozen facts copied from the local
+`app-shell-abyss-20260926T191043Z-9af03c87` bundle, with explicit transparent
+source-layer inputs from the local import manifest, materialized into a new
+temporary bundle (`worker5_visual_fixture`). Original snapshots/account files
+were read-only. Temporary bundles, app DB and artwork copies were removed;
+these three PNGs are retained design evidence, not account truth or accepted UI.
+The offscreen fixture explicitly loaded the Windows Segoe UI fonts.
+
+Ninety focused asset, account/runtime-item, team-data, snapshot-builder/
+materialization and History-card checks pass. The new checks cover numeric/string 1-2-star weapons never entering
+the download queue, matching-bitmap ownership, raw-layer freezing, unchanged
+live state, default/custom art precedence and larger-weapon/set bounds.
+A separate production AppShell with an isolated DB and two temporary bundles
+started. Native activation failed twice with `failed to activate captured
+window`; its capture showed the foreground game. No real clicks, upload/reset,
+native export, restart or user visual acceptance are recorded. Resume through
+the real History click path when the target window can be controlled.
 
 ## V10: stable narrow reflow and true edge-integrated team markers
 

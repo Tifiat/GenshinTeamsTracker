@@ -19,6 +19,23 @@ def _fake_download(url: str, destination: Path, *, require_transparency: bool = 
 
 
 class LayeredAssetCacheTest(unittest.IsolatedAsyncioTestCase):
+    async def test_low_rarity_weapon_urls_never_enter_download_queue(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            weapons = [{"id": i, "rarity": rarity, "icon": f"https://act.hoyolab.com/weapon{i}.png"}
+                       for i, rarity in enumerate((1, 2, "1", "2", 3, "3"), 1)]
+            with patch.object(asset_layers, "PROJECT_ROOT", root), \
+                 patch.object(asset_layers, "HOYOLAB_WEAPON_ASSETS_DIR", root / "weapons"), \
+                 patch.object(asset_layers, "SHARED_ASSETS_DIR", root / "shared"), \
+                 patch.object(asset_layers, "_download_image", side_effect=_fake_download) as download:
+                manifest = await asset_layers.prepare_layered_assets(
+                    characters=[], weapons=weapons, cards=[], staging_root=root / "stage", refresh_images=True,
+                )
+            requested = {call.args[0] for call in download.call_args_list}
+            self.assertTrue(all(weapon["icon"] not in requested for weapon in weapons[:4]))
+            self.assertTrue(all(weapon["icon"] in requested for weapon in weapons[4:]))
+            self.assertEqual([asset["weapon"]["id"] for asset in manifest["weaponAssets"]], [5, 6])
+
     async def test_opaque_portrait_is_rejected_before_staging(self) -> None:
         source = io.BytesIO()
         Image.new("RGB", (64, 64), "purple").save(source, format="PNG")

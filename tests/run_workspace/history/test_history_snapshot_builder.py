@@ -8,6 +8,7 @@ data, real assets, caches, Qt widgets, or network state.
 from __future__ import annotations
 
 from dataclasses import replace
+from copy import deepcopy
 import tempfile
 import unittest
 from pathlib import Path
@@ -52,6 +53,32 @@ from run_workspace.team_card_view_model import TeamCardArtifactSummaryViewModel
 
 
 class HistorySnapshotBuilderTests(unittest.TestCase):
+    def test_transparent_layers_are_frozen_without_changing_live_state(self) -> None:
+        session = RunSessionController.empty()
+        details = _rich_details()
+        details["account_character"]["portrait_history_path"] = "raw/character.png"
+        details["account_weapon"]["icon_transparent_path"] = "raw/weapon.png"
+        session.team_state = session.team_state.set_character(0, 0, {"id": "10000050", "name": "Thoma"}).attach_character_details_data(0, 0, details)
+        before = deepcopy(session.state)
+        model = _right_panel_model(mode=MODE_ABYSS, teams=_teams_vm(overrides={(0, 0): _rich_slot_vm()}),
+                                  selected_details=_rich_selected_details(), chamber_rows=_chamber_rows())
+        bundle = build_history_snapshot_bundle(session.state, model, _context())
+        self.assertEqual(bundle.teams[0].slots[0].character.expanded_portrait_ref, "raw/character.png")
+        self.assertEqual(bundle.teams[0].slots[0].weapon.icon_ref, "raw/weapon.png")
+        self.assertEqual(session.state, before)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for ref in bundle.asset_refs:
+                source = root / ref.path
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_bytes(ref.path.encode("utf-8"))
+            store = HistorySnapshotBundleStore(root / "saved")
+            destination = store.write_bundle_grouped(bundle, copy_assets=True, asset_source_roots=(root,))
+            stored = store.read_bundle(bundle.bundle_id)
+            for ref in (stored.teams[0].slots[0].character.expanded_portrait_ref, stored.teams[0].slots[0].weapon.icon_ref):
+                self.assertTrue(ref.startswith("assets/"))
+                self.assertTrue((destination.parent / ref).is_file())
+
     def test_builds_minimal_abyss_bundle_from_session_and_right_panel_model(self) -> None:
         session = RunSessionController.empty()
         model = _right_panel_model(

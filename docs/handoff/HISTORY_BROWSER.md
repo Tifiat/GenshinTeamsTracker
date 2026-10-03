@@ -4,7 +4,7 @@ Scope: authoritative product and architecture contract for the AppShell
 History Browser.
 
 <!-- handoff-current: history-browser -->
-Reviewed 2026-09-18: v10 keeps inline team/chamber timing from 960 logical
+Compact geometry reviewed 2026-09-18: v10 keeps inline team/chamber timing from 960 logical
 pixels, so a 1004px History workspace at 150% retains detail in its 976px inner
 cards. Normal and 2+2 builds share the threshold. Both wide and narrow team
 strips are 41px; an ordinary two-team run is 84 logical pixels high (126
@@ -27,13 +27,26 @@ panel. V8 period/boss controls, one-line header, warning classification,
 calibrated assets, tooltip containment, export and snapshot isolation remain
 unchanged and are specified below.
 
-Fifteen focused History-card checks and four AppShell History checks pass,
-including 520/560/704/960/980px responsive geometry, 4p/2+2 layouts and bounded
-expanded bonus overflow. Direct hidden Qt renders cover the 704px workspace,
-the 1004px workspace/card at 150%, and the 520px fallback. The real app was not
-taken over while the user was using it, so the actual click path and visual
-acceptance remain open, along with upload/reset/export/restart. See
-[v10 evidence](../design/history/README.md) and [TODO](../../TODO.md).
+2026-10-03 asset follow-up: new saves freeze the imported transparent front
+portrait for expanded slots/default team art and the transparent weapon icon.
+The default team portrait has no baked constellation or rarity background;
+the painter supplies a dark element-tinted surface. Expanded weapons have a
+larger allocation with wrapping set tiles. Expanded portraits and weapon
+content share a bottom baseline. Compact weapons use their own 22-34px
+allocation, separate from set-icon sizing; compact height is unchanged.
+Old bundles retain their frozen assets, without live-account repair.
+
+Automated checks and painter previews pass; the design workspace owns dated
+counts/images, including v10 responsive, 4p/2+2 and bonus-overflow evidence.
+On 2026-10-03, an isolated AppShell fixture started, but native activation failed
+twice and capture showed the foreground game. Clicks, visual acceptance and
+upload/reset/export/restart remain open. See
+[evidence](../design/history/README.md) and [WORK_BACKLOG](WORK_BACKLOG.md).
+
+2026-10-04: user-authorized ordinary AppShell startup from Worker5 used
+`ui.app_shell_smoke` and the main dependency interpreter read-only. A responding
+native window was confirmed. Worker5 runtime/account import and subsequent
+click-path acceptance remain separate from startup evidence.
 <!-- /handoff-current -->
 
 ## Ownership And Boundaries
@@ -50,8 +63,10 @@ acceptance remain open, along with upload/reset/export/restart. See
   resetting or rebuilding the live Abyss/DPS Dummy/PvP session.
 - History never reads current account equipment, Artifact Browser presets,
   account/profile data, DBs or network state to reconstruct saved run facts.
-  Character slots use bundle-local side icons, falling back to portraits only
-  when absent. Team art uses the first occupied slot's front portrait. There
+  Compact character slots use bundle-local side icons, falling back to portraits
+  only when absent. Expanded slots prefer their own frozen expanded/front
+  portrait; default team art uses the first occupied slot's same image, without
+  a baked constellation or background in new saves with imported transparent layers. There
   is no longer a user-facing Profile/Portrait comparison setting.
 - The Abyss period navigator may read production Floor 12 source-data caches
   for its period catalog and enemy preview only. A selected saved-run row and
@@ -273,10 +288,13 @@ frozen right Run and live session remain read-only/unaffected.
 Snapshot Bundle v2 and production Save capture frozen display details for every
 occupied slot and materialize declared visible assets inside the bundle without
 retaining temporary hydration in live state.
-New saves may carry a second frozen character image for expanded cards:
-background plus portrait, without element or constellation. Compact/team art
-keeps its original portrait, and old bundles fall back when the optional
-expanded reference is absent. Both files are copied into the immutable bundle.
+New saves may carry a second frozen character image for expanded cards/default
+team art: the imported transparent front portrait, without element, rarity
+background or constellation. Weapon snapshots prefer the transparent source
+icon supplied by the live save input. These optional layers are resolved before
+Save only for an exact matching local imported bitmap, then copied into the
+immutable bundle. Old bundles keep their frozen fallback assets; browsing
+never consults the current manifest to replace them.
 The History right panel also uses the expanded variant when present.
 Grouped storage, row selection, the snapshot-to-shared-right-panel adapter,
 isolated read-only Run panel, first

@@ -3,7 +3,8 @@
 ## Status and authority
 
 <!-- handoff-current: gcsim-optimizer -->
-Reviewed 2026-10-03 during authorized baseline/worker preparation, not a numerical run.
+Reviewed 2026-10-03 during baseline/worker preparation, user-log/UI review and
+isolated filter pilots; no fresh end-to-end search/verification.
 Exact-reuse consumer e0bf5d64 remains installed; engine unchanged. Source9251adea
 is the dated 2026-09-28 build aggregate, including tests, not the current refactored
 source identity. Trace section2 owns behavior. The
@@ -26,27 +27,29 @@ skips final verification, not capture. Search cycles/work are bounded, not an
 exhaustive/global-optimum proof; no product wall-clock timeout.
 
 The [2026-09-28 matrix/install receipt](../optimizer-evidence/2026-09-28-player-hypotheses/matrix/README.md)
-retains13 non-Gaming cases,637 exact rows, Selected fast/ordinary and installed
-Navia gates within their dated scope. Preserve rejected variants, reused
-baselines and accepted Bloom noise attribution; never inject an equipped
-control. No new numerical matrix, source oracle or physical UI gate.
+retains13 non-Gaming cases,637 exact rows and its dated Selected/Navia gates.
+Preserve rejected variants and accepted Bloom noise; never inject an equipped
+control. No new numerical matrix, response oracle or physical UI gate.
 
 Prior physical Selected/All evidence remains in the
 [replacement/Finish receipt](GCSIM_OPTIMIZER_GO_BACKEND_DESIGN.md#2026-09-27-single-item-replacement-output-and-early-finish).
-Revised limits and104px replacement geometry have programmatic checks only;
-physical jitter/reload and actual preset Save remain unverified.
+Revised limits, readable expanding result cards and fast-mode help pass programmatic checks;
+physical reload and actual preset Save remain unverified. The
+[Chasca log/UI receipt](../optimizer-evidence/2026-10-03-chasca-run-review/README.md)
+separates search from ordinary verification and retains its comparison limits.
+The [isolated filter/settings receipt](../optimizer-evidence/2026-10-03-filter-hypotheses/README.md)
+reproduces13 saved scores; bounds/dominance do not help, early legality improves
+only a small kernel. Nothing promoted; complete-coordinator parity remains gated.
 
 Dead result/n1000/ordinary wrappers removed; rechecked live helpers remain.
 Mode-explicit Python inputs/processes and strict source codecs separated;
 cache warming skips legacy discovery. Both All Sets energy routes and Theory
 full discovery remain. No search arithmetic changed.
 
-Cleanup gates: vet/15 native packages and119 Python/offscreen tests PASS in the
-structural slice. New storage/worker gates:61 tests (58 PASS/3 platform skips),
-then82 tests from the linked checkout (79 PASS/3 platform skips). Failed
-SQLite-handle attempt and repair stay in audit section9. Native34 disabled/
-platform gates do not certify response. Active engine binding rechecked trusted;
-no binary promotion, capture/search/matrix or physical UI.
+Cleanup gates: vet/15 native packages and119 Python/offscreen tests PASS.
+Storage/worker gates:61 then82 tests (3 platform skips each); the failed SQLite
+attempt stays in audit section9. Native34 disabled/platform gates do not certify
+response. No binary promotion, full search/matrix or physical UI.
 
 The mixed-state baseline is committed on `master`; `codex/optimizer-polish`
 owns Selected/All Sets here and `codex/optimizer-theory` uses Desktop

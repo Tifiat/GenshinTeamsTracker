@@ -1,0 +1,24 @@
+{
+  "internal/search/candidates.go": [
+    {
+      "old": "func (r *candidateRun) point(ids [5]int64, sample, pair bool) error {",
+      "new": "func (r *candidateRun) point(ids [5]int64, sample, pair bool) error {\n\thypothesisCounters.PointCalls++"
+    },
+    {
+      "old": "\tr.report.Step.Expanded++\n\tr.report.Step.CompleteEvaluations++",
+      "new": "\thypothesisRecord(r.anchor, r.actor, ids, v)\n\tr.report.Step.Expanded++\n\tr.report.Step.CompleteEvaluations++"
+    },
+    {
+      "old": "\t\tbase := r.best.Assignment[actor]\n\t\tfor a := 0; a < 5; a++ {\n\t\t\tfor _, x := range pools[a] {",
+      "new": "\t\tbase := r.best.Assignment[actor]\n\t\tgate := hypothesisPrepareGate(r, base, pools)\n\t\tfor a := 0; a < 5; a++ {\n\t\t\tfor position, x := range pools[a] {"
+    },
+    {
+      "old": "\t\t\t\ttrial[a] = x\n\t\t\t\tif e = r.point(trial, false, false); e != nil {\n\t\t\t\t\treturn r.finish(e)\n\t\t\t\t}",
+      "new": "\t\t\t\ttrial[a] = x\n\t\t\t\tif gate == nil || gate.Single[a][position] {\n\t\t\t\t\tif e = r.point(trial, false, false); e != nil {\n\t\t\t\t\t\treturn r.finish(e)\n\t\t\t\t\t}\n\t\t\t\t} else {\n\t\t\t\t\thypothesisCounters.SingleSkipped++\n\t\t\t\t\tif e = r.ctx.Err(); e != nil { return r.finish(e) }\n\t\t\t\t}"
+    },
+    {
+      "old": "\t\t\t\tfor b := a + 1; b < 5; b++ {\n\t\t\t\t\tfor _, y := range pools[b] {",
+      "new": "\t\t\t\tfor b := a + 1; b < 5; b++ {\n\t\t\t\t\tremaining := pools[b]\n\t\t\t\t\tif gate != nil {\n\t\t\t\t\t\tremaining = gate.Pairs[a][b][position]\n\t\t\t\t\t\thypothesisCounters.PairSkipped += int64(len(pools[b])-len(remaining))\n\t\t\t\t\t}\n\t\t\t\t\tfor _, y := range remaining {"
+    }
+  ]
+}

@@ -373,6 +373,7 @@
   "settings.gcsim.optimizer.set_group_limit": "Сочетаний сетов",
   "settings.gcsim.optimizer.builds_per_group": "Замен на сочетание",
   "settings.gcsim.optimizer.fast_mode": "Ускоренный режим",
+  "settings.gcsim.optimizer.fast_mode.tooltip": "Кандидаты оцениваются по формуле и не проходят финальную проверку в GCSIM, поэтому DPS может быть неточным. Режим не сокращает основной поиск, но позволяет вывести заданное в настройках количество найденных вариантов без затрат времени на финальные симуляции.\n\nРекомендуется для вывода большого количества замен.",
   "settings.gcsim.optimizer.fast_mode.warning_title": "Оценка без проверки GCSIM",
   "settings.gcsim.optimizer.fast_mode.warning_body": "DPS рассчитывается по формуле. Итоговые сборки не проверяются в GCSIM, поэтому результат может быть неверным.",
   "gcsim.optimizer.finish_button": "Завершить и показать результат",

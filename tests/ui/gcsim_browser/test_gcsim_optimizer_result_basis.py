@@ -68,7 +68,8 @@ class GcsimOptimizerResultBasisTests(unittest.TestCase):
         self.addCleanup(window.close)
         workspace = GcsimBrowserWorkspace()
         window.setCentralWidget(workspace)
-        window.resize(900, 620)
+        # AppShell keeps a 1408 logical-pixel minimum before its display scale.
+        window.resize(1408, 740)
         window.show()
         workspace.workspace_tabs.setCurrentIndex(1)
         widget = workspace.optimizer_result_builds
@@ -113,6 +114,17 @@ class GcsimOptimizerResultBasisTests(unittest.TestCase):
         self.assertGreater(
             container.mapTo(widget.table, QPoint(0, 0)).y(),
             wearer.geometry().bottom(),
+        )
+        cards = [widget.grid.itemAtPosition(1, column).widget() for column in range(1, 6)]
+        action = widget.grid.itemAtPosition(1, 6).widget()
+        swap_grid = container.layout().itemAt(1).layout()
+        swaps = [swap_grid.itemAtPosition(0, column).widget() for column in range(5)]
+        self.assertTrue(all(card.width() > action.width() for card in cards))
+        self.assertLessEqual(action.width(), 116)
+        self.assertGreater(action.x(), cards[-1].geometry().right())
+        self.assertEqual(
+            [(card.x(), card.width()) for card in cards],
+            [(swap.mapTo(widget.table, QPoint(0, 0)).x(), swap.width()) for swap in swaps],
         )
         widget._replacement_buttons["furina"].click()
         collapsed_again = settled_state()
@@ -312,7 +324,9 @@ def _artifact(artifact_id: int, position: int) -> ArtifactItem:
         main_property_value="46.6%",
         substats=[
             ArtifactSubstat(1, 20, "CRIT Rate", "3.9%", 1),
-            ArtifactSubstat(2, 22, "CRIT DMG", "7.8%", 1),
+            ArtifactSubstat(2, 22, "CRIT DMG", "21.8%", 1),
+            ArtifactSubstat(3, 5, "ATK", "478", 1),
+            ArtifactSubstat(4, 9, "DEF%", "11.7%", 1),
         ],
     )
 

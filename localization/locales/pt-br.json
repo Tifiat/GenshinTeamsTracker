@@ -373,6 +373,7 @@
   "settings.gcsim.optimizer.set_group_limit": "Combinações de conjuntos",
   "settings.gcsim.optimizer.builds_per_group": "Trocas por combinação",
   "settings.gcsim.optimizer.fast_mode": "Modo rápido",
+  "settings.gcsim.optimizer.fast_mode.tooltip": "Os candidatos são avaliados pela fórmula sem verificação final no GCSIM, então o DPS pode ser impreciso. Este modo não encurta a busca principal, mas exibe a quantidade configurada de variantes encontradas sem gastar tempo com simulações finais.\n\nRecomendado para exibir muitas substituições de artefatos.",
   "settings.gcsim.optimizer.fast_mode.warning_title": "Estimativa sem verificação no GCSIM",
   "settings.gcsim.optimizer.fast_mode.warning_body": "O DPS é calculado pela fórmula. As builds finais não são verificadas no GCSIM, então o resultado pode estar errado.",
   "gcsim.optimizer.finish_button": "Concluir e mostrar resultado",

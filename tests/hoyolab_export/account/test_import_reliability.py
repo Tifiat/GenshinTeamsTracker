@@ -4,25 +4,49 @@ These pin the existing account/equipment contracts, not a full HoYoLAB simulator
 """
 import asyncio
 from copy import deepcopy
+import io
 import json
 import sqlite3
 import tempfile
 import unittest
-from contextlib import ExitStack, closing
+from contextlib import ExitStack, closing, nullcontext, redirect_stdout, redirect_stderr
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from hoyolab_export import import_pipeline as pipeline
+from hoyolab_export import run_import
 from hoyolab_export.account_equipment import equip_artifact, equip_weapon
 from hoyolab_export.account_storage import sync_account_storage_from_sources
 from hoyolab_export.artifact_db import connect_db, init_db, create_build_preset
 from hoyolab_export.artifact_importer import import_character_details_payload
+from hoyolab_export.artifact_set_catalog import UnmappedArtifactSetError
 from hoyolab_export.character_detail import browser_fetch_json, fetch_character_details_batch
 from hoyolab_export.collect_account_inventory import wait_for_character_list_response
 from hoyolab_export.hoyolab_exporter import close_export_context, HoyolabExporter
 from tests.hoyolab_export.account.test_account_storage import (
     fake_account_character, fake_account_weapon, fake_account_details,
 )
+
+
+class ImportWarningCliTest(unittest.TestCase):
+    def test_partial_import_exits_success_and_emits_structured_warning(self):
+        warning = {"code": "artifact_sets_unmapped", "count": 1,
+                   "sets": [{"hoyolab_set_id": 2150451, "name": "Celestial Gift"}]}
+        output = io.StringIO()
+        with patch.object(run_import.sys, "argv", ["run_import"]), \
+                patch.object(run_import, "import_run_lock", return_value=nullcontext()), \
+                patch.object(run_import, "run_hoyolab_import", new=AsyncMock(return_value={"warnings": [warning]})), \
+                redirect_stdout(output):
+            self.assertEqual(run_import.main(), 0)
+        lines = [line for line in output.getvalue().splitlines() if line.startswith("[IMPORT_WARNING] ")]
+        self.assertEqual([json.loads(line[len("[IMPORT_WARNING] "):]) for line in lines], [warning])
+
+    def test_primary_failure_still_exits_failure(self):
+        with patch.object(run_import.sys, "argv", ["run_import"]), \
+                patch.object(run_import, "import_run_lock", return_value=nullcontext()), \
+                patch.object(run_import, "run_hoyolab_import", new=AsyncMock(side_effect=pipeline.HoYoLABImportError("invalid source"))), \
+                redirect_stderr(io.StringIO()):
+            self.assertEqual(run_import.main(), 2)
 
 
 class ImportPreservationTest(unittest.IsolatedAsyncioTestCase):
@@ -181,8 +205,8 @@ class ImportPreservationTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_unknown_artifact_set_refreshes_recent_list_once_before_retry(self):
         self.mapping.side_effect = [
-            RuntimeError("Could not map HoYoLAB artifact set ids through EN HoYoLAB details and canonical HoYoWiki names"),
-            {"mapped": 1},
+            {"unmapped": [{"hoyolab_set_id": 2150451, "display_name": "Celestial Gift"}]},
+            {"mapped": 1, "unmapped": []},
         ]
         first = MagicMock(sources={"en-us": "fresh_cache"}, cleanup_failures=[])
         fresh = MagicMock(sources={"en-us": "network"}, cleanup_failures=[])
@@ -198,8 +222,10 @@ class ImportPreservationTest(unittest.IsolatedAsyncioTestCase):
         with closing(connect_db(self.db)) as conn:
             before = [tuple(r) for r in conn.execute("SELECT * FROM account_character_equipped_artifacts")]
         with patch.object(pipeline, "sync_account_storage_for_import", return_value=({}, "fixture")):
-            with self.assertRaisesRegex(pipeline.HoYoLABImportError, "Equipment was not applied"):
-                await pipeline.run_hoyolab_import(change_equipment=True)
+            result = await pipeline.run_hoyolab_import(change_equipment=True)
+        self.assertFalse(result["equipmentApplied"]["applied"])
+        self.assertEqual({w["code"] for w in result["warnings"]},
+                         {"account_storage_sync_failed", "equipment_not_applied"})
         with closing(connect_db(self.db)) as conn:
             self.assertEqual(before, [tuple(r) for r in conn.execute("SELECT * FROM account_character_equipped_artifacts")])
 
@@ -284,12 +310,88 @@ class ImportPreservationTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.account_files(), self.before_files)
         self.assertEqual(self.db_dump(), self.before_db)
 
-    async def test_artifact_write_failure_rolls_back_and_preserves_source_files(self):
+    async def test_artifact_write_failure_rolls_back_but_publishes_account_source(self):
+        tables = ("artifacts", "artifact_substats", "artifact_equipment", "artifact_build_slots",
+                  "account_character_equipped_artifacts", "account_character_equipped_weapons")
+        with closing(connect_db(self.db)) as conn:
+            before = {t: [tuple(r) for r in conn.execute(f"SELECT * FROM {t}")] for t in tables}
         with patch("hoyolab_export.artifact_importer.replace_current_equipment", side_effect=RuntimeError("write failure")):
-            with self.assertRaisesRegex(RuntimeError, "write failure"):
-                await pipeline.run_hoyolab_import()
-        self.assertEqual(self.account_files(), self.before_files)
-        self.assertEqual(self.db_dump(), self.before_db)
+            result = await pipeline.run_hoyolab_import(change_equipment=True)
+        self.assertEqual(result["artifactSummary"]["error"], "RuntimeError")
+        self.assertEqual({w["code"] for w in result["warnings"]},
+                         {"artifacts_not_imported", "equipment_not_applied"})
+        self.assertTrue((pipeline.HOYOLAB_CHARACTER_ASSETS_DIR / "char_v2_fixture.png").is_file())
+        self.assertEqual(json.loads(result["characterDetailsPath"].read_text()), self.details)
+        with closing(connect_db(self.db)) as conn:
+            self.assertEqual(before, {t: [tuple(r) for r in conn.execute(f"SELECT * FROM {t}")] for t in tables})
+
+    async def test_unknown_set_preserves_equipment_and_imports_known_artifacts(self):
+        new = deepcopy(self.details["json"]["data"]["list"][0]["relics"][0])
+        new.update(id=2, pos=2, name="Known new plume")
+        unknown = deepcopy(new)
+        unknown.update(id=3, pos=3, name="Unknown sands", set={"id": 2150451, "name": "Celestial Gift"})
+        self.details["json"]["data"]["list"][0]["relics"] += [new, unknown]
+        def resolve(conn, *, hoyolab_set_id, display_name):
+            if hoyolab_set_id == 2150451:
+                raise UnmappedArtifactSetError(hoyolab_set_id=hoyolab_set_id, display_name=display_name)
+            return None
+        tables = ("artifact_equipment", "account_character_equipped_artifacts",
+                  "account_character_equipped_weapons", "artifact_build_slots")
+        with closing(connect_db(self.db)) as conn:
+            before = {t: [tuple(r) for r in conn.execute(f"SELECT * FROM {t}")] for t in tables}
+        with patch("hoyolab_export.artifact_importer.resolve_hoyolab_set_uid", side_effect=resolve):
+            with self.assertRaises(UnmappedArtifactSetError):
+                import_character_details_payload(self.details, db_path=self.db)
+            self.assertEqual(self.db_dump(), self.before_db)
+            result = await pipeline.run_hoyolab_import(change_equipment=True)
+        summary = result["artifactSummary"]
+        self.assertEqual(summary["relics_seen"], 3)
+        self.assertEqual(summary["artifacts_inserted"], 1)
+        self.assertEqual(summary["relics_skipped_unmapped"], 1)
+        self.assertFalse(summary["equipment_updated"])
+        self.assertFalse(result["equipmentApplied"]["applied"])
+        self.assertEqual({w["code"] for w in result["warnings"]},
+                         {"artifact_sets_unmapped", "equipment_not_applied"})
+        with closing(connect_db(self.db)) as conn:
+            self.assertEqual(before, {t: [tuple(r) for r in conn.execute(f"SELECT * FROM {t}")] for t in tables})
+            self.assertEqual(conn.execute("SELECT count(*) FROM artifacts").fetchone()[0], 2)
+            self.assertEqual(conn.execute("SELECT count(*) FROM artifacts WHERE set_id=2150451").fetchone()[0], 0)
+        self.assertEqual(json.loads(result["characterDetailsPath"].read_text()), self.details)
+        log = json.loads(result["importLogPath"].read_text())
+        self.assertEqual(log["warnings"], result["warnings"])
+
+    async def test_reference_and_mapping_failures_do_not_abort_account_import(self):
+        with patch.object(pipeline, "sync_static_reference_catalogs_for_import", return_value=({}, "catalog unavailable")), \
+                patch.object(pipeline, "ensure_artifact_set_names", side_effect=RuntimeError("names unavailable")), \
+                patch.object(pipeline, "ensure_artifact_set_bonus_descriptions", side_effect=RuntimeError("bonus unavailable")):
+            self.mapping.side_effect = TimeoutError("mapping unavailable")
+            result = await pipeline.run_hoyolab_import()
+        self.assertEqual(result["warnings"], [{"code": "reference_catalog_incomplete"}])
+        self.assertEqual(result["artifactSummary"]["artifacts_existing"], 1)
+        self.assertTrue((pipeline.HOYOLAB_CHARACTER_ASSETS_DIR / "char_v2_fixture.png").is_file())
+        self.assertEqual(json.loads(result["characterDetailsPath"].read_text()), self.details)
+
+    async def test_unknown_mapping_refresh_failure_keeps_partial_result(self):
+        self.mapping.return_value = {"unmapped": [{"hoyolab_set_id": 2150451}]}
+        lists = MagicMock(sources={"en-us": "fresh_cache"}, cleanup_failures=[])
+        with patch.object(pipeline, "ImportArtifactSetLists", return_value=lists), \
+                patch.object(pipeline, "ensure_artifact_set_catalog", side_effect=TimeoutError("refresh unavailable")):
+            result = await pipeline.run_hoyolab_import()
+        self.assertEqual(self.mapping.await_count, 1)
+        self.assertEqual(result["warnings"], [{"code": "reference_catalog_incomplete"}])
+
+    async def test_equipment_application_failure_rolls_back_and_warns(self):
+        with closing(connect_db(self.db)) as conn:
+            before = [tuple(r) for r in conn.execute("SELECT * FROM account_character_equipped_artifacts")]
+        def fail(conn, **kwargs):
+            conn.execute("DELETE FROM account_character_equipped_artifacts")
+            raise RuntimeError("equipment write failed")
+        with patch.object(pipeline, "apply_hoyolab_equipment_snapshot", side_effect=fail):
+            result = await pipeline.run_hoyolab_import(change_equipment=True)
+        self.assertFalse(result["equipmentApplied"]["applied"])
+        self.assertEqual(result["warnings"], [{"code": "equipment_not_applied"}])
+        with closing(connect_db(self.db)) as conn:
+            self.assertEqual(before, [tuple(r) for r in conn.execute("SELECT * FROM account_character_equipped_artifacts")])
 
     async def test_restart_and_repeated_import_preserve_ids_presets_and_equipment(self):
         self.exporter._click_with_popup_retry.side_effect = RuntimeError("first attempt")

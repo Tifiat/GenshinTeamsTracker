@@ -13,6 +13,7 @@ from .artifact_db import (
     upsert_artifact,
 )
 from .artifact_set_catalog import (
+    UnmappedArtifactSetError,
     ensure_artifact_set_catalog,
     resolve_hoyolab_set_uid,
 )
@@ -144,6 +145,7 @@ def import_character_details_payload(
     payload: dict[str, Any],
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    skip_unmapped_sets: bool = False,
 ) -> dict[str, Any]:
     hoyolab_payload = unwrap_hoyolab_payload(payload)
 
@@ -167,6 +169,9 @@ def import_character_details_payload(
         "artifacts_existing": 0,
         "equipment_rows": 0,
         "set_catalog": {},
+        "relics_skipped_unmapped": 0,
+        "unmapped_sets": [],
+        "equipment_updated": True,
     }
     summary["set_catalog"] = ensure_artifact_set_catalog(
         db_path=db_path,
@@ -208,11 +213,20 @@ def import_character_details_payload(
                 seen_positions.add(position)
                 summary["relics_seen"] += 1
 
-                set_uid = resolve_hoyolab_set_uid(
-                    conn,
-                    hoyolab_set_id=normalized["set_id"],
-                    display_name=normalized["set_name"],
-                )
+                try:
+                    set_uid = resolve_hoyolab_set_uid(
+                        conn,
+                        hoyolab_set_id=normalized["set_id"],
+                        display_name=normalized["set_name"],
+                    )
+                except UnmappedArtifactSetError:
+                    if not skip_unmapped_sets:
+                        raise
+                    summary["relics_skipped_unmapped"] += 1
+                    missing = {"hoyolab_set_id": normalized["set_id"], "name": normalized["set_name"]}
+                    if missing not in summary["unmapped_sets"]:
+                        summary["unmapped_sets"].append(missing)
+                    continue
 
                 main_property = normalized["main_property"] or {}
                 content_fingerprint = artifact_content_fingerprint(
@@ -265,8 +279,14 @@ def import_character_details_payload(
                     }
                 )
 
-        replace_current_equipment(conn, equipment_rows)
-        summary["equipment_rows"] = len(equipment_rows)
+        if summary["relics_skipped_unmapped"]:
+            # An incomplete observation must not erase previous equipment or
+            # apply stale rows together with the new detail snapshot.
+            summary["equipment_updated"] = False
+            summary["equipment_rows"] = len(previous_equipment)
+        else:
+            replace_current_equipment(conn, equipment_rows)
+            summary["equipment_rows"] = len(equipment_rows)
 
         conn.commit()
 

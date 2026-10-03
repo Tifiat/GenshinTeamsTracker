@@ -1,7 +1,28 @@
 # HoYoLAB Import Failure Boundaries
 
 <!-- handoff-current: hoyolab-import -->
-2026-09-27. Normal import gets one unambiguous Genshin role and its character
+2026-10-04. Independent catalog/partial-import hotfix prepared in Worker5.
+Seeded SQLite catalogs close after transaction exit and still perform requested
+network refresh. Missing canonical set mappings no longer abort the normal
+account import: known artifacts, characters, weapons, raw details and prepared
+images continue; unresolved artifacts are skipped without guessing identity.
+Raw details retain the skipped records for a later import. An incomplete
+artifact observation preserves prior observed and canonical equipment, even
+with Change equipment ON; saved presets remain unchanged. Reference refresh,
+artifact transaction, account sync and equipment failures produce structured
+warnings in the import log/CLI and a localized completed-with-warnings dialog.
+Primary inventory/detail validation and pre-publication image failures retain
+their existing failure/preservation boundary.
+
+Verification and the user's failed-import measurement are recorded below in
+the 2026-10-04 receipt. Automated fixtures use temporary databases and mocked
+network; the fixed path still needs the user's manual retry. This portable
+fix has no History/timer/policy dependency and is not installed on master.
+<!-- /handoff-current -->
+
+### Historical optimization checkpoint (2026-09-27; low-rarity followup 2026-10-03)
+
+Normal import gets one unambiguous Genshin role and its character
 list through the authenticated request context, then reads detail and Abyss
 period for that role without repeating role lookup. Multi-role/API failures
 retain the browser-selected list path. Direct list uses the observed public
@@ -34,7 +55,6 @@ probes passed. The earlier
 visible Settings image-only run and PvP display check covered the image layer
 change; this optimization was verified through the production CLI, not a new
 visible UI run.
-<!-- /handoff-current -->
 
 Scope: Settings `AccountDataPage.run_hoyolab_export` -> QProcess ->
 `hoyolab_export.run_import` -> import pipeline/exporter.
@@ -127,14 +147,44 @@ popover, canvas capture, layout collection or screenshot cropper.
   JSON is replaced per file; staged image files replace their final paths.
 - Artifact import retains content-fingerprint dedupe and SQLite transaction
   rollback, and explicitly closes its connection on success/failure.
+- Strict artifact/mapping helper calls still reject unresolved sets by default.
+  Normal import opts into partial mapping/conversion. Only a typed missing
+  mapping skips a relic; other conversion errors roll back the artifact phase
+  and warn while preserving the remaining account source import.
 - User-managed equipment and saved presets remain separate from HoYoLAB
   observed equipment. Default OFF preserves user equipment; the later explicit
   "Change equipment" switch applies a fresh snapshot only after account sync.
   Saved presets are never changed. See `ACCOUNT_EQUIPMENT_STATE_DESIGN.md`.
 - Existing account SQLite sync warnings remain non-fatal after raw publication,
   as documented in `ACCOUNT_SQLITE_STORAGE.md`.
+- CLI `[IMPORT_WARNING]` JSON records persist in the existing import log. UI
+  consumes complete or buffered final lines and shows one localized warning
+  after refreshing account data; malformed/unknown records are ignored.
 
 ## Verification And Backup
+
+### Hotfix receipt (2026-10-04, Worker5)
+
+The user's Settings import failed on `2150451 / Celestial Gift`: a seeded
+catalog closed its connection inside the transaction context; seeding also
+returned before the requested network refresh. Strict unresolved-set mapping
+then aborted the entire import. The measured click-to-process completion was
+100.7s (pipeline 98.9s), including 31.4s for image download/render and 54.6s for
+static catalog refresh. The subsequent five-second UI cooldown is excluded.
+Temporary measurement instrumentation was restored to checkpoint `4ee99d27`
+before this fix; no measurement timers, exports or profile cleanup are part of it.
+
+Fix verification: 100 backend/CLI checks across catalog, import reliability,
+pipeline, storage and equipment passed; nine isolated Qt lifecycle checks passed.
+Fixtures cover seed closure plus network continuation, strict versus tolerant
+mapping, known artifacts alongside an unresolved set, raw-source retention,
+artifact/equipment rollback, preserved presets and both equipment-switch modes,
+reference/refresh failure recovery, structured CLI warnings and buffered Qt
+completion. Network is mocked and SQLite writes use temporary fixture databases.
+The independent patch applies cleanly to local `master`; no transfer to master
+or new fixed live import is claimed. Next evidence is the user's manual Settings
+retry with this version running. Primary API validation and final file-publication
+limits below still apply.
 
 Tests are isolated from the real login profile/runtime DB. Relevant modules:
 

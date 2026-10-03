@@ -1,6 +1,7 @@
 import asyncio
 import argparse
 import gc
+import json
 import re
 import sys
 from contextlib import contextmanager
@@ -116,6 +117,8 @@ def main() -> int:
         print("account sync warnings:", len(account_storage_summary.get("warnings") or []))
     elif account_storage_error:
         print("account SQLite sync warning:", account_storage_error)
+    for warning in result.get("warnings") or []:
+        print("[IMPORT_WARNING] " + json.dumps(warning, ensure_ascii=False), flush=True)
     print("manifest:", result.get("manifestPath"))
     if not args.images_only:
         print("character details:", result.get("characterDetailsPath"))

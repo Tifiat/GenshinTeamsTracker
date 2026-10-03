@@ -33,8 +33,11 @@ SQLite sync failures are reported as import warnings after the raw import, but
 do not delete the refreshed raw JSON/artifact results.
 
 AppShell's HoYoLAB "Change equipment" switch defaults OFF. With its explicit
-`--change-equipment` flag, import requires successful account storage sync and
-then applies only the fresh detail snapshot to canonical equipment. Weapon
+`--change-equipment` flag, import applies canonical equipment only after successful
+account storage sync and a complete artifact observation. A failed sync or
+unmapped artifact set preserves equipment and completes the available account
+import with a visible warning; it does not discard the refreshed raw source.
+Weapon
 identity is reused through `weapon_equipment_from_detail_rows`; historical
 merged inventory/stack provenance must not be used as current assignments.
 See `ACCOUNT_EQUIPMENT_STATE_DESIGN.md` for copy limits and batch rollback.

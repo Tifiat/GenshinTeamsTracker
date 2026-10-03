@@ -353,6 +353,41 @@ def refresh_abyss_source_data_for_import(
     return summary, error
 
 
+async def prepare_artifact_mapping_for_import(
+    character_details, export_page, real_ids, artifact_set_lists, static_catalog_summary,
+    content_language,
+):
+    """Keep reference-data failures separate from the account payload import."""
+    try:
+        summary = await ensure_hoyolab_set_mapping(
+            character_details, export_page, real_ids, db_path=ARTIFACT_DB_PATH,
+            allow_unmapped=True,
+        )
+        if summary.get("unmapped") and "fresh_cache" in artifact_set_lists.sources.values():
+            fresh_lists = ImportArtifactSetLists(force_network=True)
+            ensure_artifact_set_catalog(
+                db_path=ARTIFACT_DB_PATH, allow_network=True, missing_only=True,
+                list_fetcher=fresh_lists,
+            )
+            ensure_artifact_set_names(
+                content_language, db_path=ARTIFACT_DB_PATH, list_fetcher=fresh_lists,
+            )
+            ensure_artifact_set_bonus_descriptions(
+                content_language, db_path=ARTIFACT_DB_PATH, list_fetcher=fresh_lists,
+            )
+            static_catalog_summary["artifactSetListSources"].update(fresh_lists.sources)
+            static_catalog_summary["artifactSetListRefreshedForUnknownMapping"] = True
+            summary = await ensure_hoyolab_set_mapping(
+                character_details, export_page, real_ids, db_path=ARTIFACT_DB_PATH,
+                allow_unmapped=True,
+            )
+        return summary
+    except Exception as exc:
+        # The artifact importer independently resolves each set against SQLite;
+        # only unresolved artifacts are skipped, without guessing their identity.
+        return {"error": type(exc).__name__}
+
+
 def _weapon_wiki_from_character_details(character_details: dict[str, Any] | None) -> dict[str, Any]:
     payload = (character_details or {}).get("json")
     if not isinstance(payload, dict):
@@ -489,6 +524,7 @@ async def run_hoyolab_import(*, change_equipment: bool = False, images_only: boo
     abyss_period_error: str | None = None
     abyss_source_data_summary: dict[str, Any] | None = None
     abyss_source_data_error: str | None = None
+    import_warnings: list[dict[str, Any]] = []
 
     try:
         context = await exporter._create_context()
@@ -634,50 +670,31 @@ async def run_hoyolab_import(*, change_equipment: bool = False, images_only: boo
                 "[HoYoLAB Import] Static HoYoWiki catalog refresh warning:",
                 static_catalog_error,
             )
-        set_names_summary = ensure_artifact_set_names(
-            content_language,
-            db_path=ARTIFACT_DB_PATH,
-            list_fetcher=artifact_set_lists,
-        )
-        set_bonus_summary = ensure_artifact_set_bonus_descriptions(
-            content_language,
-            db_path=ARTIFACT_DB_PATH,
-            list_fetcher=artifact_set_lists,
-        )
+        try:
+            set_names_summary = ensure_artifact_set_names(
+                content_language, db_path=ARTIFACT_DB_PATH, list_fetcher=artifact_set_lists,
+            )
+        except Exception as exc:
+            set_names_summary = {"error": type(exc).__name__}
+        try:
+            set_bonus_summary = ensure_artifact_set_bonus_descriptions(
+                content_language, db_path=ARTIFACT_DB_PATH, list_fetcher=artifact_set_lists,
+            )
+        except Exception as exc:
+            set_bonus_summary = {"error": type(exc).__name__}
         static_catalog_summary["artifactSetListSources"] = dict(artifact_set_lists.sources)
         if artifact_set_lists.cleanup_failures:
             static_catalog_summary["artifactSetListCleanupWarnings"] = list(artifact_set_lists.cleanup_failures)
 
         report_status("mapping_artifact_sets")
         print("[HoYoLAB Import] Preparing artifact set id mapping...")
-        try:
-            set_mapping_summary = await ensure_hoyolab_set_mapping(
-                character_details, export_page, real_ids, db_path=ARTIFACT_DB_PATH,
-            )
-        except RuntimeError as exc:
-            if (
-                not str(exc).startswith("Could not map HoYoLAB artifact set ids")
-                or "fresh_cache" not in artifact_set_lists.sources.values()
-            ):
-                raise
-            # A newly released artifact set can arrive inside the six-hour
-            # list-cache window. Refresh once before rejecting the import.
-            fresh_lists = ImportArtifactSetLists(force_network=True)
-            ensure_artifact_set_catalog(
-                db_path=ARTIFACT_DB_PATH, allow_network=True, missing_only=True,
-                list_fetcher=fresh_lists,
-            )
-            ensure_artifact_set_names(
-                content_language, db_path=ARTIFACT_DB_PATH, list_fetcher=fresh_lists,
-            )
-            ensure_artifact_set_bonus_descriptions(
-                content_language, db_path=ARTIFACT_DB_PATH, list_fetcher=fresh_lists,
-            )
-            static_catalog_summary["artifactSetListSources"].update(fresh_lists.sources)
-            static_catalog_summary["artifactSetListRefreshedForUnknownMapping"] = True
-            set_mapping_summary = await ensure_hoyolab_set_mapping(
-                character_details, export_page, real_ids, db_path=ARTIFACT_DB_PATH,
-            )
+        set_mapping_summary = await prepare_artifact_mapping_for_import(
+            character_details, export_page, real_ids, artifact_set_lists,
+            static_catalog_summary, content_language,
+        )
+        if (static_catalog_error or set_names_summary.get("error")
+                or set_bonus_summary.get("error") or set_mapping_summary.get("error")):
+            import_warnings.append({"code": "reference_catalog_incomplete"})
 
         report_status("closing_browser")
         print("[HoYoLAB Import] Closing HoYoLAB browser...")
@@ -686,10 +703,19 @@ async def run_hoyolab_import(*, change_equipment: bool = False, images_only: boo
 
         report_status("importing_artifacts")
         print("[HoYoLAB Import] Importing artifacts into SQLite...")
-        artifact_summary = import_character_details_payload(
-            character_details,
-            db_path=ARTIFACT_DB_PATH,
-        )
+        try:
+            artifact_summary = import_character_details_payload(
+                character_details, db_path=ARTIFACT_DB_PATH, skip_unmapped_sets=True,
+            )
+        except Exception as exc:
+            artifact_summary = {"error": type(exc).__name__, "equipment_updated": False}
+            import_warnings.append({"code": "artifacts_not_imported"})
+        if artifact_summary.get("relics_skipped_unmapped"):
+            import_warnings.append({
+                "code": "artifact_sets_unmapped",
+                "count": artifact_summary["relics_skipped_unmapped"],
+                "sets": artifact_summary["unmapped_sets"],
+            })
         artifact_summary["static_catalogs"] = static_catalog_summary
         artifact_summary["static_catalog_error"] = static_catalog_error
         artifact_summary["set_names"] = set_names_summary
@@ -751,6 +777,7 @@ async def run_hoyolab_import(*, change_equipment: bool = False, images_only: boo
             download_side_icons=True,
         )
         if account_storage_error:
+            import_warnings.append({"code": "account_storage_sync_failed"})
             report_status("account_storage_sync_warning")
             print(
                 "[HoYoLAB Import] Account SQLite sync failed after raw import:",
@@ -797,20 +824,26 @@ async def run_hoyolab_import(*, change_equipment: bool = False, images_only: boo
 
         equipment_summary = None
         if change_equipment:
-            if account_storage_error:
-                raise HoYoLABImportError("Equipment was not applied: account storage sync failed")
-            report_status("applying_equipment")
-            detail_rows = unwrap_hoyolab_payload(character_details)["data"]["list"]
-            weapons_to_apply = weapon_equipment_from_detail_rows(detail_rows)
-            with closing(connect_db(ARTIFACT_DB_PATH)) as conn, conn:
-                artifacts_to_apply = [
-                    (int(row["character_id"]), int(row["artifact_id"]))
-                    for row in conn.execute("SELECT character_id, artifact_id FROM artifact_equipment")
-                ]
-                equipment_summary = apply_hoyolab_equipment_snapshot(
-                    conn, artifacts=artifacts_to_apply, weapons=weapons_to_apply,
-                )
-            print(f"[HoYoLAB Import] Applied equipment: artifacts={equipment_summary['artifacts']}; weapons={equipment_summary['weapons']}")
+            if account_storage_error or not artifact_summary.get("equipment_updated", True):
+                equipment_summary = {"applied": False, "reason": "incomplete_import"}
+            else:
+                report_status("applying_equipment")
+                try:
+                    detail_rows = unwrap_hoyolab_payload(character_details)["data"]["list"]
+                    weapons_to_apply = weapon_equipment_from_detail_rows(detail_rows)
+                    with closing(connect_db(ARTIFACT_DB_PATH)) as conn, conn:
+                        artifacts_to_apply = [
+                            (int(row["character_id"]), int(row["artifact_id"]))
+                            for row in conn.execute("SELECT character_id, artifact_id FROM artifact_equipment")
+                        ]
+                        equipment_summary = apply_hoyolab_equipment_snapshot(
+                            conn, artifacts=artifacts_to_apply, weapons=weapons_to_apply,
+                        )
+                    equipment_summary["applied"] = True
+                except Exception as exc:
+                    equipment_summary = {"applied": False, "error": type(exc).__name__}
+            if not equipment_summary["applied"]:
+                import_warnings.append({"code": "equipment_not_applied"})
         report_status("writing_import_log")
         log = build_import_log(
             image_path=None,
@@ -836,6 +869,7 @@ async def run_hoyolab_import(*, change_equipment: bool = False, images_only: boo
         log["browserLifecycle"] = browser_events
         log["stageEvents"] = stage_events
         log["equipmentApplied"] = equipment_summary
+        log["warnings"] = import_warnings
         write_json(import_log_path, log)
 
         result = {
@@ -855,6 +889,8 @@ async def run_hoyolab_import(*, change_equipment: bool = False, images_only: boo
             "abyssPeriodError": abyss_period_error,
             "abyssSourceDataSummary": abyss_source_data_summary,
             "abyssSourceDataError": abyss_source_data_error,
+            "equipmentApplied": equipment_summary,
+            "warnings": import_warnings,
         }
         return result
 

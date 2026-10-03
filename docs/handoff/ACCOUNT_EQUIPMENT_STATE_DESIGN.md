@@ -492,6 +492,12 @@ Current Stage A policy:
    Without that flag, CLI/backend imports also preserve user equipment.
    After successful account-storage sync, enabled imports apply the fresh
    snapshot via `apply_hoyolab_equipment_snapshot`, not sequential manual swaps.
+   If artifact conversion is incomplete (including an unmapped set), account
+   sync fails, or equipment application rolls back, preserve canonical equipment
+   and complete the available account import with a visible warning. Unknown
+   sets also preserve the previous `artifact_equipment` observation as a batch;
+   no stale observation may be applied to the new detail payload. Saved presets
+   remain unchanged. See `HOYOLAB_IMPORT_RELIABILITY.md` for recovery details.
 4. Missing HoYoLAB character/slot/equipment data means "no data" and must not
    clear local equipment.
 5. The batch validates character/item references, weapon compatibility and

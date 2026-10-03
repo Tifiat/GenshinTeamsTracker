@@ -1,4 +1,5 @@
 """Qt process lifecycle fixtures; no network, login profile or account writes."""
+import json
 import tempfile
 import unittest
 from contextlib import ExitStack
@@ -96,6 +97,40 @@ class HoYoLABImportLifecycleTest(unittest.TestCase):
             changed.assert_called_once_with(False)
             timer.call_args.args[1]()
         self.assertTrue(self.page.btn_hoyolab_export.isEnabled())
+
+    def test_partial_success_reads_split_warning_and_refreshes_account(self):
+        warning = {"code": "artifact_sets_unmapped", "count": 1,
+                   "sets": [{"hoyolab_set_id": 2150451, "name": "Celestial Gift"}]}
+        line = ("[IMPORT_WARNING] " + json.dumps(warning)).encode()
+        process = MagicMock()
+        process.readAllStandardOutput.side_effect = [line[:12], line[12:], b""]
+        self.page._hoyolab_export_process = process
+        changed = MagicMock()
+        self.page.account_data_changed.connect(changed)
+        self.page.read_hoyolab_import_output()
+        self.page.read_hoyolab_import_output()
+        self.assertEqual(self.page._hoyolab_import_warnings, [])
+        with patch.object(account_data.QTimer, "singleShot") as timer:
+            self.page.on_hoyolab_import_finished(0, QProcess.ExitStatus.NormalExit)
+            changed.assert_called_once_with(False)
+            timer.call_args.args[1]()
+        self.assertEqual(self.page._hoyolab_import_warnings, [warning])
+        account_data.QMessageBox.warning.assert_called_once()
+        message = account_data.QMessageBox.warning.call_args.args[2]
+        self.assertIn("Celestial Gift", message)
+        self.assertNotIn("hoyolab.import_warning", message)
+        self.assertTrue(self.page.btn_hoyolab_export.isEnabled())
+
+    def test_malformed_warning_output_cannot_break_completion(self):
+        for payload in ("broken json", "[]", '{"code": []}', '{"code": {}}', '{"code": "unknown"}'):
+            self.page._record_hoyolab_import_warning("[IMPORT_WARNING] " + payload)
+        self.assertEqual(self.page._hoyolab_import_warnings, [])
+        warning = {"code": "artifact_sets_unmapped", "count": "invalid", "sets": None}
+        line = "[IMPORT_WARNING] " + json.dumps(warning)
+        self.page._record_hoyolab_import_warning(line)
+        self.page._record_hoyolab_import_warning(line)
+        self.assertEqual(self.page._hoyolab_import_warnings, [warning])
+        self.assertTrue(self.page._hoyolab_import_warning_details())
 
     def test_running_import_blocks_profile_operations_before_auth_checks(self):
         process = MagicMock()

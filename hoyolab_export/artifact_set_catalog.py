@@ -5,6 +5,7 @@ import re
 import unicodedata
 import urllib.error
 import urllib.request
+from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -28,6 +29,18 @@ SEED_CATALOG_PATH = PROJECT_ROOT / "data" / "static" / "artifact_set_catalog.jso
 USER_AGENT = "GenshinTeamsTracker/1.0"
 CANONICAL_LANGUAGE = "en-us"
 SEED_CATALOG_SCHEMA_VERSION = 3
+
+
+class UnmappedArtifactSetError(RuntimeError):
+    """Raised when a HoYoLAB set id has no canonical catalog mapping."""
+
+    def __init__(self, *, hoyolab_set_id: int, display_name: str | None) -> None:
+        self.hoyolab_set_id = hoyolab_set_id
+        self.display_name = display_name
+        super().__init__(
+            "Artifact set mapping was not prepared: "
+            f"hoyolab_set_id={hoyolab_set_id}, display_name={display_name!r}"
+        )
 
 PIECE_ICON_FIELDS = {
     1: "flower_of_life_icon_url",
@@ -947,35 +960,37 @@ def ensure_artifact_set_catalog(
     missing_only: bool = False,
     list_fetcher: Callable[..., list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
-    with connect_db(db_path) as conn:
-        init_db(conn)
+    seed_summary: dict[str, Any] | None = None
+    with closing(connect_db(db_path)) as conn:
+        with conn:
+            init_db(conn)
 
-        if catalog_is_empty(conn):
-            seed_summary = seed_artifact_set_catalog_from_file(conn)
+            if catalog_is_empty(conn):
+                seed_summary = seed_artifact_set_catalog_from_file(
+                    conn,
+                    seed_path=SEED_CATALOG_PATH,
+                )
+
             en_us_names = _ensure_en_us_names_from_catalog(conn)
             backfill_artifact_set_uids(conn)
-            conn.commit()
 
-            if seed_summary.get("seeded"):
-                conn.close()
-                return {
-                    "source": "seed",
-                    "en_us_names_from_catalog": en_us_names,
-                    **seed_summary,
-                }
+    if seed_summary and seed_summary.get("seeded") and not allow_network:
+        return {
+            "source": "seed",
+            "en_us_names_from_catalog": en_us_names,
+            **seed_summary,
+        }
 
-        en_us_names = _ensure_en_us_names_from_catalog(conn)
-        backfill_artifact_set_uids(conn)
-        conn.commit()
-
-    conn.close()
     if allow_network:
         summary = update_artifact_set_catalog(
             db_path=db_path,
             missing_only=missing_only,
             list_fetcher=list_fetcher,
         )
-        return {"source": "network", **summary}
+        result = {"source": "network", **summary}
+        if seed_summary and seed_summary.get("seeded"):
+            result["seed"] = seed_summary
+        return result
 
     return {"source": "existing", "en_us_names_from_catalog": en_us_names}
 
@@ -990,7 +1005,7 @@ def ensure_artifact_set_names(
     lang = normalize_language(lang)
     catalog_summary = ensure_artifact_set_catalog(db_path=db_path, allow_network=False)
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn, conn:
         init_db(conn)
         en_us_names = _ensure_en_us_names_from_catalog(conn)
         existing_row = conn.execute(
@@ -1039,7 +1054,7 @@ def ensure_artifact_set_names(
     matched = 0
     skipped = 0
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn, conn:
         init_db(conn)
         entry_rows = conn.execute(
             """
@@ -1374,6 +1389,7 @@ async def ensure_hoyolab_set_mapping(
     real_ids: list[int] | list[dict[str, Any]],
     *,
     db_path: str | Path = ARTIFACT_DB_PATH,
+    allow_unmapped: bool = False,
 ) -> dict[str, Any]:
     localized_sets = _collect_relic_sets(character_details)
     set_ids = sorted(localized_sets)
@@ -1384,12 +1400,13 @@ async def ensure_hoyolab_set_mapping(
         "mapped": 0,
         "legacy_entry_id_mappings_cleared": 0,
         "en_names": {},
+        "unmapped": [],
     }
 
     ensure_artifact_set_catalog(db_path=db_path, allow_network=False)
     ensure_artifact_set_names(CANONICAL_LANGUAGE, db_path=db_path, allow_network=False)
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn, conn:
         init_db(conn)
         cleared = _clear_legacy_entry_id_mappings(conn)
         known = _known_hoyolab_set_ids(conn, set_ids)
@@ -1412,7 +1429,7 @@ async def ensure_hoyolab_set_mapping(
     )
     english_sets = _collect_relic_sets(english_details)
 
-    with connect_db(db_path) as conn:
+    with closing(connect_db(db_path)) as conn, conn:
         init_db(conn)
         name_index, duplicate_names = _load_en_name_index(conn)
         now = utc_now()
@@ -1498,24 +1515,26 @@ async def ensure_hoyolab_set_mapping(
     if remaining:
         details_by_id = {item["hoyolab_set_id"]: item for item in unmatched}
         missing_details = [
-            details_by_id.get(
-                set_id,
-                {
-                    "hoyolab_set_id": set_id,
-                    "en_name": _first_name(english_sets.get(set_id)),
-                    "reason": "not mapped",
-                },
-            )
+            {
+                **details_by_id.get(set_id, {}),
+                "hoyolab_set_id": set_id,
+                "display_name": _first_name(localized_sets.get(set_id))
+                or _first_name(english_sets.get(set_id)),
+                "en_name": _first_name(english_sets.get(set_id)),
+                "reason": details_by_id.get(set_id, {}).get("reason", "not mapped"),
+            }
             for set_id in remaining
         ]
+        summary["unmapped"] = missing_details
         pretty = "; ".join(
             f"{item['hoyolab_set_id']}: {item.get('en_name') or '<missing>'} ({item.get('reason')})"
             for item in missing_details
         )
-        raise RuntimeError(
-            "Could not map HoYoLAB artifact set ids through EN HoYoLAB details and "
-            f"canonical HoYoWiki names: {pretty}"
-        )
+        if not allow_unmapped:
+            raise RuntimeError(
+                "Could not map HoYoLAB artifact set ids through EN HoYoLAB details and "
+                f"canonical HoYoWiki names: {pretty}"
+            )
 
     return summary
 
@@ -1539,9 +1558,9 @@ def resolve_hoyolab_set_uid(
     ).fetchone()
 
     if row is None:
-        raise RuntimeError(
-            "Artifact set mapping was not prepared: "
-            f"hoyolab_set_id={hoyolab_set_id}, display_name={display_name!r}"
+        raise UnmappedArtifactSetError(
+            hoyolab_set_id=hoyolab_set_id,
+            display_name=display_name,
         )
 
     set_uid = str(row["set_uid"])

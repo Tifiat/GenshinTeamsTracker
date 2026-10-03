@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -66,6 +67,13 @@ from ui.widgets.overlays.login_hint import HoYoLABLoginHintOverlay
 
 
 HOYOLAB_IMPORT_COOLDOWN_MS = 5000
+HOYOLAB_IMPORT_WARNING_KEYS = {
+    "reference_catalog_incomplete": "hoyolab.import_warning.references",
+    "artifact_sets_unmapped": "hoyolab.import_warning.unknown_sets",
+    "artifacts_not_imported": "hoyolab.import_warning.artifacts",
+    "account_storage_sync_failed": "hoyolab.import_warning.account",
+    "equipment_not_applied": "hoyolab.import_warning.equipment",
+}
 HOYOLAB_IMPORT_STATUSES = {
     "preparing": ("loader.preparing", 0.03),
     "opening_hoyolab": ("loader.opening_hoyolab", 0.10),
@@ -132,6 +140,7 @@ class AccountDataPage(QWidget):
         self._hoyolab_loader: HoYoLABLoadingDialog | None = None
         self._hoyolab_import_output_buffer = ""
         self._hoyolab_import_lines: list[str] = []
+        self._hoyolab_import_warnings: list[dict] = []
         self._hoyolab_import_cooldown_active = False
         self._updating_language_combo = False
         self._suppress_optimizer_fast_mode_warning = False
@@ -697,6 +706,7 @@ class AccountDataPage(QWidget):
         self._hoyolab_export_process = process
         self._hoyolab_import_output_buffer = ""
         self._hoyolab_import_lines = []
+        self._hoyolab_import_warnings = []
         self.btn_hoyolab_export.setEnabled(False)
         self.btn_images_refresh.setEnabled(False)
         self.btn_profile_menu.setEnabled(False)
@@ -760,10 +770,38 @@ class AccountDataPage(QWidget):
             if line:
                 print(line)
                 self._hoyolab_import_lines.append(line)
+                self._record_hoyolab_import_warning(line)
             if line.startswith("[STATUS] "):
                 self._set_hoyolab_loader_status(
                     line.replace("[STATUS] ", "", 1).strip()
                 )
+
+    def _record_hoyolab_import_warning(self, line: str) -> None:
+        if not line.startswith("[IMPORT_WARNING] "):
+            return
+        try:
+            warning = json.loads(line[len("[IMPORT_WARNING] "):])
+        except (ValueError, TypeError):
+            return
+        if (isinstance(warning, dict) and isinstance(warning.get("code"), str)
+                and warning["code"] in HOYOLAB_IMPORT_WARNING_KEYS
+                and warning not in self._hoyolab_import_warnings):
+            self._hoyolab_import_warnings.append(warning)
+
+    def _hoyolab_import_warning_details(self) -> str:
+        messages = []
+        for warning in self._hoyolab_import_warnings:
+            count = warning.get("count", 0)
+            count = count if type(count) is int and count >= 0 else 0
+            message = tr(HOYOLAB_IMPORT_WARNING_KEYS[warning["code"]], count=count)
+            sets = warning.get("sets")
+            sets = sets if isinstance(sets, list) else []
+            names = [str(item.get("name") or item.get("hoyolab_set_id") or "")[:100]
+                     for item in sets[:3] if isinstance(item, dict)]
+            if names:
+                message += " " + tr("hoyolab.import_warning.set_names", names=", ".join(names))
+            messages.append(message)
+        return "\n".join(messages)
 
     def _hoyolab_import_error_details(self) -> str:
         lines = [
@@ -791,6 +829,7 @@ class AccountDataPage(QWidget):
             line = self._hoyolab_import_output_buffer.strip()
             print(line)
             self._hoyolab_import_lines.append(line)
+            self._record_hoyolab_import_warning(line)
             self._hoyolab_import_output_buffer = ""
         process.deleteLater()
         self._hoyolab_export_process = None
@@ -808,6 +847,11 @@ class AccountDataPage(QWidget):
             self.account_data_changed.emit(False)
             self._close_hoyolab_loader()
             self.refresh_hoyolab_auth_status()
+            if self._hoyolab_import_warnings:
+                QMessageBox.warning(
+                    self._dialog_parent(), tr("hoyolab.import_warning.title"),
+                    self._hoyolab_import_warning_details(),
+                )
             return
 
         self._close_hoyolab_loader()
